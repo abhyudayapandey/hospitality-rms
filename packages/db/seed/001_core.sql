@@ -69,7 +69,10 @@ select '01920000-0000-7000-8000-000000000001', code, ht from (values
   ('DERIVED_STOCK_LEVELS', 'org'),
   ('DERIVED_PURCHASE_ORDERS', 'org'),
   ('DERIVED_TRANSFERS', 'org'),
-  ('AUDIT', 'org')
+  ('AUDIT', 'org'),
+  ('SHIFT_SWAPS', 'org'),
+  ('SECURITY_ROLES', 'org'),
+  ('WF_CONFIG', 'org')
 ) as d(code, ht)
 on conflict (tenant_id, code) do nothing;
 
@@ -84,7 +87,7 @@ insert into seed_policy_matrix (grp, dom, access) values
     ('STORE_KEEPER', 'STOCK_LEVELS', 'view'),
     ('STORE_KEEPER', 'STOCK_ADJUSTMENTS', 'modify'),
     ('STORE_KEEPER', 'PURCHASE_ORDERS', 'modify'),
-    ('STORE_KEEPER', 'TRANSFERS', 'view'),
+    ('STORE_KEEPER', 'TRANSFERS', 'modify'),
 
     ('CHEF', 'STOCK_LEVELS', 'view'),
     ('CHEF', 'STOCK_ADJUSTMENTS', 'modify'),
@@ -99,6 +102,7 @@ insert into seed_policy_matrix (grp, dom, access) values
     ('OUTLET_MANAGER', 'LEAVE', 'view'),
     ('OUTLET_MANAGER', 'EVENTS', 'modify'),
     ('OUTLET_MANAGER', 'AI_RECOMMENDATIONS', 'modify'),
+    ('OUTLET_MANAGER', 'SHIFT_SWAPS', 'modify'),
 
     ('AREA_MANAGER', 'WORKERS', 'view'),
     ('AREA_MANAGER', 'ROSTER', 'view'),
@@ -106,6 +110,7 @@ insert into seed_policy_matrix (grp, dom, access) values
     ('AREA_MANAGER', 'LEAVE', 'view'),
     ('AREA_MANAGER', 'EVENTS', 'view'),
     ('AREA_MANAGER', 'AI_RECOMMENDATIONS', 'view'),
+    ('AREA_MANAGER', 'SHIFT_SWAPS', 'view'),
     ('AREA_MANAGER', 'DERIVED_STOCK_LEVELS', 'view'),
     ('AREA_MANAGER', 'DERIVED_PURCHASE_ORDERS', 'view'),
     ('AREA_MANAGER', 'DERIVED_TRANSFERS', 'view'),
@@ -122,8 +127,11 @@ insert into seed_policy_matrix (grp, dom, access) values
     ('HR_ADMIN', 'ROSTER', 'view'),
     ('HR_ADMIN', 'ATTENDANCE', 'view'),
     ('HR_ADMIN', 'LEAVE', 'modify'),
+    ('HR_ADMIN', 'SECURITY_ROLES', 'modify'),
 
     ('SECURITY_ADMIN', 'AUDIT', 'view'),
+    ('SECURITY_ADMIN', 'SECURITY_ROLES', 'view'),
+    ('SECURITY_ADMIN', 'WF_CONFIG', 'view'),
     ('AUDITOR', 'AUDIT', 'view'),
 
     ('AI_AGENT', 'STOCK_LEVELS', 'view'),
@@ -135,12 +143,14 @@ insert into seed_policy_matrix (grp, dom, access) values
     ('AI_AGENT', 'LEAVE', 'view'),
     ('AI_AGENT', 'EVENTS', 'view'),
     ('AI_AGENT', 'AI_RECOMMENDATIONS', 'modify'),
+    ('AI_AGENT', 'SHIFT_SWAPS', 'view'),
 
     ('SELF', 'WORKERS', 'view'),
     ('SELF', 'COMPENSATION', 'view'),
     ('SELF', 'ROSTER', 'view'),
     ('SELF', 'ATTENDANCE', 'modify'),
-    ('SELF', 'LEAVE', 'modify');
+    ('SELF', 'LEAVE', 'modify'),
+    ('SELF', 'SHIFT_SWAPS', 'modify');
 
 insert into core.domain_policy (tenant_id, domain_id, group_id, access)
 select '01920000-0000-7000-8000-000000000001', d.id, g.id, m.access

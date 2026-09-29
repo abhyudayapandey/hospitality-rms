@@ -1,0 +1,62 @@
+import { z } from 'zod';
+
+// Process definitions live in code and are synced into wf.process_def (LLD section 4).
+// The SQL engine reads the synced JSON, so this schema is the contract for both sides.
+
+export const scopeSchema = z.enum(['subject_node', 'nearest_ancestor', 'from_node', 'to_node']);
+
+export const stepSchema = z.strictObject({
+  step: z.string().regex(/^[a-z][a-z0-9_]*$/),
+  group: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
+  scope: scopeSchema,
+  when: z
+    .strictObject({ amount_gt: z.number().optional(), amount_gte: z.number().optional() })
+    .optional(),
+  escalateTo: z
+    .string()
+    .regex(/^[A-Z][A-Z0-9_]*$/)
+    .optional(),
+});
+
+export const processDefSchema = z
+  .strictObject({
+    type: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
+    subject: z.string().regex(/^[a-z]+\.[a-z_]+$/),
+    domain: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
+    hierarchy: z.enum(['org', 'delivery']),
+    steps: z.array(stepSchema).min(1),
+    onApproved: z.string().min(1),
+    onRejected: z.string().min(1).optional(),
+    slaHours: z.number().int().positive(),
+  })
+  .refine((d) => new Set(d.steps.map((s) => s.step)).size === d.steps.length, {
+    message: 'step names must be unique',
+  })
+  .refine(
+    (d) =>
+      d.steps.every(
+        (s) => (s.scope === 'from_node' || s.scope === 'to_node') === (d.type === 'TRANSFER'),
+      ),
+    { message: 'from_node/to_node scopes are only for two-sided processes (TRANSFER)' },
+  );
+
+export type StepDef = z.infer<typeof stepSchema>;
+export type ProcessDef = z.infer<typeof processDefSchema>;
+
+/** A request as handed to an execution handler by the executor. */
+export interface ClaimedRequest {
+  outboxId: string;
+  requestId: string;
+  handler: string;
+  attempts: number;
+  processType: string;
+  subjectType: string;
+  subjectId: string;
+  payload: Record<string, unknown>;
+  amount: string | null;
+  currency: string | null;
+  orgNodeId: string | null;
+  deliveryNodeId: string | null;
+  initiatorId: string;
+  tenantId: string;
+}

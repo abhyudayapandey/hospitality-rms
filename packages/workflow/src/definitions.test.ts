@@ -1,0 +1,49 @@
+import { describe, expect, it } from 'vitest';
+import { STUB_HANDLERS } from './handlers';
+import { PROCESS_DEFS, TRANSFER } from './processes';
+import { processDefSchema } from './types';
+
+describe('process definitions', () => {
+  it('has the six MVP processes', () => {
+    expect(PROCESS_DEFS.map((d) => d.type).sort()).toEqual([
+      'LEAVE',
+      'PURCHASE_ORDER',
+      'ROLE_CHANGE',
+      'SHIFT_SWAP',
+      'STOCK_ADJUSTMENT',
+      'TRANSFER',
+    ]);
+  });
+
+  it.each(PROCESS_DEFS.map((d) => [d.type, d] as const))('%s is valid', (_type, def) => {
+    expect(() => processDefSchema.parse(def)).not.toThrow();
+  });
+
+  it('has a stub handler for every onApproved/onRejected', () => {
+    for (const d of PROCESS_DEFS) {
+      expect(STUB_HANDLERS[d.onApproved], d.onApproved).toBeTypeOf('function');
+      if (d.onRejected) expect(STUB_HANDLERS[d.onRejected], d.onRejected).toBeTypeOf('function');
+    }
+  });
+
+  it('scopes TRANSFER dispatch to the from node and receipt to the to node', () => {
+    expect(TRANSFER.steps.map((s) => [s.step, s.scope])).toEqual([
+      ['dispatch', 'from_node'],
+      ['receipt', 'to_node'],
+    ]);
+  });
+
+  it('rejects unknown keys, duplicate steps and two-sided scopes outside TRANSFER', () => {
+    const base = PROCESS_DEFS[0]!;
+    expect(() => processDefSchema.parse({ ...base, extra: 1 })).toThrow();
+    expect(() =>
+      processDefSchema.parse({ ...base, steps: [base.steps[0], base.steps[0]] }),
+    ).toThrow();
+    expect(() =>
+      processDefSchema.parse({ ...base, steps: [{ ...base.steps[0], scope: 'from_node' }] }),
+    ).toThrow();
+    expect(() =>
+      processDefSchema.parse({ ...base, steps: [{ ...base.steps[0], when: { amount_lt: 1 } }] }),
+    ).toThrow();
+  });
+});

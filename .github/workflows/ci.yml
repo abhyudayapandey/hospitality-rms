@@ -33,6 +33,7 @@ jobs:
       # Throwaway CI-only credentials (same local-only roles as docker compose).
       MIGRATOR_DATABASE_URL: postgres://migrator:migrator_local@localhost:5432/outlet_ops?sslmode=disable
       TEST_DATABASE_URL: postgres://app_rw:app_rw_local@localhost:5432/outlet_ops?sslmode=disable
+      WF_EXECUTOR_DATABASE_URL: postgres://wf_executor:wf_executor_local@localhost:5432/outlet_ops?sslmode=disable
       TURBO_TELEMETRY_DISABLED: '1'
       NEXT_TELEMETRY_DISABLED: '1'
 

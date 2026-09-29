@@ -20,7 +20,7 @@
     "db:migrate": "dbmate --env MIGRATOR_DATABASE_URL --migrations-dir packages/db/migrations --no-dump-schema up",
     "db:rollback": "dbmate --env MIGRATOR_DATABASE_URL --migrations-dir packages/db/migrations --no-dump-schema rollback",
     "db:new": "dbmate --migrations-dir packages/db/migrations new",
-    "db:seed": "pnpm --filter @outlet-ops/db seed"
+    "db:seed": "pnpm --filter @outlet-ops/db seed && pnpm --filter @outlet-ops/workflow sync-defs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
