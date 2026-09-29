@@ -29,7 +29,8 @@ while IFS=$'\t' read -r name value; do
   cfg[${name##*/}]=$value
 done < <(aws ssm get-parameters-by-path --path "$PARAM_PREFIX/config" \
   --query 'Parameters[].[Name,Value]' --output text)
-for key in app_url app_domain acme_email cognito_user_pool_id cognito_client_id cognito_domain backup_bucket; do
+for key in app_url app_domain acme_email cognito_user_pool_id cognito_client_id cognito_domain \
+  backup_bucket photo_bucket; do
   [ -n "${cfg[$key]:-}" ] || { echo "missing config parameter $key" >&2; exit 1; }
 done
 
@@ -42,6 +43,8 @@ APP_URL=${cfg[app_url]}
 COGNITO_USER_POOL_ID=${cfg[cognito_user_pool_id]}
 COGNITO_CLIENT_ID=${cfg[cognito_client_id]}
 COGNITO_DOMAIN=${cfg[cognito_domain]}
+PHOTO_BUCKET=${cfg[photo_bucket]}
+AWS_REGION=${AWS_REGION}
 ENV
 cat > "$OO_ETC/caddy.env" <<ENV
 APP_DOMAIN=${cfg[app_domain]}

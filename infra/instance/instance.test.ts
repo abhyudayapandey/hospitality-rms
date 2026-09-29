@@ -76,6 +76,17 @@ describe('per-service credential isolation', () => {
   });
 });
 
+describe('web environment', () => {
+  it('gives the web app the photo bucket and region for presigned URLs (no credentials)', () => {
+    const script = read('deploy/fetch-params.sh');
+    const env = script.slice(script.indexOf('web.env'), script.indexOf('caddy.env'));
+    expect(env).toContain('PHOTO_BUCKET=${cfg[photo_bucket]}');
+    expect(env).toContain('AWS_REGION=');
+    expect(env).not.toMatch(/AWS_ACCESS_KEY|AWS_SECRET|PASSWORD|SECRET/);
+    expect(script).toMatch(/for key in [^;]*photo_bucket/);
+  });
+});
+
 describe('database bootstrap', () => {
   const sql = read('deploy/bootstrap-db.sh');
 

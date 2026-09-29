@@ -102,3 +102,37 @@ describe('core seed', () => {
     });
   });
 });
+
+describe('dev inventory seed (003_inventory_dev.sql)', () => {
+  it('has about 40 items and 2 suppliers, each item set up at the hub and both outlets', async () => {
+    const { rows } = await migratorPool.query<{
+      items: number;
+      suppliers: number;
+      missing: number;
+      categories: number;
+    }>(
+      `select (select count(*)::int from inv.item where sku not like 'T-%') as items,
+              (select count(*)::int from inv.supplier where name in
+                 ('FreshFarm Produce', 'Metro Wholesale Foods')) as suppliers,
+              (select count(*)::int from inv.item i
+                where i.id::text like '01920000-0000-7000-8000-0000000004%'
+                  and (select count(*) from inv.item_node n where n.item_id = i.id) <> 3) as missing,
+              (select count(distinct category)::int from inv.item) as categories`,
+    );
+    expect(rows[0]!.items).toBeGreaterThanOrEqual(40);
+    expect(rows[0]).toMatchObject({ suppliers: 2, missing: 0 });
+    expect(rows[0]!.categories).toBeGreaterThanOrEqual(6);
+  });
+
+  it('has opening stock, with the cache matching the ledger everywhere', async () => {
+    const { rows } = await migratorPool.query<{ mismatched: number; opening: number }>(
+      `select (select count(*)::int from inv.stock_level s
+                where s.on_hand <> (select coalesce(sum(qty), 0) from inv.stock_ledger l
+                                     where l.item_id = s.item_id
+                                       and l.delivery_node_id = s.delivery_node_id)) as mismatched,
+              (select count(*)::int from inv.stock_ledger where ref_type = 'opening') as opening`,
+    );
+    expect(rows[0]!.mismatched).toBe(0);
+    expect(rows[0]!.opening).toBeGreaterThanOrEqual(120);
+  });
+});

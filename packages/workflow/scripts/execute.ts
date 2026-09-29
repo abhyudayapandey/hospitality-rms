@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import pg from 'pg';
 import { runOnce } from '../src/executor';
-import { STUB_HANDLERS } from '../src/handlers';
+import { HANDLERS } from '../src/handlers';
 
 // Local runner for the workflow executor (the wf-execute Lambda wraps runOnce later).
 //   pnpm --filter @outlet-ops/workflow execute          poll every 60 s
@@ -20,7 +20,7 @@ const log = (msg: string) => console.log(`[wf-execute] ${msg}`);
 
 try {
   do {
-    const r = await runOnce(pool, STUB_HANDLERS, { log });
+    const r = await runOnce(pool, HANDLERS, { log });
     log(`completed=${r.completed} retrying=${r.retrying} failed=${r.failed}`);
     if (!once) await new Promise((resolve) => setTimeout(resolve, 60_000));
   } while (!once);

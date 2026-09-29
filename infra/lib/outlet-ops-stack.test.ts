@@ -7,22 +7,29 @@ import { OutletOpsStack, tag, TAG_PATTERN } from './outlet-ops-stack';
 // Synthesizes the stack (no AWS calls) and checks the Free-plan and security
 // constraints from ADR 005.
 
-let t: Template;
-beforeAll(() => {
-  const app = new App();
-  const stack = new OutletOpsStack(app, 'Test', {
+const AMI = 'ami-0123456789abcdef0';
+const CONFIG = {
+  domainName: 'outletops.duckdns.org',
+  alertEmail: 'ops@example.com',
+  cognitoDomainPrefix: 'outlet-ops-test',
+  githubRepo: 'abhyudayapandey/hospitality-rms',
+  githubOwnerId: '33194509',
+  githubRepoId: '1394585977',
+  amiId: AMI,
+};
+
+function synth(config = CONFIG): Template {
+  const stack = new OutletOpsStack(new App(), 'Test', {
     env: { region: 'ap-south-1', account: '123456789012' },
     synthesizer: new CliCredentialsStackSynthesizer(),
-    config: {
-      domainName: 'outletops.duckdns.org',
-      alertEmail: 'ops@example.com',
-      cognitoDomainPrefix: 'outlet-ops-test',
-      githubRepo: 'abhyudayapandey/hospitality-rms',
-      githubOwnerId: '33194509',
-      githubRepoId: '1394585977',
-    },
+    config,
   });
-  t = Template.fromStack(stack);
+  return Template.fromStack(stack);
+}
+
+let t: Template;
+beforeAll(() => {
+  t = synth();
 });
 
 const FORBIDDEN = [
@@ -241,7 +248,7 @@ describe('least-privilege IAM', () => {
 describe('storage', () => {
   it('blocks public access, encrypts and enforces TLS on every bucket', () => {
     const buckets = t.findResources('AWS::S3::Bucket');
-    expect(Object.keys(buckets)).toHaveLength(2);
+    expect(Object.keys(buckets)).toHaveLength(3); // deploy, backup, photo
     for (const b of Object.values(buckets)) {
       expect(b.Properties).toMatchObject({
         PublicAccessBlockConfiguration: {
@@ -375,5 +382,60 @@ describe('redeploy after a failed first create', () => {
     for (const [id, r] of all().filter(([, r]) => r.Type === 'AWS::S3::Bucket')) {
       expect(r.Properties?.BucketName, id).toBeUndefined();
     }
+  });
+});
+
+describe('pinned machine image (ADR 006)', () => {
+  it("takes the instance's ImageId from context amiId, never from an SSM lookup", () => {
+    t.hasResourceProperties('AWS::EC2::Instance', { ImageId: AMI });
+    const params = Object.keys((t.toJSON() as { Parameters?: object }).Parameters ?? {});
+    expect(params.filter((p) => /SsmParameterValue|ami|Ami/.test(p))).toEqual([]);
+    expect(JSON.stringify(t.toJSON())).not.toContain('/aws/service/ami-amazon-linux');
+  });
+
+  it('follows a changed amiId (so the change is always deliberate)', () => {
+    const other = synth({ ...CONFIG, amiId: 'ami-0fedcba9876543210' });
+    other.hasResourceProperties('AWS::EC2::Instance', { ImageId: 'ami-0fedcba9876543210' });
+  });
+});
+
+describe('wastage photos (ADR 006)', () => {
+  const photoBucket = () => {
+    const [id, b] = Object.entries(t.findResources('AWS::S3::Bucket')).find(([k]) =>
+      k.startsWith('PhotoBucket'),
+    )!;
+    return { id, props: b.Properties as Record<string, unknown> };
+  };
+
+  it('is private, expires photos after 400 days and allows POST only from the app origin', () => {
+    const { props } = photoBucket();
+    expect(props.CorsConfiguration).toEqual({
+      CorsRules: [
+        {
+          AllowedHeaders: ['*'],
+          AllowedMethods: ['POST'],
+          AllowedOrigins: ['https://outletops.duckdns.org'],
+          MaxAge: 3000,
+        },
+      ],
+    });
+    expect(JSON.stringify(props.LifecycleConfiguration)).toContain('"Prefix":"wastage/"');
+    expect(JSON.stringify(props.LifecycleConfiguration)).toContain('"ExpirationInDays":400');
+  });
+
+  it('lets the instance role put and get wastage/* in the photo bucket, nothing else', () => {
+    const { id } = photoBucket();
+    const st = statements('InstanceRole').filter((s) => JSON.stringify(s.Resource).includes(id));
+    expect(st.map((s) => [s.Sid, actions(s).sort()])).toEqual([
+      ['WastagePhotos', ['s3:GetObject', 's3:PutObject']],
+    ]);
+    expect(JSON.stringify(st[0]!.Resource)).toContain('/wastage/*');
+  });
+
+  it('tells the instance the bucket name through a config parameter', () => {
+    t.hasResourceProperties('AWS::SSM::Parameter', {
+      Name: '/outlet-ops/prod/config/photo_bucket',
+      Type: 'String',
+    });
   });
 });

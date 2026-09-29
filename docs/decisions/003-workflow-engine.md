@@ -37,13 +37,18 @@ These are flagged because they differ from the LLD, CLAUDE.md or ADR 002.
   (the LLD's "Submitted" is the moment `wf.submit` runs). Drafts are rows in the subject
   table (e.g. `inv.purchase_order.status = 'draft'`) before `wf.submit` is called.
 
-## Known hole: caller-supplied nodes
+## Caller-supplied nodes (closed in ADR 006)
 
-The subject tables don't exist yet, so `wf.submit` takes `p_org_node_id` and
-`p_delivery_node_id` from the caller. It checks them with `core.can()` and `bp_policy`,
-but it cannot verify that they match the subject row. The inventory prompt closes this:
-`wf.submit` will derive the nodes (and TRANSFER's from/to nodes) from the subject row,
-and the node parameters will be removed.
+Originally the subject tables didn't exist, so `wf.submit` took `p_org_node_id` and
+`p_delivery_node_id` from the caller. It checked them with `core.can()` and
+`bp_policy`, but could not verify that they matched the subject row.
+
+**Closed by the inventory work (ADR 006):**
+
+- `wf.submit` reads the nodes, TRANSFER's from and to nodes, and the amount from the
+  subject row through a registered resolver (`core.subject_resolver`).
+- The node and amount parameters are removed.
+- A test proves a caller can't submit a subject at a node they don't hold.
 
 ## Registration modes for `core.apply_domain_rls`
 

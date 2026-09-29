@@ -99,11 +99,14 @@ pnpm --filter @outlet-ops/workflow execute [--once]   run the workflow executor 
 pnpm --filter @outlet-ops/web e2e                     build, then Playwright vs the standalone server
                                                       (+ dev-only pages vs next dev; seeded DB)
 pnpm --filter @outlet-ops/web check:prod-dev-auth     prod build: dev login must be 404
-pnpm --filter @outlet-ops/infra synth                 cdk synth with example context (no AWS calls)
+pnpm --filter @outlet-ops/infra synth                 cdk synth with infra/cdk.json context (no AWS calls)
+pnpm --filter @outlet-ops/db perf:inventory           10k-row read benchmark, rolled back (ADR 007)
 infra/scripts/build-release.sh <sha>                  linux-arm64 release bundle (CI's Deploy workflow)
 ```
 Never run `cdk deploy`, the Deploy workflow or AWS-mutating commands without explicit
-approval; `docs/deploy.md` is the runbook.
+approval; `docs/deploy.md` is the runbook. Deploy context (domain, ids, pinned `amiId`)
+lives in `infra/cdk.json`; stack changes go out as `cd infra && pnpm cdk deploy` before
+the Deploy workflow.
 First run: `cp .env.example .env`. The DB roles (`migrator`, `app_rw`, `wf_executor`) are
 created by `packages/db/docker/init/` on a fresh docker volume.
 Keep this section accurate when scripts change.

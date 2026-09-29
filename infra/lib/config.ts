@@ -13,6 +13,13 @@ export interface OutletOpsConfig {
   githubOwnerId: string;
   /** Numeric id of the repository: gh api repos/<owner>/<repo> --jq .id */
   githubRepoId: string;
+  /**
+   * The instance's Amazon Linux 2023 arm64 AMI, pinned so a deploy never replaces the
+   * instance just because AWS published a newer image (ADR 006). For the running
+   * instance: aws ec2 describe-instances --instance-ids <id> --query
+   * 'Reservations[0].Instances[0].ImageId' --output text
+   */
+  amiId: string;
   /** ARN of an existing GitHub OIDC provider in the account; one is created if unset */
   githubOidcProviderArn?: string | undefined;
 }
@@ -50,6 +57,10 @@ export function configFromContext(get: (key: string) => unknown): OutletOpsConfi
   if (!/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(githubRepo)) {
     throw new Error(`CDK context "githubRepo" must be owner/repo, got "${githubRepo}".`);
   }
+  const amiId = required('amiId');
+  if (!/^ami-[0-9a-f]{8,17}$/.test(amiId)) {
+    throw new Error(`CDK context "amiId" must look like ami-0123456789abcdef0, got "${amiId}".`);
+  }
   const oidc = get('githubOidcProviderArn');
   return {
     domainName: required('domainName'),
@@ -58,6 +69,7 @@ export function configFromContext(get: (key: string) => unknown): OutletOpsConfi
     githubRepo,
     githubOwnerId: numericId('githubOwnerId'),
     githubRepoId: numericId('githubRepoId'),
+    amiId,
     githubOidcProviderArn: typeof oidc === 'string' && oidc !== '' ? oidc : undefined,
   };
 }

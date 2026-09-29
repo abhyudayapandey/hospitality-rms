@@ -35,6 +35,12 @@ One CDK stack (`infra/`, stack name `OutletOps`) deploys everything below.
   - **Postgres 16 with pg_cron** runs in Docker with host networking and listens on
     `127.0.0.1` only. Its data is on a separate encrypted 20 GiB EBS volume that is
     kept if the stack or the instance is deleted.
+- **Wastage photos.** A private S3 bucket.
+  - The web app issues 5-minute presigned URLs with the instance role: POST uploads
+    are limited to jpeg/png/webp up to 5 MB, and GET is for viewing.
+  - Uploads are allowed only under `wastage/<tenant>/<node>/`.
+  - CORS allows POST only from `https://<domainName>`.
+  - Photos expire after 400 days.
 - **Backups.**
   - `pg_dump` to S3 every 6 hours (00, 06, 12, 18 UTC), kept 30 days.
   - Daily EBS snapshots of the data volume through Data Lifecycle Manager, 7 kept.
@@ -88,6 +94,7 @@ Free and draws down the Free-plan credits. Every resource is also tagged `CostPr
 | Elastic IP / public IPv4 ($0.005/h, charged even when attached)                            | ~$3.65                                                  | **No**, credits                        |
 | EBS snapshots (daily, 7 kept, incremental)                                                 | ~$0.50–1.00                                             | **No**, credits                        |
 | S3: release bundles (30 days) + `pg_dump` every 6 h (30 days)                              | < $0.50                                                 | **No**, credits (cents)                |
+| S3: wastage photos (~200 KB each after on-phone resize, ~30/day, 400 days) + requests      | < $0.01                                                 | **No**, credits (fractions of a cent)  |
 | SSM Parameter Store standard SecureString (AWS-managed `aws/ssm` key)                      | $0                                                      | Yes                                    |
 | SSM Run Command, Session Manager                                                           | $0                                                      | Yes                                    |
 | Cognito Essentials, email OTP via Cognito default sender                                   | $0                                                      | Yes, up to 10,000 monthly active users |
@@ -214,21 +221,39 @@ already exist.
 The stack uses `CliCredentialsStackSynthesizer`, so **no `cdk bootstrap` is needed**:
 the template has no assets.
 
+All deploy settings live in `infra/cdk.json` under `context`, so the command takes no
+flags, and CI's `cdk synth` uses the same values:
+
+| Context key                        | What it is                                                                 |
+| ---------------------------------- | -------------------------------------------------------------------------- |
+| `domainName`                       | The public hostname, for example `outletops-ap.duckdns.org`                |
+| `alertEmail`                       | Budget alerts and the Let's Encrypt account                                |
+| `cognitoDomainPrefix`              | `<prefix>.auth.ap-south-1.amazoncognito.com`; must be unique in the region |
+| `githubRepo`                       | `owner/repo` allowed to deploy                                             |
+| `githubOwnerId`, `githubRepoId`    | Numeric GitHub ids in the OIDC `sub` (see below)                           |
+| `amiId`                            | The instance's Amazon Linux 2023 arm64 AMI, pinned (see below)             |
+| `githubOidcProviderArn` (optional) | An existing GitHub OIDC provider's ARN, if the account already has one     |
+
 ```sh
 cd infra
-pnpm cdk deploy \
-  -c domainName=myoutlet.duckdns.org \
-  -c alertEmail=you@example.com \
-  -c cognitoDomainPrefix=myoutlet-ops \
-  -c githubRepo=abhyudayapandey/hospitality-rms \
-  -c githubOwnerId=33194509 \
-  -c githubRepoId=1394585977
-# If the account already has a GitHub OIDC provider:
-#   -c githubOidcProviderArn=arn:aws:iam::<account>:oidc-provider/token.actions.githubusercontent.com
+pnpm cdk diff      # read it first: see "What the diff must never show" below
+pnpm cdk deploy
 ```
 
-`cognitoDomainPrefix` must be globally unique within the region. Review the IAM and
-security-group changes that `cdk deploy` prints before you confirm.
+Review the IAM and security-group changes that `cdk deploy` prints before you confirm.
+
+**What the diff must never show:** `AWS::EC2::Instance` being replaced (`[-/+]` or
+"requires replacement"). The instance's image is pinned by `amiId`. A replacement means
+`amiId` differs from the running instance's AMI. Stop and check:
+
+```sh
+aws ec2 describe-instances --instance-ids <InstanceId> \
+  --query 'Reservations[0].Instances[0].ImageId' --output text
+```
+
+To move to a newer image deliberately, change `amiId`, deploy, then run the Deploy
+workflow. The data volume is separate and kept, and the new instance mounts it on
+first boot.
 
 `githubOwnerId` and `githubRepoId` are the numeric GitHub ids of the repository owner
 and of the repository. GitHub puts both in the OIDC token's `sub` claim, and the deploy
@@ -248,10 +273,17 @@ names in the `sub` claim do, so after a rename, update `githubRepo` and redeploy
 stack.
 
 Note these outputs: `PublicIp`, `InstanceId`, `DeployBucketName`, `BackupBucketName`,
-`DeployRoleArn`, `UserPoolId`, `UserPoolClientId`, `CognitoDomain`.
+`PhotoBucketName`, `DeployRoleArn`, `UserPoolId`, `UserPoolClientId`, `CognitoDomain`.
 
-To check without deploying: `pnpm --filter @outlet-ops/infra synth` (example context),
-or `pnpm cdk diff -c ...` against the live stack.
+To check without deploying:
+
+- `pnpm --filter @outlet-ops/infra synth` renders the template from `cdk.json`. It makes
+  no AWS calls.
+- `pnpm cdk diff` compares against the live stack.
+
+**Order when a change touches both the stack and the app:** run `cdk deploy` first,
+then the Deploy workflow. For example, the photo bucket's `photo_bucket` parameter
+must exist before the app's `fetch-params.sh` reads it.
 
 ### If the first deploy fails
 
@@ -293,7 +325,7 @@ state can't be updated, so delete it and deploy again.
    deleted, anything the commands below list is left over:
 
    ```sh
-   # Buckets (CDK names them outletops-deploybucket... and outletops-backupbucket...)
+   # Buckets (CDK names them outletops-deploybucket..., -backupbucket..., -photobucket...)
    aws s3api list-buckets \
      --query "Buckets[?starts_with(Name, 'outletops-')].[Name,CreationDate]" --output table
    aws s3 ls s3://<name> --recursive | head    # a leftover from a failed create is empty
@@ -330,7 +362,7 @@ state can't be updated, so delete it and deploy again.
 4. **Fix the cause and check it locally, then deploy again:**
    1. Run `pnpm --filter @outlet-ops/infra synth` and `pnpm test`. The stack tests check,
       among other things, that every tag uses only characters AWS accepts.
-   2. Run the same `pnpm cdk deploy -c ...` command as above.
+   2. Run `pnpm cdk deploy` again from `infra/`.
 
 ### 3. Point DNS at the Elastic IP
 

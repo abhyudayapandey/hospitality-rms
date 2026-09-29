@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STUB_HANDLERS } from './handlers';
+import { HANDLERS, INVENTORY_HANDLERS } from './handlers';
 import { PROCESS_DEFS, TRANSFER } from './processes';
 import { processDefSchema } from './types';
 
@@ -19,10 +19,25 @@ describe('process definitions', () => {
     expect(() => processDefSchema.parse(def)).not.toThrow();
   });
 
-  it('has a stub handler for every onApproved/onRejected', () => {
+  it('has a handler for every onApproved/onRejected', () => {
     for (const d of PROCESS_DEFS) {
-      expect(STUB_HANDLERS[d.onApproved], d.onApproved).toBeTypeOf('function');
-      if (d.onRejected) expect(STUB_HANDLERS[d.onRejected], d.onRejected).toBeTypeOf('function');
+      expect(HANDLERS[d.onApproved], d.onApproved).toBeTypeOf('function');
+      if (d.onRejected) expect(HANDLERS[d.onRejected], d.onRejected).toBeTypeOf('function');
+    }
+  });
+
+  it('runs real (not stub) handlers for the three inventory processes', () => {
+    const inventory = PROCESS_DEFS.filter((d) => d.subject.startsWith('inv.'));
+    expect(inventory.map((d) => d.type).sort()).toEqual([
+      'PURCHASE_ORDER',
+      'STOCK_ADJUSTMENT',
+      'TRANSFER',
+    ]);
+    for (const d of inventory) {
+      for (const h of [d.onApproved, d.onRejected]) {
+        expect(h && HANDLERS[h], h).toBe(h && INVENTORY_HANDLERS[h]);
+        expect(h, d.type).toBeDefined();
+      }
     }
   });
 

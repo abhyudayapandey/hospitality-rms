@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { actOnRequest } from './actions';
@@ -10,6 +11,11 @@ export interface InboxEntry {
   step: string;
   amount: string | null;
   waitingSince: string;
+  from: string;
+  /** module screen for this request (order, adjustment review, transfer) */
+  link?: { href: string; label: string };
+  /** show Approve/Reject here (false when the decision belongs on the module screen) */
+  inline: boolean;
 }
 
 export function InboxItem({ entry }: { entry: InboxEntry }) {
@@ -40,8 +46,18 @@ export function InboxItem({ entry }: { entry: InboxEntry }) {
         {entry.amount && <p className="font-semibold tabular-nums">{entry.amount}</p>}
       </div>
       <p className="text-sm text-slate-600">
-        Step: {entry.step.replace(/_/g, ' ')} · waiting since {entry.waitingSince}
+        {entry.from} · {entry.step.replace(/_/g, ' ')} · waiting since {entry.waitingSince}
       </p>
+      {entry.link && (
+        <Link
+          href={entry.link.href}
+          className={`mt-3 flex min-h-12 items-center justify-center rounded-lg font-medium ${
+            entry.inline ? 'text-slate-700 underline' : 'bg-slate-900 text-white'
+          }`}
+        >
+          {entry.link.label}
+        </Link>
+      )}
       {error && (
         <p role="alert" className="mt-2 rounded-lg bg-rose-50 p-2 text-sm text-rose-800">
           {error}
@@ -51,7 +67,7 @@ export function InboxItem({ entry }: { entry: InboxEntry }) {
         <p role="status" className="mt-3 font-medium text-emerald-700">
           {done}
         </p>
-      ) : (
+      ) : !entry.inline ? null : (
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button
             type="button"
