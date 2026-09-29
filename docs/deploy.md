@@ -220,13 +220,32 @@ pnpm cdk deploy \
   -c domainName=myoutlet.duckdns.org \
   -c alertEmail=you@example.com \
   -c cognitoDomainPrefix=myoutlet-ops \
-  -c githubRepo=abhyudayapandey/hospitality-rms
+  -c githubRepo=abhyudayapandey/hospitality-rms \
+  -c githubOwnerId=33194509 \
+  -c githubRepoId=1394585977
 # If the account already has a GitHub OIDC provider:
 #   -c githubOidcProviderArn=arn:aws:iam::<account>:oidc-provider/token.actions.githubusercontent.com
 ```
 
 `cognitoDomainPrefix` must be globally unique within the region. Review the IAM and
 security-group changes that `cdk deploy` prints before you confirm.
+
+`githubOwnerId` and `githubRepoId` are the numeric GitHub ids of the repository owner
+and of the repository. GitHub puts both in the OIDC token's `sub` claim, and the deploy
+role's trust policy matches that claim exactly:
+`repo:<owner>@<ownerId>/<repo>@<repoId>:environment:production`.
+
+To look the ids up:
+
+```sh
+gh api repos/abhyudayapandey/hospitality-rms --jq '.owner.id, .id'
+# 33194509     <- githubOwnerId
+# 1394585977   <- githubRepoId
+```
+
+The ids don't change when a repository is renamed or transferred. The owner and repo
+names in the `sub` claim do, so after a rename, update `githubRepo` and redeploy the
+stack.
 
 Note these outputs: `PublicIp`, `InstanceId`, `DeployBucketName`, `BackupBucketName`,
 `DeployRoleArn`, `UserPoolId`, `UserPoolClientId`, `CognitoDomain`.
@@ -336,13 +355,56 @@ In the repository settings:
 
 1. **Environments → New environment `production`.** Add **required reviewers**
    (yourself), and limit deployment branches to `master`. The AWS role trusts only
-   this environment (`repo:<owner>/<repo>:environment:production`).
+   this environment
+   (`repo:<owner>@<ownerId>/<repo>@<repoId>:environment:production`, exact match).
 2. **Environment variables** for `production`, all from the stack outputs:
    - `AWS_DEPLOY_ROLE_ARN`
    - `DEPLOY_BUCKET`
    - `INSTANCE_ID`
 
    There are no AWS keys or secrets in GitHub. OIDC issues a 1-hour session.
+
+#### If the Deploy workflow gets AccessDenied
+
+**Symptom.** The `configure-aws-credentials` step fails with "Not authorized to perform
+sts:AssumeRoleWithWebIdentity". This almost always means the token's `sub` claim
+doesn't match the role's trust policy. GitHub changes the `sub` format now and then.
+
+**Find the `sub` GitHub actually sent.** CloudTrail event history is free and records
+the failed call. Events show up after about 5–15 minutes.
+
+```sh
+aws cloudtrail lookup-events --region ap-south-1 \
+  --lookup-attributes AttributeKey=EventName,AttributeValue=AssumeRoleWithWebIdentity \
+  --max-results 5 --query 'Events[].CloudTrailEvent' --output json |
+  jq -r '.[] | fromjson | [.eventTime, (.errorCode // "ok"), .userIdentity.userName] | @tsv'
+```
+
+- The last column is the `sub`. The console shows the same thing: CloudTrail → Event
+  history, then filter on Event name `AssumeRoleWithWebIdentity`.
+- If nothing shows up in `ap-south-1`, try `--region us-east-1`. The call may have gone
+  to the global STS endpoint.
+
+**Compare it with the trust policy:**
+
+```sh
+aws iam get-role --role-name <DeployRoleArn's name> \
+  --query 'Role.AssumeRolePolicyDocument.Statement[0].Condition'
+```
+
+**Fix a mismatch.**
+
+- **Wrong ids or names:** correct `githubRepo`, `githubOwnerId` or `githubRepoId`, then
+  run `cdk deploy` again.
+- **A new `sub` format:** update `githubDeploySubject` in `infra/lib/config.ts`, along
+  with its test.
+
+Keep the condition an exact `StringEquals`. Never widen it with `StringLike` or `*`.
+
+**If the `sub` matches but it still fails,** check two things:
+
+- the `aud` claim is `sts.amazonaws.com`
+- `AWS_DEPLOY_ROLE_ARN` is the stack's `DeployRoleArn` output
 
 ### 5. Deploy the app
 

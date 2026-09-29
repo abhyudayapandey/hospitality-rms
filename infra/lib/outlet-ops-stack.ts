@@ -17,7 +17,13 @@ import {
   type StackProps,
 } from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
-import { CONFIG_PARAM_PATH, PARAM_PREFIX, SECRET_PARAMS, type OutletOpsConfig } from './config';
+import {
+  CONFIG_PARAM_PATH,
+  githubDeploySubject,
+  PARAM_PREFIX,
+  SECRET_PARAMS,
+  type OutletOpsConfig,
+} from './config';
 
 // Outlet Ops pilot stack (ADR 005, docs/deploy.md). Free plan, ap-south-1:
 //  * one EC2 t4g.small in a public subnet runs Caddy (TLS), the Next.js app, the
@@ -390,7 +396,8 @@ export class OutletOpsStack extends Stack {
       assumedBy: new iam.WebIdentityPrincipal(oidcArn, {
         StringEquals: {
           'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-          'token.actions.githubusercontent.com:sub': `repo:${config.githubRepo}:environment:production`,
+          // Exact match, no wildcards (see githubDeploySubject).
+          'token.actions.githubusercontent.com:sub': githubDeploySubject(config),
         },
       }),
     });

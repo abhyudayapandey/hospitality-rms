@@ -18,6 +18,8 @@ beforeAll(() => {
       alertEmail: 'ops@example.com',
       cognitoDomainPrefix: 'outlet-ops-test',
       githubRepo: 'abhyudayapandey/hospitality-rms',
+      githubOwnerId: '33194509',
+      githubRepoId: '1394585977',
     },
   });
   t = Template.fromStack(stack);
@@ -190,14 +192,27 @@ describe('least-privilege IAM', () => {
             Condition: {
               StringEquals: {
                 'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+                // GitHub's immutable-id subject, as seen in CloudTrail on the failed deploy.
                 'token.actions.githubusercontent.com:sub':
-                  'repo:abhyudayapandey/hospitality-rms:environment:production',
+                  'repo:abhyudayapandey@33194509/hospitality-rms@1394585977:environment:production',
               },
             },
           }),
         ],
       },
     });
+  });
+
+  it('deploy role trust uses exact matches only (no wildcards, no StringLike)', () => {
+    const roles = Object.values(t.findResources('AWS::IAM::Role')).filter((r) =>
+      JSON.stringify(r).includes('token.actions.githubusercontent.com'),
+    );
+    expect(roles).toHaveLength(1);
+    const trust = JSON.stringify(
+      (roles[0]!.Properties as { AssumeRolePolicyDocument: unknown }).AssumeRolePolicyDocument,
+    );
+    expect(trust).not.toContain('StringLike');
+    expect(trust).not.toContain('*');
   });
 
   it('deploy role can only upload releases and run the fixed deploy document', () => {
