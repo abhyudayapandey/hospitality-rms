@@ -112,6 +112,17 @@ those for the Free-plan period.** CLAUDE.md's Stack section points here.
 - **Self sign-up is off.** Admins create users.
 - **Password recovery is email-only.** Accounts without email are reset by a manager.
 
+### Account access
+
+- **No AWS Organization and no IAM Identity Center while on the Free plan.** Enabling
+  Identity Center on a standalone account creates an Organization. That upgrades the
+  account to the Paid plan and the unused credits expire.
+- **Admins use the IAM user `ap-admin`**: `AdministratorAccess`, MFA, and console
+  sign-in only, with no access keys. The CLI signs in with
+  `aws login --profile outlet-ops` (AWS CLI 2.32+), which issues short-lived
+  credentials.
+- **GitHub Actions** uses its OIDC role, as described under Deploy.
+
 ### Cost guardrails
 
 - An AWS Budget of $20/month of actual cost, with credits excluded, alerting at 50, 80

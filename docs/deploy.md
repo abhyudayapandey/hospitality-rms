@@ -10,6 +10,12 @@ account. The design reasons are in [ADR 005](decisions/005-hosting-free-plan.md)
 > AWS closes the account at the end of the plan and deletes its resources after a
 > grace period. **Take a final `pg_dump` off AWS first.**
 
+> **Never create an AWS Organization or enable IAM Identity Center while on the Free
+> plan.** Enabling Identity Center on a standalone account creates an Organization.
+> Creating or joining an Organization upgrades the account to the Paid plan, and the
+> unused Free-plan credits expire. Use the IAM user `ap-admin` described in
+> [Prerequisites](#prerequisites-once) instead.
+
 ## What gets deployed
 
 One CDK stack (`infra/`, stack name `OutletOps`) deploys everything below.
@@ -134,9 +140,46 @@ your account gets it, EC2 shows $0 until then. Check in Billing → Bills.
    excluded, alerting at 50%, 80% and 100% to `alertEmail`. Budgets track cost, not the
    credit balance, so also check the Credits page. Confirm the subscription email if
    AWS sends one.
-4. **Tools on your admin machine:** the AWS CLI v2, configured for the account in
-   `ap-south-1` with an admin IAM Identity Center user rather than root keys. Also
-   Node 22, pnpm (`corepack enable`) and `pnpm i` in this repo.
+4. **Admin IAM user and CLI sign-in.** Don't use the root user for day-to-day work,
+   and **don't create an AWS Organization or enable IAM Identity Center** (see the
+   warning at the top).
+   1. **Protect root.** As root, turn on MFA for the root user.
+   2. **Let IAM users see billing.** As root, go to **Account → IAM user and role access
+      to Billing information** and activate it. Without this, `ap-admin` can't see the
+      Credits page, Bills or Budgets.
+   3. **Create the admin user.** Still as root, open **IAM → Users → Create user**:
+      - name it `ap-admin`
+      - give it console access with a strong password
+      - attach the `AdministratorAccess` managed policy directly
+
+      Do **not** create access keys for it.
+
+   4. **Add MFA to `ap-admin`.** Sign in as `ap-admin` with the account's IAM sign-in
+      URL. Register an MFA device (passkey or authenticator app) under
+      **Security credentials**, then sign out and back in to confirm it asks for MFA.
+      From then on, use `ap-admin` in the console and keep root for the few tasks only
+      root can do.
+   5. **Install the AWS CLI 2.32 or later.** `aws --version` must show 2.32+, because
+      `aws login` is newer than that.
+   6. **Sign in from the CLI:**
+      ```sh
+      aws login --profile outlet-ops
+      ```
+      This opens the browser. Sign in as `ap-admin` with MFA. The CLI stores
+      short-lived credentials for the `outlet-ops` profile, so no access keys sit on
+      disk. The first time, choose region `ap-south-1` when it asks, or run
+      `aws configure set region ap-south-1 --profile outlet-ops`. Run `aws login` again
+      when the session expires.
+   7. **Use the profile for every command in this guide:**
+      ```sh
+      export AWS_PROFILE=outlet-ops
+      aws sts get-caller-identity   # should show .../user/ap-admin
+      ```
+      `infra/scripts/create-secrets.sh`, `pnpm cdk ...` and the `aws` commands below all
+      read `AWS_PROFILE`. If `cdk` doesn't pick up the `aws login` session, export it for
+      the shell first:
+      `eval "$(aws configure export-credentials --profile outlet-ops --format env)"`.
+   8. **Other tools:** Node 22, pnpm (`corepack enable`), and `pnpm i` in this repo.
 5. **Choose a hostname.** Use either of these:
    - **DuckDNS (free):** sign in at <https://www.duckdns.org> and create a subdomain,
      for example `myoutlet.duckdns.org`.
@@ -150,6 +193,8 @@ These steps are for you to run. **Claude only synthesises and tests; it never de
 ### 1. Create the secrets
 
 ```sh
+aws login --profile outlet-ops   # if the session has expired
+export AWS_PROFILE=outlet-ops
 infra/scripts/create-secrets.sh
 ```
 
