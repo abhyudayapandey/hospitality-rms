@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@types/pg": "^8.23.1",
-    "@outlet-ops/db": "workspace:*"
+    "@outlet-ops/db": "workspace:*",
+    "esbuild": "^0.28.2"
   }
 }

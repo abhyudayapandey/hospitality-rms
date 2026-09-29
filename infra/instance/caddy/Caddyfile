@@ -1,0 +1,10 @@
+# TLS termination with automatic Let's Encrypt certificates for the app domain.
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy 127.0.0.1:3000
+}

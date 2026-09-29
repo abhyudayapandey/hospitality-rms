@@ -1,0 +1,28 @@
+[Unit]
+Description=Outlet Ops web (Next.js standalone, 127.0.0.1:3000)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=outletops-web
+Group=outletops-web
+EnvironmentFile=/etc/outlet-ops/web.env
+# Only app_rw and the session secret; never migrator or wf_executor.
+LoadCredential=db_app_rw:/etc/outlet-ops/creds/app_rw
+LoadCredential=session_secret:/etc/outlet-ops/creds/session_secret
+ExecStart=/opt/outlet-ops/current/deploy/web-start.sh
+Restart=always
+RestartSec=3
+MemoryMax=700M
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

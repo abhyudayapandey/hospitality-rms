@@ -1,0 +1,7 @@
+[Unit]
+Description=Outlet Ops pg_dump to S3
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/outlet-ops/current/deploy/pg-backup.sh

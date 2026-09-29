@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "bash scripts/start-standalone.sh",
     "typecheck": "next typegen && tsc --noEmit",
-    "e2e": "playwright test",
+    "e2e": "env -u DEV_AUTH_STUB next build && playwright test",
     "check:prod-dev-auth": "bash scripts/check-prod-dev-auth.sh"
   },
   "dependencies": {

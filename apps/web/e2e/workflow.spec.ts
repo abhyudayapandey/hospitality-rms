@@ -1,18 +1,14 @@
 import { expect, test } from '@playwright/test';
-import { devLogin } from './helpers';
+import { signInAs, submitTestRequest } from './helpers';
 
-// The acceptance flow: the store keeper submits a request, the outlet manager approves it.
-test('store keeper submits a test request; outlet manager approves it', async ({ page }) => {
-  await devLogin(page, 'Kim Storekeeper');
+// The acceptance flow on the production build: the store keeper's request is in approval,
+// is not in her own inbox, and the outlet manager approves it. The dev-only submit form
+// is covered by e2e/dev/test-request.spec.ts against `next dev`.
+test('store keeper submits a request; outlet manager approves it', async ({ page }) => {
+  const requestId = await submitTestRequest('Kim Storekeeper', 'PURCHASE_ORDER', 12500);
 
-  await page.goto('/requests/new');
-  await page.getByLabel('Request type').selectOption('PURCHASE_ORDER');
-  await page.getByLabel('Location').last().selectOption({ label: 'Outlet A' });
-  await page.getByLabel('Amount (INR)').fill('12500');
-  await page.getByRole('button', { name: 'Submit request' }).click();
-
-  await page.waitForURL(/\/requests\?created=/);
-  const requestId = new URL(page.url()).searchParams.get('created')!;
+  await signInAs(page, 'Kim Storekeeper');
+  await page.goto('/requests');
   const mine = page.locator(`[data-request-id="${requestId}"]`);
   await expect(mine.getByTestId('request-state')).toHaveText('in approval');
 
@@ -20,7 +16,7 @@ test('store keeper submits a test request; outlet manager approves it', async ({
   await page.goto('/inbox');
   await expect(page.locator(`[data-request-id="${requestId}"]`)).toHaveCount(0);
 
-  await devLogin(page, 'Olivia Outlet Manager');
+  await signInAs(page, 'Olivia Outlet Manager');
   await page.goto('/inbox');
   const item = page.locator(`[data-testid="inbox-item"][data-request-id="${requestId}"]`);
   await expect(item).toContainText('Purchase Order');
@@ -29,7 +25,7 @@ test('store keeper submits a test request; outlet manager approves it', async ({
   await expect(item.getByRole('status')).toHaveText('Approved');
   await expect(item).toHaveCount(0); // leaves the inbox after the refresh
 
-  await devLogin(page, 'Kim Storekeeper');
+  await signInAs(page, 'Kim Storekeeper');
   await page.goto('/requests');
   await expect(
     page.locator(`[data-request-id="${requestId}"]`).getByTestId('request-state'),
@@ -37,15 +33,9 @@ test('store keeper submits a test request; outlet manager approves it', async ({
 });
 
 test('a stale screen gets a friendly message, not a SQL error', async ({ page, context }) => {
-  await devLogin(page, 'Kim Storekeeper');
-  await page.goto('/requests/new');
-  await page.getByLabel('Request type').selectOption('PURCHASE_ORDER');
-  await page.getByLabel('Amount (INR)').fill('900');
-  await page.getByRole('button', { name: 'Submit request' }).click();
-  await page.waitForURL(/\/requests\?created=/);
-  const requestId = new URL(page.url()).searchParams.get('created')!;
+  const requestId = await submitTestRequest('Kim Storekeeper', 'PURCHASE_ORDER', 900);
 
-  await devLogin(page, 'Olivia Outlet Manager');
+  await signInAs(page, 'Olivia Outlet Manager');
   const stale = await context.newPage();
   await stale.goto('/inbox');
   const staleItem = stale.locator(`[data-testid="inbox-item"][data-request-id="${requestId}"]`);

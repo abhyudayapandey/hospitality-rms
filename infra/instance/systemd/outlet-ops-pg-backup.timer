@@ -1,0 +1,11 @@
+[Unit]
+Description=Outlet Ops pg_dump to S3 every 6 hours (UTC)
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:00:00 UTC
+RandomizedDelaySec=300
+Persistent=true
+Unit=outlet-ops-pg-backup.service
+
+[Install]
+WantedBy=timers.target

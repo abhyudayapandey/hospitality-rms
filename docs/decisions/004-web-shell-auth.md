@@ -102,9 +102,15 @@ An e2e test checks that the cookies and caches are gone and protected pages redi
 - **Build guard.** `next.config.ts` refuses a production build with `DEV_AUTH_STUB=true`.
 - **Proof in CI.** `scripts/check-prod-dev-auth.sh` checks three things:
   - the refused build
-  - that a production build started with `DEV_AUTH_STUB=true` returns 404 for
-    `/dev-login` and `/requests/new`, even with a valid session
+  - that the standalone server (the artifact the release bundle ships, ADR 005) started
+    with `DEV_AUTH_STUB=true` returns 404 for `/dev-login` and `/requests/new`, even
+    with a valid session
   - that the login page has no dev link
+- **E2E on the shipped artifact.** Playwright's `prod` project runs against the same
+  standalone server. Since dev login is compiled out there, tests sign in with a session
+  cookie signed with the server's `SESSION_SECRET` and submit requests through
+  `wf.submit` as that user (`apps/web/e2e/helpers.ts`); nothing test-only is added to the
+  app. A small `dev` project covers the dev-only pages against `next dev`.
 
 ## UI conventions
 
