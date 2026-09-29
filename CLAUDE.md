@@ -59,7 +59,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 4. Status changes and approvals only via `wf.submit` / `wf.act` and the executor.
    Never update a status column directly from app code.
 5. Every business table has the audit trigger `audit.capture()`.
-6. The AI agent is a service user with view-only domain access. Its only write path is
+6. The AI agent is a service user with view-only domain access, except modify on
+   `AI_RECOMMENDATIONS`. Its only writes are inserting `ai.recommendation` rows and
    `wf.submit`. It never calls module write RPCs.
 7. The initiator of a workflow request can never approve it.
 8. Never commit secrets. Config comes from env vars; `.env.example` lists them all.
