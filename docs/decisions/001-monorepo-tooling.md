@@ -8,11 +8,11 @@ These are the scaffold decisions that CLAUDE.md and the LLD leave open.
 
 - **TypeScript 6.0**, not 7. `typescript-eslint` (type-checked lint) supports `<6.1` only.
   Move to 7 once it's supported.
-- **Vitest 4.1**, not 5. Vitest 5 drops Node 20, and our Lambdas target Node 20.
+- **Vitest 4.1**, not 5. Chosen while Lambdas targeted Node 20, which Vitest 5 drops. Now
+  that everything runs on Node 22 this no longer applies, and Vitest 5 is an option.
 - **Node 22** for local dev and CI (`.nvmrc`). Node 20 reached end of life in April 2026.
-  CLAUDE.md still says Lambdas run Node 20. **Flag:** revisit the Lambda runtime (likely
-  `nodejs22.x`) when the first Lambda is deployed. `engines` stays `>=20.9` so code keeps
-  working on 20.
+  **Resolved (2026-09-29):** Lambdas also run on Node 22 (`nodejs22.x`). CLAUDE.md is
+  updated and root `engines.node` is `>=22`.
 
 ## Tests
 
