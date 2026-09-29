@@ -37,6 +37,14 @@ export default async function CountSheetPage({
           ← Counts
         </Link>
         <h1 className="text-xl font-semibold">Submitted count</h1>
+        <p
+          role="status"
+          className="rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800"
+        >
+          {lines.filter((l) => l.outcome === 'posted').length} posted,{' '}
+          {lines.filter((l) => l.outcome === 'approval').length} sent for approval,{' '}
+          {lines.filter((l) => (l.outcome ?? 'no_change') === 'no_change').length} unchanged.
+        </p>
         <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
           {lines.map((l) => (
             <li key={l.item_id} className="flex justify-between gap-2 px-4 py-3 text-sm">

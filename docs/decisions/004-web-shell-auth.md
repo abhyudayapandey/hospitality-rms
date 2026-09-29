@@ -89,28 +89,29 @@ sessions, reaches the database, and decides what to show.
 
 An e2e test checks that the cookies and caches are gone and protected pages redirect.
 
-## Dev-only login and test request form
+## Dev-only login
 
 - **Scope.** `/dev-login` lets you pick any seeded user. The user list is a constant,
   `DEV_USERS`, which a DB test keeps in step with the seed, so the web app never needs a
-  privileged DB connection. `/requests/new`, the test request form, sits behind the same
-  gate and is marked for removal in the inventory prompt.
-- **The gate.** Both are enabled only when `NODE_ENV !== 'production'` and
+  privileged DB connection.
+- **Test request form removed.** The temporary `/requests/new` form was removed in the
+  inventory work (ADR 006). Real requests now come from the inventory screens.
+- **The gate.** Dev login is enabled only when `NODE_ENV !== 'production'` and
   `DEV_AUTH_STUB === 'true'`. Next inlines `NODE_ENV` at build time, so a production build
-  cannot enable them, whatever the runtime environment says. Both the pages and the server
-  actions return 404.
+  cannot enable it, whatever the runtime environment says. Both the page and its server
+  action return 404.
 - **Build guard.** `next.config.ts` refuses a production build with `DEV_AUTH_STUB=true`.
 - **Proof in CI.** `scripts/check-prod-dev-auth.sh` checks three things:
   - the refused build
   - that the standalone server (the artifact the release bundle ships, ADR 005) started
-    with `DEV_AUTH_STUB=true` returns 404 for `/dev-login` and `/requests/new`, even
-    with a valid session
+    with `DEV_AUTH_STUB=true` returns 404 for `/dev-login`, even with a valid session
   - that the login page has no dev link
 - **E2E on the shipped artifact.** Playwright's `prod` project runs against the same
   standalone server. Since dev login is compiled out there, tests sign in with a session
-  cookie signed with the server's `SESSION_SECRET` and submit requests through
-  `wf.submit` as that user (`apps/web/e2e/helpers.ts`); nothing test-only is added to the
-  app. A small `dev` project covers the dev-only pages against `next dev`.
+  cookie signed with the server's `SESSION_SECRET` (`apps/web/e2e/helpers.ts`), then use
+  the real screens: order, approve, receive, transfer and count. The executor step runs
+  the real `runOnce` with the real handlers. Nothing test-only is added to the app. A
+  small `dev` project covers the dev login against `next dev`.
 
 ## UI conventions
 
