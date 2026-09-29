@@ -18,7 +18,7 @@ wherever they conflict.**
 - Migrations: dbmate, plain SQL files in `packages/db/migrations`
 - Queries: Kysely + `pg`
 - Auth: Amazon Cognito (phone OTP for frontline staff); dev-only login stub locally
-- Async: AWS Lambda (Node 20) + EventBridge Scheduler; S3 for files
+- Async: AWS Lambda (Node 22, `nodejs22.x`) + EventBridge Scheduler; S3 for files
 - Infra: AWS CDK (TypeScript) in `/infra`, region ap-south-1
 - Hosting: AWS Amplify Hosting for the Next.js app
 - AI: Anthropic Claude API from Lambda
