@@ -82,9 +82,17 @@ pnpm db:up             start local Postgres (docker compose)
 pnpm db:migrate        run dbmate migrations
 pnpm db:seed           load seed org, outlets, users, items
 pnpm dev               run web app
-pnpm test              all tests (needs db:up)
+pnpm test              all tests (needs db:up + db:migrate)
+pnpm test:unit         unit tests only (*.test.ts)
+pnpm test:db           DB integration tests only (*.db.test.ts)
 pnpm lint && pnpm typecheck
+pnpm format            prettier --write
+pnpm db:new <name>     new dbmate migration
+pnpm db:rollback       roll back the last migration
+pnpm db:down           stop local Postgres
 ```
+First run: `cp .env.example .env`. The DB roles (`migrator`, `app_rw`, `wf_executor`) are
+created by `packages/db/docker/init/` on a fresh docker volume.
 Keep this section accurate when scripts change.
 
 ## How to work in this repo
