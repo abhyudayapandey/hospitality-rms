@@ -14,6 +14,7 @@ export const ERROR_MESSAGES = {
   TENANT_MISMATCH: 'That item belongs to a different organisation.',
   INSUFFICIENT_STOCK:
     'There is not enough stock on record for that. If the goods are here, record the receipt or do a stock count first.',
+  LEDGER_APPEND_ONLY: 'Stock history cannot be changed. Record a correcting movement instead.',
   APPROVE_VIA_MODULE: 'Open this request from its own screen to confirm it.',
   IRREVERSIBLE_STEP: 'The goods are already on their way, so this can only be received now.',
   SESSION_EXPIRED: 'Your session has ended. Please sign in again.',
