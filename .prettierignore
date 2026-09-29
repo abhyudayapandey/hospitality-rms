@@ -1,0 +1,9 @@
+pnpm-lock.yaml
+.next/
+.turbo/
+cdk.out/
+coverage/
+dist/
+docs/LLD.md
+docs/goal.md
+CLAUDE.md

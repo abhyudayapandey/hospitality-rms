@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+  - services/*
+  - infra
+
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
