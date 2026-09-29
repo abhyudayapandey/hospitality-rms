@@ -22,6 +22,7 @@ beforeAll(async () => {
 afterAll(closePools);
 
 interface TenantB {
+  tenant: string;
   bob: string;
   orgOutlet: string;
   dlvOutlet: string;
@@ -101,7 +102,7 @@ async function setUpTenantB(c: PoolClient): Promise<TenantB> {
       where g.tenant_id = $1 and g.code = 'OUTLET_MANAGER'`,
     [b, bob, orgOutlet, dlvOutlet],
   );
-  return { bob, orgOutlet, dlvOutlet };
+  return { tenant: b, bob, orgOutlet, dlvOutlet };
 }
 
 async function canAs(
@@ -230,6 +231,87 @@ describe('tenant isolation', () => {
           b.dlvOutlet,
         ),
       ).toBe(false);
+    });
+  });
+
+  it('rejects cross-tenant role assignments, node links and domain policies', async () => {
+    await inRolledBackTx(async (c) => {
+      const b = await setUpTenantB(c);
+      const aTenant = (
+        await c.query<{ id: string }>('select tenant_id as id from core.app_user where id = $1', [
+          ids.user('Olivia Outlet Manager'),
+        ])
+      ).rows[0]!.id;
+      const one = async (text: string, params: unknown[]) =>
+        (await c.query<{ id: string }>(text, params)).rows[0]!.id;
+      const groupB = await one(
+        `select id from core.security_group where tenant_id = $1 and code = 'OUTLET_MANAGER'`,
+        [b.tenant],
+      );
+      const groupA = await one(
+        `select id from core.security_group where tenant_id = $1 and code = 'OUTLET_MANAGER'`,
+        [aTenant],
+      );
+      const domainB = await one(
+        `select id from core.domain where tenant_id = $1 and code = 'ROSTER'`,
+        [b.tenant],
+      );
+      const domainA = await one(
+        `select id from core.domain where tenant_id = $1 and code = 'ROSTER'`,
+        [aTenant],
+      );
+
+      const fails = async (text: string, params: unknown[]) => {
+        await c.query('savepoint x');
+        try {
+          await c.query(text, params);
+          await c.query('release savepoint x');
+          return null;
+        } catch (err) {
+          await c.query('rollback to savepoint x');
+          return (err as Error).message;
+        }
+      };
+      const assign = `insert into core.role_assignment (tenant_id, user_id, group_id, node_id)
+                      values ($1, $2, $3, $4)`;
+      const link = `insert into core.node_link (tenant_id, org_node_id, delivery_node_id)
+                    values ($1, $2, $3)`;
+      const policy = `insert into core.domain_policy (tenant_id, domain_id, group_id, access)
+                      values ($1, $2, $3, 'view')`;
+
+      // role_assignment: user, group, node each from the other tenant
+      expect(
+        await fails(assign, [b.tenant, ids.user('Olivia Outlet Manager'), groupB, b.orgOutlet]),
+      ).toBe('TENANT_MISMATCH');
+      expect(await fails(assign, [b.tenant, b.bob, groupA, b.orgOutlet])).toBe('TENANT_MISMATCH');
+      expect(await fails(assign, [b.tenant, b.bob, groupB, ids.node('org:Outlet A')])).toBe(
+        'TENANT_MISMATCH',
+      );
+      expect(await fails(assign, [aTenant, b.bob, groupA, ids.node('org:Outlet A')])).toBe(
+        'TENANT_MISMATCH',
+      );
+      // ...and via UPDATE
+      expect(
+        await fails(`update core.role_assignment set node_id = $1 where user_id = $2`, [
+          ids.node('org:Outlet A'),
+          b.bob,
+        ]),
+      ).toBe('TENANT_MISMATCH');
+
+      // node_link: either node from the other tenant
+      expect(await fails(link, [b.tenant, ids.node('org:Outlet A'), b.dlvOutlet])).toBe(
+        'TENANT_MISMATCH',
+      );
+      expect(await fails(link, [b.tenant, b.orgOutlet, ids.node('delivery:Outlet A')])).toBe(
+        'TENANT_MISMATCH',
+      );
+
+      // domain_policy: group or domain from the other tenant
+      expect(await fails(policy, [b.tenant, domainA, groupB])).toBe('TENANT_MISMATCH');
+      expect(await fails(policy, [b.tenant, domainB, groupA])).toBe('TENANT_MISMATCH');
+
+      // Control: a same-tenant row is accepted.
+      expect(await fails(assign, [b.tenant, b.bob, groupB, b.dlvOutlet])).toBeNull();
     });
   });
 });

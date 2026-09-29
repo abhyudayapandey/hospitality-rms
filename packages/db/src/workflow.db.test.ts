@@ -233,6 +233,59 @@ describe('purchase order routing', () => {
     });
   });
 
+  it('skips a step whose approver already approved the previous step (same_approver)', async () => {
+    await inRolledBackTx(async (c) => {
+      // Sole outlet manager, PO over 50,000: step 1 falls back to the Area manager, who
+      // is also the area_approval approver.
+      const id = await submitOk(c, OLIVIA, po(60_000));
+      expect(await steps(c, id)).toEqual([
+        { step: 'outlet_approval', state: 'pending', scope: 'org:Area', grp: 'AREA_MANAGER' },
+        { step: 'area_approval', state: 'waiting', scope: 'org:Area', grp: 'AREA_MANAGER' },
+      ]);
+      expect(await actOk(c, ARIA, id, 'approve')).toBe('approved'); // once
+
+      const { rows } = await c.query<{
+        step: string;
+        state: string;
+        skip_reason: string | null;
+        covered_by: string | null;
+      }>(
+        `select s.step, s.state, s.skip_reason, c.step as covered_by
+           from wf.step_instance s left join wf.step_instance c on c.id = s.covered_by_step_id
+          where s.request_id = $1 order by s.seq`,
+        [id],
+      );
+      expect(rows).toEqual([
+        { step: 'outlet_approval', state: 'approved', skip_reason: null, covered_by: null },
+        {
+          step: 'area_approval',
+          state: 'skipped',
+          skip_reason: 'same_approver',
+          covered_by: 'outlet_approval',
+        },
+      ]);
+
+      // ...and the request completes: run the executor functions (as migrator here).
+      const claimed = await c.query<{ outbox_id: string; handler: string }>(
+        'select outbox_id, handler from wf.claim_next()',
+      );
+      expect(claimed.rows.map((r) => r.handler)).toEqual(['inv.po.release']);
+      await c.query('select wf.complete_outbox($1)', [claimed.rows[0]!.outbox_id]);
+      expect((await request(c, id)).state).toBe('completed');
+    });
+  });
+
+  it('records condition skips with reason "condition"', async () => {
+    await inRolledBackTx(async (c) => {
+      const id = await submitOk(c, KIM, po(10_000));
+      const { rows } = await c.query<{ skip_reason: string | null }>(
+        'select skip_reason from wf.step_instance where request_id = $1 order by seq',
+        [id],
+      );
+      expect(rows.map((r) => r.skip_reason)).toEqual([null, 'condition']);
+    });
+  });
+
   it('routes LEAVE and STOCK_ADJUSTMENT raised by the sole outlet manager to the Area manager', async () => {
     await inRolledBackTx(async (c) => {
       const leave = await submitOk(c, OLIVIA, {

@@ -78,7 +78,10 @@ All generate `dom_*` policies only (rule 1).
 - **`wf.step_instance`**
   - All steps are created at submit, in states `waiting / pending / approved / rejected /
 skipped / cancelled`.
-  - A step whose `when` is false is recorded as `skipped`, not omitted.
+  - A skipped step is recorded, not omitted, with `skip_reason`:
+    - `condition`: its `when` was false
+    - `same_approver`: the person who approved the previous step is also an eligible
+      approver of this step, and `covered_by_step_id` points to that step (see Routing)
   - Domain, nodes and initiator are copied from the request for RLS.
 - **`wf.outbox`**
   - One row per `(request_id, handler)`.
@@ -108,6 +111,12 @@ skipped / cancelled`.
 
 - **`NO_APPROVER`:** raised at submit only when that search finds nobody, anywhere up
   the tree, other than the initiator.
+- **Same approver twice in a row.** When a step is approved, `wf.advance` looks at the
+  next waiting step. If the person who just approved is also an eligible approver for it
+  (`wf.can_act_on_step`), that step is skipped with `skip_reason = 'same_approver'` and
+  `covered_by_step_id` set to the step just approved. The check repeats for the step
+  after. For example, a sole outlet manager's PO over 50,000 routes both steps to the
+  Area manager, who approves once, and the request completes.
 - **Who can act:** a user can act on a pending step if all of these hold:
   - they are not the initiator (rule 7; otherwise `SEGREGATION_OF_DUTIES`)
   - they hold the step's group at or above its scope node, respecting
@@ -195,9 +204,16 @@ Isolation rests on three things:
 - codes resolving in the caller's tenant
 - the RPCs filtering by the caller's tenant
 
-Nothing yet stops an admin from assigning a user to another tenant's node or group. A
-tenant-consistency check on `core.role_assignment` is a candidate for the `ROLE_CHANGE`
-work.
+Triggers enforce that joining rows stay inside one tenant
+(`20260929130000_tenant_consistency`, `core.check_same_tenant()`), raising
+`TENANT_MISMATCH` on insert or update:
+
+- `core.role_assignment`: the user, group and node must belong to the row's tenant
+- `core.node_link`: both nodes must belong to the row's tenant
+- `core.domain_policy`: the group and domain must belong to the row's tenant
+
+A test tries each cross-tenant insert, plus an update, and checks that each fails.
+`core.bp_policy` (group) and `core.hierarchy_node` (parent) are not covered yet.
 
 ## Migrations
 

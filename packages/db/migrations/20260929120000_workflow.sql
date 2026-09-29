@@ -142,6 +142,12 @@ create table wf.step_instance (
   comment text,
   escalation_count int not null default 0,
   last_escalated_at timestamptz,
+  -- why a step was skipped: its "when" was false, or the person who approved the
+  -- previous step is also its approver (covered_by_step_id = that step)
+  skip_reason text check (skip_reason in ('condition', 'same_approver')),
+  covered_by_step_id uuid references wf.step_instance(id),
+  check ((state = 'skipped') = (skip_reason is not null)),
+  check ((skip_reason = 'same_approver') = (covered_by_step_id is not null)),
   -- copied from wf.request for RLS
   domain_code text not null,
   org_node_id uuid,
@@ -315,24 +321,52 @@ begin
   end if;
 end $$;
 
+-- Can p_user act on this step? Not the initiator (rule 7), holds the step's group at
+-- or above its scope, and bp_policy approve exists for (process, step, group).
+create function wf.can_act_on_step(p_user uuid, p_step wf.step_instance, p_process text)
+returns boolean
+language sql stable
+set search_path = pg_catalog, core, wf
+as $$
+  select p_user <> p_step.initiator_id
+     and p_user in (select core.group_holders(p_step.assignee_group_id, p_step.scope_node_id))
+     and exists (select 1 from core.bp_policy
+                  where process_type = p_process and step = p_step.step
+                    and group_id = p_step.assignee_group_id and action = 'approve');
+$$;
+
 -- Activates the next waiting step, or finishes approval and queues on_approved.
-create function wf.advance(p_request_id uuid) returns void
+-- A waiting step whose approver would be the person who just approved the previous
+-- step is skipped (skip_reason 'same_approver', covered_by_step_id = that step): one
+-- person never approves the same request twice in a row.
+create function wf.advance(p_request_id uuid, p_approved_step uuid default null) returns void
 language plpgsql
 set search_path = pg_catalog, core, wf
 as $$
 declare
   v_req wf.request;
+  v_prev wf.step_instance;
   v_next wf.step_instance;
   v_def wf.process_def;
 begin
   select * into v_req from wf.request where id = p_request_id;
-  select * into v_next from wf.step_instance
-   where request_id = p_request_id and state = 'waiting' order by seq limit 1;
-  if found then
+  select * into v_prev from wf.step_instance where id = p_approved_step;
+  loop
+    select * into v_next from wf.step_instance
+     where request_id = p_request_id and state = 'waiting' order by seq limit 1;
+    exit when not found;
+    if v_prev.actor_id is not null
+       and wf.can_act_on_step(v_prev.actor_id, v_next, v_req.process_type) then
+      update wf.step_instance
+         set state = 'skipped', skip_reason = 'same_approver', covered_by_step_id = v_prev.id,
+             acted_at = now()
+       where id = v_next.id;
+      continue;
+    end if;
     update wf.step_instance set state = 'pending', activated_at = now() where id = v_next.id;
     update wf.request set current_step = v_next.step where id = p_request_id;
     return;
-  end if;
+  end loop;
   select * into v_def from wf.process_def
    where tenant_id = v_req.tenant_id and process_type = v_req.process_type;
   update wf.request set state = 'approved', current_step = null, decided_at = now()
@@ -390,6 +424,7 @@ declare
   v_scope uuid;
   v_routed_group uuid;
   v_state text;
+  v_skip text;
   v_first boolean := true;
 begin
   if p_idempotency_key is not null then
@@ -456,12 +491,14 @@ begin
       v_scope := null;
       v_state := 'skipped';
     end if;
+    v_skip := case when v_state = 'skipped' then 'condition' end;
 
     insert into wf.step_instance (tenant_id, request_id, seq, step, assignee_group_id,
-                                  escalate_to_group_id, scope_node_id, state, activated_at,
-                                  domain_code, org_node_id, delivery_node_id, initiator_id)
+                                  escalate_to_group_id, scope_node_id, state, skip_reason,
+                                  activated_at, domain_code, org_node_id, delivery_node_id,
+                                  initiator_id)
     values (v_me.tenant_id, v_req.id, v_seq, v_step ->> 'step', v_group, v_escalate, v_scope,
-            v_state, case when v_state = 'pending' then now() end,
+            v_state, v_skip, case when v_state = 'pending' then now() end,
             v_req.domain_code, v_req.org_node_id, v_req.delivery_node_id, v_req.initiator_id);
     if v_state = 'pending' then
       update wf.request set current_step = v_step ->> 'step' where id = v_req.id;
@@ -526,10 +563,7 @@ begin
   if v_me.id = v_req.initiator_id then
     perform wf.fail('SEGREGATION_OF_DUTIES', 'initiator cannot act on own request');
   end if;
-  if v_me.id not in (select core.group_holders(v_step.assignee_group_id, v_step.scope_node_id))
-     or not exists (select 1 from core.bp_policy
-                     where process_type = v_req.process_type and step = v_step.step
-                       and group_id = v_step.assignee_group_id and action = 'approve') then
+  if not wf.can_act_on_step(v_me.id, v_step, v_req.process_type) then
     perform wf.fail('NOT_AUTHORISED', format('not an approver for step %s', v_step.step));
   end if;
 
@@ -549,7 +583,7 @@ begin
     return 'rejected';
   end if;
 
-  perform wf.advance(v_req.id);
+  perform wf.advance(v_req.id, v_step.id);
   return (select state from wf.request where id = v_req.id);
 end $$;
 
@@ -567,11 +601,7 @@ as $$
      and r.state = 'in_approval'
      and r.tenant_id = (select tenant_id from core.app_user
                          where id = core.current_user_id() and status = 'active')
-     and r.initiator_id <> core.current_user_id()
-     and core.current_user_id() in (select core.group_holders(s.assignee_group_id, s.scope_node_id))
-     and exists (select 1 from core.bp_policy bp
-                  where bp.process_type = r.process_type and bp.step = s.step
-                    and bp.group_id = s.assignee_group_id and bp.action = 'approve')
+     and wf.can_act_on_step(core.current_user_id(), s, r.process_type)
    order by s.activated_at;
 $$;
 
@@ -765,7 +795,8 @@ drop function wf.my_inbox();
 drop function wf.act(uuid, text, text);
 drop function wf.submit(text, text, uuid, jsonb, numeric, text, uuid, uuid, text);
 drop function wf.enqueue(uuid, text);
-drop function wf.advance(uuid);
+drop function wf.advance(uuid, uuid);
+drop function wf.can_act_on_step(uuid, wf.step_instance, text);
 drop function wf.route_step(uuid, uuid, text, wf.request);
 drop function wf.when_matches(jsonb, numeric);
 drop function wf.has_bp_policy(uuid, uuid, text, text, text, uuid);
