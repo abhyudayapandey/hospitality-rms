@@ -92,6 +92,8 @@ pnpm db:new <name>     new dbmate migration
 pnpm db:rollback       roll back the last migration
 pnpm db:down           stop local Postgres
 pnpm --filter @outlet-ops/workflow execute [--once]   run the workflow executor locally
+pnpm --filter @outlet-ops/web e2e                     Playwright end-to-end (needs seeded DB)
+pnpm --filter @outlet-ops/web check:prod-dev-auth     prod build: dev login must be 404
 ```
 First run: `cp .env.example .env`. The DB roles (`migrator`, `app_rw`, `wf_executor`) are
 created by `packages/db/docker/init/` on a fresh docker volume.

@@ -28,8 +28,22 @@ export default tseslint.config(
     },
   },
   {
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+    },
+  },
+  {
     files: ['**/*.{js,mjs,cjs}'],
     ...tseslint.configs.disableTypeChecked,
+  },
+  {
+    files: ['apps/web/public/sw.js'],
+    languageOptions: {
+      globals: { self: 'readonly', caches: 'readonly', fetch: 'readonly', Response: 'readonly' },
+    },
   },
   {
     files: ['apps/web/**/*.{ts,tsx}'],

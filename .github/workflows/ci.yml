@@ -12,7 +12,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     services:
       postgres:
@@ -34,6 +34,10 @@ jobs:
       MIGRATOR_DATABASE_URL: postgres://migrator:migrator_local@localhost:5432/outlet_ops?sslmode=disable
       TEST_DATABASE_URL: postgres://app_rw:app_rw_local@localhost:5432/outlet_ops?sslmode=disable
       WF_EXECUTOR_DATABASE_URL: postgres://wf_executor:wf_executor_local@localhost:5432/outlet_ops?sslmode=disable
+      # Web app (e2e + production check): app_rw connection and a CI-only session key.
+      DATABASE_URL: postgres://app_rw:app_rw_local@localhost:5432/outlet_ops?sslmode=disable
+      SESSION_SECRET: ci-only-session-secret-0123456789-abcdef
+      APP_URL: http://localhost:3100
       TURBO_TELEMETRY_DISABLED: '1'
       NEXT_TELEMETRY_DISABLED: '1'
 
@@ -59,3 +63,32 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(pnpm --filter @outlet-ops/web exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - name: Install Playwright Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @outlet-ops/web exec playwright install --with-deps chromium
+      - name: Install Playwright system deps
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @outlet-ops/web exec playwright install-deps chromium
+
+      - name: End-to-end tests
+        run: pnpm --filter @outlet-ops/web e2e
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7
+
+      - name: Production build refuses dev auth (/dev-login is 404)
+        run: pnpm --filter @outlet-ops/web check:prod-dev-auth

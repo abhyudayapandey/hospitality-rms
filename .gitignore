@@ -21,6 +21,9 @@ cdk.out/
 
 # Tests
 coverage/
+test-results/
+playwright-report/
+blob-report/
 
 # Logs
 *.log
@@ -44,3 +47,7 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Written by `next dev` when it detects an AI agent (no opt-out); not ours to commit
+apps/web/AGENTS.md
+apps/web/CLAUDE.md
