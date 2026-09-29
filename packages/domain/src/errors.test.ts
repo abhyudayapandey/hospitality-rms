@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ERROR_MESSAGES, errorCodeOf, failure, messageFor } from './errors';
 
@@ -24,20 +26,29 @@ describe('error mapping', () => {
     expect(errorCodeOf(null)).toBe('UNEXPECTED');
   });
 
-  it('has a message for every code the database raises', () => {
-    for (const code of [
-      'NOT_AUTHORISED',
-      'SEGREGATION_OF_DUTIES',
-      'NO_APPROVER',
-      'INVALID_STATE',
-      'INVALID_ACTION',
-      'REQUEST_NOT_FOUND',
-      'UNKNOWN_PROCESS',
-      'INVALID_SUBJECT',
-      'INVALID_PROCESS_DEF',
-      'TENANT_MISMATCH',
-    ]) {
-      expect(ERROR_MESSAGES).toHaveProperty(code);
+  it('has a message for every code the migrations raise', () => {
+    // wf.fail('CODE', ...), inv.fail('CODE', ...) and raise exception 'CODE' in any migration.
+    const dir = join(import.meta.dirname, '..', '..', 'db', 'migrations');
+    const raised = new Set<string>();
+    for (const file of readdirSync(dir)) {
+      const sql = readFileSync(join(dir, file), 'utf8');
+      for (const m of sql.matchAll(/\b(?:\w+\.fail\(|raise exception )'([A-Z][A-Z_]+)'/g)) {
+        raised.add(m[1]!);
+      }
     }
+    expect(raised.size).toBeGreaterThan(10);
+    // Schema/setup guards that only a developer or migration can hit.
+    const internal = new Set([
+      'DOMAIN_TABLE_NOT_REGISTERED',
+      'DOMAIN_TREE_MISMATCH',
+      'NODE_COLUMN_MISSING',
+      'OWNER_COLUMN_MISSING',
+      'INVALID_RESOLVER',
+      'LTREE_WRONG_SCHEMA',
+      'INVALID_PARENT',
+      'INVALID_NODE_LINK',
+    ]);
+    const missing = [...raised].filter((c) => !internal.has(c) && !(c in ERROR_MESSAGES));
+    expect(missing).toEqual([]);
   });
 });

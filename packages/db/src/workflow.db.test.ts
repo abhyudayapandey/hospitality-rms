@@ -4,17 +4,21 @@ import {
   attemptAs,
   closePools,
   inRolledBackTx,
+  installSubjectFixture,
   loadSeedIds,
   sqlState,
   actAs,
   resetRole,
   type Attempt,
+  type FixtureSubject,
   type SeedIds,
 } from '../test/helpers';
 
 // Workflow engine (LLD section 4, ADR 003) against the seeded users, process
 // definitions and bp_policy. Every test runs in a rolled-back migrator transaction and
-// calls the RPCs as app_rw acting as the named user.
+// calls the RPCs as app_rw acting as the named user. Subjects are stand-in rows
+// (installSubjectFixture): wf.submit reads nodes and amount from the subject row, so
+// the engine is tested without the module tables' own rules (inventory has its own tests).
 
 const KIM = 'Kim Storekeeper';
 const OLIVIA = 'Olivia Outlet Manager';
@@ -34,27 +38,63 @@ afterAll(closePools);
 interface SubmitArgs {
   process: string;
   subject: string;
+  /** subject row fields (the fixture resolver returns them to wf.submit) */
   amount?: number;
-  payload?: Record<string, unknown>;
   org?: string;
   delivery?: string;
+  from?: string;
+  to?: string;
+  submittable?: boolean;
+  /** caller payload */
+  payload?: Record<string, unknown>;
   key?: string;
+  /** submit this existing subject instead of creating one */
+  subjectId?: string;
 }
 
-function submit(c: PoolClient, who: string, a: SubmitArgs): Promise<Attempt<{ id: string }>> {
+const SUBJECT_TYPES = [
+  'inv.purchase_order',
+  'inv.stock_adjustment',
+  'inv.transfer',
+  'hr.leave_request',
+  'test.subject',
+];
+const fixtures = new WeakMap<PoolClient, (s: FixtureSubject) => Promise<string>>();
+
+/** Creates the stand-in subject row for `a` (as migrator) and returns its id. */
+async function subjectFor(c: PoolClient, a: SubmitArgs): Promise<string> {
+  let make = fixtures.get(c);
+  // Pool clients outlive each rolled-back transaction, and the fixture with it.
+  const { rows } = await c.query<{ t: string | null }>(
+    `select to_regclass('public.wf_test_subject')::text as t`,
+  );
+  if (!make || !rows[0]!.t) {
+    make = await installSubjectFixture(c, SUBJECT_TYPES);
+    fixtures.set(c, make);
+  }
+  const tenant = (
+    await c.query<{ id: string }>('select tenant_id as id from core.hierarchy_node where id = $1', [
+      ids.node('org:Company'),
+    ])
+  ).rows[0]!.id;
+  return make({
+    tenant,
+    org: a.org ? ids.node(`org:${a.org}`) : null,
+    delivery: a.delivery ? ids.node(`delivery:${a.delivery}`) : null,
+    from: a.from ? ids.node(`delivery:${a.from}`) : null,
+    to: a.to ? ids.node(`delivery:${a.to}`) : null,
+    amount: a.amount ?? null,
+    submittable: a.submittable ?? true,
+  });
+}
+
+async function submit(c: PoolClient, who: string, a: SubmitArgs): Promise<Attempt<{ id: string }>> {
+  const subjectId = a.subjectId ?? (await subjectFor(c, a));
   return attemptAs<{ id: string }>(
     c,
     ids.user(who),
-    `select wf.submit($1, $2, core.uuid_v7(), $3::jsonb, $4, 'INR', $5, $6, $7) as id`,
-    [
-      a.process,
-      a.subject,
-      JSON.stringify(a.payload ?? {}),
-      a.amount ?? null,
-      a.org ? ids.node(`org:${a.org}`) : null,
-      a.delivery ? ids.node(`delivery:${a.delivery}`) : null,
-      a.key ?? null,
-    ],
+    `select wf.submit($1, $2, $3, $4::jsonb, $5) as id`,
+    [a.process, a.subject, subjectId, JSON.stringify(a.payload ?? {}), a.key ?? null],
   );
 }
 
@@ -77,6 +117,21 @@ function act(c: PoolClient, who: string, id: string, action: string) {
     id,
     action,
   ]);
+}
+
+/** Approves the way a module RPC does (wf.act_as_module, granted here for the test only). */
+async function actViaModule(c: PoolClient, who: string, id: string) {
+  await c.query('grant execute on function wf.act_as_module(uuid, text, text) to app_rw');
+  const step = await c.query<{ step: string }>(
+    `select step from wf.step_instance where request_id = $1 and state = 'pending'`,
+    [id],
+  );
+  return attemptAs<{ state: string }>(
+    c,
+    ids.user(who),
+    'select wf.act_as_module($1, $2) as state',
+    [id, step.rows[0]?.step ?? 'none'],
+  );
 }
 
 async function actOk(c: PoolClient, who: string, id: string, action: string): Promise<string> {
@@ -205,7 +260,8 @@ describe('purchase order routing', () => {
       expect((await act(c, OLIVIA, id, 'cancel')).error).toBe('NOT_AUTHORISED');
       expect(await actOk(c, KIM, id, 'cancel')).toBe('cancelled');
       expect((await steps(c, id)).map((s) => s.state)).toEqual(['cancelled', 'skipped']);
-      expect(await outbox(c, id)).toEqual([]);
+      // cancel runs onRejected too, so the subject (e.g. the PO) closes
+      expect(await outbox(c, id)).toEqual([{ handler: 'inv.po.reject', status: 'pending' }]);
       expect((await act(c, OLIVIA, id, 'approve')).error).toBe('INVALID_STATE');
     });
   });
@@ -300,7 +356,7 @@ describe('purchase order routing', () => {
       const adj = await submitOk(c, OLIVIA, {
         process: 'STOCK_ADJUSTMENT',
         subject: 'inv.stock_adjustment',
-        amount: 6000, // above the variance threshold
+        amount: 6000,
         delivery: 'Outlet A',
       });
       expect(await steps(c, adj)).toEqual([
@@ -340,17 +396,29 @@ describe('purchase order routing', () => {
 
   it('skips straight to approved when every step is skipped', async () => {
     await inRolledBackTx(async (c) => {
-      const id = await submitOk(c, OLIVIA, {
-        process: 'STOCK_ADJUSTMENT',
-        subject: 'inv.stock_adjustment',
-        amount: 100, // below the variance threshold
+      // No MVP process is all-conditional any more; use a stand-in process.
+      await c.query(
+        `insert into wf.process_def (tenant_id, process_type, subject_type, domain_code,
+                                     hierarchy_type, steps, on_approved, sla_hours, definition)
+         select tenant_id, 'TEST_AUTO', 'test.subject', 'PURCHASE_ORDERS', 'delivery',
+                '[{"step":"check","group":"OUTLET_MANAGER","scope":"subject_node",
+                   "when":{"amount_gt":1000}}]', 'test.done', 24, '{}'
+           from core.domain where code = 'PURCHASE_ORDERS'`,
+      );
+      await c.query(
+        `insert into core.bp_policy (tenant_id, process_type, step, group_id, action)
+         select tenant_id, 'TEST_AUTO', '*', id, 'initiate' from core.security_group
+          where code = 'STORE_KEEPER'`,
+      );
+      const id = await submitOk(c, KIM, {
+        process: 'TEST_AUTO',
+        subject: 'test.subject',
+        amount: 100,
         delivery: 'Outlet A',
       });
       expect((await request(c, id)).state).toBe('approved');
       expect((await steps(c, id)).map((s) => s.state)).toEqual(['skipped']);
-      expect(await outbox(c, id)).toEqual([
-        { handler: 'inv.stock_adjustment.post', status: 'pending' },
-      ]);
+      expect(await outbox(c, id)).toEqual([{ handler: 'test.done', status: 'pending' }]);
     });
   });
 });
@@ -396,13 +464,108 @@ describe('initiation rights', () => {
   });
 });
 
+// ADR 003 "known hole", closed in ADR 006: nodes and amount come from the subject row.
+describe('subject-derived nodes and amount', () => {
+  it('cannot submit a subject that sits at a node the caller does not hold', async () => {
+    await inRolledBackTx(async (c) => {
+      // A draft at Outlet B (Kim is store keeper at Outlet A only).
+      expect((await submit(c, KIM, { ...po(10_000), delivery: 'Outlet B' })).error).toBe(
+        'NOT_AUTHORISED',
+      );
+      // Olivia (Outlet A) cannot submit Outlet B's subject either.
+      expect((await submit(c, OLIVIA, { ...po(10_000), delivery: 'Outlet B' })).error).toBe(
+        'NOT_AUTHORISED',
+      );
+      const { rows } = await c.query('select 1 from wf.request where delivery_node_id = $1', [
+        ids.node('delivery:Outlet B'),
+      ]);
+      expect(rows).toEqual([]);
+    });
+  });
+
+  it("records the subject row's node and amount, not anything the caller sends", async () => {
+    await inRolledBackTx(async (c) => {
+      const id = await submitOk(c, KIM, {
+        ...po(60_000),
+        payload: { amount: 1, delivery_node_id: ids.node('delivery:Outlet B') },
+      });
+      const { rows } = await c.query<{ amount: string; node: string }>(
+        `select r.amount, n.name as node from wf.request r
+           join core.hierarchy_node n on n.id = r.delivery_node_id where r.id = $1`,
+        [id],
+      );
+      expect(rows).toEqual([{ amount: '60000.00', node: 'Outlet A' }]);
+      // the 60,000 from the row adds the area step; a caller cannot understate it
+      expect((await steps(c, id)).map((s) => s.state)).toEqual(['pending', 'waiting']);
+    });
+  });
+
+  it('no longer accepts caller-supplied nodes (old signature removed)', async () => {
+    await inRolledBackTx(async (c) => {
+      const r = await attemptAs(
+        c,
+        ids.user(KIM),
+        `select wf.submit('PURCHASE_ORDER', 'inv.purchase_order', core.uuid_v7(), '{}', 1,
+                          'INR', null, $1, null)`,
+        [ids.node('delivery:Outlet A')],
+      );
+      expect(r.error).toMatch(/function wf\.submit\(.*\) does not exist/);
+    });
+  });
+
+  it('rejects missing, foreign-tenant, non-submittable and already-active subjects', async () => {
+    await inRolledBackTx(async (c) => {
+      const missing = await submit(c, KIM, { ...po(1), subjectId: ids.user(KIM) });
+      expect(missing.error).toBe('INVALID_SUBJECT');
+      const closed = await submit(c, KIM, { ...po(1), submittable: false });
+      expect(closed.error).toBe('INVALID_SUBJECT');
+
+      const subjectId = await subjectFor(c, po(1_000));
+      await submitOk(c, KIM, { ...po(1_000), subjectId });
+      expect((await submit(c, KIM, { ...po(1_000), subjectId })).error).toBe('INVALID_STATE');
+
+      await c.query(`insert into core.tenant (id, name) values (core.uuid_v7(), 'Other')`);
+      const other = await c.query<{ id: string }>(
+        `select id from core.tenant where name = 'Other'`,
+      );
+      const make = fixtures.get(c)!;
+      const foreign = await make({
+        tenant: other.rows[0]!.id,
+        delivery: ids.node('delivery:Outlet A'),
+        amount: 1,
+      });
+      expect((await submit(c, KIM, { ...po(1), subjectId: foreign })).error).toBe(
+        'INVALID_SUBJECT',
+      );
+    });
+  });
+
+  it('refuses subject types without a registered resolver', async () => {
+    await inRolledBackTx(async (c) => {
+      const r = await attemptAs(
+        c,
+        ids.user(SAM),
+        `select wf.submit('SHIFT_SWAP', 'hr.shift_swap', core.uuid_v7())`,
+      );
+      expect(r.error).toBe('INVALID_SUBJECT');
+    });
+  });
+});
+
 describe('two-sided transfer', () => {
   const transfer = (): SubmitArgs => ({
     process: 'TRANSFER',
     subject: 'inv.transfer',
     delivery: 'Outlet A',
-    payload: { from_node_id: ids.node('delivery:Hub'), to_node_id: ids.node('delivery:Outlet A') },
+    from: 'Hub',
+    to: 'Outlet A',
   });
+
+  async function approveViaModule(c: PoolClient, who: string, id: string): Promise<string> {
+    const r = await actViaModule(c, who, id);
+    if (r.error !== undefined) throw new Error(`module approve failed: ${r.error}`);
+    return r.rows[0]!.state;
+  }
 
   it('scopes dispatch to the hub and receipt to the outlet; each side acts only on its step', async () => {
     await inRolledBackTx(async (c) => {
@@ -412,10 +575,53 @@ describe('two-sided transfer', () => {
         { step: 'dispatch', state: 'pending', scope: 'delivery:Hub', grp: 'HUB_MANAGER' },
         { step: 'receipt', state: 'waiting', scope: 'delivery:Outlet A', grp: 'OUTLET_MANAGER' },
       ]);
-      expect((await act(c, OLIVIA, id, 'approve')).error).toBe('NOT_AUTHORISED');
-      expect(await actOk(c, HUGO, id, 'approve')).toBe('in_approval');
-      expect((await act(c, HUGO, id, 'approve')).error).toBe('NOT_AUTHORISED');
-      expect(await actOk(c, OLIVIA, id, 'approve')).toBe('approved');
+      expect((await actViaModule(c, OLIVIA, id)).error).toBe('NOT_AUTHORISED');
+      expect(await approveViaModule(c, HUGO, id)).toBe('in_approval');
+      expect((await actViaModule(c, HUGO, id)).error).toBe('NOT_AUTHORISED');
+      expect(await approveViaModule(c, OLIVIA, id)).toBe('approved');
+    });
+  });
+
+  it('takes from/to from the subject row, overriding the caller payload', async () => {
+    await inRolledBackTx(async (c) => {
+      const id = await submitOk(c, KIM, {
+        ...transfer(),
+        payload: { from_node_id: ids.node('delivery:Outlet B'), note: 'kept' },
+      });
+      const { rows } = await c.query<{ payload: Record<string, string> }>(
+        'select payload from wf.request where id = $1',
+        [id],
+      );
+      expect(rows[0]!.payload).toEqual({
+        note: 'kept',
+        from_node_id: ids.node('delivery:Hub'),
+        to_node_id: ids.node('delivery:Outlet A'),
+      });
+    });
+  });
+
+  it('approves transfer steps only through the module (APPROVE_VIA_MODULE)', async () => {
+    await inRolledBackTx(async (c) => {
+      const id = await submitOk(c, KIM, transfer());
+      expect((await act(c, HUGO, id, 'approve')).error).toBe('APPROVE_VIA_MODULE');
+      expect(await approveViaModule(c, HUGO, id)).toBe('in_approval');
+      expect((await act(c, OLIVIA, id, 'approve')).error).toBe('APPROVE_VIA_MODULE');
+    });
+  });
+
+  it('can be rejected or cancelled before dispatch, but not after (IRREVERSIBLE_STEP)', async () => {
+    await inRolledBackTx(async (c) => {
+      const early = await submitOk(c, KIM, transfer());
+      expect(await actOk(c, HUGO, early, 'reject')).toBe('rejected');
+
+      const cancelled = await submitOk(c, KIM, transfer());
+      expect(await actOk(c, KIM, cancelled, 'cancel')).toBe('cancelled');
+
+      const id = await submitOk(c, KIM, transfer());
+      await approveViaModule(c, HUGO, id);
+      expect((await act(c, OLIVIA, id, 'reject')).error).toBe('IRREVERSIBLE_STEP');
+      expect((await act(c, KIM, id, 'cancel')).error).toBe('IRREVERSIBLE_STEP');
+      expect(await approveViaModule(c, OLIVIA, id)).toBe('approved');
     });
   });
 });
@@ -490,10 +696,8 @@ describe('escalation', () => {
         process: 'TRANSFER',
         subject: 'inv.transfer',
         delivery: 'Outlet A',
-        payload: {
-          from_node_id: ids.node('delivery:Hub'),
-          to_node_id: ids.node('delivery:Outlet A'),
-        },
+        from: 'Hub',
+        to: 'Outlet A',
       });
       await makeOverdue(c, id, 25); // TRANSFER SLA is 24 h
       const un = await c.query<{ request_id: string; step: string }>(

@@ -16,6 +16,11 @@ export const stepSchema = z.strictObject({
     .string()
     .regex(/^[A-Z][A-Z0-9_]*$/)
     .optional(),
+  // Approve only through the module RPC that performs the step's business action in the
+  // same transaction (wf.act checks wf.module_approval). Reject stays generic.
+  approveVia: z.literal('module').optional(),
+  // Once approved, the request can no longer be rejected or cancelled (IRREVERSIBLE_STEP).
+  irreversible: z.literal(true).optional(),
 });
 
 export const processDefSchema = z

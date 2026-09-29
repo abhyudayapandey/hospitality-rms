@@ -5,6 +5,7 @@ import {
   attemptAs,
   closePools,
   inRolledBackTx,
+  installSubjectFixture,
   loadSeedIds,
   resetRole,
   type SeedIds,
@@ -129,12 +130,17 @@ describe('tenant isolation', () => {
       const b = await setUpTenantB(c);
 
       // Tenant A data: a PO request pending Olivia's approval, and a fixture business table.
+      const subject = await installSubjectFixture(c, [
+        'inv.purchase_order',
+        'inv.stock_adjustment',
+      ]);
+      const poA = await subject({ delivery: ids.node('delivery:Outlet A'), amount: 1000 });
+      const adjA = await subject({ delivery: ids.node('delivery:Outlet A'), amount: 100 });
       const req = await attemptAs<{ id: string }>(
         c,
         ids.user('Kim Storekeeper'),
-        `select wf.submit('PURCHASE_ORDER', 'inv.purchase_order', core.uuid_v7(), '{}', 1000, 'INR',
-                          null, $1) as id`,
-        [ids.node('delivery:Outlet A')],
+        `select wf.submit('PURCHASE_ORDER', 'inv.purchase_order', $1) as id`,
+        [poA],
       );
       if (req.error !== undefined) throw new Error(req.error);
       const reqA = req.rows[0]!.id;
@@ -205,14 +211,14 @@ describe('tenant isolation', () => {
         const r = await attemptAs(c, b.bob, 'select wf.act($1, $2)', [reqA, action]);
         expect(r.error, action).toBe('REQUEST_NOT_FOUND');
       }
+      // A tenant A subject does not exist as far as Bob's tenant is concerned.
       const submit = await attemptAs(
         c,
         b.bob,
-        `select wf.submit('STOCK_ADJUSTMENT', 'inv.stock_adjustment', core.uuid_v7(), '{}', 100, 'INR',
-                          null, $1)`,
-        [ids.node('delivery:Outlet A')],
+        `select wf.submit('STOCK_ADJUSTMENT', 'inv.stock_adjustment', $1)`,
+        [adjA],
       );
-      expect(submit.error).toBe('NOT_AUTHORISED');
+      expect(submit.error).toBe('INVALID_SUBJECT');
 
       // Tenant A's approver still sees the request; nothing of B leaks the other way.
       const olivia = await attemptAs<{ request_id: string }>(

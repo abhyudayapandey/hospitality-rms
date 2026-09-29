@@ -101,6 +101,66 @@ export async function attemptAs<T extends object = Record<string, unknown>>(
   }
 }
 
+export interface FixtureSubject {
+  org?: string | null;
+  delivery?: string | null;
+  from?: string | null;
+  to?: string | null;
+  amount?: number | null;
+  submittable?: boolean;
+  /** defaults to the tenant of the first node given */
+  tenant?: string;
+}
+
+/**
+ * Stand-in subjects for workflow-engine tests (inside a rolled-back transaction):
+ * creates public.wf_test_subject and a resolver, and points the given subject types at
+ * it, so engine tests do not depend on module tables or their business rules. Call as
+ * migrator (outside attemptAs). Returns a function that inserts one subject row.
+ */
+export async function installSubjectFixture(
+  c: pg.PoolClient,
+  subjectTypes: string[],
+): Promise<(s: FixtureSubject) => Promise<string>> {
+  await c.query(`
+    create table public.wf_test_subject (
+      id uuid primary key default core.uuid_v7(),
+      tenant_id uuid not null, org_node_id uuid, delivery_node_id uuid,
+      from_node_id uuid, to_node_id uuid, amount numeric, submittable boolean not null)`);
+  await c.query(`
+    create function public.wf_test_resolver(p_id uuid) returns wf.subject_info
+    language sql stable as $$
+      select tenant_id, org_node_id, delivery_node_id, from_node_id, to_node_id, amount,
+             'INR', submittable
+        from public.wf_test_subject where id = p_id $$`);
+  await c.query(
+    `insert into core.subject_resolver (subject_type, resolver)
+     select t, 'public.wf_test_resolver(uuid)'::regprocedure from unnest($1::text[]) t
+     on conflict (subject_type) do update set resolver = excluded.resolver`,
+    [subjectTypes],
+  );
+  return async (s) => {
+    const { rows } = await c.query<{ id: string }>(
+      `insert into public.wf_test_subject (tenant_id, org_node_id, delivery_node_id,
+                                           from_node_id, to_node_id, amount, submittable)
+       values (coalesce($1::uuid, (select tenant_id from core.hierarchy_node
+                                    where id = coalesce($2::uuid, $3::uuid, $4::uuid, $5::uuid))),
+               $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6::numeric, $7::boolean)
+       returning id`,
+      [
+        s.tenant ?? null,
+        s.org ?? null,
+        s.delivery ?? null,
+        s.from ?? null,
+        s.to ?? null,
+        s.amount ?? null,
+        s.submittable ?? true,
+      ],
+    );
+    return rows[0]!.id;
+  };
+}
+
 /** Runs `sql` inside a savepoint and returns the SQLSTATE it failed with, or null. */
 export async function sqlState(
   c: pg.PoolClient,

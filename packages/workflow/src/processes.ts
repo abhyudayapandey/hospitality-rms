@@ -9,12 +9,12 @@ export const STOCK_ADJUSTMENT: ProcessDef = {
   domain: 'STOCK_ADJUSTMENTS',
   hierarchy: 'delivery',
   steps: [
-    // variance value above the threshold needs the outlet manager
+    // Every adjustment that reaches the workflow needs the outlet manager: count variance
+    // beyond the item's tolerance, wastage above the value threshold, supplier excess.
     {
       step: 'outlet_approval',
       group: 'OUTLET_MANAGER',
       scope: 'subject_node',
-      when: { amount_gt: 5000 },
       escalateTo: 'AREA_MANAGER', // SLA escalation and SoD fallback
     },
   ],
@@ -46,15 +46,24 @@ export const PURCHASE_ORDER: ProcessDef = {
   slaHours: 24,
 };
 
-// Two-sided: dispatch is scoped to payload.from_node_id (hub), receipt to payload.to_node_id.
+// Two-sided: dispatch is scoped to the transfer's from node (hub), receipt to its to node.
+// Each step is approved by the module RPC that posts its ledger leg (inv.dispatch_transfer,
+// inv.receive_transfer); after dispatch the goods are in transit and the request can no
+// longer be rejected or cancelled, only received (shortfall posts as transit_loss).
 export const TRANSFER: ProcessDef = {
   type: 'TRANSFER',
   subject: 'inv.transfer',
   domain: 'TRANSFERS',
   hierarchy: 'delivery',
   steps: [
-    { step: 'dispatch', group: 'HUB_MANAGER', scope: 'from_node' },
-    { step: 'receipt', group: 'OUTLET_MANAGER', scope: 'to_node' },
+    {
+      step: 'dispatch',
+      group: 'HUB_MANAGER',
+      scope: 'from_node',
+      approveVia: 'module',
+      irreversible: true,
+    },
+    { step: 'receipt', group: 'OUTLET_MANAGER', scope: 'to_node', approveVia: 'module' },
   ],
   onApproved: 'inv.transfer.post',
   onRejected: 'inv.transfer.reject',

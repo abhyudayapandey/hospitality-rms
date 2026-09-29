@@ -12,7 +12,10 @@ export const ERROR_MESSAGES = {
   INVALID_SUBJECT: 'Some details are missing or invalid. Check the form and try again.',
   INVALID_PROCESS_DEF: 'This request type is misconfigured. Tell your admin.',
   TENANT_MISMATCH: 'That item belongs to a different organisation.',
-  INSUFFICIENT_STOCK: 'There is not enough stock for that.',
+  INSUFFICIENT_STOCK:
+    'There is not enough stock on record for that. If the goods are here, record the receipt or do a stock count first.',
+  APPROVE_VIA_MODULE: 'Open this request from its own screen to confirm it.',
+  IRREVERSIBLE_STEP: 'The goods are already on their way, so this can only be received now.',
   SESSION_EXPIRED: 'Your session has ended. Please sign in again.',
   UNEXPECTED: 'Something went wrong. Please try again.',
 } as const;
