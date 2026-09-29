@@ -25,3 +25,5 @@ export async function withUser<T>(db: Db, userId: string, fn: (tx: Tx) => Promis
     return fn(tx);
   });
 }
+
+export { sql } from 'kysely';

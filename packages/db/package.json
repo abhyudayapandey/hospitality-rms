@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./test-helpers": "./test/helpers.ts"
+    "./test-helpers": "./test/helpers.ts",
+    "./dev-users": "./src/dev-users.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
