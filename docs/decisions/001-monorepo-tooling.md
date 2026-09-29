@@ -33,6 +33,10 @@ These are the scaffold decisions that CLAUDE.md and the LLD leave open.
   the same statements run once at provisioning, with passwords from Secrets Manager.
 - Migrations run as `migrator` via `MIGRATOR_DATABASE_URL` and own every object they create.
   `app_rw` is never a table owner.
+- **Production migrations are forward-only.** Down migrations exist for local and
+  dev use only (`pnpm db:rollback`), and some can't restore everything, for example
+  NOT NULL constraints or data. To fix a bad change in production, write a new forward
+  migration.
 - **dbmate comes from the npm package** (`dbmate`), which ships per-platform binaries. That
   pins the version in the lockfile and needs no separate install. Schema dumping is off
   (`--no-dump-schema`), so `pg_dump` isn't required.

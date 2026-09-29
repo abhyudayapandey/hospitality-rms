@@ -77,7 +77,7 @@ const cases: Case[] = [
   // Multi-assignment: STAFF@org Outlet A + STORE_KEEPER@delivery Outlet A
   [KIM, 'PURCHASE_ORDERS', 'modify', D_A, null, true, 'store keeper raises POs'],
   [KIM, 'TRANSFERS', 'view', D_A, null, true, 'store keeper views transfers'],
-  [KIM, 'TRANSFERS', 'modify', D_A, null, false, 'store keeper cannot move stock'],
+  [KIM, 'TRANSFERS', 'modify', D_A, null, true, 'store keeper initiates transfers (ADR 003)'],
   [KIM, 'STOCK_LEVELS', 'view', D_B, null, false, 'cross-outlet denial'],
   [KIM, 'EVENTS', 'view', O_A, null, true, 'store keeper via STAFF'],
 

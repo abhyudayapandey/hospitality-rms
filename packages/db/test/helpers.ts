@@ -75,6 +75,32 @@ export async function resetRole(c: pg.PoolClient): Promise<void> {
   await c.query(`select set_config('app.user_id', '', true)`);
 }
 
+export type Attempt<T> = { rows: T[]; error?: undefined } | { rows?: undefined; error: string };
+
+/**
+ * Runs `text` as app_rw acting as `userId` inside a savepoint. Returns the rows, or the
+ * error message (our stable codes, e.g. NOT_AUTHORISED) without aborting the transaction.
+ */
+export async function attemptAs<T extends object = Record<string, unknown>>(
+  c: pg.PoolClient,
+  userId: string,
+  text: string,
+  params: unknown[] = [],
+): Promise<Attempt<T>> {
+  await actAs(c, 'app_rw', userId);
+  await c.query('savepoint attempt');
+  try {
+    const r = await c.query<T>(text, params);
+    await c.query('release savepoint attempt');
+    return { rows: r.rows };
+  } catch (err) {
+    await c.query('rollback to savepoint attempt');
+    return { error: err instanceof Error ? err.message : String(err) };
+  } finally {
+    await resetRole(c);
+  }
+}
+
 /** Runs `sql` inside a savepoint and returns the SQLSTATE it failed with, or null. */
 export async function sqlState(
   c: pg.PoolClient,

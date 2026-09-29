@@ -167,6 +167,10 @@ Stock, PO and transfer domains use the delivery tree. All others use the org tre
 
 ## Generated RLS: `core.apply_domain_rls(table)`
 
+> **Superseded in part by ADR 003.** `core.domain_table` now names domains by code
+> (`domain_code`, `modify_domain_code`, `hierarchy_type`) and gains the `domain_column`,
+> `owner_column`, `rpc_only` and `tenant_scoped` modes.
+
 `core.domain_table` configures each table:
 
 - `domain_id`: the view domain.

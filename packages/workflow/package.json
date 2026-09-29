@@ -7,6 +7,16 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "sync-defs": "tsx scripts/sync-defs.ts",
+    "execute": "tsx scripts/execute.ts"
+  },
+  "dependencies": {
+    "pg": "^8.23.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "@outlet-ops/db": "workspace:*"
   }
 }

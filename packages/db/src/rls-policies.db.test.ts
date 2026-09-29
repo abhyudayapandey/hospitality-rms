@@ -32,12 +32,12 @@ async function register(
     audit?: boolean;
   },
 ): Promise<void> {
+  // Registrations are tenant-independent (ADR 003): domain code + its tree.
   await c.query(
-    `insert into core.domain_table (tenant_id, table_name, domain_id, modify_domain_id, insert_only, node_columns)
-     select t.id, $1::regclass, d.id, md.id, $3, $5
-       from core.tenant t
-       join core.domain d on d.code = $2 and d.tenant_id = t.id
-       left join core.domain md on md.code = $4 and md.tenant_id = t.id
+    `insert into core.domain_table
+       (table_name, domain_code, modify_domain_code, hierarchy_type, insert_only, node_columns)
+     select $1::regclass, $2, $4, d.hierarchy_type, $3, $5
+       from core.domain d where d.code = $2
       limit 1`,
     [
       table,
@@ -171,7 +171,8 @@ describe('two-node table (transfer shape) with wf_request_id', () => {
       expect(await ins('Olivia Outlet Manager', 'Hub', 'Outlet B')).toBe(INSUFFICIENT_PRIVILEGE);
       expect(await ins('Hugo Hub Manager', 'Hub', 'Outlet B')).toBeNull(); // dispatching leg
       expect(await ins('Hugo Hub Manager', 'Outlet A', 'Outlet B')).toBe(INSUFFICIENT_PRIVILEGE);
-      expect(await ins('Kim Storekeeper', 'Hub', 'Outlet A')).toBe(INSUFFICIENT_PRIVILEGE);
+      expect(await ins('Kim Storekeeper', 'Hub', 'Outlet A')).toBeNull(); // TRANSFERS M at A
+      expect(await ins('Kim Storekeeper', 'Hub', 'Outlet B')).toBe(INSUFFICIENT_PRIVILEGE);
     });
   });
 
@@ -344,9 +345,8 @@ describe('apply_domain_rls guards', () => {
     await inRolledBackTx(async (c) => {
       await c.query(`create table ops.zz_no_node (id uuid primary key)`);
       await c.query(
-        `insert into core.domain_table (tenant_id, table_name, domain_id)
-         select t.id, 'ops.zz_no_node'::regclass, d.id from core.tenant t
-           join core.domain d on d.tenant_id = t.id and d.code = 'EVENTS' limit 1`,
+        `insert into core.domain_table (table_name, domain_code, hierarchy_type)
+         values ('ops.zz_no_node'::regclass, 'EVENTS', 'org')`,
       );
       expect(await sqlState(c, `select core.apply_domain_rls('ops.zz_no_node'::regclass)`)).toBe(
         'P0001',

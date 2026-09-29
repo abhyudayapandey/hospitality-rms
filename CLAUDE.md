@@ -81,7 +81,7 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 pnpm i                 install
 pnpm db:up             start local Postgres (docker compose)
 pnpm db:migrate        run dbmate migrations
-pnpm db:seed           load seed org, outlets, users, items
+pnpm db:seed           load seed org, outlets, users, items; sync workflow definitions
 pnpm dev               run web app
 pnpm test              all tests (needs db:up + db:migrate)
 pnpm test:unit         unit tests only (*.test.ts)
@@ -91,6 +91,7 @@ pnpm format            prettier --write
 pnpm db:new <name>     new dbmate migration
 pnpm db:rollback       roll back the last migration
 pnpm db:down           stop local Postgres
+pnpm --filter @outlet-ops/workflow execute [--once]   run the workflow executor locally
 ```
 First run: `cp .env.example .env`. The DB roles (`migrator`, `app_rw`, `wf_executor`) are
 created by `packages/db/docker/init/` on a fresh docker volume.
@@ -102,7 +103,8 @@ Keep this section accurate when scripts change.
 - Work in small steps. Run `pnpm lint && pnpm typecheck && pnpm test` before saying a task
   is done; show the output.
 - Write the security/RLS tests before or with the feature, not after.
-- One feature branch per task, conventional commits (`feat(inv): ...`).
+- One branch per prompt, named `feat/<name>`, cut from `master`; conventional commits
+  (`feat(inv): ...`).
 - When you make a design decision not covered by the LLD, add a short ADR in
   `docs/decisions/NNN-title.md`.
 - If the LLD and this file disagree, follow this file and flag it.
