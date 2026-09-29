@@ -280,7 +280,8 @@ describe('assignment lifecycle (rolled back)', () => {
         ids.node(O_B),
       ]);
       const paths = await c.query<{ ok: boolean }>(
-        `select b.path = a2.path || subpath(b.path, -1) as ok
+        // Compare as text: ltree operators live in schema extensions, not on the search_path.
+        `select b.path::text like a2.path::text || '.%' as ok
            from core.hierarchy_node b, core.hierarchy_node a2 where b.id = $1 and a2.id = $2`,
         [ids.node(O_B), area2],
       );

@@ -26,7 +26,7 @@ create function core.can(
   p_owner uuid default null              -- row owner's user id, for self-service
 ) returns boolean
 language sql stable security definer
-set search_path = core, public, pg_temp
+set search_path = pg_catalog, core, extensions
 as $$
   with me as (
     -- the current user, only if active; codes are resolved within their tenant
@@ -227,7 +227,7 @@ alter table audit.log enable row level security;
 -- tenant-wide domains like AUDIT whose rows carry no node.
 create function core.org_root(p_tenant uuid default null) returns uuid
 language sql stable security definer
-set search_path = core, public, pg_temp
+set search_path = pg_catalog, core, extensions
 as $$
   select n.id from core.hierarchy_node n
    where n.type = 'org' and n.parent_id is null and n.archived_at is null

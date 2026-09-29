@@ -62,6 +62,33 @@ describe('RLS coverage', () => {
   });
 });
 
+describe('extensions and search_path', () => {
+  it('keeps ltree in schema extensions, not public', async () => {
+    const { rows } = await migratorPool.query<{ nspname: string }>(
+      `select n.nspname from pg_extension e join pg_namespace n on n.oid = e.extnamespace
+        where e.extname = 'ltree'`,
+    );
+    expect(rows).toEqual([{ nspname: 'extensions' }]);
+  });
+
+  it('pins search_path on every SECURITY DEFINER function, without public', async () => {
+    const { rows } = await migratorPool.query<{ fn: string; config: string[] | null }>(
+      `select p.oid::regprocedure::text as fn, p.proconfig as config
+         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where p.prosecdef and n.nspname in ('core', 'audit', 'hr', 'inv', 'ops', 'wf', 'ai')
+        order by 1`,
+    );
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) {
+      const sp = (r.config ?? []).find((c) => c.startsWith('search_path='));
+      expect(sp, r.fn).toBeDefined();
+      expect(sp, r.fn).not.toMatch(/\bpublic\b/);
+    }
+    const can = rows.find((r) => r.fn.startsWith('core.can('));
+    expect(can?.config).toContain('search_path=pg_catalog, core, extensions');
+  });
+});
+
 describe('DB roles', () => {
   it('app_rw and wf_executor cannot bypass RLS or own tables', async () => {
     const { rows } = await migratorPool.query<{

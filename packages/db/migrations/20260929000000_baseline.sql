@@ -2,7 +2,10 @@
 -- Baseline: extensions and the business schemas from docs/LLD.md section 1.
 -- No tables yet; each module adds its own with RLS + audit (CLAUDE.md rules 1 and 5).
 
-create extension if not exists ltree;
+-- Extensions get their own schema so SECURITY DEFINER functions can pin search_path
+-- without public (ADR 002). A no-op where docker/init already created them.
+create schema if not exists extensions;
+create extension if not exists ltree schema extensions;
 
 create schema core;
 create schema hr;

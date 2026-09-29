@@ -84,8 +84,27 @@ Other properties:
 
 - **Defaults to deny:** no user set, unknown domain or no node all return false.
 - **Security definer:** it runs as `security definer` with
-  `search_path = core, public, pg_temp`. `public` is needed for the ltree operators; neither
-  `app_rw` nor `wf_executor` can create objects there.
+  `search_path = pg_catalog, core, extensions`. `public` is excluded, and every relation it
+  reads is schema-qualified, so neither a lookalike operator in `public` nor a temp table
+  can change its answer. A coverage test requires a pinned `search_path` without `public`
+  on every security definer function in the core and business schemas.
+
+### Extensions schema
+
+ltree lives in schema `extensions`, not `public`, and `app_rw` and `wf_executor` have
+USAGE on it.
+
+- **Where it's created:** `docker/init` and the baseline migration both create ltree
+  there, so a fresh database, including RDS, never has it in `public`.
+- **Older databases:** `20260929050000_extensions_schema` moves ltree when it can. If it
+  can't, it fails with `LTREE_WRONG_SCHEMA` and the superuser command to run. The member
+  objects of a trusted extension are owned by the bootstrap superuser, so `migrator`
+  usually can't move them itself.
+- **Column type:** the `core.hierarchy_node.path` column is typed `extensions.ltree`.
+- **Functions:** functions that use ltree pin
+  `search_path = pg_catalog, core, extensions`.
+- **Ad-hoc SQL:** ltree operators are not on the default `search_path`. Qualify them or
+  set `search_path` for the session.
 
 ### Derived views and approval routing
 

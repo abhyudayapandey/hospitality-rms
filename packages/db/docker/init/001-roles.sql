@@ -15,5 +15,8 @@ grant connect on database outlet_ops to app_rw, wf_executor;
 -- dbmate keeps its schema_migrations table in public (PG15+ no longer grants CREATE there).
 grant create on schema public to migrator;
 
--- ltree is a trusted extension, but create it up front so migrations never need superuser.
-create extension if not exists ltree;
+-- Extensions live in their own schema (owned by migrator) so SECURITY DEFINER
+-- functions can pin search_path without public (ADR 002). ltree is a trusted
+-- extension, but create it up front so migrations never need superuser.
+create schema if not exists extensions authorization migrator;
+create extension if not exists ltree schema extensions;

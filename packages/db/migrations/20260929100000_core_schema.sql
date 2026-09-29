@@ -65,7 +65,7 @@ create table core.hierarchy_node (
   kind text not null,            -- company, region, area, outlet, dept | network, cwh, ck, hub, outlet, store
   name text not null,
   parent_id uuid references core.hierarchy_node(id),
-  path ltree not null,           -- maintained by core.hierarchy_node_path()
+  path extensions.ltree not null, -- maintained by core.hierarchy_node_path()
   timezone text,                 -- IANA zone, set on outlet nodes
   archived_at timestamptz,
   unique (type, path)
@@ -77,7 +77,9 @@ create index hierarchy_node_parent on core.hierarchy_node (parent_id);
 -- Path = parent path + a label derived from the node id. Re-parenting rewrites
 -- the whole subtree. Parents must be in the same tree and not create a cycle.
 create function core.hierarchy_node_path() returns trigger
-language plpgsql as $$
+language plpgsql
+set search_path = pg_catalog, core, extensions
+as $$
 declare
   v_parent core.hierarchy_node;
   v_label ltree := text2ltree('n' || replace(new.id::text, '-', ''));
