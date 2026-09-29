@@ -226,7 +226,14 @@ describe('tenant isolation', () => {
         ids.user('Olivia Outlet Manager'),
         'select request_id from wf.my_inbox()',
       );
-      expect(olivia.rows?.map((r) => r.request_id)).toEqual([reqA]);
+      const oliviaInbox = olivia.rows?.map((r) => r.request_id) ?? [];
+      expect(oliviaInbox).toContain(reqA);
+      // (other tenant A requests may be pending from e2e runs; none may be tenant B's)
+      const tenants = await c.query<{ tenant_id: string }>(
+        'select distinct tenant_id from wf.request where id = any($1)',
+        [oliviaInbox],
+      );
+      expect(tenants.rows.map((r) => r.tenant_id)).not.toContain(b.tenant);
       expect(
         await canAs(
           c,

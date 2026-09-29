@@ -672,6 +672,36 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- Node names and transfer sources (app_rw cannot read core.hierarchy_node)
+-- ---------------------------------------------------------------------------
+
+-- A node's name, only for nodes of the caller's tenant (names are not secret inside it).
+create function core.node_name(p_id uuid) returns text
+language sql stable security definer
+set search_path = pg_catalog, core
+as $$
+  select name from core.hierarchy_node where id = p_id and tenant_id = core.my_tenant();
+$$;
+grant execute on function core.node_name(uuid) to app_rw;
+
+-- Where p_to can request stock from: the tenant's other stock-holding delivery nodes.
+-- Needs TRANSFERS modify at p_to.
+create function inv.transfer_sources(p_to uuid)
+returns table (id uuid, name text, kind text)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, inv, wf
+as $$
+begin
+  perform wf.me();
+  perform inv.require('TRANSFERS', 'modify', p_to);
+  return query
+    select n.id, n.name, n.kind from core.hierarchy_node n
+     where n.tenant_id = core.my_tenant() and n.type = 'delivery' and n.archived_at is null
+       and n.id <> p_to and exists (select 1 from inv.item_node i where i.delivery_node_id = n.id)
+     order by (n.kind = 'hub') desc, n.name;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Read views (security_invoker: the caller's RLS applies)
 -- ---------------------------------------------------------------------------
 
@@ -701,7 +731,9 @@ select po.id, po.tenant_id, po.delivery_node_id, po.supplier_id, po.status, po.t
 -- Transfer with its display state: awaiting_dispatch, in_transit, completed, rejected,
 -- cancelled (and 'received' briefly, until the executor completes it).
 create view inv.transfer_summary with (security_invoker = true) as
-select t.id, t.tenant_id, t.from_node_id, t.to_node_id, t.status, t.wf_request_id,
+select t.id, t.tenant_id, t.from_node_id, t.to_node_id,
+       core.node_name(t.from_node_id) as from_name, core.node_name(t.to_node_id) as to_name,
+       t.status, t.wf_request_id,
        t.created_at, t.created_by, t.dispatched_at, t.dispatched_by, t.received_at, t.received_by,
        case
          when t.status <> 'submitted' then t.status
@@ -726,6 +758,7 @@ grant execute on function
   inv.receive(uuid, jsonb, text),
   inv.suggested_order(uuid),
   inv.request_transfer(uuid, uuid, jsonb, text),
+  inv.transfer_sources(uuid),
   inv.dispatch_transfer(uuid, jsonb, text),
   inv.receive_transfer(uuid, jsonb, text)
   to app_rw;
@@ -734,6 +767,8 @@ grant execute on function inv.execute(text, uuid) to wf_executor;
 -- migrate:down
 drop view inv.transfer_summary;
 drop view inv.purchase_order_summary;
+drop function if exists inv.transfer_sources(uuid);
+drop function if exists core.node_name(uuid);
 drop function inv.execute(text, uuid);
 drop function inv.receive_transfer(uuid, jsonb, text);
 drop function inv.dispatch_transfer(uuid, jsonb, text);

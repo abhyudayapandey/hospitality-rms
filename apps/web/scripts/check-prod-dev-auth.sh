@@ -2,8 +2,8 @@
 # Proves dev-only auth cannot reach production (ADR 004):
 #  1. a production build with DEV_AUTH_STUB=true is refused
 #  2. the standalone server (the artifact the release ships) started WITH
-#     DEV_AUTH_STUB=true at runtime still returns 404 for /dev-login and the dev-only
-#     test request form (even with a valid session)
+#     DEV_AUTH_STUB=true at runtime still returns 404 for /dev-login (even with a valid
+#     session)
 # Needs DATABASE_URL (app_rw) and a seeded database for step 2's signed-in check.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -41,7 +41,6 @@ check() {
 }
 check 404 "http://127.0.0.1:$PORT/dev-login"
 check 404 -b "oo_session=$COOKIE" "http://127.0.0.1:$PORT/dev-login"
-check 404 -b "oo_session=$COOKIE" "http://127.0.0.1:$PORT/requests/new"
 check 200 -b "oo_session=$COOKIE" "http://127.0.0.1:$PORT/requests"   # control: the app works
 if curl -s "http://127.0.0.1:$PORT/login" | grep -q "Dev login"; then
   echo "FAIL: login page links to dev login"; exit 1

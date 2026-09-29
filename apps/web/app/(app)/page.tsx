@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { isDevAuthEnabled } from '@/lib/dev-auth';
 import { loadShell } from '@/lib/shell';
 
 export default async function Home() {
@@ -27,13 +26,26 @@ export default async function Home() {
       >
         My requests
       </Link>
-      {isDevAuthEnabled() && (
-        <Link
-          href="/requests/new"
-          className="flex min-h-12 items-center justify-center rounded-xl border border-dashed border-slate-400 p-3 text-sm text-slate-600"
-        >
-          New test request (dev only)
-        </Link>
+      {shell.domains.has('STOCK_LEVELS') && (
+        <nav aria-label="Supply shortcuts" className="grid grid-cols-2 gap-2">
+          {[
+            ['/stock', 'Stock', 'STOCK_LEVELS'],
+            ['/stock/count', 'Count', 'STOCK_ADJUSTMENTS'],
+            ['/stock/wastage', 'Wastage', 'STOCK_ADJUSTMENTS'],
+            ['/stock/orders', 'Orders', 'PURCHASE_ORDERS'],
+            ['/stock/transfers', 'Transfers', 'TRANSFERS'],
+          ]
+            .filter(([, , d]) => shell.domains.has(d!))
+            .map(([href, label]) => (
+              <Link
+                key={href}
+                href={href!}
+                className="flex min-h-14 items-center justify-center rounded-xl bg-white font-medium shadow-sm ring-1 ring-slate-200"
+              >
+                {label}
+              </Link>
+            ))}
+        </nav>
       )}
     </div>
   );

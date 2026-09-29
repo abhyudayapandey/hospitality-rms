@@ -1,0 +1,82 @@
+import Link from 'next/link';
+import { Empty } from '@/components/messages';
+import { NoSupplyAccess } from '@/components/supply-header';
+import { requireUser } from '@/lib/auth/server';
+import { sql, withUser } from '@/lib/db';
+import { formatWhen } from '@/lib/format';
+import { supplyContext, TRANSFER_PROGRESS, type SearchParams } from '@/lib/inventory';
+import { TransferStepForm, type TransferLine } from './transfer-step-form';
+
+export default async function TransferPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: SearchParams;
+}) {
+  const { id } = await params;
+  const ctx = await supplyContext(searchParams);
+  if (!ctx.can('TRANSFERS') || !ctx.node) return <NoSupplyAccess />;
+  const user = await requireUser();
+  const data = await withUser(user.id, async (tx) => {
+    const t = await sql<{
+      id: string;
+      from_node_id: string;
+      to_node_id: string;
+      from_name: string;
+      to_name: string;
+      progress: string;
+      wf_request_id: string;
+      created_at: Date;
+      dispatched_at: Date | null;
+      received_at: Date | null;
+      can_from: boolean;
+      can_to: boolean;
+    }>`select id, from_node_id, to_node_id, from_name, to_name, progress, wf_request_id,
+              created_at, dispatched_at, received_at,
+              core.can('TRANSFERS', 'modify', null, from_node_id) as can_from,
+              core.can('TRANSFERS', 'modify', null, to_node_id) as can_to
+         from inv.transfer_summary where id = ${id}::uuid`.execute(tx);
+    const lines = await sql<TransferLine>`
+      select tl.item_id, i.name, i.base_uom, tl.requested_qty, tl.dispatched_qty, tl.received_qty
+        from inv.transfer_line tl join inv.item i on i.id = tl.item_id
+       where tl.transfer_id = ${id}::uuid order by i.name`.execute(tx);
+    return { t: t.rows[0], lines: lines.rows };
+  });
+  if (!data.t) return <Empty>Transfer not found.</Empty>;
+  const { t, lines } = data;
+  const [label, style] = TRANSFER_PROGRESS[t.progress] ?? [t.progress, ''];
+  // Which side the user can act for is decided in SQL (core.can), never here.
+  const mode =
+    t.progress === 'awaiting_dispatch' && t.can_from
+      ? 'dispatch'
+      : t.progress === 'in_transit' && t.can_to
+        ? 'receive'
+        : null;
+  return (
+    <div className="space-y-4">
+      <Link href={`/stock/transfers?node=${ctx.node.id}`} className="text-sm text-slate-600">
+        ← Transfers
+      </Link>
+      <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+        <div className="flex items-baseline justify-between gap-2">
+          <h1 className="text-lg font-semibold">
+            {t.from_name} → {t.to_name}
+          </h1>
+          <span
+            data-testid="transfer-progress"
+            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${style}`}
+          >
+            {label}
+          </span>
+        </div>
+        <p className="text-sm text-slate-600">
+          Requested {formatWhen(t.created_at)}
+          {t.dispatched_at && ` · sent ${formatWhen(t.dispatched_at)}`}
+          {t.received_at && ` · received ${formatWhen(t.received_at)}`}
+        </p>
+      </div>
+      <TransferStepForm transfer={t.id} requestId={t.wf_request_id} mode={mode} lines={lines} />
+    </div>
+  );
+}

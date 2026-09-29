@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
-import { isDevAuthEnabled } from '@/lib/dev-auth';
 import { formatMoney, formatWhen, processLabel } from '@/lib/format';
 
 const STATE_STYLE: Record<string, string> = {
@@ -15,6 +14,24 @@ const STATE_STYLE: Record<string, string> = {
   failed: 'bg-rose-100 text-rose-900',
 };
 
+function subjectHref(r: {
+  subject_type: string;
+  subject_id: string;
+  delivery_node_id: string | null;
+}): string | null {
+  const q = r.delivery_node_id ? `?node=${r.delivery_node_id}` : '';
+  switch (r.subject_type) {
+    case 'inv.purchase_order':
+      return `/stock/orders/${r.subject_id}${q}`;
+    case 'inv.transfer':
+      return `/stock/transfers/${r.subject_id}${q}`;
+    case 'inv.stock_adjustment':
+      return `/stock/adjustments/${r.subject_id}`;
+    default:
+      return null;
+  }
+}
+
 export default async function RequestsPage() {
   const user = await requireUser();
   // RLS on wf.request decides what is visible; this page lists the user's own requests.
@@ -26,7 +43,11 @@ export default async function RequestsPage() {
       current_step: string | null;
       amount: string | null;
       created_at: Date;
-    }>`select id, process_type, state, current_step, amount, created_at
+      subject_type: string;
+      subject_id: string;
+      delivery_node_id: string | null;
+    }>`select id, process_type, state, current_step, amount, created_at, subject_type,
+              subject_id, delivery_node_id
          from wf.request where initiator_id = core.current_user_id()
         order by created_at desc limit 50`.execute(tx);
     return r.rows;
@@ -34,17 +55,7 @@ export default async function RequestsPage() {
   return (
     <div className="space-y-4">
       <PollRefresh />
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">My requests</h1>
-        {isDevAuthEnabled() && (
-          <Link
-            href="/requests/new"
-            className="min-h-11 rounded-lg bg-slate-900 px-3 py-2.5 text-sm font-medium text-white"
-          >
-            New test request
-          </Link>
-        )}
-      </div>
+      <h1 className="text-xl font-semibold">My requests</h1>
       {rows.length === 0 ? (
         <p className="rounded-xl bg-white p-6 text-center text-slate-600 ring-1 ring-slate-200">
           No requests yet.
@@ -67,6 +78,11 @@ export default async function RequestsPage() {
                   {r.state.replace(/_/g, ' ')}
                 </span>
               </div>
+              {subjectHref(r) && (
+                <Link href={subjectHref(r)!} className="text-sm text-slate-700 underline">
+                  Open
+                </Link>
+              )}
               <p className="text-sm text-slate-600">
                 {formatMoney(r.amount) ?? ''}{' '}
                 {r.current_step ? `· waiting on ${r.current_step.replace(/_/g, ' ')}` : ''} ·{' '}
