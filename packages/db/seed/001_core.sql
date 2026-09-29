@@ -1,5 +1,8 @@
 -- Core seed: one tenant, org + delivery trees, security groups, domains, the policy
 -- matrix (ADR 002) and one user per group. Idempotent: fixed ids + on conflict.
+-- Codes are unique per tenant, so every code lookup is scoped by tenant_id.
+-- The policy matrix is authoritative: re-seeding resets access and removes rows
+-- that are not in the matrix.
 
 -- Tenant
 insert into core.tenant (id, name) values
@@ -12,7 +15,9 @@ insert into core.hierarchy_node (id, tenant_id, type, kind, name, parent_id, tim
   ('01920000-0000-7000-8000-000000000102', '01920000-0000-7000-8000-000000000001', 'org', 'region', 'Region', '01920000-0000-7000-8000-000000000101', null),
   ('01920000-0000-7000-8000-000000000103', '01920000-0000-7000-8000-000000000001', 'org', 'area', 'Area', '01920000-0000-7000-8000-000000000102', null),
   ('01920000-0000-7000-8000-000000000104', '01920000-0000-7000-8000-000000000001', 'org', 'outlet', 'Outlet A', '01920000-0000-7000-8000-000000000103', 'Asia/Kolkata'),
-  ('01920000-0000-7000-8000-000000000105', '01920000-0000-7000-8000-000000000001', 'org', 'outlet', 'Outlet B', '01920000-0000-7000-8000-000000000103', 'Asia/Kolkata')
+  ('01920000-0000-7000-8000-000000000105', '01920000-0000-7000-8000-000000000001', 'org', 'outlet', 'Outlet B', '01920000-0000-7000-8000-000000000103', 'Asia/Kolkata'),
+  -- Org-side home of the hub (people, roster), linked to the delivery Hub below
+  ('01920000-0000-7000-8000-000000000106', '01920000-0000-7000-8000-000000000001', 'org', 'site', 'Hub', '01920000-0000-7000-8000-000000000102', 'Asia/Kolkata')
 on conflict (id) do nothing;
 
 -- Delivery tree: Company Supply Network > Hub > Outlet A, Outlet B
@@ -25,7 +30,8 @@ on conflict (id) do nothing;
 
 insert into core.node_link (tenant_id, org_node_id, delivery_node_id) values
   ('01920000-0000-7000-8000-000000000001', '01920000-0000-7000-8000-000000000104', '01920000-0000-7000-8000-000000000203'),
-  ('01920000-0000-7000-8000-000000000001', '01920000-0000-7000-8000-000000000105', '01920000-0000-7000-8000-000000000204')
+  ('01920000-0000-7000-8000-000000000001', '01920000-0000-7000-8000-000000000105', '01920000-0000-7000-8000-000000000204'),
+  ('01920000-0000-7000-8000-000000000001', '01920000-0000-7000-8000-000000000106', '01920000-0000-7000-8000-000000000202')
 on conflict do nothing;
 
 -- Security groups
@@ -44,7 +50,7 @@ select '01920000-0000-7000-8000-000000000001', code, name, kind from (values
   ('AUDITOR', 'Auditor', 'role'),
   ('AI_AGENT', 'AI Agent', 'role')
 ) as g(code, name, kind)
-on conflict (code) do nothing;
+on conflict (tenant_id, code) do nothing;
 
 -- Domains
 insert into core.domain (tenant_id, code, hierarchy_type)
@@ -65,12 +71,13 @@ select '01920000-0000-7000-8000-000000000001', code, ht from (values
   ('DERIVED_TRANSFERS', 'org'),
   ('AUDIT', 'org')
 ) as d(code, ht)
-on conflict (code) do nothing;
+on conflict (tenant_id, code) do nothing;
 
--- Policy matrix (ADR 002)
-insert into core.domain_policy (tenant_id, domain_id, group_id, access)
-select '01920000-0000-7000-8000-000000000001', d.id, g.id, m.access
-  from (values
+-- Policy matrix (ADR 002). Authoritative for this tenant: upsert every row, then
+-- delete this tenant's rows that are not in the matrix.
+drop table if exists pg_temp.seed_policy_matrix;
+create temp table seed_policy_matrix (grp text not null, dom text not null, access text not null);
+insert into seed_policy_matrix (grp, dom, access) values
     ('STAFF', 'ROSTER', 'view'),
     ('STAFF', 'EVENTS', 'view'),
 
@@ -133,11 +140,25 @@ select '01920000-0000-7000-8000-000000000001', d.id, g.id, m.access
     ('SELF', 'COMPENSATION', 'view'),
     ('SELF', 'ROSTER', 'view'),
     ('SELF', 'ATTENDANCE', 'modify'),
-    ('SELF', 'LEAVE', 'modify')
-  ) as m(grp, dom, access)
-  join core.security_group g on g.code = m.grp
-  join core.domain d on d.code = m.dom
-on conflict (domain_id, group_id) do nothing;
+    ('SELF', 'LEAVE', 'modify');
+
+insert into core.domain_policy (tenant_id, domain_id, group_id, access)
+select '01920000-0000-7000-8000-000000000001', d.id, g.id, m.access
+  from seed_policy_matrix m
+  join core.security_group g on g.code = m.grp and g.tenant_id = '01920000-0000-7000-8000-000000000001'
+  join core.domain d on d.code = m.dom and d.tenant_id = '01920000-0000-7000-8000-000000000001'
+on conflict (domain_id, group_id) do update set access = excluded.access
+  where core.domain_policy.access is distinct from excluded.access;
+
+delete from core.domain_policy dp
+ where dp.tenant_id = '01920000-0000-7000-8000-000000000001'
+   and not exists (
+     select 1 from seed_policy_matrix m
+       join core.security_group g on g.code = m.grp and g.tenant_id = '01920000-0000-7000-8000-000000000001'
+       join core.domain d on d.code = m.dom and d.tenant_id = '01920000-0000-7000-8000-000000000001'
+      where g.id = dp.group_id and d.id = dp.domain_id);
+
+drop table pg_temp.seed_policy_matrix;
 
 -- Users: one per group (SUPPLY_VIEWER is held by the hub manager; SELF applies to all)
 insert into core.app_user (id, tenant_id, kind, display_name) values
@@ -182,5 +203,5 @@ select '01920000-0000-7000-8000-000000000001', a.user_id::uuid, g.id, a.node_id:
     ('01920000-0000-7000-8000-000000000310', 'AI_AGENT',       '01920000-0000-7000-8000-000000000101', true),
     ('01920000-0000-7000-8000-000000000310', 'AI_AGENT',       '01920000-0000-7000-8000-000000000201', true)
   ) as a(user_id, grp, node_id, desc_)
-  join core.security_group g on g.code = a.grp
+  join core.security_group g on g.code = a.grp and g.tenant_id = '01920000-0000-7000-8000-000000000001'
 on conflict (user_id, group_id, node_id, effective_from) do nothing;

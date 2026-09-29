@@ -32,10 +32,12 @@ These are flagged because the LLD and CLAUDE.md differ.
 
 ## Hierarchies
 
-- **Org tree:** Company → Region → Area → Outlet A, Outlet B.
+- **Org tree:** Company → Region → Area → Outlet A, Outlet B; plus Region → Hub
+  (`kind = site`), the org-side home of the hub's people.
 - **Delivery tree:** Company Supply Network (`kind = network`, the delivery root) → Hub →
   Outlet A, Outlet B.
-- **`node_link`** joins each org outlet to its delivery outlet. A trigger enforces one org
+- **`node_link`** joins each org outlet to its delivery outlet, and the org Hub site to the
+  delivery Hub. A trigger enforces one org
   node and one delivery node per link.
 - **`path`** is maintained by a trigger. Each node's label is `n` plus its id without
   dashes, so paths are unique and stable across renames.
@@ -44,6 +46,9 @@ These are flagged because the LLD and CLAUDE.md differ.
   node's own subtree (a cycle).
 - **IDs** are uuid v7 from `core.uuid_v7()`. PG16 has no built-in; PG18's `uuidv7()` can
   replace it.
+- **Codes are unique per tenant:** `security_group` and `domain` have
+  `unique (tenant_id, code)`. `core.can()` resolves domain and group codes in the current
+  user's tenant, and the seed scopes every code lookup by `tenant_id`.
 - **Standard columns** (`tenant_id`, `created_*`, `updated_*`) and the `touch` trigger are
   added to every core table by `core.add_standard_columns()`.
 
@@ -113,6 +118,12 @@ assignments.
 | Outlet Ops AI Agent   | AI_AGENT @ org Company and @ Company Supply Network (service user)        |
 
 `SELF` is `user_based`. Its policy applies to every user's own rows without an assignment.
+
+**The seed's policy matrix is authoritative.** `domain_policy` rows are upserted with
+`on conflict do update set access = excluded.access`. Afterwards the tenant's rows that
+are not in the matrix are deleted. Re-seeding therefore restores changed access and
+removes stray grants (tested in `seed.db.test.ts`). Once `ROLE_CHANGE` lands, matrix
+edits go through that workflow and the seed is only for fresh environments.
 
 ### Policy matrix
 

@@ -36,8 +36,8 @@ async function register(
     `insert into core.domain_table (tenant_id, table_name, domain_id, modify_domain_id, insert_only, node_columns)
      select t.id, $1::regclass, d.id, md.id, $3, $5
        from core.tenant t
-       join core.domain d on d.code = $2
-       left join core.domain md on md.code = $4
+       join core.domain d on d.code = $2 and d.tenant_id = t.id
+       left join core.domain md on md.code = $4 and md.tenant_id = t.id
       limit 1`,
     [
       table,
@@ -345,8 +345,8 @@ describe('apply_domain_rls guards', () => {
       await c.query(`create table ops.zz_no_node (id uuid primary key)`);
       await c.query(
         `insert into core.domain_table (tenant_id, table_name, domain_id)
-         select t.id, 'ops.zz_no_node'::regclass, d.id from core.tenant t, core.domain d
-          where d.code = 'EVENTS' limit 1`,
+         select t.id, 'ops.zz_no_node'::regclass, d.id from core.tenant t
+           join core.domain d on d.tenant_id = t.id and d.code = 'EVENTS' limit 1`,
       );
       expect(await sqlState(c, `select core.apply_domain_rls('ops.zz_no_node'::regclass)`)).toBe(
         'P0001',

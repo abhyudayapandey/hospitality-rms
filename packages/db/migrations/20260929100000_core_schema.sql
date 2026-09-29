@@ -142,11 +142,12 @@ select core.add_standard_columns('core.app_user');
 
 create table core.security_group (
   id uuid primary key default core.uuid_v7(),
-  code text unique not null,
+  code text not null,
   name text not null,
   kind text not null check (kind in ('role', 'user_based'))
 );
 select core.add_standard_columns('core.security_group');
+alter table core.security_group add constraint security_group_code_key unique (tenant_id, code);
 
 create table core.role_assignment (
   id uuid primary key default core.uuid_v7(),
@@ -164,10 +165,11 @@ create index role_assignment_user on core.role_assignment (user_id);
 
 create table core.domain (
   id uuid primary key default core.uuid_v7(),
-  code text unique not null,                            -- STOCK_LEVELS, LEAVE ...
+  code text not null,                                   -- STOCK_LEVELS, LEAVE ...
   hierarchy_type text not null check (hierarchy_type in ('org', 'delivery', 'self'))
 );
 select core.add_standard_columns('core.domain');
+alter table core.domain add constraint domain_code_key unique (tenant_id, code);
 
 -- Which table belongs to which domain; read by core.apply_domain_rls(). ADR 002 adds
 -- modify_domain_id, insert_only and node_columns.

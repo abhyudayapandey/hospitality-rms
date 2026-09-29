@@ -291,6 +291,26 @@ describe('assignment lifecycle (rolled back)', () => {
     });
   });
 
+  it('resolves codes within the user tenant when another tenant reuses them', async () => {
+    await inRolledBackTx(async (c) => {
+      const { rows } = await c.query<{ id: string }>(
+        `insert into core.tenant (name) values ('Other Tenant') returning id`,
+      );
+      const other = rows[0]!.id;
+      await c.query(
+        `insert into core.domain (tenant_id, code, hierarchy_type) values ($1, 'ROSTER', 'delivery')`,
+        [other],
+      );
+      await c.query(
+        `insert into core.security_group (tenant_id, code, name, kind)
+         values ($1, 'SELF', 'Self', 'user_based'), ($1, 'STAFF', 'Staff', 'role')`,
+        [other],
+      );
+      expect(await canIn(c, SAM, 'ROSTER', 'view', O_A)).toBe(true);
+      expect(await canIn(c, SAM, 'ROSTER', 'modify', O_A)).toBe(false);
+    });
+  });
+
   it('rejects a parent from the other tree and cycles', async () => {
     await inRolledBackTx(async (c) => {
       expect(

@@ -17,6 +17,7 @@ select ra.user_id, d.code as domain, dp.access, n.type, n.path, ra.include_desce
 --  1. hierarchy grant: an assignment at the row's node, or above it when the
 --     assignment includes descendants
 --  2. self-service: the SELF group's policy on rows the (active) user owns
+-- Only active users get anything; domain and group codes resolve in the user's tenant.
 --  3. derived view: DERIVED_<domain> on an org node linked (node_link) to the
 --     row's delivery node; view only
 create function core.can(
@@ -28,10 +29,14 @@ language sql stable security definer
 set search_path = core, public, pg_temp
 as $$
   with me as (
-    select core.current_user_id() as uid
+    -- the current user, only if active; codes are resolved within their tenant
+    select u.id as uid, u.tenant_id
+      from core.app_user u
+     where u.id = core.current_user_id() and u.status = 'active'
   ),
   d as (
-    select hierarchy_type from core.domain where code = p_domain
+    select hierarchy_type from core.domain
+     where code = p_domain and tenant_id = (select tenant_id from me)
   ),
   t as (
     select n.path, n.type from core.hierarchy_node n
@@ -54,12 +59,12 @@ as $$
            and (ea.access = 'modify' or p_access = 'view'))
       -- 2. self-service
       or (p_owner = (select uid from me)
-          and exists (select 1 from core.app_user u
-                       where u.id = p_owner and u.status = 'active')
           and exists (
             select 1 from core.domain_policy dp
-              join core.security_group g on g.id = dp.group_id and g.code = 'SELF'
-              join core.domain dd on dd.id = dp.domain_id and dd.code = p_domain
+              join core.security_group g
+                on g.id = dp.group_id and g.code = 'SELF' and g.tenant_id = (select tenant_id from me)
+              join core.domain dd
+                on dd.id = dp.domain_id and dd.code = p_domain and dd.tenant_id = (select tenant_id from me)
              where dp.access = 'modify' or p_access = 'view'))
       -- 3. derived cross-hierarchy view
       or (p_access = 'view'
