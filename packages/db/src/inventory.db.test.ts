@@ -522,7 +522,7 @@ describe('over-receipt', () => {
       expect(await onHand(c, f, 'R-CHICKEN', 'Outlet A')).toBe(12);
       const moves = await c.query<{ movement_type: string; qty: string; unit_cost: string }>(
         `select movement_type, qty, unit_cost from inv.stock_ledger
-          where item_id = $1 order by id`, // uuid v7: insertion order
+          where item_id = $1 order by qty desc`, // the capped receipt, then the excess
         [f.item('R-CHICKEN')],
       );
       expect(moves.rows).toEqual([
@@ -601,7 +601,8 @@ describe('two-leg transfer', () => {
       }>(
         `select case delivery_node_id when $2 then 'hub' else 'outlet' end as at, movement_type,
                 qty, reason, unit_cost
-           from inv.stock_ledger where ref_id = $1 and item_id = $3 order by id`,
+           from inv.stock_ledger where ref_id = $1 and item_id = $3
+          order by at, movement_type`, // uuid v7 ids within one millisecond are unordered
         [t.id, node('Hub'), f.item('T-ONION')],
       );
       expect(legs.rows).toEqual([
