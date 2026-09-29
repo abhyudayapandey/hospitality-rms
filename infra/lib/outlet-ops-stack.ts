@@ -33,16 +33,29 @@ export interface OutletOpsStackProps extends StackProps {
 
 const BACKUP_TAG = { key: 'Backup', value: 'outlet-ops-daily' };
 
+/**
+ * Characters AWS accepts in tag keys and values across services (Cognito is the
+ * strictest): letters, numbers, spaces and _ . : / = + - @. No $ ~ , ; % or brackets.
+ */
+export const TAG_PATTERN = /^[\p{L}\p{Z}\p{N}_.:/=+\-@]*$/u;
+
+export function tag(scope: Construct, key: string, value: string): void {
+  for (const s of [key, value]) {
+    if (!TAG_PATTERN.test(s)) throw new Error(`tag "${key}=${value}" has characters AWS rejects`);
+  }
+  Tags.of(scope).add(key, value);
+}
+
 function costTag(scope: Construct, profile: 'always-free' | 'credits', note: string): void {
-  Tags.of(scope).add('CostProfile', profile);
-  Tags.of(scope).add('CostNote', note);
+  tag(scope, 'CostProfile', profile);
+  tag(scope, 'CostNote', note);
 }
 
 export class OutletOpsStack extends Stack {
   constructor(scope: Construct, id: string, props: OutletOpsStackProps) {
     super(scope, id, props);
     const { config } = props;
-    Tags.of(this).add('Project', 'outlet-ops');
+    tag(this, 'Project', 'outlet-ops');
 
     // --- Network: one public subnet, no NAT, no isolated subnets --------------------
     const vpc = new ec2.Vpc(this, 'Vpc', {
@@ -52,7 +65,7 @@ export class OutletOpsStack extends Stack {
       // true would add a custom-resource Lambda; the default SG is unused anyway.
       restrictDefaultSecurityGroup: false,
     });
-    costTag(vpc, 'always-free', 'VPC, subnet, route tables, internet gateway: no charge');
+    costTag(vpc, 'always-free', 'VPC subnet route tables and internet gateway - no charge');
 
     const webSg = new ec2.SecurityGroup(this, 'WebSg', {
       vpc,
@@ -73,7 +86,7 @@ export class OutletOpsStack extends Stack {
     costTag(
       deployBucket,
       'credits',
-      'S3 Standard, release bundles, expire after 30 days; cents/month',
+      'S3 Standard release bundles expire after 30 days - cents per month',
     );
 
     const backupBucket = new s3.Bucket(this, 'BackupBucket', {
@@ -81,9 +94,15 @@ export class OutletOpsStack extends Stack {
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
       lifecycleRules: [{ prefix: 'pg/', expiration: Duration.days(30) }],
-      removalPolicy: RemovalPolicy.RETAIN,
+      // RetainExceptOnCreate: kept on stack delete/replace, but removed if the stack's
+      // first create rolls back, so a failed deploy leaves no orphan behind.
+      removalPolicy: RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
     });
-    costTag(backupBucket, 'credits', 'S3 Standard, pg_dump every 6 h kept 30 days; cents/month');
+    costTag(
+      backupBucket,
+      'credits',
+      'S3 Standard pg_dump every 6 h kept 30 days - cents per month',
+    );
 
     // --- Instance role (least privilege) --------------------------------------------
     const role = new iam.Role(this, 'InstanceRole', {
@@ -161,10 +180,11 @@ export class OutletOpsStack extends Stack {
       size: Size.gibibytes(20),
       volumeType: ec2.EbsDeviceVolumeType.GP3,
       encrypted: true,
-      removalPolicy: RemovalPolicy.RETAIN,
+      // RetainExceptOnCreate, as for the backup bucket.
+      removalPolicy: RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
     });
-    Tags.of(dataVolume).add(BACKUP_TAG.key, BACKUP_TAG.value);
-    costTag(dataVolume, 'credits', 'EBS gp3 20 GiB for Postgres data: ~$1.8/month');
+    tag(dataVolume, BACKUP_TAG.key, BACKUP_TAG.value);
+    costTag(dataVolume, 'credits', 'EBS gp3 20 GiB for Postgres data - about 1.80 USD per month');
 
     const userData = ec2.UserData.custom(
       readFileSync(join(import.meta.dirname, '..', 'instance', 'user-data.sh'), 'utf8').replace(
@@ -195,7 +215,11 @@ export class OutletOpsStack extends Stack {
         },
       ],
     });
-    costTag(instance, 'credits', 'EC2 t4g.small ~$8.2/month + 10 GiB gp3 root ~$0.9/month');
+    costTag(
+      instance,
+      'credits',
+      'EC2 t4g.small about 8.20 USD per month + 10 GiB gp3 root about 0.90 USD per month',
+    );
 
     new ec2.CfnVolumeAttachment(this, 'DataVolumeAttachment', {
       instanceId: instance.instanceId,
@@ -204,7 +228,7 @@ export class OutletOpsStack extends Stack {
     });
 
     const eip = new ec2.CfnEIP(this, 'Eip', { domain: 'vpc', instanceId: instance.instanceId });
-    costTag(eip, 'credits', 'Public IPv4 $0.005/h ~$3.65/month (Elastic IP, attached)');
+    costTag(eip, 'credits', 'Elastic IP public IPv4 0.005 USD per hour - about 3.65 USD per month');
 
     // --- Daily EBS snapshots of the data volume (DLM) --------------------------------
     const dlmRole = new iam.Role(this, 'DlmRole', {
@@ -233,7 +257,11 @@ export class OutletOpsStack extends Stack {
         ],
       },
     });
-    costTag(snapshots, 'credits', 'EBS snapshots, incremental, ~$0.05/GB-month: ~$0.5-1/month');
+    costTag(
+      snapshots,
+      'credits',
+      'EBS snapshots incremental 0.05 USD per GB-month - about 0.50 to 1.00 USD per month',
+    );
 
     // --- Cognito: email OTP + username/password ---------------------------------------
     const userPool = new cognito.UserPool(this, 'Users', {
@@ -257,12 +285,15 @@ export class OutletOpsStack extends Stack {
       email: cognito.UserPoolEmail.withCognito(), // Cognito sender: no SES, ~50 mails/day
       mfa: cognito.Mfa.OFF,
       deletionProtection: true,
+      // Plain Retain: deletion protection would make a create rollback fail to delete it
+      // (ROLLBACK_FAILED). The name is not unique, so a leftover pool never collides
+      // with a redeploy; it costs nothing and docs/deploy.md says how to remove it.
       removalPolicy: RemovalPolicy.RETAIN,
     });
     costTag(
       userPool,
       'always-free',
-      'Cognito Essentials: first 10,000 MAU free; no SMS configured',
+      'Cognito Essentials - first 10000 MAU free - no SMS configured',
     );
 
     const client = userPool.addClient('Web', {

@@ -58,6 +58,17 @@ those for the Free-plan period.** CLAUDE.md's Stack section points here.
 - **Small-box tuning:** 2 GiB swap, `vm.swappiness=10`, `shared_buffers=256MB`,
   `max_connections=40`, and `MemoryMax` on the services.
 
+- **Retention.** The data volume and the backup bucket use `RetainExceptOnCreate`.
+  They survive stack deletion and replacement, but a failed first create removes them,
+  so a redeploy starts clean.
+  - The Cognito user pool uses plain `Retain`. It has deletion protection, which would
+    make a rollback fail to delete it, and its name isn't unique.
+  - No retained resource has a fixed name that a redeploy could collide on.
+- **Tags.** The stack validates every tag against the characters all AWS services
+  accept, which are letters, numbers, spaces and `_ . : / = + - @`. Cognito rejected
+  `$ ~ , ;` and brackets on the first deploy. A synth-time check and a template-wide
+  test enforce this.
+
 ### Secrets
 
 - **SSM Parameter Store SecureString, standard tier,** with the AWS-managed key. It is
