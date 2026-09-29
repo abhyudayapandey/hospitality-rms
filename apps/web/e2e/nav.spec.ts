@@ -20,7 +20,10 @@ for (const [who, shown, hidden] of cases) {
 test('admin screen refuses users without SECURITY_ROLES even by URL', async ({ page }) => {
   await devLogin(page, 'Kim Storekeeper');
   await page.goto('/admin');
-  await expect(page.getByRole('alert')).toHaveText("You don't have access to do that.");
+  // Scoped to <main>: Next's route announcer is also role=alert.
+  await expect(page.getByRole('main').getByRole('alert')).toHaveText(
+    "You don't have access to do that.",
+  );
   await devLogin(page, 'Avery Auditor');
   await page.goto('/admin');
   await expect(page.getByTestId('assignments')).toContainText('Kim Storekeeper');
