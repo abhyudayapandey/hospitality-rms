@@ -234,6 +234,85 @@ Note these outputs: `PublicIp`, `InstanceId`, `DeployBucketName`, `BackupBucketN
 To check without deploying: `pnpm --filter @outlet-ops/infra synth` (example context),
 or `pnpm cdk diff -c ...` against the live stack.
 
+### If the first deploy fails
+
+A failed first create rolls the stack back to `ROLLBACK_COMPLETE`. A stack in that
+state can't be updated, so delete it and deploy again.
+
+1. **Check the stack status and find the cause:**
+
+   ```sh
+   aws cloudformation describe-stacks --stack-name OutletOps \
+     --query 'Stacks[0].StackStatus' --output text
+   aws cloudformation describe-stack-events --stack-name OutletOps \
+     --query "StackEvents[?contains(ResourceStatus, 'FAILED')].[LogicalResourceId,ResourceStatusReason]" \
+     --output table
+   ```
+
+   The first `CREATE_FAILED` row, the oldest one at the bottom, is the real cause. The
+   later rows are usually "Resource creation cancelled".
+
+2. **Delete the rolled-back stack** (only if the status is `ROLLBACK_COMPLETE`):
+
+   ```sh
+   aws cloudformation delete-stack --stack-name OutletOps
+   aws cloudformation wait stack-delete-complete --stack-name OutletOps
+   ```
+
+   If the status is `ROLLBACK_FAILED` or `DELETE_FAILED`, the events name the resource
+   that couldn't be deleted. Remove it by hand, or run `delete-stack` again with
+   `--retain-resources <LogicalResourceId>`, then clean it up in step 3.
+
+3. **Check for leftovers.** The backup bucket and the data volume use
+   `RetainExceptOnCreate`. That means they are deleted when the stack's first create
+   rolls back, but kept on a later `cdk destroy`. The Cognito user pool is always kept.
+   It has deletion protection, and its name isn't unique, so it never blocks a
+   redeploy.
+
+   A stack created with an older template kept the backup bucket and the data volume
+   on rollback too. That applies to deploys from before the tag fix. With the stack
+   deleted, anything the commands below list is left over:
+
+   ```sh
+   # Buckets (CDK names them outletops-deploybucket... and outletops-backupbucket...)
+   aws s3api list-buckets \
+     --query "Buckets[?starts_with(Name, 'outletops-')].[Name,CreationDate]" --output table
+   aws s3 ls s3://<name> --recursive | head    # a leftover from a failed create is empty
+   aws s3 rb s3://<name>
+
+   # Data volumes that aren't attached
+   aws ec2 describe-volumes \
+     --filters Name=tag:Project,Values=outlet-ops Name=status,Values=available \
+     --query 'Volumes[].[VolumeId,Size,CreateTime]' --output table
+   aws ec2 delete-volume --volume-id <vol-id>
+
+   # Elastic IPs that aren't associated ($3.65/month each)
+   aws ec2 describe-addresses --filters Name=tag:Project,Values=outlet-ops \
+     --query 'Addresses[?AssociationId==null].[AllocationId,PublicIp]' --output table
+   aws ec2 release-address --allocation-id <eipalloc-id>
+
+   # Cognito user pools (free; remove them to keep things tidy)
+   aws cognito-idp list-user-pools --max-results 20 \
+     --query "UserPools[?Name=='outlet-ops'].[Id,CreationDate]" --output table
+   aws cognito-idp update-user-pool --user-pool-id <id> --deletion-protection INACTIVE
+   aws cognito-idp delete-user-pool --user-pool-id <id>
+   ```
+
+   **Only delete a data volume or backup bucket this way if no deploy has ever
+   succeeded.** After the first successful deploy, the data volume holds the database
+   and the backup bucket holds the dumps.
+
+   Two things are not leftovers:
+   - The SSM parameters under `/outlet-ops/prod/` come from `create-secrets.sh`, not the
+     stack. Keep them.
+   - `update-user-pool` resets any settings you don't pass. That doesn't matter for a
+     pool you are about to delete.
+
+4. **Fix the cause and check it locally, then deploy again:**
+   1. Run `pnpm --filter @outlet-ops/infra synth` and `pnpm test`. The stack tests check,
+      among other things, that every tag uses only characters AWS accepts.
+   2. Run the same `pnpm cdk deploy -c ...` command as above.
+
 ### 3. Point DNS at the Elastic IP
 
 The Elastic IP keeps the address stable across instance stops and replacements.

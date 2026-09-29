@@ -1,8 +1,8 @@
-import { App, CliCredentialsStackSynthesizer } from 'aws-cdk-lib';
+import { App, CliCredentialsStackSynthesizer, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { SECRET_PARAMS } from './config';
-import { OutletOpsStack } from './outlet-ops-stack';
+import { OutletOpsStack, tag, TAG_PATTERN } from './outlet-ops-stack';
 
 // Synthesizes the stack (no AWS calls) and checks the Free-plan and security
 // constraints from ADR 005.
@@ -72,7 +72,8 @@ describe('Free-plan cost guardrails', () => {
   it('keeps Postgres on a separate, retained, encrypted 20 GiB gp3 data volume', () => {
     t.hasResource('AWS::EC2::Volume', {
       Properties: { Size: 20, VolumeType: 'gp3', Encrypted: true },
-      DeletionPolicy: 'Retain',
+      DeletionPolicy: 'RetainExceptOnCreate',
+      UpdateReplacePolicy: 'Retain',
     });
     t.resourceCountIs('AWS::EC2::VolumeAttachment', 1);
   });
@@ -269,5 +270,95 @@ describe('Cognito', () => {
       LogoutURLs: ['https://outletops.duckdns.org/login'],
       EnableTokenRevocation: true,
     });
+  });
+});
+
+// Every tag key and value on every resource, in whichever shape the resource type uses:
+// [{Key, Value}] lists (most types) or {key: value} maps (Cognito, SSM, ...).
+const TAG_PROPS = ['Tags', 'UserPoolTags', 'ResourceTags', 'TargetTags', 'TagsToAdd'];
+function collectTags(node: unknown, out: [string, unknown][]): void {
+  if (Array.isArray(node)) {
+    for (const x of node) collectTags(x, out);
+    return;
+  }
+  if (!node || typeof node !== 'object') return;
+  for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+    if (TAG_PROPS.includes(k)) {
+      if (Array.isArray(v)) {
+        for (const x of v as { Key: unknown; Value: unknown }[]) {
+          out.push([String(x.Key), x.Key], [String(x.Key), x.Value]);
+        }
+      } else if (v && typeof v === 'object') {
+        for (const [tk, tv] of Object.entries(v as Record<string, unknown>))
+          out.push([tk, tk], [tk, tv]);
+      }
+    } else {
+      collectTags(v, out);
+    }
+  }
+}
+
+describe('tags', () => {
+  const resources = () =>
+    Object.entries(t.toJSON().Resources as Record<string, { Properties?: unknown }>);
+
+  it('every tag key and value on every resource uses only characters AWS accepts', () => {
+    const bad: string[] = [];
+    let count = 0;
+    for (const [id, r] of resources()) {
+      const tags: [string, unknown][] = [];
+      collectTags(r.Properties, tags);
+      for (const [key, value] of tags) {
+        count++;
+        if (typeof value !== 'string' || !TAG_PATTERN.test(value)) {
+          bad.push(`${id}: ${key}=${JSON.stringify(value)}`);
+        }
+      }
+    }
+    expect(count).toBeGreaterThan(20); // the walk really found the tags
+    expect(bad).toEqual([]);
+  });
+
+  it('the Cognito user pool carries the cost tags (map-shaped UserPoolTags)', () => {
+    t.hasResourceProperties('AWS::Cognito::UserPool', {
+      UserPoolTags: Match.objectLike({ CostProfile: 'always-free', CostNote: Match.anyValue() }),
+    });
+  });
+
+  it('refuses at synth time the characters that failed the first deploy', () => {
+    const stack = new Stack(new App(), 'TagCheck');
+    for (const value of ['~$1.8/month', 'a, b', 'x; y', '(EIP)', '50%']) {
+      expect(() => tag(stack, 'CostNote', value), value).toThrow(/characters AWS rejects/);
+    }
+    expect(() => tag(stack, 'Cost', '1.60 USD per month')).not.toThrow();
+  });
+});
+
+describe('redeploy after a failed first create', () => {
+  const all = () =>
+    Object.entries(
+      t.toJSON().Resources as Record<
+        string,
+        { Type: string; DeletionPolicy?: string; Properties?: Record<string, unknown> }
+      >,
+    );
+
+  it('stateful resources are removed if the first create rolls back', () => {
+    for (const type of ['AWS::S3::Bucket', 'AWS::EC2::Volume']) {
+      for (const [id, r] of all().filter(([, r]) => r.Type === type)) {
+        expect(['Delete', 'RetainExceptOnCreate', undefined], id).toContain(r.DeletionPolicy);
+      }
+    }
+  });
+
+  it('only the user pool survives a rollback, and it has no unique name to collide on', () => {
+    const retained = all().filter(([, r]) => r.DeletionPolicy === 'Retain');
+    expect(retained.map(([, r]) => r.Type)).toEqual(['AWS::Cognito::UserPool']);
+  });
+
+  it('no bucket has a fixed name', () => {
+    for (const [id, r] of all().filter(([, r]) => r.Type === 'AWS::S3::Bucket')) {
+      expect(r.Properties?.BucketName, id).toBeUndefined();
+    }
   });
 });
