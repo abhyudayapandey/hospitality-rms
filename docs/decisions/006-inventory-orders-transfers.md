@@ -11,7 +11,7 @@ section 7 were built.
   - `20260930120000_inventory_rpcs` (functions, executor SQL, views)
 - **Dev seed:** `003_inventory_dev.sql`.
 - **Screens:** under `/stock` in `apps/web`.
-- **Performance:** ADR 007.
+- **Performance:** ADR 007 (RLS computes the visible node set once per query).
 
 ## Production data
 
@@ -151,8 +151,5 @@ idempotency_key)`. The old signature with caller-supplied nodes and amount is go
   a human accepts it, or the agent is allowed a narrow draft insert.
 - **Consumption is not recorded yet.** There is no POS. It is derived from closing
   counts, as the LLD says.
-- **Cross-node ledger queries are slow.** An all-nodes ledger without a node filter
-  takes 1.2–1.5 s at 10k rows; the fix is proposed in ADR 007. Screens are
-  node-filtered.
 - **Items, suppliers, par levels, tolerances and thresholds are read-only in the app.**
   Onboarding sets them; admin screens come later.

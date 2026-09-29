@@ -1,6 +1,6 @@
 # 007 — Inventory read performance and per-row `can()`
 
-Status: **measured; fix proposed, not implemented** · 2026-09-30
+Status: accepted, fix implemented (`20260930130000_rls_visible_nodes`) · 2026-09-30
 
 ## Question
 
@@ -9,7 +9,7 @@ every row? The target is about 10,000 ledger rows across both outlets and the hu
 
 ## Method
 
-The script is `pnpm --filter @outlet-ops/db perf:inventory [--simulate-fix] [--plans]`
+The script is `pnpm --filter @outlet-ops/db perf:inventory [--plans]`
 (`packages/db/scripts/perf-inventory.ts`). It works like this:
 
 1. It opens one transaction that is always rolled back, so nothing is committed.
@@ -26,7 +26,7 @@ The script is `pnpm --filter @outlet-ops/db perf:inventory [--simulate-fix] [--p
 The timings are planning plus execution, measured on local Docker Postgres 16 (the dev
 container).
 
-## Results with today's policies (`core.can()` per row)
+## Results before the fix (`core.can()` per row)
 
 | Query                                                           | Kim          | Olivia       | Aria         |
 | --------------------------------------------------------------- | ------------ | ------------ | ------------ |
@@ -47,35 +47,59 @@ container).
   times down to 204–734 ms, but RLS still calls `can()` for every remaining row before
   the sort.
 
-## Proposed fix (awaiting approval)
+## Fix (implemented)
 
-Change the generated select policy for delivery-tree tables so the set of visible nodes
-is computed **once per query** instead of calling `can()` per row:
+Generated policies test membership in the caller's visible node set, computed **once per
+query** (a Postgres InitPlan), instead of calling `core.can()` on every row:
 
 ```sql
-using (delivery_node_id = any ((select core.visible_nodes('STOCK_LEVELS', 'view'))::uuid[]))
+-- node legs (e.g. inv.stock_ledger)
+delivery_node_id = any ((select core.visible_nodes('STOCK_LEVELS', 'view'))::uuid[])
+-- rows that carry their own domain (wf.request, wf.step_instance, wf.outbox)
+(domain_code || ':' || delivery_node_id) = any ((select core.visible_domain_nodes('view'))::text[])
 ```
 
-`core.visible_nodes(domain, access)` returns the caller's nodes in that domain's tree for
-which `core.can(domain, access, …)` is true. It calls `can()` once per node, and a tenant
-has tens of nodes, not thousands.
+- **`core.visible_nodes(domain, access)`** returns the nodes of the caller's tenant, in
+  that domain's tree, for which `core.can(domain, access, …)` is true. It calls `can()`
+  once per node; a tenant has tens of nodes, not thousands. Only domains the caller holds
+  directly or through `DERIVED_` can be true on a node, so the others return empty at
+  once.
+- **`core.visible_domain_nodes(access)`** returns the same set as `'DOMAIN:node'` pairs,
+  for the `wf` tables whose rows carry their own domain.
+- **These stay per row:** SELF owner legs, tenant-scoped rows and owner-only tables
+  still call `core.can()` per row. They are `OR`'d in, and none of them is on a hot
+  path.
+- **Rule 2 is kept:** `core.can()` still makes every access decision.
 
-- **Rule 2 is kept.** `can()` still makes every decision; the policy only caches its
-  answer for the duration of one query.
-- **Measured with `--simulate-fix`:** every query in the table above, for all three
-  users, takes **4–22 ms**. That includes the all-nodes ledger (6–11 ms).
+**Equivalence is proved, not assumed.** `rls-equivalence.db.test.ts` checks every seeded
+user against every business table.
 
-**Scope, if approved:**
+- The rows RLS returns must be exactly the rows the per-row `core.can()` expression
+  selects (the policy as it was generated before this change).
+- Fixtures make sure each rule is exercised:
+  - SELF: Sam's own LEAVE request
+  - derived: the area manager sees Outlet A and B stock, not the hub's
+  - `include_descendants`: SUPPLY_VIEWER with descendants versus HUB_MANAGER without
+  - both legs of a transfer
+- Insert checks on a writable fixture table must match `core.can(…, 'modify')`,
+  including SELF owners.
+- A deliberately broken `visible_nodes` (with the derived path dropped) is caught:
+  Aria sees 0 rows instead of 84.
 
-- `apply_domain_rls` emits this form for rows whose only check is a node:
-  - `domain_column` tables and self-service owner legs keep calling `can()` per row
-    (`OR`'d in).
-  - Multi-leg tables such as `inv.transfer` get one array test per leg.
-- **Equivalence test:** for every seeded user, domain and node, `can()` must equal
-  "node is in `visible_nodes`". The test also covers derived grants and
-  `include_descendants`.
-- `perf:inventory` becomes a DB test with a generous bound (500 ms), so a regression
-  fails CI.
+## Results after the fix
 
-**Until this is approved,** the screens run only node-filtered queries. There is no
-cross-node ledger screen yet; Aria's overview uses the stock query, which is 18 ms.
+Same method and data, as the same users:
+
+| Query                                            | Kim                  | Olivia               | Aria                 |
+| ------------------------------------------------ | -------------------- | -------------------- | -------------------- |
+| Stock list for a node (the Stock screen)         | 14 ms                | 12 ms                | 17 ms                |
+| Ledger for a node, latest 50 (the Ledger screen) | 6 ms                 | 7 ms                 | 7 ms                 |
+| One item's ledger at a node, latest 50           | 6 ms                 | 7 ms                 | 6 ms                 |
+| Stock across all visible nodes (no node filter)  | 5 ms                 | 7 ms                 | 6 ms                 |
+| **Ledger across all visible nodes, latest 50**   | **8 ms** (was 1,361) | **7 ms** (was 1,543) | **8 ms** (was 1,209) |
+
+The worst query is now 17.6 ms, against 1,543 ms before.
+
+`inventory-perf.db.test.ts` keeps the cross-node ledger query under 500 ms at 10,000 rows,
+and checks that its plan computes the node set once (InitPlan). That bound is generous
+for a slow CI runner, while a per-row regression would take about 1.2 s.

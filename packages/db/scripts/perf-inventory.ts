@@ -16,10 +16,7 @@ if (!url) throw new Error('MIGRATOR_DATABASE_URL is not set');
 const argRows = process.argv.indexOf('--rows');
 const ROWS = argRows > 0 ? Number(process.argv[argRows + 1]) : 10_000;
 const PLANS = process.argv.includes('--plans');
-// --simulate-fix: swap inv.stock_ledger / inv.stock_level select policies (inside the
-// rolled-back transaction) for the ADR 007 candidate: the visible node set computed once
-// per query from core.can() per node, instead of core.can() per row.
-const SIMULATE_FIX = process.argv.includes('--simulate-fix');
+
 const TARGET_MS = 200;
 
 const USERS = {
@@ -63,16 +60,6 @@ const QUERIES: Record<string, string> = {
       from inv.stock_ledger l
      order by l.occurred_at desc
      limit 50`,
-  // Candidate fix (ADR 007): pre-filter to the nodes the user can view, computed once
-  // (can() per node, not per row); RLS still applies to the rows that remain.
-  'ledger, latest 50, all visible nodes (pre-filtered)': `
-    select l.id, l.delivery_node_id, l.occurred_at, l.movement_type, l.qty
-      from inv.stock_ledger l
-     where l.delivery_node_id = any (array(
-             select n.id from core.nodes('delivery') n
-              where core.can('STOCK_LEVELS', 'view', null, n.id)))
-     order by l.occurred_at desc
-     limit 50`,
 };
 
 interface Plan {
@@ -110,22 +97,6 @@ try {
   await client.query(
     'analyze inv.stock_ledger; analyze inv.stock_level; analyze inv.item_node; analyze inv.item',
   );
-  if (SIMULATE_FIX) {
-    await client.query(`
-      create function public.perf_visible_nodes(p_domain text, p_access text) returns uuid[]
-      language sql stable security definer set search_path = pg_catalog, core as $$
-        select coalesce(array_agg(n.id), '{}') from core.hierarchy_node n
-         where n.tenant_id = core.my_tenant() and n.type = 'delivery'
-           and core.can(p_domain, p_access, null, n.id) $$;
-      grant execute on function public.perf_visible_nodes(text, text) to app_rw;
-      drop policy dom_select on inv.stock_ledger;
-      create policy dom_select on inv.stock_ledger for select to app_rw
-        using (delivery_node_id = any ((select public.perf_visible_nodes('STOCK_LEVELS', 'view'))::uuid[]));
-      drop policy dom_select on inv.stock_level;
-      create policy dom_select on inv.stock_level for select to app_rw
-        using (delivery_node_id = any ((select public.perf_visible_nodes('STOCK_LEVELS', 'view'))::uuid[]));`);
-    console.log('simulating the per-query node set policy');
-  }
 
   const results: string[] = [];
   let worst = 0;
