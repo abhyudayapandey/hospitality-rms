@@ -9,6 +9,10 @@ export interface OutletOpsConfig {
   cognitoDomainPrefix: string;
   /** GitHub repository allowed to deploy, owner/repo */
   githubRepo: string;
+  /** Numeric id of the repository owner: gh api repos/<owner>/<repo> --jq .owner.id */
+  githubOwnerId: string;
+  /** Numeric id of the repository: gh api repos/<owner>/<repo> --jq .id */
+  githubRepoId: string;
   /** ARN of an existing GitHub OIDC provider in the account; one is created if unset */
   githubOidcProviderArn?: string | undefined;
 }
@@ -34,12 +38,39 @@ export function configFromContext(get: (key: string) => unknown): OutletOpsConfi
     }
     return v.trim();
   };
+  const numericId = (key: string): string => {
+    const raw = get(key);
+    const v = typeof raw === 'number' ? String(raw) : required(key);
+    if (!/^[1-9][0-9]*$/.test(v)) {
+      throw new Error(`CDK context "${key}" must be a numeric GitHub id, got "${v}".`);
+    }
+    return v;
+  };
+  const githubRepo = required('githubRepo');
+  if (!/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(githubRepo)) {
+    throw new Error(`CDK context "githubRepo" must be owner/repo, got "${githubRepo}".`);
+  }
   const oidc = get('githubOidcProviderArn');
   return {
     domainName: required('domainName'),
     alertEmail: required('alertEmail'),
     cognitoDomainPrefix: required('cognitoDomainPrefix'),
-    githubRepo: required('githubRepo'),
+    githubRepo,
+    githubOwnerId: numericId('githubOwnerId'),
+    githubRepoId: numericId('githubRepoId'),
     githubOidcProviderArn: typeof oidc === 'string' && oidc !== '' ? oidc : undefined,
   };
+}
+
+/**
+ * The `sub` claim GitHub puts in the OIDC token of a job that runs in the repo's
+ * `production` environment. GitHub's immutable-id subject format pins the owner and
+ * repo ids, so a renamed or re-created repo with the same name cannot deploy:
+ *   repo:<owner>@<ownerId>/<repo>@<repoId>:environment:production
+ */
+export function githubDeploySubject(
+  config: Pick<OutletOpsConfig, 'githubRepo' | 'githubOwnerId' | 'githubRepoId'>,
+): string {
+  const [owner, repo] = config.githubRepo.split('/');
+  return `repo:${owner}@${config.githubOwnerId}/${repo}@${config.githubRepoId}:environment:production`;
 }

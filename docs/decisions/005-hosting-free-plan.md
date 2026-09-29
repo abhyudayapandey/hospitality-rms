@@ -96,8 +96,12 @@ those for the Free-plan period.** CLAUDE.md's Stack section points here.
   - Node 22 (sha256-verified against nodejs.org)
   - Caddy (sha512-verified against its release checksums)
   - dbmate (the npm package at the root's pinned version)
-- **GitHub Actions uses OIDC.** The role trusts only
-  `repo:<repo>:environment:production`, and that environment has required reviewers.
+- **GitHub Actions uses OIDC.** The role trusts only the exact `sub`
+  `repo:<owner>@<ownerId>/<repo>@<repoId>:environment:production`, with `StringEquals`
+  and no wildcards. That environment has required reviewers.
+  - The ids come from CDK context (`githubOwnerId`, `githubRepoId`).
+  - GitHub's `sub` carries them, which pins the trust to this exact repository even if
+    another one is later created with the same name.
 - **The deploy role can only:**
   - put `releases/*` objects
   - run the single `OutletOps-Deploy` document on the one instance (the release
