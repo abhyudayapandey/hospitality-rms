@@ -14,6 +14,12 @@ export const ERROR_MESSAGES = {
   TENANT_MISMATCH: 'That item belongs to a different organisation.',
   INSUFFICIENT_STOCK:
     'There is not enough stock on record for that. If the goods are here, record the receipt or do a stock count first.',
+  INVALID_LINES: 'Check the items: each needs a quantity, and an item can only appear once.',
+  INVALID_ITEM: "That item isn't set up for this location.",
+  INVALID_QUANTITY: 'Check the quantities and try again.',
+  INVALID_SUPPLIER: "That supplier isn't available.",
+  PHOTO_REQUIRED: 'This wastage is worth enough to need a photo. Add one and submit again.',
+  INVALID_PHOTO: "The photo didn't upload for this location. Take it again.",
   LEDGER_APPEND_ONLY: 'Stock history cannot be changed. Record a correcting movement instead.',
   APPROVE_VIA_MODULE: 'Open this request from its own screen to confirm it.',
   IRREVERSIBLE_STEP: 'The goods are already on their way, so this can only be received now.',

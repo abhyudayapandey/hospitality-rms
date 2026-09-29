@@ -19,6 +19,7 @@ export const STOCK_ADJUSTMENT: ProcessDef = {
     },
   ],
   onApproved: 'inv.stock_adjustment.post',
+  onRejected: 'inv.stock_adjustment.reject',
   slaHours: 24,
 };
 

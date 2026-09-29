@@ -47,6 +47,7 @@ describe('error mapping', () => {
       'LTREE_WRONG_SCHEMA',
       'INVALID_PARENT',
       'INVALID_NODE_LINK',
+      'HANDLER_NOT_FOUND', // executor-side; recorded on the outbox row
     ]);
     const missing = [...raised].filter((c) => !internal.has(c) && !(c in ERROR_MESSAGES));
     expect(missing).toEqual([]);
