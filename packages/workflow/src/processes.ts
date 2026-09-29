@@ -15,6 +15,7 @@ export const STOCK_ADJUSTMENT: ProcessDef = {
       group: 'OUTLET_MANAGER',
       scope: 'subject_node',
       when: { amount_gt: 5000 },
+      escalateTo: 'AREA_MANAGER', // SLA escalation and SoD fallback
     },
   ],
   onApproved: 'inv.stock_adjustment.post',
@@ -27,7 +28,12 @@ export const PURCHASE_ORDER: ProcessDef = {
   domain: 'PURCHASE_ORDERS',
   hierarchy: 'delivery',
   steps: [
-    { step: 'outlet_approval', group: 'OUTLET_MANAGER', scope: 'subject_node' },
+    {
+      step: 'outlet_approval',
+      group: 'OUTLET_MANAGER',
+      scope: 'subject_node',
+      escalateTo: 'AREA_MANAGER', // SLA escalation and SoD fallback
+    },
     {
       step: 'area_approval',
       group: 'AREA_MANAGER',

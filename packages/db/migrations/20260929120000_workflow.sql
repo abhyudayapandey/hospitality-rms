@@ -26,11 +26,12 @@ as $$
 $$;
 revoke execute on function core.group_holders(uuid, uuid) from public;
 
--- Nearest node at or above p_start (walking up its own tree) where someone other
--- than p_exclude holds p_group through an assignment at that node that covers
--- p_start. If none, and p_start is a delivery node, map it to its org node via
--- core.node_link and walk up the org tree (ADR 003: cross-tree routing).
-create function core.nearest_group_node(p_group uuid, p_start uuid, p_exclude uuid)
+-- Nearest node at or above p_start (strictly above when p_strict) in its own tree
+-- where someone other than p_exclude holds p_group through an assignment at that node
+-- that covers p_start. If none, and p_start is a delivery node, map it to its org node
+-- via core.node_link and search the org tree the same way (ADR 003: cross-tree routing).
+create function core.nearest_group_node(p_group uuid, p_start uuid, p_exclude uuid,
+                                        p_strict boolean default false)
 returns uuid
 language plpgsql stable security definer
 set search_path = pg_catalog, core, extensions
@@ -48,6 +49,7 @@ begin
   select a.id into v_found
     from core.hierarchy_node a
    where a.type = v_start.type and a.path @> v_start.path and a.archived_at is null
+     and (not p_strict or a.id <> v_start.id)
      and exists (
        select 1 from core.role_assignment ra
          join core.app_user u on u.id = ra.user_id and u.status = 'active'
@@ -64,14 +66,14 @@ begin
 
   for v_org in select nl.org_node_id from core.node_link nl
                 where nl.delivery_node_id = v_start.id order by nl.org_node_id loop
-    v_found := core.nearest_group_node(p_group, v_org, p_exclude);
+    v_found := core.nearest_group_node(p_group, v_org, p_exclude, p_strict);
     if v_found is not null then
       return v_found;
     end if;
   end loop;
   return null;
 end $$;
-revoke execute on function core.nearest_group_node(uuid, uuid, uuid) from public;
+revoke execute on function core.nearest_group_node(uuid, uuid, uuid, boolean) from public;
 
 -- ---------------------------------------------------------------------------
 -- Tables
@@ -256,38 +258,61 @@ begin
      and (not p_when ? 'amount_gte' or coalesce(p_amount, 0) >= (p_when ->> 'amount_gte')::numeric);
 end $$;
 
--- Scope node for a step, or null when nobody but the initiator could act.
-create function wf.route_step(p_group uuid, p_scope text, p_request wf.request)
-returns uuid
+-- Routes a step: the group that will act and the scope node (ADR 003).
+--  1. the step's group at its scope (subject/from/to node, or nearest_ancestor walk),
+--     held by someone other than the initiator
+--  2. SoD fallback when only the initiator (or nobody) is eligible there: the step's
+--     escalateTo group, walking up from the start node (crossing trees via node_link)
+--  3. then the step's own group further up the tree
+-- Both outputs are null when nobody exists up the tree (caller raises NO_APPROVER).
+create function wf.route_step(p_group uuid, p_escalate uuid, p_scope text,
+                              p_request wf.request, out o_group uuid, out o_node uuid)
 language plpgsql stable
 set search_path = pg_catalog, core, wf
 as $$
 declare
   v_start uuid;
+  v_subject uuid := case (select hierarchy_type from wf.process_def
+                           where tenant_id = p_request.tenant_id
+                             and process_type = p_request.process_type)
+                      when 'org' then p_request.org_node_id else p_request.delivery_node_id end;
 begin
-  if p_scope = 'nearest_ancestor' then
-    v_start := case (select hierarchy_type from wf.process_def
-                      where tenant_id = p_request.tenant_id and process_type = p_request.process_type)
-                 when 'org' then p_request.org_node_id else p_request.delivery_node_id end;
-    return core.nearest_group_node(p_group, v_start, p_request.initiator_id);
-  end if;
-
   v_start := case p_scope
-    when 'subject_node' then
-      case (select hierarchy_type from wf.process_def
-             where tenant_id = p_request.tenant_id and process_type = p_request.process_type)
-        when 'org' then p_request.org_node_id else p_request.delivery_node_id end
+    when 'subject_node' then v_subject
+    when 'nearest_ancestor' then v_subject
     when 'from_node' then (p_request.payload ->> 'from_node_id')::uuid
     when 'to_node' then (p_request.payload ->> 'to_node_id')::uuid
   end;
   if v_start is null then
     raise exception 'INVALID_PROCESS_DEF' using detail = format('cannot resolve scope %s', p_scope);
   end if;
-  if exists (select 1 from core.group_holders(p_group, v_start) h(uid)
-              where h.uid <> p_request.initiator_id) then
-    return v_start;
+
+  -- 1. normal routing
+  if p_scope = 'nearest_ancestor' then
+    o_node := core.nearest_group_node(p_group, v_start, p_request.initiator_id);
+  elsif exists (select 1 from core.group_holders(p_group, v_start) h(uid)
+                 where h.uid <> p_request.initiator_id) then
+    o_node := v_start;
   end if;
-  return null;
+  if o_node is not null then
+    o_group := p_group;
+    return;
+  end if;
+
+  -- 2. escalateTo group, from the start node up
+  if p_escalate is not null then
+    o_node := core.nearest_group_node(p_escalate, v_start, p_request.initiator_id);
+    if o_node is not null then
+      o_group := p_escalate;
+      return;
+    end if;
+  end if;
+
+  -- 3. the same group, strictly above the start node
+  o_node := core.nearest_group_node(p_group, v_start, p_request.initiator_id, true);
+  if o_node is not null then
+    o_group := p_group;
+  end if;
 end $$;
 
 -- Activates the next waiting step, or finishes approval and queues on_approved.
@@ -336,7 +361,8 @@ revoke execute on all functions in schema wf from public;
 --  * the process exists for the caller's tenant and the subject type matches
 --  * bp_policy 'initiate' for a group the caller holds at the subject node (SELF = anyone)
 --  * humans: core.can(domain, 'modify'); service users: core.can(domain, 'view')
---  * every non-skipped step has an eligible approver other than the initiator
+--  * every non-skipped step routes to an eligible approver other than the initiator,
+--    falling back to escalateTo / higher holders (wf.route_step), else NO_APPROVER
 -- Known hole: nodes are caller-supplied until subject tables exist (ADR 003).
 create function wf.submit(
   p_process_type text,
@@ -362,6 +388,7 @@ declare
   v_group uuid;
   v_escalate uuid;
   v_scope uuid;
+  v_routed_group uuid;
   v_state text;
   v_first boolean := true;
 begin
@@ -413,9 +440,15 @@ begin
     end if;
 
     if wf.when_matches(v_step -> 'when', p_amount) then
-      v_scope := wf.route_step(v_group, v_step ->> 'scope', v_req);
+      select r.o_group, r.o_node into v_routed_group, v_scope
+        from wf.route_step(v_group, v_escalate, v_step ->> 'scope', v_req) r;
       if v_scope is null then
         perform wf.fail('NO_APPROVER', format('step %s has no eligible approver', v_step ->> 'step'));
+      end if;
+      if v_routed_group <> v_group then
+        -- routed to the escalateTo group (SoD fallback): it is used up
+        v_group := v_routed_group;
+        v_escalate := null;
       end if;
       v_state := case when v_first then 'pending' else 'waiting' end;
       v_first := false;
@@ -546,9 +579,10 @@ $$;
 -- Escalation (run hourly by the scheduler as wf_executor)
 -- ---------------------------------------------------------------------------
 
--- Pending steps past their SLA and where they would escalate to: the step's
--- escalateTo group if set (first escalation only), else the same group; walking up
--- from the parent of the current scope. target_node_id is null when nobody holds it.
+-- Pending steps past their SLA and where they would escalate to (same search as the
+-- SoD fallback in wf.route_step): the step's escalateTo group from the current scope
+-- up (first escalation only), else the same group strictly above the current scope.
+-- Both cross trees via node_link. target_node_id is null when nobody holds it.
 create function wf.overdue_steps(p_at timestamptz default now())
 returns table (step_id uuid, request_id uuid, process_type text, step text,
                overdue_since timestamptz, target_group_id uuid, target_node_id uuid)
@@ -558,12 +592,13 @@ as $$
   select s.id, r.id, r.process_type, s.step,
          s.activated_at + make_interval(hours => d.sla_hours),
          coalesce(s.escalate_to_group_id, s.assignee_group_id),
-         (select core.nearest_group_node(coalesce(s.escalate_to_group_id, s.assignee_group_id),
-                                         n.parent_id, r.initiator_id))
+         case when s.escalate_to_group_id is not null
+              then core.nearest_group_node(s.escalate_to_group_id, s.scope_node_id, r.initiator_id)
+              else core.nearest_group_node(s.assignee_group_id, s.scope_node_id, r.initiator_id, true)
+         end
     from wf.step_instance s
     join wf.request r on r.id = s.request_id and r.state = 'in_approval'
     join wf.process_def d on d.tenant_id = r.tenant_id and d.process_type = r.process_type
-    join core.hierarchy_node n on n.id = s.scope_node_id
    where s.state = 'pending'
      and s.activated_at + make_interval(hours => d.sla_hours) < p_at;
 $$;
@@ -731,7 +766,7 @@ drop function wf.act(uuid, text, text);
 drop function wf.submit(text, text, uuid, jsonb, numeric, text, uuid, uuid, text);
 drop function wf.enqueue(uuid, text);
 drop function wf.advance(uuid);
-drop function wf.route_step(uuid, text, wf.request);
+drop function wf.route_step(uuid, uuid, text, wf.request);
 drop function wf.when_matches(jsonb, numeric);
 drop function wf.has_bp_policy(uuid, uuid, text, text, text, uuid);
 drop function wf.group_id(uuid, text);
@@ -744,5 +779,5 @@ drop table wf.outbox;
 drop table wf.step_instance;
 drop table wf.request;
 drop table wf.process_def;
-drop function core.nearest_group_node(uuid, uuid, uuid);
+drop function core.nearest_group_node(uuid, uuid, uuid, boolean);
 drop function core.group_holders(uuid, uuid);

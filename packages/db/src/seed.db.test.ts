@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { PoolClient } from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
-import { closePools, inRolledBackTx } from '../test/helpers';
+import { closePools, inRolledBackTx, migratorPool } from '../test/helpers';
 
 // The core seed's policy matrix is authoritative (ADR 002): re-seeding resets
 // changed access and removes rows that are not in the matrix.
@@ -64,6 +64,28 @@ describe('core seed', () => {
       await c.query(await readFile(seedFile, 'utf8'));
       expect(await count()).toBe(before);
     });
+  });
+
+  it('grants the workflow domains exactly as approved (ADR 003)', async () => {
+    const { rows } = await migratorPool.query<{ dom: string; grp: string; access: string }>(
+      `select d.code as dom, g.code as grp, dp.access
+         from core.domain_policy dp
+         join core.domain d on d.id = dp.domain_id
+         join core.security_group g on g.id = dp.group_id
+        where d.code in ('SHIFT_SWAPS', 'SECURITY_ROLES', 'WF_CONFIG')
+        order by 1, 2`,
+    );
+    expect(rows.map((r) => `${r.dom} ${r.grp} ${r.access}`)).toEqual([
+      'SECURITY_ROLES AUDITOR view',
+      'SECURITY_ROLES HR_ADMIN modify',
+      'SECURITY_ROLES SECURITY_ADMIN view',
+      'SHIFT_SWAPS AI_AGENT view',
+      'SHIFT_SWAPS AREA_MANAGER view',
+      'SHIFT_SWAPS OUTLET_MANAGER view',
+      'SHIFT_SWAPS SELF modify',
+      'WF_CONFIG HR_ADMIN view',
+      'WF_CONFIG SECURITY_ADMIN view',
+    ]);
   });
 
   it('links the org Hub site to the delivery Hub', async () => {

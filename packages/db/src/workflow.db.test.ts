@@ -220,11 +220,56 @@ describe('purchase order routing', () => {
     });
   });
 
-  it('fails at submit when the initiator is the only eligible approver', async () => {
+  it("routes a sole outlet manager's PO to the Area manager (SoD fallback)", async () => {
     await inRolledBackTx(async (c) => {
+      const id = await submitOk(c, OLIVIA, po(10_000));
+      expect(await steps(c, id)).toEqual([
+        { step: 'outlet_approval', state: 'pending', scope: 'org:Area', grp: 'AREA_MANAGER' },
+        { step: 'area_approval', state: 'skipped', scope: null, grp: 'AREA_MANAGER' },
+      ]);
+      expect(await inbox(c, OLIVIA)).not.toContain(id);
+      expect((await act(c, OLIVIA, id, 'approve')).error).toBe('SEGREGATION_OF_DUTIES');
+      expect(await actOk(c, ARIA, id, 'approve')).toBe('approved');
+    });
+  });
+
+  it('routes LEAVE and STOCK_ADJUSTMENT raised by the sole outlet manager to the Area manager', async () => {
+    await inRolledBackTx(async (c) => {
+      const leave = await submitOk(c, OLIVIA, {
+        process: 'LEAVE',
+        subject: 'hr.leave_request',
+        org: 'Outlet A',
+      });
+      expect(await steps(c, leave)).toEqual([
+        { step: 'outlet_approval', state: 'pending', scope: 'org:Area', grp: 'AREA_MANAGER' },
+        { step: 'hr_approval', state: 'waiting', scope: 'org:Company', grp: 'HR_ADMIN' },
+      ]);
+      const adj = await submitOk(c, OLIVIA, {
+        process: 'STOCK_ADJUSTMENT',
+        subject: 'inv.stock_adjustment',
+        amount: 6000, // above the variance threshold
+        delivery: 'Outlet A',
+      });
+      expect(await steps(c, adj)).toEqual([
+        { step: 'outlet_approval', state: 'pending', scope: 'org:Area', grp: 'AREA_MANAGER' },
+      ]);
+      expect(await inbox(c, ARIA)).toEqual(expect.arrayContaining([leave, adj]));
+      expect(await actOk(c, ARIA, adj, 'approve')).toBe('approved');
+    });
+  });
+
+  it('raises NO_APPROVER only when nobody exists up the tree', async () => {
+    await inRolledBackTx(async (c) => {
+      await c.query(
+        `update core.role_assignment set effective_from = date '2020-01-01',
+                effective_to = date '2020-12-31' where user_id = $1`,
+        [ids.user(ARIA)],
+      );
       expect((await submit(c, OLIVIA, po(10_000))).error).toBe('NO_APPROVER');
       const { rows } = await c.query('select 1 from wf.request');
       expect(rows).toEqual([]);
+      // Kim still routes normally to Olivia.
+      await submitOk(c, KIM, po(10_000));
     });
   });
 
@@ -385,19 +430,37 @@ describe('escalation', () => {
 
   it('keeps an overdue step pending and lists it as unroutable when no one holds the group above', async () => {
     await inRolledBackTx(async (c) => {
-      const id = await submitOk(c, KIM, po(10_000));
-      await makeOverdue(c, id, 25); // PO SLA is 24 h; no OUTLET_MANAGER above Outlet A
+      // TRANSFER dispatch: HUB_MANAGER at the hub, no escalateTo, nobody above the hub.
+      const id = await submitOk(c, KIM, {
+        process: 'TRANSFER',
+        subject: 'inv.transfer',
+        delivery: 'Outlet A',
+        payload: {
+          from_node_id: ids.node('delivery:Hub'),
+          to_node_id: ids.node('delivery:Outlet A'),
+        },
+      });
+      await makeOverdue(c, id, 25); // TRANSFER SLA is 24 h
       const un = await c.query<{ request_id: string; step: string }>(
         'select request_id, step from wf.unroutable_steps()',
       );
-      expect(un.rows).toEqual([{ request_id: id, step: 'outlet_approval' }]);
+      expect(un.rows).toEqual([{ request_id: id, step: 'dispatch' }]);
       const escalated = await c.query<{ n: number }>('select wf.escalate_overdue() as n');
       expect(escalated.rows[0]!.n).toBe(0);
-      expect((await steps(c, id))[0]).toMatchObject({
-        state: 'pending',
-        scope: 'delivery:Outlet A',
-      });
-      expect(await inbox(c, OLIVIA)).toContain(id);
+      expect((await steps(c, id))[0]).toMatchObject({ state: 'pending', scope: 'delivery:Hub' });
+      expect(await inbox(c, HUGO)).toContain(id);
+    });
+  });
+
+  it('escalates an overdue PO outlet approval to the Area manager', async () => {
+    await inRolledBackTx(async (c) => {
+      const id = await submitOk(c, KIM, po(10_000));
+      await makeOverdue(c, id, 25);
+      expect((await c.query<{ n: number }>('select wf.escalate_overdue() as n')).rows[0]!.n).toBe(
+        1,
+      );
+      expect((await steps(c, id))[0]).toMatchObject({ scope: 'org:Area', grp: 'AREA_MANAGER' });
+      expect(await inbox(c, ARIA)).toContain(id);
     });
   });
 });

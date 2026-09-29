@@ -102,7 +102,7 @@ insert into seed_policy_matrix (grp, dom, access) values
     ('OUTLET_MANAGER', 'LEAVE', 'view'),
     ('OUTLET_MANAGER', 'EVENTS', 'modify'),
     ('OUTLET_MANAGER', 'AI_RECOMMENDATIONS', 'modify'),
-    ('OUTLET_MANAGER', 'SHIFT_SWAPS', 'modify'),
+    ('OUTLET_MANAGER', 'SHIFT_SWAPS', 'view'),
 
     ('AREA_MANAGER', 'WORKERS', 'view'),
     ('AREA_MANAGER', 'ROSTER', 'view'),
@@ -132,6 +132,8 @@ insert into seed_policy_matrix (grp, dom, access) values
     ('SECURITY_ADMIN', 'AUDIT', 'view'),
     ('SECURITY_ADMIN', 'SECURITY_ROLES', 'view'),
     ('SECURITY_ADMIN', 'WF_CONFIG', 'view'),
+    ('AUDITOR', 'SECURITY_ROLES', 'view'),
+    ('HR_ADMIN', 'WF_CONFIG', 'view'),
     ('AUDITOR', 'AUDIT', 'view'),
 
     ('AI_AGENT', 'STOCK_LEVELS', 'view'),

@@ -23,10 +23,10 @@ These are flagged because they differ from the LLD, CLAUDE.md or ADR 002.
   users (`app_user.kind = 'service'`, such as the AI agent) need `core.can(domain, 'view')`
   plus a `bp_policy` initiate row for the process. `SELF` initiate rights apply to human
   users only, so the agent cannot file leave for itself.
-- **New domains:**
-  - `SHIFT_SWAPS` (SELF M, OUTLET_MANAGER M, AREA_MANAGER V, AI_AGENT V)
-  - `SECURITY_ROLES` (HR_ADMIN M, SECURITY_ADMIN V)
-  - `WF_CONFIG` (SECURITY_ADMIN V)
+- **New domains** (a seed test checks these exactly):
+  - `SHIFT_SWAPS` (SELF M, OUTLET_MANAGER V, AREA_MANAGER V, AI_AGENT V)
+  - `SECURITY_ROLES` (HR_ADMIN M, SECURITY_ADMIN V, AUDITOR V)
+  - `WF_CONFIG` (SECURITY_ADMIN V, HR_ADMIN V)
     SHIFT_SWAP and ROLE_CHANGE needed a subject domain the initiator can modify.
 - **`core.domain_table` is tenant-independent** (supersedes that part of ADR 002). Domain
   codes are unique per tenant, but tables are registered in migrations, before any tenant
@@ -95,9 +95,19 @@ skipped / cancelled`.
   the start node. If none is found and the start is a delivery node, map it via
   `core.node_link` to its org node and walk up the org tree. A PO above 50,000 at
   Outlet A therefore routes to the Area manager.
-- **`NO_APPROVER`:** raised at submit if any non-skipped step has no eligible approver
-  other than the initiator. For example, an outlet manager raising a PO at an outlet
-  where they are the only outlet manager.
+- **Segregation-of-duties fallback.** If nobody other than the initiator can act on a
+  step at its normal scope, `wf.route_step` reroutes it at submit:
+  1. to the step's `escalateTo` group, searching from the scope node up and across trees
+  2. otherwise to the step's own group, strictly above the scope node
+
+  For example, a sole outlet manager raising a PO, LEAVE or STOCK_ADJUSTMENT at Outlet A
+  gets step 1 routed to the Area manager. To support this, PURCHASE_ORDER and
+  STOCK_ADJUSTMENT `outlet_approval` now have `escalateTo: AREA_MANAGER`, the same as
+  LEAVE, with matching `bp_policy` approve rows. An `escalateTo` group used this way is
+  consumed, so later SLA escalation stays with that group.
+
+- **`NO_APPROVER`:** raised at submit only when that search finds nobody, anywhere up
+  the tree, other than the initiator.
 - **Who can act:** a user can act on a pending step if all of these hold:
   - they are not the initiator (rule 7; otherwise `SEGREGATION_OF_DUTIES`)
   - they hold the step's group at or above its scope node, respecting
@@ -122,8 +132,11 @@ skipped / cancelled`.
   escalation target:
   - **Group:** the step's `escalateTo` group on the first escalation (LEAVE:
     OUTLET_MANAGER → AREA_MANAGER), otherwise the same group.
-  - **Node:** found by walking up from the parent of the current scope until a holder
-    other than the initiator is found, crossing trees as in routing.
+  - **Node:** for the `escalateTo` group, from the current scope node up; for the same
+    group, strictly above the current scope node. Both find the first holder other than
+    the initiator, crossing trees via `node_link` (`core.nearest_group_node(…, p_strict)`).
+    This is the same search as the SoD fallback. Walking up from a delivery node's parent
+    would be wrong: the hub's org link sits under Region, which skips the Area.
 - **`wf.escalate_overdue(at)`:** moves each routable step and restarts its SLA clock.
 - **`wf.unroutable_steps(at)`:** lists overdue steps with no target. They stay pending
   with their current approvers. This list is for the health dashboard.
@@ -162,6 +175,35 @@ is handled in one transaction:
 - Locally: `pnpm --filter @outlet-ops/workflow execute [--once]`.
 - The `wf-execute` Lambda will wrap `runOnce` later.
 - All six processes have stub handlers.
+
+## Tenant isolation
+
+`tenant-isolation.db.test.ts` builds a tenant B with identical group and domain codes, the
+same matrices and the same process definitions, plus an outlet manager, Bob. It checks
+that Bob:
+
+- can use his own tenant's data (the positive control)
+- gets `can() = false` on every tenant A node
+- sees no tenant A business, `wf` or audit rows
+- has an empty inbox
+- gets `REQUEST_NOT_FOUND` when acting on a tenant A request
+- cannot submit against a tenant A node
+
+Isolation rests on three things:
+
+- node paths being disjoint between tenants
+- codes resolving in the caller's tenant
+- the RPCs filtering by the caller's tenant
+
+Nothing yet stops an admin from assigning a user to another tenant's node or group. A
+tenant-consistency check on `core.role_assignment` is a candidate for the `ROLE_CHANGE`
+work.
+
+## Migrations
+
+Production migrations are forward-only; down migrations are dev tooling (ADR 001). For
+example, rolling back `domain_table_by_code` restores the tenant and domain columns as
+nullable.
 
 ## Seeds
 

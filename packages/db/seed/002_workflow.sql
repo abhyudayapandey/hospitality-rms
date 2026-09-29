@@ -1,8 +1,8 @@
 -- Business-process policy (bp_policy) for the MVP processes (docs/LLD.md section 4,
 -- ADR 003). Authoritative for this tenant, like the domain policy matrix: upsert every
 -- row, then delete this tenant's rows that are not listed.
--- step '*' = process-level actions (initiate, cancel). SELF = any active user acting on
--- their own subject. Every step's group and escalateTo group needs an approve row
+-- step '*' = process-level actions (initiate, cancel). SELF = any active human user
+-- acting on their own subject. Every step's group and escalateTo group needs an approve row
 -- (checked by the workflow definition tests).
 
 drop table if exists pg_temp.seed_bp_policy;
@@ -12,11 +12,13 @@ insert into seed_bp_policy (process_type, step, grp, action) values
   ('STOCK_ADJUSTMENT', '*', 'CHEF', 'initiate'),
   ('STOCK_ADJUSTMENT', '*', 'OUTLET_MANAGER', 'initiate'),
   ('STOCK_ADJUSTMENT', 'outlet_approval', 'OUTLET_MANAGER', 'approve'),
+  ('STOCK_ADJUSTMENT', 'outlet_approval', 'AREA_MANAGER', 'approve'),     -- escalateTo
 
   ('PURCHASE_ORDER', '*', 'STORE_KEEPER', 'initiate'),
   ('PURCHASE_ORDER', '*', 'OUTLET_MANAGER', 'initiate'),
   ('PURCHASE_ORDER', '*', 'AI_AGENT', 'initiate'),
   ('PURCHASE_ORDER', 'outlet_approval', 'OUTLET_MANAGER', 'approve'),
+  ('PURCHASE_ORDER', 'outlet_approval', 'AREA_MANAGER', 'approve'),       -- escalateTo
   ('PURCHASE_ORDER', 'area_approval', 'AREA_MANAGER', 'approve'),
 
   -- STORE_KEEPER initiates so the receiving OUTLET_MANAGER can approve receipt (rule 7)
@@ -26,7 +28,7 @@ insert into seed_bp_policy (process_type, step, grp, action) values
 
   ('LEAVE', '*', 'SELF', 'initiate'),
   ('LEAVE', 'outlet_approval', 'OUTLET_MANAGER', 'approve'),
-  ('LEAVE', 'outlet_approval', 'AREA_MANAGER', 'approve'),   -- escalation target
+  ('LEAVE', 'outlet_approval', 'AREA_MANAGER', 'approve'),                -- escalateTo
   ('LEAVE', 'hr_approval', 'HR_ADMIN', 'approve'),
 
   ('SHIFT_SWAP', '*', 'SELF', 'initiate'),
