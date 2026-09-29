@@ -1,8 +1,19 @@
+import { join } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
-// End-to-end tests against `next dev` (dev login is compiled out of production builds;
-// the production check is scripts/check-prod-dev-auth.sh). Needs the seeded database.
-const port = Number(process.env.E2E_PORT ?? 3100);
+// Two projects, one server each. Needs the seeded database.
+//   prod: e2e/*.spec.ts against the standalone server (node .next/standalone/.../server.js),
+//         the artifact the release bundle ships. Needs `next build` first (`pnpm e2e` does
+//         it). Dev login is compiled out there, so tests sign in with a signed session
+//         cookie (e2e/helpers.ts).
+//   dev:  e2e/dev/*.spec.ts, the dev-only pages, against `next dev` with DEV_AUTH_STUB.
+try {
+  process.loadEnvFile(join(import.meta.dirname, '..', '..', '.env'));
+} catch {
+  // CI passes env vars directly
+}
+const prodPort = Number(process.env.E2E_PORT ?? 3100);
+const devPort = Number(process.env.E2E_DEV_PORT ?? 3101);
 const executablePath = process.env.PW_CHROMIUM_PATH; // local override for a preinstalled browser
 
 export default defineConfig({
@@ -14,16 +25,36 @@ export default defineConfig({
   globalTeardown: './e2e/global-teardown.ts',
   timeout: 60_000,
   use: {
-    baseURL: `http://localhost:${port}`,
     trace: 'retain-on-failure',
     ...devices['Pixel 7'], // mobile-first (412 px wide)
     ...(executablePath ? { launchOptions: { executablePath } } : {}),
   },
-  webServer: {
-    command: `pnpm exec next dev --port ${port}`,
-    url: `http://localhost:${port}/login`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-    env: { DEV_AUTH_STUB: 'true' },
-  },
+  projects: [
+    {
+      name: 'prod',
+      testIgnore: 'dev/**',
+      use: { baseURL: `http://127.0.0.1:${prodPort}` },
+    },
+    {
+      name: 'dev',
+      testMatch: 'dev/**/*.spec.ts',
+      use: { baseURL: `http://localhost:${devPort}` },
+    },
+  ],
+  webServer: [
+    {
+      command: 'bash scripts/start-standalone.sh',
+      url: `http://127.0.0.1:${prodPort}/login`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+      env: { PORT: String(prodPort), BIND_HOST: '127.0.0.1' },
+    },
+    {
+      command: `pnpm exec next dev --port ${devPort}`,
+      url: `http://localhost:${devPort}/login`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+      env: { DEV_AUTH_STUB: 'true' },
+    },
+  ],
 });

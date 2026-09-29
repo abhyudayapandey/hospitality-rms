@@ -96,7 +96,8 @@ pnpm db:new <name>     new dbmate migration
 pnpm db:rollback       roll back the last migration
 pnpm db:down           stop local Postgres
 pnpm --filter @outlet-ops/workflow execute [--once]   run the workflow executor locally
-pnpm --filter @outlet-ops/web e2e                     Playwright end-to-end (needs seeded DB)
+pnpm --filter @outlet-ops/web e2e                     build, then Playwright vs the standalone server
+                                                      (+ dev-only pages vs next dev; seeded DB)
 pnpm --filter @outlet-ops/web check:prod-dev-auth     prod build: dev login must be 404
 pnpm --filter @outlet-ops/infra synth                 cdk synth with example context (no AWS calls)
 infra/scripts/build-release.sh <sha>                  linux-arm64 release bundle (CI's Deploy workflow)

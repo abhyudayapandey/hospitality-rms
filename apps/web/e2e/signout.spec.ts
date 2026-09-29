@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { devLogin } from './helpers';
+import { signInAs } from './helpers';
 
 test('sign-out clears the session and refresh cookies and the service-worker caches', async ({
   page,
   context,
 }) => {
-  await devLogin(page, 'Kim Storekeeper');
+  await signInAs(page, 'Kim Storekeeper');
   // The service worker precaches the offline page.
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
