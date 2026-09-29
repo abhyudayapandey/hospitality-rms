@@ -88,6 +88,7 @@ insert into seed_policy_matrix (grp, dom, access) values
     ('STORE_KEEPER', 'STOCK_ADJUSTMENTS', 'modify'),
     ('STORE_KEEPER', 'PURCHASE_ORDERS', 'modify'),
     ('STORE_KEEPER', 'TRANSFERS', 'modify'),
+    ('STORE_KEEPER', 'AI_RECOMMENDATIONS', 'view'),
 
     ('CHEF', 'STOCK_LEVELS', 'view'),
     ('CHEF', 'STOCK_ADJUSTMENTS', 'modify'),
@@ -198,6 +199,8 @@ select '01920000-0000-7000-8000-000000000001', a.user_id::uuid, g.id, a.node_id:
     -- Kim Storekeeper
     ('01920000-0000-7000-8000-000000000303', 'STAFF',          '01920000-0000-7000-8000-000000000104', true),
     ('01920000-0000-7000-8000-000000000303', 'STORE_KEEPER',   '01920000-0000-7000-8000-000000000203', true),
+    -- org-side STORE_KEEPER so org-tree grants (AI_RECOMMENDATIONS view) apply (ADR 004)
+    ('01920000-0000-7000-8000-000000000303', 'STORE_KEEPER',   '01920000-0000-7000-8000-000000000104', true),
     -- Olivia Outlet Manager (both trees)
     ('01920000-0000-7000-8000-000000000304', 'STAFF',          '01920000-0000-7000-8000-000000000104', true),
     ('01920000-0000-7000-8000-000000000304', 'OUTLET_MANAGER', '01920000-0000-7000-8000-000000000104', true),

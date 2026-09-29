@@ -310,6 +310,29 @@ describe('tenant isolation', () => {
       expect(await fails(policy, [b.tenant, domainA, groupB])).toBe('TENANT_MISMATCH');
       expect(await fails(policy, [b.tenant, domainB, groupA])).toBe('TENANT_MISMATCH');
 
+      // bp_policy: group from the other tenant
+      expect(
+        await fails(
+          `insert into core.bp_policy (tenant_id, process_type, step, group_id, action)
+           values ($1, 'LEAVE', 'extra', $2, 'approve')`,
+          [b.tenant, groupA],
+        ),
+      ).toBe('TENANT_MISMATCH');
+      // hierarchy_node: parent from the other tenant (insert and re-parent)
+      expect(
+        await fails(
+          `insert into core.hierarchy_node (tenant_id, type, kind, name, parent_id)
+           values ($1, 'org', 'outlet', 'Sneaky', $2)`,
+          [b.tenant, ids.node('org:Area')],
+        ),
+      ).toBe('TENANT_MISMATCH');
+      expect(
+        await fails(`update core.hierarchy_node set parent_id = $1 where id = $2`, [
+          ids.node('org:Area'),
+          b.orgOutlet,
+        ]),
+      ).toBe('TENANT_MISMATCH');
+
       // Control: a same-tenant row is accepted.
       expect(await fails(assign, [b.tenant, b.bob, groupB, b.dlvOutlet])).toBeNull();
     });

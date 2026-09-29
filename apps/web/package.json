@@ -7,18 +7,27 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "e2e": "playwright test",
+    "check:prod-dev-auth": "bash scripts/check-prod-dev-auth.sh"
   },
   "dependencies": {
     "next": "^16.3.6",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "@outlet-ops/db": "workspace:*",
+    "@outlet-ops/domain": "workspace:*",
+    "aws-jwt-verify": "^5.2.1",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@next/eslint-plugin-next": "^16.3.6",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "tailwindcss": "^4.3.3"
+    "tailwindcss": "^4.3.3",
+    "@playwright/test": "^1.63.0",
+    "pg": "^8.23.0",
+    "@types/pg": "^8.23.1"
   }
 }

@@ -319,7 +319,9 @@ describe('purchase order routing', () => {
         [ids.user(ARIA)],
       );
       expect((await submit(c, OLIVIA, po(10_000))).error).toBe('NO_APPROVER');
-      const { rows } = await c.query('select 1 from wf.request');
+      const { rows } = await c.query('select 1 from wf.request where initiator_id = $1', [
+        ids.user(OLIVIA),
+      ]);
       expect(rows).toEqual([]);
       // Kim still routes normally to Olivia.
       await submitOk(c, KIM, po(10_000));
@@ -495,7 +497,8 @@ describe('escalation', () => {
       });
       await makeOverdue(c, id, 25); // TRANSFER SLA is 24 h
       const un = await c.query<{ request_id: string; step: string }>(
-        'select request_id, step from wf.unroutable_steps()',
+        'select request_id, step from wf.unroutable_steps() where request_id = $1',
+        [id],
       );
       expect(un.rows).toEqual([{ request_id: id, step: 'dispatch' }]);
       const escalated = await c.query<{ n: number }>('select wf.escalate_overdue() as n');

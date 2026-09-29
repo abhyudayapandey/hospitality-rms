@@ -4,7 +4,8 @@
     "lib": ["DOM", "DOM.Iterable", "ES2023"],
     "jsx": "react-jsx",
     "allowJs": false,
-    "plugins": [{ "name": "next" }]
+    "plugins": [{ "name": "next" }],
+    "paths": { "@/*": ["./*"] }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
