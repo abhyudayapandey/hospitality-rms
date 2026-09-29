@@ -6,7 +6,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "cdk": "cdk",
-    "synth": "cdk synth --quiet -c domainName=example.duckdns.org -c alertEmail=alerts@example.com -c cognitoDomainPrefix=outlet-ops-example -c githubRepo=abhyudayapandey/hospitality-rms -c githubOwnerId=33194509 -c githubRepoId=1394585977"
+    "synth": "cdk synth --quiet"
   },
   "dependencies": {
     "aws-cdk-lib": "^2.271.0",

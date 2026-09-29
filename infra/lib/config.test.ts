@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { configFromContext, githubDeploySubject } from './config';
 
@@ -8,6 +10,7 @@ const base: Record<string, unknown> = {
   githubRepo: 'abhyudayapandey/hospitality-rms',
   githubOwnerId: '33194509',
   githubRepoId: '1394585977',
+  amiId: 'ami-0123456789abcdef0',
 };
 const ctx =
   (over: Record<string, unknown> = {}) =>
@@ -33,6 +36,8 @@ describe('configFromContext', () => {
     ['githubRepoId', '13945*', /numeric GitHub id/],
     ['githubRepo', 'hospitality-rms', /owner\/repo/],
     ['githubRepo', 'abhyudayapandey/*', /owner\/repo/],
+    ['amiId', undefined, /Missing CDK context "amiId"/],
+    ['amiId', 'latest', /must look like ami-/],
   ])('rejects %s=%j', (key, value, error) => {
     expect(() => configFromContext(ctx({ [key]: value }))).toThrow(error);
   });
@@ -43,5 +48,20 @@ describe('githubDeploySubject', () => {
     expect(githubDeploySubject(configFromContext(ctx()))).toBe(
       'repo:abhyudayapandey@33194509/hospitality-rms@1394585977:environment:production',
     );
+  });
+});
+
+describe('infra/cdk.json', () => {
+  it('holds the complete production deploy context (deploy is just `pnpm cdk deploy`)', () => {
+    const cdk = JSON.parse(readFileSync(join(import.meta.dirname, '..', 'cdk.json'), 'utf8')) as {
+      context: Record<string, unknown>;
+    };
+    const c = configFromContext((k) => cdk.context[k]);
+    expect(c.domainName).toMatch(/^[a-z0-9-]+(\.[a-z0-9-]+)+$/); // a full hostname
+    expect(c.alertEmail).toMatch(/^[^@\s]+@[^@\s]+\.[a-z]+$/);
+    expect(githubDeploySubject(c)).toBe(
+      'repo:abhyudayapandey@33194509/hospitality-rms@1394585977:environment:production',
+    );
+    expect(c.amiId).toMatch(/^ami-/);
   });
 });

@@ -15,12 +15,14 @@ import {
   aws_s3 as s3,
   aws_ssm as ssm,
   type StackProps,
+  Validations,
 } from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 import {
   CONFIG_PARAM_PATH,
   githubDeploySubject,
   PARAM_PREFIX,
+  REGION,
   SECRET_PARAMS,
   type OutletOpsConfig,
 } from './config';
@@ -110,6 +112,30 @@ export class OutletOpsStack extends Stack {
       'S3 Standard pg_dump every 6 h kept 30 days - cents per month',
     );
 
+    // Wastage photos: private, written and read only through presigned URLs that the web
+    // app issues with the instance role (POST: 5 MB, image types; GET: 5 minutes).
+    const photoBucket = new s3.Bucket(this, 'PhotoBucket', {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      lifecycleRules: [{ prefix: 'wastage/', expiration: Duration.days(400) }],
+      // browsers upload straight to S3 from the app's origin only
+      cors: [
+        {
+          allowedOrigins: [`https://${config.domainName}`],
+          allowedMethods: [s3.HttpMethods.POST],
+          allowedHeaders: ['*'],
+          maxAge: 3000,
+        },
+      ],
+      removalPolicy: RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+    });
+    costTag(
+      photoBucket,
+      'credits',
+      'S3 Standard wastage photos about 200 KB each kept 400 days - under 0.01 USD per month',
+    );
+
     // --- Instance role (least privilege) --------------------------------------------
     const role = new iam.Role(this, 'InstanceRole', {
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
@@ -172,6 +198,14 @@ export class OutletOpsStack extends Stack {
     );
     role.addToPolicy(
       new iam.PolicyStatement({
+        // presigned POST (upload) and GET (approval screen) are signed with these rights
+        sid: 'WastagePhotos',
+        actions: ['s3:PutObject', 's3:GetObject'],
+        resources: [photoBucket.arnForObjects('wastage/*')],
+      }),
+    );
+    role.addToPolicy(
+      new iam.PolicyStatement({
         sid: 'ListBackups',
         actions: ['s3:ListBucket'],
         resources: [backupBucket.bucketArn],
@@ -203,9 +237,9 @@ export class OutletOpsStack extends Stack {
       vpc,
       vpcSubnets: { subnets: [subnet] },
       instanceType: new ec2.InstanceType('t4g.small'),
-      machineImage: ec2.MachineImage.latestAmazonLinux2023({
-        cpuType: ec2.AmazonLinuxCpuType.ARM_64,
-      }),
+      // Pinned (context amiId): a newer AL2023 image must never replace the instance on
+      // an unrelated deploy. Change amiId deliberately to move to a new image.
+      machineImage: ec2.MachineImage.genericLinux({ [REGION]: config.amiId }),
       securityGroup: webSg,
       role,
       userData,
@@ -226,6 +260,12 @@ export class OutletOpsStack extends Stack {
       'credits',
       'EC2 t4g.small about 8.20 USD per month + 10 GiB gp3 root about 0.90 USD per month',
     );
+
+    // The literal ImageId is the point of amiId (ADR 006), not a portability slip.
+    Validations.of(instance).acknowledge({
+      id: 'CloudFormation-Validate::W9010',
+      reason: 'AMI pinned on purpose via context amiId (ADR 006)',
+    });
 
     new ec2.CfnVolumeAttachment(this, 'DataVolumeAttachment', {
       instanceId: instance.instanceId,
@@ -339,6 +379,7 @@ export class OutletOpsStack extends Stack {
       cognito_client_id: client.userPoolClientId,
       cognito_domain: cognitoDomain,
       backup_bucket: backupBucket.bucketName,
+      photo_bucket: photoBucket.bucketName,
     };
     for (const [name, value] of Object.entries(cfg)) {
       new ssm.StringParameter(this, `Config_${name}`, {
@@ -464,6 +505,7 @@ export class OutletOpsStack extends Stack {
     new CfnOutput(this, 'InstanceId', { value: instance.instanceId });
     new CfnOutput(this, 'DeployBucketName', { value: deployBucket.bucketName });
     new CfnOutput(this, 'BackupBucketName', { value: backupBucket.bucketName });
+    new CfnOutput(this, 'PhotoBucketName', { value: photoBucket.bucketName });
     new CfnOutput(this, 'DeployRoleArn', { value: deployRole.roleArn });
     new CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
     new CfnOutput(this, 'UserPoolClientId', { value: client.userPoolClientId });
