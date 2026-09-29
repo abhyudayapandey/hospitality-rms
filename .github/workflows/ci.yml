@@ -63,6 +63,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - name: CDK synth (never deploys)
+        run: pnpm --filter @outlet-ops/infra synth
 
       - name: Playwright version
         id: pw

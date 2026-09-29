@@ -19,6 +19,9 @@ export default function config(phase: string): NextConfig {
 
   return {
     reactStrictMode: true,
+    // Self-contained server for the EC2 instance (ADR 005); built in CI only.
+    output: 'standalone',
+    outputFileTracingRoot: join(import.meta.dirname, '..', '..'),
     transpilePackages: ['@outlet-ops/db', '@outlet-ops/domain'],
     serverExternalPackages: ['pg'],
     headers() {

@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the Outlet Ops workflow executor every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+AccuracySec=5s
+Unit=outlet-ops-wf-execute.service
+
+[Install]
+WantedBy=timers.target

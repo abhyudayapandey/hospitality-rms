@@ -14,13 +14,16 @@ wherever they conflict.**
 ## Stack
 - Monorepo: pnpm workspaces + Turborepo, TypeScript strict everywhere
 - Web: Next.js (App Router) as an installable PWA, Tailwind, server actions / route handlers
-- DB: PostgreSQL 16 (local: docker compose; cloud: Amazon RDS for PostgreSQL, db.t4g.micro)
+- DB: PostgreSQL 16 (local: docker compose; cloud: Docker on the EC2 instance during the
+  AWS Free plan, Amazon RDS db.t4g.micro after upgrading, see ADR 005)
 - Migrations: dbmate, plain SQL files in `packages/db/migrations`
 - Queries: Kysely + `pg`
 - Auth: Amazon Cognito (phone OTP for frontline staff); dev-only login stub locally
 - Async: AWS Lambda (Node 22, `nodejs22.x`) + EventBridge Scheduler; S3 for files
 - Infra: AWS CDK (TypeScript) in `/infra`, region ap-south-1
-- Hosting: AWS Amplify Hosting for the Next.js app
+- Hosting (Free plan, ADR 005): one EC2 t4g.small runs Next.js standalone behind Caddy,
+  the wf-execute timer and Postgres; no NAT/LB/RDS/Amplify/Lambda until the account
+  upgrades. Secrets in SSM Parameter Store SecureString. Deploy guide: `docs/deploy.md`
 - AI: Anthropic Claude API from Lambda
 - Tests: Vitest; DB tests run against real Postgres (never mock the database)
 
@@ -45,7 +48,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 - App connects as DB role `app_rw` (no BYPASSRLS, not table owner). Migrations run as
   `migrator`. The workflow executor uses `wf_executor`.
 - Supabase edge functions → Lambdas in `services/lambdas`.
-- DB webhooks → `wf.outbox` table polled by the `wf-execute` Lambda (every minute).
+- DB webhooks → `wf.outbox` table polled by `wf-execute` every minute (a systemd timer on
+  the instance while on the Free plan; the Lambda later, ADR 005).
 - Realtime → polling (30 s) for the MVP.
 - Supabase Storage → S3 with presigned URLs.
 - `pg_cron` is available on RDS and may be used for SQL signal jobs.
@@ -94,7 +98,11 @@ pnpm db:down           stop local Postgres
 pnpm --filter @outlet-ops/workflow execute [--once]   run the workflow executor locally
 pnpm --filter @outlet-ops/web e2e                     Playwright end-to-end (needs seeded DB)
 pnpm --filter @outlet-ops/web check:prod-dev-auth     prod build: dev login must be 404
+pnpm --filter @outlet-ops/infra synth                 cdk synth with example context (no AWS calls)
+infra/scripts/build-release.sh <sha>                  linux-arm64 release bundle (CI's Deploy workflow)
 ```
+Never run `cdk deploy`, the Deploy workflow or AWS-mutating commands without explicit
+approval; `docs/deploy.md` is the runbook.
 First run: `cp .env.example .env`. The DB roles (`migrator`, `app_rw`, `wf_executor`) are
 created by `packages/db/docker/init/` on a fresh docker volume.
 Keep this section accurate when scripts change.

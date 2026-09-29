@@ -1,4 +1,8 @@
 {
   "extends": "../tsconfig.base.json",
-  "include": ["bin", "lib"]
+  "compilerOptions": {
+    // aws-cdk-lib's own types (IVpc, IStackSynthesizer) do not satisfy this flag.
+    "exactOptionalPropertyTypes": false
+  },
+  "include": ["bin", "lib", "instance"]
 }
