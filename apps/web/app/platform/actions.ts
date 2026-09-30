@@ -51,6 +51,10 @@ export interface NewCustomerForm {
   timezone: string;
   isTest: boolean;
   ownerName: string;
+  /** 'email': invitation by email; 'username': no email, login made on the Logins page. */
+  ownerLoginType: 'email' | 'username';
+  /** Optional; defaults to <code>.owner. Match file 07 when the customer's import has one. */
+  ownerUsername: string;
   ownerEmail: string;
 }
 
@@ -63,7 +67,12 @@ export async function requestCustomer(f: NewCustomerForm): Promise<ActionResult<
       currency: f.currency,
       timezone: f.timezone,
       is_test: f.isTest,
-      owner: { display_name: f.ownerName, email: f.ownerEmail },
+      owner: {
+        display_name: f.ownerName,
+        login_type: f.ownerLoginType,
+        username: f.ownerUsername.trim() || null,
+        email: f.ownerLoginType === 'email' ? f.ownerEmail : null,
+      },
     };
     const r = await sql<{ id: string }>`
       select platform.request_create_customer(${JSON.stringify(payload)}::jsonb) as id`.execute(tx);
@@ -79,16 +88,18 @@ export async function inviteOwner(jobId: string): Promise<ActionResult<string>> 
   const job = await run('job', async (tx) => {
     const r = await sql<{
       status: string;
-      result: { owner_username: string; owner_email: string } | null;
+      result: { owner_username: string; owner_email: string | null } | null;
     }>`
       select status, result from platform.jobs(200) where id = ${jobId}::uuid`.execute(tx);
     return r.rows[0];
   });
   if (!job.ok) return job;
-  if (!job.data || job.data.status !== 'done' || !job.data.result) {
+  // a username owner gets no email: their login is made on the customer's Logins page
+  if (!job.data || job.data.status !== 'done' || !job.data.result?.owner_email) {
     return failure(new Error('INVALID_STATE'));
   }
-  const { owner_username: username, owner_email: email } = job.data.result;
+  const { owner_username: username } = job.data.result;
+  const email = job.data.result.owner_email;
   let sub: string;
   try {
     ({ sub } = await loginDirectory().create({

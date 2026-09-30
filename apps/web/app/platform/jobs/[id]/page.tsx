@@ -55,11 +55,25 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
         </p>
       )}
       {job.kind === 'create_customer' && job.status === 'done' && job.result && (
-        <InviteOwner
-          jobId={job.id}
-          email={String(job.result.owner_email)}
-          username={String(job.result.owner_username)}
-        />
+        <>
+          {typeof job.result.owner_email === 'string' ? (
+            <InviteOwner
+              jobId={job.id}
+              email={job.result.owner_email}
+              username={String(job.result.owner_username)}
+            />
+          ) : (
+            <p className="text-sm" data-testid="owner-note">
+              The customer is created. Their first account owner is{' '}
+              <strong>{String(job.result.owner_username)}</strong>, a username login: no email is
+              sent. Create their login on the customer’s{' '}
+              <Link href={`/platform/customers/${job.tenant_id}/logins`} className="underline">
+                Logins
+              </Link>{' '}
+              page.
+            </p>
+          )}
+        </>
       )}
       {report && <ImportReportView report={report} />}
       {job.kind === 'import_dry_run' && job.status === 'done' && report?.ok && (

@@ -83,3 +83,33 @@ the imported people's logins.
 - **The worker's new config.** The worker's systemd unit reads `platform-worker.env`
   (pool id, bucket, region; no secrets). Its database password still comes only through
   `LoadCredential`.
+
+## Addendum: the invitation email, username owners, loading test customers
+
+- **The invitation email.** The customer pool has its own invitation template. It tells
+  the person their username and how to sign in with a code sent by email, links the
+  app, and has no `{####}` placeholder.
+  - Only email logins are invited. They are created without a temporary password, which
+    the pool allows because email-code sign-in is on. So there is no password to send.
+  - Username logins are always created with `SUPPRESS`: they never get an email. The code
+    enforces both rules, even if a caller asks otherwise.
+  - The Cognito API reference says custom email text needs SES. The pool already deploys
+    a custom verification text with Cognito's own sender, which is the same kind of
+    setting. If Cognito refuses the invitation template on deploy, the stack rolls back
+    unchanged.
+- **Username owners.** The console's first account owner may be a username login with no
+  email, and the username can be chosen. That way a customer created before its import
+  gets the same owner as its file 07, instead of a second `<code>.owner`.
+  - The test customers' owners are username logins.
+  - No email is sent for a username owner. Their login is made on the Logins page.
+- **The Account Owner check during a load.** "At least one active Account Owner" is now a
+  constraint trigger. It is still checked at once everywhere by default.
+  - The loader defers it while it re-derives access from job roles and file 08, then
+    checks it before going on.
+  - This lets an owner move from the `ACCOUNT_OWNER` job role to Account Owner through
+    file 08 (Test Solo Bar Co's bar manager).
+  - Files that leave nobody as Account Owner are still refused, in the dry run too.
+- **The procedure.** `docs/deploy.md` step 7 loads the two test customers on production.
+  It was rehearsed on an empty database with the console functions and the worker:
+  - both customers' access equals their file 99, with one Account Owner each;
+  - a second apply reports no changes.

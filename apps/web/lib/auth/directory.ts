@@ -61,6 +61,13 @@ export class CognitoDirectory implements LoginDirectory {
           ]
         : []),
     ];
+    // Only an email login without a password is ever invited (ADR 013): the pool's
+    // invitation explains the email code. Username logins never get an email.
+    const invite =
+      login.invite === true &&
+      login.loginType === 'email' &&
+      !!login.email &&
+      !login.temporaryPassword;
     try {
       const r = (await this.client.send(
         new AdminCreateUserCommand({
@@ -70,7 +77,7 @@ export class CognitoDirectory implements LoginDirectory {
           // username logins get the password from the admin; email logins sign in with a
           // one-time code and need no invitation message from Cognito
           ...(login.temporaryPassword ? { TemporaryPassword: login.temporaryPassword } : {}),
-          ...(login.invite
+          ...(invite
             ? { DesiredDeliveryMediums: ['EMAIL' as const] }
             : { MessageAction: 'SUPPRESS' as const }),
         }),

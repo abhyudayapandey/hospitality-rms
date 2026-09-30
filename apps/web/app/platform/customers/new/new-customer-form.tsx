@@ -19,6 +19,8 @@ export function NewCustomerForm() {
     timezone: 'Asia/Kolkata',
     isTest: false,
     ownerName: '',
+    ownerLoginType: 'email',
+    ownerUsername: '',
     ownerEmail: '',
   });
   const field = (label: string, key: keyof Form, props: Record<string, unknown> = {}) => (
@@ -70,9 +72,37 @@ export function NewCustomerForm() {
       <fieldset className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
         <legend className="px-1 text-sm font-semibold">First account owner</legend>
         {field('Owner name', 'ownerName', { required: true })}
-        {field('Owner email', 'ownerEmail', { required: true, type: 'email' })}
+        <label className="block text-sm font-medium">
+          Owner signs in with
+          <select
+            value={f.ownerLoginType}
+            onChange={(e) =>
+              setF({ ...f, ownerLoginType: e.target.value as Form['ownerLoginType'] })
+            }
+            className={inputClass}
+          >
+            <option value="email">Email (they get an invitation)</option>
+            <option value="username">Username and password (no email)</option>
+          </select>
+        </label>
+        <label className="block text-sm font-medium">
+          Owner username (optional)
+          <input
+            value={f.ownerUsername}
+            onChange={(e) => setF({ ...f, ownerUsername: e.target.value.toLowerCase() })}
+            placeholder={`${(f.code || 'code').toLowerCase()}.owner`}
+            pattern="[a-z0-9][a-z0-9._\-]{1,63}"
+            title="Lower case: a-z 0-9 . _ -"
+            className={inputClass}
+          />
+        </label>
+        {f.ownerLoginType === 'email' &&
+          field('Owner email', 'ownerEmail', { required: true, type: 'email' })}
         <p className="text-xs text-slate-500">
-          They get an email invitation and set their own password.
+          {f.ownerLoginType === 'email'
+            ? 'They get an email invitation and sign in with a code sent to that address.'
+            : 'No email is sent. Create their login on the customer’s Logins page after the import.'}{' '}
+          If you will import the customer’s files, use the owner’s username from their file 07.
         </p>
       </fieldset>
       <ErrorBox message={error} />

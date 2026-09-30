@@ -553,6 +553,19 @@ Check afterwards: open a test customer in `/platform`, **Import setup files**, u
 zip. The dry run should reach `done` within seconds with "no changes" for a customer
 that is already loaded. On **Logins**, the invitation note shows the daily allowance.
 
+#### Releasing the invitation email and username owners (ADR 013)
+
+1. `pnpm --filter @outlet-ops/infra synth`, then `cd infra && pnpm cdk diff`. Expect exactly
+   one change: the `Users` pool (`AWS::Cognito::UserPool`) gains
+   `AdminCreateUserConfig.InviteMessageTemplate` (`EmailSubject` "Your Outlet Ops account"
+   and the `EmailMessage` that explains the sign-in code). It is an in-place update of
+   the pool; `PlatformUsers` does not change. Any replacement: stop and ask.
+2. `pnpm cdk deploy`. If Cognito refuses the template (it should not: the pool has
+   email-code sign-in, so invited logins have no password), the stack rolls back and
+   nothing changes; tell me the error.
+3. Run the Deploy workflow (two migrations: owner login type, and the Account Owner check
+   the loader may defer).
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.
@@ -599,6 +612,90 @@ The production database has no dev seed.
   (ADR 013). That is enough for one outlet. If you need more, move to SES (it costs
   credits and needs domain verification) and raise `platform.invite_daily_limit()` in a
   migration.
+
+### 7. Load the test customers on production
+
+The two test customers (`docs/onboarding/test-data`, ADR 009) through the Platform Admin
+console, exactly as a real customer would be loaded. Each is created as a **test
+customer** (the `Test<Role>!12` passwords are allowed only for those, and the flag cannot
+be changed later) with the **same first account owner as its `07_users.csv`**: a username
+login without email, so there is no second owner after the import and no email is sent.
+Tested end to end on an empty database with the same console functions and worker.
+
+Codes and usernames are unique across all customers, so each customer can be created
+once. Nothing here uses the dev seed (no shifts or punches are loaded).
+
+**1. Build the two zips** on your workstation, from the repository root (one command
+each; re-running one rebuilds its zip). Only the numbered files are included, so the
+passwords file (`TEST_LOGINS_do_not_commit.csv`) and the README never are:
+
+```sh
+(cd docs/onboarding/test-data/test-company && zip -q -FS ~/test-company.zip [0-9][0-9]_*.csv)
+(cd docs/onboarding/test-data/test-solo-bar-co && zip -q -FS ~/test-solo-bar-co.zip [0-9][0-9]_*.csv)
+```
+
+`test-company.zip` holds 18 files, `test-solo-bar-co.zip` 17.
+
+**2. Create each customer**: `/platform` → **New customer**. Fill in exactly:
+
+| Field               | Test Company                     | Test Solo Bar Co                   |
+| ------------------- | -------------------------------- | ---------------------------------- |
+| Company name        | `Test Company`                   | `Test Solo Bar Co.` (with the dot) |
+| Customer code       | `TEST-COMPANY`                   | `TEST-SOLO-COMPANY`                |
+| Country / Currency  | `India` / `INR`                  | `India` / `INR`                    |
+| Time zone           | `Asia/Kolkata`                   | `Asia/Kolkata`                     |
+| Test customer       | ticked                           | ticked                             |
+| Owner name          | `Test Account Owner`             | `Test Bar Manager`                 |
+| Owner signs in with | Username and password (no email) | Username and password (no email)   |
+| Owner username      | `test.account-owner`             | `test.solo.bar-manager`            |
+
+There is no email field for a username owner. **Create customer**; the job page reaches
+`done` within seconds and says the owner is a username login and no email is sent.
+(Test Solo Bar Co's owner is its bar manager: the import gives them the Bar Manager job
+role and keeps them Account Owner through file 08.)
+
+**3. Import**: the customer's page → **Import setup files** → choose the zip →
+**Upload and dry run**. The dry run should report no problems and:
+
+- **Test Company**: "Dry run: applying would make 1522 changes." Per table (new / changed):
+  org places 32 / 1 (the company root gets the file's values), delivery places 16,
+  links 16, location settings 5, job roles 53, job role access 85, users 106 (the owner
+  exists already), workers 106 / 1 (the owner's), extra access 3, suppliers 7, items 64,
+  item locations 303, opening stock 303, leave types 5, leave balances 321, roster
+  settings 1, shift templates 90, events 4. **2 approval-coverage warnings**, both
+  expected: `test.account-owner`'s own LEAVE and SHIFT_SWAP at TEST-COMPANY have no
+  approver but them and are approved at the top of the chain (ADR 010).
+- **Test Solo Bar Co**: "Dry run: applying would make 194 changes." Per table: org places
+  4 / 1, delivery places 4, links 3, location settings 1, job roles 7, job role access 12,
+  users 6, workers 6 / 1, extra access 1 (the owner's Account Owner), suppliers 2, items
+  36, item locations 39, opening stock 39, leave types 5, leave balances 21, roster
+  settings 1, shift templates 5. **5 approval-coverage warnings**, all expected, all for
+  `test.solo.bar-manager` (the only manager): their own LEAVE, PURCHASE_ORDER,
+  ROLE_CHANGE, SHIFT_SWAP and STOCK_ADJUSTMENT are approved at the top of the chain.
+
+Anything else (a problem listed, different counts): stop, don't apply, and send me the
+report.
+
+**4. Apply**: **Apply** on the dry run. The apply job reports "Applied: 1522 changes."
+(Test Solo Bar Co: 194). Then **The dry run this applied** → **Apply** again: it must say
+"Applied. No changes: everything in these files was already loaded."
+
+**5. Logins**: the customer's page → **Logins**.
+
+- Username logins: "0 of 107 have a login; 107 waiting" (Test Solo Bar Co: 0 of 7). Tick
+  **Set passwords by the Test<Role>!12 rule** → **Create 107 username logins** (7). Test
+  Company takes about a minute. Every password is `Test` + the job title without spaces
+  - `!12` (`TestAccountOwner!12`, `TestBarManager!12`) and is kept at sign-in; the list
+    and the one-time CSV show them, and `TEST_LOGINS_do_not_commit.csv` has the same. If it
+    stops part-way with an error, press the button again: it goes on with those still
+    waiting.
+- Email invitations: 0 waiting. The test customers have no email logins, so nothing is
+  sent and the daily email allowance is untouched.
+
+**6. Check**: sign out of the console, open `https://<domainName>`, sign in as
+`test.account-owner` / `TestAccountOwner!12` (and `test.solo.bar-manager` /
+`TestBarManager!12`); each sees only their own customer. In `/platform` both customers
+show as `active` and `test`, with 107 and 7 active people.
 
 ## Operating
 

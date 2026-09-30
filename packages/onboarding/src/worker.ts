@@ -28,7 +28,12 @@ interface CreatePayload {
   currency?: string;
   timezone?: string;
   is_test?: boolean;
-  owner: { display_name: string; email: string };
+  owner: {
+    display_name: string;
+    email?: string | null;
+    username?: string | null;
+    login_type?: 'email' | 'username' | null;
+  };
 }
 
 export function newCustomerFrom(p: CreatePayload): NewCustomer {
@@ -39,7 +44,12 @@ export function newCustomerFrom(p: CreatePayload): NewCustomer {
     currency: p.currency?.trim() || 'INR',
     timezone: p.timezone?.trim() || 'Asia/Kolkata',
     isTest: p.is_test === true,
-    owner: { displayName: p.owner.display_name.trim(), email: p.owner.email },
+    owner: {
+      displayName: p.owner.display_name.trim(),
+      email: p.owner.email ?? null,
+      ...(p.owner.username ? { username: p.owner.username } : {}),
+      loginType: p.owner.login_type ?? 'email',
+    },
   };
 }
 
@@ -121,8 +131,8 @@ async function runCreate(
     };
   }
   const tenant = created.tenantId ?? null;
-  const owner = await client.query<{ id: string; email: string }>(
-    `select id, email from core.app_user where tenant_id = $1 and username = $2`,
+  const owner = await client.query<{ id: string; email: string | null; login_type: string }>(
+    `select id, email, login_type from core.app_user where tenant_id = $1 and username = $2`,
     [tenant, created.ownerUsername],
   );
   return {
@@ -132,6 +142,7 @@ async function runCreate(
       owner_user_id: owner.rows[0]!.id,
       owner_username: created.ownerUsername,
       owner_email: owner.rows[0]!.email,
+      owner_login_type: owner.rows[0]!.login_type,
       counts: created.report.counts,
     },
   };

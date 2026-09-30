@@ -35,6 +35,7 @@ export class CognitoInviteSender implements InviteSender {
   ) {}
 
   async invite(person: Invitee): Promise<{ sub: string; sent: boolean }> {
+    if (!person.email) throw new Error(`${person.username} has no email to invite`);
     try {
       const r = (await this.client.send(
         new AdminCreateUserCommand({
@@ -44,6 +45,8 @@ export class CognitoInviteSender implements InviteSender {
             { Name: 'email', Value: person.email },
             { Name: 'email_verified', Value: 'true' },
           ],
+          // no TemporaryPassword: the pool has email-code sign-in, so the login is created
+          // without a password and the invitation carries none (ADR 013)
           DesiredDeliveryMediums: ['EMAIL'],
         }),
       )) as { User?: { Attributes?: Attributes } };

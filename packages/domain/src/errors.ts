@@ -57,7 +57,8 @@ export const ERROR_MESSAGES = {
   PLATFORM_AUDIT_APPEND_ONLY: 'The platform audit cannot be changed.',
   REASON_REQUIRED: 'Give a reason.',
   INVALID_CUSTOMER_CODE: 'Customer codes are 2 to 40 capital letters, digits or dashes.',
-  INVALID_CUSTOMER: 'Fill in the company name and the owner’s name and email.',
+  INVALID_CUSTOMER:
+    'Fill in the company name and the owner’s name, and their email (email login) or a valid username (username login, no email).',
   CUSTOMER_CODE_TAKEN: 'That customer code is already in use.',
   CUSTOMER_MISMATCH: 'These files are for a different customer (file 00 names another code).',
   CUSTOMER_SUSPENDED: 'This customer is suspended. Reactivate it first.',

@@ -144,19 +144,18 @@ test('the Test<Role>!12 option is refused for a customer that is not a test cust
   await expect(create.getByRole('button', { name: 'Create customer' })).toBeEnabled();
   await create.getByLabel('Company name').fill(`Not a Test ${code}`);
   await create.getByLabel('Customer code').fill(code);
-  await create.getByLabel('Owner name').fill('Asha Rao');
-  await create.getByLabel('Owner email').fill(`${code.toLowerCase()}@example.test`);
+  // its first owner signs in with a username: no email field, no email sent
+  const username = `${code.toLowerCase()}.ravi.k`;
+  await create.getByLabel('Owner name').fill('Ravi K');
+  await create.getByLabel('Owner signs in with').selectOption('username');
+  await expect(create.getByLabel('Owner email')).toHaveCount(0);
+  await create.getByLabel('Owner username (optional)').fill(username);
   await create.getByRole('button', { name: 'Create customer' }).click();
   await page.waitForURL(/\/platform\/jobs\/[0-9a-f-]{36}/);
   await workerFinishes(page);
+  await expect(page.getByTestId('owner-note')).toContainText(`${username}, a username login`);
+  await expect(page.getByRole('button', { name: "Send the owner's invitation" })).toHaveCount(0);
   const t = { id: await tenantId(code) };
-  // one of its people with a username login, waiting for it
-  const username = `${code.toLowerCase()}.ravi.k`;
-  await asMigrator(
-    `insert into core.app_user (tenant_id, kind, display_name, username, login_type)
-     values ($1, 'human', 'Ravi K', $2, 'username')`,
-    [t.id, username],
-  );
   await page.goto(`/platform/customers/${t.id}/logins`);
   const form = page.getByRole('form', { name: 'Create username logins' });
   // the screen does not offer it...

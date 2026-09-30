@@ -14,7 +14,17 @@ export interface NewCustomer {
   currency: string;
   timezone: string;
   isTest: boolean;
-  owner: { displayName: string; email: string };
+  /**
+   * The first account owner. An email owner gets Cognito's invitation; a username owner
+   * (no email, e.g. the test customers' owners in their file 07) gets no email. The
+   * username defaults to <code>.owner.
+   */
+  owner: {
+    displayName: string;
+    email: string | null;
+    username?: string;
+    loginType?: 'email' | 'username';
+  };
 }
 
 export interface CreatedCustomer {
@@ -34,6 +44,7 @@ export function ownerUsername(code: string): string {
 
 export function customerBundle(c: NewCustomer): Record<string, string> {
   const code = c.code.toUpperCase();
+  const loginType = c.owner.loginType ?? 'email';
   return {
     '00_customer.csv': csv('customer_code,company_name,country,currency,default_timezone,is_test', [
       [code, c.name, c.country, c.currency, c.timezone, c.isTest ? 'yes' : 'no'],
@@ -54,12 +65,12 @@ export function customerBundle(c: NewCustomer): Record<string, string> {
       'username,display_name,job_role_code,home_node_code,login_type,email,employment_type,joined_on,password_mode',
       [
         [
-          ownerUsername(code),
+          c.owner.username ?? ownerUsername(code),
           c.owner.displayName,
           'ACCOUNT_OWNER',
           code,
-          'email',
-          c.owner.email.trim().toLowerCase(),
+          loginType,
+          loginType === 'email' ? (c.owner.email ?? '').trim().toLowerCase() : '',
           'full_time',
           '',
           '',
@@ -78,6 +89,6 @@ export async function createCustomer(
   return {
     report,
     ...(report.tenantId ? { tenantId: report.tenantId } : {}),
-    ownerUsername: ownerUsername(c.code),
+    ownerUsername: c.owner.username ?? ownerUsername(c.code),
   };
 }
