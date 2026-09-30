@@ -176,6 +176,29 @@ describe('every action stays inside the admin’s scope', () => {
   });
 });
 
+describe('what the admin forms offer', () => {
+  it('only places in scope and groups up to the admin’s own rank', async () => {
+    await inRolledBackTx(async (c) => {
+      const places = (await ok<{ id: string }>(c, GM1, 'select id from core.admin_places()')).map(
+        (p) => p.id,
+      );
+      expect(places).toContain(ids.node('TEST-HOTEL-1.0-KITCHEN'));
+      expect(places).not.toContain(ids.node('TEST-GUEST-HOUSE-2.0'));
+      const groups = (
+        await ok<{ code: string }>(c, GM1, 'select code from core.admin_groups()')
+      ).map((g) => g.code);
+      expect(groups).toContain('USER_ADMIN');
+      expect(groups).not.toContain('ACCOUNT_OWNER');
+      expect(groups).not.toContain('SELF');
+      const owners = (
+        await ok<{ code: string }>(c, OWNER, 'select code from core.admin_groups()')
+      ).map((g) => g.code);
+      expect(owners).toContain('ACCOUNT_OWNER');
+      expect(await error(c, IN_HOTEL, 'select * from core.admin_places()')).toBe('NOT_AUTHORISED');
+    });
+  });
+});
+
 describe('edits and login actions', () => {
   it('update_user renames and moves a person, re-deriving their access', async () => {
     await inRolledBackTx(async (c) => {

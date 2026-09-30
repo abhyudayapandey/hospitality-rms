@@ -159,6 +159,48 @@ begin
      order by 3, 6;
 end $$;
 
+-- What the admin forms offer: places in the caller's scope, groups up to their own rank
+-- (never SELF or the AI agent's), and the customer's job roles.
+create function core.admin_places()
+returns table (id uuid, name text, type text, kind text, code text)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, wf
+as $$
+begin
+  perform core.require_user_admin('modify');
+  return query
+    select n.id, n.name, n.type, n.kind, n.code from core.hierarchy_node n
+     where n.tenant_id = core.my_tenant() and n.archived_at is null
+       and core.in_user_access_scope(n.id, 'modify')
+     order by n.type desc, n.path;
+end $$;
+
+create function core.admin_groups()
+returns table (code text, name text, sensitive boolean)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, wf
+as $$
+begin
+  perform core.require_user_admin('modify');
+  return query
+    select g.code, g.name, core.is_sensitive_group(g.id) from core.security_group g
+     where g.tenant_id = core.my_tenant() and g.kind <> 'user_based' and g.code <> 'AI_AGENT'
+       and core.group_rank(g.code) <= core.admin_rank(core.current_user_id())
+     order by g.name;
+end $$;
+
+create function core.admin_job_roles()
+returns table (code text, name text)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, hr, wf
+as $$
+begin
+  perform core.require_user_admin('modify');
+  return query
+    select j.code, j.name from hr.job_role j
+     where j.tenant_id = core.my_tenant() and j.archived_at is null order by j.name;
+end $$;
+
 -- ---------------------------------------------------------------------------
 -- Previews: the same code path as saving, rolled back
 -- ---------------------------------------------------------------------------
@@ -471,6 +513,10 @@ begin
   return v_try;
 end $$;
 
+revoke execute on function core.admin_places(), core.admin_groups(), core.admin_job_roles()
+  from public;
+grant execute on function core.admin_places(), core.admin_groups(), core.admin_job_roles()
+  to app_rw;
 revoke execute on function core.rate_limit_hit(text, int, int), core.require_user_admin(text),
   core.admin_users(), core.admin_user(uuid), core.admin_user_access(uuid),
   core.grant_applies(uuid, uuid, uuid), core.preview_grant(uuid, text, uuid),
@@ -700,6 +746,9 @@ drop function core.check_login_free(uuid, text, text);
 drop function core.preview_create_user(text, text, uuid, text, text, text);
 drop function core.preview_grant(uuid, text, uuid);
 drop function core.grant_applies(uuid, uuid, uuid);
+drop function core.admin_job_roles();
+drop function core.admin_groups();
+drop function core.admin_places();
 drop function core.admin_user_access(uuid);
 drop function core.admin_user(uuid);
 drop function core.admin_users();
