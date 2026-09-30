@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { BottomNav } from '@/components/bottom-nav';
 import { NodeSwitcher } from '@/components/node-switcher';
+import { PunchSync } from '@/components/punch-sync';
 import { SignOutButton } from '@/components/sign-out-button';
 import { visibleNav } from '@/lib/nav';
 import { loadShell } from '@/lib/shell';
@@ -42,6 +43,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <SignOutButton />
         </div>
       </header>
+      <PunchSync userId={shell.user.id} />
       <main className="flex-1 px-4 pt-4 pb-24">{children}</main>
       <BottomNav items={visibleNav(new Set(shell.domains.keys()))} inboxCount={shell.inboxCount} />
     </div>

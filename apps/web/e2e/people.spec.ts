@@ -224,3 +224,29 @@ test('events: the manager plans one with staff needed; staff can read it', async
   await expect(page.getByTestId('events')).toContainText(name);
   await expect(page.getByRole('link', { name: 'New event' })).toHaveCount(0);
 });
+
+test('offline clock-in is saved on the phone and synced with its time when back online', async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 12.9716, longitude: 77.5946 });
+  await signInAs(page, 'Sam Staff');
+  await page.goto('/roster/clock');
+  if (await page.getByRole('button', { name: 'Clock out' }).isVisible()) {
+    await page.getByRole('button', { name: 'Clock out' }).click();
+    await expect(page.getByRole('button', { name: 'Clock in' })).toBeVisible();
+  }
+  await context.setOffline(true);
+  await page.getByRole('button', { name: 'Clock in' }).click();
+  await expect(page.getByRole('status')).toContainText('saved on this phone');
+  await expect(page.getByTestId('clock-waiting')).toHaveText('1 punch waiting to sync');
+  await expect(page.getByRole('button', { name: 'Clock out' })).toBeVisible();
+
+  await context.setOffline(false); // 'online' -> PunchSync replays with source offline
+  await expect(page.getByTestId('clock-waiting')).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId('clock-state')).toContainText('Clocked in since');
+  await page.getByRole('button', { name: 'Clock out' }).click();
+  await expect(page.getByRole('status')).toContainText('Clocked out at');
+});

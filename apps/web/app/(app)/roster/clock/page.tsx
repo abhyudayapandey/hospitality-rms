@@ -34,6 +34,7 @@ export default async function ClockPage({ searchParams }: { searchParams: Search
           <ClockPanel
             clockedInAt={data.punch ? new Date(data.punch.clock_in_at).toISOString() : null}
             tz={ctx.tz}
+            userId={ctx.shell.user.id}
           />
         </>
       )}
