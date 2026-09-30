@@ -270,3 +270,33 @@ test('offline clock-in is saved on the phone and synced with its time when back 
   await page.getByRole('button', { name: 'Clock out' }).click();
   await expect(page.getByRole('status')).toContainText('Clocked out at');
 });
+
+test('the sole owner: own leave approved at the top of the chain; the admin page says why', async ({
+  page,
+}) => {
+  // a day far enough out (and different each run) not to overlap an earlier run's leave
+  const day = new Date(Date.now() + (400 + (Math.floor(Date.now() / 1000) % 900)) * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  await signInAs(page, 'Test Bar Manager');
+  await page.goto('/leave');
+  const form = page.getByRole('form', { name: 'Request leave' });
+  await form.getByLabel('Type').selectOption({ label: 'Unpaid Leave' });
+  await form.getByLabel('From', { exact: true }).fill(day);
+  await form.getByLabel('To', { exact: true }).fill(day);
+  await form.getByRole('button', { name: 'Request 1 day' }).click();
+  await expect(form.getByRole('status')).toContainText('Leave requested');
+
+  await page.goto('/requests');
+  const mine = page.getByTestId('request-item').filter({ hasText: 'Leave' }).first();
+  await expect(mine.getByTestId('request-state')).toHaveText('approved');
+  await expect(mine.getByTestId('top-of-chain')).toHaveText(
+    'Approved automatically: top of chain, no higher approver.',
+  );
+
+  await page.goto('/admin');
+  await expect(page.getByTestId('sole-owner')).toContainText(
+    'Adding a second account owner turns approvals on.',
+  );
+  await expect(page.getByTestId('access-audit')).toContainText('top of chain: no higher approver');
+});

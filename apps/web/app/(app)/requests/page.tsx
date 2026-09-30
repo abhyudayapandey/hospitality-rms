@@ -46,10 +46,14 @@ export default async function RequestsPage() {
       subject_type: string;
       subject_id: string;
       delivery_node_id: string | null;
-    }>`select id, process_type, state, current_step, amount, created_at, subject_type,
-              subject_id, delivery_node_id
-         from wf.request where initiator_id = core.current_user_id()
-        order by created_at desc limit 50`.execute(tx);
+      top_of_chain: boolean;
+    }>`select r.id, r.process_type, r.state, r.current_step, r.amount, r.created_at,
+              r.subject_type, r.subject_id, r.delivery_node_id,
+              exists (select 1 from wf.step_instance s
+                       where s.request_id = r.id and s.top_of_chain
+                         and s.state = 'approved') as top_of_chain
+         from wf.request r where r.initiator_id = core.current_user_id()
+        order by r.created_at desc limit 50`.execute(tx);
     return r.rows;
   });
   return (
@@ -82,6 +86,11 @@ export default async function RequestsPage() {
                 <Link href={subjectHref(r)!} className="text-sm text-slate-700 underline">
                   Open
                 </Link>
+              )}
+              {r.top_of_chain && (
+                <p className="text-sm text-slate-600" data-testid="top-of-chain">
+                  Approved automatically: top of chain, no higher approver.
+                </p>
               )}
               <p className="text-sm text-slate-600">
                 {formatMoney(r.amount) ?? ''}{' '}

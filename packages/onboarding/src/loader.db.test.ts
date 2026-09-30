@@ -206,3 +206,53 @@ describe('approvers (ADR 009)', () => {
     });
   });
 });
+
+describe('people whose own requests nobody else could approve (ADR 010)', () => {
+  it('are warnings in the dry run, not blockers: the solo owner, and the company owner’s own leave', async () => {
+    await inRolledBackTx(async (c) => {
+      const solo = await loadCustomer(c, readCustomerDir(join(DATA, 'test-solo-bar-co')), {
+        nested: true,
+        dryRun: true,
+      });
+      expect(solo).toMatchObject({ ok: true, issues: [] });
+      const leave = solo.warnings.find((w) => w.message.includes(': LEAVE '));
+      expect(leave).toMatchObject({ file: '07_users.csv', column: 'username' });
+      expect(leave?.row).toBeGreaterThan(1);
+      expect(leave?.message).toBe(
+        'test.solo.bar-manager: LEAVE (hr_approval, manager_approval) at TEST-SOLO-BAR ' +
+          'has no approver but them: approved at the top of the chain (account owner)',
+      );
+      expect(new Set(solo.warnings.map((w) => w.message.split(':')[0]))).toEqual(
+        new Set(['test.solo.bar-manager']),
+      );
+
+      const company = await loadCustomer(c, readCustomerDir(join(DATA, 'test-company')), {
+        nested: true,
+        dryRun: true,
+      });
+      expect(company.ok).toBe(true);
+      expect(company.warnings.map((w) => w.message)).toEqual([
+        'test.account-owner: LEAVE (manager_approval) at TEST-COMPANY has no approver but them: ' +
+          'approved at the top of the chain (account owner)',
+        'test.account-owner: SHIFT_SWAP (manager_approval) at TEST-COMPANY has no approver ' +
+          'but them: approved at the top of the chain (account owner)',
+      ]);
+    });
+  });
+
+  it('someone who is not an account owner would get NO_APPROVER', async () => {
+    await inRolledBackTx(async (c) => {
+      // the solo bar without its owner: the head cook's own requests have no one left
+      await c.query('alter table core.role_assignment disable trigger last_account_owner');
+      await c.query(
+        `delete from core.role_assignment ra using core.app_user u
+          where u.id = ra.user_id and u.username = 'test.solo.bar-manager'`,
+      );
+      const { rows } = await c.query<{ username: string; account_owner: boolean }>(
+        `select distinct username, account_owner from wf.people_without_approver(
+           (select id from core.tenant where code = 'TEST-SOLO-COMPANY'))`,
+      );
+      expect(rows).toContainEqual({ username: 'test.solo.head-cook', account_owner: false });
+    });
+  });
+});
