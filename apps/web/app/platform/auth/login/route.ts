@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { appUrl } from '@/lib/app-url';
 import { authorizeUrl } from '@/lib/auth/cognito';
 import { pkceChallenge, randomToken } from '@/lib/auth/session';
 import { PLATFORM_PKCE_COOKIE, platformCognitoConfig } from '@/lib/platform/session';
@@ -7,9 +8,9 @@ import { clientAddress, LIMITS, withinLimit } from '@/lib/security/rate-limit';
 // Starts the platform pool's hosted sign-in (code + PKCE; MFA is required by the pool).
 export async function GET(req: Request) {
   const cfg = platformCognitoConfig();
-  if (!cfg) return NextResponse.redirect(new URL('/platform/signin?reason=cognito', req.url));
+  if (!cfg) return NextResponse.redirect(appUrl('/platform/signin?reason=cognito'));
   if (!(await withinLimit(`platform-signin:${clientAddress(req.headers)}`, LIMITS.signIn))) {
-    return NextResponse.redirect(new URL('/platform/signin?reason=rate_limited', req.url));
+    return NextResponse.redirect(appUrl('/platform/signin?reason=rate_limited'));
   }
   const state = randomToken(16);
   const verifier = randomToken(32);

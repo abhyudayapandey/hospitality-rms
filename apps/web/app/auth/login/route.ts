@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { appUrl } from '@/lib/app-url';
 import { authorizeUrl, cognitoConfig } from '@/lib/auth/cognito';
 import { PKCE_COOKIE, pkceChallenge, randomToken } from '@/lib/auth/session';
 import { clientAddress, LIMITS, withinLimit } from '@/lib/security/rate-limit';
@@ -6,9 +7,9 @@ import { clientAddress, LIMITS, withinLimit } from '@/lib/security/rate-limit';
 // Starts the Cognito Hosted UI sign-in (authorization code + PKCE).
 export async function GET(req: Request) {
   const cfg = cognitoConfig();
-  if (!cfg) return NextResponse.redirect(new URL('/login?reason=cognito', req.url));
+  if (!cfg) return NextResponse.redirect(appUrl('/login?reason=cognito'));
   if (!(await withinLimit(`signin:${clientAddress(req.headers)}`, LIMITS.signIn))) {
-    return NextResponse.redirect(new URL('/login?reason=rate_limited', req.url));
+    return NextResponse.redirect(appUrl('/login?reason=rate_limited'));
   }
   const state = randomToken(16);
   const verifier = randomToken(32);

@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { appUrl } from '@/lib/app-url';
 import { exchangeCode, verifyIdTokenClaims } from '@/lib/auth/cognito';
 import { sessionSecret } from '@/lib/auth/server';
 import { platformSignIn } from '@/lib/db';
@@ -20,7 +21,7 @@ import { clientAddress, LIMITS, withinLimit } from '@/lib/security/rate-limit';
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const fail = (reason: string) =>
-    NextResponse.redirect(new URL(`/platform/signin?reason=${reason}`, req.url));
+    NextResponse.redirect(appUrl(`/platform/signin?reason=${reason}`));
   if (!(await withinLimit(`platform-signin:${clientAddress(req.headers)}`, LIMITS.signIn))) {
     return fail('rate_limited');
   }
@@ -51,5 +52,5 @@ export async function GET(req: Request) {
     ...platformCookie,
     maxAge: platformMaxAge(session),
   });
-  return NextResponse.redirect(new URL('/platform', req.url));
+  return NextResponse.redirect(appUrl('/platform'));
 }
