@@ -25,13 +25,13 @@ cp -a apps/web/.next/static "$OUT/web/apps/web/.next/static"
 cp -a apps/web/public "$OUT/web/apps/web/public"
 
 echo "== Job bundles (esbuild)"
-banner="import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);"
+banner="import { createRequire as __ooCreateRequire } from 'node:module'; const require = __ooCreateRequire(import.meta.url);"
 for job in execute:wf-execute sync-defs:sync-defs attendance-nightly:attendance-nightly; do
   pnpm --filter @outlet-ops/workflow exec esbuild "scripts/${job%%:*}.ts" --bundle \
     --platform=node --target=node22 --format=esm --banner:js="$banner" \
     --outfile="$OUT/jobs/${job##*:}.mjs" --log-level=warning
 done
-# the platform worker (ADR 012): creates customers queued in the platform console
+# the platform worker (ADR 012, 013): customers, imports and invitations queued in the console
 # (the workflow package's esbuild; imports resolve from the onboarding package)
 pnpm --filter @outlet-ops/workflow exec esbuild ../onboarding/scripts/worker.ts --bundle \
   --platform=node --target=node22 --format=esm --banner:js="$banner" \

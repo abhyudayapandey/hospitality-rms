@@ -52,6 +52,13 @@ PLATFORM_COGNITO_DOMAIN=${cfg[platform_cognito_domain]}
 PHOTO_BUCKET=${cfg[photo_bucket]}
 AWS_REGION=${AWS_REGION}
 ENV
+# The platform worker's config: no secrets (its database password comes by LoadCredential).
+cat > "$OO_ETC/platform-worker.env" <<ENV
+NODE_ENV=production
+COGNITO_USER_POOL_ID=${cfg[cognito_user_pool_id]}
+PHOTO_BUCKET=${cfg[photo_bucket]}
+AWS_REGION=${AWS_REGION}
+ENV
 cat > "$OO_ETC/caddy.env" <<ENV
 APP_DOMAIN=${cfg[app_domain]}
 ACME_EMAIL=${cfg[acme_email]}
