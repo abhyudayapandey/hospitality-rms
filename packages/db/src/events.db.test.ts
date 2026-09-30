@@ -192,6 +192,7 @@ describe('ops.mark_read', () => {
   it('marks only the caller’s notifications read', async () => {
     await inRolledBackTx(async (c) => {
       const tenant = await tenantOf(c, ids);
+      await c.query('delete from ops.notification'); // e2e residue
       await c.query(`select ops.notify($1, $2, 'test', 'a')`, [tenant, ids.user('Sam Staff')]);
       await c.query(`select ops.notify($1, $2, 'test', 'b')`, [tenant, ids.user('Sam Staff')]);
       await c.query(`select ops.notify($1, $2, 'test', 'c')`, [tenant, ids.user('Casey Chef')]);

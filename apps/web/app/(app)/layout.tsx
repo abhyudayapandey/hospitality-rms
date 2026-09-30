@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { BottomNav } from '@/components/bottom-nav';
 import { NodeSwitcher } from '@/components/node-switcher';
@@ -20,7 +21,26 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </p>
           <NodeSwitcher options={options} current={shell.currentNode?.id ?? null} />
         </div>
-        <SignOutButton />
+        <div className="flex items-center gap-1">
+          <Link
+            href="/notifications"
+            aria-label={`Notifications${shell.unreadCount ? `, ${shell.unreadCount} unread` : ''}`}
+            className="relative flex min-h-11 min-w-11 items-center justify-center rounded-lg"
+          >
+            <span aria-hidden className="text-lg">
+              🔔
+            </span>
+            {shell.unreadCount > 0 && (
+              <span
+                data-testid="unread-count"
+                className="absolute top-1 right-0.5 rounded-full bg-rose-600 px-1.5 text-[10px] font-bold text-white"
+              >
+                {shell.unreadCount}
+              </span>
+            )}
+          </Link>
+          <SignOutButton />
+        </div>
       </header>
       <main className="flex-1 px-4 pt-4 pb-24">{children}</main>
       <BottomNav items={visibleNav(new Set(shell.domains.keys()))} inboxCount={shell.inboxCount} />

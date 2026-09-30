@@ -38,6 +38,12 @@ function moduleLink(r: {
         inline: false,
       };
     }
+    case 'LEAVE':
+      // the balance and the shifts approval would drop are on the review screen
+      return { link: { href: `/leave/${r.subject_id}`, label: 'Review' }, inline: false };
+    case 'SHIFT_SWAP':
+      // approved through hr.approve_swap, which re-checks the rostering rules
+      return { link: { href: `/roster/swaps/${r.subject_id}`, label: 'Review' }, inline: false };
     default:
       return { inline: r.approve_via !== 'module' };
   }

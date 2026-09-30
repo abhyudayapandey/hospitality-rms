@@ -13,6 +13,13 @@ export function param(sp: Record<string, string | string[] | undefined>, key: st
   return typeof v === 'string' ? v : '';
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Route params are user input: check before casting to uuid in SQL. */
+export function isUuid(s: string): boolean {
+  return UUID.test(s);
+}
+
 export interface SupplyContext {
   shell: Shell;
   /** delivery nodes the user can see, own first, then derived (view-only) */

@@ -26,6 +26,24 @@ export default async function Home() {
       >
         My requests
       </Link>
+      <nav aria-label="People shortcuts" className="grid grid-cols-2 gap-2">
+        {[
+          ['/roster/my', 'My shifts', 'ROSTER'],
+          ['/roster/clock', 'Clock in', 'ATTENDANCE'],
+          ['/leave', 'Leave', 'LEAVE'],
+          ['/events', 'Events', 'EVENTS'],
+        ]
+          .filter(([, , d]) => shell.domains.has(d!))
+          .map(([href, label]) => (
+            <Link
+              key={href}
+              href={href!}
+              className="flex min-h-14 items-center justify-center rounded-xl bg-white font-medium shadow-sm ring-1 ring-slate-200"
+            >
+              {label}
+            </Link>
+          ))}
+      </nav>
       {shell.domains.has('STOCK_LEVELS') && (
         <nav aria-label="Supply shortcuts" className="grid grid-cols-2 gap-2">
           {[
