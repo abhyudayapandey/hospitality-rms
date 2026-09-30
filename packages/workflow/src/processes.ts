@@ -90,23 +90,36 @@ export const LEAVE: ProcessDef = {
   slaHours: 48,
 };
 
+// Initiated by the partner (B) accepting A's offer. Neither A nor B can approve
+// (hr.swap_excluded), with the usual fallback up the tree. Approval goes through
+// hr.approve_swap, which re-runs the rostering rules first (ADR 008).
 export const SHIFT_SWAP: ProcessDef = {
   type: 'SHIFT_SWAP',
   subject: 'hr.shift_swap',
   domain: 'SHIFT_SWAPS',
   hierarchy: 'org',
-  steps: [{ step: 'outlet_approval', group: 'OUTLET_MANAGER', scope: 'subject_node' }],
+  steps: [
+    {
+      step: 'outlet_approval',
+      group: 'OUTLET_MANAGER',
+      scope: 'subject_node',
+      escalateTo: 'AREA_MANAGER',
+      approveVia: 'module',
+    },
+  ],
   onApproved: 'hr.shift_swap.apply',
+  onRejected: 'hr.shift_swap.reject',
   slaHours: 24,
 };
 
 export const ROLE_CHANGE: ProcessDef = {
   type: 'ROLE_CHANGE',
-  subject: 'core.role_assignment',
+  subject: 'hr.role_change',
   domain: 'SECURITY_ROLES',
   hierarchy: 'org',
   steps: [{ step: 'security_approval', group: 'SECURITY_ADMIN', scope: 'nearest_ancestor' }],
-  onApproved: 'core.role_change.apply',
+  onApproved: 'hr.role_change.apply',
+  onRejected: 'hr.role_change.reject',
   slaHours: 24,
 };
 
