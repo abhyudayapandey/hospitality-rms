@@ -1,0 +1,22 @@
+{
+  "name": "@outlet-ops/onboarding",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@outlet-ops/domain": "workspace:*",
+    "@outlet-ops/workflow": "workspace:*",
+    "pg": "^8.23.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@outlet-ops/db": "workspace:*",
+    "@types/pg": "^8.23.1"
+  }
+}

@@ -1,0 +1,154 @@
+import { join } from 'node:path';
+import { closePools, inRolledBackTx } from '@outlet-ops/db/test-helpers';
+import type { PoolClient } from 'pg';
+import { afterAll, describe, expect, it } from 'vitest';
+import { loadCustomer, type AccessRow } from './apply';
+import { parseCsv } from './csv';
+import { readCustomerDir } from './dir';
+
+// The onboarding loader (ADR 009) against the two test customers in
+// docs/onboarding/test-data: the access it produces is exactly each customer's generated
+// preview, a dry run changes nothing, a second load changes nothing, and problems are
+// reported by file, row and column.
+
+afterAll(closePools);
+
+const DATA = join(import.meta.dirname, '..', '..', '..', 'docs', 'onboarding', 'test-data');
+const CUSTOMERS = ['test-company', 'test-solo-bar-co'] as const;
+
+const key = (r: AccessRow) =>
+  [r.username, r.display_name, r.access_group, r.node_code, r.place_name, r.covers, r.source].join(
+    ' | ',
+  );
+
+function preview(customer: string): string[] {
+  const files = readCustomerDir(join(DATA, customer));
+  const table = parseCsv(files['99_access_preview_GENERATED.csv']!);
+  return table.rows.map((r) => key(r.values as unknown as AccessRow)).sort();
+}
+
+async function tenantCount(c: PoolClient, code: string): Promise<number> {
+  return (
+    await c.query<{ n: number }>(`select count(*)::int n from core.tenant where code = $1`, [code])
+  ).rows[0]!.n;
+}
+
+describe.each(CUSTOMERS)('loading %s', (customer) => {
+  const files = readCustomerDir(join(DATA, customer));
+
+  it('gives every person exactly the access in the generated preview', async () => {
+    await inRolledBackTx(async (c) => {
+      const r = await loadCustomer(c, files, { nested: true });
+      expect(r.issues).toEqual([]);
+      expect(r.applied).toBe(true);
+      expect(preview(customer).length).toBeGreaterThan(10);
+      expect(r.access.map(key).sort()).toEqual(preview(customer));
+    });
+  });
+
+  it('a dry run reports the same and changes nothing; a second load changes nothing', async () => {
+    await inRolledBackTx(async (c) => {
+      const code = files['00_customer.csv']!.split('\n')[1]!.split(',')[0]!;
+      const before = await tenantCount(c, code);
+      const dry = await loadCustomer(c, files, { nested: true, dryRun: true });
+      expect(dry).toMatchObject({ ok: true, applied: false, issues: [] });
+      expect(dry.access.map(key).sort()).toEqual(preview(customer));
+      expect(await tenantCount(c, code)).toBe(before);
+
+      await loadCustomer(c, files, { nested: true });
+      const again = await loadCustomer(c, files, { nested: true });
+      expect(again.ok).toBe(true);
+      const changed = Object.entries(again.counts).filter(
+        ([, n]) => n.created !== 0 || n.updated !== 0,
+      );
+      expect(changed).toEqual([]);
+      expect(again.counts['users']!.unchanged).toBeGreaterThan(0);
+    });
+  });
+});
+
+describe('loader errors', () => {
+  const base = readCustomerDir(join(DATA, 'test-company'));
+  const edit = (file: string, from: string, to: string) => ({
+    ...base,
+    [file]: base[file]!.replace(from, to),
+  });
+
+  it('reports bad cells and broken references by file, row and column', async () => {
+    await inRolledBackTx(async (c) => {
+      const files = {
+        ...edit(
+          '07_users.csv',
+          'test.bar-manager.1.0,Test Bar Manager 1.0,BAR_MANAGER',
+          'test.bar-manager.1.0,Test Bar Manager 1.0,BAR_BOSS',
+        ),
+        '02_delivery_nodes.csv': base['02_delivery_nodes.csv']!.replace(
+          'TEST-BAR-3.0-KITCHEN-STORE,Test Bar 3.0 – Kitchen Store,store,TEST-BAR-3.0-SUPPLY,Asia/Kolkata,yes,no',
+          'TEST-BAR-3.0-KITCHEN-STORE,Test Bar 3.0 – Kitchen Store,store,TEST-BAR-3.0-SUPPLY,Asia/Kolkata,maybe,no',
+        ),
+      };
+      const r = await loadCustomer(c, files, { nested: true });
+      expect(r.ok).toBe(false);
+      expect(r.applied).toBe(false);
+      expect(r.issues).toContainEqual({
+        file: '02_delivery_nodes.csv',
+        row: 17,
+        column: 'holds_stock',
+        message: 'must be yes or no',
+      });
+      // reference checks run once every file parses
+      const fixed = { ...files, '02_delivery_nodes.csv': base['02_delivery_nodes.csv']! };
+      const r2 = await loadCustomer(c, fixed, { nested: true });
+      expect(r2.issues).toEqual([
+        {
+          file: '07_users.csv',
+          row: 27,
+          column: 'job_role_code',
+          message: 'BAR_BOSS is not in 06_job_roles.csv',
+        },
+      ]);
+    });
+  });
+
+  it('rejects stock at a place that holds none, and a missing file', async () => {
+    await inRolledBackTx(async (c) => {
+      const files = edit(
+        '11_item_locations.csv',
+        'TOMATOES,TEST-HOTEL-1.0-KITCHEN-STORE',
+        'TOMATOES,TEST-HOTEL-1.0-SUPPLY',
+      );
+      delete (files as Record<string, string>)['03_node_links.csv'];
+      const r = await loadCustomer(c, files, { nested: true });
+      expect(r.issues).toEqual([{ file: '03_node_links.csv', message: 'file is missing' }]);
+      files['03_node_links.csv'] = base['03_node_links.csv']!;
+      const r2 = await loadCustomer(c, files, { nested: true });
+      expect(r2.issues).toContainEqual({
+        file: '11_item_locations.csv',
+        row: 2,
+        column: 'store_node_code',
+        message: 'TEST-HOTEL-1.0-SUPPLY does not hold stock',
+      });
+    });
+  });
+
+  it('rejects job roles whose scope cannot be resolved, and writes nothing', async () => {
+    await inRolledBackTx(async (c) => {
+      // Hotel 1.0 without a main store: its supply point holds no stock, so main_store
+      // cannot fall back
+      const files = edit(
+        '02_delivery_nodes.csv',
+        'TEST-HOTEL-1.0-MAIN-STORE,Test Hotel & Bar 1.0 – Main Store,store,TEST-HOTEL-1.0-SUPPLY,Asia/Kolkata,yes,yes',
+        'TEST-HOTEL-1.0-MAIN-STORE,Test Hotel & Bar 1.0 – Main Store,store,TEST-HOTEL-1.0-SUPPLY,Asia/Kolkata,yes,no',
+      );
+      const before = await tenantCount(c, 'TEST-COMPANY');
+      const r = await loadCustomer(c, files, { nested: true });
+      expect(r.applied).toBe(false);
+      expect(r.issues.map((i) => `${i.file}:${i.row}:${i.column}:${i.message}`)).toEqual([
+        '07_users.csv:34:job_role_code:STORE_MANAGER at TEST-HOTEL-1.0-STORES-TEAM: MAIN_STORE_REQUIRED (main_store)',
+        '07_users.csv:35:job_role_code:STORE_KEEPER at TEST-HOTEL-1.0-STORES-TEAM: MAIN_STORE_REQUIRED (main_store)',
+        '07_users.csv:36:job_role_code:RECEIVING_CLERK at TEST-HOTEL-1.0-STORES-TEAM: MAIN_STORE_REQUIRED (main_store)',
+      ]);
+      expect(await tenantCount(c, 'TEST-COMPANY')).toBe(before);
+    });
+  });
+});

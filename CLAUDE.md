@@ -34,6 +34,7 @@ packages/db           migrations/, seed/, sql tests, Kysely types
 packages/domain       shared TS types + zod schemas per module
 packages/workflow     process definitions + execution handlers
 packages/ai           signal definitions, prompt templates, output validators
+packages/onboarding   customer onboarding loader: CSV files -> validate / dry run / apply
 services/lambdas      wf-execute, ai-recommend (thin wrappers over packages)
 infra                 CDK app
 docs                  LLD.md, goal.md, decisions/ (ADRs)

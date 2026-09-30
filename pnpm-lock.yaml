@@ -143,6 +143,28 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
 
+  packages/onboarding:
+    dependencies:
+      '@outlet-ops/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@outlet-ops/workflow':
+        specifier: workspace:*
+        version: link:../workflow
+      pg:
+        specifier: ^8.23.0
+        version: 8.23.0
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@outlet-ops/db':
+        specifier: workspace:*
+        version: link:../db
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
+
   packages/workflow:
     dependencies:
       '@outlet-ops/domain':
