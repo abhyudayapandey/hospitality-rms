@@ -51,3 +51,4 @@ Thumbs.db
 # Written by `next dev` when it detects an AI agent (no opt-out); not ours to commit
 apps/web/AGENTS.md
 apps/web/CLAUDE.md
+TEST_LOGINS*

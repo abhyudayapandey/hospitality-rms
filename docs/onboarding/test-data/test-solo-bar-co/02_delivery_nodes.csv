@@ -1,0 +1,5 @@
+node_code,name,kind,parent_code,timezone,holds_stock
+TEST-SOLO-SUPPLY-NETWORK,Test Solo Bar Co. – Supply Network,network,,,no
+TEST-SOLO-BAR-SUPPLY,Test Solo Bar – Supply Point,outlet,TEST-SOLO-SUPPLY-NETWORK,Asia/Kolkata,no
+TEST-SOLO-BAR-BAR-STORE,Test Solo Bar – Bar Store,store,TEST-SOLO-BAR-SUPPLY,Asia/Kolkata,yes
+TEST-SOLO-BAR-KITCHEN-STORE,Test Solo Bar – Kitchen Store,store,TEST-SOLO-BAR-SUPPLY,Asia/Kolkata,yes

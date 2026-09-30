@@ -1,0 +1,2 @@
+username,access_group,node_code,include_descendants,reason
+test.solo.bar-manager,ACCOUNT_OWNER,TEST-SOLO-COMPANY,true,The owner runs the bar and owns the account

@@ -1,0 +1,108 @@
+username,display_name,job_role_code,home_node_code,login_type,email,employment_type,joined_on,password_mode
+test.account-owner,Test Account Owner,ACCOUNT_OWNER,TEST-COMPANY,username,,full_time,2024-06-10,test_rule
+test.general-manager.1.0,Test General Manager 1.0,GENERAL_MANAGER,TEST-HOTEL-1.0,username,,full_time,2024-01-15,test_rule
+test.assistant-general-manager.1.0,Test Assistant General Manager 1.0,ASSISTANT_GENERAL_MANAGER,TEST-HOTEL-1.0,username,,full_time,2025-02-01,test_rule
+test.hr-executive.1.0,Test HR Executive 1.0,HR_EXECUTIVE,TEST-HOTEL-1.0-ADMIN-FINANCE,username,,full_time,2023-04-01,test_rule
+test.cost-controller.1.0,Test Cost Controller 1.0,COST_CONTROLLER,TEST-HOTEL-1.0-ADMIN-FINANCE,username,,full_time,2023-04-01,test_rule
+test.front-office-manager.1.0,Test Front Office Manager 1.0,FRONT_OFFICE_MANAGER,TEST-HOTEL-1.0-FRONT-OFFICE,username,,full_time,2025-09-15,test_rule
+test.front-desk-executive.1.0,Test Front Desk Executive 1.0,FRONT_DESK_EXECUTIVE,TEST-HOTEL-1.0-FRONT-OFFICE,username,,full_time,2023-04-01,test_rule
+test.guest-relations-executive.1.0,Test Guest Relations Executive 1.0,GUEST_RELATIONS_EXECUTIVE,TEST-HOTEL-1.0-FRONT-OFFICE,username,,full_time,2024-06-10,test_rule
+test.bell-captain.1.0,Test Bell Captain 1.0,BELL_CAPTAIN,TEST-HOTEL-1.0-FRONT-OFFICE,username,,full_time,2025-09-15,test_rule
+test.bellboy.1.0,Test Bellboy 1.0,BELLBOY,TEST-HOTEL-1.0-FRONT-OFFICE,username,,full_time,2023-04-01,test_rule
+test.executive-housekeeper.1.0,Test Executive Housekeeper 1.0,EXECUTIVE_HOUSEKEEPER,TEST-HOTEL-1.0-HOUSEKEEPING,username,,full_time,2025-09-15,test_rule
+test.housekeeping-supervisor.1.0,Test Housekeeping Supervisor 1.0,HOUSEKEEPING_SUPERVISOR,TEST-HOTEL-1.0-HOUSEKEEPING,username,,full_time,2024-01-15,test_rule
+test.room-attendant.1.0,Test Room Attendant 1.0,ROOM_ATTENDANT,TEST-HOTEL-1.0-HOUSEKEEPING,username,,full_time,2023-04-01,test_rule
+test.public-area-attendant.1.0,Test Public Area Attendant 1.0,PUBLIC_AREA_ATTENDANT,TEST-HOTEL-1.0-HOUSEKEEPING,username,,full_time,2023-04-01,test_rule
+test.laundry-attendant.1.0,Test Laundry Attendant 1.0,LAUNDRY_ATTENDANT,TEST-HOTEL-1.0-HOUSEKEEPING,username,,full_time,2025-02-01,test_rule
+test.fandb-manager.1.0,Test F&B Manager 1.0,FANDB_MANAGER,TEST-HOTEL-1.0-RESTAURANT,username,,full_time,2025-02-01,test_rule
+test.restaurant-manager.1.0,Test Restaurant Manager 1.0,RESTAURANT_MANAGER,TEST-HOTEL-1.0-RESTAURANT,username,,full_time,2023-04-01,test_rule
+test.captain.1.0,Test Captain 1.0,CAPTAIN,TEST-HOTEL-1.0-RESTAURANT,username,,full_time,2024-01-15,test_rule
+test.steward.1.0,Test Steward 1.0,STEWARD,TEST-HOTEL-1.0-RESTAURANT,username,,full_time,2023-04-01,test_rule
+test.host.1.0,Test Host 1.0,HOST,TEST-HOTEL-1.0-RESTAURANT,username,,full_time,2025-09-15,test_rule
+test.executive-chef.1.0,Test Executive Chef 1.0,EXECUTIVE_CHEF,TEST-HOTEL-1.0-KITCHEN,username,,full_time,2025-02-01,test_rule
+test.sous-chef.1.0,Test Sous Chef 1.0,SOUS_CHEF,TEST-HOTEL-1.0-KITCHEN,username,,full_time,2023-04-01,test_rule
+test.chef-de-partie.1.0,Test Chef de Partie 1.0,CHEF_DE_PARTIE,TEST-HOTEL-1.0-KITCHEN,username,,full_time,2025-09-15,test_rule
+test.commis.1.0,Test Commis 1.0,COMMIS,TEST-HOTEL-1.0-KITCHEN,username,,full_time,2023-04-01,test_rule
+test.kitchen-steward.1.0,Test Kitchen Steward 1.0,KITCHEN_STEWARD,TEST-HOTEL-1.0-KITCHEN,username,,full_time,2024-01-15,test_rule
+test.bar-manager.1.0,Test Bar Manager 1.0,BAR_MANAGER,TEST-HOTEL-1.0-BAR,username,,full_time,2025-09-15,test_rule
+test.head-bartender.1.0,Test Head Bartender 1.0,HEAD_BARTENDER,TEST-HOTEL-1.0-BAR,username,,full_time,2023-04-01,test_rule
+test.bartender.1.0,Test Bartender 1.0,BARTENDER,TEST-HOTEL-1.0-BAR,username,,full_time,2025-09-15,test_rule
+test.bar-back.1.0,Test Bar Back 1.0,BAR_BACK,TEST-HOTEL-1.0-BAR,username,,full_time,2025-09-15,test_rule
+test.banquet-manager.1.0,Test Banquet Manager 1.0,BANQUET_MANAGER,TEST-HOTEL-1.0-BANQUETS,username,,full_time,2025-02-01,test_rule
+test.banquet-captain.1.0,Test Banquet Captain 1.0,BANQUET_CAPTAIN,TEST-HOTEL-1.0-BANQUETS,username,,full_time,2023-04-01,test_rule
+test.banquet-server.1.0,Test Banquet Server 1.0,BANQUET_SERVER,TEST-HOTEL-1.0-BANQUETS,username,,full_time,2024-01-15,test_rule
+test.store-manager.1.0,Test Store Manager 1.0,STORE_MANAGER,TEST-HOTEL-1.0-STORES-TEAM,username,,full_time,2023-04-01,test_rule
+test.store-keeper.1.0,Test Store Keeper 1.0,STORE_KEEPER,TEST-HOTEL-1.0-STORES-TEAM,username,,full_time,2025-09-15,test_rule
+test.receiving-clerk.1.0,Test Receiving Clerk 1.0,RECEIVING_CLERK,TEST-HOTEL-1.0-STORES-TEAM,username,,full_time,2024-01-15,test_rule
+test.chief-engineer.1.0,Test Chief Engineer 1.0,CHIEF_ENGINEER,TEST-HOTEL-1.0-ENGINEERING,username,,full_time,2024-06-10,test_rule
+test.technician.1.0,Test Technician 1.0,TECHNICIAN,TEST-HOTEL-1.0-ENGINEERING,username,,full_time,2025-02-01,test_rule
+test.security-supervisor.1.0,Test Security Supervisor 1.0,SECURITY_SUPERVISOR,TEST-HOTEL-1.0-SECURITY,username,,full_time,2024-01-15,test_rule
+test.security-guard.1.0,Test Security Guard 1.0,SECURITY_GUARD,TEST-HOTEL-1.0-SECURITY,username,,full_time,2025-09-15,test_rule
+test.general-manager.1.1,Test General Manager 1.1,GENERAL_MANAGER,TEST-HOTEL-1.1,username,,full_time,2023-04-01,test_rule
+test.assistant-general-manager.1.1,Test Assistant General Manager 1.1,ASSISTANT_GENERAL_MANAGER,TEST-HOTEL-1.1,username,,full_time,2025-09-15,test_rule
+test.hr-executive.1.1,Test HR Executive 1.1,HR_EXECUTIVE,TEST-HOTEL-1.1-ADMIN-FINANCE,username,,full_time,2024-06-10,test_rule
+test.cost-controller.1.1,Test Cost Controller 1.1,COST_CONTROLLER,TEST-HOTEL-1.1-ADMIN-FINANCE,username,,full_time,2025-09-15,test_rule
+test.front-office-manager.1.1,Test Front Office Manager 1.1,FRONT_OFFICE_MANAGER,TEST-HOTEL-1.1-FRONT-OFFICE,username,,full_time,2024-01-15,test_rule
+test.front-desk-executive.1.1,Test Front Desk Executive 1.1,FRONT_DESK_EXECUTIVE,TEST-HOTEL-1.1-FRONT-OFFICE,username,,full_time,2023-04-01,test_rule
+test.guest-relations-executive.1.1,Test Guest Relations Executive 1.1,GUEST_RELATIONS_EXECUTIVE,TEST-HOTEL-1.1-FRONT-OFFICE,username,,full_time,2025-09-15,test_rule
+test.bell-captain.1.1,Test Bell Captain 1.1,BELL_CAPTAIN,TEST-HOTEL-1.1-FRONT-OFFICE,username,,full_time,2025-09-15,test_rule
+test.bellboy.1.1,Test Bellboy 1.1,BELLBOY,TEST-HOTEL-1.1-FRONT-OFFICE,username,,full_time,2024-01-15,test_rule
+test.executive-housekeeper.1.1,Test Executive Housekeeper 1.1,EXECUTIVE_HOUSEKEEPER,TEST-HOTEL-1.1-HOUSEKEEPING,username,,full_time,2024-06-10,test_rule
+test.housekeeping-supervisor.1.1,Test Housekeeping Supervisor 1.1,HOUSEKEEPING_SUPERVISOR,TEST-HOTEL-1.1-HOUSEKEEPING,username,,full_time,2023-04-01,test_rule
+test.room-attendant.1.1,Test Room Attendant 1.1,ROOM_ATTENDANT,TEST-HOTEL-1.1-HOUSEKEEPING,username,,full_time,2025-09-15,test_rule
+test.public-area-attendant.1.1,Test Public Area Attendant 1.1,PUBLIC_AREA_ATTENDANT,TEST-HOTEL-1.1-HOUSEKEEPING,username,,full_time,2023-04-01,test_rule
+test.laundry-attendant.1.1,Test Laundry Attendant 1.1,LAUNDRY_ATTENDANT,TEST-HOTEL-1.1-HOUSEKEEPING,username,,full_time,2025-09-15,test_rule
+test.fandb-manager.1.1,Test F&B Manager 1.1,FANDB_MANAGER,TEST-HOTEL-1.1-RESTAURANT,username,,full_time,2023-04-01,test_rule
+test.restaurant-manager.1.1,Test Restaurant Manager 1.1,RESTAURANT_MANAGER,TEST-HOTEL-1.1-RESTAURANT,username,,full_time,2025-09-15,test_rule
+test.captain.1.1,Test Captain 1.1,CAPTAIN,TEST-HOTEL-1.1-RESTAURANT,username,,full_time,2024-01-15,test_rule
+test.steward.1.1,Test Steward 1.1,STEWARD,TEST-HOTEL-1.1-RESTAURANT,username,,full_time,2025-02-01,test_rule
+test.host.1.1,Test Host 1.1,HOST,TEST-HOTEL-1.1-RESTAURANT,username,,full_time,2025-09-15,test_rule
+test.executive-chef.1.1,Test Executive Chef 1.1,EXECUTIVE_CHEF,TEST-HOTEL-1.1-KITCHEN,username,,full_time,2025-02-01,test_rule
+test.sous-chef.1.1,Test Sous Chef 1.1,SOUS_CHEF,TEST-HOTEL-1.1-KITCHEN,username,,full_time,2024-06-10,test_rule
+test.chef-de-partie.1.1,Test Chef de Partie 1.1,CHEF_DE_PARTIE,TEST-HOTEL-1.1-KITCHEN,username,,full_time,2025-02-01,test_rule
+test.commis.1.1,Test Commis 1.1,COMMIS,TEST-HOTEL-1.1-KITCHEN,username,,full_time,2025-09-15,test_rule
+test.kitchen-steward.1.1,Test Kitchen Steward 1.1,KITCHEN_STEWARD,TEST-HOTEL-1.1-KITCHEN,username,,full_time,2025-02-01,test_rule
+test.bar-manager.1.1,Test Bar Manager 1.1,BAR_MANAGER,TEST-HOTEL-1.1-BAR,username,,full_time,2024-06-10,test_rule
+test.head-bartender.1.1,Test Head Bartender 1.1,HEAD_BARTENDER,TEST-HOTEL-1.1-BAR,username,,full_time,2024-06-10,test_rule
+test.bartender.1.1,Test Bartender 1.1,BARTENDER,TEST-HOTEL-1.1-BAR,username,,full_time,2024-01-15,test_rule
+test.bar-back.1.1,Test Bar Back 1.1,BAR_BACK,TEST-HOTEL-1.1-BAR,username,,full_time,2024-01-15,test_rule
+test.banquet-manager.1.1,Test Banquet Manager 1.1,BANQUET_MANAGER,TEST-HOTEL-1.1-BANQUETS,username,,full_time,2024-01-15,test_rule
+test.banquet-captain.1.1,Test Banquet Captain 1.1,BANQUET_CAPTAIN,TEST-HOTEL-1.1-BANQUETS,username,,full_time,2023-04-01,test_rule
+test.banquet-server.1.1,Test Banquet Server 1.1,BANQUET_SERVER,TEST-HOTEL-1.1-BANQUETS,username,,full_time,2025-09-15,test_rule
+test.store-manager.1.1,Test Store Manager 1.1,STORE_MANAGER,TEST-HOTEL-1.1-STORES-TEAM,username,,full_time,2024-06-10,test_rule
+test.store-keeper.1.1,Test Store Keeper 1.1,STORE_KEEPER,TEST-HOTEL-1.1-STORES-TEAM,username,,full_time,2025-09-15,test_rule
+test.receiving-clerk.1.1,Test Receiving Clerk 1.1,RECEIVING_CLERK,TEST-HOTEL-1.1-STORES-TEAM,username,,full_time,2025-02-01,test_rule
+test.chief-engineer.1.1,Test Chief Engineer 1.1,CHIEF_ENGINEER,TEST-HOTEL-1.1-ENGINEERING,username,,full_time,2024-06-10,test_rule
+test.technician.1.1,Test Technician 1.1,TECHNICIAN,TEST-HOTEL-1.1-ENGINEERING,username,,full_time,2025-02-01,test_rule
+test.security-supervisor.1.1,Test Security Supervisor 1.1,SECURITY_SUPERVISOR,TEST-HOTEL-1.1-SECURITY,username,,full_time,2024-06-10,test_rule
+test.security-guard.1.1,Test Security Guard 1.1,SECURITY_GUARD,TEST-HOTEL-1.1-SECURITY,username,,full_time,2025-09-15,test_rule
+test.general-manager.2.0,Test General Manager 2.0,GENERAL_MANAGER,TEST-GUEST-HOUSE-2.0,username,,full_time,2023-04-01,test_rule
+test.front-desk-executive.2.0,Test Front Desk Executive 2.0,FRONT_DESK_EXECUTIVE,TEST-GUEST-HOUSE-2.0,username,,full_time,2023-04-01,test_rule
+test.room-attendant.2.0,Test Room Attendant 2.0,ROOM_ATTENDANT,TEST-GUEST-HOUSE-2.0,username,,full_time,2025-09-15,test_rule
+test.cook.2.0,Test Cook 2.0,COOK,TEST-GUEST-HOUSE-2.0,username,,full_time,2025-02-01,test_rule
+test.steward.2.0,Test Steward 2.0,STEWARD,TEST-GUEST-HOUSE-2.0,username,,full_time,2024-01-15,test_rule
+test.security-guard.2.0,Test Security Guard 2.0,SECURITY_GUARD,TEST-GUEST-HOUSE-2.0,username,,full_time,2024-06-10,test_rule
+test.technician.2.0,Test Technician 2.0,TECHNICIAN,TEST-GUEST-HOUSE-2.0,username,,full_time,2024-01-15,test_rule
+test.bar-manager.3.0,Test Bar Manager 3.0,BAR_MANAGER,TEST-BAR-3.0,username,,full_time,2025-02-01,test_rule
+test.floor-manager.3.0,Test Floor Manager 3.0,FLOOR_MANAGER,TEST-BAR-3.0-FLOOR-SERVICE,username,,full_time,2025-02-01,test_rule
+test.head-bartender.3.0,Test Head Bartender 3.0,HEAD_BARTENDER,TEST-BAR-3.0-BAR,username,,full_time,2023-04-01,test_rule
+test.bartender.3.0,Test Bartender 3.0,BARTENDER,TEST-BAR-3.0-BAR,username,,full_time,2023-04-01,test_rule
+test.bar-back.3.0,Test Bar Back 3.0,BAR_BACK,TEST-BAR-3.0-BAR,username,,full_time,2025-09-15,test_rule
+test.server.3.0,Test Server 3.0,SERVER,TEST-BAR-3.0-FLOOR-SERVICE,username,,full_time,2025-09-15,test_rule
+test.host.3.0,Test Host 3.0,HOST,TEST-BAR-3.0-FLOOR-SERVICE,username,,full_time,2024-06-10,test_rule
+test.cashier.3.0,Test Cashier 3.0,CASHIER,TEST-BAR-3.0-FLOOR-SERVICE,username,,full_time,2024-06-10,test_rule
+test.security-guard.3.0,Test Security Guard 3.0,SECURITY_GUARD,TEST-BAR-3.0,username,,full_time,2024-06-10,test_rule
+test.head-cook.3.0,Test Head Cook 3.0,HEAD_COOK,TEST-BAR-3.0-KITCHEN,username,,full_time,2025-09-15,test_rule
+test.cook.3.0,Test Cook 3.0,COOK,TEST-BAR-3.0-KITCHEN,username,,full_time,2025-02-01,test_rule
+test.commis.3.0,Test Commis 3.0,COMMIS,TEST-BAR-3.0-KITCHEN,username,,full_time,2025-09-15,test_rule
+test.kitchen-steward.3.0,Test Kitchen Steward 3.0,KITCHEN_STEWARD,TEST-BAR-3.0-KITCHEN,username,,full_time,2025-02-01,test_rule
+test.central-kitchen-manager,Test Central Kitchen Manager,CENTRAL_KITCHEN_MANAGER,TEST-CENTRAL-KITCHEN-DISPATCH-TEAM,username,,full_time,2023-04-01,test_rule
+test.central-kitchen-supervisor,Test Central Kitchen Supervisor,CENTRAL_KITCHEN_SUPERVISOR,TEST-CENTRAL-KITCHEN-PRODUCTION,username,,full_time,2023-04-01,test_rule
+test.central-kitchen-chef,Test Central Kitchen Chef,CENTRAL_KITCHEN_CHEF,TEST-CENTRAL-KITCHEN-PRODUCTION,username,,full_time,2024-06-10,test_rule
+test.central-kitchen-commis,Test Central Kitchen Commis,CENTRAL_KITCHEN_COMMIS,TEST-CENTRAL-KITCHEN-PRODUCTION,username,,full_time,2025-02-01,test_rule
+test.central-kitchen-store-keeper,Test Central Kitchen Store Keeper,CENTRAL_KITCHEN_STORE_KEEPER,TEST-CENTRAL-KITCHEN-DISPATCH-TEAM,username,,full_time,2023-04-01,test_rule
+test.delivery-driver,Test Delivery Driver,DELIVERY_DRIVER,TEST-CENTRAL-KITCHEN-DISPATCH-TEAM,username,,full_time,2023-04-01,test_rule
+test.area-manager,Test Area Manager,AREA_MANAGER,TEST-AREA-MUMBAI,username,,full_time,2024-06-10,test_rule
+test.hr-admin,Test HR Admin,HR_ADMIN,TEST-COMPANY,username,,full_time,2025-09-15,test_rule
+test.security-admin,Test Security Admin,SECURITY_ADMIN,TEST-COMPANY,username,,full_time,2025-02-01,test_rule
+test.auditor,Test Auditor,AUDITOR,TEST-COMPANY,username,,full_time,2024-06-10,test_rule

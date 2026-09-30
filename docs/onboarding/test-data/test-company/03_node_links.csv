@@ -1,0 +1,17 @@
+org_node_code,delivery_node_code,note
+TEST-CENTRAL-KITCHEN,TEST-CENTRAL-KITCHEN-STORE,Central Kitchen site uses its store
+TEST-CENTRAL-KITCHEN-DISPATCH-TEAM,TEST-CENTRAL-KITCHEN-STORE,Dispatch team runs the Central Kitchen store
+TEST-HOTEL-1.0,TEST-HOTEL-1.0-SUPPLY,Test Hotel & Bar 1.0 ↔ its supply point
+TEST-HOTEL-1.0-STORES-TEAM,TEST-HOTEL-1.0-MAIN-STORE,Stores Team runs the Main Store
+TEST-HOTEL-1.0-KITCHEN,TEST-HOTEL-1.0-KITCHEN-STORE,Kitchen uses the Kitchen Store
+TEST-HOTEL-1.0-BAR,TEST-HOTEL-1.0-BAR-STORE,Bar uses the Bar Store
+TEST-HOTEL-1.0-HOUSEKEEPING,TEST-HOTEL-1.0-HOUSEKEEPING-STORE,Housekeeping uses the Housekeeping Store
+TEST-HOTEL-1.1,TEST-HOTEL-1.1-SUPPLY,Test Hotel & Bar 1.1 ↔ its supply point
+TEST-HOTEL-1.1-STORES-TEAM,TEST-HOTEL-1.1-MAIN-STORE,Stores Team runs the Main Store
+TEST-HOTEL-1.1-KITCHEN,TEST-HOTEL-1.1-KITCHEN-STORE,Kitchen uses the Kitchen Store
+TEST-HOTEL-1.1-BAR,TEST-HOTEL-1.1-BAR-STORE,Bar uses the Bar Store
+TEST-HOTEL-1.1-HOUSEKEEPING,TEST-HOTEL-1.1-HOUSEKEEPING-STORE,Housekeeping uses the Housekeeping Store
+TEST-GUEST-HOUSE-2.0,TEST-GUEST-HOUSE-2.0-SUPPLY,Test Guest House 2.0 ↔ its supply point
+TEST-BAR-3.0,TEST-BAR-3.0-SUPPLY,Test Bar 3.0 ↔ its supply point
+TEST-BAR-3.0-BAR,TEST-BAR-3.0-BAR-STORE,Bar uses the Bar Store
+TEST-BAR-3.0-KITCHEN,TEST-BAR-3.0-KITCHEN-STORE,Kitchen uses the Kitchen Store
