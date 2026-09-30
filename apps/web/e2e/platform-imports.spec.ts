@@ -149,8 +149,14 @@ test('the Test<Role>!12 option is refused for a customer that is not a test cust
   await create.getByLabel('Owner name').fill('Ravi K');
   await create.getByLabel('Owner signs in with').selectOption('username');
   await expect(create.getByLabel('Owner email')).toHaveCount(0);
-  await create.getByLabel('Owner username (optional)').fill(username);
+  await create.getByLabel('Owner username', { exact: true }).fill(username);
   await create.getByRole('button', { name: 'Create customer' }).click();
+  const check = page.getByRole('dialog', { name: 'Confirm the first account owner' });
+  await expect(check.getByTestId('confirm-owner-username')).toHaveText(username);
+  await expect(check.getByTestId('confirm-owner-login')).toHaveText(
+    'Username and password: no email is sent',
+  );
+  await check.getByRole('button', { name: 'Confirm and create' }).click();
   await page.waitForURL(/\/platform\/jobs\/[0-9a-f-]{36}/);
   await workerFinishes(page);
   await expect(page.getByTestId('owner-note')).toContainText(`${username}, a username login`);
@@ -182,4 +188,62 @@ test('the Test<Role>!12 option is refused for a customer that is not a test cust
     [username],
   );
   expect(user!.cognito_sub).toBeNull();
+});
+
+test('an extra account owner is removed; the Logins page no longer lists them', async ({
+  page,
+}) => {
+  // a customer created with its owner, then a second owner (the production mix-up)
+  const code = `E2E-OWN-${Date.now().toString(36).toUpperCase()}`;
+  const owner = `${code.toLowerCase()}.asha`;
+  const extra = `${code.toLowerCase()}.owner`;
+  await signInPlatform(page);
+  await page.goto('/platform/customers/new');
+  const create = page.getByRole('form', { name: 'New customer' });
+  await expect(create.getByRole('button', { name: 'Create customer' })).toBeEnabled();
+  await create.getByLabel('Company name').fill(`Owners ${code}`);
+  await create.getByLabel('Customer code').fill(code);
+  await create.getByLabel('Owner name').fill('Asha Rao');
+  await create.getByLabel('Owner signs in with').selectOption('username');
+  await create.getByLabel('Owner username', { exact: true }).fill(owner);
+  await create.getByRole('button', { name: 'Create customer' }).click();
+  await page
+    .getByRole('dialog', { name: 'Confirm the first account owner' })
+    .getByRole('button', { name: 'Confirm and create' })
+    .click();
+  await page.waitForURL(/\/platform\/jobs\/[0-9a-f-]{36}/);
+  await workerFinishes(page);
+  const t = await tenantId(code);
+  await asMigrator(
+    `with u as (
+       insert into core.app_user (tenant_id, kind, display_name, username, login_type)
+       values ($1, 'human', 'Extra Owner', $2, 'username') returning id)
+     insert into core.role_assignment (tenant_id, user_id, group_id, node_id)
+     select $1, u.id, g.id, n.id from u, core.security_group g, core.hierarchy_node n
+      where g.tenant_id = $1 and g.code = 'ACCOUNT_OWNER' and n.tenant_id = $1 and n.parent_id is null`,
+    [t, extra],
+  );
+
+  await page.goto(`/platform/customers/${t}`);
+  const owners = page.getByRole('region', { name: 'Account owners' });
+  await expect(owners.getByRole('note')).toContainText('2 account owners');
+  const row = owners.locator(`[data-owner="${extra}"]`);
+  await row.getByRole('button', { name: `Remove ${extra}` }).click();
+  const confirm = row.getByRole('form', { name: `Remove ${extra}` });
+  await confirm.getByLabel('Reason').fill('created by mistake');
+  await expect(confirm.getByRole('button', { name: 'Remove owner' })).toBeDisabled();
+  await confirm.getByLabel(`Type ${extra} to confirm`).fill(extra);
+  await confirm.getByRole('button', { name: 'Remove owner' }).click();
+  await expect(owners.getByRole('status')).toHaveText(
+    `${extra} was deleted: they never signed in and had no activity.`,
+  );
+  await page.reload();
+  await expect(owners.locator('[data-owner]')).toHaveCount(1);
+  await expect(owners.locator(`[data-owner="${owner}"]`)).toBeVisible();
+  // the last owner can't be removed
+  await expect(owners.getByRole('button', { name: /^Remove / })).toHaveCount(0);
+
+  await page.goto(`/platform/customers/${t}/logins`);
+  await expect(page.locator(`[data-username="${extra}"]`)).toHaveCount(0);
+  await expect(page.locator(`[data-username="${owner}"]`)).toBeVisible();
 });
