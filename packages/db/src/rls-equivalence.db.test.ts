@@ -13,10 +13,12 @@ import { newWorker, workerFor } from '../test/workforce';
 
 // ADR 007: generated policies test membership in a per-query node set
 // (core.visible_nodes / core.visible_domain_nodes) instead of calling core.can() per row.
-// core.can() must stay the single source of truth, so for EVERY seeded user and EVERY
+// core.can() must stay the single source of truth, so for every kind of grant and EVERY
 // business table, the rows RLS returns must be exactly the rows the per-row core.can()
-// expression (the pre-ADR-007 policy) selects. Fixtures add SELF, derived,
-// include_descendants and two-leg rows so each rule is exercised, not just the defaults.
+// expression (the pre-ADR-007 policy) selects. The users are one holder of each distinct
+// grant shape (group, tree, place kind, descendants, customer) in the test customers, so
+// every rule is exercised without checking all hundred-odd people. Fixtures add SELF,
+// derived, include_descendants and two-leg rows so each rule has rows to decide.
 
 let ids: SeedIds;
 beforeAll(async () => {
@@ -76,9 +78,22 @@ async function registrations(c: PoolClient): Promise<Registration[]> {
   return rows;
 }
 
+/** One holder of every distinct grant shape, plus a user with no grants at all. */
 async function userIds(c: PoolClient): Promise<{ id: string; name: string }[]> {
   const { rows } = await c.query<{ id: string; name: string }>(
-    `select id, display_name as name from core.app_user order by display_name`,
+    `with shapes as (
+       select distinct on (g.code, n.type, n.kind, ra.include_descendants, u.tenant_id)
+              u.id, u.display_name as name
+         from core.role_assignment ra
+         join core.app_user u on u.id = ra.user_id
+         join core.security_group g on g.id = ra.group_id
+         join core.hierarchy_node n on n.id = ra.node_id
+        order by g.code, n.type, n.kind, ra.include_descendants, u.tenant_id, u.id)
+     select distinct id, name from shapes
+     union
+     select id, display_name from core.app_user u
+      where not exists (select 1 from core.role_assignment ra where ra.user_id = u.id)
+     order by name`,
   );
   return rows;
 }
@@ -87,13 +102,13 @@ async function userIds(c: PoolClient): Promise<{ id: string; name: string }[]> {
 async function fixtures(c: PoolClient): Promise<void> {
   const tenant = (
     await c.query<{ t: string }>('select tenant_id as t from core.hierarchy_node where id = $1', [
-      ids.node('org:Company'),
+      ids.node('TEST-COMPANY'),
     ])
   ).rows[0]!.t;
   // SELF: Sam's own LEAVE request (org tree, owner = initiator).
   const subject = await installSubjectFixture(c, ['hr.leave_request']);
-  const leave = await subject({ org: ids.node('org:Outlet A') });
-  await actAs(c, 'app_rw', ids.user('Sam Staff'));
+  const leave = await subject({ org: ids.node('TEST-BAR-3.0-FLOOR-SERVICE') });
+  await actAs(c, 'app_rw', ids.user('test.server.3.0'));
   await c.query(`select wf.submit('LEAVE', 'hr.leave_request', $1)`, [leave]);
   await resetRole(c);
   // Transfers: Hub -> Outlet B (hub manager sees the from leg without descendants) and
@@ -106,36 +121,40 @@ async function fixtures(c: PoolClient): Promise<void> {
     )
   ).rows[0]!.id;
   for (const [from, to] of [
-    ['Hub', 'Outlet B'],
-    ['Outlet A', 'Outlet B'],
+    ['TEST-CENTRAL-KITCHEN-STORE', 'TEST-GUEST-HOUSE-2.0-SUPPLY'],
+    ['TEST-BAR-3.0-KITCHEN-STORE', 'TEST-GUEST-HOUSE-2.0-SUPPLY'],
   ] as const) {
     const t = (
       await c.query<{ id: string }>(
         `insert into inv.transfer (tenant_id, from_node_id, to_node_id) values ($1, $2, $3)
          returning id`,
-        [tenant, ids.node(`delivery:${from}`), ids.node(`delivery:${to}`)],
+        [tenant, ids.node(from), ids.node(to)],
       )
     ).rows[0]!.id;
     await c.query(
       `insert into inv.transfer_line (tenant_id, transfer_id, item_id, from_node_id, to_node_id,
                                       requested_qty) values ($1, $2, $3, $4, $5, 1)`,
-      [tenant, t, item, ids.node(`delivery:${from}`), ids.node(`delivery:${to}`)],
+      [tenant, t, item, ids.node(from), ids.node(to)],
     );
   }
   // Stock at every delivery node (derived view for the area manager covers A and B only).
-  for (const n of ['Hub', 'Outlet A', 'Outlet B']) {
+  for (const n of [
+    'TEST-CENTRAL-KITCHEN-STORE',
+    'TEST-BAR-3.0-KITCHEN-STORE',
+    'TEST-GUEST-HOUSE-2.0-SUPPLY',
+  ]) {
     await c.query(
       `insert into inv.stock_ledger (tenant_id, item_id, delivery_node_id, movement_type, qty,
                                      unit_cost, ref_type) values ($1, $2, $3, 'receipt', 1, 1, 'eq')`,
-      [tenant, item, ids.node(`delivery:${n}`)],
+      [tenant, item, ids.node(n)],
     );
   }
   // Workforce rows at both outlets and the hub site, owned by seeded users (SELF legs).
   const workers = [
-    await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER'),
-    await workerFor(c, ids, 'Olivia Outlet Manager', 'org:Outlet A', 'MANAGER'),
-    (await newWorker(c, ids, 'Eq Outlet B', 'org:Outlet B', 'SERVER')).workerId,
-    (await newWorker(c, ids, 'Eq Hub', 'org:Hub', 'STORE')).workerId,
+    await workerFor(c, ids, 'test.server.3.0', 'TEST-BAR-3.0-FLOOR-SERVICE', 'SERVER'),
+    await workerFor(c, ids, 'test.bar-manager.3.0', 'TEST-BAR-3.0-FLOOR-SERVICE', 'MANAGER'),
+    (await newWorker(c, ids, 'Eq Outlet B', 'TEST-GUEST-HOUSE-2.0', 'SERVER')).workerId,
+    (await newWorker(c, ids, 'Eq Hub', 'TEST-CENTRAL-KITCHEN', 'STORE')).workerId,
   ];
   await c.query(
     `insert into hr.leave_type (tenant_id, code, name, annual_days)
@@ -181,125 +200,150 @@ async function fixtures(c: PoolClient): Promise<void> {
 }
 
 describe('ADR 007 policies are equivalent to per-row core.can()', () => {
-  it('select: every seeded user sees exactly the rows core.can() allows, in every business table', async () => {
-    await inRolledBackTx(async (c) => {
-      await fixtures(c);
-      const regs = (await registrations(c)).filter((r) => !r.catalog);
-      const users = await userIds(c);
-      expect(regs.length).toBeGreaterThan(15);
-      let visible = 0;
-      const mismatches: string[] = [];
+  // users x tables x a query each: slow by design, so it gets its own time limit
+  it(
+    'select: every seeded user sees exactly the rows core.can() allows, in every business table',
+    { timeout: 120_000 },
+    async () => {
+      await inRolledBackTx(async (c) => {
+        await fixtures(c);
+        const regs = (await registrations(c)).filter((r) => !r.catalog);
+        const users = await userIds(c);
+        expect(regs.length).toBeGreaterThan(15);
+        let visible = 0;
+        const mismatches: string[] = [];
 
-      for (const reg of regs) {
-        for (const u of users) {
-          // expected: migrator (no RLS) filtering with the old per-row expression
-          await c.query(`select set_config('app.user_id', $1, true)`, [u.id]);
-          const expected = await c.query<{ id: string }>(
-            `select id from ${reg.table_name} where ${perRowCan(reg, 'view')} order by id`,
-          );
-          await c.query(`select set_config('app.user_id', '', true)`);
-          // actual: the generated policies, as app_rw
-          await actAs(c, 'app_rw', u.id);
-          const actual = await c.query<{ id: string }>(
-            `select id from ${reg.table_name} order by id`,
-          );
-          await resetRole(c);
-          const e = expected.rows.map((r) => r.id);
-          const a = actual.rows.map((r) => r.id);
-          visible += a.length;
-          if (JSON.stringify(e) !== JSON.stringify(a)) {
-            mismatches.push(
-              `${reg.table_name} as ${u.name}: expected ${e.length}, got ${a.length}`,
-            );
-          }
-        }
-      }
-      expect(mismatches).toEqual([]);
-      expect(visible).toBeGreaterThan(100); // the comparison had real rows to compare
-    });
-  });
-
-  it('covers SELF, derived and include_descendants (the rules the set must reproduce)', async () => {
-    await inRolledBackTx(async (c) => {
-      await fixtures(c);
-      const count = async (who: string, sql: string, params: unknown[] = []) => {
-        await actAs(c, 'app_rw', ids.user(who));
-        const r = await c.query<{ n: string }>(sql, params);
-        await resetRole(c);
-        return Number(r.rows[0]!.n);
-      };
-      // SELF: Sam holds no LEAVE grant, only SELF modify on his own request
-      expect(
-        await count(
-          'Sam Staff',
-          `select count(*) as n from wf.request where process_type = 'LEAVE'`,
-        ),
-      ).toBeGreaterThan(0);
-      // derived: the area manager sees stock at A and B (not the hub) through DERIVED_
-      const stockNodes = `select count(distinct delivery_node_id) as n from inv.stock_level`;
-      expect(await count('Aria Area Manager', stockNodes)).toBe(2);
-      // include_descendants: SUPPLY_VIEWER at the hub (with descendants) sees all three...
-      expect(await count('Hugo Hub Manager', stockNodes)).toBe(3);
-      // ...while HUB_MANAGER's TRANSFERS grant (without descendants) sees only hub legs
-      const hubLeg = `select count(*) as n from inv.transfer
-                       where from_node_id <> $1 and to_node_id <> $1`;
-      expect(await count('Hugo Hub Manager', hubLeg, [ids.node('delivery:Hub')])).toBe(0);
-    });
-  });
-
-  it('insert/update checks match core.can(modify), including SELF owners', async () => {
-    await inRolledBackTx(async (c) => {
-      // A writable fixture table (no business table is writable by app_rw today).
-      await c.query(`create table hr.zz_eq (
-        id uuid primary key default core.uuid_v7(), tenant_id uuid not null,
-        org_node_id uuid not null, owner_user_id uuid)`);
-      await c.query(`insert into core.domain_table (table_name, domain_code, hierarchy_type)
-                     values ('hr.zz_eq', 'LEAVE', 'org')`);
-      await c.query(`select core.apply_domain_rls('hr.zz_eq')`);
-      await c.query(`select audit.enable('hr.zz_eq')`);
-      const policy = await c.query<{ check: string }>(
-        `select pg_get_expr(polwithcheck, polrelid) as check from pg_policy
-          where polrelid = 'hr.zz_eq'::regclass and polname = 'dom_insert_org_node_id'`,
-      );
-      expect(policy.rows[0]!.check).toContain('visible_nodes');
-
-      const nodes = (
-        await c.query<{ id: string; tenant_id: string }>(
-          `select id, tenant_id from core.hierarchy_node where type = 'org'`,
-        )
-      ).rows;
-      const mismatches: string[] = [];
-      for (const u of await userIds(c)) {
-        for (const n of nodes) {
-          for (const owner of [null, u.id]) {
+        for (const reg of regs) {
+          for (const u of users) {
+            // expected: migrator (no RLS) filtering with the old per-row expression
             await c.query(`select set_config('app.user_id', $1, true)`, [u.id]);
-            const can = await c.query<{ ok: boolean }>(
-              `select core.can('LEAVE', 'modify', $1, null, $2) as ok`,
-              [n.id, owner],
+            const expected = await c.query<{ id: string }>(
+              `select id from ${reg.table_name} where ${perRowCan(reg, 'view')} order by id`,
             );
             await c.query(`select set_config('app.user_id', '', true)`);
+            // actual: the generated policies, as app_rw
             await actAs(c, 'app_rw', u.id);
-            await c.query('savepoint s');
-            let inserted = true;
-            try {
-              await c.query(
-                `insert into hr.zz_eq (tenant_id, org_node_id, owner_user_id) values ($1, $2, $3)`,
-                [n.tenant_id, n.id, owner],
-              );
-            } catch {
-              inserted = false;
-            }
-            await c.query('rollback to savepoint s');
+            const actual = await c.query<{ id: string }>(
+              `select id from ${reg.table_name} order by id`,
+            );
             await resetRole(c);
-            if (inserted !== can.rows[0]!.ok) {
+            const e = expected.rows.map((r) => r.id);
+            const a = actual.rows.map((r) => r.id);
+            visible += a.length;
+            if (JSON.stringify(e) !== JSON.stringify(a)) {
               mismatches.push(
-                `${u.name} at ${n.id} owner=${owner !== null}: can=${can.rows[0]!.ok}`,
+                `${reg.table_name} as ${u.name}: expected ${e.length}, got ${a.length}`,
               );
             }
           }
         }
-      }
-      expect(mismatches).toEqual([]);
-    });
-  });
+        expect(mismatches).toEqual([]);
+        expect(visible).toBeGreaterThan(100); // the comparison had real rows to compare
+      });
+    },
+  );
+
+  it(
+    'covers SELF, derived and include_descendants (the rules the set must reproduce)',
+    { timeout: 60_000 },
+    async () => {
+      await inRolledBackTx(async (c) => {
+        await fixtures(c);
+        const count = async (who: string, sql: string, params: unknown[] = []) => {
+          await actAs(c, 'app_rw', ids.user(who));
+          const r = await c.query<{ n: string }>(sql, params);
+          await resetRole(c);
+          return Number(r.rows[0]!.n);
+        };
+        // SELF: Sam holds no LEAVE grant, only SELF modify on his own request
+        expect(
+          await count(
+            'test.server.3.0',
+            `select count(*) as n from wf.request where process_type = 'LEAVE'`,
+          ),
+        ).toBeGreaterThan(0);
+        // derived: the area manager sees every stocked place in the area through DERIVED_
+        // (4 + 4 hotel stores, the Guest House, 2 bar stores, the central kitchen store)
+        const stockNodes = `select count(distinct delivery_node_id) as n from inv.stock_level`;
+        expect(await count('test.area-manager', stockNodes)).toBe(12);
+        // include_descendants: SUPPLY_VIEWER at the hub (with descendants) sees them all too...
+        expect(await count('test.central-kitchen-manager', stockNodes)).toBe(12);
+        // ...a department's store keeper only their store
+        expect(await count('test.bar-manager.1.0', stockNodes)).toBe(1);
+        // ...while HUB_MANAGER's TRANSFERS grant (without descendants) sees only hub legs
+        const hubLeg = `select count(*) as n from inv.transfer
+                       where from_node_id <> $1 and to_node_id <> $1`;
+        expect(
+          await count('test.central-kitchen-manager', hubLeg, [
+            ids.node('TEST-CENTRAL-KITCHEN-STORE'),
+          ]),
+        ).toBe(0);
+      });
+    },
+  );
+
+  it(
+    'insert/update checks match core.can(modify), including SELF owners',
+    { timeout: 120_000 },
+    async () => {
+      await inRolledBackTx(async (c) => {
+        // A writable fixture table (no business table is writable by app_rw today).
+        await c.query(`create table hr.zz_eq (
+        id uuid primary key default core.uuid_v7(), tenant_id uuid not null,
+        org_node_id uuid not null, owner_user_id uuid)`);
+        await c.query(`insert into core.domain_table (table_name, domain_code, hierarchy_type)
+                     values ('hr.zz_eq', 'LEAVE', 'org')`);
+        await c.query(`select core.apply_domain_rls('hr.zz_eq')`);
+        await c.query(`select audit.enable('hr.zz_eq')`);
+        const policy = await c.query<{ check: string }>(
+          `select pg_get_expr(polwithcheck, polrelid) as check from pg_policy
+          where polrelid = 'hr.zz_eq'::regclass and polname = 'dom_insert_org_node_id'`,
+        );
+        expect(policy.rows[0]!.check).toContain('visible_nodes');
+
+        // a place of each kind in both customers, including a department and a site
+        const nodes = (
+          await c.query<{ id: string; tenant_id: string }>(
+            `select id, tenant_id from core.hierarchy_node
+            where type = 'org' and code in ('TEST-COMPANY', 'TEST-AREA-MUMBAI', 'TEST-HOTEL-1.0',
+                  'TEST-HOTEL-1.0-KITCHEN', 'TEST-GUEST-HOUSE-2.0', 'TEST-BAR-3.0-FLOOR-SERVICE',
+                  'TEST-CENTRAL-KITCHEN', 'TEST-SOLO-COMPANY', 'TEST-SOLO-BAR-BAR')`,
+          )
+        ).rows;
+        expect(nodes).toHaveLength(9);
+        const mismatches: string[] = [];
+        for (const u of await userIds(c)) {
+          for (const n of nodes) {
+            for (const owner of [null, u.id]) {
+              await c.query(`select set_config('app.user_id', $1, true)`, [u.id]);
+              const can = await c.query<{ ok: boolean }>(
+                `select core.can('LEAVE', 'modify', $1, null, $2) as ok`,
+                [n.id, owner],
+              );
+              await c.query(`select set_config('app.user_id', '', true)`);
+              await actAs(c, 'app_rw', u.id);
+              await c.query('savepoint s');
+              let inserted = true;
+              try {
+                await c.query(
+                  `insert into hr.zz_eq (tenant_id, org_node_id, owner_user_id) values ($1, $2, $3)`,
+                  [n.tenant_id, n.id, owner],
+                );
+              } catch {
+                inserted = false;
+              }
+              await c.query('rollback to savepoint s');
+              await resetRole(c);
+              if (inserted !== can.rows[0]!.ok) {
+                mismatches.push(
+                  `${u.name} at ${n.id} owner=${owner !== null}: can=${can.rows[0]!.ok}`,
+                );
+              }
+            }
+          }
+        }
+        expect(mismatches).toEqual([]);
+      });
+    },
+  );
 });

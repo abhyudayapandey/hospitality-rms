@@ -12,7 +12,7 @@ beforeAll(async () => {
 });
 afterAll(closePools);
 
-const OLIVIA = () => ids.user('Olivia Outlet Manager');
+const OLIVIA = () => ids.user('test.bar-manager.3.0');
 const upsert = `select ops.upsert_event($1, $2, $3, $4::timestamptz, $5::timestamptz, $6, $7, $8::jsonb, $9, $10) as id`;
 
 async function items(c: PoolClient): Promise<[string, string]> {
@@ -42,7 +42,7 @@ function reqs(item1: string, item2: string) {
 
 const EVENT = (item1: string, item2: string, key: string | null = null) => [
   null,
-  ids.node('org:Outlet A'),
+  ids.node('TEST-BAR-3.0-FLOOR-SERVICE'),
   'Wedding lunch',
   '2026-12-12T13:00:00Z',
   '2026-12-12T16:00:00Z',
@@ -69,11 +69,11 @@ describe('ops.upsert_event', () => {
             [id],
           )
         ).rows!.map((x) => x.kind);
-      expect(await read(ids.user('Sam Staff'))).toEqual(['item', 'item', 'role']);
-      expect(await read(ids.user('Outlet Ops AI Agent'))).toEqual(['item', 'item', 'role']);
-      expect(await read(ids.user('Aria Area Manager'))).toEqual(['item', 'item', 'role']);
-      const omar = await newWorker(c, ids, 'Omar B Manager', 'org:Outlet B', 'MANAGER', [
-        ['OUTLET_MANAGER', 'org:Outlet B'],
+      expect(await read(ids.user('test.server.3.0'))).toEqual(['item', 'item', 'role']);
+      expect(await read(ids.user('ai-agent'))).toEqual(['item', 'item', 'role']);
+      expect(await read(ids.user('test.area-manager'))).toEqual(['item', 'item', 'role']);
+      const omar = await newWorker(c, ids, 'Omar B Manager', 'TEST-GUEST-HOUSE-2.0', 'MANAGER', [
+        ['OUTLET_MANAGER', 'TEST-GUEST-HOUSE-2.0'],
       ]);
       expect(await read(omar.userId)).toEqual([]);
     });
@@ -116,12 +116,12 @@ describe('ops.upsert_event', () => {
       };
       const err = async (user: string, args: unknown[]) =>
         (await attemptAs(c, user, upsert, args)).error;
-      expect(await err(ids.user('Sam Staff'), EVENT(i1, i2))).toBe('NOT_AUTHORISED');
-      expect(await err(ids.user('Aria Area Manager'), EVENT(i1, i2))).toBe('NOT_AUTHORISED');
+      expect(await err(ids.user('test.server.3.0'), EVENT(i1, i2))).toBe('NOT_AUTHORISED');
+      expect(await err(ids.user('test.area-manager'), EVENT(i1, i2))).toBe('NOT_AUTHORISED');
       expect(
         await err(
           OLIVIA(),
-          bad((a) => (a[1] = ids.node('org:Outlet B'))),
+          bad((a) => (a[1] = ids.node('TEST-GUEST-HOUSE-2.0'))),
         ),
       ).toBe('NOT_AUTHORISED');
       expect(
@@ -173,7 +173,8 @@ describe('ops.upsert_event', () => {
       const [i1, i2] = await items(c);
       const id = (await attemptAs<{ id: string }>(c, OLIVIA(), upsert, EVENT(i1, i2))).rows![0]!.id;
       expect(
-        (await attemptAs(c, ids.user('Sam Staff'), 'select ops.cancel_event($1)', [id])).error,
+        (await attemptAs(c, ids.user('test.server.3.0'), 'select ops.cancel_event($1)', [id]))
+          .error,
       ).toBe('NOT_AUTHORISED');
       expect(
         (await attemptAs(c, OLIVIA(), 'select ops.cancel_event($1)', [id])).error,
@@ -193,18 +194,24 @@ describe('ops.mark_read', () => {
     await inRolledBackTx(async (c) => {
       const tenant = await tenantOf(c, ids);
       await c.query('delete from ops.notification'); // e2e residue
-      await c.query(`select ops.notify($1, $2, 'test', 'a')`, [tenant, ids.user('Sam Staff')]);
-      await c.query(`select ops.notify($1, $2, 'test', 'b')`, [tenant, ids.user('Sam Staff')]);
-      await c.query(`select ops.notify($1, $2, 'test', 'c')`, [tenant, ids.user('Casey Chef')]);
+      await c.query(`select ops.notify($1, $2, 'test', 'a')`, [
+        tenant,
+        ids.user('test.server.3.0'),
+      ]);
+      await c.query(`select ops.notify($1, $2, 'test', 'b')`, [
+        tenant,
+        ids.user('test.server.3.0'),
+      ]);
+      await c.query(`select ops.notify($1, $2, 'test', 'c')`, [tenant, ids.user('test.cook.3.0')]);
       const n = await attemptAs<{ n: number }>(
         c,
-        ids.user('Sam Staff'),
+        ids.user('test.server.3.0'),
         'select ops.mark_read() n',
       );
       expect(n.rows![0]!.n).toBe(2);
       const casey = await c.query(
         `select read_at from ops.notification where owner_user_id = $1 and kind = 'test'`,
-        [ids.user('Casey Chef')],
+        [ids.user('test.cook.3.0')],
       );
       expect(casey.rows[0]).toEqual({ read_at: null });
     });

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
 import { submitCount } from '../../actions';
 
@@ -27,6 +28,7 @@ export function CountForm({
     Object.fromEntries(lines.map((l) => [l.item_id, l.counted_qty ?? ''])),
   );
   const [pending, start] = useTransition();
+  const hydrated = useHydrated();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const counted = Object.values(values).filter((v) => v.trim() !== '').length;
@@ -82,7 +84,7 @@ export function CountForm({
       <StatusBox message={done} />
       <button
         type="submit"
-        disabled={pending || counted === 0 || done !== null}
+        disabled={!hydrated || pending || counted === 0 || done !== null}
         className={primaryButton}
       >
         Submit count ({counted} of {lines.length} counted)

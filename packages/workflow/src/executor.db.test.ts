@@ -85,15 +85,15 @@ async function approvedRequest(): Promise<string> {
   const subject = await migratorPool.query<{ id: string }>(
     `insert into public.wf_test_exec_subject (tenant_id, delivery_node_id, amount)
      select tenant_id, id, 1000 from core.hierarchy_node where id = $1 returning id`,
-    [ids.node('delivery:Outlet A')],
+    [ids.node('TEST-BAR-3.0-KITCHEN-STORE')],
   );
   const { id } = await asUser<{ id: string }>(
-    'Kim Storekeeper',
+    'test.head-cook.3.0',
     `select wf.submit('TEST_EXEC', 'test.exec_subject', $1) as id`,
     [subject.rows[0]!.id],
   );
   created.push(id);
-  await asUser('Olivia Outlet Manager', `select wf.act($1, 'approve')`, [id]);
+  await asUser('test.bar-manager.3.0', `select wf.act($1, 'approve')`, [id]);
   return id;
 }
 

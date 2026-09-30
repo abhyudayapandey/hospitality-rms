@@ -30,10 +30,11 @@ wherever they conflict.**
 ## Repo layout
 ```
 apps/web              Next.js PWA
-packages/db           migrations/, seed/, sql tests, Kysely types
+packages/db           migrations/, seed/dev/, sql tests, Kysely types
 packages/domain       shared TS types + zod schemas per module
 packages/workflow     process definitions + execution handlers
 packages/ai           signal definitions, prompt templates, output validators
+packages/onboarding   customer onboarding loader: CSV files -> validate / dry run / apply
 services/lambdas      wf-execute, ai-recommend (thin wrappers over packages)
 infra                 CDK app
 docs                  LLD.md, goal.md, decisions/ (ADRs)
@@ -88,10 +89,11 @@ pnpm i                 install; re-run after every pull or branch switch (pnpm 1
                        "type could not be resolved" errors on workspace imports
 pnpm db:up             start local Postgres (docker compose)
 pnpm db:migrate        run dbmate migrations
-pnpm db:seed           load seed/ (org, users, policies) then seed/dev/ (items, workers,
-                       shifts, leave, events); sync workflow definitions
+pnpm db:seed           load the test customers (docs/onboarding/test-data) with the onboarding
+                       loader, then seed/dev/ (shifts, punches, pay); sync product access
+                       (groups, matrix, bp_policy) and workflow definitions into every tenant
 pnpm dev               run web app
-pnpm test              all tests (needs db:up + db:migrate)
+pnpm test              all tests (needs db:up + db:migrate + db:seed)
 pnpm test:unit         unit tests only (*.test.ts)
 pnpm test:db           DB integration tests only (*.db.test.ts)
 pnpm lint && pnpm typecheck
@@ -106,6 +108,9 @@ pnpm --filter @outlet-ops/web e2e                     build, then Playwright vs 
 pnpm --filter @outlet-ops/web check:prod-dev-auth     prod build: dev login must be 404
 pnpm --filter @outlet-ops/infra synth                 cdk synth with infra/cdk.json context (no AWS calls)
 pnpm --filter @outlet-ops/db perf:inventory           10k-row read benchmark, rolled back (ADR 007)
+pnpm --filter @outlet-ops/onboarding load <folder> [--apply] [--access]
+                                                      validate a customer's onboarding files
+                                                      and dry-run them; --apply loads (ADR 009)
 infra/scripts/build-release.sh <sha>                  linux-arm64 release bundle (CI's Deploy workflow)
 ```
 Never run `cdk deploy`, the Deploy workflow or AWS-mutating commands without explicit
@@ -115,6 +120,14 @@ the Deploy workflow.
 First run: `cp .env.example .env`. The DB roles (`migrator`, `app_rw`, `wf_executor`) are
 created by `packages/db/docker/init/` on a fresh docker volume.
 Keep this section accurate when scripts change.
+
+## Test data
+`docs/onboarding/test-data/` is the spec for structure and access (ADR 009): two customers,
+Test Company (four outlet shapes and a central kitchen) and Test Solo Bar Co. `pnpm db:seed`
+loads both. DB tests, e2e and the dev login use their usernames (`test.bar-manager.3.0`)
+and place codes (`TEST-BAR-3.0-KITCHEN-STORE`); `packages/db/test/helpers.ts` resolves them.
+Each customer's `99_access_preview_GENERATED.csv` is the expected access; the loader test
+fails if they differ. `TEST_LOGINS_do_not_commit.csv` (passwords) is never committed.
 
 ## How to work in this repo
 - Start every task in plan mode: list files to create/change and tests to write, then wait

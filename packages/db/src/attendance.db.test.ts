@@ -9,7 +9,7 @@ import {
   resetRole,
   type SeedIds,
 } from '../test/helpers';
-import { clearWorkforce, newWorker, tenantOf, workerFor } from '../test/workforce';
+import { clearWorkforce, newUser, newWorker, tenantOf, workerFor } from '../test/workforce';
 
 // Attendance (ADR 008): clock in/out with geofence flags (never blocking), offline replay
 // with device timestamps and idempotency keys, the nightly exceptions job, the 90-day
@@ -34,15 +34,21 @@ interface Fx {
 async function fixture(c: PoolClient): Promise<Fx> {
   await clearWorkforce(c);
   const tenant = await tenantOf(c, ids);
-  const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
-  const olivia = await workerFor(c, ids, 'Olivia Outlet Manager', 'org:Outlet A', 'MANAGER');
-  const pat = await newWorker(c, ids, 'Pat Server', 'org:Outlet A', 'SERVER');
+  const sam = await workerFor(c, ids, 'test.server.3.0', 'TEST-BAR-3.0-FLOOR-SERVICE', 'SERVER');
+  const olivia = await workerFor(
+    c,
+    ids,
+    'test.bar-manager.3.0',
+    'TEST-BAR-3.0-FLOOR-SERVICE',
+    'MANAGER',
+  );
+  const pat = await newWorker(c, ids, 'Pat Server', 'TEST-BAR-3.0-FLOOR-SERVICE', 'SERVER');
   await c.query(
     `insert into hr.node_setting (tenant_id, org_node_id, latitude, longitude)
      values ($1, $2, $3, $4)
      on conflict (tenant_id, org_node_id) do update
        set latitude = excluded.latitude, longitude = excluded.longitude, geofence_radius_m = 150`,
-    [tenant, ids.node('org:Outlet A'), HERE.lat, HERE.lng],
+    [tenant, ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), HERE.lat, HERE.lng],
   );
   return { tenant, sam, pat, olivia };
 }
@@ -99,8 +105,8 @@ async function clock(
   );
 }
 
-const SAM = () => ids.user('Sam Staff');
-const OLIVIA = () => ids.user('Olivia Outlet Manager');
+const SAM = () => ids.user('test.server.3.0');
+const OLIVIA = () => ids.user('test.bar-manager.3.0');
 
 describe('hr.clock', () => {
   it('clocks in inside the fence against the shift, idempotently; out outside is flagged, not blocked', async () => {
@@ -143,9 +149,9 @@ describe('hr.clock', () => {
       const r = await clock(c, SAM(), 'in', null, 'k1');
       expect(r.rows![0]).toMatchObject({ inside: null, flags: ['no_location'], shift_id: null });
       await c.query('delete from hr.node_setting where org_node_id = $1', [
-        ids.node('org:Outlet B'),
+        ids.node('TEST-GUEST-HOUSE-2.0'),
       ]);
-      const bea = await newWorker(c, ids, 'Bea Outlet B', 'org:Outlet B', 'SERVER');
+      const bea = await newWorker(c, ids, 'Bea Outlet B', 'TEST-GUEST-HOUSE-2.0', 'SERVER');
       const b = await clock(c, bea.userId, 'in', FAR, 'k2');
       expect(b.rows![0]).toMatchObject({ inside: null, distance_m: null, flags: [] });
     });
@@ -187,16 +193,15 @@ describe('hr.clock', () => {
   it('needs a worker and writes nothing directly', async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c);
-      expect((await clock(c, ids.user('Aria Area Manager'), 'in', HERE, 'x')).error).toBe(
-        'INVALID_WORKER',
-      );
+      const noWorker = await newUser(c, ids, 'No Worker');
+      expect((await clock(c, noWorker, 'in', HERE, 'x')).error).toBe('INVALID_WORKER');
       const direct = await attemptAs(
         c,
         SAM(),
         `insert into hr.attendance (tenant_id, worker_id, owner_user_id, org_node_id, clock_in_at,
                                     in_source, in_key)
          values ($1, $2, $3, $4, now(), 'online', 'x')`,
-        [f.tenant, f.sam, SAM(), ids.node('org:Outlet A')],
+        [f.tenant, f.sam, SAM(), ids.node('TEST-BAR-3.0-FLOOR-SERVICE')],
       );
       expect(direct.error).toMatch(/permission denied/);
     });
@@ -234,8 +239,14 @@ describe('nightly exceptions', () => {
   it('raises late, no_show, missing_clock_out and unscheduled once', async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c);
-      const casey = await workerFor(c, ids, 'Casey Chef', 'org:Outlet A', 'COOK');
-      const kim = await workerFor(c, ids, 'Kim Storekeeper', 'org:Outlet A', 'STORE');
+      const casey = await workerFor(c, ids, 'test.cook.3.0', 'TEST-BAR-3.0-FLOOR-SERVICE', 'COOK');
+      const kim = await workerFor(
+        c,
+        ids,
+        'test.head-cook.3.0',
+        'TEST-BAR-3.0-FLOOR-SERVICE',
+        'STORE',
+      );
       const late = await rostered(c, f.sam, '-20 hours'); // ended 12 h ago
       await punch(c, f.sam, late, '-1185 minutes', '-12 hours'); // 15 min late
       const noShow = await rostered(c, f.pat.workerId, '-20 hours');
@@ -347,9 +358,9 @@ describe('exceptions queue and self-service RLS', () => {
       expect(await count(SAM(), 'hr.attendance_exception')).toBe('1');
       expect(await count(f.pat.userId, 'hr.attendance')).toBe('1');
       expect(await count(OLIVIA(), 'hr.attendance')).toBe('3');
-      expect(await count(ids.user('Aria Area Manager'), 'hr.attendance_exception')).toBe('3');
-      const omar = await newWorker(c, ids, 'Omar B Manager', 'org:Outlet B', 'MANAGER', [
-        ['OUTLET_MANAGER', 'org:Outlet B'],
+      expect(await count(ids.user('test.area-manager'), 'hr.attendance_exception')).toBe('3');
+      const omar = await newWorker(c, ids, 'Omar B Manager', 'TEST-GUEST-HOUSE-2.0', 'MANAGER', [
+        ['OUTLET_MANAGER', 'TEST-GUEST-HOUSE-2.0'],
       ]);
       expect(await count(omar.userId, 'hr.attendance')).toBe('0'); // other outlet
     });
@@ -373,7 +384,7 @@ describe('exceptions queue and self-service RLS', () => {
       );
       expect(
         (
-          await attemptAs(c, ids.user('Aria Area Manager'), resolve, [
+          await attemptAs(c, ids.user('test.area-manager'), resolve, [
             await exOf(f.sam),
             'resolved',
             'x',

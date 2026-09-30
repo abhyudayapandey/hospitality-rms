@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useRef, useState, useTransition } from 'react';
+import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
 import { daysInclusive, isIsoDate } from '@/lib/dates';
 import { requestLeave } from '../roster/actions';
@@ -15,6 +16,7 @@ export interface LeaveTypeOption {
 export function LeaveForm({ types, today }: { types: LeaveTypeOption[]; today: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const hydrated = useHydrated();
   const [type, setType] = useState(types[0]?.id ?? '');
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
@@ -103,7 +105,7 @@ export function LeaveForm({ types, today }: { types: LeaveTypeOption[]; today: s
       </label>
       <button
         type="submit"
-        disabled={pending || days === 0 || over || !type}
+        disabled={!hydrated || pending || days === 0 || over || !type}
         className={primaryButton}
       >
         Request {days || ''} day{days === 1 ? '' : 's'}

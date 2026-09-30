@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
 import { receivePo } from '../../actions';
 
@@ -22,6 +23,7 @@ export function ReceiveForm({ po, lines }: { po: string; lines: ReceiveLine[] })
   );
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [pending, start] = useTransition();
+  const hydrated = useHydrated();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
@@ -84,7 +86,7 @@ export function ReceiveForm({ po, lines }: { po: string; lines: ReceiveLine[] })
       </ul>
       <ErrorBox message={error} />
       <StatusBox message={done} />
-      <button type="submit" disabled={pending} className={primaryButton}>
+      <button type="submit" disabled={!hydrated || pending} className={primaryButton}>
         Receive goods
       </button>
     </form>

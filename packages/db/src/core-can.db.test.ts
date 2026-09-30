@@ -13,29 +13,33 @@ import {
   type SeedIds,
 } from '../test/helpers';
 
-// Table-driven access matrix for core.can(), evaluated as app_rw against the seed
-// (packages/db/seed/001_core.sql, ADR 002). Each row is one decision.
+// Table-driven access matrix for core.can(), evaluated as app_rw against the test customers
+// (docs/onboarding/test-data, loaded by pnpm db:seed; ADR 002, ADR 009). Each row is one
+// decision. Test Bar 3.0: the server works in Floor Service, the cook and head cook in the
+// Kitchen (the cook uses its store, the head cook keeps it), the Bar Manager runs the bar.
 
-const SAM = 'Sam Staff';
-const CASEY = 'Casey Chef';
-const KIM = 'Kim Storekeeper';
-const OLIVIA = 'Olivia Outlet Manager';
-const ARIA = 'Aria Area Manager';
-const HUGO = 'Hugo Hub Manager';
-const HARPER = 'Harper HR Admin';
-const SASHA = 'Sasha Security Admin';
-const AVERY = 'Avery Auditor';
-const AGENT = 'Outlet Ops AI Agent';
+const SAM = 'test.server.3.0';
+const CASEY = 'test.cook.3.0';
+const KIM = 'test.head-cook.3.0';
+const OLIVIA = 'test.bar-manager.3.0';
+const ARIA = 'test.area-manager';
+const HUGO = 'test.central-kitchen-manager';
+const HARPER = 'test.hr-admin';
+const SASHA = 'test.security-admin';
+const AVERY = 'test.auditor';
+const AGENT = 'ai-agent';
 
-const O_COMPANY: NodeKey = 'org:Company';
-const O_REGION: NodeKey = 'org:Region';
-const O_AREA: NodeKey = 'org:Area';
-const O_A: NodeKey = 'org:Outlet A';
-const O_B: NodeKey = 'org:Outlet B';
-const D_NET: NodeKey = 'delivery:Company Supply Network';
-const D_HUB: NodeKey = 'delivery:Hub';
-const D_A: NodeKey = 'delivery:Outlet A';
-const D_B: NodeKey = 'delivery:Outlet B';
+const O_COMPANY: NodeKey = 'TEST-COMPANY';
+const O_REGION: NodeKey = 'TEST-REGION-WEST';
+const O_AREA: NodeKey = 'TEST-AREA-MUMBAI';
+const O_A: NodeKey = 'TEST-BAR-3.0-FLOOR-SERVICE';
+const O_KITCHEN: NodeKey = 'TEST-BAR-3.0-KITCHEN';
+const O_B: NodeKey = 'TEST-GUEST-HOUSE-2.0';
+const D_NET: NodeKey = 'TEST-SUPPLY-NETWORK';
+const D_HUB: NodeKey = 'TEST-CENTRAL-KITCHEN-STORE';
+const D_A: NodeKey = 'TEST-BAR-3.0-KITCHEN-STORE';
+const D_B: NodeKey = 'TEST-GUEST-HOUSE-2.0-SUPPLY';
+const D_SOLO: NodeKey = 'TEST-SOLO-BAR-BAR-STORE';
 
 type Access = 'view' | 'modify';
 type Case = [
@@ -65,27 +69,41 @@ const cases: Case[] = [
   [SAM, 'WORKERS', 'view', O_A, SAM, true, 'self-service: own worker record'],
   [SAM, 'WORKERS', 'modify', O_A, SAM, false, 'self-service: worker record view-only'],
 
-  // Multi-assignment: STAFF@org Outlet A + CHEF@delivery Outlet A
-  [CASEY, 'ROSTER', 'view', O_A, null, true, 'chef via STAFF'],
-  [CASEY, 'EVENTS', 'view', O_A, null, true, 'chef via STAFF'],
-  [CASEY, 'STOCK_LEVELS', 'view', D_A, null, true, 'chef via CHEF'],
-  [CASEY, 'STOCK_ADJUSTMENTS', 'modify', D_A, null, true, 'chef via CHEF'],
+  // Multi-assignment: STAFF@Kitchen + STOCK_USER@Kitchen Store (was CHEF)
+  [CASEY, 'ROSTER', 'view', O_KITCHEN, null, true, 'cook via STAFF'],
+  [CASEY, 'EVENTS', 'view', O_KITCHEN, null, true, 'cook via STAFF'],
+  [CASEY, 'ROSTER', 'view', O_A, null, false, 'another department'],
+  [CASEY, 'STOCK_LEVELS', 'view', D_A, null, true, 'via STOCK_USER'],
+  [CASEY, 'STOCK_ADJUSTMENTS', 'modify', D_A, null, true, 'via STOCK_USER'],
+  [CASEY, 'PURCHASE_ORDERS', 'view', D_A, null, true, 'stock user sees POs to receive'],
+  [CASEY, 'PURCHASE_ORDERS', 'modify', D_A, null, false, 'stock user cannot create POs'],
   [CASEY, 'STOCK_ADJUSTMENTS', 'modify', D_B, null, false, 'cross-outlet denial'],
-  [CASEY, 'PURCHASE_ORDERS', 'modify', D_A, null, false, 'chef cannot raise POs'],
-  [CASEY, 'ROSTER', 'modify', O_A, null, false, 'chef cannot edit roster'],
+  [CASEY, 'ROSTER', 'modify', O_KITCHEN, null, false, 'cook cannot edit roster'],
 
-  // Multi-assignment: STAFF@org Outlet A + STORE_KEEPER@delivery Outlet A
+  // Multi-assignment: DEPARTMENT_HEAD@Kitchen + STORE_KEEPER@Kitchen Store
   [KIM, 'PURCHASE_ORDERS', 'modify', D_A, null, true, 'store keeper raises POs'],
   [KIM, 'TRANSFERS', 'view', D_A, null, true, 'store keeper views transfers'],
   [KIM, 'TRANSFERS', 'modify', D_A, null, true, 'store keeper initiates transfers (ADR 003)'],
   [KIM, 'STOCK_LEVELS', 'view', D_B, null, false, 'cross-outlet denial'],
-  [KIM, 'EVENTS', 'view', O_A, null, true, 'store keeper via STAFF'],
+  [KIM, 'EVENTS', 'modify', O_KITCHEN, null, true, 'department head plans events'],
+  [KIM, 'ROSTER', 'modify', O_KITCHEN, null, true, 'department head rosters the kitchen'],
+  [KIM, 'ROSTER', 'view', O_A, null, false, 'not another department'],
+  [KIM, 'STOCK_LEVELS', 'view', 'TEST-BAR-3.0-BAR-STORE', null, false, 'not the Bar Store'],
 
-  // OUTLET_MANAGER at Outlet A in both trees (+ STAFF)
+  // OUTLET_MANAGER at Test Bar 3.0 in both trees (standalone bar: the Bar Manager)
   [OLIVIA, 'ROSTER', 'modify', O_A, null, true, 'manages own outlet roster'],
   [OLIVIA, 'ROSTER', 'modify', O_B, null, false, 'cross-outlet denial'],
   [OLIVIA, 'ROSTER', 'view', O_B, null, false, 'cross-outlet denial (view)'],
   [OLIVIA, 'STOCK_LEVELS', 'view', D_A, null, true, 'own outlet stock'],
+  [
+    OLIVIA,
+    'STOCK_LEVELS',
+    'view',
+    'TEST-BAR-3.0-BAR-STORE',
+    null,
+    true,
+    'every store of the outlet',
+  ],
   [OLIVIA, 'STOCK_LEVELS', 'view', D_B, null, false, 'cross-outlet denial (stock)'],
   [OLIVIA, 'STOCK_LEVELS', 'view', D_HUB, null, false, 'cannot see hub stock'],
   [OLIVIA, 'TRANSFERS', 'modify', D_A, null, true, 'requests transfers'],
@@ -95,23 +113,27 @@ const cases: Case[] = [
   [OLIVIA, 'LEAVE', 'modify', O_A, null, false, 'cannot edit others leave directly'],
   [OLIVIA, 'COMPENSATION', 'view', O_A, null, false, 'no pay data'],
 
-  // AREA_MANAGER at Area: inheritance + derived delivery views
-  [ARIA, 'ROSTER', 'view', O_A, null, true, 'inherits down to Outlet A'],
-  [ARIA, 'ROSTER', 'view', O_B, null, true, 'inherits down to Outlet B'],
+  // AREA_MANAGER at the area: inheritance + derived delivery views
+  [ARIA, 'ROSTER', 'view', O_A, null, true, 'inherits down to a department'],
+  [ARIA, 'ROSTER', 'view', O_B, null, true, 'inherits down to another outlet'],
   [ARIA, 'ROSTER', 'view', O_AREA, null, true, 'at the assigned node'],
   [ARIA, 'ROSTER', 'view', O_REGION, null, false, 'not above the assigned node'],
   [ARIA, 'ROSTER', 'modify', O_A, null, false, 'view-only'],
   [ARIA, 'STOCK_LEVELS', 'view', D_A, null, true, 'derived stock view via node_link'],
   [ARIA, 'STOCK_LEVELS', 'view', D_B, null, true, 'derived stock view via node_link'],
   [ARIA, 'STOCK_LEVELS', 'modify', D_A, null, false, 'derived access is view-only'],
-  [ARIA, 'STOCK_LEVELS', 'view', D_HUB, null, false, 'hub is not linked to her area'],
+  [ARIA, 'STOCK_LEVELS', 'view', D_HUB, null, true, 'the central kitchen is in the area'],
+  [ARIA, 'STOCK_LEVELS', 'view', D_NET, null, false, 'the network is linked to nothing'],
+  [ARIA, 'STOCK_LEVELS', 'view', D_SOLO, null, false, 'another customer'],
   [ARIA, 'PURCHASE_ORDERS', 'view', D_A, null, true, 'derived PO view'],
   [ARIA, 'PURCHASE_ORDERS', 'modify', D_A, null, false, 'derived PO view-only'],
   [ARIA, 'TRANSFERS', 'view', D_B, null, true, 'derived transfers view'],
-  [ARIA, 'STOCK_ADJUSTMENTS', 'view', D_A, null, false, 'no derived stock adjustments'],
+  [ARIA, 'STOCK_ADJUSTMENTS', 'view', D_A, null, true, 'derived stock adjustments (ADR 009)'],
+  [ARIA, 'STOCK_ADJUSTMENTS', 'modify', D_A, null, false, 'derived is view only'],
   [ARIA, 'COMPENSATION', 'view', O_A, null, false, 'no pay data'],
 
-  // HUB_MANAGER at Hub (no descendants) + SUPPLY_VIEWER at Hub (with descendants)
+  // Central Kitchen Manager: HUB_MANAGER at its store (this place only) + SUPPLY_VIEWER
+  // there (with descendants) + DEPARTMENT_HEAD of the Dispatch Team
   [HUGO, 'STOCK_LEVELS', 'view', D_HUB, null, true, 'hub stock'],
   [HUGO, 'STOCK_ADJUSTMENTS', 'modify', D_HUB, null, true, 'adjusts hub stock'],
   [HUGO, 'STOCK_LEVELS', 'view', D_A, null, true, 'SUPPLY_VIEWER covers outlets'],
@@ -121,7 +143,8 @@ const cases: Case[] = [
   [HUGO, 'TRANSFERS', 'modify', D_A, null, false, 'HUB_MANAGER does not descend'],
   [HUGO, 'TRANSFERS', 'view', D_A, null, false, 'SUPPLY_VIEWER is stock only'],
   [HUGO, 'STOCK_LEVELS', 'view', D_NET, null, false, 'not above the hub'],
-  [HUGO, 'ROSTER', 'view', O_A, null, false, 'no org access'],
+  [HUGO, 'ROSTER', 'view', O_A, null, false, 'no access at the outlets'],
+  [HUGO, 'ROSTER', 'modify', 'TEST-CENTRAL-KITCHEN-DISPATCH-TEAM', null, true, 'heads dispatch'],
 
   // HR_ADMIN at Company
   [HARPER, 'WORKERS', 'modify', O_A, null, true, 'inherits from company'],
@@ -173,7 +196,7 @@ async function can(
     await client.query('begin');
     await client.query(`select set_config('app.user_id', $1, true)`, [who ? ids.user(who) : '']);
     const nodeId = node ? ids.node(node) : null;
-    const isOrg = node?.startsWith('org:') ?? true;
+    const isOrg = node ? ids.type(node) === 'org' : true;
     const { rows } = await client.query<{ ok: boolean }>(
       'select core.can($1, $2, $3, $4, $5) as ok',
       [
@@ -203,7 +226,8 @@ describe('core.can() access matrix', () => {
 describe('AI agent is view-only (CLAUDE.md rule 6)', () => {
   it('has modify on no domain except AI_RECOMMENDATIONS', async () => {
     const { rows: domains } = await migratorPool.query<{ code: string; hierarchy_type: string }>(
-      'select code, hierarchy_type from core.domain order by code',
+      'select code, hierarchy_type from core.domain where tenant_id = $1 order by code',
+      [ids.tenant()],
     );
     expect(domains.length).toBeGreaterThan(0);
     const modifiable: string[] = [];
@@ -220,7 +244,7 @@ describe('assignment lifecycle (rolled back)', () => {
   async function canIn(c: PoolClient, who: string, domain: string, access: Access, node: NodeKey) {
     await actAs(c, 'app_rw', ids.user(who));
     const nodeId = ids.node(node);
-    const isOrg = node.startsWith('org:');
+    const isOrg = ids.type(node) === 'org';
     const { rows } = await c.query<{ ok: boolean }>('select core.can($1, $2, $3, $4) as ok', [
       domain,
       access,

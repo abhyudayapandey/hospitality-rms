@@ -3,4 +3,5 @@ export * from './types';
 export * from './processes';
 export * from './handlers';
 export { runOnce, type RunOptions, type RunResult } from './executor';
-export { syncProcessDefs } from './sync';
+export * from './bp-policy';
+export { syncProcessDefs, syncProductAccess } from './sync';

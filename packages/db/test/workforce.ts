@@ -1,19 +1,16 @@
 import type pg from 'pg';
 import type { NodeKey, SeedIds } from './helpers';
 
-// Workforce fixtures for DB tests, used inside inRolledBackTx as migrator. Idempotent, so
-// they work with or without the dev seed (seed/dev/004_workforce_dev.sql uses the same
-// role codes and home nodes for the seeded users).
+// Workforce fixtures for DB tests, used inside inRolledBackTx as migrator. Idempotent:
+// the test customers' people already have workers (loaded from file 07), which these
+// fixtures reuse; new workers get one of these job roles.
 
 export const JOB_ROLES = ['MANAGER', 'SERVER', 'COOK', 'STORE', 'CLEANER'] as const;
 export type JobRole = (typeof JOB_ROLES)[number];
 
-export async function tenantOf(c: pg.PoolClient, ids: SeedIds): Promise<string> {
-  const { rows } = await c.query<{ t: string }>(
-    'select tenant_id as t from core.hierarchy_node where id = $1',
-    [ids.node('org:Company')],
-  );
-  return rows[0]!.t;
+/** Test Company's tenant. */
+export function tenantOf(_c: pg.PoolClient, ids: SeedIds): Promise<string> {
+  return Promise.resolve(ids.tenant());
 }
 
 export async function ensureJobRoles(c: pg.PoolClient, tenant: string): Promise<void> {
@@ -45,6 +42,16 @@ export async function workerFor(
   const { rows } = await c.query<{ id: string }>(
     'select id from hr.worker where owner_user_id = $1',
     [user],
+  );
+  return rows[0]!.id;
+}
+
+/** A fresh person with no worker record (every test-data user has one). */
+export async function newUser(c: pg.PoolClient, ids: SeedIds, name: string): Promise<string> {
+  const { rows } = await c.query<{ id: string }>(
+    `insert into core.app_user (tenant_id, kind, display_name) values ($1, 'human', $2)
+     returning id`,
+    [ids.tenant(), name],
   );
   return rows[0]!.id;
 }

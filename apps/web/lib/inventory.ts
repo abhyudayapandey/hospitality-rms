@@ -30,18 +30,18 @@ export interface SupplyContext {
 
 /**
  * The delivery node the supply screens work on: ?node=, else the current node when it
- * is a delivery node, else the first delivery node the user holds (own before derived).
+ * is a delivery node, else the first stock location the user holds (own before derived).
  */
 export async function supplyContext(sp: SearchParams): Promise<SupplyContext> {
   const shell = await loadShell();
   const wanted = param(await sp, 'node');
   const nodes = shell.nodes
-    .filter((n) => n.type === 'delivery')
+    .filter((n) => n.type === 'delivery' && n.holds_stock)
     .sort((a, b) => Number(a.derived) - Number(b.derived));
   const node =
     nodes.find((n) => n.id === wanted) ??
     nodes.find((n) => n.id === shell.currentNode?.id) ??
-    nodes.find((n) => !n.derived && n.kind !== 'network') ??
+    nodes.find((n) => !n.derived && n.holds_stock) ??
     nodes[0] ??
     null;
   return {

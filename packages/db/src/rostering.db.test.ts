@@ -12,7 +12,7 @@ beforeAll(async () => {
 });
 afterAll(closePools);
 
-const OLIVIA = () => ids.user('Olivia Outlet Manager');
+const OLIVIA = () => ids.user('test.bar-manager.3.0');
 
 /** A Monday two weeks ahead (Asia/Kolkata), so every shift is in the future. */
 async function futureMonday(c: PoolClient): Promise<string> {
@@ -22,7 +22,7 @@ async function futureMonday(c: PoolClient): Promise<string> {
   return rows[0]!.d;
 }
 
-/** A draft shift at Outlet A starting `day` (offset from monday) at local `time`. */
+/** A draft shift in Test Bar 3.0's Floor Service starting `day` (offset from monday) at local `time`. */
 async function shift(
   c: PoolClient,
   monday: string,
@@ -30,7 +30,7 @@ async function shift(
   time: string,
   hours: number,
   role: JobRole = 'SERVER',
-  opts: { node?: 'Outlet A' | 'Outlet B'; headcount?: number } = {},
+  opts: { node?: string; headcount?: number } = {},
 ): Promise<string> {
   const { rows } = await c.query<{ id: string }>(
     `insert into hr.shift (tenant_id, org_node_id, local_date, start_at, end_at, role_code, headcount)
@@ -40,7 +40,7 @@ async function shift(
             $6, $7
        from core.hierarchy_node n where n.id = $1 returning id`,
     [
-      ids.node(`org:${opts.node ?? 'Outlet A'}`),
+      ids.node(opts.node ?? 'TEST-BAR-3.0-FLOOR-SERVICE'),
       monday,
       day,
       time,
@@ -61,20 +61,20 @@ describe('hr.generate_week', () => {
     await inRolledBackTx(async (c) => {
       await clearWorkforce(c);
       const tenant = await tenantOf(c, ids);
-      await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
+      await workerFor(c, ids, 'test.server.3.0', 'TEST-BAR-3.0-FLOOR-SERVICE', 'SERVER');
       const monday = await futureMonday(c);
       await c.query(
         `insert into hr.shift_template (tenant_id, org_node_id, name, role_code, start_time,
                                         end_time, headcount, weekdays)
          values ($1, $2, 'Day', 'SERVER', '09:00', '17:00', 2, '{1,2,3,4,5,6,7}'),
                 ($1, $2, 'Night', 'COOK', '22:00', '06:00', 1, '{1}')`,
-        [tenant, ids.node('org:Outlet A')],
+        [tenant, ids.node('TEST-BAR-3.0-FLOOR-SERVICE')],
       );
       const gen = await attemptAs<{ n: number }>(
         c,
         OLIVIA(),
         'select hr.generate_week($1, $2) as n',
-        [ids.node('org:Outlet A'), monday],
+        [ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), monday],
       );
       expect(gen.rows![0]!.n).toBe(8);
       const { rows } = await c.query<{
@@ -88,7 +88,7 @@ describe('hr.generate_week', () => {
                 to_char(end_at at time zone 'Asia/Kolkata', 'YYYY-MM-DD HH24:MI') e,
                 headcount hc, status
            from hr.shift where org_node_id = $1 and local_date = $2::date order by start_at`,
-        [ids.node('org:Outlet A'), monday],
+        [ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), monday],
       );
       const next = (await c.query<{ d: string }>(`select ($1::date + 1)::text d`, [monday]))
         .rows[0]!.d;
@@ -100,7 +100,7 @@ describe('hr.generate_week', () => {
       const utc = await c.query<{ h: string }>(
         `select to_char(start_at at time zone 'UTC', 'HH24:MI') h from hr.shift
           where org_node_id = $1 and local_date = $2::date and role_code = 'SERVER'`,
-        [ids.node('org:Outlet A'), monday],
+        [ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), monday],
       );
       expect(utc.rows[0]!.h).toBe('03:30');
 
@@ -108,7 +108,7 @@ describe('hr.generate_week', () => {
         c,
         OLIVIA(),
         'select hr.generate_week($1, $2) as n',
-        [ids.node('org:Outlet A'), monday],
+        [ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), monday],
       );
       expect(again.rows![0]!.n).toBe(0);
     });
@@ -121,19 +121,29 @@ describe('hr.generate_week', () => {
       const tuesday = (await c.query<{ d: string }>(`select ($1::date + 1)::text d`, [monday]))
         .rows[0]!.d;
       const gen = 'select hr.generate_week($1, $2)';
-      expect((await attemptAs(c, OLIVIA(), gen, [ids.node('org:Outlet A'), tuesday])).error).toBe(
-        'INVALID_WEEK',
-      );
       expect(
-        (await attemptAs(c, ids.user('Sam Staff'), gen, [ids.node('org:Outlet A'), monday])).error,
+        (await attemptAs(c, OLIVIA(), gen, [ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), tuesday]))
+          .error,
+      ).toBe('INVALID_WEEK');
+      expect(
+        (
+          await attemptAs(c, ids.user('test.server.3.0'), gen, [
+            ids.node('TEST-BAR-3.0-FLOOR-SERVICE'),
+            monday,
+          ])
+        ).error,
       ).toBe('NOT_AUTHORISED');
-      expect((await attemptAs(c, OLIVIA(), gen, [ids.node('org:Outlet B'), monday])).error).toBe(
-        'NOT_AUTHORISED',
-      );
+      expect(
+        (await attemptAs(c, OLIVIA(), gen, [ids.node('TEST-GUEST-HOUSE-2.0'), monday])).error,
+      ).toBe('NOT_AUTHORISED');
       // Aria has ROSTER view only
       expect(
-        (await attemptAs(c, ids.user('Aria Area Manager'), gen, [ids.node('org:Outlet A'), monday]))
-          .error,
+        (
+          await attemptAs(c, ids.user('test.area-manager'), gen, [
+            ids.node('TEST-BAR-3.0-FLOOR-SERVICE'),
+            monday,
+          ])
+        ).error,
       ).toBe('NOT_AUTHORISED');
     });
   });
@@ -143,17 +153,25 @@ describe('hr.assign rules', () => {
   it('ROLE_MISMATCH, WORKER_NOT_AT_NODE and SHIFT_STARTED', async () => {
     await inRolledBackTx(async (c) => {
       await clearWorkforce(c);
-      const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
+      const sam = await workerFor(
+        c,
+        ids,
+        'test.server.3.0',
+        'TEST-BAR-3.0-FLOOR-SERVICE',
+        'SERVER',
+      );
       const monday = await futureMonday(c);
       expect((await assign(c, await shift(c, monday, 0, '09:00', 8, 'COOK'), sam)).error).toBe(
         'ROLE_MISMATCH',
       );
       // Olivia cannot touch Outlet B; the area level cannot either (view only)
-      const outletB = await shift(c, monday, 0, '09:00', 8, 'SERVER', { node: 'Outlet B' });
+      const outletB = await shift(c, monday, 0, '09:00', 8, 'SERVER', {
+        node: 'TEST-GUEST-HOUSE-2.0',
+      });
       expect((await assign(c, outletB, sam)).error).toBe('NOT_AUTHORISED');
       // a manager with ROSTER modify at B still cannot roster Sam there
-      const omar = await newWorker(c, ids, 'Omar B Manager', 'org:Outlet B', 'MANAGER', [
-        ['OUTLET_MANAGER', 'org:Outlet B'],
+      const omar = await newWorker(c, ids, 'Omar B Manager', 'TEST-GUEST-HOUSE-2.0', 'MANAGER', [
+        ['OUTLET_MANAGER', 'TEST-GUEST-HOUSE-2.0'],
       ]);
       expect((await assign(c, outletB, sam, omar.userId)).error).toBe('WORKER_NOT_AT_NODE');
       const past = await c.query<{ id: string }>(
@@ -161,7 +179,7 @@ describe('hr.assign rules', () => {
          select tenant_id, id, current_date - 1, now() - interval '1 day',
                 now() - interval '16 hours', 'SERVER'
            from core.hierarchy_node where id = $1 returning id`,
-        [ids.node('org:Outlet A')],
+        [ids.node('TEST-BAR-3.0-FLOOR-SERVICE')],
       );
       expect((await assign(c, past.rows[0]!.id, sam)).error).toBe('SHIFT_STARTED');
     });
@@ -170,7 +188,13 @@ describe('hr.assign rules', () => {
   it('SHIFT_OVERLAP and REST_RULE (10 h default, tenant config overrides)', async () => {
     await inRolledBackTx(async (c) => {
       await clearWorkforce(c);
-      const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
+      const sam = await workerFor(
+        c,
+        ids,
+        'test.server.3.0',
+        'TEST-BAR-3.0-FLOOR-SERVICE',
+        'SERVER',
+      );
       const monday = await futureMonday(c);
       expect((await assign(c, await shift(c, monday, 0, '09:00', 8), sam)).error).toBeUndefined();
       expect((await assign(c, await shift(c, monday, 0, '16:00', 4), sam)).error).toBe(
@@ -199,7 +223,13 @@ describe('hr.assign rules', () => {
   it('WEEKLY_HOURS_CAP: 48 h passes, the next shift does not; the cap is tenant config', async () => {
     await inRolledBackTx(async (c) => {
       await clearWorkforce(c);
-      const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
+      const sam = await workerFor(
+        c,
+        ids,
+        'test.server.3.0',
+        'TEST-BAR-3.0-FLOOR-SERVICE',
+        'SERVER',
+      );
       const monday = await futureMonday(c);
       for (let d = 0; d < 6; d++) {
         expect((await assign(c, await shift(c, monday, d, '09:00', 8), sam)).error).toBeUndefined();
@@ -222,7 +252,13 @@ describe('hr.assign rules', () => {
   it('LEAVE_CONFLICT: approved leave blocks the dates; pending leave does not', async () => {
     await inRolledBackTx(async (c) => {
       await clearWorkforce(c);
-      const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
+      const sam = await workerFor(
+        c,
+        ids,
+        'test.server.3.0',
+        'TEST-BAR-3.0-FLOOR-SERVICE',
+        'SERVER',
+      );
       const monday = await futureMonday(c);
       const tenant = await tenantOf(c, ids);
       const type = (
@@ -237,7 +273,16 @@ describe('hr.assign rules', () => {
           `insert into hr.leave_request (tenant_id, worker_id, owner_user_id, org_node_id,
                                          leave_type_id, from_date, to_date, days, status)
            values ($1, $2, $3, $4, $5, $6::date + $7::int, $6::date + $7::int, 1, $8)`,
-          [tenant, sam, ids.user('Sam Staff'), ids.node('org:Outlet A'), type, monday, day, status],
+          [
+            tenant,
+            sam,
+            ids.user('test.server.3.0'),
+            ids.node('TEST-BAR-3.0-FLOOR-SERVICE'),
+            type,
+            monday,
+            day,
+            status,
+          ],
         );
       await leave('approved', 2);
       await leave('submitted', 3);
@@ -255,8 +300,14 @@ describe('hr.assign rules', () => {
   it('SHIFT_FULL, and assigning twice returns the same assignment', async () => {
     await inRolledBackTx(async (c) => {
       await clearWorkforce(c);
-      const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
-      const pat = await newWorker(c, ids, 'Pat Server', 'org:Outlet A', 'SERVER');
+      const sam = await workerFor(
+        c,
+        ids,
+        'test.server.3.0',
+        'TEST-BAR-3.0-FLOOR-SERVICE',
+        'SERVER',
+      );
+      const pat = await newWorker(c, ids, 'Pat Server', 'TEST-BAR-3.0-FLOOR-SERVICE', 'SERVER');
       const monday = await futureMonday(c);
       const s = await shift(c, monday, 0, '09:00', 8);
       const first = await assign(c, s, sam);
@@ -269,17 +320,23 @@ describe('hr.assign rules', () => {
   it('staff cannot assign', async () => {
     await inRolledBackTx(async (c) => {
       await clearWorkforce(c);
-      const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
+      const sam = await workerFor(
+        c,
+        ids,
+        'test.server.3.0',
+        'TEST-BAR-3.0-FLOOR-SERVICE',
+        'SERVER',
+      );
       const monday = await futureMonday(c);
       const s = await shift(c, monday, 0, '09:00', 8);
-      expect((await assign(c, s, sam, ids.user('Sam Staff'))).error).toBe('NOT_AUTHORISED');
+      expect((await assign(c, s, sam, ids.user('test.server.3.0'))).error).toBe('NOT_AUTHORISED');
       const direct = await attemptAs(
         c,
-        ids.user('Olivia Outlet Manager'),
+        ids.user('test.bar-manager.3.0'),
         `insert into hr.shift_assignment (tenant_id, shift_id, worker_id, owner_user_id,
                                           org_node_id, start_at, end_at)
          select tenant_id, id, $2, $3, org_node_id, start_at, end_at from hr.shift where id = $1`,
-        [s, sam, ids.user('Sam Staff')],
+        [s, sam, ids.user('test.server.3.0')],
       );
       expect(direct.error).toMatch(/permission denied/);
     });
@@ -290,9 +347,15 @@ describe('candidates, publish and notifications', () => {
   it('lists candidates with the rule each would break', async () => {
     await inRolledBackTx(async (c) => {
       await clearWorkforce(c);
-      const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
-      const pat = await newWorker(c, ids, 'Pat Server', 'org:Outlet A', 'SERVER');
-      await workerFor(c, ids, 'Casey Chef', 'org:Outlet A', 'COOK');
+      const sam = await workerFor(
+        c,
+        ids,
+        'test.server.3.0',
+        'TEST-BAR-3.0-FLOOR-SERVICE',
+        'SERVER',
+      );
+      const pat = await newWorker(c, ids, 'Pat Server', 'TEST-BAR-3.0-FLOOR-SERVICE', 'SERVER');
+      await workerFor(c, ids, 'test.cook.3.0', 'TEST-BAR-3.0-FLOOR-SERVICE', 'COOK');
       const monday = await futureMonday(c);
       await assign(c, await shift(c, monday, 0, '09:00', 8), sam);
       const target = await shift(c, monday, 0, '20:00', 4, 'SERVER', { headcount: 2 });
@@ -318,7 +381,13 @@ describe('candidates, publish and notifications', () => {
   it('publish flips the week to published and notifies each assigned worker once', async () => {
     await inRolledBackTx(async (c) => {
       await clearWorkforce(c);
-      const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
+      const sam = await workerFor(
+        c,
+        ids,
+        'test.server.3.0',
+        'TEST-BAR-3.0-FLOOR-SERVICE',
+        'SERVER',
+      );
       const monday = await futureMonday(c);
       const a = await shift(c, monday, 0, '09:00', 8);
       const b = await shift(c, monday, 1, '09:00', 8);
@@ -326,19 +395,23 @@ describe('candidates, publish and notifications', () => {
       await assign(c, a, sam);
       await assign(c, b, sam);
       // not published yet: no notification
-      const before = await attemptAs(c, ids.user('Sam Staff'), 'select * from ops.notification');
+      const before = await attemptAs(
+        c,
+        ids.user('test.server.3.0'),
+        'select * from ops.notification',
+      );
       expect(before.rows!.length).toBe(0);
 
       const pub = await attemptAs<{ n: number }>(
         c,
         OLIVIA(),
         'select hr.publish_week($1, $2) as n',
-        [ids.node('org:Outlet A'), monday],
+        [ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), monday],
       );
       expect(pub.rows![0]!.n).toBe(3);
       const notes = await attemptAs<{ kind: string; link: string }>(
         c,
-        ids.user('Sam Staff'),
+        ids.user('test.server.3.0'),
         'select kind, link from ops.notification',
       );
       expect(notes.rows).toEqual([{ kind: 'roster_published', link: '/roster/my' }]);
@@ -351,7 +424,7 @@ describe('candidates, publish and notifications', () => {
       await attemptAs(c, OLIVIA(), 'select hr.unassign($1)', [asg.rows[0]!.id]);
       const after = await attemptAs<{ kind: string }>(
         c,
-        ids.user('Sam Staff'),
+        ids.user('test.server.3.0'),
         'select kind from ops.notification order by created_at, id',
       );
       expect(after.rows!.map((r) => r.kind)).toEqual(['roster_published', 'roster_changed']);
@@ -359,7 +432,7 @@ describe('candidates, publish and notifications', () => {
       // My shifts: Sam reads his own assignments through RLS
       const mine = await attemptAs<{ shift_id: string }>(
         c,
-        ids.user('Sam Staff'),
+        ids.user('test.server.3.0'),
         `select a.shift_id from hr.shift_assignment a join hr.shift s on s.id = a.shift_id
           where a.owner_user_id = core.current_user_id() and a.status = 'assigned'`,
       );

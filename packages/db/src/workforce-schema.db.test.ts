@@ -23,10 +23,16 @@ afterAll(closePools);
 
 /** Workers at both outlets and the hub site, for directory tests. */
 async function people(c: PoolClient) {
-  const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
-  const olivia = await workerFor(c, ids, 'Olivia Outlet Manager', 'org:Outlet A', 'MANAGER');
-  const bea = await newWorker(c, ids, 'Bea Outlet B', 'org:Outlet B', 'SERVER');
-  const hal = await newWorker(c, ids, 'Hal Hub', 'org:Hub', 'STORE');
+  const sam = await workerFor(c, ids, 'test.server.3.0', 'TEST-BAR-3.0-FLOOR-SERVICE', 'SERVER');
+  const olivia = await workerFor(
+    c,
+    ids,
+    'test.bar-manager.3.0',
+    'TEST-BAR-3.0-FLOOR-SERVICE',
+    'MANAGER',
+  );
+  const bea = await newWorker(c, ids, 'Bea Outlet B', 'TEST-GUEST-HOUSE-2.0', 'SERVER');
+  const hal = await newWorker(c, ids, 'Hal Hub', 'TEST-CENTRAL-KITCHEN', 'STORE');
   await c.query(
     `insert into hr.worker_sensitive (tenant_id, worker_id, owner_user_id, org_node_id,
                                       pay_rate, pay_basis)
@@ -44,7 +50,7 @@ describe('hr.worker_directory', () => {
       const p = await people(c);
       const dir = await attemptAs<Record<string, unknown>>(
         c,
-        ids.user('Sam Staff'),
+        ids.user('test.server.3.0'),
         'select * from hr.worker_directory order by display_name',
       );
       expect(dir.error).toBeUndefined();
@@ -53,22 +59,26 @@ describe('hr.worker_directory', () => {
         ['display_name', 'org_node_id', 'role_code', 'worker_id'].sort(),
       );
       const names = rows.map((r) => r.display_name);
-      expect(names).toContain('Olivia Outlet Manager');
-      expect(names).toContain('Sam Staff');
+      // the server's STAFF grant covers Floor Service: the team there, nobody else
+      expect(names).toEqual(
+        expect.arrayContaining(['Test Floor Manager 3.0', 'Test Host 3.0', 'Test Server 3.0']),
+      );
+      expect(names).not.toContain('Test Head Cook 3.0'); // another department
+      expect(names).not.toContain('Test Bar Manager 3.0'); // works at the outlet, above
       expect(names).not.toContain('Bea Outlet B'); // other outlet
       expect(names).not.toContain('Hal Hub');
 
       // hr.worker itself: only Sam's own row (SELF WORKERS view); no WORKERS grant
       const workers = await attemptAs<{ id: string }>(
         c,
-        ids.user('Sam Staff'),
+        ids.user('test.server.3.0'),
         'select id from hr.worker',
       );
       expect(workers.rows!.map((r) => r.id)).toEqual([p.sam]);
       // sensitive: only his own pay (SELF COMPENSATION view)
       const pay = await attemptAs<{ worker_id: string }>(
         c,
-        ids.user('Sam Staff'),
+        ids.user('test.server.3.0'),
         'select worker_id from hr.worker_sensitive',
       );
       expect(pay.rows!.map((r) => r.worker_id)).toEqual([p.sam]);
@@ -104,14 +114,14 @@ describe('hr.worker_directory', () => {
       }
       expect(mismatches).toEqual([]);
     });
-  });
+  }, 120_000);
 
   it('is not writable', async () => {
     await inRolledBackTx(async (c) => {
       const p = await people(c);
       const r = await attemptAs(
         c,
-        ids.user('Olivia Outlet Manager'),
+        ids.user('test.bar-manager.3.0'),
         `update hr.worker_directory set display_name = 'x' where worker_id = $1`,
         [p.sam],
       );
@@ -153,16 +163,12 @@ describe('sensitive worker data', () => {
       await people(c);
       const r = await attemptAs(
         c,
-        ids.user('Olivia Outlet Manager'),
+        ids.user('test.bar-manager.3.0'),
         'select * from hr.worker_sensitive',
       );
       // Olivia holds WORKERS view but not COMPENSATION: only her own row (SELF)
       expect(r.rows!.length).toBe(1);
-      const hr = await attemptAs(
-        c,
-        ids.user('Harper HR Admin'),
-        'select * from hr.worker_sensitive',
-      );
+      const hr = await attemptAs(c, ids.user('test.hr-admin'), 'select * from hr.worker_sensitive');
       expect(hr.rows!.length).toBeGreaterThanOrEqual(4);
     });
   });
@@ -184,13 +190,13 @@ describe('tenant consistency', () => {
           [other],
         )
       ).rows[0]!.id;
-      await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
+      await workerFor(c, ids, 'test.server.3.0', 'TEST-BAR-3.0-FLOOR-SERVICE', 'SERVER');
       await c.query('savepoint s');
       await expect(
         c.query(
           `insert into hr.worker (tenant_id, owner_user_id, org_node_id, role_code)
            values ($1, $2, $3, 'SERVER')`,
-          [tenant, ids.user('Casey Chef'), node],
+          [tenant, ids.user('test.cook.3.0'), node],
         ),
       ).rejects.toThrow('TENANT_MISMATCH');
       await c.query('rollback to savepoint s');
@@ -198,7 +204,7 @@ describe('tenant consistency', () => {
         c.query(
           `insert into ops.notification (tenant_id, owner_user_id, kind, title)
            values ($1, $2, 'test', 'x')`,
-          [other, ids.user('Sam Staff')],
+          [other, ids.user('test.server.3.0')],
         ),
       ).rejects.toThrow('TENANT_MISMATCH');
     });
@@ -208,7 +214,13 @@ describe('tenant consistency', () => {
 describe('self-service resolvers', () => {
   it('only the owner can submit their leave draft', async () => {
     await inRolledBackTx(async (c) => {
-      const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
+      const sam = await workerFor(
+        c,
+        ids,
+        'test.server.3.0',
+        'TEST-BAR-3.0-FLOOR-SERVICE',
+        'SERVER',
+      );
       const tenant = await tenantOf(c, ids);
       const type = (
         await c.query<{ id: string }>(
@@ -222,13 +234,13 @@ describe('self-service resolvers', () => {
           `insert into hr.leave_request (tenant_id, worker_id, owner_user_id, org_node_id,
                                          leave_type_id, from_date, to_date, days)
            values ($1, $2, $3, $4, $5, date '2026-11-02', date '2026-11-03', 2) returning id`,
-          [tenant, sam, ids.user('Sam Staff'), ids.node('org:Outlet A'), type],
+          [tenant, sam, ids.user('test.server.3.0'), ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), type],
         )
       ).rows[0]!.id;
       const submit = `select wf.submit('LEAVE', 'hr.leave_request', $1) as id`;
-      const casey = await attemptAs(c, ids.user('Casey Chef'), submit, [leave]);
+      const casey = await attemptAs(c, ids.user('test.cook.3.0'), submit, [leave]);
       expect(casey.error).toBe('INVALID_SUBJECT');
-      const own = await attemptAs<{ id: string }>(c, ids.user('Sam Staff'), submit, [leave]);
+      const own = await attemptAs<{ id: string }>(c, ids.user('test.server.3.0'), submit, [leave]);
       expect(own.error).toBeUndefined();
     });
   });
@@ -245,12 +257,12 @@ describe('catalogues through SELF', () => {
       );
       const r = await attemptAs<{ code: string }>(
         c,
-        ids.user('Sam Staff'),
+        ids.user('test.server.3.0'),
         'select code from hr.leave_type',
       );
       expect(r.rows!.map((x) => x.code)).toContain('ZZ_TEST');
       // SELF holds no stock domain: items stay hidden from staff
-      const items = await attemptAs(c, ids.user('Sam Staff'), 'select id from inv.item');
+      const items = await attemptAs(c, ids.user('test.server.3.0'), 'select id from inv.item');
       expect(items.rows!.length).toBe(0);
     });
   });
@@ -262,27 +274,27 @@ describe('notifications', () => {
       const tenant = await tenantOf(c, ids);
       await c.query(`select ops.notify($1, $2, 'test', 'For Sam')`, [
         tenant,
-        ids.user('Sam Staff'),
+        ids.user('test.server.3.0'),
       ]);
       await c.query(`select ops.notify($1, $2, 'test', 'For Casey')`, [
         tenant,
-        ids.user('Casey Chef'),
+        ids.user('test.cook.3.0'),
       ]);
       const sam = await attemptAs<{ title: string }>(
         c,
-        ids.user('Sam Staff'),
+        ids.user('test.server.3.0'),
         `select title from ops.notification where kind = 'test'`,
       );
       expect(sam.rows!.map((r) => r.title)).toEqual(['For Sam']);
       const olivia = await attemptAs(
         c,
-        ids.user('Olivia Outlet Manager'),
+        ids.user('test.bar-manager.3.0'),
         `select * from ops.notification where kind = 'test'`,
       );
       expect(olivia.rows!.length).toBe(0);
       const write = await attemptAs(
         c,
-        ids.user('Sam Staff'),
+        ids.user('test.server.3.0'),
         `update ops.notification set title = 'x' where kind = 'test'`,
       );
       expect(write.error).toMatch(/permission denied/);

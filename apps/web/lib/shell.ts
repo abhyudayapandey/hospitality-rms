@@ -13,6 +13,7 @@ export interface NodeRow {
   depth: number;
   derived: boolean;
   timezone: string | null;
+  holds_stock: boolean;
 }
 
 export interface Shell {
@@ -32,7 +33,9 @@ export const loadShell = cache(async (): Promise<Shell> => {
     const domains = await sql<{ domain: string; access: 'view' | 'modify' }>`
       select * from core.my_domains()`.execute(tx);
     const nodes = await sql<NodeRow>`
-      select id, type, kind, name, depth, derived, timezone from core.nodes()`.execute(tx);
+      select id, type, kind, name, depth, derived, timezone, holds_stock from core.nodes()`.execute(
+      tx,
+    );
     const inbox = await sql<{ n: number }>`select count(*)::int as n from wf.my_inbox()`.execute(
       tx,
     );

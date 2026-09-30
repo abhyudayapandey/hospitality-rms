@@ -462,7 +462,8 @@ The workflow does the following:
    4. creates or updates the roles (**no `app_rw`/`wf_executor` grants to `migrator` in
       production**)
    5. runs `dbmate up` as `migrator`
-   6. syncs the workflow definitions
+   6. syncs the product access (access groups, the domain matrix, bp_policy; ADR 009)
+      and the workflow definitions into every tenant
    7. switches the `current` symlink atomically, restarts the services and health-checks
       `/login`
    8. if the health check fails, rolls back the **app code** (migrations are
@@ -472,24 +473,30 @@ The instance never builds anything. It keeps the last 3 releases.
 
 Open `https://<domainName>/login`. The first certificate can take up to a minute.
 
-### 6. Seed the pilot outlet and users
+### 6. Onboard the customer and users
 
 The production database has no dev seed.
 
-- **Org data.** Load the pilot org, outlets and staff with the migrator CSV onboarding
-  script (ADR 004, days 20–21), run through an SSM session on the instance.
-- **Workforce data** (ADR 008), through the same script:
-  - the `NOTIFICATIONS` domain (hierarchy `self`) with SELF `view`, as in
-    `seed/001_core.sql`; without it nobody sees their notifications
-  - job roles, one `hr.worker` per person (home node, role code), optional pay rates
-  - shift templates per outlet, leave types and this year's balances
-  - each outlet's geofence (`hr.node_setting`: latitude, longitude, radius, default 150 m)
-  - rostering rules only if they differ from the defaults (10 h rest, 48 h a week, late
-    after 10 minutes)
-  - an `OUTLET_MANAGER` on the org side of every site whose people need approvals (the
-    Hub site sits under the region, not the area, so nothing else covers it)
-- **Cognito users.** Create each person in the user pool, then link the `sub` to the
-  `core.app_user` row through the onboarding script.
+- **Customer data** (ADR 009). Prepare the customer's onboarding files in the layout of
+  `docs/onboarding/test-data` (structure, job roles, people, stock, leave, shifts), with
+  real names and no test rows. Load them with the onboarding loader. The Platform Admin
+  console will call the same library; until it ships, use the CLI from a workstation
+  connected to the instance's Postgres through an SSM port-forwarding session, as
+  `migrator`:
+  ```sh
+  MIGRATOR_DATABASE_URL=postgres://migrator:<password>@127.0.0.1:<port>/outlet_ops \
+    pnpm --filter @outlet-ops/onboarding load <folder>            # dry run: fix every problem
+  MIGRATOR_DATABASE_URL=... pnpm --filter @outlet-ops/onboarding load <folder> --apply
+  ```
+  The loader creates the customer, gives it the product access, the workflow definitions
+  and an AI agent user, and derives everyone's access from their job role. Check the
+  printed access (`--access`) against the customer's expectations before `--apply`.
+- **Rostering rules** default to 10 h rest, 48 h a week and late after 10 minutes; file 15
+  overrides them.
+- **Cognito users.** Create each person in the user pool with the username from file 07,
+  then link the `sub` to their `core.app_user` row (as `migrator`, until the console does
+  it: `update core.app_user set cognito_sub = '<sub>' where username = '<username>'` in the
+  customer's tenant).
   - **Staff with email (email OTP):**
     ```sh
     aws cognito-idp admin-create-user --user-pool-id <UserPoolId> --username priya \

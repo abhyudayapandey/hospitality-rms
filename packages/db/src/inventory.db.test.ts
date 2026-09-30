@@ -15,12 +15,12 @@ import {
 // are fixtures here, so the tests do not depend on the dev seed. The executor step is
 // run in-transaction as wf_executor (the same SQL the TS handlers call).
 
-const KIM = 'Kim Storekeeper';
-const OLIVIA = 'Olivia Outlet Manager';
-const ARIA = 'Aria Area Manager';
-const HUGO = 'Hugo Hub Manager';
-const CASEY = 'Casey Chef';
-const SAM = 'Sam Staff';
+const KIM = 'test.head-cook.3.0';
+const OLIVIA = 'test.bar-manager.3.0';
+const ARIA = 'test.area-manager';
+const HUGO = 'test.central-kitchen-manager';
+const CASEY = 'test.cook.3.0';
+const SAM = 'test.server.3.0';
 
 let ids: SeedIds;
 beforeAll(async () => {
@@ -28,7 +28,18 @@ beforeAll(async () => {
 });
 afterAll(closePools);
 
-const node = (name: string) => ids.node(`delivery:${name}`);
+/**
+ * The places these flows run between: the central kitchen store supplies Test Bar 3.0's
+ * Kitchen Store (kept by the head cook, used by the cook, under the Bar Manager); the
+ * Guest House supply point is somewhere none of them works.
+ */
+const PLACES = {
+  centralKitchen: 'TEST-CENTRAL-KITCHEN-STORE',
+  kitchen: 'TEST-BAR-3.0-KITCHEN-STORE',
+  guestHouse: 'TEST-GUEST-HOUSE-2.0-SUPPLY',
+} as const;
+type Place = keyof typeof PLACES;
+const node = (name: Place) => ids.node(PLACES[name]);
 
 interface Fixture {
   tenant: string;
@@ -43,7 +54,7 @@ async function fixture(
 ): Promise<Fixture> {
   const tenant = (
     await c.query<{ id: string }>('select tenant_id as id from core.hierarchy_node where id = $1', [
-      node('Hub'),
+      node('centralKitchen'),
     ])
   ).rows[0]!.id;
   const supplier = (
@@ -62,7 +73,7 @@ async function fixture(
     );
     const id = rows[0]!.id;
     map.set(it.sku, id);
-    for (const n of ['Hub', 'Outlet A', 'Outlet B']) {
+    for (const n of ['centralKitchen', 'kitchen', 'guestHouse'] as const) {
       await c.query(
         `insert into inv.item_node (tenant_id, item_id, delivery_node_id, par_level,
                                     count_tolerance_qty, preferred_supplier_id)
@@ -82,14 +93,7 @@ async function fixture(
   };
 }
 
-async function stock(
-  c: PoolClient,
-  f: Fixture,
-  sku: string,
-  at: string,
-  qty: number,
-  cost: number,
-) {
+async function stock(c: PoolClient, f: Fixture, sku: string, at: Place, qty: number, cost: number) {
   await c.query(
     `insert into inv.stock_ledger (tenant_id, item_id, delivery_node_id, movement_type, qty,
                                    unit_cost, ref_type)
@@ -98,7 +102,7 @@ async function stock(
   );
 }
 
-async function onHand(c: PoolClient, f: Fixture, sku: string, at: string): Promise<number> {
+async function onHand(c: PoolClient, f: Fixture, sku: string, at: Place): Promise<number> {
   const { rows } = await c.query<{ q: string }>(
     `select coalesce((select on_hand from inv.stock_level
                        where item_id = $1 and delivery_node_id = $2), 0) as q`,
@@ -173,17 +177,17 @@ describe('wastage', () => {
   it('posts small wastage directly and sends valuable wastage (with photo) for approval', async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c, [{ sku: 'W-OIL' }, { sku: 'W-PRAWN' }]);
-      await stock(c, f, 'W-OIL', 'Outlet A', 20, 150); // 3,000 of oil
-      await stock(c, f, 'W-PRAWN', 'Outlet A', 10, 900); // 9,000 of prawns
+      await stock(c, f, 'W-OIL', 'kitchen', 20, 150); // 3,000 of oil
+      await stock(c, f, 'W-PRAWN', 'kitchen', 10, 900); // 9,000 of prawns
 
       // 2 kg oil = 300: under the 2,000 default, posts now.
       const small = await call<{ id: string }>(
         c,
         CASEY,
         `select inv.record_wastage($1, $2::jsonb) as id`,
-        [node('Outlet A'), lines([{ item_id: f.item('W-OIL'), qty: 2, reason: 'spoiled' }])],
+        [node('kitchen'), lines([{ item_id: f.item('W-OIL'), qty: 2, reason: 'spoiled' }])],
       );
-      expect(await onHand(c, f, 'W-OIL', 'Outlet A')).toBe(18);
+      expect(await onHand(c, f, 'W-OIL', 'kitchen')).toBe(18);
       const posted = await c.query<{ movement_type: string; qty: string; reason: string }>(
         `select movement_type, qty, reason from inv.stock_ledger where ref_id = $1`,
         [small.id],
@@ -193,19 +197,19 @@ describe('wastage', () => {
       // 3 kg prawns = 2,700: needs a photo...
       const prawns = { item_id: f.item('W-PRAWN'), qty: 3, reason: 'expired' };
       const sql = `select inv.record_wastage($1, $2::jsonb) as id`;
-      expect(await error(c, KIM, sql, [node('Outlet A'), lines([prawns])])).toBe('PHOTO_REQUIRED');
+      expect(await error(c, KIM, sql, [node('kitchen'), lines([prawns])])).toBe('PHOTO_REQUIRED');
       // ...uploaded under this tenant and node...
-      const otherNode = `wastage/${f.tenant}/${node('Outlet B')}/${crypto.randomUUID()}.jpg`;
+      const otherNode = `wastage/${f.tenant}/${node('guestHouse')}/${crypto.randomUUID()}.jpg`;
       expect(
-        await error(c, KIM, sql, [node('Outlet A'), lines([{ ...prawns, photo_key: otherNode }])]),
+        await error(c, KIM, sql, [node('kitchen'), lines([{ ...prawns, photo_key: otherNode }])]),
       ).toBe('INVALID_PHOTO');
       // ...and then waits for the outlet manager; nothing posts yet.
-      const photo = `wastage/${f.tenant}/${node('Outlet A')}/${crypto.randomUUID()}.jpg`;
+      const photo = `wastage/${f.tenant}/${node('kitchen')}/${crypto.randomUUID()}.jpg`;
       const big = await call<{ id: string }>(c, KIM, sql, [
-        node('Outlet A'),
+        node('kitchen'),
         lines([{ ...prawns, photo_key: photo }]),
       ]);
-      expect(await onHand(c, f, 'W-PRAWN', 'Outlet A')).toBe(10);
+      expect(await onHand(c, f, 'W-PRAWN', 'kitchen')).toBe(10);
       const adj = (
         await c.query<{ id: string }>('select adjustment_id as id from inv.wastage where id = $1', [
           big.id,
@@ -222,43 +226,43 @@ describe('wastage', () => {
       await call(c, OLIVIA, `select wf.act($1, 'approve')`, [req]);
       expect(await execute(c, req)).toEqual(['inv.stock_adjustment.post']);
       expect(await statusOf(c, 'stock_adjustment', adj)).toBe('posted');
-      expect(await onHand(c, f, 'W-PRAWN', 'Outlet A')).toBe(7);
+      expect(await onHand(c, f, 'W-PRAWN', 'kitchen')).toBe(7);
     });
   });
 
   it('uses the per-node threshold, refuses more than on hand, and checks the node', async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c, [{ sku: 'W-RICE' }]);
-      await stock(c, f, 'W-RICE', 'Outlet A', 50, 80);
+      await stock(c, f, 'W-RICE', 'kitchen', 50, 80);
       await c.query(
         `insert into inv.node_setting (tenant_id, delivery_node_id, wastage_approval_value)
          values ($1, $2, 100)`,
-        [f.tenant, node('Outlet A')],
+        [f.tenant, node('kitchen')],
       );
       const sql = `select inv.record_wastage($1, $2::jsonb) as id`;
       const rice = (qty: number) => lines([{ item_id: f.item('W-RICE'), qty, reason: 'damaged' }]);
-      expect(await error(c, KIM, sql, [node('Outlet A'), rice(2)])).toBe('PHOTO_REQUIRED'); // 160 > 100
-      expect(await error(c, KIM, sql, [node('Outlet A'), rice(1)])).toBeUndefined(); // 80
-      expect(await error(c, KIM, sql, [node('Outlet A'), rice(60)])).toBe('INSUFFICIENT_STOCK');
-      expect(await error(c, KIM, sql, [node('Outlet B'), rice(1)])).toBe('NOT_AUTHORISED');
-      expect(await error(c, SAM, sql, [node('Outlet A'), rice(1)])).toBe('NOT_AUTHORISED');
-      expect(await error(c, ARIA, sql, [node('Outlet A'), rice(1)])).toBe('NOT_AUTHORISED'); // view only
+      expect(await error(c, KIM, sql, [node('kitchen'), rice(2)])).toBe('PHOTO_REQUIRED'); // 160 > 100
+      expect(await error(c, KIM, sql, [node('kitchen'), rice(1)])).toBeUndefined(); // 80
+      expect(await error(c, KIM, sql, [node('kitchen'), rice(60)])).toBe('INSUFFICIENT_STOCK');
+      expect(await error(c, KIM, sql, [node('guestHouse'), rice(1)])).toBe('NOT_AUTHORISED');
+      expect(await error(c, SAM, sql, [node('kitchen'), rice(1)])).toBe('NOT_AUTHORISED');
+      expect(await error(c, ARIA, sql, [node('kitchen'), rice(1)])).toBe('NOT_AUTHORISED'); // view only
     });
   });
 
   it('is idempotent on the key', async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c, [{ sku: 'W-IDEM' }]);
-      await stock(c, f, 'W-IDEM', 'Outlet A', 10, 10);
+      await stock(c, f, 'W-IDEM', 'kitchen', 10, 10);
       const sql = `select inv.record_wastage($1, $2::jsonb, 'w-1') as id`;
       const args = [
-        node('Outlet A'),
+        node('kitchen'),
         lines([{ item_id: f.item('W-IDEM'), qty: 1, reason: 'other' }]),
       ];
       const a = await call<{ id: string }>(c, KIM, sql, args);
       const b = await call<{ id: string }>(c, KIM, sql, args);
       expect(b.id).toBe(a.id);
-      expect(await onHand(c, f, 'W-IDEM', 'Outlet A')).toBe(9);
+      expect(await onHand(c, f, 'W-IDEM', 'kitchen')).toBe(9);
     });
   });
 });
@@ -271,16 +275,16 @@ describe('stock count variance routing', () => {
         { sku: 'C-BUTTER', tolerance: 0.5 },
         { sku: 'C-SALT', tolerance: 0 },
       ]);
-      await stock(c, f, 'C-FLOUR', 'Outlet A', 20, 40);
-      await stock(c, f, 'C-BUTTER', 'Outlet A', 10, 500);
-      await stock(c, f, 'C-SALT', 'Outlet A', 5, 20);
+      await stock(c, f, 'C-FLOUR', 'kitchen', 20, 40);
+      await stock(c, f, 'C-BUTTER', 'kitchen', 10, 500);
+      await stock(c, f, 'C-SALT', 'kitchen', 5, 20);
 
       const count = await call<{ id: string }>(c, KIM, 'select inv.start_count($1) as id', [
-        node('Outlet A'),
+        node('kitchen'),
       ]);
       // an open count is resumed, not duplicated
       expect(
-        (await call<{ id: string }>(c, KIM, 'select inv.start_count($1) as id', [node('Outlet A')]))
+        (await call<{ id: string }>(c, KIM, 'select inv.start_count($1) as id', [node('kitchen')]))
           .id,
       ).toBe(count.id);
 
@@ -297,9 +301,9 @@ describe('stock count variance routing', () => {
         ],
       );
       expect(summary.s).toMatchObject({ posted: 1, approval: 1 });
-      expect(await onHand(c, f, 'C-FLOUR', 'Outlet A')).toBe(19.2);
-      expect(await onHand(c, f, 'C-BUTTER', 'Outlet A')).toBe(10); // waits for approval
-      expect(await onHand(c, f, 'C-SALT', 'Outlet A')).toBe(5); // not counted
+      expect(await onHand(c, f, 'C-FLOUR', 'kitchen')).toBe(19.2);
+      expect(await onHand(c, f, 'C-BUTTER', 'kitchen')).toBe(10); // waits for approval
+      expect(await onHand(c, f, 'C-SALT', 'kitchen')).toBe(5); // not counted
 
       const adj = summary.s.adjustment_id as string;
       const req = await requestOf(c, 'stock_adjustment', adj);
@@ -314,7 +318,7 @@ describe('stock count variance routing', () => {
 
       await call(c, OLIVIA, `select wf.act($1, 'approve')`, [req]);
       await execute(c, req);
-      expect(await onHand(c, f, 'C-BUTTER', 'Outlet A')).toBe(8);
+      expect(await onHand(c, f, 'C-BUTTER', 'kitchen')).toBe(8);
       // re-submitting returns the same summary and posts nothing more
       const again = await call<{ s: Record<string, unknown> }>(
         c,
@@ -323,16 +327,51 @@ describe('stock count variance routing', () => {
         [count.id],
       );
       expect(again.s).toEqual(summary.s);
-      expect(await onHand(c, f, 'C-FLOUR', 'Outlet A')).toBe(19.2);
+      expect(await onHand(c, f, 'C-FLOUR', 'kitchen')).toBe(19.2);
+    });
+  });
+
+  it('a percentage tolerance scales with the expected quantity; the larger tolerance wins', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c, [
+        { sku: 'C-PCT-BIG' },
+        { sku: 'C-PCT-SMALL' },
+        { sku: 'C-PCT-QTY', tolerance: 2 },
+      ]);
+      await c.query(
+        `update inv.item_node set count_tolerance_pct = 5 where item_id = any ($1) and delivery_node_id = $2`,
+        [[f.item('C-PCT-BIG'), f.item('C-PCT-SMALL'), f.item('C-PCT-QTY')], node('kitchen')],
+      );
+      await stock(c, f, 'C-PCT-BIG', 'kitchen', 100, 10); // 5% = 5
+      await stock(c, f, 'C-PCT-SMALL', 'kitchen', 10, 10); // 5% = 0.5
+      await stock(c, f, 'C-PCT-QTY', 'kitchen', 10, 10); // 5% = 0.5, fixed 2
+      const count = await call<{ id: string }>(c, KIM, 'select inv.start_count($1) as id', [
+        node('kitchen'),
+      ]);
+      const summary = await call<{ s: Record<string, unknown> }>(
+        c,
+        KIM,
+        'select inv.submit_count($1, $2::jsonb) as s',
+        [
+          count.id,
+          lines([
+            { item_id: f.item('C-PCT-BIG'), counted_qty: 96 }, // -4: within 5
+            { item_id: f.item('C-PCT-SMALL'), counted_qty: 9 }, // -1: beyond 0.5
+            { item_id: f.item('C-PCT-QTY'), counted_qty: 9 }, // -1: within the fixed 2
+          ]),
+        ],
+      );
+      expect(summary.s).toMatchObject({ posted: 2, approval: 1 });
+      expect(await onHand(c, f, 'C-PCT-SMALL', 'kitchen')).toBe(10);
     });
   });
 
   it('a rejected adjustment posts nothing', async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c, [{ sku: 'C-MILK' }]);
-      await stock(c, f, 'C-MILK', 'Outlet A', 12, 60);
+      await stock(c, f, 'C-MILK', 'kitchen', 12, 60);
       const count = await call<{ id: string }>(c, KIM, 'select inv.start_count($1) as id', [
-        node('Outlet A'),
+        node('kitchen'),
       ]);
       const s = await call<{ s: { adjustment_id: string } }>(
         c,
@@ -344,7 +383,7 @@ describe('stock count variance routing', () => {
       await call(c, OLIVIA, `select wf.act($1, 'reject')`, [req]);
       expect(await execute(c, req)).toEqual(['inv.stock_adjustment.reject']);
       expect(await statusOf(c, 'stock_adjustment', s.s.adjustment_id)).toBe('rejected');
-      expect(await onHand(c, f, 'C-MILK', 'Outlet A')).toBe(12);
+      expect(await onHand(c, f, 'C-MILK', 'kitchen')).toBe(12);
     });
   });
 });
@@ -353,11 +392,11 @@ describe('count -> PO -> approve -> receive', () => {
   it('runs the full cycle and ends with stock matching the ledger', async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c, [{ sku: 'P-TOMATO', par: 30, tolerance: 1 }]);
-      await stock(c, f, 'P-TOMATO', 'Outlet A', 12, 40);
+      await stock(c, f, 'P-TOMATO', 'kitchen', 12, 40);
 
       // 1. Count: 11.5 on the shelf (within tolerance), posted directly.
       const count = await call<{ id: string }>(c, KIM, 'select inv.start_count($1) as id', [
-        node('Outlet A'),
+        node('kitchen'),
       ]);
       await call(c, KIM, 'select inv.submit_count($1, $2::jsonb)', [
         count.id,
@@ -369,7 +408,7 @@ describe('count -> PO -> approve -> receive', () => {
         c,
         KIM,
         'select suggested_qty, on_hand from inv.suggested_order($1) where item_id = $2',
-        [node('Outlet A'), f.item('P-TOMATO')],
+        [node('kitchen'), f.item('P-TOMATO')],
       );
       expect(sug).toEqual({ suggested_qty: '18.500', on_hand: '11.500' });
 
@@ -379,7 +418,7 @@ describe('count -> PO -> approve -> receive', () => {
         KIM,
         `select inv.create_po($1, $2, $3::jsonb, null, 'po-1') as id`,
         [
-          node('Outlet A'),
+          node('kitchen'),
           f.supplier,
           lines([{ item_id: f.item('P-TOMATO'), qty: 18.5, unit_cost: 50 }]),
         ],
@@ -390,7 +429,7 @@ describe('count -> PO -> approve -> receive', () => {
         c,
         KIM,
         'select suggested_qty from inv.suggested_order($1) where item_id = $2',
-        [node('Outlet A'), f.item('P-TOMATO')],
+        [node('kitchen'), f.item('P-TOMATO')],
       );
       expect(after.suggested_qty).toBe('0.000');
       const receive = `select inv.receive($1, $2::jsonb) as id`;
@@ -412,7 +451,7 @@ describe('count -> PO -> approve -> receive', () => {
       );
       expect(partial.rows).toEqual([{ progress: 'partially_received' }]);
       await call(c, KIM, receive, [po.id, tomato(8.5)]);
-      expect(await onHand(c, f, 'P-TOMATO', 'Outlet A')).toBe(30);
+      expect(await onHand(c, f, 'P-TOMATO', 'kitchen')).toBe(30);
 
       const summary = await c.query<{ progress: string }>(
         'select progress from inv.purchase_order_summary where id = $1',
@@ -421,7 +460,7 @@ describe('count -> PO -> approve -> receive', () => {
       expect(summary.rows).toEqual([{ progress: 'received' }]);
       const level = await c.query<{ avg_cost: string; value: string }>(
         'select avg_cost, value from inv.stock_level where item_id = $1 and delivery_node_id = $2',
-        [f.item('P-TOMATO'), node('Outlet A')],
+        [f.item('P-TOMATO'), node('kitchen')],
       );
       // (11.5 x 40 + 18.5 x 50) / 30
       expect(level.rows).toEqual([{ avg_cost: '46.1667', value: '1385.00' }]);
@@ -429,7 +468,7 @@ describe('count -> PO -> approve -> receive', () => {
       const reconcile = await c.query<{ ledger: string; cached: string }>(
         `select (select sum(qty) from inv.stock_ledger where item_id = $1 and delivery_node_id = $2)::text as ledger,
                 (select on_hand from inv.stock_level where item_id = $1 and delivery_node_id = $2)::text as cached`,
-        [f.item('P-TOMATO'), node('Outlet A')],
+        [f.item('P-TOMATO'), node('kitchen')],
       );
       expect(reconcile.rows).toEqual([{ ledger: '30.000', cached: '30.000' }]);
     });
@@ -440,7 +479,7 @@ describe('count -> PO -> approve -> receive', () => {
       const f = await fixture(c, [{ sku: 'P-LAMB' }]);
       const sql = `select inv.create_po($1, $2, $3::jsonb, null, 'po-big') as id`;
       const args = [
-        node('Outlet A'),
+        node('kitchen'),
         f.supplier,
         lines([{ item_id: f.item('P-LAMB'), qty: 60, unit_cost: 1000 }]),
       ];
@@ -460,14 +499,14 @@ describe('count -> PO -> approve -> receive', () => {
       const f = await fixture(c, [{ sku: 'P-EGG' }]);
       const sql = `select inv.create_po($1, $2, $3::jsonb) as id`;
       const egg = lines([{ item_id: f.item('P-EGG'), qty: 1, unit_cost: 5 }]);
-      expect(await error(c, KIM, sql, [node('Outlet B'), f.supplier, egg])).toBe('NOT_AUTHORISED');
-      expect(await error(c, CASEY, sql, [node('Outlet A'), f.supplier, egg])).toBe(
+      expect(await error(c, KIM, sql, [node('guestHouse'), f.supplier, egg])).toBe(
         'NOT_AUTHORISED',
       );
-      expect(await error(c, ARIA, sql, [node('Outlet A'), f.supplier, egg])).toBe('NOT_AUTHORISED');
-      expect(await error(c, HUGO, sql, [node('Outlet A'), f.supplier, egg])).toBe('NOT_AUTHORISED');
+      expect(await error(c, CASEY, sql, [node('kitchen'), f.supplier, egg])).toBe('NOT_AUTHORISED');
+      expect(await error(c, ARIA, sql, [node('kitchen'), f.supplier, egg])).toBe('NOT_AUTHORISED');
+      expect(await error(c, HUGO, sql, [node('kitchen'), f.supplier, egg])).toBe('NOT_AUTHORISED');
       // Aria sees Outlet A's POs through DERIVED_PURCHASE_ORDERS
-      const po = await call<{ id: string }>(c, KIM, sql, [node('Outlet A'), f.supplier, egg]);
+      const po = await call<{ id: string }>(c, KIM, sql, [node('kitchen'), f.supplier, egg]);
       const seen = await call<{ n: string }>(
         c,
         ARIA,
@@ -488,7 +527,7 @@ describe('over-receipt', () => {
         KIM,
         `select inv.create_po($1, $2, $3::jsonb) as id`,
         [
-          node('Outlet A'),
+          node('kitchen'),
           f.supplier,
           lines([{ item_id: f.item('R-CHICKEN'), qty: 10, unit_cost: 300 }]),
         ],
@@ -501,7 +540,7 @@ describe('over-receipt', () => {
         po.id,
         lines([{ item_id: f.item('R-CHICKEN'), qty: 12 }]),
       ]);
-      expect(await onHand(c, f, 'R-CHICKEN', 'Outlet A')).toBe(10.5);
+      expect(await onHand(c, f, 'R-CHICKEN', 'kitchen')).toBe(10.5);
       const excess = await c.query<{ adj: string; qty: string; excess_qty: string }>(
         `select g.excess_adjustment_id as adj, l.qty, l.excess_qty
            from inv.goods_receipt g join inv.goods_receipt_line l on l.receipt_id = g.id
@@ -519,7 +558,7 @@ describe('over-receipt', () => {
       const req = await requestOf(c, 'stock_adjustment', adj);
       await call(c, OLIVIA, `select wf.act($1, 'approve')`, [req]);
       await execute(c, req);
-      expect(await onHand(c, f, 'R-CHICKEN', 'Outlet A')).toBe(12);
+      expect(await onHand(c, f, 'R-CHICKEN', 'kitchen')).toBe(12);
       const moves = await c.query<{ movement_type: string; qty: string; unit_cost: string }>(
         `select movement_type, qty, unit_cost from inv.stock_ledger
           where item_id = $1 order by qty desc`, // the capped receipt, then the excess
@@ -537,18 +576,22 @@ describe('two-leg transfer', () => {
   it('posts out at dispatch and in at receipt, with the shortfall as transit_loss', async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c, [{ sku: 'T-ONION' }, { sku: 'T-GARLIC' }]);
-      await stock(c, f, 'T-ONION', 'Hub', 50, 30);
-      await stock(c, f, 'T-GARLIC', 'Hub', 20, 200);
+      await stock(c, f, 'T-ONION', 'centralKitchen', 50, 30);
+      await stock(c, f, 'T-GARLIC', 'centralKitchen', 20, 200);
 
       const request = `select inv.request_transfer($1, $2, $3::jsonb, 'tr-1') as id`;
       const want = lines([
         { item_id: f.item('T-ONION'), qty: 10 },
         { item_id: f.item('T-GARLIC'), qty: 2 },
       ]);
-      expect(await error(c, OLIVIA, request, [node('Hub'), node('Outlet A'), want])).toBe(
+      expect(await error(c, OLIVIA, request, [node('centralKitchen'), node('kitchen'), want])).toBe(
         'NOT_AUTHORISED', // no initiate right (rule 7: she approves the receipt)
       );
-      const t = await call<{ id: string }>(c, KIM, request, [node('Hub'), node('Outlet A'), want]);
+      const t = await call<{ id: string }>(c, KIM, request, [
+        node('centralKitchen'),
+        node('kitchen'),
+        want,
+      ]);
       const req = await requestOf(c, 'transfer', t.id);
       const progress = async () =>
         (
@@ -568,9 +611,9 @@ describe('two-leg transfer', () => {
       expect(await error(c, OLIVIA, dispatch, [t.id, sent])).toBe('NOT_AUTHORISED');
 
       await call(c, HUGO, dispatch, [t.id, sent]);
-      expect(await onHand(c, f, 'T-ONION', 'Hub')).toBe(42);
-      expect(await onHand(c, f, 'T-GARLIC', 'Hub')).toBe(18);
-      expect(await onHand(c, f, 'T-ONION', 'Outlet A')).toBe(0);
+      expect(await onHand(c, f, 'T-ONION', 'centralKitchen')).toBe(42);
+      expect(await onHand(c, f, 'T-GARLIC', 'centralKitchen')).toBe(18);
+      expect(await onHand(c, f, 'T-ONION', 'kitchen')).toBe(0);
       expect(await progress()).toBe('in_transit');
 
       // In transit: cannot be rejected or cancelled, only received.
@@ -589,8 +632,8 @@ describe('two-leg transfer', () => {
         lines([{ item_id: f.item('T-ONION'), qty: 7 }]),
       ]);
       expect(r.s).toBe('approved');
-      expect(await onHand(c, f, 'T-ONION', 'Outlet A')).toBe(7);
-      expect(await onHand(c, f, 'T-GARLIC', 'Outlet A')).toBe(2);
+      expect(await onHand(c, f, 'T-ONION', 'kitchen')).toBe(7);
+      expect(await onHand(c, f, 'T-GARLIC', 'kitchen')).toBe(2);
 
       const legs = await c.query<{
         at: string;
@@ -599,15 +642,15 @@ describe('two-leg transfer', () => {
         reason: string | null;
         unit_cost: string;
       }>(
-        `select case delivery_node_id when $2 then 'hub' else 'outlet' end as at, movement_type,
+        `select case delivery_node_id when $2 then 'ck' else 'outlet' end as at, movement_type,
                 qty, reason, unit_cost
            from inv.stock_ledger where ref_id = $1 and item_id = $3
           order by at, movement_type`, // uuid v7 ids within one millisecond are unordered
-        [t.id, node('Hub'), f.item('T-ONION')],
+        [t.id, node('centralKitchen'), f.item('T-ONION')],
       );
       expect(legs.rows).toEqual([
         {
-          at: 'hub',
+          at: 'ck',
           movement_type: 'transfer_out',
           qty: '-8.000',
           reason: null,
@@ -638,18 +681,18 @@ describe('two-leg transfer', () => {
   it('a transfer rejected before dispatch moves no stock', async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c, [{ sku: 'T-LEMON' }]);
-      await stock(c, f, 'T-LEMON', 'Hub', 5, 10);
+      await stock(c, f, 'T-LEMON', 'centralKitchen', 5, 10);
       const t = await call<{ id: string }>(
         c,
         KIM,
         `select inv.request_transfer($1, $2, $3::jsonb) as id`,
-        [node('Hub'), node('Outlet A'), lines([{ item_id: f.item('T-LEMON'), qty: 5 }])],
+        [node('centralKitchen'), node('kitchen'), lines([{ item_id: f.item('T-LEMON'), qty: 5 }])],
       );
       const req = await requestOf(c, 'transfer', t.id);
       await call(c, HUGO, `select wf.act($1, 'reject')`, [req]);
       expect(await execute(c, req)).toEqual(['inv.transfer.reject']);
       expect(await statusOf(c, 'transfer', t.id)).toBe('rejected');
-      expect(await onHand(c, f, 'T-LEMON', 'Hub')).toBe(5);
+      expect(await onHand(c, f, 'T-LEMON', 'centralKitchen')).toBe(5);
     });
   });
 });

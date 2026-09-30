@@ -15,11 +15,16 @@ import {
 // weighted average cost, no negative stock, and who can read what. Fixtures are inserted
 // as migrator inside rolled-back transactions.
 
-const KIM = 'Kim Storekeeper';
-const OLIVIA = 'Olivia Outlet Manager';
-const ARIA = 'Aria Area Manager';
-const HUGO = 'Hugo Hub Manager';
-const SAM = 'Sam Staff';
+const KIM = 'test.head-cook.3.0';
+const OLIVIA = 'test.bar-manager.3.0';
+const ARIA = 'test.area-manager';
+const HUGO = 'test.central-kitchen-manager';
+const SAM = 'test.server.3.0';
+
+// Test Bar 3.0's Kitchen Store, the Guest House supply point, the central kitchen store
+const A = 'TEST-BAR-3.0-KITCHEN-STORE';
+const B = 'TEST-GUEST-HOUSE-2.0-SUPPLY';
+const HUB = 'TEST-CENTRAL-KITCHEN-STORE';
 
 let ids: SeedIds;
 beforeAll(async () => {
@@ -30,7 +35,7 @@ afterAll(closePools);
 async function tenantId(c: PoolClient): Promise<string> {
   const { rows } = await c.query<{ id: string }>(
     'select tenant_id as id from core.hierarchy_node where id = $1',
-    [ids.node('org:Company')],
+    [ids.node('TEST-COMPANY')],
   );
   return rows[0]!.id;
 }
@@ -56,7 +61,7 @@ async function move(
     `insert into inv.stock_ledger (tenant_id, item_id, delivery_node_id, movement_type, qty,
                                    unit_cost, ref_type)
      values ($1, $2, $3, $4, $5, $6, 'test')`,
-    [await tenantId(c), item, ids.node(`delivery:${node}`), type, qty, unitCost],
+    [await tenantId(c), item, ids.node(node), type, qty, unitCost],
   );
 }
 
@@ -64,7 +69,7 @@ async function level(c: PoolClient, item: string, node: string) {
   const { rows } = await c.query<{ on_hand: string; avg_cost: string; value: string }>(
     `select on_hand, avg_cost, value from inv.stock_level
       where item_id = $1 and delivery_node_id = $2`,
-    [item, ids.node(`delivery:${node}`)],
+    [item, ids.node(node)],
   );
   return rows[0];
 }
@@ -110,7 +115,7 @@ describe('stock changes only through the ledger (rule 3)', () => {
   it('the ledger is append-only for every role, including its owner', async () => {
     await inRolledBackTx(async (c) => {
       const item = await makeItem(c, 'T-APPEND');
-      await move(c, item, 'Outlet A', 'receipt', 5, 10);
+      await move(c, item, A, 'receipt', 5, 10);
       for (const stmt of [
         `update inv.stock_ledger set qty = 50 where item_id = '${item}'`,
         `delete from inv.stock_ledger where item_id = '${item}'`,
@@ -120,30 +125,30 @@ describe('stock changes only through the ledger (rule 3)', () => {
         await expect(c.query(stmt), stmt).rejects.toThrow('LEDGER_APPEND_ONLY');
         await c.query('rollback to savepoint s');
       }
-      expect(await level(c, item, 'Outlet A')).toMatchObject({ on_hand: '5.000' });
+      expect(await level(c, item, A)).toMatchObject({ on_hand: '5.000' });
     });
   });
 
   it('keeps inv.stock_level equal to the sum of the ledger', async () => {
     await inRolledBackTx(async (c) => {
       const item = await makeItem(c, 'T-SUM');
-      await move(c, item, 'Outlet A', 'receipt', 10, 100);
-      await move(c, item, 'Outlet A', 'wastage', -2);
-      await move(c, item, 'Outlet A', 'count_adjust', -1.5);
-      await move(c, item, 'Outlet A', 'count_adjust', 0.25);
-      await move(c, item, 'Hub', 'receipt', 4, 90);
+      await move(c, item, A, 'receipt', 10, 100);
+      await move(c, item, A, 'wastage', -2);
+      await move(c, item, A, 'count_adjust', -1.5);
+      await move(c, item, A, 'count_adjust', 0.25);
+      await move(c, item, HUB, 'receipt', 4, 90);
       const { rows } = await c.query<{ node: string; ledger: string; cached: string }>(
-        `select n.name as node, sum(l.qty)::numeric(14,3)::text as ledger,
+        `select n.code as node, sum(l.qty)::numeric(14,3)::text as ledger,
                 max(s.on_hand)::text as cached
            from inv.stock_ledger l
            join inv.stock_level s using (item_id, delivery_node_id)
            join core.hierarchy_node n on n.id = l.delivery_node_id
-          where l.item_id = $1 group by n.name order by n.name`,
+          where l.item_id = $1 group by n.code order by n.code`,
         [item],
       );
       expect(rows).toEqual([
-        { node: 'Hub', ledger: '4.000', cached: '4.000' },
-        { node: 'Outlet A', ledger: '6.750', cached: '6.750' },
+        { node: A, ledger: '6.750', cached: '6.750' },
+        { node: HUB, ledger: '4.000', cached: '4.000' },
       ]);
     });
   });
@@ -153,20 +158,20 @@ describe('valuation and invariants', () => {
   it('recomputes the weighted average cost on receipts and values outflows at it', async () => {
     await inRolledBackTx(async (c) => {
       const item = await makeItem(c, 'T-WAC');
-      await move(c, item, 'Outlet A', 'receipt', 10, 100);
-      await move(c, item, 'Outlet A', 'receipt', 10, 120);
-      expect(await level(c, item, 'Outlet A')).toEqual({
+      await move(c, item, A, 'receipt', 10, 100);
+      await move(c, item, A, 'receipt', 10, 120);
+      expect(await level(c, item, A)).toEqual({
         on_hand: '20.000',
         avg_cost: '110.0000',
         value: '2200.00',
       });
-      await move(c, item, 'Outlet A', 'wastage', -5);
+      await move(c, item, A, 'wastage', -5);
       const { rows } = await c.query<{ unit_cost: string }>(
         `select unit_cost from inv.stock_ledger where item_id = $1 and movement_type = 'wastage'`,
         [item],
       );
       expect(rows).toEqual([{ unit_cost: '110.0000' }]);
-      expect(await level(c, item, 'Outlet A')).toEqual({
+      expect(await level(c, item, A)).toEqual({
         on_hand: '15.000',
         avg_cost: '110.0000',
         value: '1650.00',
@@ -178,7 +183,7 @@ describe('valuation and invariants', () => {
     await inRolledBackTx(async (c) => {
       for (const perishable of [false, true]) {
         const item = await makeItem(c, `T-NEG-${perishable}`, perishable);
-        await move(c, item, 'Outlet A', 'receipt', 3, 10);
+        await move(c, item, A, 'receipt', 3, 10);
         for (const [type, qty] of [
           ['wastage', -3.001],
           ['transfer_out', -4],
@@ -186,13 +191,11 @@ describe('valuation and invariants', () => {
           ['consumption', -10],
         ] as const) {
           await c.query('savepoint s');
-          await expect(move(c, item, 'Outlet A', type, qty), type).rejects.toThrow(
-            'INSUFFICIENT_STOCK',
-          );
+          await expect(move(c, item, A, type, qty), type).rejects.toThrow('INSUFFICIENT_STOCK');
           await c.query('rollback to savepoint s');
         }
-        await move(c, item, 'Outlet A', 'wastage', -3); // exactly to zero is fine
-        expect(await level(c, item, 'Outlet A')).toMatchObject({ on_hand: '0.000' });
+        await move(c, item, A, 'wastage', -3); // exactly to zero is fine
+        expect(await level(c, item, A)).toMatchObject({ on_hand: '0.000' });
       }
     });
   });
@@ -200,7 +203,7 @@ describe('valuation and invariants', () => {
   it('enforces the sign of each movement type', async () => {
     await inRolledBackTx(async (c) => {
       const item = await makeItem(c, 'T-SIGN');
-      await move(c, item, 'Outlet A', 'receipt', 10, 1);
+      await move(c, item, A, 'receipt', 10, 1);
       for (const [type, qty] of [
         ['receipt', -1],
         ['transfer_in', -1],
@@ -214,7 +217,7 @@ describe('valuation and invariants', () => {
             `insert into inv.stock_ledger (tenant_id, item_id, delivery_node_id, movement_type,
                                            qty, ref_type)
              select tenant_id, id, $1, $2, $3, 'test' from inv.item where id = $4`,
-            [ids.node('delivery:Outlet A'), type, qty, item],
+            [ids.node('TEST-BAR-3.0-KITCHEN-STORE'), type, qty, item],
           ),
           `${type} ${qty}`,
         ).toBe('23514');
@@ -227,8 +230,7 @@ describe('who reads what', () => {
   it('stock levels follow STOCK_LEVELS on the delivery tree, derived for the area manager', async () => {
     await inRolledBackTx(async (c) => {
       const item = await makeItem(c, 'T-READ');
-      for (const node of ['Hub', 'Outlet A', 'Outlet B'])
-        await move(c, item, node, 'receipt', 1, 1);
+      for (const node of [HUB, A, B]) await move(c, item, node, 'receipt', 1, 1);
       const nodesSeenBy = async (who: string) => {
         const r = await attemptAs<{ node: string }>(
           c,
@@ -237,15 +239,14 @@ describe('who reads what', () => {
           [item],
         );
         if (r.error !== undefined) throw new Error(r.error);
-        const names = new Map(
-          ['Hub', 'Outlet A', 'Outlet B'].map((n) => [ids.node(`delivery:${n}`), n]),
-        );
+        const names = new Map([HUB, A, B].map((n) => [ids.node(n), n]));
         return r.rows.map((x) => names.get(x.node)).sort();
       };
-      expect(await nodesSeenBy(KIM)).toEqual(['Outlet A']);
-      expect(await nodesSeenBy(OLIVIA)).toEqual(['Outlet A']);
-      expect(await nodesSeenBy(ARIA)).toEqual(['Outlet A', 'Outlet B']); // DERIVED_STOCK_LEVELS
-      expect(await nodesSeenBy(HUGO)).toEqual(['Hub', 'Outlet A', 'Outlet B']); // SUPPLY_VIEWER
+      expect(await nodesSeenBy(KIM)).toEqual([A]);
+      expect(await nodesSeenBy(OLIVIA)).toEqual([A]);
+      // DERIVED_STOCK_LEVELS: the central kitchen is in the area too
+      expect(await nodesSeenBy(ARIA)).toEqual([A, B, HUB].sort());
+      expect(await nodesSeenBy(HUGO)).toEqual([A, B, HUB].sort()); // SUPPLY_VIEWER
       expect(await nodesSeenBy(SAM)).toEqual([]);
     });
   });

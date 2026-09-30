@@ -34,4 +34,19 @@ export async function userIdForCognitoSub(sub: string): Promise<string | null> {
     });
 }
 
+/** Dev login only (ADR 004): resolves a test user by customer code and username. */
+export async function userIdForUsername(
+  customer: string,
+  username: string,
+): Promise<string | null> {
+  return db()
+    .transaction()
+    .execute(async (tx) => {
+      const r = await sql<{
+        id: string | null;
+      }>`select core.user_for_username(${customer}, ${username}) as id`.execute(tx);
+      return r.rows[0]?.id ?? null;
+    });
+}
+
 export { sql, type Tx };

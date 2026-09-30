@@ -78,7 +78,11 @@ describe('single-node delivery table, insert-only (stock ledger shape)', () => {
     await c.query(
       `insert into inv.zz_ledger (delivery_node_id, label, qty) values
         ($1, 'hub', 1), ($2, 'A', 1), ($3, 'B', 1)`,
-      [ids.node('delivery:Hub'), ids.node('delivery:Outlet A'), ids.node('delivery:Outlet B')],
+      [
+        ids.node('TEST-CENTRAL-KITCHEN-STORE'),
+        ids.node('TEST-BAR-3.0-KITCHEN-STORE'),
+        ids.node('TEST-GUEST-HOUSE-2.0-SUPPLY'),
+      ],
     );
   }
 
@@ -86,13 +90,14 @@ describe('single-node delivery table, insert-only (stock ledger shape)', () => {
     await inRolledBackTx(async (c) => {
       await setup(c);
       const see = (who: string) => visible(c, who, 'inv.zz_ledger', 'label');
-      expect(await see('Olivia Outlet Manager')).toEqual(['A']);
-      expect(await see('Casey Chef')).toEqual(['A']);
-      expect(await see('Aria Area Manager')).toEqual(['A', 'B']); // derived via node_link
-      expect(await see('Hugo Hub Manager')).toEqual(['A', 'B', 'hub']); // SUPPLY_VIEWER
-      expect(await see('Outlet Ops AI Agent')).toEqual(['A', 'B', 'hub']);
-      expect(await see('Sam Staff')).toEqual([]);
-      expect(await see('Harper HR Admin')).toEqual([]);
+      expect(await see('test.bar-manager.3.0')).toEqual(['A']);
+      expect(await see('test.cook.3.0')).toEqual(['A']);
+      // derived via node_link; the central kitchen is in the area too
+      expect(await see('test.area-manager')).toEqual(['A', 'B', 'hub']);
+      expect(await see('test.central-kitchen-manager')).toEqual(['A', 'B', 'hub']); // SUPPLY_VIEWER
+      expect(await see('ai-agent')).toEqual(['A', 'B', 'hub']);
+      expect(await see('test.server.3.0')).toEqual([]);
+      expect(await see('test.hr-admin')).toEqual([]);
     });
   });
 
@@ -104,24 +109,30 @@ describe('single-node delivery table, insert-only (stock ledger shape)', () => {
           c,
           who,
           `insert into inv.zz_ledger (delivery_node_id, label, qty) values ($1, 'x', 1)`,
-          [ids.node(`delivery:${node}`)],
+          [ids.node(node)],
         );
-      expect(await ins('Casey Chef', 'Outlet A')).toBeNull();
-      expect(await ins('Casey Chef', 'Outlet B')).toBe(INSUFFICIENT_PRIVILEGE);
-      expect(await ins('Hugo Hub Manager', 'Hub')).toBeNull();
-      expect(await ins('Hugo Hub Manager', 'Outlet A')).toBe(INSUFFICIENT_PRIVILEGE);
-      expect(await ins('Aria Area Manager', 'Outlet A')).toBe(INSUFFICIENT_PRIVILEGE);
-      expect(await ins('Outlet Ops AI Agent', 'Outlet A')).toBe(INSUFFICIENT_PRIVILEGE);
+      expect(await ins('test.cook.3.0', 'TEST-BAR-3.0-KITCHEN-STORE')).toBeNull();
+      expect(await ins('test.cook.3.0', 'TEST-GUEST-HOUSE-2.0-SUPPLY')).toBe(
+        INSUFFICIENT_PRIVILEGE,
+      );
+      expect(await ins('test.central-kitchen-manager', 'TEST-CENTRAL-KITCHEN-STORE')).toBeNull();
+      expect(await ins('test.central-kitchen-manager', 'TEST-BAR-3.0-KITCHEN-STORE')).toBe(
+        INSUFFICIENT_PRIVILEGE,
+      );
+      expect(await ins('test.area-manager', 'TEST-BAR-3.0-KITCHEN-STORE')).toBe(
+        INSUFFICIENT_PRIVILEGE,
+      );
+      expect(await ins('ai-agent', 'TEST-BAR-3.0-KITCHEN-STORE')).toBe(INSUFFICIENT_PRIVILEGE);
     });
   });
 
   it('never allows UPDATE or DELETE', async () => {
     await inRolledBackTx(async (c) => {
       await setup(c);
-      expect(await tryAs(c, 'Casey Chef', `update inv.zz_ledger set qty = 2`)).toBe(
+      expect(await tryAs(c, 'test.cook.3.0', `update inv.zz_ledger set qty = 2`)).toBe(
         INSUFFICIENT_PRIVILEGE,
       );
-      expect(await tryAs(c, 'Casey Chef', `delete from inv.zz_ledger`)).toBe(
+      expect(await tryAs(c, 'test.cook.3.0', `delete from inv.zz_ledger`)).toBe(
         INSUFFICIENT_PRIVILEGE,
       );
     });
@@ -141,7 +152,11 @@ describe('two-node table (transfer shape) with wf_request_id', () => {
     await c.query(
       `insert into inv.zz_transfer (from_node_id, to_node_id, label) values
         ($1, $2, 'hub->A'), ($1, $3, 'hub->B')`,
-      [ids.node('delivery:Hub'), ids.node('delivery:Outlet A'), ids.node('delivery:Outlet B')],
+      [
+        ids.node('TEST-CENTRAL-KITCHEN-STORE'),
+        ids.node('TEST-BAR-3.0-KITCHEN-STORE'),
+        ids.node('TEST-GUEST-HOUSE-2.0-SUPPLY'),
+      ],
     );
   }
 
@@ -149,11 +164,13 @@ describe('two-node table (transfer shape) with wf_request_id', () => {
     await inRolledBackTx(async (c) => {
       await setup(c);
       const see = (who: string) => visible(c, who, 'inv.zz_transfer', 'label');
-      expect(await see('Olivia Outlet Manager')).toEqual(['hub->A']); // to-leg
-      expect(await see('Kim Storekeeper')).toEqual(['hub->A']); // TRANSFERS V at A
-      expect(await see('Hugo Hub Manager')).toEqual(['hub->A', 'hub->B']); // from-leg
-      expect(await see('Aria Area Manager')).toEqual(['hub->A', 'hub->B']); // derived
-      expect(await see('Casey Chef')).toEqual([]);
+      expect(await see('test.bar-manager.3.0')).toEqual(['hub->A']); // to-leg
+      expect(await see('test.head-cook.3.0')).toEqual(['hub->A']); // TRANSFERS V at A
+      expect(await see('test.central-kitchen-manager')).toEqual(['hub->A', 'hub->B']); // from-leg
+      expect(await see('test.area-manager')).toEqual(['hub->A', 'hub->B']); // derived
+      // STOCK_USER at A requests transfers (ADR 009), so it sees A's leg
+      expect(await see('test.cook.3.0')).toEqual(['hub->A']);
+      expect(await see('test.server.3.0')).toEqual([]);
     });
   });
 
@@ -165,14 +182,46 @@ describe('two-node table (transfer shape) with wf_request_id', () => {
           c,
           who,
           `insert into inv.zz_transfer (from_node_id, to_node_id, label) values ($1, $2, 'x')`,
-          [ids.node(`delivery:${from}`), ids.node(`delivery:${to}`)],
+          [ids.node(from), ids.node(to)],
         );
-      expect(await ins('Olivia Outlet Manager', 'Hub', 'Outlet A')).toBeNull(); // receiving leg
-      expect(await ins('Olivia Outlet Manager', 'Hub', 'Outlet B')).toBe(INSUFFICIENT_PRIVILEGE);
-      expect(await ins('Hugo Hub Manager', 'Hub', 'Outlet B')).toBeNull(); // dispatching leg
-      expect(await ins('Hugo Hub Manager', 'Outlet A', 'Outlet B')).toBe(INSUFFICIENT_PRIVILEGE);
-      expect(await ins('Kim Storekeeper', 'Hub', 'Outlet A')).toBeNull(); // TRANSFERS M at A
-      expect(await ins('Kim Storekeeper', 'Hub', 'Outlet B')).toBe(INSUFFICIENT_PRIVILEGE);
+      expect(
+        await ins(
+          'test.bar-manager.3.0',
+          'TEST-CENTRAL-KITCHEN-STORE',
+          'TEST-BAR-3.0-KITCHEN-STORE',
+        ),
+      ).toBeNull(); // receiving leg
+      expect(
+        await ins(
+          'test.bar-manager.3.0',
+          'TEST-CENTRAL-KITCHEN-STORE',
+          'TEST-GUEST-HOUSE-2.0-SUPPLY',
+        ),
+      ).toBe(INSUFFICIENT_PRIVILEGE);
+      expect(
+        await ins(
+          'test.central-kitchen-manager',
+          'TEST-CENTRAL-KITCHEN-STORE',
+          'TEST-GUEST-HOUSE-2.0-SUPPLY',
+        ),
+      ).toBeNull(); // dispatching leg
+      expect(
+        await ins(
+          'test.central-kitchen-manager',
+          'TEST-BAR-3.0-KITCHEN-STORE',
+          'TEST-GUEST-HOUSE-2.0-SUPPLY',
+        ),
+      ).toBe(INSUFFICIENT_PRIVILEGE);
+      expect(
+        await ins('test.head-cook.3.0', 'TEST-CENTRAL-KITCHEN-STORE', 'TEST-BAR-3.0-KITCHEN-STORE'),
+      ).toBeNull(); // TRANSFERS M at A
+      expect(
+        await ins(
+          'test.head-cook.3.0',
+          'TEST-CENTRAL-KITCHEN-STORE',
+          'TEST-GUEST-HOUSE-2.0-SUPPLY',
+        ),
+      ).toBe(INSUFFICIENT_PRIVILEGE);
     });
   });
 
@@ -180,7 +229,7 @@ describe('two-node table (transfer shape) with wf_request_id', () => {
     await inRolledBackTx(async (c) => {
       await setup(c);
       expect(
-        await tryAs(c, 'Olivia Outlet Manager', `update inv.zz_transfer set status = 'approved'`),
+        await tryAs(c, 'test.bar-manager.3.0', `update inv.zz_transfer set status = 'approved'`),
       ).toBe(INSUFFICIENT_PRIVILEGE);
       await actAs(c, 'wf_executor', null);
       const res = await c.query(`update inv.zz_transfer set status = 'approved'`);
@@ -200,11 +249,11 @@ describe('self-service org table (leave shape)', () => {
       `insert into hr.zz_leave (org_node_id, owner_user_id, label) values
         ($1, $2, 'sam'), ($1, $3, 'casey'), ($4, $5, 'hugo-at-B')`,
       [
-        ids.node('org:Outlet A'),
-        ids.user('Sam Staff'),
-        ids.user('Casey Chef'),
-        ids.node('org:Outlet B'),
-        ids.user('Hugo Hub Manager'),
+        ids.node('TEST-BAR-3.0-FLOOR-SERVICE'),
+        ids.user('test.server.3.0'),
+        ids.user('test.cook.3.0'),
+        ids.node('TEST-GUEST-HOUSE-2.0'),
+        ids.user('test.central-kitchen-manager'),
       ],
     );
   }
@@ -213,11 +262,11 @@ describe('self-service org table (leave shape)', () => {
     await inRolledBackTx(async (c) => {
       await setup(c);
       const see = (who: string) => visible(c, who, 'hr.zz_leave', 'label');
-      expect(await see('Sam Staff')).toEqual(['sam']);
-      expect(await see('Casey Chef')).toEqual(['casey']);
-      expect(await see('Olivia Outlet Manager')).toEqual(['casey', 'sam']);
-      expect(await see('Aria Area Manager')).toEqual(['casey', 'hugo-at-B', 'sam']);
-      expect(await see('Hugo Hub Manager')).toEqual(['hugo-at-B']);
+      expect(await see('test.server.3.0')).toEqual(['sam']);
+      expect(await see('test.cook.3.0')).toEqual(['casey']);
+      expect(await see('test.bar-manager.3.0')).toEqual(['casey', 'sam']);
+      expect(await see('test.area-manager')).toEqual(['casey', 'hugo-at-B', 'sam']);
+      expect(await see('test.central-kitchen-manager')).toEqual(['hugo-at-B']);
     });
   });
 
@@ -229,13 +278,13 @@ describe('self-service org table (leave shape)', () => {
           c,
           who,
           `insert into hr.zz_leave (org_node_id, owner_user_id, label) values ($1, $2, 'x')`,
-          [ids.node('org:Outlet A'), ids.user(owner)],
+          [ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), ids.user(owner)],
         );
-      expect(await ins('Sam Staff', 'Sam Staff')).toBeNull();
-      expect(await ins('Sam Staff', 'Casey Chef')).toBe(INSUFFICIENT_PRIVILEGE);
-      expect(await ins('Olivia Outlet Manager', 'Olivia Outlet Manager')).toBeNull();
-      expect(await ins('Olivia Outlet Manager', 'Sam Staff')).toBe(INSUFFICIENT_PRIVILEGE);
-      expect(await ins('Harper HR Admin', 'Sam Staff')).toBeNull();
+      expect(await ins('test.server.3.0', 'test.server.3.0')).toBeNull();
+      expect(await ins('test.server.3.0', 'test.cook.3.0')).toBe(INSUFFICIENT_PRIVILEGE);
+      expect(await ins('test.bar-manager.3.0', 'test.bar-manager.3.0')).toBeNull();
+      expect(await ins('test.bar-manager.3.0', 'test.server.3.0')).toBe(INSUFFICIENT_PRIVILEGE);
+      expect(await ins('test.hr-admin', 'test.server.3.0')).toBeNull();
     });
   });
 });
@@ -243,15 +292,17 @@ describe('self-service org table (leave shape)', () => {
 describe('audit', () => {
   it('captures the acting user and is readable only by auditors and security admins', async () => {
     await inRolledBackTx(async (c) => {
+      // like every business table, it carries tenant_id: audit rows are per customer
       await c.query(`create table hr.zz_leave (
-        id uuid primary key default core.uuid_v7(),
+        id uuid primary key default core.uuid_v7(), tenant_id uuid not null,
         org_node_id uuid not null, owner_user_id uuid not null, label text not null)`);
       await register(c, 'hr.zz_leave', { domain: 'LEAVE' });
-      const sam = ids.user('Sam Staff');
+      const sam = ids.user('test.server.3.0');
       await actAs(c, 'app_rw', sam);
       const { rows } = await c.query<{ id: string }>(
-        `insert into hr.zz_leave (org_node_id, owner_user_id, label) values ($1, $2, 'x') returning id`,
-        [ids.node('org:Outlet A'), sam],
+        `insert into hr.zz_leave (tenant_id, org_node_id, owner_user_id, label)
+         values ($1, $2, $3, 'x') returning id`,
+        [ids.tenant(), ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), sam],
       );
       await resetRole(c);
       const rowId = rows[0]!.id;
@@ -272,23 +323,23 @@ describe('audit', () => {
         await resetRole(c);
         return Number(r.rows[0]!.n);
       };
-      expect(await count('Avery Auditor')).toBe(1);
-      expect(await count('Sasha Security Admin')).toBe(1);
-      expect(await count('Sam Staff')).toBe(0);
-      expect(await count('Olivia Outlet Manager')).toBe(0);
+      expect(await count('test.auditor')).toBe(1);
+      expect(await count('test.security-admin')).toBe(1);
+      expect(await count('test.server.3.0')).toBe(0);
+      expect(await count('test.bar-manager.3.0')).toBe(0);
 
-      expect(await tryAs(c, 'Avery Auditor', `update audit.log set op = 'X'`)).toBe(
+      expect(await tryAs(c, 'test.auditor', `update audit.log set op = 'X'`)).toBe(
         INSUFFICIENT_PRIVILEGE,
       );
-      expect(await tryAs(c, 'Avery Auditor', `delete from audit.log`)).toBe(INSUFFICIENT_PRIVILEGE);
+      expect(await tryAs(c, 'test.auditor', `delete from audit.log`)).toBe(INSUFFICIENT_PRIVILEGE);
       expect(
         await tryAs(
           c,
-          'Avery Auditor',
+          'test.auditor',
           `insert into audit.log (actor_kind, table_name, op) values ('human', 'x', 'INSERT')`,
         ),
       ).toBe(INSUFFICIENT_PRIVILEGE);
-      expect(await tryAs(c, 'Avery Auditor', `select * from audit.log_default`)).toBe(
+      expect(await tryAs(c, 'test.auditor', `select * from audit.log_default`)).toBe(
         INSUFFICIENT_PRIVILEGE,
       );
     });
@@ -301,11 +352,11 @@ describe('audit', () => {
         org_node_id uuid not null, pay_rate numeric(14,2) not null)`);
       await register(c, 'hr.zz_pay', { domain: 'COMPENSATION', audit: false });
       await c.query(`select audit.enable('hr.zz_pay'::regclass, names_only => true)`);
-      const harper = ids.user('Harper HR Admin');
+      const harper = ids.user('test.hr-admin');
       await actAs(c, 'app_rw', harper);
       const { rows } = await c.query<{ id: string }>(
         `insert into hr.zz_pay (org_node_id, pay_rate) values ($1, 100) returning id`,
-        [ids.node('org:Outlet A')],
+        [ids.node('TEST-BAR-3.0-FLOOR-SERVICE')],
       );
       await c.query(`update hr.zz_pay set pay_rate = 120 where id = $1`, [rows[0]!.id]);
       await resetRole(c);
@@ -356,7 +407,7 @@ describe('apply_domain_rls guards', () => {
 
   it('is not executable by app_rw', async () => {
     await inRolledBackTx(async (c) => {
-      await actAs(c, 'app_rw', ids.user('Sasha Security Admin'));
+      await actAs(c, 'app_rw', ids.user('test.security-admin'));
       expect(await sqlState(c, `select core.apply_domain_rls('core.tenant'::regclass)`)).toBe(
         INSUFFICIENT_PRIVILEGE,
       );

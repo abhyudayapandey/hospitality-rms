@@ -1,202 +1,105 @@
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import type { PoolClient } from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
-import { closePools, inRolledBackTx, migratorPool } from '../test/helpers';
+import { closePools, migratorPool } from '../test/helpers';
 
-// The core seed's policy matrix is authoritative (ADR 002): re-seeding resets
-// changed access and removes rows that are not in the matrix.
-
-const seedFile = join(import.meta.dirname, '..', 'seed', '001_core.sql');
+// What `pnpm db:seed` leaves behind: the two test customers loaded from
+// docs/onboarding/test-data by the onboarding loader (tested in packages/onboarding), plus
+// the dev layer (seed/dev/001_workforce_dev.sql). The loader's own guarantees (exact
+// access, idempotency, errors) are tested with the loader.
 
 afterAll(closePools);
 
-async function policy(c: PoolClient, grp: string, dom: string): Promise<string | null> {
-  const { rows } = await c.query<{ access: string }>(
-    `select dp.access from core.domain_policy dp
-       join core.security_group g on g.id = dp.group_id
-       join core.domain d on d.id = dp.domain_id and d.tenant_id = g.tenant_id
-      where g.code = $1 and d.code = $2`,
-    [grp, dom],
-  );
-  return rows[0]?.access ?? null;
-}
+const TODAY = `(now() at time zone 'Asia/Kolkata')::date`;
 
-describe('core seed', () => {
-  it('re-seeding restores changed access and removes rows not in the matrix', async () => {
-    await inRolledBackTx(async (c) => {
-      expect(await policy(c, 'STAFF', 'ROSTER')).toBe('view');
-      await c.query(
-        `update core.domain_policy dp set access = 'modify'
-           from core.security_group g, core.domain d
-          where g.id = dp.group_id and d.id = dp.domain_id
-            and g.code = 'STAFF' and d.code = 'ROSTER'`,
-      );
-      await c.query(
-        `insert into core.domain_policy (tenant_id, domain_id, group_id, access)
-         select g.tenant_id, d.id, g.id, 'view'
-           from core.security_group g
-           join core.domain d on d.tenant_id = g.tenant_id and d.code = 'COMPENSATION'
-          where g.code = 'STAFF'`,
-      );
-      expect(await policy(c, 'STAFF', 'ROSTER')).toBe('modify');
-      expect(await policy(c, 'STAFF', 'COMPENSATION')).toBe('view');
-
-      await c.query(await readFile(seedFile, 'utf8'));
-
-      expect(await policy(c, 'STAFF', 'ROSTER')).toBe('view');
-      expect(await policy(c, 'STAFF', 'COMPENSATION')).toBeNull();
-    });
-  });
-
-  it('is idempotent', async () => {
-    await inRolledBackTx(async (c) => {
-      const count = async () =>
-        (
-          await c.query<{ n: string }>(
-            `select (select count(*) from core.domain_policy)
-                  + (select count(*) from core.role_assignment)
-                  + (select count(*) from core.hierarchy_node)
-                  + (select count(*) from core.node_link) as n`,
-          )
-        ).rows[0]!.n;
-      const before = await count();
-      await c.query(await readFile(seedFile, 'utf8'));
-      expect(await count()).toBe(before);
-    });
-  });
-
-  it('grants the workflow domains exactly as approved (ADR 003)', async () => {
-    const { rows } = await migratorPool.query<{ dom: string; grp: string; access: string }>(
-      `select d.code as dom, g.code as grp, dp.access
-         from core.domain_policy dp
-         join core.domain d on d.id = dp.domain_id
-         join core.security_group g on g.id = dp.group_id
-        where d.code in ('SHIFT_SWAPS', 'SECURITY_ROLES', 'WF_CONFIG')
-        order by 1, 2`,
-    );
-    expect(rows.map((r) => `${r.dom} ${r.grp} ${r.access}`)).toEqual([
-      'SECURITY_ROLES AUDITOR view',
-      'SECURITY_ROLES HR_ADMIN modify',
-      'SECURITY_ROLES SECURITY_ADMIN view',
-      'SHIFT_SWAPS AI_AGENT view',
-      'SHIFT_SWAPS AREA_MANAGER view',
-      'SHIFT_SWAPS OUTLET_MANAGER view',
-      'SHIFT_SWAPS SELF modify',
-      'WF_CONFIG HR_ADMIN view',
-      'WF_CONFIG SECURITY_ADMIN view',
-    ]);
-  });
-
-  it('links the org Hub site to the delivery Hub', async () => {
-    await inRolledBackTx(async (c) => {
-      const { rows } = await c.query<{ kind: string; parent: string }>(
-        `select o.kind, p.name as parent
-           from core.node_link nl
-           join core.hierarchy_node o on o.id = nl.org_node_id and o.type = 'org'
-           join core.hierarchy_node dlv on dlv.id = nl.delivery_node_id and dlv.type = 'delivery'
-           join core.hierarchy_node p on p.id = o.parent_id
-          where o.name = 'Hub' and dlv.name = 'Hub'`,
-      );
-      expect(rows).toEqual([{ kind: 'site', parent: 'Region' }]);
-    });
-  });
-});
-
-describe('dev inventory seed (dev/003_inventory_dev.sql)', () => {
-  it('has about 40 items and 2 suppliers, each item set up at the hub and both outlets', async () => {
+describe('test customers', () => {
+  it('are loaded with their people, places and stock', async () => {
     const { rows } = await migratorPool.query<{
+      code: string;
+      users: number;
+      places: number;
       items: number;
-      suppliers: number;
-      missing: number;
-      categories: number;
+      stocked: number;
     }>(
-      `select (select count(*)::int from inv.item where sku not like 'T-%') as items,
-              (select count(*)::int from inv.supplier where name in
-                 ('FreshFarm Produce', 'Metro Wholesale Foods')) as suppliers,
-              (select count(*)::int from inv.item i
-                where i.id::text like '01920000-0000-7000-8000-0000000004%'
-                  and (select count(*) from inv.item_node n where n.item_id = i.id) <> 3) as missing,
-              (select count(distinct category)::int from inv.item) as categories`,
-    );
-    expect(rows[0]!.items).toBeGreaterThanOrEqual(40);
-    expect(rows[0]).toMatchObject({ suppliers: 2, missing: 0 });
-    expect(rows[0]!.categories).toBeGreaterThanOrEqual(6);
-  });
-
-  it('has opening stock, with the cache matching the ledger everywhere', async () => {
-    const { rows } = await migratorPool.query<{ mismatched: number; opening: number }>(
-      `select (select count(*)::int from inv.stock_level s
-                where s.on_hand <> (select coalesce(sum(qty), 0) from inv.stock_ledger l
-                                     where l.item_id = s.item_id
-                                       and l.delivery_node_id = s.delivery_node_id)) as mismatched,
-              (select count(*)::int from inv.stock_ledger where ref_type = 'opening') as opening`,
-    );
-    expect(rows[0]!.mismatched).toBe(0);
-    expect(rows[0]!.opening).toBeGreaterThanOrEqual(120);
-  });
-});
-
-describe('dev workforce seed (dev/004_workforce_dev.sql)', () => {
-  const SEEDED = `w.id::text like '01920000-0000-7000-8000-0000000007%'`;
-
-  it('has 12 workers: 5 at Outlet A, 4 at Outlet B, 3 at the Hub site', async () => {
-    const { rows } = await migratorPool.query<{ name: string; n: number }>(
-      `select n.name, count(*)::int n from hr.worker w
-         join core.hierarchy_node n on n.id = w.org_node_id
-        where ${SEEDED} group by n.name order by n.name`,
+      `select t.code,
+              (select count(*)::int from core.app_user u
+                where u.tenant_id = t.id and u.username like 'test.%') as users,
+              (select count(*)::int from core.hierarchy_node n where n.tenant_id = t.id) as places,
+              (select count(*)::int from inv.item i where i.tenant_id = t.id) as items,
+              (select count(*)::int from inv.stock_level s
+                where s.tenant_id = t.id and s.on_hand > 0) as stocked
+         from core.tenant t where t.code like 'TEST-%' order by t.code`,
     );
     expect(rows).toEqual([
-      { name: 'Hub', n: 3 },
-      { name: 'Outlet A', n: 5 },
-      { name: 'Outlet B', n: 4 },
+      { code: 'TEST-COMPANY', users: 107, places: 49, items: 64, stocked: 303 },
+      { code: 'TEST-SOLO-COMPANY', users: 7, places: 9, items: 36, stocked: 39 },
     ]);
   });
 
+  it('keep the stock cache equal to the ledger everywhere', async () => {
+    const { rows } = await migratorPool.query<{ mismatched: number }>(
+      `select count(*)::int as mismatched from inv.stock_level s
+        where s.on_hand <> (select coalesce(sum(qty), 0) from inv.stock_ledger l
+                             where l.item_id = s.item_id
+                               and l.delivery_node_id = s.delivery_node_id)`,
+    );
+    expect(rows[0]!.mismatched).toBe(0);
+  });
+
+  it('each have an AI agent service user with view access at both tree roots', async () => {
+    const { rows } = await migratorPool.query<{ code: string; roots: number }>(
+      `select t.code, count(distinct ra.node_id)::int as roots
+         from core.tenant t
+         join core.app_user u on u.tenant_id = t.id and u.kind = 'service'
+         join core.role_assignment ra on ra.user_id = u.id
+         join core.security_group g on g.id = ra.group_id and g.code = 'AI_AGENT'
+         join core.hierarchy_node n on n.id = ra.node_id and n.parent_id is null
+        group by t.code order by t.code`,
+    );
+    expect(rows).toEqual([
+      { code: 'TEST-COMPANY', roots: 2 },
+      { code: 'TEST-SOLO-COMPANY', roots: 2 },
+    ]);
+  });
+});
+
+describe('dev layer (seed/dev/001_workforce_dev.sql)', () => {
   it('has this week published and next week in draft, and no assignment breaks a rule', async () => {
-    const { rows } = await migratorPool.query<{ week: number; status: string; n: number }>(
-      `select (s.local_date - hr.week_start((now() at time zone 'Asia/Kolkata')::date)) / 7 as week,
-              s.status, count(*)::int n
+    const { rows } = await migratorPool.query<{ week: number; status: string }>(
+      `select distinct (s.local_date - hr.week_start(${TODAY})) / 7 as week, s.status
          from hr.shift s
-        where s.template_id::text like '01920000-0000-7000-8000-0000000008%'
-          and s.local_date between hr.week_start((now() at time zone 'Asia/Kolkata')::date)
-                               and hr.week_start((now() at time zone 'Asia/Kolkata')::date) + 13
-        group by 1, 2 order by 1, 2`,
+        where s.local_date between hr.week_start(${TODAY}) and hr.week_start(${TODAY}) + 13
+          and s.template_id is not null
+        order by 1, 2`,
     );
     expect(rows.map((r) => [r.week, r.status])).toEqual([
       [0, 'published'],
       [1, 'draft'],
     ]);
+    const assigned = await migratorPool.query<{ n: number }>(
+      `select count(*)::int n from hr.shift_assignment a
+         join hr.shift s on s.id = a.shift_id
+        where s.local_date between hr.week_start(${TODAY}) and hr.week_start(${TODAY}) + 13`,
+    );
+    expect(assigned.rows[0]!.n).toBeGreaterThan(100);
     const broken = await migratorPool.query(
       `select a.id, v.code from hr.shift_assignment a
-         join hr.worker w on w.id = a.worker_id
          join hr.shift s on s.id = a.shift_id,
          lateral hr.assignment_violation(a.worker_id, a.start_at, a.end_at, a.org_node_id,
                                          s.role_code, a.id) v
-        where a.status = 'assigned' and ${SEEDED}`,
+        where a.status = 'assigned' and s.template_id is not null`,
     );
     expect(broken.rows).toEqual([]);
   });
 
-  it('has leave types, balances for every worker, geofences and three upcoming events', async () => {
-    const { rows } = await migratorPool.query<{
-      types: number;
-      unbalanced: number;
-      fences: number;
-      events: number;
-      reqs: number;
-    }>(
-      `select (select count(*)::int from hr.leave_type where code in ('ANNUAL','SICK','CASUAL','UNPAID')) types,
-              (select count(*)::int from hr.worker w where ${SEEDED}
-                and not exists (select 1 from hr.leave_balance b where b.worker_id = w.id
-                                   and b.year = extract(year from now() at time zone 'Asia/Kolkata'))) unbalanced,
-              (select count(*)::int from hr.node_setting where latitude is not null) fences,
-              (select count(*)::int from ops.event
-                where id::text like '01920000-0000-7000-8000-00000000095%' and starts_at > now()) events,
-              (select count(*)::int from ops.event_requirement
-                where id::text like '01920000-0000-7000-8000-00000000096%'
-                   or id::text like '01920000-0000-7000-8000-00000000097%') reqs`,
+  it('has leave balances for every worker and geofences for every outlet and site', async () => {
+    const { rows } = await migratorPool.query<{ unbalanced: number; unfenced: string[] }>(
+      `select (select count(*)::int from hr.worker w
+                 join core.app_user u on u.id = w.owner_user_id and u.username like 'test.%'
+                where not exists (select 1 from hr.leave_balance b where b.worker_id = w.id))
+                as unbalanced,
+              (select coalesce(array_agg(n.code order by n.code), '{}') from core.hierarchy_node n
+                where n.type = 'org' and n.kind in ('outlet', 'site')
+                  and hr.geofence_for(n.id) is null) as unfenced`,
     );
-    expect(rows[0]).toEqual({ types: 4, unbalanced: 0, fences: 3, events: 3, reqs: 10 });
+    expect(rows[0]).toEqual({ unbalanced: 0, unfenced: [] });
   });
 });

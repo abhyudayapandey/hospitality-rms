@@ -1,18 +1,54 @@
 import { expect, type Page } from '@playwright/test';
 import pg from 'pg';
-import { DEV_USERS } from '@outlet-ops/db/dev-users';
 import { HANDLERS, runOnce } from '@outlet-ops/workflow';
 import { newSession, SESSION_COOKIE, signSession } from '../lib/auth/session';
 
 // The production suite runs against the standalone server, where /dev-login is compiled
 // out (ADR 004). Sign-in is a session cookie signed with the server's SESSION_SECRET
 // (what the Cognito callback issues). Requests come from the real inventory screens; the
-// executor step is the real one (runOnce with the real handlers, as wf_executor).
+// executor step is the real one (runOnce with the real handlers, as wf_executor). People
+// and places are the test customers' (docs/onboarding/test-data, loaded by pnpm db:seed),
+// looked up by display name and code as the migrator, like the seed.
 
-function userId(name: string): string {
-  const u = DEV_USERS.find((x) => x.name === name);
-  if (!u) throw new Error(`unknown seeded user ${name}`);
-  return u.id;
+/** Runs one query as the migrator (lookups and test setup only). */
+async function asMigrator<T extends object>(text: string, params: unknown[]): Promise<T[]> {
+  const client = new pg.Client({ connectionString: env('MIGRATOR_DATABASE_URL') });
+  await client.connect();
+  try {
+    return (await client.query<T>(text, params)).rows;
+  } finally {
+    await client.end();
+  }
+}
+
+const ids = new Map<string, string>();
+
+/** The id of a test user by display name (unique across the test customers). */
+async function userId(name: string): Promise<string> {
+  const key = `user:${name}`;
+  if (!ids.has(key)) {
+    const rows = await asMigrator<{ id: string }>(
+      `select id from core.app_user where display_name = $1 and kind = 'human'`,
+      [name],
+    );
+    if (rows.length !== 1) throw new Error(`test user ${name}: ${rows.length} found`);
+    ids.set(key, rows[0]!.id);
+  }
+  return ids.get(key)!;
+}
+
+/** The id of a test place by code, e.g. TEST-BAR-3.0-KITCHEN-STORE. */
+export async function placeId(code: string): Promise<string> {
+  const key = `place:${code}`;
+  if (!ids.has(key)) {
+    const rows = await asMigrator<{ id: string }>(
+      `select id from core.hierarchy_node where code = $1`,
+      [code],
+    );
+    if (rows.length !== 1) throw new Error(`test place ${code}: ${rows.length} found`);
+    ids.set(key, rows[0]!.id);
+  }
+  return ids.get(key)!;
 }
 
 export function baseUrl(): string {
@@ -27,7 +63,7 @@ function env(name: string): string {
 
 /** Signs in as a seeded user (replacing any current session) and opens the home page. */
 export async function signInAs(page: Page, name: string): Promise<void> {
-  const token = await signSession(newSession(userId(name), 'cognito'), env('SESSION_SECRET'));
+  const token = await signSession(newSession(await userId(name), 'cognito'), env('SESSION_SECRET'));
   const context = page.context();
   // Leave the current page first: an in-flight prefetch or poll from it could otherwise
   // answer after the swap with Set-Cookie for the previous (or no) session.
@@ -40,10 +76,15 @@ export async function signInAs(page: Page, name: string): Promise<void> {
   await expect(page.getByTestId('current-user')).toHaveText(name);
 }
 
-/** Seeded delivery node ids (packages/db/seed/001_core.sql). */
-export const NODE = {
-  hub: '01920000-0000-7000-8000-000000000202',
-  outletA: '01920000-0000-7000-8000-000000000203',
+/**
+ * The places the flows use: Test Bar 3.0's Kitchen Store (kept by the head cook, under the
+ * Bar Manager), supplied by the central kitchen store; its Floor Service team (the server
+ * and the host) is rostered by the Bar Manager.
+ */
+export const PLACE = {
+  store: 'TEST-BAR-3.0-KITCHEN-STORE',
+  centralKitchen: 'TEST-CENTRAL-KITCHEN-STORE',
+  floor: 'TEST-BAR-3.0-FLOOR-SERVICE',
 } as const;
 
 /** Runs the workflow executor once, exactly as the wf-execute timer does. */
@@ -56,9 +97,9 @@ export async function runExecutor(): Promise<void> {
   }
 }
 
-/** Kim's flow: a new order for one item at Outlet A. Returns the PO id. */
+/** The head cook's flow: a new order for one item at the Kitchen Store. Returns the PO id. */
 export async function createOrder(page: Page, item: string, qty: string): Promise<string> {
-  await page.goto(`/stock/orders/new?node=${NODE.outletA}`);
+  await page.goto(`/stock/orders/new?node=${await placeId(PLACE.store)}`);
   for (const input of await page.getByRole('textbox', { name: /^Quantity / }).all()) {
     await input.fill(''); // start from an empty order, not the suggestion
   }
@@ -68,42 +109,56 @@ export async function createOrder(page: Page, item: string, qty: string): Promis
   return new URL(page.url()).pathname.split('/').pop()!;
 }
 
-/** Seeded org node ids (packages/db/seed/001_core.sql). */
-export const ORG = {
-  outletA: '01920000-0000-7000-8000-000000000104',
-} as const;
-
 /**
- * Test setup for the people flows: clears workforce activity in one far-future week at
- * Outlet A (shifts, assignments, swaps, leave) so the spec can re-run on the same local
- * database. Runs as migrator, like the seed; CI starts from a fresh database anyway.
+ * Test setup for the people flows: clears workforce activity in one far-future week in
+ * Floor Service (shifts, assignments, swaps, leave) so the spec can re-run on the same local
+ * database, and makes sure the swap colleague exists: a second server there, since the test
+ * data has one person per role (a fixture, like the DB tests'). Runs as migrator, like the
+ * seed; CI starts from a fresh database anyway.
  */
-export async function resetPeopleWeek(monday: string): Promise<void> {
+export async function setupPeopleWeek(monday: string): Promise<void> {
+  const floor = await placeId(PLACE.floor);
   const client = new pg.Client({ connectionString: env('MIGRATOR_DATABASE_URL') });
   await client.connect();
   try {
+    await client.query(
+      `with t as (select id from core.tenant where code = 'TEST-COMPANY'),
+       u as (insert into core.app_user (tenant_id, kind, display_name, username)
+             select id, 'human', 'E2E Server 3.0', 'e2e.server.3.0' from t
+             on conflict (tenant_id, username) where username is not null
+             do update set status = 'active' returning id, tenant_id),
+       w as (insert into hr.worker (tenant_id, owner_user_id, org_node_id, role_code)
+             select tenant_id, id, $1, 'SERVER' from u
+             on conflict (tenant_id, owner_user_id) do nothing returning 1)
+       insert into core.role_assignment (tenant_id, user_id, group_id, node_id)
+       select u.tenant_id, u.id, g.id, $1 from u
+         join core.security_group g on g.tenant_id = u.tenant_id and g.code = 'STAFF'
+        where not exists (select 1 from core.role_assignment ra
+                           where ra.user_id = u.id and ra.group_id = g.id)`,
+      [floor],
+    );
     await client.query(
       `with s as (select id from hr.shift
                    where org_node_id = $1 and local_date between $2::date and $2::date + 6)
        , sw as (delete from hr.shift_swap where shift_id in (select id from s) returning 1)
        , ex as (delete from hr.attendance_exception where shift_id in (select id from s) returning 1)
        select (select count(*) from sw) + (select count(*) from ex)`,
-      [ORG.outletA, monday],
+      [floor, monday],
     );
     await client.query(
       `delete from hr.shift_assignment where shift_id in (
          select id from hr.shift where org_node_id = $1
             and local_date between $2::date and $2::date + 6)`,
-      [ORG.outletA, monday],
+      [floor, monday],
     );
     await client.query(
       `delete from hr.shift where org_node_id = $1 and local_date between $2::date and $2::date + 6`,
-      [ORG.outletA, monday],
+      [floor, monday],
     );
     await client.query(
       `delete from hr.leave_request where org_node_id = $1
           and from_date <= $2::date + 6 and to_date >= $2::date`,
-      [ORG.outletA, monday],
+      [floor, monday],
     );
   } finally {
     await client.end();

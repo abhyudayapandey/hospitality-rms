@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { DEV_USERS } from './dev-users';
+import { DEV_USERS, devUserKey } from './dev-users';
 import {
   attemptAs,
   closePools,
@@ -43,18 +43,18 @@ async function nodes(who: string, type: string | null = null): Promise<string[]>
 describe('core.me', () => {
   it('returns the current active user', async () => {
     const r = await as<{ display_name: string; kind: string }>(
-      'Kim Storekeeper',
+      'test.head-cook.3.0',
       'select display_name, kind from core.me()',
     );
-    expect(r.rows).toEqual([{ display_name: 'Kim Storekeeper', kind: 'human' }]);
+    expect(r.rows).toEqual([{ display_name: 'Test Head Cook 3.0', kind: 'human' }]);
   });
 
   it('returns nothing for an inactive user or no user', async () => {
     await inRolledBackTx(async (c) => {
       await c.query(`update core.app_user set status = 'inactive' where id = $1`, [
-        ids.user('Sam Staff'),
+        ids.user('test.server.3.0'),
       ]);
-      const r = await attemptAs(c, ids.user('Sam Staff'), 'select * from core.me()');
+      const r = await attemptAs(c, ids.user('test.server.3.0'), 'select * from core.me()');
       expect(r.rows).toEqual([]);
       const none = await attemptAs(c, '', 'select * from core.me()');
       expect(none.rows).toEqual([]);
@@ -63,65 +63,74 @@ describe('core.me', () => {
 });
 
 describe('core.my_domains', () => {
-  it('store keeper: stock and orders, AI recommendations view, self-service', async () => {
-    const d = await domains('Kim Storekeeper');
+  it('head cook: store keeper of the kitchen store and head of the kitchen', async () => {
+    const d = await domains('test.head-cook.3.0');
     expect(d).toMatchObject({
       STOCK_LEVELS: 'view',
       STOCK_ADJUSTMENTS: 'modify',
       PURCHASE_ORDERS: 'modify',
       TRANSFERS: 'modify',
       AI_RECOMMENDATIONS: 'view',
-      ROSTER: 'view',
-      EVENTS: 'view',
+      ROSTER: 'modify', // DEPARTMENT_HEAD
+      EVENTS: 'modify', // DEPARTMENT_HEAD
+      WORKERS: 'view', // DEPARTMENT_HEAD
       LEAVE: 'modify', // SELF
-      ATTENDANCE: 'modify', // SELF
+      ATTENDANCE: 'modify', // DEPARTMENT_HEAD
     });
     expect(d).not.toHaveProperty('SECURITY_ROLES');
     expect(d).not.toHaveProperty('AUDIT');
   });
 
   it('area manager: derived views surface as the underlying domain', async () => {
-    const d = await domains('Aria Area Manager');
+    const d = await domains('test.area-manager');
     expect(d).toMatchObject({
       STOCK_LEVELS: 'view',
       PURCHASE_ORDERS: 'view',
       TRANSFERS: 'view',
       ROSTER: 'view',
+      STOCK_ADJUSTMENTS: 'view', // DERIVED_STOCK_ADJUSTMENTS (ADR 009)
     });
-    expect(d).not.toHaveProperty('STOCK_ADJUSTMENTS');
   });
 
-  it('SECURITY_ROLES for HR admin (modify), security admin and auditor (view) only', async () => {
-    expect((await domains('Harper HR Admin')).SECURITY_ROLES).toBe('modify');
-    expect((await domains('Sasha Security Admin')).SECURITY_ROLES).toBe('view');
-    expect((await domains('Avery Auditor')).SECURITY_ROLES).toBe('view');
-    expect(await domains('Olivia Outlet Manager')).not.toHaveProperty('SECURITY_ROLES');
-    expect(await domains('Sam Staff')).not.toHaveProperty('STOCK_LEVELS');
+  it('SECURITY_ROLES for the account owner, security admin and auditor (view) only', async () => {
+    expect(await domains('test.hr-admin')).not.toHaveProperty('SECURITY_ROLES');
+    expect((await domains('test.account-owner')).SECURITY_ROLES).toBe('view');
+    expect((await domains('test.security-admin')).SECURITY_ROLES).toBe('view');
+    expect((await domains('test.auditor')).SECURITY_ROLES).toBe('view');
+    expect(await domains('test.bar-manager.3.0')).not.toHaveProperty('SECURITY_ROLES');
+    expect(await domains('test.server.3.0')).not.toHaveProperty('STOCK_LEVELS');
   });
 });
 
 describe('core.nodes', () => {
-  it('store keeper: own outlet in both trees', async () => {
-    expect(await nodes('Kim Storekeeper')).toEqual(['org:Outlet A', 'delivery:Outlet A']);
-  });
-
-  it('area manager: area subtree plus derived delivery outlets', async () => {
-    expect(await nodes('Aria Area Manager')).toEqual([
-      'org:Area',
-      'org:Outlet A',
-      'org:Outlet B',
-      'delivery:Outlet A (derived)',
-      'delivery:Outlet B (derived)',
+  it('head cook: their department and the store it uses', async () => {
+    expect(await nodes('test.head-cook.3.0')).toEqual([
+      'org:Test Bar 3.0 – Kitchen',
+      'delivery:Test Bar 3.0 – Kitchen Store',
     ]);
   });
 
-  it('hub manager: the hub, plus outlets through SUPPLY_VIEWER', async () => {
-    expect(await nodes('Hugo Hub Manager', 'delivery')).toEqual([
-      'delivery:Hub',
-      'delivery:Outlet A',
-      'delivery:Outlet B',
+  it('area manager: the area subtree, plus every stock place under it as derived', async () => {
+    const all = await nodes('test.area-manager');
+    const org = all.filter((n) => n.startsWith('org:'));
+    const delivery = all.filter((n) => n.startsWith('delivery:'));
+    expect(org[0]).toBe('org:Test Area Mumbai');
+    expect(org).toHaveLength(31); // the area, 4 outlets and the central kitchen, departments
+    expect(org).not.toContain('org:Test Company');
+    expect(delivery).toHaveLength(15); // supply points and stores of all four, CK store
+    expect(delivery.every((n) => n.endsWith(' (derived)'))).toBe(true);
+    expect(delivery).toContain('delivery:Test Bar 3.0 – Kitchen Store (derived)');
+    expect(delivery).not.toContain('delivery:Test Supply Network (derived)');
+  });
+
+  it('central kitchen manager: the store and everything it supplies; dispatch team', async () => {
+    const delivery = await nodes('test.central-kitchen-manager', 'delivery');
+    expect(delivery[0]).toBe('delivery:Test Central Kitchen – Store');
+    expect(delivery).toHaveLength(15);
+    expect(delivery).toContain('delivery:Test Guest House 2.0 – Supply Point');
+    expect(await nodes('test.central-kitchen-manager', 'org')).toEqual([
+      'org:Test Central Kitchen – Dispatch Team',
     ]);
-    expect(await nodes('Hugo Hub Manager', 'org')).toEqual([]);
   });
 });
 
@@ -129,7 +138,7 @@ describe('core.user_for_cognito_sub', () => {
   it('maps an active user by Cognito sub, and nothing for unknown or inactive users', async () => {
     await inRolledBackTx(async (c) => {
       await c.query(`update core.app_user set cognito_sub = 'sub-kim' where id = $1`, [
-        ids.user('Kim Storekeeper'),
+        ids.user('test.head-cook.3.0'),
       ]);
       const hit = await attemptAs<{ id: string | null }>(
         c,
@@ -137,7 +146,7 @@ describe('core.user_for_cognito_sub', () => {
         'select core.user_for_cognito_sub($1) as id',
         ['sub-kim'],
       );
-      expect(hit.rows?.[0]?.id).toBe(ids.user('Kim Storekeeper'));
+      expect(hit.rows?.[0]?.id).toBe(ids.user('test.head-cook.3.0'));
       const miss = await attemptAs<{ id: string | null }>(
         c,
         '',
@@ -146,7 +155,7 @@ describe('core.user_for_cognito_sub', () => {
       );
       expect(miss.rows?.[0]?.id).toBeNull();
       await c.query(`update core.app_user set status = 'inactive' where id = $1`, [
-        ids.user('Kim Storekeeper'),
+        ids.user('test.head-cook.3.0'),
       ]);
       const off = await attemptAs<{ id: string | null }>(
         c,
@@ -167,27 +176,29 @@ describe('wf.my_processes', () => {
     ).map((r) => r.process_type);
 
   it('lists what each user may initiate', async () => {
-    expect(await procs('Kim Storekeeper')).toEqual([
+    expect(await procs('test.head-cook.3.0')).toEqual([
       'LEAVE',
       'PURCHASE_ORDER',
       'SHIFT_SWAP',
       'STOCK_ADJUSTMENT',
       'TRANSFER',
     ]);
-    expect(await procs('Olivia Outlet Manager')).toEqual([
+    expect(await procs('test.bar-manager.3.0')).toEqual([
       'LEAVE',
       'PURCHASE_ORDER',
       'SHIFT_SWAP',
       'STOCK_ADJUSTMENT',
     ]);
-    expect(await procs('Outlet Ops AI Agent')).toEqual(['PURCHASE_ORDER']); // no SELF for services
-    expect(await procs('Harper HR Admin')).toEqual(['LEAVE', 'ROLE_CHANGE', 'SHIFT_SWAP']);
+    expect(await procs('ai-agent')).toEqual(['PURCHASE_ORDER']); // no SELF for services
+    // user administration moved to User Admins and Account Owners (ADR 009)
+    expect(await procs('test.hr-admin')).toEqual(['LEAVE', 'SHIFT_SWAP']);
+    expect(await procs('test.account-owner')).toEqual(['LEAVE', 'ROLE_CHANGE', 'SHIFT_SWAP']);
   });
 });
 
 describe('admin reads', () => {
   it('allow SECURITY_ROLES holders and refuse everyone else', async () => {
-    for (const who of ['Harper HR Admin', 'Sasha Security Admin', 'Avery Auditor']) {
+    for (const who of ['test.account-owner', 'test.security-admin', 'test.auditor']) {
       const a = await as<{ user_name: string }>(who, 'select * from core.admin_role_assignments()');
       expect(a.error, who).toBeUndefined();
       expect(a.rows!.length).toBeGreaterThan(10);
@@ -197,7 +208,7 @@ describe('admin reads', () => {
       );
       expect(p.rows!.length).toBeGreaterThan(10);
     }
-    for (const who of ['Olivia Outlet Manager', 'Kim Storekeeper', 'Outlet Ops AI Agent']) {
+    for (const who of ['test.bar-manager.3.0', 'test.head-cook.3.0', 'ai-agent', 'test.hr-admin']) {
       expect((await as(who, 'select * from core.admin_role_assignments()')).error, who).toBe(
         'NOT_AUTHORISED',
       );
@@ -209,12 +220,19 @@ describe('admin reads', () => {
 });
 
 describe('dev users', () => {
-  it('matches the seeded users', async () => {
-    const { rows } = await migratorPool.query<{ id: string; display_name: string }>(
-      'select id, display_name from core.app_user order by id',
+  it('each resolves, by customer and username, to an active test user of that name', async () => {
+    for (const u of DEV_USERS) {
+      const { rows } = await migratorPool.query<{ name: string | null }>(
+        `select (select display_name from core.app_user
+                  where id = core.user_for_username($1, $2)) as name`,
+        [u.customer, u.username],
+      );
+      expect(rows[0]!.name, devUserKey(u)).toBe(u.name);
+    }
+    // the lookup is for people only, and only active ones
+    const agent = await migratorPool.query<{ id: string | null }>(
+      `select core.user_for_username('TEST-COMPANY', 'ai-agent') as id`,
     );
-    expect(rows.map((r) => [r.id, r.display_name])).toEqual(
-      [...DEV_USERS].sort((a, b) => a.id.localeCompare(b.id)).map((u) => [u.id, u.name]),
-    );
+    expect(agent.rows[0]!.id).toBeNull();
   });
 });

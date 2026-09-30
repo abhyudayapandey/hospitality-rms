@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
+import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { formatMoney } from '@/lib/format';
 import { createPo } from '../../actions';
@@ -55,6 +56,7 @@ export function NewOrderForm({
   const [notes, setNotes] = useState('');
   const [key] = useState(() => crypto.randomUUID());
   const [pending, start] = useTransition();
+  const hydrated = useHydrated();
   const [error, setError] = useState<string | null>(null);
 
   const chosen = lines
@@ -139,7 +141,11 @@ export function NewOrderForm({
         <input value={notes} onChange={(e) => setNotes(e.target.value)} className={inputClass} />
       </label>
       <ErrorBox message={error} />
-      <button type="submit" disabled={pending || chosen.length === 0} className={primaryButton}>
+      <button
+        type="submit"
+        disabled={!hydrated || pending || chosen.length === 0}
+        className={primaryButton}
+      >
         Submit order · {chosen.length} lines · {formatMoney(total)}
       </button>
     </form>

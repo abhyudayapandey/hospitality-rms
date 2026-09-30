@@ -13,32 +13,62 @@ export async function closePools(): Promise<void> {
   await Promise.all([appPool.end(), migratorPool.end()]);
 }
 
-export type NodeKey = `${'org' | 'delivery'}:${string}`;
+/** A place code from the test data, e.g. `TEST-BAR-3.0-KITCHEN-STORE`. */
+export type NodeKey = string;
 
 export interface SeedIds {
-  user(name: string): string;
-  node(key: NodeKey): string;
+  /** A username from the test data (Test Company; `test.solo.*` are Test Solo Bar Co.). */
+  user(username: string): string;
+  node(code: NodeKey): string;
+  /** Which tree a place is in. */
+  type(code: NodeKey): 'org' | 'delivery';
+  /** The tenant id of a test customer (default Test Company). */
+  tenant(customer?: 'TEST-COMPANY' | 'TEST-SOLO-COMPANY'): string;
 }
 
-/** Resolves seeded users and nodes by name so tests never hard-code UUIDs. */
+/**
+ * Resolves the test customers' users and places (docs/onboarding/test-data, loaded by
+ * `pnpm db:seed`) by username and code, so tests never hard-code UUIDs.
+ */
 export async function loadSeedIds(): Promise<SeedIds> {
-  const users = await migratorPool.query<{ id: string; display_name: string }>(
-    'select id, display_name from core.app_user',
+  const tenants = await migratorPool.query<{ id: string; code: string }>(
+    `select id, code from core.tenant where code in ('TEST-COMPANY', 'TEST-SOLO-COMPANY')`,
   );
-  const nodes = await migratorPool.query<{ id: string; type: string; name: string }>(
-    'select id, type, name from core.hierarchy_node',
+  const tenantMap = new Map(tenants.rows.map((r) => [r.code, r.id]));
+  const users = await migratorPool.query<{ id: string; username: string; code: string }>(
+    `select u.id, u.username, t.code from core.app_user u join core.tenant t on t.id = u.tenant_id
+      where t.code in ('TEST-COMPANY', 'TEST-SOLO-COMPANY') and u.username is not null`,
   );
-  const userMap = new Map(users.rows.map((r) => [r.display_name, r.id]));
-  const nodeMap = new Map(nodes.rows.map((r) => [`${r.type}:${r.name}`, r.id]));
+  const nodes = await migratorPool.query<{ id: string; code: string; type: 'org' | 'delivery' }>(
+    `select n.id, n.code, n.type from core.hierarchy_node n join core.tenant t on t.id = n.tenant_id
+      where t.code in ('TEST-COMPANY', 'TEST-SOLO-COMPANY') and n.code is not null`,
+  );
+  const typeMap = new Map(nodes.rows.map((r) => [r.code, r.type]));
+  // usernames repeat across customers only for the AI agent: prefer Test Company's
+  const userMap = new Map<string, string>();
+  for (const r of users.rows) {
+    if (r.code === 'TEST-COMPANY' || !userMap.has(r.username)) userMap.set(r.username, r.id);
+  }
+  const nodeMap = new Map(nodes.rows.map((r) => [r.code, r.id]));
   return {
-    user(name) {
-      const id = userMap.get(name);
-      if (!id) throw new Error(`seed user not found: ${name} (run pnpm db:seed)`);
+    user(username) {
+      const id = userMap.get(username);
+      if (!id) throw new Error(`test user not found: ${username} (run pnpm db:seed)`);
       return id;
     },
-    node(key) {
-      const id = nodeMap.get(key);
-      if (!id) throw new Error(`seed node not found: ${key} (run pnpm db:seed)`);
+    node(code) {
+      const id = nodeMap.get(code);
+      if (!id) throw new Error(`test place not found: ${code} (run pnpm db:seed)`);
+      return id;
+    },
+    type(code) {
+      const t = typeMap.get(code);
+      if (!t) throw new Error(`test place not found: ${code} (run pnpm db:seed)`);
+      return t;
+    },
+    tenant(customer = 'TEST-COMPANY') {
+      const id = tenantMap.get(customer);
+      if (!id) throw new Error(`test customer not found: ${customer} (run pnpm db:seed)`);
       return id;
     },
   };
