@@ -43,9 +43,8 @@ idempotency_key)`. The old signature with caller-supplied nodes and amount is go
   - `irreversible: true`: once the step is approved, reject and cancel raise
     `IRREVERSIBLE_STEP`.
 - **Cancel now runs `onRejected`**, so a cancelled subject closes as `cancelled`.
-- **Subject types without a module yet** (LEAVE, SHIFT_SWAP, ROLE_CHANGE) have no
-  resolver, so submitting them fails with `INVALID_SUBJECT` until their modules land.
-  Engine tests use stand-in subjects.
+- **Subject types without a module yet** (LEAVE, SHIFT_SWAP, ROLE_CHANGE) had no
+  resolver at first; ADR 008 adds them. Engine tests use stand-in subjects.
 
 ## Data model and rules
 

@@ -32,6 +32,11 @@ One CDK stack (`infra/`, stack name `OutletOps`) deploys everything below.
     `outletops-web`.
   - **The workflow executor** runs from a systemd timer every minute as user
     `outletops-wf`. It replaces the planned wf-execute Lambda.
+  - **The nightly attendance job** (ADR 008) runs from a systemd timer at 02:15
+    Asia/Kolkata as the same user and DB role (`wf_executor`). It raises late, no-show,
+    missing clock-out and unrostered exceptions, and nulls raw clock-in coordinates
+    after 90 days. The timer is `Persistent=true`, so a run missed while the instance was
+    off happens at the next boot.
   - **Postgres 16 with pg_cron** runs in Docker with host networking and listens on
     `127.0.0.1` only. Its data is on a separate encrypted 20 GiB EBS volume that is
     kept if the stack or the instance is deleted.
@@ -48,7 +53,7 @@ One CDK stack (`infra/`, stack name `OutletOps`) deploys everything below.
   DB role plus the session key. You create them before the first deploy. systemd
   `LoadCredential` gives each service only its own secret:
   - web gets `app_rw` and `session_secret`
-  - wf-execute gets `wf_executor`
+  - wf-execute and the nightly attendance job get `wf_executor`
   - migrations (during deploy, as root) get `migrator`
 
   The Postgres superuser password is generated on the instance and never leaves it.
@@ -446,7 +451,7 @@ The workflow does the following:
 1. Builds the linux-arm64 release bundle in CI with `infra/scripts/build-release.sh`.
    The bundle contains:
    - the Next.js standalone server, built with the dev login compiled out
-   - esbuild bundles of wf-execute and sync-defs
+   - esbuild bundles of wf-execute, sync-defs and attendance-nightly
    - Node 22 (sha256-verified), Caddy (sha512-verified) and dbmate
    - migrations, systemd units, Postgres config and the deploy scripts
 2. Uploads it to `s3://<DeployBucket>/releases/<sha>.tgz`.
@@ -473,6 +478,16 @@ The production database has no dev seed.
 
 - **Org data.** Load the pilot org, outlets and staff with the migrator CSV onboarding
   script (ADR 004, days 20–21), run through an SSM session on the instance.
+- **Workforce data** (ADR 008), through the same script:
+  - the `NOTIFICATIONS` domain (hierarchy `self`) with SELF `view`, as in
+    `seed/001_core.sql`; without it nobody sees their notifications
+  - job roles, one `hr.worker` per person (home node, role code), optional pay rates
+  - shift templates per outlet, leave types and this year's balances
+  - each outlet's geofence (`hr.node_setting`: latitude, longitude, radius, default 150 m)
+  - rostering rules only if they differ from the defaults (10 h rest, 48 h a week, late
+    after 10 minutes)
+  - an `OUTLET_MANAGER` on the org side of every site whose people need approvals (the
+    Hub site sits under the region, not the area, so nothing else covers it)
 - **Cognito users.** Create each person in the user pool, then link the `sub` to the
   `core.app_user` row through the onboarding script.
   - **Staff with email (email OTP):**
@@ -504,6 +519,7 @@ The production database has no dev seed.
 
 - `journalctl -u outlet-ops-web`
 - `-u outlet-ops-wf-execute`
+- `-u outlet-ops-attendance-nightly`
 - `-u outlet-ops-caddy`
 - `-u outlet-ops-pg-backup`
 - `docker logs outlet-ops-pg`
@@ -539,7 +555,7 @@ returns nothing.
 
 - **From a `pg_dump`** (data loss up to 6 hours):
   1. Stop the writers:
-     `systemctl stop outlet-ops-web outlet-ops-wf-execute.timer outlet-ops-pg-backup.timer`.
+     `systemctl stop outlet-ops-web outlet-ops-wf-execute.timer outlet-ops-pg-backup.timer outlet-ops-attendance-nightly.timer`.
   2. Take a safety dump of the current state if the database is readable.
   3. Recreate the database:
      `docker exec -u postgres outlet-ops-pg psql -c 'drop database outlet_ops with (force)' -c 'create database outlet_ops'`.
