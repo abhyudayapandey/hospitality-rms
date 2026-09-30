@@ -47,7 +47,10 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   runs every request inside `withUser(userId, async (tx) => ...)`: BEGIN →
   `set_config('app.user_id', $1, true)` → queries → COMMIT.
 - App connects as DB role `app_rw` (no BYPASSRLS, not table owner). Migrations run as
-  `migrator`. The workflow executor uses `wf_executor`.
+  `migrator`. The workflow executor uses `wf_executor`. The platform worker (customer
+  creation, imports) uses `platform_loader`: DML only, no DDL, owns nothing (ADR 012).
+- Platform admins (the `/platform` console) live outside every customer; platform requests
+  run in `withPlatformAdmin()`, where `core.current_user_id()` is null (ADR 012).
 - Supabase edge functions → Lambdas in `services/lambdas`.
 - DB webhooks → `wf.outbox` table polled by `wf-execute` every minute (a systemd timer on
   the instance while on the Free plan; the Lambda later, ADR 005).
@@ -111,6 +114,8 @@ pnpm --filter @outlet-ops/db perf:inventory           10k-row read benchmark, ro
 pnpm --filter @outlet-ops/onboarding load <folder> [--apply] [--access]
                                                       validate a customer's onboarding files
                                                       and dry-run them; --apply loads (ADR 009)
+pnpm --filter @outlet-ops/onboarding worker [--once]  the platform worker: runs queued platform jobs as
+                                                      platform_loader (PLATFORM_LOADER_DATABASE_URL)
 infra/scripts/build-release.sh <sha>                  linux-arm64 release bundle (CI's Deploy workflow)
 RLS_ALL_USERS=1 pnpm exec vitest run --project db packages/db/src/rls-equivalence.db.test.ts
                                                       RLS equivalence for every user, not a sample
@@ -125,7 +130,8 @@ Never run `cdk deploy`, the Deploy workflow or AWS-mutating commands without exp
 approval; `docs/deploy.md` is the runbook. Deploy context (domain, ids, pinned `amiId`)
 lives in `infra/cdk.json`; stack changes go out as `cd infra && pnpm cdk deploy` before
 the Deploy workflow.
-First run: `cp .env.example .env`. The DB roles (`migrator`, `app_rw`, `wf_executor`) are
+First run: `cp .env.example .env`. The DB roles (`migrator`, `app_rw`, `wf_executor`,
+`platform_loader`) are
 created by `packages/db/docker/init/` on a fresh docker volume.
 Keep this section accurate when scripts change.
 

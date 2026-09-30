@@ -488,6 +488,47 @@ pool), so the stack goes out before the app:
 The migration checks that no username or email is used by two people across customers
 and stops with the list if one is; production has no customer data yet, so it passes.
 
+#### Releasing the platform console, B1 (ADR 012)
+
+This release adds a database role with its own secret, a second Cognito pool and a new
+service. Order matters: the secret must exist before the instance fetches it, and the
+stack's new config parameters before the app is deployed.
+
+1. Create the new secret (existing ones are left as they are):
+   `infra/scripts/create-secrets.sh`. It should print `written: .../db/platform_loader`
+   and `exists:` for the others.
+2. `pnpm --filter @outlet-ops/infra synth`, then `cd infra && pnpm cdk diff`. Expect only
+   additions and one policy change:
+   - new `PlatformUsers` pool, its `PlatformWeb` client, domain, managed-login branding
+     and the `platform-admins` group;
+   - new `/outlet-ops/prod/config/platform_cognito_*` parameters and the
+     `PlatformUserPoolId` output;
+   - the instance role's `ReadOwnParameters` statement gaining `db/platform_loader`.
+
+   Any replacement of the `Users` pool, the instance or its volume: stop and ask.
+
+3. `pnpm cdk deploy`.
+4. Run the Deploy workflow. It creates the `platform_loader` role and the
+   `outletops-platform` user, runs the `platform` migration and starts
+   `outlet-ops-platform-worker`.
+5. Once: create your platform admin in the platform pool and add them to the group (the
+   pool id is the stack output `PlatformUserPoolId`):
+   ```sh
+   aws cognito-idp admin-create-user --profile outlet-ops --region ap-south-1 \
+     --user-pool-id <PlatformUserPoolId> --username pabhyudaya@gmail.com \
+     --user-attributes Name=email,Value=pabhyudaya@gmail.com Name=email_verified,Value=true \
+     --desired-delivery-mediums EMAIL
+   aws cognito-idp admin-add-user-to-group --profile outlet-ops --region ap-south-1 \
+     --user-pool-id <PlatformUserPoolId> --username pabhyudaya@gmail.com \
+     --group-name platform-admins
+   ```
+6. Open `https://<domainName>/platform`, sign in with the emailed temporary password, set
+   your own (14+ characters) and enrol an authenticator app. Your `platform.admin` row is
+   created on that first sign-in; there is no database step.
+
+Check afterwards: `systemctl status outlet-ops-platform-worker` is active, and creating a
+test customer from the console reaches `done` within a few seconds.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.
