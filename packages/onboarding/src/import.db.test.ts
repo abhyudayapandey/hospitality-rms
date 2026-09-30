@@ -186,12 +186,12 @@ describe('invite jobs', () => {
           [t, `Person ${k}`, `mail-co.person.${k}`, `person${k}@mail-co.example`],
         );
       }
-      // 48 invitations already went out today (other customers): 2 left of 50
+      // 38 invitations already went out today (other customers): 2 left of 40
       await c.query(`delete from platform.invite where sent_at > now() - interval '1 day'`);
       await c.query(
         `insert into platform.invite (tenant_id, user_id, sent_at)
          select tenant_id, id, now() - interval '1 hour' from core.app_user
-          where kind = 'human' limit 48`,
+          where kind = 'human' limit 38`,
       );
       const sent: string[] = [];
       const sender: InviteSender = {

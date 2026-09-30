@@ -72,10 +72,11 @@ export default async function LoginsPage({ params }: { params: Promise<{ id: str
       <section className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
         <h2 className="font-semibold">Email invitations</h2>
         <p className="text-sm text-slate-600">
-          Cognito sends email from the customer pool with its default email, which allows about{' '}
-          {invites.daily_limit} messages a day for all customers together. Invitations go out in
-          batches within that allowance; the rest wait and go automatically when it frees up, so a
-          large customer takes more than one day. Username logins aren’t limited.
+          Cognito sends the customer pool’s email with its default sender, which allows about 50
+          messages a day for all customers together, sign-in codes included. Invitations use at most{' '}
+          {invites.daily_limit} of them a day and go out in batches; the rest wait and go
+          automatically when the allowance frees up, so a large customer takes more than one day.
+          Username logins aren’t limited.
         </p>
         <p className="text-sm" data-testid="invite-summary">
           {invites.invited} invited, {invites.waiting} waiting · {invites.sent_last_day} of{' '}

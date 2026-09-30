@@ -10,7 +10,7 @@
 -- Logins: username logins are created by the console (passwords shown once, never
 -- stored). The Test<Role>!12 option is refused here for customers that are not test
 -- customers. Email logins are invites that the worker sends within the customer pool's
--- daily email allowance (about 50 a day with Cognito's own email); the rest wait for the
+-- daily email allowance (40 of Cognito's ~50 a day, ADR 013); the rest wait for the
 -- next day's allowance (platform.job.run_after).
 
 alter table platform.job drop constraint job_kind_check;
@@ -30,10 +30,12 @@ create table platform.invite (
 );
 create index invite_sent_at on platform.invite (sent_at desc);
 
--- Cognito's default email (no SES) allows about 50 messages a day for the whole pool.
+-- Cognito's default email (no SES) allows about 50 messages a day for the whole pool, and
+-- email logins' sign-in codes come out of the same allowance: invitations use at most 40,
+-- leaving about 10 a day for codes. Raise it after moving the pool to SES.
 create function platform.invite_daily_limit() returns int
 language sql immutable
-as $$ select 50 $$;
+as $$ select 40 $$;
 
 -- ---------------------------------------------------------------------------
 -- The worker's jobs

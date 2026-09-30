@@ -329,7 +329,7 @@ describe('email invites', () => {
           invited: number;
           daily_limit: number;
         };
-      expect(await status()).toMatchObject({ waiting: 3, invited: 0, daily_limit: 50 });
+      expect(await status()).toMatchObject({ waiting: 3, invited: 0, daily_limit: 40 });
 
       const before = (
         await asLoader<{ remaining: number }>(c, 'select * from platform.invite_allowance()')

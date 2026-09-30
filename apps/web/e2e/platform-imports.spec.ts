@@ -105,7 +105,7 @@ test('logins for a test customer with the Test<Role>!12 rule', async ({ page }) 
     await signInPlatform(page);
     await page.goto(`/platform/customers/${solo}/logins`);
     await expect(page.getByTestId('username-summary')).toContainText('0 of 7 have a login');
-    await expect(page.getByText(/about 50 messages a day/)).toBeVisible();
+    await expect(page.getByText(/about 50\s+messages a day/)).toBeVisible();
     const form = page.getByRole('form', { name: 'Create username logins' });
     await expect(form.getByRole('button', { name: 'Create 7 username logins' })).toBeEnabled();
     await form.getByRole('checkbox').check();
@@ -136,31 +136,40 @@ test('logins for a test customer with the Test<Role>!12 rule', async ({ page }) 
 test('the Test<Role>!12 option is refused for a customer that is not a test customer', async ({
   page,
 }) => {
+  // a customer that is not a test customer, created the real way (console + worker)
   const code = `E2E-NT-${Date.now().toString(36).toUpperCase()}`;
-  const [t] = await asMigrator<{ id: string }>(
-    `insert into core.tenant (name, code, is_test) values ($1, $2, false) returning id`,
-    [`Not a Test ${code}`, code],
-  );
+  await signInPlatform(page);
+  await page.goto('/platform/customers/new');
+  const create = page.getByRole('form', { name: 'New customer' });
+  await expect(create.getByRole('button', { name: 'Create customer' })).toBeEnabled();
+  await create.getByLabel('Company name').fill(`Not a Test ${code}`);
+  await create.getByLabel('Customer code').fill(code);
+  await create.getByLabel('Owner name').fill('Asha Rao');
+  await create.getByLabel('Owner email').fill(`${code.toLowerCase()}@example.test`);
+  await create.getByRole('button', { name: 'Create customer' }).click();
+  await page.waitForURL(/\/platform\/jobs\/[0-9a-f-]{36}/);
+  await workerFinishes(page);
+  const t = { id: await tenantId(code) };
+  // one of its people with a username login, waiting for it
   const username = `${code.toLowerCase()}.ravi.k`;
   await asMigrator(
     `insert into core.app_user (tenant_id, kind, display_name, username, login_type)
      values ($1, 'human', 'Ravi K', $2, 'username')`,
-    [t!.id, username],
+    [t.id, username],
   );
-  await signInPlatform(page);
-  await page.goto(`/platform/customers/${t!.id}/logins`);
+  await page.goto(`/platform/customers/${t.id}/logins`);
   const form = page.getByRole('form', { name: 'Create username logins' });
   // the screen does not offer it...
   await expect(form.getByRole('checkbox')).toBeDisabled();
   await expect(form).toContainText('Only for test customers; this one isn’t.');
 
   // ...and a tampered request asking for it anyway is refused by the server
-  await page.route(`**/platform/customers/${t!.id}/logins`, async (route) => {
+  await page.route(`**/platform/customers/${t.id}/logins`, async (route) => {
     const req = route.request();
     if (req.method() === 'POST' && req.headers()['next-action']) {
       const body = req.postData() ?? '';
-      expect(body).toContain(`"${t!.id}",false`);
-      await route.continue({ postData: body.replace(`"${t!.id}",false`, `"${t!.id}",true`) });
+      expect(body).toContain(`"${t.id}",false`);
+      await route.continue({ postData: body.replace(`"${t.id}",false`, `"${t.id}",true`) });
     } else {
       await route.continue();
     }
