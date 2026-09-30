@@ -70,6 +70,21 @@ function costTag(scope: Construct, profile: 'always-free' | 'credits', note: str
   tag(scope, 'CostNote', note);
 }
 
+/** The customer pool's invitation email (ADR 013): how to sign in with a code, no password. */
+export function invitationMessage(appUrl: string): cognito.UserInvitationConfig {
+  return {
+    emailSubject: 'Your Outlet Ops account',
+    emailBody: [
+      'Hello,',
+      'An Outlet Ops account has been set up for you. Your username is <b>{username}</b>.',
+      `To sign in, open <a href="${appUrl}">${appUrl}</a>, tap <b>Sign in</b> and enter this ` +
+        'email address. Choose to get a sign-in code by email, then type in the code we send ' +
+        'you. There is no password to remember.',
+      "If you weren't expecting this, you can ignore this email.",
+    ].join('<br><br>'),
+  };
+}
+
 export class OutletOpsStack extends Stack {
   constructor(scope: Construct, id: string, props: OutletOpsStackProps) {
     super(scope, id, props);
@@ -352,6 +367,10 @@ export class OutletOpsStack extends Stack {
       // Staff without e-mail cannot self-recover; outlet managers reset them (admin module).
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
       email: cognito.UserPoolEmail.withCognito(), // Cognito sender: no SES, ~50 mails/day
+      // Only email logins are ever invited (ADR 013): they are created without a password
+      // (the pool has email-code sign-in), so the invitation explains the code and carries
+      // no {####}. Username logins are created with SUPPRESS: they never get an email.
+      userInvitation: invitationMessage(`https://${config.domainName}`),
       mfa: cognito.Mfa.OFF,
       deletionProtection: true,
       // Plain Retain: deletion protection would make a create rollback fail to delete it

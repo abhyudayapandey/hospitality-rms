@@ -139,4 +139,31 @@ describe('Cognito directory', () => {
       },
     ]);
   });
+
+  it('invites only an email login, without a password; a username login never gets an email', async () => {
+    const { sender, calls } = fake([
+      () => ({ User: { Attributes: [{ Name: 'sub', Value: 'sub-owner' }] } }),
+      () => ({ User: { Attributes: [{ Name: 'sub', Value: 'sub-ravi' }] } }),
+    ]);
+    const d = new CognitoDirectory(sender, 'ap-south-1_pool');
+    await d.create({
+      username: 'acme.owner',
+      loginType: 'email',
+      email: 'o@acme.example',
+      invite: true,
+    });
+    // asked to invite a username login: suppressed anyway
+    await d.create({
+      username: 'acme.ravi',
+      loginType: 'username',
+      temporaryPassword: 'Tmp',
+      invite: true,
+    });
+    const [owner, ravi] = calls.map((c) => c.input as Record<string, unknown>);
+    expect(owner).toMatchObject({ DesiredDeliveryMediums: ['EMAIL'] });
+    expect(owner).not.toHaveProperty('TemporaryPassword');
+    expect(owner).not.toHaveProperty('MessageAction');
+    expect(ravi).toMatchObject({ MessageAction: 'SUPPRESS', TemporaryPassword: 'Tmp' });
+    expect(ravi).not.toHaveProperty('DesiredDeliveryMediums');
+  });
 });
