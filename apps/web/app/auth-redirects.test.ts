@@ -49,6 +49,7 @@ vi.mock('@/lib/auth/cognito', async (real) => ({
 const platformLogin = await import('./platform/auth/login/route');
 const platformCallback = await import('./platform/auth/callback/route');
 const platformLogout = await import('./platform/auth/logout/route');
+const platformContinue = await import('./platform/auth/continue/route');
 const customerLogin = await import('./auth/login/route');
 const customerCallback = await import('./auth/callback/route');
 const customerLogout = await import('./auth/logout/route');
@@ -152,7 +153,7 @@ describe('platform auth redirects use APP_URL, not the request host', () => {
     signIn.fail = false;
 
     pkce();
-    expectApp(await cb('?code=c&state=st'), '/platform');
+    expectApp(await cb('?code=c&state=st'), '/platform/auth/continue');
     expect(jar.has('oo_platform')).toBe(true);
   });
 
@@ -202,6 +203,17 @@ describe('customer auth redirects use APP_URL, not the request host', () => {
 
   it('proxy: no session goes to /login', async () => {
     expectApp(await proxy(new NextRequest(`${INTERNAL}/requests`)), '/login?reason=signin');
+  });
+});
+
+describe('platform continue page', () => {
+  it('moves on to APP_URL/platform from our own site, with no input', async () => {
+    const res = platformContinue.GET();
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    const html = await res.text();
+    expect(html).toContain(`<meta http-equiv="refresh" content="0;url=${APP}/platform">`);
+    expect(html).not.toContain('localhost');
   });
 });
 

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { runPlatformWorker, signInAs, signInPlatform } from './helpers';
+import { baseUrl, runPlatformWorker, signInAs, signInPlatform } from './helpers';
 
 // The Platform Admin console (ADR 012) through its real screens, with a signed platform
 // cookie (the platform pool is not configured in e2e).
@@ -70,4 +70,44 @@ test('suspending a customer signs its people out; reactivating lets them back in
   await signInAs(staff, 'Test Head Bartender');
   await staff.close();
   await other.close();
+});
+
+// The platform cookie is SameSite=Strict. Coming back from the Cognito hosted UI is a
+// navigation started on another site (its sign-in form posts, then 302s to us), and a
+// redirect keeps it cross-site all the way, so the browser withholds the cookie on every
+// hop of it. The callback therefore ends at /platform/auth/continue, a page on our own
+// site that moves on to /platform: that navigation starts here, so the cookie goes with
+// it. The stand-in hosted UI below is another site whose form posts and 302s, as
+// Cognito's does.
+test('returning from the hosted UI (another site) lands signed in', async ({ page }) => {
+  const hostedUi = 'https://auth.e2e.test';
+  await page.route(`${hostedUi}/**`, (route) => {
+    const url = new URL(route.request().url());
+    const to = url.searchParams.get('to') ?? '/';
+    if (route.request().method() === 'POST') {
+      return route.fulfill({
+        status: 302,
+        headers: { location: new URL(to, baseUrl()).toString() },
+      });
+    }
+    return route.fulfill({
+      contentType: 'text/html',
+      body: `<form method="post" action="${hostedUi}/login?to=${encodeURIComponent(to)}"><button>Sign in</button></form>`,
+    });
+  });
+  const signInThere = async (to: string) => {
+    await page.goto(`${hostedUi}/?to=${encodeURIComponent(to)}`);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+  };
+
+  await signInPlatform(page);
+  // Straight to /platform from the other site: the Strict cookie is withheld (the bug).
+  await signInThere('/platform');
+  await expect(page).toHaveURL(/\/platform\/signin\?reason=invalid/);
+
+  await signInPlatform(page);
+  // Through the continue page: signed in.
+  await signInThere('/platform/auth/continue');
+  await expect(page.getByRole('heading', { name: 'Customers' })).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe('/platform');
 });

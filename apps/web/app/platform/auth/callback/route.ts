@@ -52,5 +52,6 @@ export async function GET(req: Request) {
     ...platformCookie,
     maxAge: platformMaxAge(session),
   });
-  return NextResponse.redirect(appUrl('/platform'));
+  // Not straight to /platform: see ./continue (the Strict cookie and the cross-site return)
+  return NextResponse.redirect(appUrl('/platform/auth/continue'));
 }

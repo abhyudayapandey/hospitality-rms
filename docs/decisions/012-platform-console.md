@@ -39,6 +39,13 @@ customer and suspend/reactivate; B2 adds imports and logins.
   `SameSite=Strict`, 30 minutes idle and 8 hours absolute, signed with a key derived only
   for the platform: a customer token never verifies as a platform one, nor the other way
   round.
+- Because the cookie is `SameSite=Strict`, the callback does not redirect straight to
+  `/platform`. The return from the hosted UI is a navigation started on Cognito's site,
+  and the browser withholds a Strict cookie on every hop of it, redirects included (the
+  first production sign-in landed on `signin?reason=invalid`). The callback ends at
+  `/platform/auth/continue`, a page on our site that moves on to `/platform`; that
+  navigation starts here, so the cookie is sent. An e2e test drives a stand-in hosted UI
+  on another site to prove both halves.
 - The proxy keeps the two worlds apart: `/platform` accepts only a platform session (a
   customer session is sent to the platform sign-in), and the platform cookie is never sent
   outside `/platform`, so a platform session opens nothing in the app.
