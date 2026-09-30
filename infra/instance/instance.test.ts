@@ -91,6 +91,20 @@ describe('per-service credential isolation', () => {
     );
   });
 
+  it('the platform worker gets its config (pool, bucket, region), no secrets (ADR 013)', () => {
+    expect(read('systemd/outlet-ops-platform-worker.service')).toMatch(
+      /^EnvironmentFile=\/etc\/outlet-ops\/platform-worker\.env$/m,
+    );
+    const env = read('deploy/fetch-params.sh');
+    const block = env.slice(env.indexOf('platform-worker.env'), env.indexOf('caddy.env'));
+    expect(block).toContain('COGNITO_USER_POOL_ID=');
+    expect(block).toContain('PHOTO_BUCKET=');
+    expect(block).toContain('AWS_REGION=');
+    for (const secret of ['DATABASE_URL', 'SESSION_SECRET', 'creds', 'password']) {
+      expect(block, secret).not.toContain(secret);
+    }
+  });
+
   it('services run as their own unprivileged users', () => {
     expect(read('systemd/outlet-ops-platform-worker.service')).toMatch(
       /^User=outletops-platform$/m,
@@ -113,6 +127,12 @@ describe('scheduled jobs', () => {
     for (const t of readdirSync(join(dir, 'systemd')).filter((f) => f.endsWith('.timer'))) {
       expect(deploy.match(new RegExp(t.replace('.', '\\.'), 'g'))?.length).toBe(2);
     }
+  });
+
+  it('the bundles’ require shim cannot clash with a bundled createRequire (fflate has one)', () => {
+    const banner = /^banner="(.*)"$/m.exec(read('../scripts/build-release.sh'))![1]!;
+    expect(banner).toContain('const require =');
+    expect(banner).not.toMatch(/import \{ createRequire \}/);
   });
 
   it('the release bundles every job a unit runs', () => {

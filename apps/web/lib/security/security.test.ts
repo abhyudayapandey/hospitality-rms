@@ -1,7 +1,7 @@
 import { UsernameExistsException } from '@aws-sdk/client-cognito-identity-provider';
 import { describe, expect, it } from 'vitest';
 import { CognitoDirectory, type CognitoSender } from '../auth/directory';
-import { generateTemporaryPassword } from '../auth/passwords';
+import { generateTemporaryPassword, testRulePassword } from '../auth/passwords';
 import { isSameOrigin } from './same-origin';
 
 const headers = (h: Record<string, string>) => ({
@@ -43,6 +43,14 @@ describe('temporary passwords', () => {
     const seen = new Set(Array.from({ length: 500 }, () => generateTemporaryPassword()));
     expect(seen.size).toBe(500);
     expect(() => generateTemporaryPassword(8)).toThrow();
+  });
+});
+
+describe('the Test<Role>!12 rule (test customers only, ADR 013)', () => {
+  it('is Test + the job title without spaces + !12', () => {
+    expect(testRulePassword('Bar Manager')).toBe('TestBarManager!12');
+    expect(testRulePassword('Head  Cook')).toBe('TestHeadCook!12');
+    expect(testRulePassword('Account Owner')).toBe('TestAccountOwner!12');
   });
 });
 
@@ -112,6 +120,23 @@ describe('Cognito directory', () => {
     expect(calls.map((c) => c.name)).toEqual([
       'AdminDisableUserCommand',
       'AdminUserGlobalSignOutCommand',
+    ]);
+  });
+
+  it('a Test<Role>!12 password is set as permanent (kept at sign-in)', async () => {
+    const { sender, calls } = fake([]);
+    const d = new CognitoDirectory(sender, 'ap-south-1_pool');
+    await d.setPermanentPassword('test.solo.bar-manager', 'TestBarManager!12');
+    expect(calls).toEqual([
+      {
+        name: 'AdminSetUserPasswordCommand',
+        input: {
+          UserPoolId: 'ap-south-1_pool',
+          Username: 'test.solo.bar-manager',
+          Password: 'TestBarManager!12',
+          Permanent: true,
+        },
+      },
     ]);
   });
 });

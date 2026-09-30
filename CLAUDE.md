@@ -114,8 +114,11 @@ pnpm --filter @outlet-ops/db perf:inventory           10k-row read benchmark, ro
 pnpm --filter @outlet-ops/onboarding load <folder> [--apply] [--access]
                                                       validate a customer's onboarding files
                                                       and dry-run them; --apply loads (ADR 009)
-pnpm --filter @outlet-ops/onboarding worker [--once]  the platform worker: runs queued platform jobs as
-                                                      platform_loader (PLATFORM_LOADER_DATABASE_URL)
+pnpm --filter @outlet-ops/onboarding worker [--once]  the platform worker: runs due platform jobs (create
+                                                      customer, import dry run/apply, email invites) as
+                                                      platform_loader (PLATFORM_LOADER_DATABASE_URL);
+                                                      uploads in PHOTO_BUCKET or ONBOARDING_UPLOAD_DIR
+                                                      (ADR 013)
 infra/scripts/build-release.sh <sha>                  linux-arm64 release bundle (CI's Deploy workflow)
 RLS_ALL_USERS=1 pnpm exec vitest run --project db packages/db/src/rls-equivalence.db.test.ts
                                                       RLS equivalence for every user, not a sample

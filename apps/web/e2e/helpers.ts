@@ -13,7 +13,7 @@ import { newPlatformSession, PLATFORM_COOKIE, signPlatformSession } from '../lib
 // looked up by display name and code as the migrator, like the seed.
 
 /** Runs one query as the migrator (lookups and test setup only). */
-async function asMigrator<T extends object>(text: string, params: unknown[]): Promise<T[]> {
+export async function asMigrator<T extends object>(text: string, params: unknown[]): Promise<T[]> {
   const client = new pg.Client({ connectionString: env('MIGRATOR_DATABASE_URL') });
   await client.connect();
   try {

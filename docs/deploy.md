@@ -529,24 +529,45 @@ stack's new config parameters before the app is deployed.
 Check afterwards: `systemctl status outlet-ops-platform-worker` is active, and creating a
 test customer from the console reaches `done` within a few seconds.
 
+#### Releasing the platform console, B2: imports and logins (ADR 013)
+
+No new secret or service. Stack first (the upload prefix and its IAM statement), then
+the app.
+
+1. `pnpm --filter @outlet-ops/infra synth`, then `cd infra && pnpm cdk diff`. Expect
+   exactly:
+   - `PhotoBucket`: a second lifecycle rule, `onboarding/` expiring after 30 days
+     (an in-place update);
+   - the instance role's policy gaining `OnboardingUploads`: `s3:PutObject` and
+     `s3:GetObject` on `<PhotoBucket>/onboarding/*`.
+
+   Anything else, above all a replacement of the bucket, the `Users` pool or the
+   instance: stop and ask.
+
+2. `pnpm cdk deploy`.
+3. Run the Deploy workflow. It runs the `platform_imports` migration, writes
+   `/etc/outlet-ops/platform-worker.env` (pool id, bucket, region; no secrets) and
+   restarts `outlet-ops-platform-worker` with it.
+
+Check afterwards: open a test customer in `/platform`, **Import setup files**, upload its
+zip. The dry run should reach `done` within seconds with "no changes" for a customer
+that is already loaded. On **Logins**, the invitation note shows the daily allowance.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.
 
-- **Customer data** (ADR 009). Prepare the customer's onboarding files in the layout of
-  `docs/onboarding/test-data` (structure, job roles, people, stock, leave, shifts), with
-  real names and no test rows. Load them with the onboarding loader. The Platform Admin
-  console will call the same library; until it ships, use the CLI from a workstation
-  connected to the instance's Postgres through an SSM port-forwarding session, as
-  `migrator`:
-  ```sh
-  MIGRATOR_DATABASE_URL=postgres://migrator:<password>@127.0.0.1:<port>/outlet_ops \
-    pnpm --filter @outlet-ops/onboarding load <folder>            # dry run: fix every problem
-  MIGRATOR_DATABASE_URL=... pnpm --filter @outlet-ops/onboarding load <folder> --apply
-  ```
-  The loader creates the customer, gives it the product access, the workflow definitions
-  and an AI agent user, and derives everyone's access from their job role. Check the
-  printed access (`--access`) against the customer's expectations before `--apply`.
+- **Customer data** (ADR 009, 013). Prepare the customer's onboarding files in the layout
+  of `docs/onboarding/test-data` (structure, job roles, people, stock, leave, shifts), with
+  real names and no test rows. In the Platform Admin console, open the customer,
+  **Import setup files**, and upload them as one zip (or the CSV files). Fix every problem
+  the dry run lists and upload again; **Apply** only a clean dry run. Applying again is
+  safe: it reports "no changes".
+  The loader creates the customer's structure, gives it the product access, the workflow
+  definitions and an AI agent user, and derives everyone's access from their job role.
+  The CLI (`pnpm --filter @outlet-ops/onboarding load <folder> [--access] [--apply]`)
+  still works through an SSM port-forwarding session, for example to print the full
+  access preview before applying.
   - The loader also rejects any structure where some process at some place would have no
     approver (`NO_APPROVER`, one line per case, ADR 009); fix the structure or the
     access files and dry-run again.
@@ -561,31 +582,23 @@ The production database has no dev seed.
   overrides them.
 - **People added later** are added in the app (**Admin → People → Add a person**, ADR
   011): it creates the Cognito login and shows a username login's temporary password
-  once. People loaded from files still need their logins created as below until the
-  console's logins screen ships.
-- **Cognito users.** Create each person in the user pool with the username from file 07,
-  then link the `sub` to their `core.app_user` row (as `migrator`, until the console does
-  it: `update core.app_user set cognito_sub = '<sub>' where username = '<username>'` in the
-  customer's tenant).
-  - **Staff with email (email OTP):**
-    ```sh
-    aws cognito-idp admin-create-user --user-pool-id <UserPoolId> --username priya \
-      --user-attributes Name=email,Value=priya@example.com Name=email_verified,Value=true \
-      --message-action SUPPRESS
-    ```
-    They pick **email** on the sign-in page and enter the code.
-  - **Staff without email (username + password):**
-    ```sh
-    aws cognito-idp admin-create-user --user-pool-id <UserPoolId> --username ravi.k
-    ```
-    Cognito generates a temporary password. Hand it over in person; they must change it
-    at first sign-in. The minimum length is 10. Accounts without email cannot recover
-    their own password. An outlet manager resets it: for now with
-    `aws cognito-idp admin-set-user-password --permanent false`, later from the admin
-    module.
-- **Email limit.** Cognito's default sender allows 50 emails a day, which is enough for
-  one outlet's OTPs. If you need more, move to SES. SES costs credits and needs domain
-  verification.
+  once.
+- **Logins for imported people** (ADR 013): in the console, the customer's **Logins**.
+  - **Username logins**: **Create N username logins**. The temporary passwords are shown
+    once and can be downloaded once as a CSV; nothing keeps them. Hand them over in
+    person; people change them at first sign-in (at least 10 characters). Accounts
+    without email cannot recover their own password: an outlet manager or user admin
+    resets it in the app.
+  - **Test customers only**: the Test<Role>!12 option sets permanent pattern passwords.
+    The console refuses it for any other customer.
+  - **Email logins**: **Send N invitations**. The worker sends at most 40 invitations a
+    day (for all customers together) and sends the rest automatically as the allowance
+    frees up. People sign in with **email** and the code they are sent.
+- **Email limit.** Cognito's default sender allows about 50 emails a day for the whole
+  pool, sign-in codes and invitations together; invitations use at most 40 of them
+  (ADR 013). That is enough for one outlet. If you need more, move to SES (it costs
+  credits and needs domain verification) and raise `platform.invite_daily_limit()` in a
+  migration.
 
 ## Operating
 

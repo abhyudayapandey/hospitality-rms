@@ -22,7 +22,7 @@ export default function config(phase: string): NextConfig {
     // Self-contained server for the EC2 instance (ADR 005); built in CI only.
     output: 'standalone',
     outputFileTracingRoot: join(import.meta.dirname, '..', '..'),
-    transpilePackages: ['@outlet-ops/db', '@outlet-ops/domain'],
+    transpilePackages: ['@outlet-ops/db', '@outlet-ops/domain', '@outlet-ops/onboarding'],
     serverExternalPackages: ['pg'],
     headers() {
       return Promise.resolve([

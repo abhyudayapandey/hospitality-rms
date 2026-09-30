@@ -2,19 +2,8 @@ import Link from 'next/link';
 import { sql, withPlatformAdmin } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { requirePlatformAdmin } from '@/lib/platform/server';
+import { jobLabel, type PlatformCustomer as Customer } from './parts';
 import { StatusControl } from './status-control';
-
-interface Customer {
-  id: string;
-  code: string;
-  name: string;
-  country: string | null;
-  status: 'active' | 'suspended';
-  is_test: boolean;
-  user_count: number;
-  last_activity: Date | null;
-  created_at: Date;
-}
 
 interface Job {
   id: string;
@@ -59,10 +48,10 @@ export default async function PlatformHome() {
         {customers.map((c) => (
           <li key={c.id} className="space-y-2 p-3" data-code={c.code}>
             <div className="flex items-baseline justify-between gap-2">
-              <span>
-                <span className="font-medium">{c.name}</span>{' '}
+              <Link href={`/platform/customers/${c.id}`}>
+                <span className="font-medium underline">{c.name}</span>{' '}
                 <span className="text-sm text-slate-500">{c.code}</span>
-              </span>
+              </Link>
               <span className="flex gap-1 text-xs">
                 {c.is_test && <span className="rounded-full bg-sky-100 px-2 py-0.5">test</span>}
                 <span
@@ -93,7 +82,7 @@ export default async function PlatformHome() {
               <li key={j.id}>
                 <Link href={`/platform/jobs/${j.id}`} className="flex justify-between gap-2 p-3">
                   <span>
-                    {j.kind.replace('_', ' ')} {j.customer_code}
+                    {jobLabel(j.kind)} {j.customer_code}
                   </span>
                   <span>
                     {j.status} · {formatWhen(j.created_at)}

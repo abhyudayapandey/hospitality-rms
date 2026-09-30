@@ -18,6 +18,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1142.0",
     "@outlet-ops/db": "workspace:*",
     "@outlet-ops/domain": "workspace:*",
+    "@outlet-ops/onboarding": "workspace:*",
     "aws-jwt-verify": "^5.2.1",
     "next": "^16.3.6",
     "react": "^19.3.0",

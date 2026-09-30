@@ -129,7 +129,11 @@ export class OutletOpsStack extends Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
-      lifecycleRules: [{ prefix: 'wastage/', expiration: Duration.days(400) }],
+      lifecycleRules: [
+        { prefix: 'wastage/', expiration: Duration.days(400) },
+        // onboarding uploads (ADR 013): kept between a dry run and its apply, then gone
+        { prefix: 'onboarding/', expiration: Duration.days(30) },
+      ],
       // browsers upload straight to S3 from the app's origin only
       cors: [
         {
@@ -213,6 +217,14 @@ export class OutletOpsStack extends Stack {
         sid: 'WastagePhotos',
         actions: ['s3:PutObject', 's3:GetObject'],
         resources: [photoBucket.arnForObjects('wastage/*')],
+      }),
+    );
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        // the console stores a customer's upload; the platform worker reads it (ADR 013)
+        sid: 'OnboardingUploads',
+        actions: ['s3:PutObject', 's3:GetObject'],
+        resources: [photoBucket.arnForObjects('onboarding/*')],
       }),
     );
     role.addToPolicy(

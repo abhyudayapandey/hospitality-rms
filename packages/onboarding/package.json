@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./upload": "./src/upload-entry.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -13,8 +14,11 @@
     "worker": "tsx scripts/worker.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.1143.0",
+    "@aws-sdk/client-s3": "^3.1142.0",
     "@outlet-ops/domain": "workspace:*",
     "@outlet-ops/workflow": "workspace:*",
+    "fflate": "^0.8.3",
     "pg": "^8.23.0",
     "zod": "^4.6.5"
   },

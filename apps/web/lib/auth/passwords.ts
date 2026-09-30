@@ -34,3 +34,12 @@ export function generateTemporaryPassword(
   }
   return chars.join('');
 }
+
+/**
+ * The Test<Role>!12 rule (docs/onboarding/test-data): "Test", the job title without
+ * spaces, "!12" (Bar Manager -> TestBarManager!12). Only for test customers; the database
+ * refuses the option for anyone else (ADR 013, PRD ADM-1).
+ */
+export function testRulePassword(jobTitle: string): string {
+  return `Test${jobTitle.replace(/\s+/g, '')}!12`;
+}

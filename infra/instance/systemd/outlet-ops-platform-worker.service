@@ -1,5 +1,5 @@
 [Unit]
-Description=Outlet Ops platform worker (creates customers queued in the platform console)
+Description=Outlet Ops platform worker (customers, imports and invitations queued in the platform console)
 After=network-online.target docker.service
 
 [Service]
@@ -8,6 +8,8 @@ User=outletops-platform
 Group=outletops-platform
 # Only the platform_loader password (ADR 012): the web app never holds it.
 LoadCredential=db_platform_loader:/etc/outlet-ops/creds/platform_loader
+# The customer pool (invitations) and the photo bucket (uploads); no secrets (ADR 013).
+EnvironmentFile=/etc/outlet-ops/platform-worker.env
 ExecStart=/opt/outlet-ops/current/deploy/platform-worker.sh
 Restart=on-failure
 RestartSec=10

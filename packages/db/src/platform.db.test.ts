@@ -1,10 +1,11 @@
-import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  asPlatform,
   attemptAs,
   closePools,
   inRolledBackTx,
   loadSeedIds,
+  newPlatformAdmin as newAdmin,
   resetRole,
   sqlState,
   type SeedIds,
@@ -21,45 +22,6 @@ beforeAll(async () => {
   ids = await loadSeedIds();
 });
 afterAll(closePools);
-
-type Result<T> = { rows: T[]; error?: undefined } | { rows?: undefined; error: string };
-
-/** Runs as app_rw in a platform session (optionally with a customer user id set too). */
-async function asPlatform<T extends object = Record<string, unknown>>(
-  c: PoolClient,
-  adminId: string,
-  sql: string,
-  params: unknown[] = [],
-  alsoUserId: string | null = null,
-): Promise<Result<T>> {
-  await c.query('set local role app_rw');
-  await c.query(`select set_config('app.platform_admin_id', $1, true)`, [adminId]);
-  await c.query(`select set_config('app.user_id', $1, true)`, [alsoUserId ?? '']);
-  await c.query('savepoint platform');
-  try {
-    const r = await c.query<T>(sql, params);
-    await c.query('release savepoint platform');
-    return { rows: r.rows };
-  } catch (err) {
-    await c.query('rollback to savepoint platform');
-    return { error: (err as Error).message };
-  } finally {
-    await resetRole(c);
-    await c.query(`select set_config('app.platform_admin_id', '', true)`);
-  }
-}
-
-async function newAdmin(c: PoolClient, sub = 'platform-sub-1'): Promise<string> {
-  await c.query('set local role app_rw');
-  const r = await c.query<{ id: string }>(
-    `select platform.sign_in($1, 'admin@example.test') as id`,
-    [sub],
-  );
-  await resetRole(c);
-  // sign_in marks its own transaction as the admin's; the tests reuse the transaction
-  await c.query(`select set_config('app.platform_admin_id', '', true)`);
-  return r.rows[0]!.id;
-}
 
 describe('a platform session sees no customer data', () => {
   it('zero rows from stock, rosters, workers and their pay, requests; no customer audit — even with app.user_id set', async () => {

@@ -503,13 +503,25 @@ describe('wastage photos (ADR 006)', () => {
     expect(JSON.stringify(props.LifecycleConfiguration)).toContain('"ExpirationInDays":400');
   });
 
-  it('lets the instance role put and get wastage/* in the photo bucket, nothing else', () => {
+  it('expires onboarding uploads after 30 days (ADR 013)', () => {
+    const { props } = photoBucket();
+    const rules = (props.LifecycleConfiguration as { Rules: Record<string, unknown>[] }).Rules;
+    expect(rules).toContainEqual(
+      expect.objectContaining({ Prefix: 'onboarding/', ExpirationInDays: 30, Status: 'Enabled' }),
+    );
+  });
+
+  it('lets the instance role put and get wastage/* and onboarding/* in the photo bucket, nothing else', () => {
     const { id } = photoBucket();
     const st = statements('InstanceRole').filter((s) => JSON.stringify(s.Resource).includes(id));
     expect(st.map((s) => [s.Sid, actions(s).sort()])).toEqual([
       ['WastagePhotos', ['s3:GetObject', 's3:PutObject']],
+      ['OnboardingUploads', ['s3:GetObject', 's3:PutObject']],
     ]);
     expect(JSON.stringify(st[0]!.Resource)).toContain('/wastage/*');
+    expect(JSON.stringify(st[1]!.Resource)).toContain('/onboarding/*');
+    // no list or delete: the lifecycle rule removes old uploads
+    expect(st.flatMap(actions)).not.toContain('s3:DeleteObject');
   });
 
   it('tells the instance the bucket name through a config parameter', () => {
