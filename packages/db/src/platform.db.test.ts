@@ -56,6 +56,8 @@ async function newAdmin(c: PoolClient, sub = 'platform-sub-1'): Promise<string> 
     [sub],
   );
   await resetRole(c);
+  // sign_in marks its own transaction as the admin's; the tests reuse the transaction
+  await c.query(`select set_config('app.platform_admin_id', '', true)`);
   return r.rows[0]!.id;
 }
 
@@ -302,10 +304,10 @@ describe('platform_loader: loads data, no DDL, owns nothing', () => {
   it('owns no schema, table, function or type', async () => {
     const { rows } = await inRolledBackTx((c) =>
       c.query<{ n: number }>(
-        `select (select count(*) from pg_namespace where nspowner = r.oid)
+        `select ((select count(*) from pg_namespace where nspowner = r.oid)
               + (select count(*) from pg_class where relowner = r.oid)
               + (select count(*) from pg_proc where proowner = r.oid)
-              + (select count(*) from pg_type where typowner = r.oid) as n
+              + (select count(*) from pg_type where typowner = r.oid))::int as n
            from pg_roles r where r.rolname = 'platform_loader'`,
       ),
     );
