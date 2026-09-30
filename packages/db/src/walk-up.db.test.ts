@@ -152,6 +152,14 @@ describe('walking up the tree', () => {
       expect(got[0]).toBe(main);
       expect(r.rows![1]!.kind).toBe('hub');
       expect(got).not.toContain(ids.node('delivery:Outlet A'));
+      // for an outlet the hub comes first, not a sibling outlet
+      const outlet = await attemptAs<{ id: string }>(
+        c,
+        ids.user('Kim Storekeeper'),
+        'select id from inv.transfer_sources($1)',
+        [ids.node('delivery:Outlet A')],
+      );
+      expect(outlet.rows![0]!.id).toBe(ids.node('delivery:Hub'));
     });
   });
 });

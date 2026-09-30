@@ -240,7 +240,10 @@ begin
      where n.tenant_id = core.my_tenant() and n.type = 'delivery' and n.archived_at is null
        and n.holds_stock and n.id <> p_to
        and exists (select 1 from inv.item_node i where i.delivery_node_id = n.id)
-     order by (n.parent_id is not distinct from v_parent) desc, (n.kind = 'hub') desc, n.name;
+     -- stores of the same location first (its sibling stores, or the location itself),
+     -- then hubs; sibling outlets are not a preferred source
+     order by (n.id = v_parent or (n.kind = 'store' and n.parent_id = v_parent)) desc,
+              (n.kind = 'hub') desc, n.name;
 end $$;
 
 -- core.nodes as in 20260929150000, plus holds_stock.
