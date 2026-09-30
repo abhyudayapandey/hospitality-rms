@@ -263,3 +263,26 @@ describe('people whose own requests nobody else could approve (ADR 010)', () => 
     });
   });
 });
+
+describe('logins are unique across customers (ADR 011)', () => {
+  it('reports another customer’s username or email by file, row and column, with a suggestion', async () => {
+    await inRolledBackTx(async (c) => {
+      const solo = readCustomerDir(join(DATA, 'test-solo-bar-co'));
+      const [head, ...rest] = solo['07_users.csv']!.trim().split(/\r?\n/);
+      const files = {
+        ...solo,
+        '00_customer.csv': solo['00_customer.csv']!.replaceAll('TEST-SOLO-COMPANY', 'ACME'),
+        '07_users.csv': [head, ...rest].join('\n'),
+      };
+      const r = await loadCustomer(c, files, { nested: true, dryRun: true });
+      expect(r.ok).toBe(false);
+      expect(r.issues).toContainEqual({
+        file: '07_users.csv',
+        row: 2,
+        column: 'username',
+        message: `${rest[0]!.split(',')[0]} is used by another customer (USERNAME_TAKEN); try acme.${rest[0]!.split(',')[0]}`,
+      });
+      expect(r.issues.every((i) => i.message.includes('_TAKEN'))).toBe(true);
+    });
+  });
+});

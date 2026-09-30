@@ -349,6 +349,7 @@ class Loader {
       [this.tenant, wanted],
     );
 
+    if (await this.loginClashes()) return;
     for (const u of this.b.users) {
       this.step(FILES.users.file, u.line);
       await this.upsert(
@@ -418,6 +419,46 @@ class Loader {
         });
       }
     }
+  }
+
+  /**
+   * Logins are unique across all customers (one Cognito pool, ADR 011): a username or
+   * email another customer already uses is reported with a suggestion prefixed with this
+   * customer's code. Returns whether any clashed.
+   */
+  private async loginClashes(): Promise<boolean> {
+    const code = this.b.customer[0]!.customer_code.toLowerCase();
+    const { rows } = await this.c.query<{ username: string | null; email: string | null }>(
+      `select lower(username) as username, lower(email) as email from core.app_user
+        where kind = 'human' and tenant_id is distinct from $1
+          and (lower(username) = any ($2) or lower(email) = any ($3))`,
+      [
+        this.tenant,
+        this.b.users.map((u) => u.username.toLowerCase()),
+        this.b.users.flatMap((u) => (u.email ? [u.email.toLowerCase()] : [])),
+      ],
+    );
+    const usernames = new Set(rows.map((r) => r.username));
+    const emails = new Set(rows.map((r) => r.email));
+    for (const u of this.b.users) {
+      if (usernames.has(u.username.toLowerCase())) {
+        this.report.issues.push({
+          file: FILES.users.file,
+          row: u.line,
+          column: 'username',
+          message: `${u.username} is used by another customer (USERNAME_TAKEN); try ${code}.${u.username}`,
+        });
+      }
+      if (u.email && emails.has(u.email.toLowerCase())) {
+        this.report.issues.push({
+          file: FILES.users.file,
+          row: u.line,
+          column: 'email',
+          message: `${u.email} is used by another customer's login (EMAIL_TAKEN)`,
+        });
+      }
+    }
+    return rows.length > 0;
   }
 
   private async access() {
