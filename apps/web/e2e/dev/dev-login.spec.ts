@@ -5,8 +5,8 @@ import { expect, test } from '@playwright/test';
 // gone; real requests come from the inventory screens.
 test('dev login signs in as a seeded user', async ({ page }) => {
   await page.goto('/dev-login');
-  await page.getByRole('button', { name: /^Kim Storekeeper/ }).click();
-  await expect(page.getByTestId('current-user')).toHaveText('Kim Storekeeper');
+  await page.getByRole('button', { name: /^Test Head Cook 3.0/ }).click();
+  await expect(page.getByTestId('current-user')).toHaveText('Test Head Cook 3.0');
   const res = await page.goto('/requests/new');
   expect(res?.status()).toBe(404);
 });

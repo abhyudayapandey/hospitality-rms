@@ -2,8 +2,8 @@
 -- Columns the onboarding files carry (ADR 009, docs/onboarding/test-data):
 --   * suppliers have a code (file 09) so items and item locations can refer to them
 --   * items have a standard unit cost and a preferred supplier (file 10)
---   * a count tolerance can be a percentage of the expected quantity (file 11); a fixed
---     quantity tolerance still wins where both are set
+--   * a count tolerance can be a percentage of the expected quantity (file 11); the
+--     tolerance is the larger of the fixed quantity (default 0) and the percentage
 --   * shift templates are unique per place, name and job role (file 16), so loading the
 --     same file twice updates them
 
@@ -30,14 +30,16 @@ begin
     raise exception 'inv.submit_count changed; update this migration';
   end if;
   execute replace(v_src, v_old,
-    'coalesce(n.count_tolerance_qty, abs(cl.system_qty) * n.count_tolerance_pct / 100, 0) as tolerance');
+    'greatest(coalesce(n.count_tolerance_qty, 0),
+              coalesce(abs(cl.system_qty) * n.count_tolerance_pct / 100, 0)) as tolerance');
 end $$;
 
 -- migrate:down
 do $$
 begin
   execute replace(pg_get_functiondef('inv.submit_count(uuid, jsonb)'::regprocedure),
-    'coalesce(n.count_tolerance_qty, abs(cl.system_qty) * n.count_tolerance_pct / 100, 0) as tolerance',
+    'greatest(coalesce(n.count_tolerance_qty, 0),
+              coalesce(abs(cl.system_qty) * n.count_tolerance_pct / 100, 0)) as tolerance',
     'coalesce(n.count_tolerance_qty, 0) as tolerance');
 end $$;
 drop index hr.shift_template_natural;

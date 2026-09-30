@@ -31,7 +31,7 @@ export interface LoadReport {
   tenantId?: string;
   issues: Issue[];
   counts: Record<string, Counts>;
-  /** Every access grant for this customer's users after the load (file 99 layout). */
+  /** Every access grant of the people in these files after the load (file 99 layout). */
   access: AccessRow[];
 }
 
@@ -760,10 +760,10 @@ class Loader {
          join core.app_user u on u.id = ra.user_id
          join core.security_group g on g.id = ra.group_id
          join core.hierarchy_node n on n.id = ra.node_id
-        where ra.tenant_id = $1 and u.status = 'active' and u.kind = 'human'
+        where ra.tenant_id = $1 and u.status = 'active' and u.username = any ($2)
           and (ra.effective_to is null or ra.effective_to >= current_date)
         order by u.username, g.code, n.code`,
-      [this.tenant],
+      [this.tenant, this.b.users.map((u) => u.username)],
     );
     return rows;
   }

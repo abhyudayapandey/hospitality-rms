@@ -134,11 +134,11 @@ describe('tenant isolation', () => {
         'inv.purchase_order',
         'inv.stock_adjustment',
       ]);
-      const poA = await subject({ delivery: ids.node('delivery:Outlet A'), amount: 1000 });
-      const adjA = await subject({ delivery: ids.node('delivery:Outlet A'), amount: 100 });
+      const poA = await subject({ delivery: ids.node('TEST-BAR-3.0-KITCHEN-STORE'), amount: 1000 });
+      const adjA = await subject({ delivery: ids.node('TEST-BAR-3.0-KITCHEN-STORE'), amount: 100 });
       const req = await attemptAs<{ id: string }>(
         c,
-        ids.user('Kim Storekeeper'),
+        ids.user('test.head-cook.3.0'),
         `select wf.submit('PURCHASE_ORDER', 'inv.purchase_order', $1) as id`,
         [poA],
       );
@@ -156,7 +156,12 @@ describe('tenant isolation', () => {
         `insert into inv.zz_stock (tenant_id, delivery_node_id, label)
          select tenant_id, $1::uuid, 'A' from core.app_user where id = $3
          union all select tenant_id, $2::uuid, 'B' from core.app_user where id = $4`,
-        [ids.node('delivery:Outlet A'), b.dlvOutlet, ids.user('Kim Storekeeper'), b.bob],
+        [
+          ids.node('TEST-BAR-3.0-KITCHEN-STORE'),
+          b.dlvOutlet,
+          ids.user('test.head-cook.3.0'),
+          b.bob,
+        ],
       );
 
       // Positive control: Bob has access in his own tenant.
@@ -172,15 +177,20 @@ describe('tenant isolation', () => {
         ['LEAVE', 'view'],
         ['EVENTS', 'modify'],
       ] as const) {
-        for (const n of ['org:Company', 'org:Area', 'org:Outlet A', 'org:Outlet B'] as const) {
+        for (const n of [
+          'TEST-COMPANY',
+          'TEST-AREA-MUMBAI',
+          'TEST-BAR-3.0-FLOOR-SERVICE',
+          'TEST-GUEST-HOUSE-2.0',
+        ] as const) {
           expect(await canAs(c, b.bob, domain, access, ids.node(n), null), `${domain} ${n}`).toBe(
             false,
           );
         }
         for (const n of [
-          'delivery:Company Supply Network',
-          'delivery:Hub',
-          'delivery:Outlet A',
+          'TEST-SUPPLY-NETWORK',
+          'TEST-CENTRAL-KITCHEN-STORE',
+          'TEST-BAR-3.0-KITCHEN-STORE',
         ] as const) {
           expect(await canAs(c, b.bob, domain, access, null, ids.node(n)), `${domain} ${n}`).toBe(
             false,
@@ -223,7 +233,7 @@ describe('tenant isolation', () => {
       // Tenant A's approver still sees the request; nothing of B leaks the other way.
       const olivia = await attemptAs<{ request_id: string }>(
         c,
-        ids.user('Olivia Outlet Manager'),
+        ids.user('test.bar-manager.3.0'),
         'select request_id from wf.my_inbox()',
       );
       const oliviaInbox = olivia.rows?.map((r) => r.request_id) ?? [];
@@ -235,14 +245,7 @@ describe('tenant isolation', () => {
       );
       expect(tenants.rows.map((r) => r.tenant_id)).not.toContain(b.tenant);
       expect(
-        await canAs(
-          c,
-          ids.user('Olivia Outlet Manager'),
-          'STOCK_LEVELS',
-          'view',
-          null,
-          b.dlvOutlet,
-        ),
+        await canAs(c, ids.user('test.bar-manager.3.0'), 'STOCK_LEVELS', 'view', null, b.dlvOutlet),
       ).toBe(false);
     });
   });
@@ -252,7 +255,7 @@ describe('tenant isolation', () => {
       const b = await setUpTenantB(c);
       const aTenant = (
         await c.query<{ id: string }>('select tenant_id as id from core.app_user where id = $1', [
-          ids.user('Olivia Outlet Manager'),
+          ids.user('test.bar-manager.3.0'),
         ])
       ).rows[0]!.id;
       const one = async (text: string, params: unknown[]) =>
@@ -294,30 +297,30 @@ describe('tenant isolation', () => {
 
       // role_assignment: user, group, node each from the other tenant
       expect(
-        await fails(assign, [b.tenant, ids.user('Olivia Outlet Manager'), groupB, b.orgOutlet]),
+        await fails(assign, [b.tenant, ids.user('test.bar-manager.3.0'), groupB, b.orgOutlet]),
       ).toBe('TENANT_MISMATCH');
       expect(await fails(assign, [b.tenant, b.bob, groupA, b.orgOutlet])).toBe('TENANT_MISMATCH');
-      expect(await fails(assign, [b.tenant, b.bob, groupB, ids.node('org:Outlet A')])).toBe(
-        'TENANT_MISMATCH',
-      );
-      expect(await fails(assign, [aTenant, b.bob, groupA, ids.node('org:Outlet A')])).toBe(
-        'TENANT_MISMATCH',
-      );
+      expect(
+        await fails(assign, [b.tenant, b.bob, groupB, ids.node('TEST-BAR-3.0-FLOOR-SERVICE')]),
+      ).toBe('TENANT_MISMATCH');
+      expect(
+        await fails(assign, [aTenant, b.bob, groupA, ids.node('TEST-BAR-3.0-FLOOR-SERVICE')]),
+      ).toBe('TENANT_MISMATCH');
       // ...and via UPDATE
       expect(
         await fails(`update core.role_assignment set node_id = $1 where user_id = $2`, [
-          ids.node('org:Outlet A'),
+          ids.node('TEST-BAR-3.0-FLOOR-SERVICE'),
           b.bob,
         ]),
       ).toBe('TENANT_MISMATCH');
 
       // node_link: either node from the other tenant
-      expect(await fails(link, [b.tenant, ids.node('org:Outlet A'), b.dlvOutlet])).toBe(
-        'TENANT_MISMATCH',
-      );
-      expect(await fails(link, [b.tenant, b.orgOutlet, ids.node('delivery:Outlet A')])).toBe(
-        'TENANT_MISMATCH',
-      );
+      expect(
+        await fails(link, [b.tenant, ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), b.dlvOutlet]),
+      ).toBe('TENANT_MISMATCH');
+      expect(
+        await fails(link, [b.tenant, b.orgOutlet, ids.node('TEST-BAR-3.0-KITCHEN-STORE')]),
+      ).toBe('TENANT_MISMATCH');
 
       // domain_policy: group or domain from the other tenant
       expect(await fails(policy, [b.tenant, domainA, groupB])).toBe('TENANT_MISMATCH');
@@ -336,12 +339,12 @@ describe('tenant isolation', () => {
         await fails(
           `insert into core.hierarchy_node (tenant_id, type, kind, name, parent_id)
            values ($1, 'org', 'outlet', 'Sneaky', $2)`,
-          [b.tenant, ids.node('org:Area')],
+          [b.tenant, ids.node('TEST-AREA-MUMBAI')],
         ),
       ).toBe('TENANT_MISMATCH');
       expect(
         await fails(`update core.hierarchy_node set parent_id = $1 where id = $2`, [
-          ids.node('org:Area'),
+          ids.node('TEST-AREA-MUMBAI'),
           b.orgOutlet,
         ]),
       ).toBe('TENANT_MISMATCH');

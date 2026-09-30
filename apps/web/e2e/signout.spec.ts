@@ -5,7 +5,7 @@ test('sign-out clears the session and refresh cookies and the service-worker cac
   page,
   context,
 }) => {
-  await signInAs(page, 'Kim Storekeeper');
+  await signInAs(page, 'Test Head Cook 3.0');
   // The service worker precaches the offline page.
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;

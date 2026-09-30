@@ -20,14 +20,14 @@ import {
 // (installSubjectFixture): wf.submit reads nodes and amount from the subject row, so
 // the engine is tested without the module tables' own rules (inventory has its own tests).
 
-const KIM = 'Kim Storekeeper';
-const OLIVIA = 'Olivia Outlet Manager';
-const ARIA = 'Aria Area Manager';
-const HUGO = 'Hugo Hub Manager';
-const HARPER = 'Harper HR Admin';
-const SAM = 'Sam Staff';
-const CASEY = 'Casey Chef';
-const AGENT = 'Outlet Ops AI Agent';
+const KIM = 'test.head-cook.3.0';
+const OLIVIA = 'test.bar-manager.3.0';
+const ARIA = 'test.area-manager';
+const HUGO = 'test.central-kitchen-manager';
+const HARPER = 'test.hr-admin';
+const SAM = 'test.server.3.0';
+const CASEY = 'test.cook.3.0';
+const AGENT = 'ai-agent';
 
 let ids: SeedIds;
 beforeAll(async () => {
@@ -74,15 +74,15 @@ async function subjectFor(c: PoolClient, a: SubmitArgs): Promise<string> {
   }
   const tenant = (
     await c.query<{ id: string }>('select tenant_id as id from core.hierarchy_node where id = $1', [
-      ids.node('org:Company'),
+      ids.node('TEST-COMPANY'),
     ])
   ).rows[0]!.id;
   return make({
     tenant,
-    org: a.org ? ids.node(`org:${a.org}`) : null,
-    delivery: a.delivery ? ids.node(`delivery:${a.delivery}`) : null,
-    from: a.from ? ids.node(`delivery:${a.from}`) : null,
-    to: a.to ? ids.node(`delivery:${a.to}`) : null,
+    org: a.org ? ids.node(a.org) : null,
+    delivery: a.delivery ? ids.node(a.delivery) : null,
+    from: a.from ? ids.node(a.from) : null,
+    to: a.to ? ids.node(a.to) : null,
     amount: a.amount ?? null,
     submittable: a.submittable ?? true,
   });
@@ -102,7 +102,7 @@ const po = (amount: number, key?: string): SubmitArgs => ({
   process: 'PURCHASE_ORDER',
   subject: 'inv.purchase_order',
   amount,
-  delivery: 'Outlet A',
+  delivery: 'TEST-BAR-3.0-KITCHEN-STORE',
   ...(key ? { key } : {}),
 });
 
@@ -156,7 +156,7 @@ async function steps(c: PoolClient, id: string) {
     scope: string | null;
     grp: string;
   }>(
-    `select s.step, s.state, n.type || ':' || n.name as scope, g.code as grp
+    `select s.step, s.state, n.code as scope, g.code as grp
        from wf.step_instance s
        join core.security_group g on g.id = s.assignee_group_id
        left join core.hierarchy_node n on n.id = s.scope_node_id
@@ -185,15 +185,11 @@ async function inbox(c: PoolClient, who: string): Promise<string[]> {
 }
 
 /** Gives `who` an extra assignment inside the rolled-back transaction. */
-async function assign(
-  c: PoolClient,
-  who: string,
-  group: string,
-  node: `${'org' | 'delivery'}:${string}`,
-) {
+async function assign(c: PoolClient, who: string, group: string, node: string) {
   await c.query(
     `insert into core.role_assignment (tenant_id, user_id, group_id, node_id, effective_from)
-     select g.tenant_id, $1, g.id, $3, date '2026-01-01' from core.security_group g where g.code = $2`,
+     select g.tenant_id, $1, g.id, $3, date '2026-01-01' from core.security_group g
+      where g.code = $2 and g.tenant_id = (select tenant_id from core.app_user where id = $1)`,
     [ids.user(who), group, ids.node(node)],
   );
 }
@@ -211,7 +207,7 @@ describe('purchase order routing', () => {
         {
           step: 'outlet_approval',
           state: 'pending',
-          scope: 'delivery:Outlet A',
+          scope: 'TEST-BAR-3.0-KITCHEN-STORE',
           grp: 'OUTLET_MANAGER',
         },
         { step: 'area_approval', state: 'skipped', scope: null, grp: 'AREA_MANAGER' },
@@ -229,10 +225,10 @@ describe('purchase order routing', () => {
         {
           step: 'outlet_approval',
           state: 'pending',
-          scope: 'delivery:Outlet A',
+          scope: 'TEST-BAR-3.0-KITCHEN-STORE',
           grp: 'OUTLET_MANAGER',
         },
-        { step: 'area_approval', state: 'waiting', scope: 'org:Area', grp: 'AREA_MANAGER' },
+        { step: 'area_approval', state: 'waiting', scope: 'TEST-AREA-MUMBAI', grp: 'AREA_MANAGER' },
       ]);
       expect(await inbox(c, ARIA)).not.toContain(id); // not active yet
       expect(await actOk(c, OLIVIA, id, 'approve')).toBe('in_approval');
@@ -268,7 +264,7 @@ describe('purchase order routing', () => {
 
   it('blocks self-approval (rule 7)', async () => {
     await inRolledBackTx(async (c) => {
-      await assign(c, CASEY, 'OUTLET_MANAGER', 'delivery:Outlet A'); // a second eligible approver
+      await assign(c, CASEY, 'OUTLET_MANAGER', 'TEST-BAR-3.0-KITCHEN-STORE'); // a second eligible approver
       const id = await submitOk(c, OLIVIA, po(10_000));
       expect((await act(c, OLIVIA, id, 'approve')).error).toBe('SEGREGATION_OF_DUTIES');
       expect((await act(c, OLIVIA, id, 'reject')).error).toBe('SEGREGATION_OF_DUTIES');
@@ -280,7 +276,12 @@ describe('purchase order routing', () => {
     await inRolledBackTx(async (c) => {
       const id = await submitOk(c, OLIVIA, po(10_000));
       expect(await steps(c, id)).toEqual([
-        { step: 'outlet_approval', state: 'pending', scope: 'org:Area', grp: 'AREA_MANAGER' },
+        {
+          step: 'outlet_approval',
+          state: 'pending',
+          scope: 'TEST-AREA-MUMBAI',
+          grp: 'AREA_MANAGER',
+        },
         { step: 'area_approval', state: 'skipped', scope: null, grp: 'AREA_MANAGER' },
       ]);
       expect(await inbox(c, OLIVIA)).not.toContain(id);
@@ -295,8 +296,13 @@ describe('purchase order routing', () => {
       // is also the area_approval approver.
       const id = await submitOk(c, OLIVIA, po(60_000));
       expect(await steps(c, id)).toEqual([
-        { step: 'outlet_approval', state: 'pending', scope: 'org:Area', grp: 'AREA_MANAGER' },
-        { step: 'area_approval', state: 'waiting', scope: 'org:Area', grp: 'AREA_MANAGER' },
+        {
+          step: 'outlet_approval',
+          state: 'pending',
+          scope: 'TEST-AREA-MUMBAI',
+          grp: 'AREA_MANAGER',
+        },
+        { step: 'area_approval', state: 'waiting', scope: 'TEST-AREA-MUMBAI', grp: 'AREA_MANAGER' },
       ]);
       expect(await actOk(c, ARIA, id, 'approve')).toBe('approved'); // once
 
@@ -347,20 +353,30 @@ describe('purchase order routing', () => {
       const leave = await submitOk(c, OLIVIA, {
         process: 'LEAVE',
         subject: 'hr.leave_request',
-        org: 'Outlet A',
+        org: 'TEST-BAR-3.0-FLOOR-SERVICE',
       });
       expect(await steps(c, leave)).toEqual([
-        { step: 'outlet_approval', state: 'pending', scope: 'org:Area', grp: 'AREA_MANAGER' },
-        { step: 'hr_approval', state: 'waiting', scope: 'org:Company', grp: 'HR_ADMIN' },
+        {
+          step: 'outlet_approval',
+          state: 'pending',
+          scope: 'TEST-AREA-MUMBAI',
+          grp: 'AREA_MANAGER',
+        },
+        { step: 'hr_approval', state: 'waiting', scope: 'TEST-COMPANY', grp: 'HR_ADMIN' },
       ]);
       const adj = await submitOk(c, OLIVIA, {
         process: 'STOCK_ADJUSTMENT',
         subject: 'inv.stock_adjustment',
         amount: 6000,
-        delivery: 'Outlet A',
+        delivery: 'TEST-BAR-3.0-KITCHEN-STORE',
       });
       expect(await steps(c, adj)).toEqual([
-        { step: 'outlet_approval', state: 'pending', scope: 'org:Area', grp: 'AREA_MANAGER' },
+        {
+          step: 'outlet_approval',
+          state: 'pending',
+          scope: 'TEST-AREA-MUMBAI',
+          grp: 'AREA_MANAGER',
+        },
       ]);
       expect(await inbox(c, ARIA)).toEqual(expect.arrayContaining([leave, adj]));
       expect(await actOk(c, ARIA, adj, 'approve')).toBe('approved');
@@ -414,7 +430,7 @@ describe('purchase order routing', () => {
         process: 'TEST_AUTO',
         subject: 'test.subject',
         amount: 100,
-        delivery: 'Outlet A',
+        delivery: 'TEST-BAR-3.0-KITCHEN-STORE',
       });
       expect((await request(c, id)).state).toBe('approved');
       expect((await steps(c, id)).map((s) => s.state)).toEqual(['skipped']);
@@ -433,8 +449,13 @@ describe('initiation rights', () => {
       expect((await act(c, AGENT, kims, 'approve')).error).toBe('NOT_AUTHORISED');
       expect(await inbox(c, AGENT)).toEqual([]);
       expect(
-        (await submit(c, AGENT, { process: 'LEAVE', subject: 'hr.leave_request', org: 'Outlet A' }))
-          .error,
+        (
+          await submit(c, AGENT, {
+            process: 'LEAVE',
+            subject: 'hr.leave_request',
+            org: 'TEST-BAR-3.0-FLOOR-SERVICE',
+          })
+        ).error,
       ).toBe('NOT_AUTHORISED');
     });
   });
@@ -469,15 +490,15 @@ describe('subject-derived nodes and amount', () => {
   it('cannot submit a subject that sits at a node the caller does not hold', async () => {
     await inRolledBackTx(async (c) => {
       // A draft at Outlet B (Kim is store keeper at Outlet A only).
-      expect((await submit(c, KIM, { ...po(10_000), delivery: 'Outlet B' })).error).toBe(
-        'NOT_AUTHORISED',
-      );
+      expect(
+        (await submit(c, KIM, { ...po(10_000), delivery: 'TEST-GUEST-HOUSE-2.0-SUPPLY' })).error,
+      ).toBe('NOT_AUTHORISED');
       // Olivia (Outlet A) cannot submit Outlet B's subject either.
-      expect((await submit(c, OLIVIA, { ...po(10_000), delivery: 'Outlet B' })).error).toBe(
-        'NOT_AUTHORISED',
-      );
+      expect(
+        (await submit(c, OLIVIA, { ...po(10_000), delivery: 'TEST-GUEST-HOUSE-2.0-SUPPLY' })).error,
+      ).toBe('NOT_AUTHORISED');
       const { rows } = await c.query('select 1 from wf.request where delivery_node_id = $1', [
-        ids.node('delivery:Outlet B'),
+        ids.node('TEST-GUEST-HOUSE-2.0-SUPPLY'),
       ]);
       expect(rows).toEqual([]);
     });
@@ -487,14 +508,14 @@ describe('subject-derived nodes and amount', () => {
     await inRolledBackTx(async (c) => {
       const id = await submitOk(c, KIM, {
         ...po(60_000),
-        payload: { amount: 1, delivery_node_id: ids.node('delivery:Outlet B') },
+        payload: { amount: 1, delivery_node_id: ids.node('TEST-GUEST-HOUSE-2.0-SUPPLY') },
       });
       const { rows } = await c.query<{ amount: string; node: string }>(
-        `select r.amount, n.name as node from wf.request r
+        `select r.amount, n.code as node from wf.request r
            join core.hierarchy_node n on n.id = r.delivery_node_id where r.id = $1`,
         [id],
       );
-      expect(rows).toEqual([{ amount: '60000.00', node: 'Outlet A' }]);
+      expect(rows).toEqual([{ amount: '60000.00', node: 'TEST-BAR-3.0-KITCHEN-STORE' }]);
       // the 60,000 from the row adds the area step; a caller cannot understate it
       expect((await steps(c, id)).map((s) => s.state)).toEqual(['pending', 'waiting']);
     });
@@ -507,7 +528,7 @@ describe('subject-derived nodes and amount', () => {
         ids.user(KIM),
         `select wf.submit('PURCHASE_ORDER', 'inv.purchase_order', core.uuid_v7(), '{}', 1,
                           'INR', null, $1, null)`,
-        [ids.node('delivery:Outlet A')],
+        [ids.node('TEST-BAR-3.0-KITCHEN-STORE')],
       );
       expect(r.error).toMatch(/function wf\.submit\(.*\) does not exist/);
     });
@@ -531,7 +552,7 @@ describe('subject-derived nodes and amount', () => {
       const make = fixtures.get(c)!;
       const foreign = await make({
         tenant: other.rows[0]!.id,
-        delivery: ids.node('delivery:Outlet A'),
+        delivery: ids.node('TEST-BAR-3.0-KITCHEN-STORE'),
         amount: 1,
       });
       expect((await submit(c, KIM, { ...po(1), subjectId: foreign })).error).toBe(
@@ -556,9 +577,9 @@ describe('two-sided transfer', () => {
   const transfer = (): SubmitArgs => ({
     process: 'TRANSFER',
     subject: 'inv.transfer',
-    delivery: 'Outlet A',
-    from: 'Hub',
-    to: 'Outlet A',
+    delivery: 'TEST-BAR-3.0-KITCHEN-STORE',
+    from: 'TEST-CENTRAL-KITCHEN-STORE',
+    to: 'TEST-BAR-3.0-KITCHEN-STORE',
   });
 
   async function approveViaModule(c: PoolClient, who: string, id: string): Promise<string> {
@@ -572,8 +593,18 @@ describe('two-sided transfer', () => {
       expect((await submit(c, OLIVIA, transfer())).error).toBe('NOT_AUTHORISED'); // not an initiator
       const id = await submitOk(c, KIM, transfer());
       expect(await steps(c, id)).toEqual([
-        { step: 'dispatch', state: 'pending', scope: 'delivery:Hub', grp: 'HUB_MANAGER' },
-        { step: 'receipt', state: 'waiting', scope: 'delivery:Outlet A', grp: 'OUTLET_MANAGER' },
+        {
+          step: 'dispatch',
+          state: 'pending',
+          scope: 'TEST-CENTRAL-KITCHEN-STORE',
+          grp: 'HUB_MANAGER',
+        },
+        {
+          step: 'receipt',
+          state: 'waiting',
+          scope: 'TEST-BAR-3.0-KITCHEN-STORE',
+          grp: 'OUTLET_MANAGER',
+        },
       ]);
       expect((await actViaModule(c, OLIVIA, id)).error).toBe('NOT_AUTHORISED');
       expect(await approveViaModule(c, HUGO, id)).toBe('in_approval');
@@ -586,7 +617,7 @@ describe('two-sided transfer', () => {
     await inRolledBackTx(async (c) => {
       const id = await submitOk(c, KIM, {
         ...transfer(),
-        payload: { from_node_id: ids.node('delivery:Outlet B'), note: 'kept' },
+        payload: { from_node_id: ids.node('TEST-GUEST-HOUSE-2.0-SUPPLY'), note: 'kept' },
       });
       const { rows } = await c.query<{ payload: Record<string, string> }>(
         'select payload from wf.request where id = $1',
@@ -594,8 +625,8 @@ describe('two-sided transfer', () => {
       );
       expect(rows[0]!.payload).toEqual({
         note: 'kept',
-        from_node_id: ids.node('delivery:Hub'),
-        to_node_id: ids.node('delivery:Outlet A'),
+        from_node_id: ids.node('TEST-CENTRAL-KITCHEN-STORE'),
+        to_node_id: ids.node('TEST-BAR-3.0-KITCHEN-STORE'),
       });
     });
   });
@@ -629,11 +660,11 @@ describe('two-sided transfer', () => {
 describe('inbox', () => {
   it('excludes requests the user initiated', async () => {
     await inRolledBackTx(async (c) => {
-      await assign(c, CASEY, 'OUTLET_MANAGER', 'org:Outlet A');
+      await assign(c, CASEY, 'OUTLET_MANAGER', 'TEST-BAR-3.0-FLOOR-SERVICE');
       const id = await submitOk(c, OLIVIA, {
         process: 'LEAVE',
         subject: 'hr.leave_request',
-        org: 'Outlet A',
+        org: 'TEST-BAR-3.0-FLOOR-SERVICE',
       });
       expect(await inbox(c, OLIVIA)).not.toContain(id);
       expect(await inbox(c, CASEY)).toContain(id);
@@ -655,31 +686,36 @@ describe('escalation', () => {
       const id = await submitOk(c, SAM, {
         process: 'LEAVE',
         subject: 'hr.leave_request',
-        org: 'Outlet A',
+        org: 'TEST-BAR-3.0-FLOOR-SERVICE',
       });
       expect(await steps(c, id)).toEqual([
-        { step: 'outlet_approval', state: 'pending', scope: 'org:Outlet A', grp: 'OUTLET_MANAGER' },
-        { step: 'hr_approval', state: 'waiting', scope: 'org:Company', grp: 'HR_ADMIN' },
+        {
+          step: 'outlet_approval',
+          state: 'pending',
+          scope: 'TEST-BAR-3.0-FLOOR-SERVICE',
+          grp: 'OUTLET_MANAGER',
+        },
+        { step: 'hr_approval', state: 'waiting', scope: 'TEST-COMPANY', grp: 'HR_ADMIN' },
       ]);
       const none = await c.query('select * from wf.overdue_steps() where request_id = $1', [id]);
       expect(none.rows).toEqual([]);
 
       await makeOverdue(c, id, 49); // LEAVE SLA is 48 h
       const { rows } = await c.query<{ grp: string; node: string }>(
-        `select g.code as grp, n.name as node from wf.overdue_steps() o
+        `select g.code as grp, n.code as node from wf.overdue_steps() o
            join core.security_group g on g.id = o.target_group_id
            join core.hierarchy_node n on n.id = o.target_node_id
           where o.request_id = $1`,
         [id],
       );
-      expect(rows).toEqual([{ grp: 'AREA_MANAGER', node: 'Area' }]);
+      expect(rows).toEqual([{ grp: 'AREA_MANAGER', node: 'TEST-AREA-MUMBAI' }]);
 
       const escalated = await c.query<{ n: number }>('select wf.escalate_overdue() as n');
       expect(escalated.rows[0]!.n).toBe(1);
       expect((await steps(c, id))[0]).toEqual({
         step: 'outlet_approval',
         state: 'pending',
-        scope: 'org:Area',
+        scope: 'TEST-AREA-MUMBAI',
         grp: 'AREA_MANAGER',
       });
       expect(await inbox(c, OLIVIA)).not.toContain(id);
@@ -695,9 +731,9 @@ describe('escalation', () => {
       const id = await submitOk(c, KIM, {
         process: 'TRANSFER',
         subject: 'inv.transfer',
-        delivery: 'Outlet A',
-        from: 'Hub',
-        to: 'Outlet A',
+        delivery: 'TEST-BAR-3.0-KITCHEN-STORE',
+        from: 'TEST-CENTRAL-KITCHEN-STORE',
+        to: 'TEST-BAR-3.0-KITCHEN-STORE',
       });
       await makeOverdue(c, id, 25); // TRANSFER SLA is 24 h
       const un = await c.query<{ request_id: string; step: string }>(
@@ -707,7 +743,10 @@ describe('escalation', () => {
       expect(un.rows).toEqual([{ request_id: id, step: 'dispatch' }]);
       const escalated = await c.query<{ n: number }>('select wf.escalate_overdue() as n');
       expect(escalated.rows[0]!.n).toBe(0);
-      expect((await steps(c, id))[0]).toMatchObject({ state: 'pending', scope: 'delivery:Hub' });
+      expect((await steps(c, id))[0]).toMatchObject({
+        state: 'pending',
+        scope: 'TEST-CENTRAL-KITCHEN-STORE',
+      });
       expect(await inbox(c, HUGO)).toContain(id);
     });
   });
@@ -719,7 +758,10 @@ describe('escalation', () => {
       expect((await c.query<{ n: number }>('select wf.escalate_overdue() as n')).rows[0]!.n).toBe(
         1,
       );
-      expect((await steps(c, id))[0]).toMatchObject({ scope: 'org:Area', grp: 'AREA_MANAGER' });
+      expect((await steps(c, id))[0]).toMatchObject({
+        scope: 'TEST-AREA-MUMBAI',
+        grp: 'AREA_MANAGER',
+      });
       expect(await inbox(c, ARIA)).toContain(id);
     });
   });

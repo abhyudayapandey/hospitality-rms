@@ -2,9 +2,10 @@ import { join } from 'node:path';
 import pg from 'pg';
 
 // Inventory read-path performance check (ADR 007). Inside ONE rolled-back transaction:
-// adds ~10,000 ledger rows over 90 days across the Hub and both outlets (the ledger
-// trigger keeps inv.stock_level), ANALYZEs, then EXPLAIN ANALYZEs the screens' queries
-// as app_rw acting as Kim, Olivia and Aria. Nothing is committed.
+// adds ~10,000 ledger rows over 90 days across every stock location of the seeded test
+// customers (the ledger trigger keeps inv.stock_level), ANALYZEs, then EXPLAIN ANALYZEs
+// the screens' queries as app_rw acting as a store keeper, an outlet manager and an area
+// manager of Test Company. Nothing is committed.
 //   pnpm --filter @outlet-ops/db perf:inventory [--rows 10000] [--plans]
 try {
   process.loadEnvFile(join(import.meta.dirname, '..', '..', '..', '.env'));
@@ -19,36 +20,37 @@ const PLANS = process.argv.includes('--plans');
 
 const TARGET_MS = 200;
 
-const USERS = {
-  Kim: '01920000-0000-7000-8000-000000000303',
-  Olivia: '01920000-0000-7000-8000-000000000304',
-  Aria: '01920000-0000-7000-8000-000000000305',
+/** Test Company users (docs/onboarding/test-data), by username. */
+const USERNAMES = {
+  'Head Cook 3.0': 'test.head-cook.3.0',
+  'Bar Manager 3.0': 'test.bar-manager.3.0',
+  'Area Manager': 'test.area-manager',
 };
-const OUTLET_A = '01920000-0000-7000-8000-000000000203';
+const STORE = 'TEST-BAR-3.0-KITCHEN-STORE';
 
 // The queries the stock and ledger screens run (apps/web/lib/inventory.ts).
-const QUERIES: Record<string, string> = {
-  'stock list (Outlet A)': `
+const queries = (store: string, item: string): Record<string, string> => ({
+  'stock list (one store)': `
     select i.id, i.sku, i.name, i.category, i.base_uom, n.par_level,
            coalesce(s.on_hand, 0) as on_hand, s.avg_cost, s.value,
            coalesce(s.on_hand, 0) < n.par_level as below_par
       from inv.item_node n
       join inv.item i on i.id = n.item_id
       left join inv.stock_level s on s.item_id = n.item_id and s.delivery_node_id = n.delivery_node_id
-     where n.delivery_node_id = '${OUTLET_A}'
+     where n.delivery_node_id = '${store}'
      order by i.category, i.name`,
-  'ledger, latest 50 (Outlet A)': `
+  'ledger, latest 50 (one store)': `
     select l.id, l.occurred_at, l.movement_type, l.qty, l.unit_cost, l.reason, i.name
       from inv.stock_ledger l
       join inv.item i on i.id = l.item_id
-     where l.delivery_node_id = '${OUTLET_A}'
+     where l.delivery_node_id = '${store}'
      order by l.occurred_at desc
      limit 50`,
-  'item ledger, latest 50 (Outlet A)': `
+  'item ledger, latest 50 (one store)': `
     select l.id, l.occurred_at, l.movement_type, l.qty, l.unit_cost, l.reason
       from inv.stock_ledger l
-     where l.delivery_node_id = '${OUTLET_A}'
-       and l.item_id = '01920000-0000-7000-8000-000000000424'
+     where l.delivery_node_id = '${store}'
+       and l.item_id = '${item}'
      order by l.occurred_at desc
      limit 50`,
   'stock, all visible nodes': `
@@ -60,7 +62,7 @@ const QUERIES: Record<string, string> = {
       from inv.stock_ledger l
      order by l.occurred_at desc
      limit 50`,
-};
+});
 
 interface Plan {
   'Execution Time': number;
@@ -72,6 +74,24 @@ const client = new pg.Client({ connectionString: url });
 await client.connect();
 try {
   await client.query('begin');
+  const tenant = `(select id from core.tenant where code = 'TEST-COMPANY')`;
+  const users: Record<string, string> = {};
+  for (const [label, username] of Object.entries(USERNAMES)) {
+    const u = await client.query<{ id: string }>(
+      `select id from core.app_user where tenant_id = ${tenant} and username = $1`,
+      [username],
+    );
+    if (!u.rows[0]) throw new Error(`${username} not found (run pnpm db:seed)`);
+    users[label] = u.rows[0].id;
+  }
+  const at = await client.query<{ store: string; item: string }>(
+    `select n.delivery_node_id as store, n.item_id as item
+       from inv.item_node n join core.hierarchy_node h on h.id = n.delivery_node_id
+      where h.tenant_id = ${tenant} and h.code = $1 order by n.item_id limit 1`,
+    [STORE],
+  );
+  if (!at.rows[0]) throw new Error(`${STORE} has no items (run pnpm db:seed)`);
+  const QUERIES = queries(at.rows[0].store, at.rows[0].item);
   const t0 = Date.now();
   await client.query(
     `insert into inv.stock_ledger (tenant_id, item_id, delivery_node_id, movement_type, qty,
@@ -100,7 +120,7 @@ try {
 
   const results: string[] = [];
   let worst = 0;
-  for (const [who, uid] of Object.entries(USERS)) {
+  for (const [who, uid] of Object.entries(users)) {
     for (const [name, sql] of Object.entries(QUERIES)) {
       await client.query('savepoint q');
       await client.query('set local role app_rw');

@@ -13,12 +13,12 @@ beforeAll(async () => {
 });
 afterAll(closePools);
 
-const OWEN = () => ids.user('Owen Account Owner');
+const OWEN = () => ids.user('test.account-owner');
 
-/** A User Admin for Outlet A only. */
+/** A User Admin for Test Bar 3.0 with no other access (a fixture, rolled back). */
 async function outletUserAdmin(c: PoolClient): Promise<string> {
-  const ua = await newWorker(c, ids, 'Una User Admin', 'org:Outlet A', 'SERVER', [
-    ['USER_ADMIN', 'org:Outlet A'],
+  const ua = await newWorker(c, ids, 'Una User Admin', 'TEST-BAR-3.0', 'SERVER', [
+    ['USER_ADMIN', 'TEST-BAR-3.0'],
   ]);
   // admin only: drop the STAFF grant newWorker gives, so any data seen would be USER_ADMIN's
   await c.query(
@@ -43,13 +43,14 @@ async function rows<T = Record<string, unknown>>(
 describe('USER_ACCESS directory and structure', () => {
   it('a User Admin sees names, job roles and homes within their outlet only', async () => {
     await inRolledBackTx(async (c) => {
-      await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
-      await newWorker(c, ids, 'Bea Outlet B', 'org:Outlet B', 'SERVER');
-      const ua = await outletUserAdmin(c);
-      const dir = await rows<Record<string, unknown>>(c, ua, 'select * from core.user_directory()');
+      // Test Company file 08: the Hotel 1.0 GM is also User Admin for Hotel 1.0 only
+      const gm = ids.user('test.general-manager.1.0');
+      const dir = await rows<Record<string, unknown>>(c, gm, 'select * from core.user_directory()');
       const names = dir.map((d) => d.display_name);
-      expect(names).toContain('Sam Staff');
-      expect(names).not.toContain('Bea Outlet B');
+      expect(names).toContain('Test Bar Manager 1.0');
+      expect(names).not.toContain('Test Bar Manager 1.1');
+      expect(names).not.toContain('Test Bar Manager 3.0');
+      expect(dir.find((d) => d.username === 'test.cook.2.0')).toBeUndefined();
       expect(Object.keys(dir[0]!).sort()).toEqual(
         [
           'display_name',
@@ -63,22 +64,47 @@ describe('USER_ACCESS directory and structure', () => {
           'username',
         ].sort(),
       );
-      const tree = await rows<{ node_id: string }>(
+      const tree = await rows<{ code: string }>(c, gm, 'select code from core.structure_tree()');
+      const got = tree.map((t) => t.code);
+      expect(got).toContain('TEST-HOTEL-1.0-BAR');
+      expect(got).toContain('TEST-HOTEL-1.0-SUPPLY'); // its supply point...
+      expect(got).toContain('TEST-HOTEL-1.0-KITCHEN-STORE'); // ...and the stores under it
+      expect(got).not.toContain('TEST-HOTEL-1.1');
+      expect(got).not.toContain('TEST-CENTRAL-KITCHEN-STORE');
+
+      // the Guest House front desk executive administers the Guest House, nothing else
+      const fd = ids.user('test.front-desk-executive.2.0');
+      const fdTree = await rows<{ code: string }>(c, fd, 'select code from core.structure_tree()');
+      expect(fdTree.map((t) => t.code).sort()).toEqual([
+        'TEST-GUEST-HOUSE-2.0',
+        'TEST-GUEST-HOUSE-2.0-SUPPLY',
+      ]);
+    });
+  });
+
+  it('a User Admin over the central kitchen does not reach the outlets it supplies', async () => {
+    await inRolledBackTx(async (c) => {
+      const ck = await newWorker(c, ids, 'Cara CK Admin', 'TEST-CENTRAL-KITCHEN', 'SERVER', [
+        ['USER_ADMIN', 'TEST-CENTRAL-KITCHEN'],
+      ]);
+      const tree = await rows<{ code: string }>(
         c,
-        ua,
-        'select node_id from core.structure_tree()',
+        ck.userId,
+        `select code from core.structure_tree() where type = 'delivery'`,
       );
-      const got = tree.map((t) => t.node_id);
-      expect(got).toContain(ids.node('org:Outlet A'));
-      expect(got).toContain(ids.node('delivery:Outlet A')); // linked supply point
-      expect(got).not.toContain(ids.node('org:Outlet B'));
-      expect(got).not.toContain(ids.node('delivery:Hub'));
+      expect(tree.map((t) => t.code)).toEqual(['TEST-CENTRAL-KITCHEN-STORE']);
     });
   });
 
   it('admin rights are not data access: no worker detail, pay, roster, stock or audit', async () => {
     await inRolledBackTx(async (c) => {
-      const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
+      const sam = await workerFor(
+        c,
+        ids,
+        'test.server.3.0',
+        'TEST-BAR-3.0-FLOOR-SERVICE',
+        'SERVER',
+      );
       const ua = await outletUserAdmin(c);
       for (const who of [ua, OWEN()]) {
         for (const [table, filter] of [
@@ -100,29 +126,29 @@ describe('USER_ACCESS directory and structure', () => {
         'select display_name from core.user_directory()',
       );
       expect(all.map((d) => d.display_name)).toEqual(
-        expect.arrayContaining(['Sam Staff', 'Una User Admin']),
+        expect.arrayContaining(['Test Server 3.0', 'Test Cook 2.0', 'Una User Admin']),
       );
     });
   });
 
   it('staff have no directory or structure access', async () => {
     await inRolledBackTx(async (c) => {
-      await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
-      expect(await rows(c, ids.user('Sam Staff'), 'select * from core.user_directory()')).toEqual(
-        [],
-      );
-      expect(await rows(c, ids.user('Sam Staff'), 'select * from core.structure_tree()')).toEqual(
-        [],
-      );
+      await workerFor(c, ids, 'test.server.3.0', 'TEST-BAR-3.0-FLOOR-SERVICE', 'SERVER');
+      expect(
+        await rows(c, ids.user('test.server.3.0'), 'select * from core.user_directory()'),
+      ).toEqual([]);
+      expect(
+        await rows(c, ids.user('test.server.3.0'), 'select * from core.structure_tree()'),
+      ).toEqual([]);
     });
   });
 });
 
 describe('receiving against a purchase order', () => {
-  it('a stock user receives a released PO but cannot create one', async () => {
+  it('the Receiving Clerk receives a released PO but cannot create one', async () => {
     await inRolledBackTx(async (c) => {
       const tenant = await tenantOf(c, ids);
-      const node = ids.node('delivery:Outlet A');
+      const node = ids.node('TEST-HOTEL-1.0-MAIN-STORE');
       const { rows: r } = await c.query<{ item: string; supplier: string }>(
         `select n.item_id as item, s.id as supplier
            from inv.item_node n, inv.supplier s
@@ -142,9 +168,10 @@ describe('receiving against a purchase order', () => {
          values ($1, $2, $3, $4, 2, 10)`,
         [tenant, po, item, node],
       );
-      const CASEY = ids.user('Casey Chef'); // STOCK_USER at delivery Outlet A
+      // STOCK_USER at the Main Store (job role default: STOCK_USER@main_store)
+      const CLERK = ids.user('test.receiving-clerk.1.0');
       const lines = JSON.stringify([{ item_id: item, qty: 2 }]);
-      const received = await attemptAs(c, CASEY, 'select inv.receive($1, $2::jsonb, $3)', [
+      const received = await attemptAs(c, CLERK, 'select inv.receive($1, $2::jsonb, $3)', [
         po,
         lines,
         'rc-1',
@@ -152,21 +179,30 @@ describe('receiving against a purchase order', () => {
       expect(received.error).toBeUndefined();
       const create = await attemptAs(
         c,
-        CASEY,
+        CLERK,
         `select inv.create_po($1, $2, $3::jsonb, null, 'rc-2')`,
         [node, supplier, JSON.stringify([{ item_id: item, qty: 1, unit_cost: 10 }])],
       );
       expect(create.error).toBe('NOT_AUTHORISED');
-      // staff without stock access can do neither
+      // the store keeper there can create one; staff and other stores' users can do neither
       expect(
         (
-          await attemptAs(c, ids.user('Sam Staff'), 'select inv.receive($1, $2::jsonb, $3)', [
-            po,
-            lines,
-            'rc-3',
-          ])
+          await attemptAs(
+            c,
+            ids.user('test.store-keeper.1.0'),
+            `select inv.create_po($1, $2, $3::jsonb, null, 'rc-4')`,
+            [node, supplier, JSON.stringify([{ item_id: item, qty: 1, unit_cost: 10 }])],
+          )
         ).error,
-      ).toBe('NOT_AUTHORISED');
+      ).toBeUndefined();
+      for (const who of ['test.bellboy.1.0', 'test.cook.3.0']) {
+        const r = await attemptAs(c, ids.user(who), 'select inv.receive($1, $2::jsonb, $3)', [
+          po,
+          lines,
+          `rc-${who}`,
+        ]);
+        expect(r.error, who).toBe('NOT_AUTHORISED');
+      }
     });
   });
 });

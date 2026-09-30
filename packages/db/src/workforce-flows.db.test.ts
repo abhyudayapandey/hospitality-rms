@@ -9,7 +9,14 @@ import {
   resetRole,
   type SeedIds,
 } from '../test/helpers';
-import { clearWorkforce, newWorker, tenantOf, workerFor, type JobRole } from '../test/workforce';
+import {
+  clearWorkforce,
+  newUser,
+  newWorker,
+  tenantOf,
+  workerFor,
+  type JobRole,
+} from '../test/workforce';
 
 // LEAVE, SHIFT_SWAP and ROLE_CHANGE end to end (ADR 008): request -> approvals -> executor
 // handler, with balances, roster blocks, excluded approvers, approval-time rule checks and
@@ -41,12 +48,23 @@ async function fixture(c: PoolClient): Promise<Fx> {
       `select (hr.week_start((now() at time zone 'Asia/Kolkata')::date) + 14)::text as d`,
     )
   ).rows[0]!.d;
-  const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
-  const olivia = await workerFor(c, ids, 'Olivia Outlet Manager', 'org:Outlet A', 'MANAGER');
-  const pat = await newWorker(c, ids, 'Pat Server', 'org:Outlet A', 'SERVER');
-  const mia = await newWorker(c, ids, 'Mia Manager', 'org:Outlet A', 'MANAGER');
-  const omar = await newWorker(c, ids, 'Omar B Manager', 'org:Outlet B', 'MANAGER', [
-    ['OUTLET_MANAGER', 'org:Outlet B'],
+  const sam = await workerFor(c, ids, 'test.server.3.0', 'TEST-BAR-3.0-FLOOR-SERVICE', 'SERVER');
+  const olivia = await workerFor(
+    c,
+    ids,
+    'test.bar-manager.3.0',
+    'TEST-BAR-3.0-FLOOR-SERVICE',
+    'MANAGER',
+  );
+  // the Bar Manager's worker sits at the outlet; these flows roster her in Floor Service
+  await c.query(`update hr.worker set org_node_id = $2, role_code = 'MANAGER' where id = $1`, [
+    olivia,
+    ids.node('TEST-BAR-3.0-FLOOR-SERVICE'),
+  ]);
+  const pat = await newWorker(c, ids, 'Pat Server', 'TEST-BAR-3.0-FLOOR-SERVICE', 'SERVER');
+  const mia = await newWorker(c, ids, 'Mia Manager', 'TEST-BAR-3.0-FLOOR-SERVICE', 'MANAGER');
+  const omar = await newWorker(c, ids, 'Omar B Manager', 'TEST-GUEST-HOUSE-2.0', 'MANAGER', [
+    ['OUTLET_MANAGER', 'TEST-GUEST-HOUSE-2.0'],
   ]);
   const types = await c.query<{ code: string; id: string }>(
     `insert into hr.leave_type (tenant_id, code, name, annual_days)
@@ -86,7 +104,7 @@ async function shift(
              ($3::date + $4::int + $5::time) at time zone 'Asia/Kolkata' + make_interval(hours => $6),
              $7, 2, 'published', now())
      returning id`,
-    [f.tenant, ids.node('org:Outlet A'), f.monday, day, time, hours, role],
+    [f.tenant, ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), f.monday, day, time, hours, role],
   );
   return rows[0]!.id;
 }
@@ -120,7 +138,7 @@ async function err(c: PoolClient, user: string, sql: string, params: unknown[] =
 async function assign(c: PoolClient, shiftId: string, workerId: string): Promise<string> {
   const [r] = await as<{ id: string }>(
     c,
-    ids.user('Olivia Outlet Manager'),
+    ids.user('test.bar-manager.3.0'),
     'select hr.assign($1, $2) as id',
     [shiftId, workerId],
   );
@@ -155,12 +173,12 @@ async function one<T>(c: PoolClient, sql: string, params: unknown[] = []): Promi
   return (await c.query(sql, params)).rows[0] as T;
 }
 
-const SAM = () => ids.user('Sam Staff');
-const OLIVIA = () => ids.user('Olivia Outlet Manager');
-const HARPER = () => ids.user('Harper HR Admin');
-const OWEN = () => ids.user('Owen Account Owner');
-const ARIA = () => ids.user('Aria Area Manager');
-const SASHA = () => ids.user('Sasha Security Admin');
+const SAM = () => ids.user('test.server.3.0');
+const OLIVIA = () => ids.user('test.bar-manager.3.0');
+const HARPER = () => ids.user('test.hr-admin');
+const OWEN = () => ids.user('test.account-owner');
+const ARIA = () => ids.user('test.area-manager');
+const SASHA = () => ids.user('test.security-admin');
 
 // ---------------------------------------------------------------------------
 describe('LEAVE', () => {
@@ -286,7 +304,7 @@ describe('LEAVE', () => {
       const [b] = await as<{ id: string }>(c, SAM(), req, [f.annual, f.monday]);
       expect(b!.id).toBe(a!.id);
       // a user who is not a worker cannot request leave
-      expect(await err(c, ids.user('Hugo Hub Manager'), req, [f.annual, f.monday])).toBe(
+      expect(await err(c, await newUser(c, ids, 'No Worker'), req, [f.annual, f.monday])).toBe(
         'INVALID_WORKER',
       );
     });
@@ -624,9 +642,11 @@ describe('SHIFT_SWAP', () => {
       expect(await sees(SAM())).toBe('1');
       expect(await sees(OLIVIA())).toBe('1');
       expect(await sees(f.pat.userId)).toBe('0');
-      expect(await sees(ids.user('Casey Chef'))).toBe('0');
+      expect(await sees(ids.user('test.cook.3.0'))).toBe('0');
       expect(await sees(f.omar.userId)).toBe('0');
-      expect((await as(c, ids.user('Casey Chef'), 'select * from hr.my_swaps()')).length).toBe(0);
+      expect((await as(c, ids.user('test.cook.3.0'), 'select * from hr.my_swaps()')).length).toBe(
+        0,
+      );
     });
   });
 });
@@ -644,7 +664,7 @@ describe('ROLE_CHANGE', () => {
             c,
             SAM(),
             `select core.can('STOCK_ADJUSTMENTS', 'modify', null, $1) ok`,
-            [ids.node('delivery:Outlet A')],
+            [ids.node('TEST-BAR-3.0-KITCHEN-STORE')],
           )
         )[0]!.ok;
       expect(await canAdjust()).toBe(false);
@@ -653,7 +673,7 @@ describe('ROLE_CHANGE', () => {
         'grant',
         SAM(),
         'STOCK_USER',
-        ids.node('delivery:Outlet A'),
+        ids.node('TEST-BAR-3.0-KITCHEN-STORE'),
         null,
         null,
         null,
@@ -663,7 +683,7 @@ describe('ROLE_CHANGE', () => {
         'select org_node_id, wf_request_id from hr.role_change where id = $1',
         [id],
       );
-      expect(rc.org_node_id).toBe(ids.node('org:Outlet A')); // linked org node routes it
+      expect(rc.org_node_id).toBe(ids.node('TEST-BAR-3.0-KITCHEN')); // the store's department routes it
       expect(await err(c, OWEN(), `select wf.act($1, 'approve')`, [rc.wf_request_id])).toBe(
         'SEGREGATION_OF_DUTIES',
       );
@@ -714,7 +734,7 @@ describe('ROLE_CHANGE', () => {
         c,
         SAM(),
         `select core.can('ROSTER', 'view', $1, null) ok`,
-        [ids.node('org:Outlet A')],
+        [ids.node('TEST-BAR-3.0-FLOOR-SERVICE')],
       );
       expect(roster[0]!.ok).toBe(false);
 
@@ -724,7 +744,7 @@ describe('ROLE_CHANGE', () => {
           'grant',
           SASHA(),
           'AUDITOR',
-          ids.node('org:Company'),
+          ids.node('TEST-COMPANY'),
           null,
           null,
           null,
@@ -741,7 +761,7 @@ describe('ROLE_CHANGE', () => {
           'grant',
           SAM(),
           'STOCK_USER',
-          ids.node('delivery:Outlet A'),
+          ids.node('TEST-BAR-3.0-KITCHEN-STORE'),
           null,
           null,
           null,
@@ -785,7 +805,7 @@ describe('ROLE_CHANGE', () => {
                                        node_id, effective_from, created_by)
            select $1, $2, 'grant', $3, g.id, $4, current_date, $5
              from core.security_group g where g.tenant_id = $1 and g.code = 'STAFF' returning id`,
-          [f.tenant, ids.node('org:Company'), SAM(), node, OWEN()],
+          [f.tenant, ids.node('TEST-COMPANY'), SAM(), node, OWEN()],
         )
       ).id;
       const { r } = await first<{ r: string }>(

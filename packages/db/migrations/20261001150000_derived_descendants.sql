@@ -33,6 +33,23 @@ begin
   execute replace(v_src, v_old, 'where nl.delivery_node_id = core.link_anchor(p_delivery)');
 end $$;
 
+-- USER_ACCESS on the delivery tree follows the same rule: a place belongs to its anchor.
+create or replace function core.in_user_access_scope(p_node uuid, p_access text default 'view')
+returns boolean
+language sql stable security definer
+set search_path = pg_catalog, core, extensions
+as $$
+  select case n.type
+    when 'org' then core.can('USER_ACCESS', p_access, n.id, null)
+    else exists (
+      select 1 from core.node_link nl
+       where nl.delivery_node_id = core.link_anchor(n.id)
+         and core.can('USER_ACCESS', p_access, nl.org_node_id, null))
+  end
+    from core.hierarchy_node n
+   where n.id = p_node and n.tenant_id = core.my_tenant();
+$$;
+
 drop function core.nodes(text);
 create function core.nodes(p_type text default null)
 returns table (id uuid, type text, kind text, name text, parent_id uuid, depth int,
@@ -116,6 +133,21 @@ as $$
 $$;
 revoke execute on function core.nodes(text) from public;
 grant execute on function core.nodes(text) to app_rw;
+create or replace function core.in_user_access_scope(p_node uuid, p_access text default 'view')
+returns boolean
+language sql stable security definer
+set search_path = pg_catalog, core, extensions
+as $$
+  select case n.type
+    when 'org' then core.can('USER_ACCESS', p_access, n.id, null)
+    else exists (
+      select 1 from core.node_link nl
+        join core.hierarchy_node d on d.id = nl.delivery_node_id
+       where d.path @> n.path and core.can('USER_ACCESS', p_access, nl.org_node_id, null))
+  end
+    from core.hierarchy_node n
+   where n.id = p_node and n.tenant_id = core.my_tenant();
+$$;
 do $$
 begin
   execute replace(pg_get_functiondef('core.can(text, text, uuid, uuid, uuid)'::regprocedure),

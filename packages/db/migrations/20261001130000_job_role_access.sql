@@ -204,10 +204,13 @@ begin
                          on g.tenant_id = v_tenant and g.code = d.access_group
                       where g.id = ra.group_id and d.node_id = ra.node_id
                         and d.include_descendants = ra.include_descendants);
+  -- access from the job role starts when the person joined (file 07), or today
   insert into core.role_assignment (tenant_id, user_id, group_id, node_id,
-                                    include_descendants, source, source_note)
-  select v_tenant, p_user, g.id, d.node_id, bool_or(d.include_descendants), 'job_role',
-         min(d.source)
+                                    include_descendants, effective_from, source, source_note)
+  select v_tenant, p_user, g.id, d.node_id, bool_or(d.include_descendants),
+         coalesce((select w.joined_on from hr.worker w where w.owner_user_id = p_user),
+                  current_date),
+         'job_role', min(d.source)
     from core.derive_job_role_access(p_user) d
     join core.security_group g on g.tenant_id = v_tenant and g.code = d.access_group
    where not exists (select 1 from core.role_assignment ra
