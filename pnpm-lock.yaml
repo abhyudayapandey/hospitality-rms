@@ -65,6 +65,9 @@ importers:
       '@outlet-ops/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@outlet-ops/onboarding':
+        specifier: workspace:*
+        version: link:../../packages/onboarding
       aws-jwt-verify:
         specifier: ^5.2.1
         version: 5.2.1
@@ -148,12 +151,21 @@ importers:
 
   packages/onboarding:
     dependencies:
+      '@aws-sdk/client-cognito-identity-provider':
+        specifier: ^3.1143.0
+        version: 3.1143.0
+      '@aws-sdk/client-s3':
+        specifier: ^3.1142.0
+        version: 3.1142.0
       '@outlet-ops/domain':
         specifier: workspace:*
         version: link:../domain
       '@outlet-ops/workflow':
         specifier: workspace:*
         version: link:../workflow
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       pg:
         specifier: ^8.23.0
         version: 8.23.0
@@ -1406,6 +1418,9 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
 
   file-entry-cache@11.1.5:
     resolution: {integrity: sha512-+PFTHITI08JIGhnNpGNI8T8inUpgZfk3GNEqfT9R2zZV2iFXg3CvqzSl/uEhs7TSGujYRELEANyDvS8Fj7+S7Q==}
@@ -3195,6 +3210,8 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
       picomatch: 4.0.7
+
+  fflate@0.8.3: {}
 
   file-entry-cache@11.1.5:
     dependencies:

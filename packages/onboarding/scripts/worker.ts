@@ -1,9 +1,11 @@
 import pg from 'pg';
 import { runNextJob } from '../src/worker';
 
-// outlet-ops-platform-worker (ADR 012): runs queued platform jobs (creating customers) as
-// platform_loader. The only credential it gets is PLATFORM_LOADER_DATABASE_URL; the web
-// app never holds it. `--once` drains the queue and exits.
+// outlet-ops-platform-worker (ADR 012, 013): runs queued platform jobs (creating customers,
+// import dry runs and applies, email invites) as platform_loader. The only credential it
+// gets is PLATFORM_LOADER_DATABASE_URL; the web app never holds it. Uploads are read from
+// PHOTO_BUCKET (or ONBOARDING_UPLOAD_DIR), invites go to COGNITO_USER_POOL_ID (no-op
+// without it). `--once` runs every job that is due and exits.
 //   pnpm --filter @outlet-ops/onboarding worker [--once]
 
 const url = process.env.PLATFORM_LOADER_DATABASE_URL;
