@@ -34,7 +34,7 @@ async function ok<T = Record<string, unknown>>(
 ): Promise<T[]> {
   const r = await attemptAs<T & object>(c, ids.user(who), sql, params);
   if (r.error !== undefined) throw new Error(`${who}: ${r.error}`);
-  return r.rows as T[];
+  return r.rows;
 }
 
 async function error(c: PoolClient, who: string, sql: string, params: unknown[] = []) {
