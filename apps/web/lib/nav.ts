@@ -5,18 +5,20 @@ export interface NavItem {
   href: string;
   label: string;
   icon: string;
-  domain?: string;
+  /** Shown when the user has any of these domains. */
+  domains?: readonly string[];
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: '/', label: 'Home', icon: '⌂' },
   { href: '/inbox', label: 'Inbox', icon: '✓' },
   { href: '/requests', label: 'Requests', icon: '≡' },
-  { href: '/stock', label: 'Stock', icon: '▦', domain: 'STOCK_LEVELS' },
-  { href: '/roster', label: 'Roster', icon: '◷', domain: 'ROSTER' },
-  { href: '/admin', label: 'Admin', icon: '⚙', domain: 'SECURITY_ROLES' },
+  { href: '/stock', label: 'Stock', icon: '▦', domains: ['STOCK_LEVELS'] },
+  { href: '/roster', label: 'Roster', icon: '◷', domains: ['ROSTER'] },
+  // user administration (ADR 011) as well as the security roles view
+  { href: '/admin', label: 'Admin', icon: '⚙', domains: ['USER_ACCESS', 'SECURITY_ROLES'] },
 ];
 
 export function visibleNav(domains: ReadonlySet<string>): NavItem[] {
-  return NAV_ITEMS.filter((i) => !i.domain || domains.has(i.domain));
+  return NAV_ITEMS.filter((i) => !i.domains || i.domains.some((d) => domains.has(d)));
 }

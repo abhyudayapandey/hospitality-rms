@@ -190,6 +190,28 @@ describe('least-privilege IAM', () => {
     }
   });
 
+  it('Cognito: exactly the seven user-admin actions, on the customer pool only (ADR 011)', () => {
+    const cognito = [...statements('InstanceRole'), ...statements('GithubDeployRole')].filter((s) =>
+      actions(s).some((a) => a.startsWith('cognito-idp:')),
+    );
+    expect(cognito.map((s) => s.Sid)).toEqual(['CustomerLoginAdmin']);
+    const s = cognito[0]!;
+    expect(actions(s).sort()).toEqual(
+      [
+        'cognito-idp:AdminCreateUser',
+        'cognito-idp:AdminDisableUser',
+        'cognito-idp:AdminEnableUser',
+        'cognito-idp:AdminGetUser',
+        'cognito-idp:AdminSetUserPassword',
+        'cognito-idp:AdminUpdateUserAttributes',
+        'cognito-idp:AdminUserGlobalSignOut',
+      ].sort(),
+    );
+    const pools = Object.keys(t.findResources('AWS::Cognito::UserPool'));
+    expect(pools).toHaveLength(1);
+    expect(s.Resource).toEqual({ 'Fn::GetAtt': [pools[0], 'Arn'] });
+  });
+
   it('deploy role: trusted only from the production environment of this repo', () => {
     t.hasResourceProperties('AWS::IAM::Role', {
       AssumeRolePolicyDocument: {

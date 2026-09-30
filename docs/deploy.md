@@ -473,6 +473,21 @@ The instance never builds anything. It keeps the last 3 releases.
 
 Open `https://<domainName>/login`. The first certificate can take up to a minute.
 
+#### Releasing user administration (ADR 011)
+
+This release changes the stack (the instance role may now manage logins in the customer
+pool), so the stack goes out before the app:
+
+1. `pnpm --filter @outlet-ops/infra synth`, then `cd infra && pnpm cdk diff`. The diff
+   must show only the instance role's policy gaining statement `CustomerLoginAdmin`: the
+   seven `cognito-idp:Admin*` actions on the `Users` pool ARN. Anything else (a replaced
+   pool or instance, other statements): stop and ask.
+2. `pnpm cdk deploy`.
+3. Run the Deploy workflow (the `user_admin` migration runs on the instance).
+
+The migration checks that no username or email is used by two people across customers
+and stops with the list if one is; production has no customer data yet, so it passes.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.
@@ -503,6 +518,10 @@ The production database has no dev seed.
     against every business table (it never touches AWS).
 - **Rostering rules** default to 10 h rest, 48 h a week and late after 10 minutes; file 15
   overrides them.
+- **People added later** are added in the app (**Admin → People → Add a person**, ADR
+  011): it creates the Cognito login and shows a username login's temporary password
+  once. People loaded from files still need their logins created as below until the
+  console's logins screen ships.
 - **Cognito users.** Create each person in the user pool with the username from file 07,
   then link the `sub` to their `core.app_user` row (as `migrator`, until the console does
   it: `update core.app_user set cognito_sub = '<sub>' where username = '<username>'` in the

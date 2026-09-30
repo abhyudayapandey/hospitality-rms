@@ -41,6 +41,17 @@ export interface OutletOpsStackProps extends StackProps {
 
 const BACKUP_TAG = { key: 'Backup', value: 'outlet-ops-daily' };
 
+/** The only Cognito calls the app instance may make, on the customer pool (ADR 011). */
+export const USER_ADMIN_COGNITO_ACTIONS = [
+  'cognito-idp:AdminCreateUser',
+  'cognito-idp:AdminGetUser',
+  'cognito-idp:AdminSetUserPassword',
+  'cognito-idp:AdminDisableUser',
+  'cognito-idp:AdminEnableUser',
+  'cognito-idp:AdminUserGlobalSignOut',
+  'cognito-idp:AdminUpdateUserAttributes',
+] as const;
+
 /**
  * Characters AWS accepts in tag keys and values across services (Cognito is the
  * strictest): letters, numbers, spaces and _ . : / = + - @. No $ ~ , ; % or brackets.
@@ -340,6 +351,15 @@ export class OutletOpsStack extends Stack {
       userPool,
       'always-free',
       'Cognito Essentials - first 10000 MAU free - no SMS configured',
+    );
+    // User administration (ADR 011): the app creates logins, resets passwords, disables
+    // leavers and signs them out, on this pool only. Nothing else in Cognito.
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        sid: 'CustomerLoginAdmin',
+        actions: [...USER_ADMIN_COGNITO_ACTIONS],
+        resources: [userPool.userPoolArn],
+      }),
     );
 
     const client = userPool.addClient('Web', {

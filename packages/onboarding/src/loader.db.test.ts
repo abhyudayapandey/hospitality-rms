@@ -160,14 +160,21 @@ describe('approvers (ADR 009)', () => {
     await inRolledBackTx(async (c) => {
       // without file 08 the solo bar has no account owner: nobody approves the owner-only
       // steps (the HR step, role changes), and nobody above the bar manager
-      // (loaded as a new customer: the existing one keeps its owner, guardrail (d))
+      // (loaded as a new customer: the existing one keeps its owner, guardrail (d); with
+      // its own usernames, since logins are unique across customers, ADR 011)
+      const copy = Object.fromEntries(
+        Object.entries(solo).map(([f, text]) => [
+          f,
+          text.replaceAll('test.solo.', 'test.solocopy.'),
+        ]),
+      );
       const files = {
-        ...solo,
-        '00_customer.csv': solo['00_customer.csv']!.replaceAll(
+        ...copy,
+        '00_customer.csv': copy['00_customer.csv']!.replaceAll(
           'TEST-SOLO-COMPANY',
           'TEST-SOLO-COPY',
         ),
-        '08_role_assignments_extra.csv': solo['08_role_assignments_extra.csv']!.split(/\r?\n/)[0]!,
+        '08_role_assignments_extra.csv': copy['08_role_assignments_extra.csv']!.split(/\r?\n/)[0]!,
       };
       const before = await tenantCount(c, 'TEST-SOLO-COPY');
       const r = await loadCustomer(c, files, { nested: true });
@@ -253,6 +260,29 @@ describe('people whose own requests nobody else could approve (ADR 010)', () => 
            (select id from core.tenant where code = 'TEST-SOLO-COMPANY'))`,
       );
       expect(rows).toContainEqual({ username: 'test.solo.head-cook', account_owner: false });
+    });
+  });
+});
+
+describe('logins are unique across customers (ADR 011)', () => {
+  it('reports another customer’s username or email by file, row and column, with a suggestion', async () => {
+    await inRolledBackTx(async (c) => {
+      const solo = readCustomerDir(join(DATA, 'test-solo-bar-co'));
+      const [head, ...rest] = solo['07_users.csv']!.trim().split(/\r?\n/);
+      const files = {
+        ...solo,
+        '00_customer.csv': solo['00_customer.csv']!.replaceAll('TEST-SOLO-COMPANY', 'ACME'),
+        '07_users.csv': [head, ...rest].join('\n'),
+      };
+      const r = await loadCustomer(c, files, { nested: true, dryRun: true });
+      expect(r.ok).toBe(false);
+      expect(r.issues).toContainEqual({
+        file: '07_users.csv',
+        row: 2,
+        column: 'username',
+        message: `${rest[0]!.split(',')[0]} is used by another customer (USERNAME_TAKEN); try acme.${rest[0]!.split(',')[0]}`,
+      });
+      expect(r.issues.every((i) => i.message.includes('_TAKEN'))).toBe(true);
     });
   });
 });

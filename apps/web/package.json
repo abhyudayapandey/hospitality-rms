@@ -12,6 +12,7 @@
     "check:prod-dev-auth": "bash scripts/check-prod-dev-auth.sh"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.1143.0",
     "@aws-sdk/client-s3": "^3.1142.0",
     "@aws-sdk/s3-presigned-post": "^3.1142.0",
     "@aws-sdk/s3-request-presigner": "^3.1142.0",

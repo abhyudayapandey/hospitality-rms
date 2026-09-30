@@ -29,6 +29,10 @@ describe('bottom nav', () => {
       'Admin',
     ]);
   });
+
+  it('shows Admin to user administrators too', () => {
+    expect(visibleNav(new Set(['USER_ACCESS'])).map((i) => i.label)).toContain('Admin');
+  });
 });
 
 describe('poller', () => {
