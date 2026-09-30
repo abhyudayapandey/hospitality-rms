@@ -1,0 +1,4 @@
+org_node_code,delivery_node_code,note
+TEST-SOLO-BAR,TEST-SOLO-BAR-SUPPLY,Test Solo Bar ↔ its supply point
+TEST-SOLO-BAR-BAR,TEST-SOLO-BAR-BAR-STORE,Bar uses the Bar Store
+TEST-SOLO-BAR-KITCHEN,TEST-SOLO-BAR-KITCHEN-STORE,Kitchen uses the Kitchen Store

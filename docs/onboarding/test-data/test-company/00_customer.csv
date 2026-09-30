@@ -1,0 +1,2 @@
+customer_code,company_name,country,currency,default_timezone
+TEST-COMPANY,Test Company,India,INR,Asia/Kolkata

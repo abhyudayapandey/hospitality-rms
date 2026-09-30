@@ -1,0 +1,6 @@
+roster_node_code,shift_name,start_time,end_time,job_role_code,headcount,days
+TEST-SOLO-BAR-BAR,Bar Evening,17:00,01:00,HEAD_BARTENDER,1,Mon-Sun
+TEST-SOLO-BAR-BAR,Bar Evening,17:00,01:00,BARTENDER,1,Mon-Sun
+TEST-SOLO-BAR-BAR,Bar Late,20:00,02:00,BARTENDER,1,Fri-Sat
+TEST-SOLO-BAR-FLOOR-SERVICE,Floor Evening,17:00,01:00,SERVER,1,Mon-Sun
+TEST-SOLO-BAR-KITCHEN,Kitchen Evening,16:00,00:00,COOK,1,Mon-Sun
