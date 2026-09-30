@@ -206,6 +206,24 @@ test('clock in outside the fence is recorded and flagged for the manager', async
   await expect(rows).toHaveCount(open - 1);
 });
 
+test('exceptions: a hotel’s queue is grouped by department, each with whom it waits for', async ({
+  page,
+}) => {
+  await signInAs(page, 'Test General Manager 1.0');
+  await page.goto(`/roster/exceptions?node=${await placeId('TEST-HOTEL-1.0')}`);
+  const housekeeping = page
+    .getByTestId('exceptions')
+    .getByRole('region', { name: 'Test Hotel & Bar 1.0 – Housekeeping' });
+  await expect(housekeeping).toBeVisible();
+  // a housekeeping worker's exception waits for the executive housekeeper
+  await expect(
+    housekeeping
+      .getByTestId('assignee')
+      .filter({ hasText: 'Waiting for Test Executive Housekeeper 1.0' })
+      .first(),
+  ).toBeVisible();
+});
+
 test('events: the manager plans one with staff needed; staff can read it', async ({ page }) => {
   const name = `E2E tasting ${Date.now()}`;
   await signInAs(page, 'Test Bar Manager 3.0');

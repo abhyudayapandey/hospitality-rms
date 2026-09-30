@@ -53,6 +53,42 @@ test('two-leg transfer: requested, sent by the central kitchen store keeper, rec
   expect(await onHand(page, 'POTATOES', store)).toBeCloseTo(before + 3.5, 3);
 });
 
+test('store to store in one outlet: the main store keeper sends, the kitchen’s keeper receives', async ({
+  page,
+}) => {
+  const kitchen = await placeId('TEST-HOTEL-1.0-KITCHEN-STORE');
+  const main = await placeId('TEST-HOTEL-1.0-MAIN-STORE');
+  await signInAs(page, 'Test Sous Chef 1.0');
+  const before = await onHand(page, 'BASMATI-RICE', kitchen);
+
+  await page.goto(`/stock/transfers/new?node=${kitchen}`);
+  const from = page.getByRole('combobox', { name: 'From' });
+  // only this hotel's stores and the central kitchen: never another outlet
+  const offered = await from
+    .locator('option')
+    .evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value));
+  expect(offered).not.toContain(await placeId('TEST-HOTEL-1.1-MAIN-STORE'));
+  await from.selectOption(main);
+  await page.getByRole('textbox', { name: 'Request Test Basmati Rice' }).fill('2');
+  await page.getByRole('button', { name: 'Request 1 items' }).click();
+  await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
+  const id = new URL(page.url()).pathname.split('/').pop()!;
+
+  await signInAs(page, 'Test Store Keeper 1.0');
+  await page.goto('/inbox');
+  await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.getByTestId('transfer-progress')).toHaveText('in transit');
+
+  await signInAs(page, 'Test Executive Chef 1.0');
+  await page.goto('/inbox');
+  await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
+  await page.getByRole('button', { name: 'Confirm receipt' }).click();
+  await expect(page.getByRole('status')).toHaveText('Received.');
+  await runExecutor();
+  expect(await onHand(page, 'BASMATI-RICE', kitchen)).toBeCloseTo(before + 2, 3);
+});
+
 test('a count within tolerance posts straight away', async ({ page }) => {
   const store = await placeId(PLACE.store);
   await signInAs(page, 'Test Head Cook 3.0');
