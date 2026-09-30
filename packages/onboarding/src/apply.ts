@@ -144,6 +144,8 @@ class Loader {
 
   async run(): Promise<void> {
     await this.customer();
+    await this.ownersInFiles();
+    if (this.report.issues.length) return;
     await this.structure();
     await this.people();
     if (this.report.issues.length) return;
@@ -211,6 +213,50 @@ class Loader {
     // groups, domains and the policy matrix the assignments below refer to
     await syncProductAccess(this.c, this.tenant);
     await syncProcessDefs(this.c);
+  }
+
+  /**
+   * The customer's existing account owners must all be in 07_users.csv (ADR 013): an owner
+   * the files don't know would stay next to the files' own owner (the production mix-up:
+   * a console-created test-company.owner next to test.account-owner). Blocking; it names
+   * both, so the platform admin can fix the files or remove the extra owner first.
+   */
+  private async ownersInFiles() {
+    const existing = await this.c.query<{ username: string }>(
+      `select distinct u.username
+         from core.role_assignment ra
+         join core.security_group g on g.id = ra.group_id and g.code = 'ACCOUNT_OWNER'
+         join core.app_user u on u.id = ra.user_id and u.kind = 'human' and u.status = 'active'
+        where ra.tenant_id = $1 and ra.effective_from <= current_date
+          and (ra.effective_to is null or ra.effective_to >= current_date)
+        order by 1`,
+      [this.tenant],
+    );
+    const inFile = new Set(this.b.users.map((u) => u.username));
+    const ownerRoles = new Set(
+      this.b.jobRoles
+        .filter((r) => r.default_access.some((a) => a.group === 'ACCOUNT_OWNER'))
+        .map((r) => r.job_role_code),
+    );
+    const fileOwners = [
+      ...new Set([
+        ...this.b.users.filter((u) => ownerRoles.has(u.job_role_code)).map((u) => u.username),
+        ...this.b.extraAccess
+          .filter((e) => e.access_group === 'ACCOUNT_OWNER')
+          .map((e) => e.username),
+      ]),
+    ].sort();
+    for (const { username } of existing.rows) {
+      if (inFile.has(username)) continue;
+      this.report.issues.push({
+        file: FILES.users.file,
+        column: 'username',
+        message:
+          `the customer's account owner ${username} has no row in this file, whose account ` +
+          `owner is ${fileOwners.join(', ') || '(nobody)'}: loading it would leave both. Add ` +
+          `${username} to the file, or remove them first (Platform: the customer, Account owners)`,
+      });
+    }
   }
 
   private async structure() {

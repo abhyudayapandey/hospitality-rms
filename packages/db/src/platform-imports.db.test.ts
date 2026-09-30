@@ -414,3 +414,181 @@ describe('the first account owner (ADR 013)', () => {
     });
   });
 });
+
+describe('removing an extra account owner (ADR 013)', () => {
+  /** A console-created owner next to the files' owner: Test Company's production mix-up. */
+  async function extraOwner(c: PoolClient): Promise<string> {
+    const t = TEST();
+    const u = (
+      await c.query<{ id: string }>(
+        `insert into core.app_user (tenant_id, kind, display_name, username, login_type)
+         values ($1, 'human', 'Test Account Owner', 'test-company.owner', 'username')
+         returning id`,
+        [t],
+      )
+    ).rows[0]!.id;
+    await c.query(
+      `insert into hr.worker (tenant_id, owner_user_id, org_node_id, role_code, employment_type)
+       values ($1, $2, $3, 'ACCOUNT_OWNER', 'full_time')`,
+      [t, u, ids.node('TEST-COMPANY')],
+    );
+    await c.query(
+      `insert into core.role_assignment (tenant_id, user_id, group_id, node_id, include_descendants, source)
+       select $1, $2, g.id, $3, true, 'job_role' from core.security_group g
+        where g.tenant_id = $1 and g.code = 'ACCOUNT_OWNER'`,
+      [t, u, ids.node('TEST-COMPANY')],
+    );
+    return u;
+  }
+  const owners = (c: PoolClient, admin: string) =>
+    asPlatform<{ username: string; status: string }>(
+      c,
+      admin,
+      'select username, status from platform.account_owners($1) order by username',
+      [TEST()],
+    ).then((r) => r.rows);
+  const remove = (c: PoolClient, admin: string, user: string, reason = 'created by mistake') =>
+    asPlatform<{ r: { mode: string; username: string; login: string | null } }>(
+      c,
+      admin,
+      'select platform.remove_account_owner($1, $2, $3) as r',
+      [TEST(), user, reason],
+    );
+
+  it('lists the owners, and deletes one that never signed in and has no activity', async () => {
+    await inRolledBackTx(async (c) => {
+      const admin = await newPlatformAdmin(c);
+      const extra = await extraOwner(c);
+      expect(await owners(c, admin)).toEqual([
+        { username: 'test.account-owner', status: 'active' },
+        { username: 'test-company.owner', status: 'active' },
+      ]);
+      const r = await remove(c, admin, extra);
+      expect(r.error).toBeUndefined();
+      expect(r.rows![0]!.r).toEqual({
+        mode: 'deleted',
+        username: 'test-company.owner',
+        login: null,
+      });
+      expect(await owners(c, admin)).toEqual([
+        { username: 'test.account-owner', status: 'active' },
+      ]);
+      const left = await c.query('select 1 from core.app_user where id = $1', [extra]);
+      expect(left.rows).toEqual([]);
+      // the Logins page no longer lists them
+      const logins = await asPlatform<{ username: string }>(
+        c,
+        admin,
+        'select username from platform.login_candidates($1)',
+        [TEST()],
+      );
+      expect(logins.rows!.map((l) => l.username)).not.toContain('test-company.owner');
+      // audited: the platform audit and the data audit log
+      const audit = await c.query<{ reason: string; detail: Record<string, unknown> }>(
+        `select reason, detail from platform.audit_event where action = 'account_owner_removed'
+            and at = now()`,
+      );
+      expect(audit.rows).toEqual([
+        {
+          reason: 'created by mistake',
+          detail: { user: extra, username: 'test-company.owner', mode: 'deleted' },
+        },
+      ]);
+      const logged = await c.query<{ n: number }>(
+        `select count(*)::int as n from audit.log
+          where op = 'DELETE'
+            and table_name in ('core.app_user', 'hr.worker', 'core.role_assignment')
+            and $1 in (before ->> 'id', before ->> 'owner_user_id', before ->> 'user_id')`,
+        [extra],
+      );
+      expect(logged.rows[0]!.n).toBe(3);
+    });
+  });
+
+  it('deactivates and revokes ACCOUNT_OWNER instead when there is activity or a login', async () => {
+    await inRolledBackTx(async (c) => {
+      const admin = await newPlatformAdmin(c);
+      const extra = await extraOwner(c);
+      await c.query(
+        `update core.app_user set cognito_sub = 'sub-extra', last_sign_in_at = now() where id = $1`,
+        [extra],
+      );
+      const r = await remove(c, admin, extra);
+      expect(r.rows![0]!.r).toEqual({
+        mode: 'deactivated',
+        username: 'test-company.owner',
+        login: 'test-company.owner',
+      });
+      const u = await c.query('select status from core.app_user where id = $1', [extra]);
+      expect(u.rows).toEqual([{ status: 'inactive' }]);
+      const granted = await c.query<{ n: number }>(
+        `select count(*)::int as n from core.role_assignment ra
+           join core.security_group g on g.id = ra.group_id and g.code = 'ACCOUNT_OWNER'
+          where ra.user_id = $1`,
+        [extra],
+      );
+      expect(granted.rows).toEqual([{ n: 0 }]);
+      expect(await owners(c, admin)).toEqual([
+        { username: 'test.account-owner', status: 'active' },
+      ]);
+      const logins = await asPlatform<{ username: string }>(
+        c,
+        admin,
+        'select username from platform.login_candidates($1)',
+        [TEST()],
+      );
+      expect(logins.rows!.map((l) => l.username)).not.toContain('test-company.owner');
+    });
+  });
+
+  it('never removes the last owner, needs a reason, and is for platform admins only', async () => {
+    await inRolledBackTx(async (c) => {
+      const admin = await newPlatformAdmin(c);
+      const extra = await extraOwner(c);
+      expect((await remove(c, admin, extra, '  ')).error).toBe('REASON_REQUIRED');
+      expect((await remove(c, admin, ids.user('test.account-owner'))).error).toBeUndefined();
+      // now test-company.owner is the only one left
+      expect((await remove(c, admin, extra)).error).toBe('LAST_ACCOUNT_OWNER');
+      // not an owner of this customer
+      expect((await remove(c, admin, ids.user('test.bar-manager.3.0'))).error).toBe(
+        'INVALID_STATE',
+      );
+      expect(
+        (
+          await attemptAs(
+            c,
+            ids.user('test.account-owner'),
+            'select * from platform.account_owners($1)',
+            [TEST()],
+          )
+        ).error,
+      ).toBe('NOT_AUTHORISED');
+      expect(
+        (
+          await attemptAs(
+            c,
+            ids.user('test.account-owner'),
+            `select platform.remove_account_owner($1, $2, 'x')`,
+            [TEST(), extra],
+          )
+        ).error,
+      ).toBe('NOT_AUTHORISED');
+    });
+  });
+});
+
+describe('creating a username owner needs the username (ADR 013)', () => {
+  it('no silent <code>.owner for a username owner', async () => {
+    await inRolledBackTx(async (c) => {
+      const admin = await newPlatformAdmin(c);
+      const r = await asPlatform(c, admin, 'select platform.request_create_customer($1::jsonb)', [
+        JSON.stringify({
+          code: 'ACME',
+          name: 'Acme',
+          owner: { display_name: 'Ravi K', login_type: 'username' },
+        }),
+      ]);
+      expect(r.error).toBe('INVALID_CUSTOMER');
+    });
+  });
+});
