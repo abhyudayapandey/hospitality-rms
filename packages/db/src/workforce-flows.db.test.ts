@@ -763,18 +763,24 @@ describe('ROLE_CHANGE', () => {
       );
       expect(roster[0]!.ok).toBe(false);
 
-      // a change to Sasha's own access has no other Security Admin to approve it
-      expect(
-        await err(c, OWEN(), request, [
-          'grant',
-          SASHA(),
-          'AUDITOR',
-          ids.node('TEST-COMPANY'),
-          null,
-          null,
-          null,
-        ]),
-      ).toBe('NO_APPROVER');
+      // a change to Sasha's own access has no other Security Admin to approve it, and the
+      // account owner who asked is the top of the chain: approved at once (ADR 010)
+      const { id: own } = await first<{ id: string }>(c, OWEN(), request, [
+        'grant',
+        SASHA(),
+        'AUDITOR',
+        ids.node('TEST-COMPANY'),
+        null,
+        null,
+        null,
+      ]);
+      const top = await one<{ state: string; top_of_chain: boolean }>(
+        c,
+        `select s.state, s.top_of_chain from wf.step_instance s
+           join hr.role_change rc on rc.wf_request_id = s.request_id where rc.id = $1`,
+        [own],
+      );
+      expect(top).toEqual({ state: 'approved', top_of_chain: true });
     });
   });
 

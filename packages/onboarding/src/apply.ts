@@ -30,6 +30,12 @@ export interface LoadReport {
   customer?: string;
   tenantId?: string;
   issues: Issue[];
+  /**
+   * Not blockers: people who could start a request that nobody but they could approve
+   * (ADR 010). An account owner's is approved at the top of the chain; anyone else's
+   * would fail with NO_APPROVER.
+   */
+  warnings: Issue[];
   counts: Record<string, Counts>;
   /** Every access grant of the people in these files after the load (file 99 layout). */
   access: AccessRow[];
@@ -57,7 +63,14 @@ export async function loadCustomer(
   opts: LoadOptions = {},
 ): Promise<LoadReport> {
   const { bundle, issues } = validateFiles(files);
-  const report: LoadReport = { ok: false, applied: false, issues, counts: {}, access: [] };
+  const report: LoadReport = {
+    ok: false,
+    applied: false,
+    issues,
+    warnings: [],
+    counts: {},
+    access: [],
+  };
   if (issues.length) return report;
 
   const begin = opts.nested ? 'savepoint onboarding' : 'begin';
@@ -487,6 +500,46 @@ class Loader {
         ...((org ?? dlv) && { row: (org ?? dlv)!.line }),
         column: 'node_code',
         message: `${r.process_type} ${r.step}: nobody can approve at ${r.node_code} (NO_APPROVER)`,
+      });
+    }
+    await this.peopleCoverage();
+  }
+
+  /** People whose own requests nobody else could approve: one warning per person and process. */
+  private async peopleCoverage() {
+    const { rows } = await this.c.query<{
+      username: string;
+      process_type: string;
+      step: string;
+      node_code: string;
+      account_owner: boolean;
+    }>(
+      `select username, process_type, step, node_code, account_owner
+         from wf.people_without_approver($1)`,
+      [this.tenant],
+    );
+    const byKey = new Map<string, { steps: Set<string>; places: Set<string>; owner: boolean }>();
+    for (const r of rows) {
+      const key = `${r.username}\t${r.process_type}`;
+      const e = byKey.get(key) ?? { steps: new Set(), places: new Set(), owner: r.account_owner };
+      e.steps.add(r.step);
+      e.places.add(r.node_code);
+      byKey.set(key, e);
+    }
+    for (const [key, e] of byKey) {
+      const [username, process] = key.split('\t') as [string, string];
+      const user = this.b.users.find((u) => u.username === username);
+      this.report.warnings.push({
+        file: FILES.users.file,
+        ...(user && { row: user.line }),
+        column: 'username',
+        message:
+          `${username}: ${process} (${[...e.steps].join(', ')}) at ${[...e.places].join(', ')} ` +
+          `has no approver but them: ${
+            e.owner
+              ? 'approved at the top of the chain (account owner)'
+              : 'their request would fail (NO_APPROVER)'
+          }`,
       });
     }
   }

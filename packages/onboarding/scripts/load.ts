@@ -29,6 +29,11 @@ try {
       `${i.file}${i.row ? `:${i.row}` : ''}${i.column ? ` ${i.column}` : ''}: ${i.message}`,
     );
   }
+  for (const w of r.warnings) {
+    console.warn(
+      `WARNING ${w.file}${w.row ? `:${w.row}` : ''}${w.column ? ` ${w.column}` : ''}: ${w.message}`,
+    );
+  }
   for (const [entity, n] of Object.entries(r.counts)) {
     console.log(`${entity}: ${n.created} new, ${n.updated} changed, ${n.unchanged} unchanged`);
   }
