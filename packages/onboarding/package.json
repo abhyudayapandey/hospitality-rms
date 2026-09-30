@@ -9,7 +9,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed.ts",
-    "load": "tsx scripts/load.ts"
+    "load": "tsx scripts/load.ts",
+    "worker": "tsx scripts/worker.ts"
   },
   "dependencies": {
     "@outlet-ops/domain": "workspace:*",

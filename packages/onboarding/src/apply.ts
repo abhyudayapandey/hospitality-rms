@@ -105,6 +105,7 @@ export async function loadCustomer(
 
 class Loader {
   private tenant = '';
+  private isTest = false;
   private nodes = new Map<string, string>();
   private users = new Map<string, string>();
   private workers = new Map<string, string>();
@@ -159,8 +160,8 @@ class Loader {
     this.report.customer = cu.customer_code;
     await this.upsert(
       'customer',
-      `insert into core.tenant (name, code, country, currency, default_timezone)
-       values ($1, $2, $3, $4, $5)
+      `insert into core.tenant (name, code, country, currency, default_timezone, is_test)
+       values ($1, $2, $3, $4, $5, coalesce($6, false))
        on conflict (code) where code is not null do update
           set name = excluded.name, country = excluded.country, currency = excluded.currency,
               default_timezone = excluded.default_timezone
@@ -169,13 +170,32 @@ class Loader {
               is distinct from (excluded.name, excluded.country, excluded.currency,
                                 excluded.default_timezone)
        returning id, xmax = 0 as inserted`,
-      [cu.company_name, cu.customer_code, cu.country, cu.currency, cu.default_timezone],
-    );
-    this.tenant = (
-      await this.c.query<{ id: string }>(`select id from core.tenant where code = $1`, [
+      [
+        cu.company_name,
         cu.customer_code,
-      ])
-    ).rows[0]!.id;
+        cu.country,
+        cu.currency,
+        cu.default_timezone,
+        cu.is_test ?? null,
+      ],
+    );
+    const t = (
+      await this.c.query<{ id: string; is_test: boolean }>(
+        `select id, is_test from core.tenant where code = $1`,
+        [cu.customer_code],
+      )
+    ).rows[0]!;
+    this.tenant = t.id;
+    this.isTest = t.is_test;
+    // is_test is set when the customer is created and never changes (ADR 012)
+    if (cu.is_test !== undefined && cu.is_test !== t.is_test) {
+      this.report.issues.push({
+        file: FILES.customer.file,
+        row: cu.line,
+        column: 'is_test',
+        message: `this customer was created with is_test = ${t.is_test ? 'yes' : 'no'}, which cannot change (IS_TEST_IMMUTABLE)`,
+      });
+    }
     this.report.tenantId = this.tenant;
     if (cu.leave_hr_approval !== undefined) {
       await this.c.query(
@@ -350,6 +370,18 @@ class Loader {
     );
 
     if (await this.loginClashes()) return;
+    // the Test<Role>!12 password rule is for test customers only (ADR 012)
+    if (!this.isTest) {
+      for (const u of this.b.users.filter((x) => x.password_mode === 'test_rule')) {
+        this.report.issues.push({
+          file: FILES.users.file,
+          row: u.line,
+          column: 'password_mode',
+          message: 'test_rule passwords are only for test customers (is_test in file 00)',
+        });
+      }
+      if (this.report.issues.length) return;
+    }
     for (const u of this.b.users) {
       this.step(FILES.users.file, u.line);
       await this.upsert(

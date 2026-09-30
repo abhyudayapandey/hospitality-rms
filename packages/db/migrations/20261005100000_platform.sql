@@ -369,7 +369,7 @@ revoke execute on function core.tenant_active(uuid) from public;
 grant execute on function core.tenant_active(uuid) to app_rw, wf_executor, platform_loader;
 
 -- platform_loader: data in the customer schemas, nothing else.
-grant usage on schema core, hr, inv, ops, wf, ai, audit to platform_loader;
+grant usage on schema core, hr, inv, ops, wf, ai, audit, extensions to platform_loader;
 grant select, insert, update, delete on all tables in schema core, hr, inv, ops, wf, ai
   to platform_loader;
 grant usage, select on all sequences in schema core, hr, inv, ops, wf, ai to platform_loader;
@@ -392,7 +392,7 @@ revoke execute on all functions in schema core, hr, inv, ops, wf, ai from platfo
 revoke usage, select on all sequences in schema core, hr, inv, ops, wf, ai from platform_loader;
 revoke select, insert, update, delete on all tables in schema core, hr, inv, ops, wf, ai
   from platform_loader;
-revoke usage on schema core, hr, inv, ops, wf, ai, audit from platform_loader;
+revoke usage on schema core, hr, inv, ops, wf, ai, audit, extensions from platform_loader;
 
 drop schema platform cascade;
 

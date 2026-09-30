@@ -1,2 +1,2 @@
-customer_code,company_name,country,currency,default_timezone
-TEST-SOLO-COMPANY,Test Solo Bar Co.,India,INR,Asia/Kolkata
+customer_code,company_name,country,currency,default_timezone,is_test
+TEST-SOLO-COMPANY,Test Solo Bar Co.,India,INR,Asia/Kolkata,yes

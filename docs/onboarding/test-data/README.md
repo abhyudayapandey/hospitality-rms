@@ -40,7 +40,7 @@ Each access row means: this person has this access group at this place. It cover
 
 | File                                               | What it defines                                                                                                                                           |
 | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `00_customer.csv`                                  | Company name, country, currency, time zone; optional `leave_hr_approval` (yes/no, default yes)                                                            |
+| `00_customer.csv`                                  | Company name, country, currency, time zone; optional `leave_hr_approval` (yes/no, default yes) and `is_test` (yes/no, only at creation)                   |
 | `01_org_nodes.csv`                                 | People structure. `outlet_format` on outlet rows: full_hotel, small_hotel, standalone_bar                                                                 |
 | `02_delivery_nodes.csv`                            | Stock structure. `holds_stock` = yes where stock is counted (a store, or a supply point with no stores); `is_main_store` = yes on the outlet's Main Store |
 | `03_node_links.csv`                                | Which department uses which store; which outlet is which supply point                                                                                     |
