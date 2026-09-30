@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
-import { newWorker, tenantOf, workerFor, type JobRole } from '../test/workforce';
+import { clearWorkforce, newWorker, tenantOf, workerFor, type JobRole } from '../test/workforce';
 
 // Rostering (ADR 008): week generation in the node's timezone, every assignment rule,
 // tenant-configured limits, publish and the notifications it sends.
@@ -59,6 +59,7 @@ async function assign(c: PoolClient, shiftId: string, workerId: string, as = OLI
 describe('hr.generate_week', () => {
   it('builds draft shifts from templates in the node timezone, once', async () => {
     await inRolledBackTx(async (c) => {
+      await clearWorkforce(c);
       const tenant = await tenantOf(c, ids);
       await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
       const monday = await futureMonday(c);
@@ -115,6 +116,7 @@ describe('hr.generate_week', () => {
 
   it('rejects non-Monday weeks, staff and other outlets', async () => {
     await inRolledBackTx(async (c) => {
+      await clearWorkforce(c);
       const monday = await futureMonday(c);
       const tuesday = (await c.query<{ d: string }>(`select ($1::date + 1)::text d`, [monday]))
         .rows[0]!.d;
@@ -140,6 +142,7 @@ describe('hr.generate_week', () => {
 describe('hr.assign rules', () => {
   it('ROLE_MISMATCH, WORKER_NOT_AT_NODE and SHIFT_STARTED', async () => {
     await inRolledBackTx(async (c) => {
+      await clearWorkforce(c);
       const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
       const monday = await futureMonday(c);
       expect((await assign(c, await shift(c, monday, 0, '09:00', 8, 'COOK'), sam)).error).toBe(
@@ -166,6 +169,7 @@ describe('hr.assign rules', () => {
 
   it('SHIFT_OVERLAP and REST_RULE (10 h default, tenant config overrides)', async () => {
     await inRolledBackTx(async (c) => {
+      await clearWorkforce(c);
       const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
       const monday = await futureMonday(c);
       expect((await assign(c, await shift(c, monday, 0, '09:00', 8), sam)).error).toBeUndefined();
@@ -194,6 +198,7 @@ describe('hr.assign rules', () => {
 
   it('WEEKLY_HOURS_CAP: 48 h passes, the next shift does not; the cap is tenant config', async () => {
     await inRolledBackTx(async (c) => {
+      await clearWorkforce(c);
       const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
       const monday = await futureMonday(c);
       for (let d = 0; d < 6; d++) {
@@ -216,6 +221,7 @@ describe('hr.assign rules', () => {
 
   it('LEAVE_CONFLICT: approved leave blocks the dates; pending leave does not', async () => {
     await inRolledBackTx(async (c) => {
+      await clearWorkforce(c);
       const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
       const monday = await futureMonday(c);
       const tenant = await tenantOf(c, ids);
@@ -248,6 +254,7 @@ describe('hr.assign rules', () => {
 
   it('SHIFT_FULL, and assigning twice returns the same assignment', async () => {
     await inRolledBackTx(async (c) => {
+      await clearWorkforce(c);
       const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
       const pat = await newWorker(c, ids, 'Pat Server', 'org:Outlet A', 'SERVER');
       const monday = await futureMonday(c);
@@ -261,6 +268,7 @@ describe('hr.assign rules', () => {
 
   it('staff cannot assign', async () => {
     await inRolledBackTx(async (c) => {
+      await clearWorkforce(c);
       const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
       const monday = await futureMonday(c);
       const s = await shift(c, monday, 0, '09:00', 8);
@@ -281,6 +289,7 @@ describe('hr.assign rules', () => {
 describe('candidates, publish and notifications', () => {
   it('lists candidates with the rule each would break', async () => {
     await inRolledBackTx(async (c) => {
+      await clearWorkforce(c);
       const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
       const pat = await newWorker(c, ids, 'Pat Server', 'org:Outlet A', 'SERVER');
       await workerFor(c, ids, 'Casey Chef', 'org:Outlet A', 'COOK');
@@ -294,15 +303,21 @@ describe('candidates, publish and notifications', () => {
       }>(c, OLIVIA(), 'select worker_id, violation, week_hours from hr.assign_candidates($1)', [
         target,
       ]);
-      expect(r.rows).toEqual([
+      // other seeded servers may be listed too; these two show both outcomes
+      expect(r.rows!.filter((x) => [pat.workerId, sam].includes(x.worker_id))).toEqual([
         { worker_id: pat.workerId, violation: null, week_hours: '0.0' },
         { worker_id: sam, violation: 'REST_RULE', week_hours: '8.0' },
       ]);
+      // assignable candidates come first
+      expect(r.rows!.findIndex((x) => x.violation !== null)).toBeGreaterThan(
+        r.rows!.findLastIndex((x) => x.violation === null),
+      );
     });
   });
 
   it('publish flips the week to published and notifies each assigned worker once', async () => {
     await inRolledBackTx(async (c) => {
+      await clearWorkforce(c);
       const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
       const monday = await futureMonday(c);
       const a = await shift(c, monday, 0, '09:00', 8);

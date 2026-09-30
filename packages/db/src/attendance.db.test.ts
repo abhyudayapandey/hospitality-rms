@@ -9,7 +9,7 @@ import {
   resetRole,
   type SeedIds,
 } from '../test/helpers';
-import { newWorker, tenantOf, workerFor } from '../test/workforce';
+import { clearWorkforce, newWorker, tenantOf, workerFor } from '../test/workforce';
 
 // Attendance (ADR 008): clock in/out with geofence flags (never blocking), offline replay
 // with device timestamps and idempotency keys, the nightly exceptions job, the 90-day
@@ -32,6 +32,7 @@ interface Fx {
 }
 
 async function fixture(c: PoolClient): Promise<Fx> {
+  await clearWorkforce(c);
   const tenant = await tenantOf(c, ids);
   const sam = await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER');
   const olivia = await workerFor(c, ids, 'Olivia Outlet Manager', 'org:Outlet A', 'MANAGER');
@@ -141,6 +142,9 @@ describe('hr.clock', () => {
       await fixture(c);
       const r = await clock(c, SAM(), 'in', null, 'k1');
       expect(r.rows![0]).toMatchObject({ inside: null, flags: ['no_location'], shift_id: null });
+      await c.query('delete from hr.node_setting where org_node_id = $1', [
+        ids.node('org:Outlet B'),
+      ]);
       const bea = await newWorker(c, ids, 'Bea Outlet B', 'org:Outlet B', 'SERVER');
       const b = await clock(c, bea.userId, 'in', FAR, 'k2');
       expect(b.rows![0]).toMatchObject({ inside: null, distance_m: null, flags: [] });

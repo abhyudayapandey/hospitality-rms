@@ -9,7 +9,7 @@ section 7 were built.
   - `20260930100000_wf_subject_from_row` (workflow engine changes)
   - `20260930110000_inventory_schema` (tables and the ledger trigger)
   - `20260930120000_inventory_rpcs` (functions, executor SQL, views)
-- **Dev seed:** `003_inventory_dev.sql`.
+- **Dev seed:** `seed/dev/003_inventory_dev.sql`.
 - **Screens:** under `/stock` in `apps/web`.
 - **Performance:** ADR 007 (RLS computes the visible node set once per query).
 

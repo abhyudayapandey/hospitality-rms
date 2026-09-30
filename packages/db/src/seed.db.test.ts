@@ -103,7 +103,7 @@ describe('core seed', () => {
   });
 });
 
-describe('dev inventory seed (003_inventory_dev.sql)', () => {
+describe('dev inventory seed (dev/003_inventory_dev.sql)', () => {
   it('has about 40 items and 2 suppliers, each item set up at the hub and both outlets', async () => {
     const { rows } = await migratorPool.query<{
       items: number;
@@ -134,5 +134,69 @@ describe('dev inventory seed (003_inventory_dev.sql)', () => {
     );
     expect(rows[0]!.mismatched).toBe(0);
     expect(rows[0]!.opening).toBeGreaterThanOrEqual(120);
+  });
+});
+
+describe('dev workforce seed (dev/004_workforce_dev.sql)', () => {
+  const SEEDED = `w.id::text like '01920000-0000-7000-8000-0000000007%'`;
+
+  it('has 12 workers: 5 at Outlet A, 4 at Outlet B, 3 at the Hub site', async () => {
+    const { rows } = await migratorPool.query<{ name: string; n: number }>(
+      `select n.name, count(*)::int n from hr.worker w
+         join core.hierarchy_node n on n.id = w.org_node_id
+        where ${SEEDED} group by n.name order by n.name`,
+    );
+    expect(rows).toEqual([
+      { name: 'Hub', n: 3 },
+      { name: 'Outlet A', n: 5 },
+      { name: 'Outlet B', n: 4 },
+    ]);
+  });
+
+  it('has this week published and next week in draft, and no assignment breaks a rule', async () => {
+    const { rows } = await migratorPool.query<{ week: number; status: string; n: number }>(
+      `select (s.local_date - hr.week_start((now() at time zone 'Asia/Kolkata')::date)) / 7 as week,
+              s.status, count(*)::int n
+         from hr.shift s
+        where s.template_id::text like '01920000-0000-7000-8000-0000000008%'
+          and s.local_date between hr.week_start((now() at time zone 'Asia/Kolkata')::date)
+                               and hr.week_start((now() at time zone 'Asia/Kolkata')::date) + 13
+        group by 1, 2 order by 1, 2`,
+    );
+    expect(rows.map((r) => [r.week, r.status])).toEqual([
+      [0, 'published'],
+      [1, 'draft'],
+    ]);
+    const broken = await migratorPool.query(
+      `select a.id, v.code from hr.shift_assignment a
+         join hr.worker w on w.id = a.worker_id
+         join hr.shift s on s.id = a.shift_id,
+         lateral hr.assignment_violation(a.worker_id, a.start_at, a.end_at, a.org_node_id,
+                                         s.role_code, a.id) v
+        where a.status = 'assigned' and ${SEEDED}`,
+    );
+    expect(broken.rows).toEqual([]);
+  });
+
+  it('has leave types, balances for every worker, geofences and three upcoming events', async () => {
+    const { rows } = await migratorPool.query<{
+      types: number;
+      unbalanced: number;
+      fences: number;
+      events: number;
+      reqs: number;
+    }>(
+      `select (select count(*)::int from hr.leave_type where code in ('ANNUAL','SICK','CASUAL','UNPAID')) types,
+              (select count(*)::int from hr.worker w where ${SEEDED}
+                and not exists (select 1 from hr.leave_balance b where b.worker_id = w.id
+                                   and b.year = extract(year from now() at time zone 'Asia/Kolkata'))) unbalanced,
+              (select count(*)::int from hr.node_setting where latitude is not null) fences,
+              (select count(*)::int from ops.event
+                where id::text like '01920000-0000-7000-8000-00000000095%' and starts_at > now()) events,
+              (select count(*)::int from ops.event_requirement
+                where id::text like '01920000-0000-7000-8000-00000000096%'
+                   or id::text like '01920000-0000-7000-8000-00000000097%') reqs`,
+    );
+    expect(rows[0]).toEqual({ types: 4, unbalanced: 0, fences: 3, events: 3, reqs: 10 });
   });
 });

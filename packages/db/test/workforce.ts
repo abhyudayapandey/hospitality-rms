@@ -89,3 +89,23 @@ export async function newWorker(
   ).rows[0]!.id;
   return { userId, workerId };
 }
+
+/**
+ * Empties workforce activity (shifts, templates, punches, exceptions, leave requests,
+ * swaps, events, notifications) inside the test's rolled-back transaction, so tests do
+ * not depend on the dev seed or on e2e residue. Workers, roles, leave types, balances and
+ * geofences stay.
+ */
+export async function clearWorkforce(c: pg.PoolClient): Promise<void> {
+  await c.query(`
+    delete from hr.attendance_exception;
+    delete from hr.attendance;
+    delete from hr.shift_swap;
+    delete from hr.shift_assignment;
+    delete from hr.shift;
+    delete from hr.shift_template;
+    delete from hr.leave_request;
+    delete from ops.event_requirement;
+    delete from ops.event;
+    delete from ops.notification;`);
+}

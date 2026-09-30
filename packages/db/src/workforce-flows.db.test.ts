@@ -9,7 +9,7 @@ import {
   resetRole,
   type SeedIds,
 } from '../test/helpers';
-import { newWorker, tenantOf, workerFor, type JobRole } from '../test/workforce';
+import { clearWorkforce, newWorker, tenantOf, workerFor, type JobRole } from '../test/workforce';
 
 // LEAVE, SHIFT_SWAP and ROLE_CHANGE end to end (ADR 008): request -> approvals -> executor
 // handler, with balances, roster blocks, excluded approvers, approval-time rule checks and
@@ -34,6 +34,7 @@ interface Fx {
 }
 
 async function fixture(c: PoolClient): Promise<Fx> {
+  await clearWorkforce(c);
   const tenant = await tenantOf(c, ids);
   const monday = (
     await c.query<{ d: string }>(
