@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import type { ItemOption } from '@/lib/inventory';
 import { requestTransfer } from '../../actions';
@@ -20,6 +21,7 @@ export function TransferRequestForm({
   const [qty, setQty] = useState<Record<string, string>>({});
   const [key] = useState(() => crypto.randomUUID());
   const [pending, start] = useTransition();
+  const hydrated = useHydrated();
   const [error, setError] = useState<string | null>(null);
   const lines = items
     .map((i) => ({ item_id: i.item_id, qty: Number(qty[i.item_id]) }))
@@ -74,7 +76,11 @@ export function TransferRequestForm({
         ))}
       </ul>
       <ErrorBox message={error} />
-      <button type="submit" disabled={pending || lines.length === 0} className={primaryButton}>
+      <button
+        type="submit"
+        disabled={!hydrated || pending || lines.length === 0}
+        className={primaryButton}
+      >
         Request {lines.length} items
       </button>
     </form>

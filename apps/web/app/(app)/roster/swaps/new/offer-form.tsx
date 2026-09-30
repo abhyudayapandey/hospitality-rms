@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { offerSwap } from '../../actions';
 
@@ -14,6 +15,7 @@ export function OfferForm({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const hydrated = useHydrated();
   const [to, setTo] = useState(colleagues[0]?.worker_id ?? '');
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +60,7 @@ export function OfferForm({
           className={inputClass}
         />
       </label>
-      <button type="submit" disabled={pending || !to} className={primaryButton}>
+      <button type="submit" disabled={!hydrated || pending || !to} className={primaryButton}>
         Send offer
       </button>
       <ErrorBox message={error} />

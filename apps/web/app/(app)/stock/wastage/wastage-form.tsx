@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
+import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
 import { formatMoney } from '@/lib/format';
 import type { ItemOption } from '@/lib/inventory';
@@ -34,6 +35,7 @@ export function WastageForm({
   const [photoKey, setPhotoKey] = useState<string | null>(null);
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [pending, start] = useTransition();
+  const hydrated = useHydrated();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
@@ -126,7 +128,7 @@ export function WastageForm({
       <StatusBox message={done} />
       <button
         type="submit"
-        disabled={pending || (needsApproval && !photoKey)}
+        disabled={!hydrated || pending || (needsApproval && !photoKey)}
         className={primaryButton}
       >
         Record wastage

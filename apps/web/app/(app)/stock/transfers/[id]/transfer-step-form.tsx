@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { useHydrated } from '@/lib/use-hydrated';
 import {
   ErrorBox,
   inputClass,
@@ -49,6 +50,7 @@ export function TransferStepForm({
     ),
   );
   const [pending, start] = useTransition();
+  const hydrated = useHydrated();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
@@ -118,7 +120,7 @@ export function TransferStepForm({
               Reject
             </button>
           )}
-          <button type="submit" disabled={pending} className={primaryButton}>
+          <button type="submit" disabled={!hydrated || pending} className={primaryButton}>
             {mode === 'dispatch' ? 'Send' : 'Confirm receipt'}
           </button>
         </div>
