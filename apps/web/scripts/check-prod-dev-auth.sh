@@ -28,10 +28,20 @@ SERVER=$!
 trap 'kill $SERVER 2>/dev/null || true' EXIT
 for _ in $(seq 1 60); do curl -sf -o /dev/null "http://127.0.0.1:$PORT/login" && break; sleep 1; done
 
+# a test user (docs/onboarding/test-data), resolved as the app does before sign-in
 COOKIE=$(SESSION_SECRET="$SECRET" pnpm exec tsx -e "
+import pg from 'pg';
 import { newSession, signSession } from './lib/auth/session.ts';
-signSession(newSession('01920000-0000-7000-8000-000000000303', 'dev'), process.env.SESSION_SECRET!)
-  .then((t) => process.stdout.write(t));")
+(async () => {
+  const db = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  await db.connect();
+  const { rows } = await db.query(
+    \"select core.user_for_username('TEST-COMPANY', 'test.head-cook.3.0') as id\");
+  await db.end();
+  if (!rows[0]?.id) throw new Error('test user not found (run pnpm db:seed)');
+  const token = await signSession(newSession(rows[0].id, 'dev'), process.env.SESSION_SECRET!);
+  process.stdout.write(token);
+})();")
 
 status() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 check() {
