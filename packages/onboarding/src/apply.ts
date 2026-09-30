@@ -91,7 +91,11 @@ export async function loadCustomer(
     }
   } catch (e) {
     await client.query(rollback);
-    if (opts.nested) await client.query('release savepoint onboarding');
+    if (opts.nested) {
+      await client.query('release savepoint onboarding');
+      // the caller's transaction goes on: its owner check is immediate again
+      await client.query('set constraints core.last_account_owner immediate');
+    }
     const err = e as { message?: string; detail?: string };
     report.issues.push({
       file: at.file || '(database)',
@@ -494,6 +498,10 @@ class Loader {
   }
 
   private async access() {
+    // An owner may hold ACCOUNT_OWNER through their job role before and through file 08
+    // after (or the other way round): check "at least one Account Owner" once access is
+    // re-derived, not half-way (ADR 013). Checked below, so a dry run reports it too.
+    await this.c.query('set constraints core.last_account_owner deferred');
     for (const u of this.b.users) {
       this.step(FILES.users.file, u.line);
       await this.c.query('select core.apply_job_role_access($1)', [this.users.get(u.username)]);
@@ -555,6 +563,8 @@ class Loader {
                    || ' ' || ra.node_id = any ($3))`,
       [this.tenant, [...this.users.values()], wanted],
     );
+    this.step(FILES.extraAccess.file);
+    await this.c.query('set constraints core.last_account_owner immediate');
   }
 
   /** Every process must have an approver at every place (ADR 009): list each gap. */

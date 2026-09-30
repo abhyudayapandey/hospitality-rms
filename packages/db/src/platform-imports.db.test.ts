@@ -362,3 +362,55 @@ describe('email invites', () => {
     });
   });
 });
+
+describe('the first account owner (ADR 013)', () => {
+  it('may be a username login with no email, matching the owner in the customer’s file 07', async () => {
+    await inRolledBackTx(async (c) => {
+      const admin = await newPlatformAdmin(c);
+      const request = (owner: Record<string, unknown>, code = 'ACME') =>
+        asPlatform<{ id: string }>(
+          c,
+          admin,
+          'select platform.request_create_customer($1::jsonb) as id',
+          [JSON.stringify({ code, name: 'Acme Hotels', is_test: true, owner })],
+        );
+      // a username owner: no email, and a username that is not taken anywhere
+      const ok = await request({
+        display_name: 'Ravi K',
+        login_type: 'username',
+        username: 'Acme.Ravi.K',
+      });
+      expect(ok.error).toBeUndefined();
+      const job = await c.query<{ owner: Record<string, unknown> }>(
+        `select payload -> 'owner' as owner from platform.job where id = $1`,
+        [ok.rows![0]!.id],
+      );
+      expect(job.rows[0]!.owner).toEqual({
+        display_name: 'Ravi K',
+        login_type: 'username',
+        username: 'acme.ravi.k',
+        email: null,
+      });
+
+      // the default username is <code>.owner; an email owner still needs an email
+      for (const [owner, error] of [
+        [
+          { display_name: 'X', login_type: 'username', email: 'x@acme.example' },
+          'INVALID_CUSTOMER',
+        ],
+        [{ display_name: 'X', login_type: 'email' }, 'INVALID_CUSTOMER'],
+        [{ display_name: 'X', login_type: 'username', username: 'Bad Name!' }, 'INVALID_CUSTOMER'],
+        [{ display_name: 'X', login_type: 'sms', username: 'acme.x' }, 'INVALID_CUSTOMER'],
+        // usernames are unique across customers (one Cognito pool)
+        [
+          { display_name: 'X', login_type: 'username', username: 'test.account-owner' },
+          'USERNAME_TAKEN',
+        ],
+        // ...and across customers still being created
+        [{ display_name: 'X', login_type: 'username', username: 'acme.ravi.k' }, 'USERNAME_TAKEN'],
+      ] as const) {
+        expect((await request(owner, 'ACME-2')).error, JSON.stringify(owner)).toBe(error);
+      }
+    });
+  });
+});
