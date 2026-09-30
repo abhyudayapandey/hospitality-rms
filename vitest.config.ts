@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 // Two projects:
@@ -21,6 +22,12 @@ export default defineConfig({
           include: ['{apps,packages,services,infra}/**/*.test.ts'],
           exclude: [...exclude, '**/*.db.test.ts'],
           environment: 'node',
+        },
+        // apps/web's `@/` import alias (its tsconfig paths), for tests of its routes
+        resolve: {
+          alias: [
+            { find: /^@\//, replacement: fileURLToPath(new URL('./apps/web/', import.meta.url)) },
+          ],
         },
       },
       {

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { appUrl } from './lib/app-url';
 import { cognitoConfig, refreshTokens, verifyIdToken } from './lib/auth/cognito';
 import {
   COGNITO_REFRESH_AFTER_S,
@@ -28,7 +29,7 @@ import {
 const secure = process.env.NODE_ENV === 'production';
 
 function toLogin(req: NextRequest, reason: string): NextResponse {
-  const url = new URL('/login', req.url);
+  const url = appUrl('/login');
   url.searchParams.set('reason', reason);
   const res = NextResponse.redirect(url);
   for (const name of [SESSION_COOKIE, REFRESH_COOKIE, NODE_COOKIE]) res.cookies.delete(name);
@@ -52,7 +53,7 @@ async function platformProxy(req: NextRequest, secret: string): Promise<NextResp
   const now = nowSeconds();
   const v = await verifyPlatformSession(req.cookies.get(PLATFORM_COOKIE)?.value, secret, now);
   if (!v.ok) {
-    const res = NextResponse.redirect(new URL(`/platform/signin?reason=${v.reason}`, req.url));
+    const res = NextResponse.redirect(appUrl(`/platform/signin?reason=${v.reason}`));
     res.cookies.delete({ name: PLATFORM_COOKIE, path: '/platform' });
     return res;
   }

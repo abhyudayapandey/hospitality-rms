@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { appUrl } from '@/lib/app-url';
 import { cognitoConfig, exchangeCode, verifyIdToken } from '@/lib/auth/cognito';
 import { setSessionCookie } from '@/lib/auth/server';
 import { PKCE_COOKIE, REFRESH_COOKIE, ABSOLUTE_TIMEOUT_S, newSession } from '@/lib/auth/session';
@@ -10,8 +11,7 @@ import { clientAddress, LIMITS, withinLimit } from '@/lib/security/rate-limit';
 // verify the ID token with aws-jwt-verify, map sub -> app user, start the session.
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const fail = (reason: string) =>
-    NextResponse.redirect(new URL(`/login?reason=${reason}`, req.url));
+  const fail = (reason: string) => NextResponse.redirect(appUrl(`/login?reason=${reason}`));
   if (!(await withinLimit(`signin:${clientAddress(req.headers)}`, LIMITS.signIn))) {
     return fail('rate_limited');
   }
@@ -46,5 +46,5 @@ export async function GET(req: Request) {
       maxAge: ABSOLUTE_TIMEOUT_S,
     });
   }
-  return NextResponse.redirect(new URL('/', req.url));
+  return NextResponse.redirect(appUrl('/'));
 }
