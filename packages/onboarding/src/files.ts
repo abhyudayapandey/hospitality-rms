@@ -141,8 +141,10 @@ export const FILES = {
       default_timezone: timezone,
       // optional: the leave HR approval step (ADR 009); blank or absent keeps it on
       leave_hr_approval: z.union([z.literal('').transform(() => undefined), yesNo]),
+      // optional: a test customer (ADR 012); only when the customer is created, never changed
+      is_test: z.union([z.literal('').transform(() => undefined), yesNo]),
     }),
-    optional: ['leave_hr_approval'],
+    optional: ['leave_hr_approval', 'is_test'],
   },
   orgNodes: {
     file: '01_org_nodes.csv',

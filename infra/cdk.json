@@ -5,6 +5,7 @@
     "domainName": "outletops-ap.duckdns.org",
     "alertEmail": "pabhyudaya@gmail.com",
     "cognitoDomainPrefix": "outletops-ap-login",
+    "platformCognitoDomainPrefix": "outletops-ap-platform",
     "githubRepo": "abhyudayapandey/hospitality-rms",
     "githubOwnerId": "33194509",
     "githubRepoId": "1394585977",

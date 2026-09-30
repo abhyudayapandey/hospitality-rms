@@ -76,7 +76,25 @@ describe('per-service credential isolation', () => {
     ]);
   });
 
+  it('the platform worker gets only platform_loader, and nothing else does (ADR 012)', () => {
+    expect(loadCredentials('outlet-ops-platform-worker.service')).toEqual([
+      'db_platform_loader:/etc/outlet-ops/creds/platform_loader',
+    ]);
+    for (const unit of readdirSync(join(dir, 'systemd')).filter(
+      (f) => f !== 'outlet-ops-platform-worker.service',
+    )) {
+      expect(read(join('systemd', unit)), unit).not.toContain('platform_loader');
+    }
+    const env = read('deploy/fetch-params.sh');
+    expect(env.slice(env.indexOf('web.env'), env.indexOf('caddy.env'))).not.toContain(
+      'platform_loader',
+    );
+  });
+
   it('services run as their own unprivileged users', () => {
+    expect(read('systemd/outlet-ops-platform-worker.service')).toMatch(
+      /^User=outletops-platform$/m,
+    );
     expect(read('systemd/outlet-ops-web.service')).toMatch(/^User=outletops-web$/m);
     expect(read('systemd/outlet-ops-wf-execute.service')).toMatch(/^User=outletops-wf$/m);
     expect(read('systemd/outlet-ops-attendance-nightly.service')).toMatch(/^User=outletops-wf$/m);
@@ -99,6 +117,9 @@ describe('scheduled jobs', () => {
 
   it('the release bundles every job a unit runs', () => {
     const build = read('../scripts/build-release.sh');
+    expect(read('deploy/platform-worker.sh')).toContain('jobs/platform-worker.mjs');
+    expect(build).toContain('--outfile="$OUT/jobs/platform-worker.mjs"');
+    expect(read('deploy/deploy.sh')).toMatch(/enable[^;]*outlet-ops-platform-worker\.service/);
     for (const script of ['wf-execute', 'attendance-nightly']) {
       expect(read(`deploy/${script}.sh`)).toContain(`jobs/${script}.mjs`);
       expect(build).toMatch(new RegExp(`:${script}[ ;]`));
@@ -122,12 +143,20 @@ describe('database bootstrap', () => {
 
   it('never grants app_rw or wf_executor to migrator in production', () => {
     expect(sql).not.toMatch(/grant\s+(app_rw|wf_executor)[\s\S]*?\bto\s+migrator/i);
-    expect(sql).toMatch(/revoke app_rw, wf_executor from migrator;/);
+    expect(sql).toMatch(/revoke app_rw, wf_executor, platform_loader from migrator;/);
   });
 
   it('no application role is superuser or bypasses RLS', () => {
     for (const role of ['migrator', 'app_rw', 'wf_executor']) {
       expect(sql).toMatch(new RegExp(`alter role ${role} with [^;]*nosuperuser[^;]*nobypassrls`));
     }
+  });
+
+  it('platform_loader: not superuser, no role or database creation; bypasses RLS by design', () => {
+    expect(sql).toMatch(
+      /alter role platform_loader with login nosuperuser nocreaterole nocreatedb bypassrls/,
+    );
+    expect(sql).toMatch(/revoke app_rw, wf_executor, platform_loader from migrator;/);
+    expect(sql).not.toMatch(/grant\s+[^;]*platform_loader[^;]*\bto\s+migrator/i);
   });
 });

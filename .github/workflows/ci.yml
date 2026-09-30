@@ -34,6 +34,7 @@ jobs:
       MIGRATOR_DATABASE_URL: postgres://migrator:migrator_local@localhost:5432/outlet_ops?sslmode=disable
       TEST_DATABASE_URL: postgres://app_rw:app_rw_local@localhost:5432/outlet_ops?sslmode=disable
       WF_EXECUTOR_DATABASE_URL: postgres://wf_executor:wf_executor_local@localhost:5432/outlet_ops?sslmode=disable
+      PLATFORM_LOADER_DATABASE_URL: postgres://platform_loader:platform_loader_local@localhost:5432/outlet_ops?sslmode=disable
       # Web app (e2e + production check): app_rw connection and a CI-only session key.
       DATABASE_URL: postgres://app_rw:app_rw_local@localhost:5432/outlet_ops?sslmode=disable
       SESSION_SECRET: ci-only-session-secret-0123456789-abcdef

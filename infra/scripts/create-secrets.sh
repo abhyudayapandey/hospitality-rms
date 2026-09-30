@@ -7,7 +7,7 @@
 set -euo pipefail
 export AWS_REGION=ap-south-1
 PREFIX=/outlet-ops/prod
-NAMES=(db/migrator db/app_rw db/wf_executor web/session_secret)
+NAMES=(db/migrator db/app_rw db/wf_executor db/platform_loader web/session_secret)
 ROTATE=
 [ "${1:-}" = "--rotate" ] && ROTATE=${2:?--rotate needs a name, e.g. db/app_rw}
 

@@ -1,7 +1,8 @@
 #!/bin/bash
 # Builds the linux-arm64 release bundle in CI (the instance never builds anything):
 #   node/  Node 22 runtime (checksum-verified)   bin/  caddy, dbmate
-#   web/   Next.js standalone server             jobs/ wf-execute, sync-defs, attendance-nightly
+#   web/   Next.js standalone server             jobs/ wf-execute, sync-defs, attendance-nightly,
+#                                                      platform-worker
 #   migrations/  deploy/  systemd/  postgres/  caddy/
 # Usage: infra/scripts/build-release.sh <git-sha>   -> dist/release-<sha>.tgz
 set -euo pipefail
@@ -30,6 +31,11 @@ for job in execute:wf-execute sync-defs:sync-defs attendance-nightly:attendance-
     --platform=node --target=node22 --format=esm --banner:js="$banner" \
     --outfile="$OUT/jobs/${job##*:}.mjs" --log-level=warning
 done
+# the platform worker (ADR 012): creates customers queued in the platform console
+# (the workflow package's esbuild; imports resolve from the onboarding package)
+pnpm --filter @outlet-ops/workflow exec esbuild ../onboarding/scripts/worker.ts --bundle \
+  --platform=node --target=node22 --format=esm --banner:js="$banner" \
+  --outfile="$OUT/jobs/platform-worker.mjs" --log-level=warning
 
 echo "== Node $NODE_MAJOR runtime (linux-arm64)"
 NODE_VERSION=${NODE_VERSION:-$(curl -fsSL https://nodejs.org/dist/index.json |

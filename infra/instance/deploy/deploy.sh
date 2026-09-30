@@ -9,6 +9,10 @@ REL_DIR=/opt/outlet-ops/releases/$REL
 source "$REL_DIR/deploy/lib.sh"
 log "deploying $REL"
 
+# The platform worker's own user (ADR 012); created here so no instance change is needed.
+id outletops-platform > /dev/null 2>&1 ||
+  useradd --system --no-create-home --shell /sbin/nologin outletops-platform
+
 install -m 0755 "$REL_DIR/bin/caddy" /usr/local/bin/caddy
 install -m 0644 "$REL_DIR"/systemd/* /etc/systemd/system/
 install -d -m 0755 "$OO_ETC"
@@ -29,8 +33,9 @@ ln -sfn "$REL_DIR" "$OO_ROOT/current.new"
 mv -T "$OO_ROOT/current.new" "$OO_ROOT/current"
 
 systemctl enable -q outlet-ops-caddy.service outlet-ops-web.service \
+  outlet-ops-platform-worker.service \
   outlet-ops-wf-execute.timer outlet-ops-pg-backup.timer outlet-ops-attendance-nightly.timer
-systemctl restart outlet-ops-web.service
+systemctl restart outlet-ops-web.service outlet-ops-platform-worker.service
 systemctl reload-or-restart outlet-ops-caddy.service
 systemctl start outlet-ops-wf-execute.timer outlet-ops-pg-backup.timer \
   outlet-ops-attendance-nightly.timer

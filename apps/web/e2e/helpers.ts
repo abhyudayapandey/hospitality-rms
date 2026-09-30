@@ -1,7 +1,9 @@
 import { expect, type Page } from '@playwright/test';
 import pg from 'pg';
 import { HANDLERS, runOnce } from '@outlet-ops/workflow';
+import { execFileSync } from 'node:child_process';
 import { newSession, SESSION_COOKIE, signSession } from '../lib/auth/session';
+import { newPlatformSession, PLATFORM_COOKIE, signPlatformSession } from '../lib/platform/session';
 
 // The production suite runs against the standalone server, where /dev-login is compiled
 // out (ADR 004). Sign-in is a session cookie signed with the server's SESSION_SECRET
@@ -74,6 +76,41 @@ export async function signInAs(page: Page, name: string): Promise<void> {
   ]);
   await page.goto('/');
   await expect(page.getByTestId('current-user')).toHaveText(name);
+}
+
+/**
+ * Signs in to the platform console as the e2e platform admin (a platform.admin row, as the
+ * platform pool's sign-in would create for a member of platform-admins). Replaces any
+ * customer session: the two never mix.
+ */
+export async function signInPlatform(page: Page): Promise<void> {
+  const [admin] = await asMigrator<{ id: string }>(
+    `insert into platform.admin (cognito_sub, email) values ('e2e-platform-admin', 'ops@example.test')
+     on conflict (cognito_sub) do update set status = 'active' returning id`,
+    [],
+  );
+  const token = await signPlatformSession(newPlatformSession(admin!.id), env('SESSION_SECRET'));
+  await page.goto('about:blank');
+  await page.context().clearCookies();
+  await page.context().addCookies([
+    {
+      name: PLATFORM_COOKIE,
+      value: token,
+      domain: new URL(baseUrl()).hostname,
+      path: '/platform',
+      httpOnly: true,
+      sameSite: 'Strict',
+    },
+  ]);
+}
+
+/** Runs the platform worker until the queue is empty, exactly as the service does. */
+export function runPlatformWorker(): void {
+  execFileSync('pnpm', ['--filter', '@outlet-ops/onboarding', 'worker', '--once'], {
+    cwd: new URL('../../..', import.meta.url).pathname,
+    env: { ...process.env, PLATFORM_LOADER_DATABASE_URL: env('PLATFORM_LOADER_DATABASE_URL') },
+    stdio: 'pipe',
+  });
 }
 
 /**

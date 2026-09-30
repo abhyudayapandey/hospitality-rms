@@ -11,6 +11,14 @@ import {
   signSession,
   verifySession,
 } from './lib/auth/session';
+import {
+  PLATFORM_COOKIE,
+  PLATFORM_TOUCH_AFTER_S,
+  platformCookie,
+  platformMaxAge,
+  signPlatformSession,
+  verifyPlatformSession,
+} from './lib/platform/session';
 
 // Optimistic session handling before render (ADR 004):
 //  * no valid session -> /login (the data layer re-checks the user on every request)
@@ -27,9 +35,44 @@ function toLogin(req: NextRequest, reason: string): NextResponse {
   return res;
 }
 
+/**
+ * The platform console (ADR 012) is a separate world: only a platform session (its own
+ * cookie, limited to /platform) opens it, and a customer session never does. A platform
+ * session opens nothing outside /platform, since its cookie is never sent there.
+ */
+async function platformProxy(req: NextRequest, secret: string): Promise<NextResponse> {
+  const path = req.nextUrl.pathname;
+  if (
+    path.startsWith('/platform/auth/') ||
+    path === '/platform/signin' ||
+    path === '/platform/signed-out'
+  ) {
+    return NextResponse.next();
+  }
+  const now = nowSeconds();
+  const v = await verifyPlatformSession(req.cookies.get(PLATFORM_COOKIE)?.value, secret, now);
+  if (!v.ok) {
+    const res = NextResponse.redirect(new URL(`/platform/signin?reason=${v.reason}`, req.url));
+    res.cookies.delete({ name: PLATFORM_COOKIE, path: '/platform' });
+    return res;
+  }
+  const res = NextResponse.next();
+  if (now - v.payload.seen > PLATFORM_TOUCH_AFTER_S) {
+    const payload = { ...v.payload, seen: now };
+    res.cookies.set(PLATFORM_COOKIE, await signPlatformSession(payload, secret), {
+      ...platformCookie,
+      maxAge: platformMaxAge(payload, now),
+    });
+  }
+  return res;
+}
+
 export async function proxy(req: NextRequest): Promise<NextResponse> {
   const secret = process.env.SESSION_SECRET;
   if (!secret) return new NextResponse('SESSION_SECRET is not set', { status: 500 });
+  if (req.nextUrl.pathname === '/platform' || req.nextUrl.pathname.startsWith('/platform/')) {
+    return platformProxy(req, secret);
+  }
 
   const now = nowSeconds();
   const v = await verifySession(req.cookies.get(SESSION_COOKIE)?.value, secret, now);

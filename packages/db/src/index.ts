@@ -26,4 +26,21 @@ export async function withUser<T>(db: Db, userId: string, fn: (tx: Tx) => Promis
   });
 }
 
+/**
+ * A platform admin request (ADR 012): `app.platform_admin_id` is set and `app.user_id`
+ * cleared, so core.current_user_id() is null and no customer data is visible; platform
+ * functions check the admin themselves.
+ */
+export async function withPlatformAdmin<T>(
+  db: Db,
+  adminId: string,
+  fn: (tx: Tx) => Promise<T>,
+): Promise<T> {
+  return db.transaction().execute(async (tx) => {
+    await sql`select set_config('app.platform_admin_id', ${adminId}, true),
+                     set_config('app.user_id', '', true)`.execute(tx);
+    return fn(tx);
+  });
+}
+
 export { sql } from 'kysely';

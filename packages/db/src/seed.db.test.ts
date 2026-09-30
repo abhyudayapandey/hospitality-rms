@@ -52,6 +52,7 @@ describe('test customers', () => {
          join core.role_assignment ra on ra.user_id = u.id
          join core.security_group g on g.id = ra.group_id and g.code = 'AI_AGENT'
          join core.hierarchy_node n on n.id = ra.node_id and n.parent_id is null
+        where t.code in ('TEST-COMPANY', 'TEST-SOLO-COMPANY') -- e2e creates other customers
         group by t.code order by t.code`,
     );
     expect(rows).toEqual([

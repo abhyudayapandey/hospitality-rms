@@ -7,6 +7,7 @@ const base: Record<string, unknown> = {
   domainName: 'outletops.duckdns.org',
   alertEmail: 'ops@example.com',
   cognitoDomainPrefix: 'outlet-ops-test',
+  platformCognitoDomainPrefix: 'outlet-ops-test-platform',
   githubRepo: 'abhyudayapandey/hospitality-rms',
   githubOwnerId: '33194509',
   githubRepoId: '1394585977',

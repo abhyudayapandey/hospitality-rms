@@ -241,7 +241,7 @@ If the worker's department has no head, the request goes to the GM, then the are
 
 **Platform admin console** _(Next)_
 
-- **ADM-1** Separate login system with authenticator-app MFA required; no shared or pattern passwords.
+- **ADM-1** Separate login system (authenticator app). Platform admin accounts: no shared or pattern passwords, MFA required. Customers created as test customers (is_test, set at creation and immutable) may use the Test<Role>!12 rule for their users.
 - **ADM-2** Create customer: company name, country, currency, time zone, first account owner (email invite; the owner sets their own password).
 - **ADM-3** Import setup files: upload the CSV bundle, see a dry-run report (what will be created or updated, every error with file, row and column, the approval coverage check), then apply in one transaction. Re-importing unchanged files changes nothing.
 - **ADM-4** Customer list with status, user count and last activity; suspend or reactivate.

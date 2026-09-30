@@ -66,10 +66,33 @@ export function newSession(
   return { v: 1, uid, src, iat: now, seen: now, ref: now };
 }
 
-export async function signSession(payload: SessionPayload, secret: string): Promise<string> {
+/** A signed token: base64url JSON body, dot, HMAC-SHA256 of the body. */
+export async function signToken(payload: object, secret: string): Promise<string> {
   const body = b64url(enc.encode(JSON.stringify(payload)));
   const sig = await crypto.subtle.sign('HMAC', await key(secret), enc.encode(body));
   return `${body}.${b64url(sig)}`;
+}
+
+/** The token's JSON body when its signature is valid, else null. */
+export async function verifyToken(token: string | undefined, secret: string): Promise<unknown> {
+  if (!token) return null;
+  const [body, sig, extra] = token.split('.');
+  if (!body || !sig || extra !== undefined) return null;
+  try {
+    const valid = await crypto.subtle.verify(
+      'HMAC',
+      await key(secret),
+      fromB64url(sig),
+      enc.encode(body),
+    );
+    return valid ? (JSON.parse(new TextDecoder().decode(fromB64url(body))) as unknown) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function signSession(payload: SessionPayload, secret: string): Promise<string> {
+  return signToken(payload, secret);
 }
 
 export async function verifySession(
@@ -77,27 +100,8 @@ export async function verifySession(
   secret: string,
   now = nowSeconds(),
 ): Promise<VerifyResult> {
-  if (!token) return { ok: false, reason: 'invalid' };
-  const [body, sig, extra] = token.split('.');
-  if (!body || !sig || extra !== undefined) return { ok: false, reason: 'invalid' };
-  let valid: boolean;
-  try {
-    valid = await crypto.subtle.verify(
-      'HMAC',
-      await key(secret),
-      fromB64url(sig),
-      enc.encode(body),
-    );
-  } catch {
-    return { ok: false, reason: 'invalid' };
-  }
-  if (!valid) return { ok: false, reason: 'invalid' };
-  let payload: SessionPayload;
-  try {
-    payload = JSON.parse(new TextDecoder().decode(fromB64url(body))) as SessionPayload;
-  } catch {
-    return { ok: false, reason: 'invalid' };
-  }
+  const payload = (await verifyToken(token, secret)) as SessionPayload | null;
+  if (!payload) return { ok: false, reason: 'invalid' };
   if (payload.v !== 1 || typeof payload.uid !== 'string') return { ok: false, reason: 'invalid' };
   if (now - payload.iat > ABSOLUTE_TIMEOUT_S) return { ok: false, reason: 'absolute' };
   if (now - payload.seen > IDLE_TIMEOUT_S) return { ok: false, reason: 'idle' };
