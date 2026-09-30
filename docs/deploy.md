@@ -491,6 +491,13 @@ The production database has no dev seed.
   The loader creates the customer, gives it the product access, the workflow definitions
   and an AI agent user, and derives everyone's access from their job role. Check the
   printed access (`--access`) against the customer's expectations before `--apply`.
+  - The loader also rejects any structure where some process at some place would have no
+    approver (`NO_APPROVER`, one line per case, ADR 009); fix the structure or the
+    access files and dry-run again.
+  - The leave HR step is on unless file 00 sets `leave_hr_approval` to `no`.
+  - Before the pilot, and whenever access rules change, run **Actions → RLS equivalence
+    (all users) → Run workflow** on the commit you deploy: it checks every test user
+    against every business table (it never touches AWS).
 - **Rostering rules** default to 10 h rest, 48 h a week and late after 10 minutes; file 15
   overrides them.
 - **Cognito users.** Create each person in the user pool with the username from file 07,
