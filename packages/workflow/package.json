@@ -9,7 +9,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "sync-defs": "tsx scripts/sync-defs.ts",
-    "execute": "tsx scripts/execute.ts"
+    "execute": "tsx scripts/execute.ts",
+    "attendance-nightly": "tsx scripts/attendance-nightly.ts"
   },
   "dependencies": {
     "@outlet-ops/domain": "workspace:*",

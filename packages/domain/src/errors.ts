@@ -40,6 +40,11 @@ export const ERROR_MESSAGES = {
   LEAVE_OVERLAP: 'You already have leave on some of those days.',
   INSUFFICIENT_LEAVE_BALANCE: "You don't have enough leave left for that.",
   INVALID_GROUP: "That role isn't available.",
+  ALREADY_CLOCKED_IN: "You're already clocked in. Clock out first.",
+  NOT_CLOCKED_IN: "You're not clocked in.",
+  INVALID_TIMESTAMP:
+    "That punch time isn't valid. Punches older than a day can't be synced; tell your manager.",
+  INVALID_LOCATION: "Your location couldn't be read. Try again.",
   SESSION_EXPIRED: 'Your session has ended. Please sign in again.',
   UNEXPECTED: 'Something went wrong. Please try again.',
 } as const;
