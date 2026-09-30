@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server';
 import { cognitoConfig, exchangeCode, verifyIdToken } from '@/lib/auth/cognito';
 import { setSessionCookie } from '@/lib/auth/server';
 import { PKCE_COOKIE, REFRESH_COOKIE, ABSOLUTE_TIMEOUT_S, newSession } from '@/lib/auth/session';
-import { userIdForCognitoSub } from '@/lib/db';
+import { sql, userIdForCognitoSub, withUser } from '@/lib/db';
+import { clientAddress, LIMITS, withinLimit } from '@/lib/security/rate-limit';
 
 // Cognito redirects here with ?code&state. Verify state (PKCE cookie), exchange the code,
 // verify the ID token with aws-jwt-verify, map sub -> app user, start the session.
@@ -11,6 +12,9 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const fail = (reason: string) =>
     NextResponse.redirect(new URL(`/login?reason=${reason}`, req.url));
+  if (!(await withinLimit(`signin:${clientAddress(req.headers)}`, LIMITS.signIn))) {
+    return fail('rate_limited');
+  }
   const cfg = cognitoConfig();
   const jar = await cookies();
   const [state, verifier] = (jar.get(PKCE_COOKIE)?.value ?? '').split('.');
@@ -30,6 +34,7 @@ export async function GET(req: Request) {
   }
   const uid = await userIdForCognitoSub(sub);
   if (!uid) return fail('unknown_user');
+  await withUser(uid, (tx) => sql`select core.record_sign_in()`.execute(tx));
 
   await setSessionCookie(newSession(uid, 'cognito'));
   if (refreshToken) {

@@ -34,6 +34,21 @@ export async function userIdForCognitoSub(sub: string): Promise<string | null> {
     });
 }
 
+/**
+ * Rate limits (ADR 011): counts one hit on `key` and says whether it is within the limit.
+ * Runs as app_rw with no app.user_id; core.rate_limit_hit is all it can call.
+ */
+export async function rateLimitHit(key: string, limit: number, windowS: number): Promise<boolean> {
+  return db()
+    .transaction()
+    .execute(async (tx) => {
+      const r = await sql<{
+        ok: boolean;
+      }>`select core.rate_limit_hit(${key}, ${limit}::int, ${windowS}::int) as ok`.execute(tx);
+      return r.rows[0]?.ok === true;
+    });
+}
+
 /** Dev login only (ADR 004): resolves a test user by customer code and username. */
 export async function userIdForUsername(
   customer: string,

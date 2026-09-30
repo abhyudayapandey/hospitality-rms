@@ -6,6 +6,7 @@ import { isDevAuthEnabled } from '@/lib/dev-auth';
 const REASONS: Record<string, string> = {
   expired: messageFor('SESSION_EXPIRED'),
   unknown_user: "That account isn't set up for Outlet Ops yet. Ask your manager.",
+  rate_limited: 'Too many sign-in attempts from here. Wait a few minutes and try again.',
   cognito: 'Sign-in failed. Please try again.',
 };
 
