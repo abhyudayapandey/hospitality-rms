@@ -28,6 +28,8 @@ const HARPER = 'test.hr-admin';
 const SAM = 'test.server.3.0';
 const CASEY = 'test.cook.3.0';
 const AGENT = 'ai-agent';
+const FLOOR = 'test.floor-manager.3.0'; // DEPARTMENT_HEAD of Floor Service
+const OWNER = 'test.account-owner';
 
 let ids: SeedIds;
 beforeAll(async () => {
@@ -350,14 +352,15 @@ describe('purchase order routing', () => {
 
   it('routes LEAVE and STOCK_ADJUSTMENT raised by the sole outlet manager to the Area manager', async () => {
     await inRolledBackTx(async (c) => {
+      // the Bar Manager works at the outlet itself: no department head above them
       const leave = await submitOk(c, OLIVIA, {
         process: 'LEAVE',
         subject: 'hr.leave_request',
-        org: 'TEST-BAR-3.0-FLOOR-SERVICE',
+        org: 'TEST-BAR-3.0',
       });
       expect(await steps(c, leave)).toEqual([
         {
-          step: 'outlet_approval',
+          step: 'manager_approval',
           state: 'pending',
           scope: 'TEST-AREA-MUMBAI',
           grp: 'AREA_MANAGER',
@@ -383,17 +386,26 @@ describe('purchase order routing', () => {
     });
   });
 
-  it('raises NO_APPROVER only when nobody exists up the tree', async () => {
+  it('falls back to the account owner, and raises NO_APPROVER only when nobody exists', async () => {
     await inRolledBackTx(async (c) => {
-      await c.query(
-        `update core.role_assignment set effective_from = date '2020-01-01',
-                effective_to = date '2020-12-31' where user_id = $1`,
-        [ids.user(ARIA)],
-      );
+      const end = (who: string) =>
+        c.query(
+          `update core.role_assignment set effective_from = date '2020-01-01',
+                  effective_to = date '2020-12-31' where user_id = $1`,
+          [ids.user(who)],
+        );
+      await end(ARIA);
+      // no area manager: the account owner is the last approver of every step
+      const owned = await submitOk(c, OLIVIA, po(10_000));
+      expect((await steps(c, owned))[0]).toMatchObject({ state: 'pending', grp: 'ACCOUNT_OWNER' });
+      expect(await inbox(c, OWNER)).toContain(owned);
+      await act(c, OLIVIA, owned, 'cancel');
+      await end(OWNER);
       expect((await submit(c, OLIVIA, po(10_000))).error).toBe('NO_APPROVER');
-      const { rows } = await c.query('select 1 from wf.request where initiator_id = $1', [
-        ids.user(OLIVIA),
-      ]);
+      const { rows } = await c.query(
+        `select 1 from wf.request where initiator_id = $1 and state = 'in_approval'`,
+        [ids.user(OLIVIA)],
+      );
       expect(rows).toEqual([]);
       // Kim still routes normally to Olivia.
       await submitOk(c, KIM, po(10_000));
@@ -660,11 +672,11 @@ describe('two-sided transfer', () => {
 describe('inbox', () => {
   it('excludes requests the user initiated', async () => {
     await inRolledBackTx(async (c) => {
-      await assign(c, CASEY, 'OUTLET_MANAGER', 'TEST-BAR-3.0-FLOOR-SERVICE');
+      await assign(c, CASEY, 'OUTLET_MANAGER', 'TEST-BAR-3.0');
       const id = await submitOk(c, OLIVIA, {
         process: 'LEAVE',
         subject: 'hr.leave_request',
-        org: 'TEST-BAR-3.0-FLOOR-SERVICE',
+        org: 'TEST-BAR-3.0',
       });
       expect(await inbox(c, OLIVIA)).not.toContain(id);
       expect(await inbox(c, CASEY)).toContain(id);
@@ -681,7 +693,7 @@ describe('escalation', () => {
     );
   }
 
-  it('escalates LEAVE from the outlet manager to the area manager (escalateTo)', async () => {
+  it('escalates LEAVE from the department head to the outlet manager (the chain)', async () => {
     await inRolledBackTx(async (c) => {
       const id = await submitOk(c, SAM, {
         process: 'LEAVE',
@@ -690,13 +702,14 @@ describe('escalation', () => {
       });
       expect(await steps(c, id)).toEqual([
         {
-          step: 'outlet_approval',
+          step: 'manager_approval',
           state: 'pending',
           scope: 'TEST-BAR-3.0-FLOOR-SERVICE',
-          grp: 'OUTLET_MANAGER',
+          grp: 'DEPARTMENT_HEAD',
         },
         { step: 'hr_approval', state: 'waiting', scope: 'TEST-COMPANY', grp: 'HR_ADMIN' },
       ]);
+      expect(await inbox(c, FLOOR)).toContain(id);
       const none = await c.query('select * from wf.overdue_steps() where request_id = $1', [id]);
       expect(none.rows).toEqual([]);
 
@@ -708,26 +721,36 @@ describe('escalation', () => {
           where o.request_id = $1`,
         [id],
       );
-      expect(rows).toEqual([{ grp: 'AREA_MANAGER', node: 'TEST-AREA-MUMBAI' }]);
+      expect(rows).toEqual([{ grp: 'OUTLET_MANAGER', node: 'TEST-BAR-3.0' }]);
 
       const escalated = await c.query<{ n: number }>('select wf.escalate_overdue() as n');
       expect(escalated.rows[0]!.n).toBe(1);
       expect((await steps(c, id))[0]).toEqual({
-        step: 'outlet_approval',
+        step: 'manager_approval',
         state: 'pending',
-        scope: 'TEST-AREA-MUMBAI',
-        grp: 'AREA_MANAGER',
+        scope: 'TEST-BAR-3.0',
+        grp: 'OUTLET_MANAGER',
       });
-      expect(await inbox(c, OLIVIA)).not.toContain(id);
-      expect(await inbox(c, ARIA)).toContain(id);
+      expect(await inbox(c, FLOOR)).not.toContain(id);
+      expect(await inbox(c, OLIVIA)).toContain(id);
+      // overdue again: the next group of the chain, the area manager
+      await makeOverdue(c, id, 49);
+      await c.query('select wf.escalate_overdue()');
+      expect((await steps(c, id))[0]).toMatchObject({ grp: 'AREA_MANAGER' });
       expect(await actOk(c, ARIA, id, 'approve')).toBe('in_approval');
       expect(await inbox(c, HARPER)).toContain(id);
     });
   });
 
-  it('keeps an overdue step pending and lists it as unroutable when no one holds the group above', async () => {
+  it('keeps an overdue step pending and lists it as unroutable when no one is left in its chain', async () => {
     await inRolledBackTx(async (c) => {
-      // TRANSFER dispatch: HUB_MANAGER at the hub, no escalateTo, nobody above the hub.
+      // TRANSFER dispatch: HUB_MANAGER at the hub, nobody above the hub, and (for this
+      // test) no account owner at the end of the chain.
+      await c.query(
+        `update core.role_assignment set effective_from = date '2020-01-01',
+                effective_to = date '2020-12-31' where user_id = $1`,
+        [ids.user(OWNER)],
+      );
       const id = await submitOk(c, KIM, {
         process: 'TRANSFER',
         subject: 'inv.transfer',

@@ -76,8 +76,8 @@ test('manager builds and publishes; approved leave drops the shift after both ap
     'Waiting for approval',
   );
 
-  // The outlet manager reviews: the screen lists the shift approval will drop
-  await signInAs(page, 'Test Bar Manager 3.0');
+  // The department head (Floor Manager) reviews: the screen lists the shift approval will drop
+  await signInAs(page, 'Test Floor Manager 3.0');
   await page.goto('/inbox');
   await page
     .getByTestId('inbox-item')
@@ -151,7 +151,7 @@ test('shift swap: offered, accepted by the colleague, approved by the manager', 
   await offer.getByRole('button', { name: 'Accept' }).click();
   await expect(offer).toContainText('Waiting for manager approval');
 
-  await signInAs(page, 'Test Bar Manager 3.0');
+  await signInAs(page, 'Test Floor Manager 3.0');
   await page.goto('/inbox');
   await page
     .getByTestId('inbox-item')

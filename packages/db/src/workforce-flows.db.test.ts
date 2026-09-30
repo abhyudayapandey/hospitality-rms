@@ -176,13 +176,15 @@ async function one<T>(c: PoolClient, sql: string, params: unknown[] = []): Promi
 const SAM = () => ids.user('test.server.3.0');
 const OLIVIA = () => ids.user('test.bar-manager.3.0');
 const HARPER = () => ids.user('test.hr-admin');
+// Floor Service's department head: first approver of its people's leave and swaps (ADR 009)
+const FLOOR = () => ids.user('test.floor-manager.3.0');
 const OWEN = () => ids.user('test.account-owner');
 const ARIA = () => ids.user('test.area-manager');
 const SASHA = () => ids.user('test.security-admin');
 
 // ---------------------------------------------------------------------------
 describe('LEAVE', () => {
-  it('request -> outlet -> HR -> apply: balance used, shifts dropped, roster blocked', async () => {
+  it('request -> department head -> HR -> apply: balance used, shifts dropped, roster blocked', async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c);
       const wed = await shift(c, f, 2);
@@ -202,7 +204,8 @@ describe('LEAVE', () => {
           leave,
         ])
       ).r;
-      expect(await inbox(c, OLIVIA())).toContain(req);
+      expect(await inbox(c, FLOOR())).toContain(req);
+      expect(await inbox(c, OLIVIA())).not.toContain(req); // the department head comes first
 
       // the approval screen lists what approval will drop
       const drops = await as<{ assignment_id: string }>(
@@ -222,7 +225,8 @@ describe('LEAVE', () => {
       );
       expect(bal).toEqual({ pending_days: '2.0', available_days: '10.0' });
 
-      await as(c, OLIVIA(), `select wf.act($1, 'approve')`, [req]);
+      await as(c, FLOOR(), `select wf.act($1, 'approve')`, [req]);
+      // no Outlet HR at Test Bar 3.0: the HR step falls back to the company HR admin
       expect(await inbox(c, HARPER())).toContain(req);
       await as(c, HARPER(), `select wf.act($1, 'approve')`, [req]);
       await execute(c, req);
@@ -324,7 +328,7 @@ describe('LEAVE', () => {
           l1,
         ])
       ).r;
-      await as(c, OLIVIA(), `select wf.act($1, 'reject', 'short staffed')`, [r1]);
+      await as(c, FLOOR(), `select wf.act($1, 'reject', 'short staffed')`, [r1]);
       await execute(c, r1);
       expect(
         (await one<{ s: string }>(c, 'select status s from hr.leave_request where id = $1', [l1]))
@@ -363,25 +367,39 @@ describe('LEAVE', () => {
     });
   });
 
-  it("a manager's own leave goes to the area manager (rule 7)", async () => {
+  it("a department head's own leave goes to the outlet manager, theirs to the area manager", async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c);
-      const { id } = await first<{ id: string }>(
-        c,
-        OLIVIA(),
-        `select hr.request_leave($1, $2::date, $2::date) as id`,
-        [f.annual, f.monday],
-      );
-      const r = (
-        await one<{ r: string }>(c, 'select wf_request_id r from hr.leave_request where id = $1', [
-          id,
-        ])
-      ).r;
-      expect(await inbox(c, OLIVIA())).not.toContain(r);
-      expect(await inbox(c, ARIA())).toContain(r);
-      expect(await err(c, OLIVIA(), `select wf.act($1, 'approve')`, [r])).toBe(
+      const requestOf = async (who: string) => {
+        const { id } = await first<{ id: string }>(
+          c,
+          who,
+          `select hr.request_leave($1, $2::date, $2::date) as id`,
+          [f.annual, f.monday],
+        );
+        return (
+          await one<{ r: string }>(
+            c,
+            'select wf_request_id r from hr.leave_request where id = $1',
+            [id],
+          )
+        ).r;
+      };
+      // the floor manager heads Floor Service: their own leave skips to the outlet manager
+      const r1 = await requestOf(FLOOR());
+      expect(await inbox(c, FLOOR())).not.toContain(r1);
+      expect(await inbox(c, OLIVIA())).toContain(r1);
+      expect(await err(c, FLOOR(), `select wf.act($1, 'approve')`, [r1])).toBe(
         'SEGREGATION_OF_DUTIES',
       );
+      // the Bar Manager works at the outlet: their own leave goes to the area manager
+      await c.query('update hr.worker set org_node_id = $2 where id = $1', [
+        f.olivia,
+        ids.node('TEST-BAR-3.0'),
+      ]);
+      const r2 = await requestOf(OLIVIA());
+      expect(await inbox(c, OLIVIA())).not.toContain(r2);
+      expect(await inbox(c, ARIA())).toContain(r2);
     });
   });
 
@@ -472,14 +490,14 @@ describe('SHIFT_SWAP', () => {
       );
       expect(r.initiator_id).toBe(f.pat.userId);
       expect(r.excluded_approvers).toEqual([SAM()]);
-      expect(await inbox(c, OLIVIA())).toContain(req);
+      expect(await inbox(c, FLOOR())).toContain(req);
 
       // module approval only
-      expect(await err(c, OLIVIA(), `select wf.act($1, 'approve')`, [req])).toBe(
+      expect(await err(c, FLOOR(), `select wf.act($1, 'approve')`, [req])).toBe(
         'APPROVE_VIA_MODULE',
       );
       expect(
-        (await as<{ s: string }>(c, OLIVIA(), 'select hr.approve_swap($1) as s', [swapId]))[0]!.s,
+        (await as<{ s: string }>(c, FLOOR(), 'select hr.approve_swap($1) as s', [swapId]))[0]!.s,
       ).toBe('approved');
       await execute(c, req);
 
@@ -508,26 +526,35 @@ describe('SHIFT_SWAP', () => {
     });
   });
 
-  it('neither party approves: an outlet manager swapping goes to the area manager', async () => {
+  it('neither party approves: a department head swapping goes to the outlet manager', async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c);
-      const { swapId } = await offered(c, f, f.olivia, OLIVIA(), f.mia.workerId, 'MANAGER');
+      // the floor manager and Mia (both rostered as managers in Floor Service) swap
+      const floor = await workerFor(
+        c,
+        ids,
+        'test.floor-manager.3.0',
+        'TEST-BAR-3.0-FLOOR-SERVICE',
+        'MANAGER',
+      );
+      await c.query(`update hr.worker set role_code = 'MANAGER' where id = $1`, [floor]);
+      const { swapId } = await offered(c, f, floor, FLOOR(), f.mia.workerId, 'MANAGER');
       await as(c, f.mia.userId, 'select hr.respond_swap($1, true)', [swapId]);
       const req = (
         await one<{ r: string }>(c, 'select wf_request_id r from hr.shift_swap where id = $1', [
           swapId,
         ])
       ).r;
-      expect(await inbox(c, OLIVIA())).not.toContain(req);
-      expect(await inbox(c, ARIA())).toContain(req);
-      expect(await err(c, OLIVIA(), 'select hr.approve_swap($1)', [swapId])).toBe(
+      expect(await inbox(c, FLOOR())).not.toContain(req);
+      expect(await inbox(c, OLIVIA())).toContain(req);
+      expect(await err(c, FLOOR(), 'select hr.approve_swap($1)', [swapId])).toBe(
         'SEGREGATION_OF_DUTIES',
       );
       expect(await err(c, f.mia.userId, 'select hr.approve_swap($1)', [swapId])).toBe(
         'SEGREGATION_OF_DUTIES',
       );
       expect(
-        (await as<{ s: string }>(c, ARIA(), 'select hr.approve_swap($1) as s', [swapId]))[0]!.s,
+        (await as<{ s: string }>(c, OLIVIA(), 'select hr.approve_swap($1) as s', [swapId]))[0]!.s,
       ).toBe('approved');
     });
   });
@@ -539,7 +566,7 @@ describe('SHIFT_SWAP', () => {
       await as(c, f.pat.userId, 'select hr.respond_swap($1, true)', [swapId]);
       // Pat is rostered at 20:00 the evening before: less than 10 h rest before 09:00
       await assign(c, await shift(c, f, 0, '20:00', 4), f.pat.workerId);
-      expect(await err(c, OLIVIA(), 'select hr.approve_swap($1)', [swapId])).toBe('REST_RULE');
+      expect(await err(c, FLOOR(), 'select hr.approve_swap($1)', [swapId])).toBe('REST_RULE');
       const req = (
         await one<{ r: string }>(c, 'select wf_request_id r from hr.shift_swap where id = $1', [
           swapId,
@@ -556,7 +583,7 @@ describe('SHIFT_SWAP', () => {
       const f = await fixture(c);
       const { swapId } = await offered(c, f, f.sam, SAM(), f.pat.workerId);
       await as(c, f.pat.userId, 'select hr.respond_swap($1, true)', [swapId]);
-      await as(c, OLIVIA(), 'select hr.approve_swap($1)', [swapId]);
+      await as(c, FLOOR(), 'select hr.approve_swap($1)', [swapId]);
       // a conflicting assignment lands between approval and execution
       await assign(c, await shift(c, f, 1, '12:00', 4), f.pat.workerId);
       const req = (

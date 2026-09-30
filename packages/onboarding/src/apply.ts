@@ -130,6 +130,8 @@ class Loader {
     await this.people();
     if (this.report.issues.length) return;
     await this.access();
+    await this.coverage();
+    if (this.report.issues.length) return;
     await this.stock();
     await this.leave();
     await this.rostering();
@@ -162,6 +164,13 @@ class Loader {
       ])
     ).rows[0]!.id;
     this.report.tenantId = this.tenant;
+    if (cu.leave_hr_approval !== undefined) {
+      await this.c.query(
+        `update core.tenant set settings = settings || jsonb_build_object('leave_hr_approval', $2::boolean)
+          where id = $1 and (settings ->> 'leave_hr_approval')::boolean is distinct from $2`,
+        [this.tenant, cu.leave_hr_approval],
+      );
+    }
     // groups, domains and the policy matrix the assignments below refer to
     await syncProductAccess(this.c, this.tenant);
     await syncProcessDefs(this.c);
@@ -460,6 +469,26 @@ class Loader {
                    || ' ' || ra.node_id = any ($3))`,
       [this.tenant, [...this.users.values()], wanted],
     );
+  }
+
+  /** Every process must have an approver at every place (ADR 009): list each gap. */
+  private async coverage() {
+    this.step('');
+    const { rows } = await this.c.query<{
+      process_type: string;
+      step: string;
+      node_code: string | null;
+    }>('select process_type, step, node_code from wf.approval_coverage($1)', [this.tenant]);
+    for (const r of rows) {
+      const org = this.b.orgNodes.find((n) => n.node_code === r.node_code);
+      const dlv = this.b.deliveryNodes.find((n) => n.node_code === r.node_code);
+      this.report.issues.push({
+        file: org ? FILES.orgNodes.file : FILES.deliveryNodes.file,
+        ...((org ?? dlv) && { row: (org ?? dlv)!.line }),
+        column: 'node_code',
+        message: `${r.process_type} ${r.step}: nobody can approve at ${r.node_code} (NO_APPROVER)`,
+      });
+    }
   }
 
   private async stock() {

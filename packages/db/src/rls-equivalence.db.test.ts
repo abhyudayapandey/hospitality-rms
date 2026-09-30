@@ -36,10 +36,21 @@ interface Registration {
   tenant_scoped: boolean;
   catalog: boolean;
   has_owner_user_id: boolean;
+  has_wf: boolean;
 }
 
-/** The policy expression as generated before ADR 007: core.can() per row, per leg. */
+/**
+ * The policy expression as generated before ADR 007: core.can() per row, per leg; plus,
+ * for subject tables, the pending-inbox leg (ADR 009): a request's approver reads it.
+ */
 function perRowCan(r: Registration, access: 'view' | 'modify'): string {
+  const legs = perRowLegs(r, access);
+  return r.has_wf && access === 'view'
+    ? `((${legs}) or wf_request_id = any (wf.my_actionable_requests()))`
+    : legs;
+}
+
+function perRowLegs(r: Registration, access: 'view' | 'modify'): string {
   const owner = r.owner_column ?? (r.has_owner_user_id ? 'owner_user_id' : null);
   const o = owner ?? 'null';
   if (r.domain_column) {
@@ -68,7 +79,8 @@ async function registrations(c: PoolClient): Promise<Registration[]> {
   const { rows } = await c.query<Registration>(
     `select dt.table_name::text as table_name, dt.domain_code, dt.hierarchy_type, dt.node_columns,
             dt.domain_column, dt.owner_column, dt.tenant_scoped, dt.catalog,
-            core.has_column(dt.table_name, 'owner_user_id') as has_owner_user_id
+            core.has_column(dt.table_name, 'owner_user_id') as has_owner_user_id,
+            core.has_column(dt.table_name, 'wf_request_id') as has_wf
        from core.domain_table dt
        join pg_class cl on cl.oid = dt.table_name
        join pg_namespace n on n.oid = cl.relnamespace
@@ -93,6 +105,9 @@ async function userIds(c: PoolClient): Promise<{ id: string; name: string }[]> {
      union
      select id, display_name from core.app_user u
       where not exists (select 1 from core.role_assignment ra where ra.user_id = u.id)
+     union
+     -- the approver of the fixtures' pending leave (department head of Floor Service)
+     select id, display_name from core.app_user where username = 'test.floor-manager.3.0'
      order by name`,
   );
   return rows;

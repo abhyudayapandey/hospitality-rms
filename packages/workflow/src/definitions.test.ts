@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { HANDLERS, INVENTORY_HANDLERS } from './handlers';
-import { PROCESS_DEFS, TRANSFER } from './processes';
-import { processDefSchema } from './types';
+import { LEAVE, PROCESS_DEFS, TRANSFER } from './processes';
+import { chainGroups, FINAL_APPROVER, processDefSchema } from './types';
 
 describe('process definitions', () => {
   it('has the six MVP processes', () => {
@@ -60,5 +60,16 @@ describe('process definitions', () => {
     expect(() =>
       processDefSchema.parse({ ...base, steps: [{ ...base.steps[0], when: { amount_lt: 1 } }] }),
     ).toThrow();
+  });
+
+  it('ends every step chain with the account owner; leave starts at the department head', () => {
+    for (const d of PROCESS_DEFS) {
+      for (const st of d.steps)
+        expect(chainGroups(st).at(-1), `${d.type} ${st.step}`).toBe(FINAL_APPROVER);
+    }
+    expect(LEAVE.steps.map(chainGroups)).toEqual([
+      ['DEPARTMENT_HEAD', 'OUTLET_MANAGER', 'AREA_MANAGER', 'ACCOUNT_OWNER'],
+      ['OUTLET_HR', 'HR_ADMIN', 'ACCOUNT_OWNER'],
+    ]);
   });
 });
