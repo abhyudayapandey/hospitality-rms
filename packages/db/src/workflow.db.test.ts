@@ -441,11 +441,11 @@ describe('initiation rights', () => {
 
   it('requires modify on the subject domain for humans', async () => {
     await inRolledBackTx(async (c) => {
-      // Give CHEF the bp_policy right; the chef still lacks PURCHASE_ORDERS modify.
+      // Give STOCK_USER the bp_policy right; the stock user has only PURCHASE_ORDERS view.
       await c.query(
         `insert into core.bp_policy (tenant_id, process_type, step, group_id, action)
          select tenant_id, 'PURCHASE_ORDER', '*', id, 'initiate' from core.security_group
-          where code = 'CHEF'`,
+          where code = 'STOCK_USER'`,
       );
       expect((await submit(c, CASEY, po(10_000))).error).toBe('NOT_AUTHORISED');
     });

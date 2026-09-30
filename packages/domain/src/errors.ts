@@ -45,6 +45,7 @@ export const ERROR_MESSAGES = {
   INVALID_TIMESTAMP:
     "That punch time isn't valid. Punches older than a day can't be synced; tell your manager.",
   INVALID_LOCATION: "Your location couldn't be read. Try again.",
+  ADMIN_NOT_DATA: 'Admin access cannot include business data.',
   NOT_A_STOCK_LOCATION: "Stock isn't kept at that location. Pick one of its stores.",
   SESSION_EXPIRED: 'Your session has ended. Please sign in again.',
   UNEXPECTED: 'Something went wrong. Please try again.',

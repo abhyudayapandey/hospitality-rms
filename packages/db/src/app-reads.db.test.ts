@@ -87,12 +87,13 @@ describe('core.my_domains', () => {
       PURCHASE_ORDERS: 'view',
       TRANSFERS: 'view',
       ROSTER: 'view',
+      STOCK_ADJUSTMENTS: 'view', // DERIVED_STOCK_ADJUSTMENTS (ADR 009)
     });
-    expect(d).not.toHaveProperty('STOCK_ADJUSTMENTS');
   });
 
-  it('SECURITY_ROLES for HR admin (modify), security admin and auditor (view) only', async () => {
-    expect((await domains('Harper HR Admin')).SECURITY_ROLES).toBe('modify');
+  it('SECURITY_ROLES for the account owner, security admin and auditor (view) only', async () => {
+    expect(await domains('Harper HR Admin')).not.toHaveProperty('SECURITY_ROLES');
+    expect((await domains('Owen Account Owner')).SECURITY_ROLES).toBe('view');
     expect((await domains('Sasha Security Admin')).SECURITY_ROLES).toBe('view');
     expect((await domains('Avery Auditor')).SECURITY_ROLES).toBe('view');
     expect(await domains('Olivia Outlet Manager')).not.toHaveProperty('SECURITY_ROLES');
@@ -181,13 +182,15 @@ describe('wf.my_processes', () => {
       'STOCK_ADJUSTMENT',
     ]);
     expect(await procs('Outlet Ops AI Agent')).toEqual(['PURCHASE_ORDER']); // no SELF for services
-    expect(await procs('Harper HR Admin')).toEqual(['LEAVE', 'ROLE_CHANGE', 'SHIFT_SWAP']);
+    // user administration moved to User Admins and Account Owners (ADR 009)
+    expect(await procs('Harper HR Admin')).toEqual(['LEAVE', 'SHIFT_SWAP']);
+    expect(await procs('Owen Account Owner')).toEqual(['LEAVE', 'ROLE_CHANGE', 'SHIFT_SWAP']);
   });
 });
 
 describe('admin reads', () => {
   it('allow SECURITY_ROLES holders and refuse everyone else', async () => {
-    for (const who of ['Harper HR Admin', 'Sasha Security Admin', 'Avery Auditor']) {
+    for (const who of ['Owen Account Owner', 'Sasha Security Admin', 'Avery Auditor']) {
       const a = await as<{ user_name: string }>(who, 'select * from core.admin_role_assignments()');
       expect(a.error, who).toBeUndefined();
       expect(a.rows!.length).toBeGreaterThan(10);
@@ -197,7 +200,12 @@ describe('admin reads', () => {
       );
       expect(p.rows!.length).toBeGreaterThan(10);
     }
-    for (const who of ['Olivia Outlet Manager', 'Kim Storekeeper', 'Outlet Ops AI Agent']) {
+    for (const who of [
+      'Olivia Outlet Manager',
+      'Kim Storekeeper',
+      'Outlet Ops AI Agent',
+      'Harper HR Admin',
+    ]) {
       expect((await as(who, 'select * from core.admin_role_assignments()')).error, who).toBe(
         'NOT_AUTHORISED',
       );

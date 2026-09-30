@@ -65,11 +65,13 @@ const cases: Case[] = [
   [SAM, 'WORKERS', 'view', O_A, SAM, true, 'self-service: own worker record'],
   [SAM, 'WORKERS', 'modify', O_A, SAM, false, 'self-service: worker record view-only'],
 
-  // Multi-assignment: STAFF@org Outlet A + CHEF@delivery Outlet A
+  // Multi-assignment: STAFF@org Outlet A + STOCK_USER@delivery Outlet A (was CHEF)
   [CASEY, 'ROSTER', 'view', O_A, null, true, 'chef via STAFF'],
   [CASEY, 'EVENTS', 'view', O_A, null, true, 'chef via STAFF'],
-  [CASEY, 'STOCK_LEVELS', 'view', D_A, null, true, 'chef via CHEF'],
-  [CASEY, 'STOCK_ADJUSTMENTS', 'modify', D_A, null, true, 'chef via CHEF'],
+  [CASEY, 'STOCK_LEVELS', 'view', D_A, null, true, 'via STOCK_USER'],
+  [CASEY, 'STOCK_ADJUSTMENTS', 'modify', D_A, null, true, 'via STOCK_USER'],
+  [CASEY, 'PURCHASE_ORDERS', 'view', D_A, null, true, 'stock user sees POs to receive'],
+  [CASEY, 'PURCHASE_ORDERS', 'modify', D_A, null, false, 'stock user cannot create POs'],
   [CASEY, 'STOCK_ADJUSTMENTS', 'modify', D_B, null, false, 'cross-outlet denial'],
   [CASEY, 'PURCHASE_ORDERS', 'modify', D_A, null, false, 'chef cannot raise POs'],
   [CASEY, 'ROSTER', 'modify', O_A, null, false, 'chef cannot edit roster'],
@@ -108,7 +110,8 @@ const cases: Case[] = [
   [ARIA, 'PURCHASE_ORDERS', 'view', D_A, null, true, 'derived PO view'],
   [ARIA, 'PURCHASE_ORDERS', 'modify', D_A, null, false, 'derived PO view-only'],
   [ARIA, 'TRANSFERS', 'view', D_B, null, true, 'derived transfers view'],
-  [ARIA, 'STOCK_ADJUSTMENTS', 'view', D_A, null, false, 'no derived stock adjustments'],
+  [ARIA, 'STOCK_ADJUSTMENTS', 'view', D_A, null, true, 'derived stock adjustments (ADR 009)'],
+  [ARIA, 'STOCK_ADJUSTMENTS', 'modify', D_A, null, false, 'derived is view only'],
   [ARIA, 'COMPENSATION', 'view', O_A, null, false, 'no pay data'],
 
   // HUB_MANAGER at Hub (no descendants) + SUPPLY_VIEWER at Hub (with descendants)

@@ -115,7 +115,8 @@ export const SHIFT_SWAP: ProcessDef = {
 export const ROLE_CHANGE: ProcessDef = {
   type: 'ROLE_CHANGE',
   subject: 'hr.role_change',
-  domain: 'SECURITY_ROLES',
+  // user administration (ADR 009): requested by User Admins and Account Owners
+  domain: 'USER_ACCESS',
   hierarchy: 'org',
   steps: [{ step: 'security_approval', group: 'SECURITY_ADMIN', scope: 'nearest_ancestor' }],
   onApproved: 'hr.role_change.apply',

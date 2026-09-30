@@ -60,8 +60,8 @@ async function setUpTenantB(c: PoolClient): Promise<TenantB> {
     [tenantA, b],
   );
   await c.query(
-    `insert into core.domain (tenant_id, code, hierarchy_type)
-     select $2, code, hierarchy_type from core.domain where tenant_id = $1`,
+    `insert into core.domain (tenant_id, code, hierarchy_type, admin)
+     select $2, code, hierarchy_type, admin from core.domain where tenant_id = $1`,
     [tenantA, b],
   );
   await c.query(

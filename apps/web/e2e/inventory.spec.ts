@@ -53,11 +53,11 @@ test('a count within tolerance posts straight away', async ({ page }) => {
   if (await resume.count()) await resume.click();
   else await page.getByRole('button', { name: 'Start a count' }).click();
   await page.waitForURL(/\/stock\/count\/[0-9a-f-]{36}/);
-  await page.getByRole('textbox', { name: 'Counted Iodised salt' }).fill(String(before - 0.5));
+  await page.getByRole('textbox', { name: 'Counted Iodised salt' }).fill(String(before + 0.5));
   await page.getByRole('button', { name: /^Submit count/ }).click();
   await expect(page.getByRole('status')).toContainText('1 posted, 0 sent for approval');
 
-  expect(await onHand(page, 'DRY-SALT', NODE.outletA)).toBeCloseTo(before - 0.5, 3);
+  expect(await onHand(page, 'DRY-SALT', NODE.outletA)).toBeCloseTo(before + 0.5, 3);
 });
 
 test('the area manager sees outlet stock read-only (derived view)', async ({ page }) => {

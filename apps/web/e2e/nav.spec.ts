@@ -4,7 +4,8 @@ import { signInAs } from './helpers';
 // Bottom nav follows core.my_domains(); the pages themselves are enforced in the DB.
 const cases: [string, string[], string[]][] = [
   ['Kim Storekeeper', ['Home', 'Inbox', 'Requests', 'Stock', 'Roster'], ['Admin']],
-  ['Harper HR Admin', ['Home', 'Inbox', 'Requests', 'Roster', 'Admin'], ['Stock']],
+  ['Harper HR Admin', ['Home', 'Inbox', 'Requests', 'Roster'], ['Stock', 'Admin']],
+  ['Owen Account Owner', ['Home', 'Inbox', 'Requests', 'Admin'], ['Stock']],
   ['Sam Staff', ['Home', 'Inbox', 'Requests', 'Roster'], ['Stock', 'Admin']],
 ];
 

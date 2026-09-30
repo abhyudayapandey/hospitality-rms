@@ -158,6 +158,7 @@ async function one<T>(c: PoolClient, sql: string, params: unknown[] = []): Promi
 const SAM = () => ids.user('Sam Staff');
 const OLIVIA = () => ids.user('Olivia Outlet Manager');
 const HARPER = () => ids.user('Harper HR Admin');
+const OWEN = () => ids.user('Owen Account Owner');
 const ARIA = () => ids.user('Aria Area Manager');
 const SASHA = () => ids.user('Sasha Security Admin');
 
@@ -634,7 +635,7 @@ describe('SHIFT_SWAP', () => {
 describe('ROLE_CHANGE', () => {
   const request = `select hr.request_role_change($1, $2, $3, $4, true, $5, $6, $7) as id`;
 
-  it('grant: HR Admin requests, Security Admin approves, access applies at once', async () => {
+  it('grant: the Account Owner requests, Security Admin approves, access applies at once', async () => {
     await inRolledBackTx(async (c) => {
       await fixture(c);
       const canAdjust = async () =>
@@ -648,10 +649,10 @@ describe('ROLE_CHANGE', () => {
         )[0]!.ok;
       expect(await canAdjust()).toBe(false);
 
-      const { id } = await first<{ id: string }>(c, HARPER(), request, [
+      const { id } = await first<{ id: string }>(c, OWEN(), request, [
         'grant',
         SAM(),
-        'CHEF',
+        'STOCK_USER',
         ids.node('delivery:Outlet A'),
         null,
         null,
@@ -663,7 +664,7 @@ describe('ROLE_CHANGE', () => {
         [id],
       );
       expect(rc.org_node_id).toBe(ids.node('org:Outlet A')); // linked org node routes it
-      expect(await err(c, HARPER(), `select wf.act($1, 'approve')`, [rc.wf_request_id])).toBe(
+      expect(await err(c, OWEN(), `select wf.act($1, 'approve')`, [rc.wf_request_id])).toBe(
         'SEGREGATION_OF_DUTIES',
       );
       expect(await inbox(c, SASHA())).toContain(rc.wf_request_id);
@@ -693,7 +694,7 @@ describe('ROLE_CHANGE', () => {
           where ra.user_id = $1 and g.code = 'STAFF'`,
         [SAM()],
       );
-      const { id } = await first<{ id: string }>(c, HARPER(), request, [
+      const { id } = await first<{ id: string }>(c, OWEN(), request, [
         'end',
         null,
         null,
@@ -719,7 +720,7 @@ describe('ROLE_CHANGE', () => {
 
       // a change to Sasha's own access has no other Security Admin to approve it
       expect(
-        await err(c, HARPER(), request, [
+        await err(c, OWEN(), request, [
           'grant',
           SASHA(),
           'AUDITOR',
@@ -732,14 +733,14 @@ describe('ROLE_CHANGE', () => {
     });
   });
 
-  it('only HR Admin can request; cross-tenant targets are refused', async () => {
+  it('only User Admins and Account Owners request; cross-tenant targets are refused', async () => {
     await inRolledBackTx(async (c) => {
       await fixture(c);
       expect(
         await err(c, SAM(), request, [
           'grant',
           SAM(),
-          'CHEF',
+          'STOCK_USER',
           ids.node('delivery:Outlet A'),
           null,
           null,
@@ -756,9 +757,9 @@ describe('ROLE_CHANGE', () => {
           [other],
         )
       ).id;
-      expect(
-        await err(c, HARPER(), request, ['grant', SAM(), 'STAFF', node, null, null, null]),
-      ).toBe('TENANT_MISMATCH');
+      expect(await err(c, OWEN(), request, ['grant', SAM(), 'STAFF', node, null, null, null])).toBe(
+        'TENANT_MISMATCH',
+      );
     });
   });
 
@@ -784,12 +785,12 @@ describe('ROLE_CHANGE', () => {
                                        node_id, effective_from, created_by)
            select $1, $2, 'grant', $3, g.id, $4, current_date, $5
              from core.security_group g where g.tenant_id = $1 and g.code = 'STAFF' returning id`,
-          [f.tenant, ids.node('org:Company'), SAM(), node, HARPER()],
+          [f.tenant, ids.node('org:Company'), SAM(), node, OWEN()],
         )
       ).id;
       const { r } = await first<{ r: string }>(
         c,
-        HARPER(),
+        OWEN(),
         `select wf.submit('ROLE_CHANGE', 'hr.role_change', $1) r`,
         [rc],
       );

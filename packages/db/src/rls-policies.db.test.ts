@@ -153,7 +153,9 @@ describe('two-node table (transfer shape) with wf_request_id', () => {
       expect(await see('Kim Storekeeper')).toEqual(['hub->A']); // TRANSFERS V at A
       expect(await see('Hugo Hub Manager')).toEqual(['hub->A', 'hub->B']); // from-leg
       expect(await see('Aria Area Manager')).toEqual(['hub->A', 'hub->B']); // derived
-      expect(await see('Casey Chef')).toEqual([]);
+      // STOCK_USER at A requests transfers (ADR 009), so it sees A's leg
+      expect(await see('Casey Chef')).toEqual(['hub->A']);
+      expect(await see('Sam Staff')).toEqual([]);
     });
   });
 

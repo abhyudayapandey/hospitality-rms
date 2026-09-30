@@ -9,7 +9,11 @@ export interface DevUser {
 
 export const DEV_USERS: readonly DevUser[] = [
   { id: '01920000-0000-7000-8000-000000000301', name: 'Sam Staff', roles: 'Staff · Outlet A' },
-  { id: '01920000-0000-7000-8000-000000000302', name: 'Casey Chef', roles: 'Chef · Outlet A' },
+  {
+    id: '01920000-0000-7000-8000-000000000302',
+    name: 'Casey Chef',
+    roles: 'Stock User · Outlet A',
+  },
   {
     id: '01920000-0000-7000-8000-000000000303',
     name: 'Kim Storekeeper',
@@ -45,6 +49,11 @@ export const DEV_USERS: readonly DevUser[] = [
     id: '01920000-0000-7000-8000-000000000310',
     name: 'Outlet Ops AI Agent',
     roles: 'AI agent (service user)',
+  },
+  {
+    id: '01920000-0000-7000-8000-000000000319',
+    name: 'Owen Account Owner',
+    roles: 'Account Owner · Company',
   },
   // Workforce dev seed (seed/dev/004_workforce_dev.sql)
   { id: '01920000-0000-7000-8000-000000000311', name: 'Priya Server', roles: 'Staff · Outlet A' },

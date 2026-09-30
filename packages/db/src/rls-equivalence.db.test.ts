@@ -181,43 +181,48 @@ async function fixtures(c: PoolClient): Promise<void> {
 }
 
 describe('ADR 007 policies are equivalent to per-row core.can()', () => {
-  it('select: every seeded user sees exactly the rows core.can() allows, in every business table', async () => {
-    await inRolledBackTx(async (c) => {
-      await fixtures(c);
-      const regs = (await registrations(c)).filter((r) => !r.catalog);
-      const users = await userIds(c);
-      expect(regs.length).toBeGreaterThan(15);
-      let visible = 0;
-      const mismatches: string[] = [];
+  // users x tables x a query each: slow by design, so it gets its own time limit
+  it(
+    'select: every seeded user sees exactly the rows core.can() allows, in every business table',
+    { timeout: 120_000 },
+    async () => {
+      await inRolledBackTx(async (c) => {
+        await fixtures(c);
+        const regs = (await registrations(c)).filter((r) => !r.catalog);
+        const users = await userIds(c);
+        expect(regs.length).toBeGreaterThan(15);
+        let visible = 0;
+        const mismatches: string[] = [];
 
-      for (const reg of regs) {
-        for (const u of users) {
-          // expected: migrator (no RLS) filtering with the old per-row expression
-          await c.query(`select set_config('app.user_id', $1, true)`, [u.id]);
-          const expected = await c.query<{ id: string }>(
-            `select id from ${reg.table_name} where ${perRowCan(reg, 'view')} order by id`,
-          );
-          await c.query(`select set_config('app.user_id', '', true)`);
-          // actual: the generated policies, as app_rw
-          await actAs(c, 'app_rw', u.id);
-          const actual = await c.query<{ id: string }>(
-            `select id from ${reg.table_name} order by id`,
-          );
-          await resetRole(c);
-          const e = expected.rows.map((r) => r.id);
-          const a = actual.rows.map((r) => r.id);
-          visible += a.length;
-          if (JSON.stringify(e) !== JSON.stringify(a)) {
-            mismatches.push(
-              `${reg.table_name} as ${u.name}: expected ${e.length}, got ${a.length}`,
+        for (const reg of regs) {
+          for (const u of users) {
+            // expected: migrator (no RLS) filtering with the old per-row expression
+            await c.query(`select set_config('app.user_id', $1, true)`, [u.id]);
+            const expected = await c.query<{ id: string }>(
+              `select id from ${reg.table_name} where ${perRowCan(reg, 'view')} order by id`,
             );
+            await c.query(`select set_config('app.user_id', '', true)`);
+            // actual: the generated policies, as app_rw
+            await actAs(c, 'app_rw', u.id);
+            const actual = await c.query<{ id: string }>(
+              `select id from ${reg.table_name} order by id`,
+            );
+            await resetRole(c);
+            const e = expected.rows.map((r) => r.id);
+            const a = actual.rows.map((r) => r.id);
+            visible += a.length;
+            if (JSON.stringify(e) !== JSON.stringify(a)) {
+              mismatches.push(
+                `${reg.table_name} as ${u.name}: expected ${e.length}, got ${a.length}`,
+              );
+            }
           }
         }
-      }
-      expect(mismatches).toEqual([]);
-      expect(visible).toBeGreaterThan(100); // the comparison had real rows to compare
-    });
-  });
+        expect(mismatches).toEqual([]);
+        expect(visible).toBeGreaterThan(100); // the comparison had real rows to compare
+      });
+    },
+  );
 
   it('covers SELF, derived and include_descendants (the rules the set must reproduce)', async () => {
     await inRolledBackTx(async (c) => {
