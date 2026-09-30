@@ -1,6 +1,6 @@
 # 009 — Flexible structure, product access groups and customer onboarding
 
-Status: accepted (part 1 of 2) · 2026-10-01
+Status: accepted · part 1 2026-10-01 · part 2 2026-10-02
 
 This ADR records how the structure and access model was made to fit any customer shape,
 using the two test customers in `docs/onboarding/test-data` as the spec. Part 1 (this PR)
@@ -130,3 +130,108 @@ and department-level people.
   auditors.
   - Tenant rows now carry their own id.
   - Rows without a tenant are shown to no tenant.
+
+# Part 2: approval chains, admin guardrails, store transfers, department people
+
+- **Migrations** (forward-only, on top of part 1):
+  - `20261002100000_approval_chains`: chains, customer settings, coverage, pending-inbox
+    visibility, decision summaries
+  - `20261002110000_admin_guardrails`: user administration functions and guardrails
+  - `20261002120000_store_transfers`: store-level transfers run by each location
+  - `20261002130000_department_people`: roster owner, exceptions per department
+- **Code:** `packages/workflow/src/processes.ts` (chains), `packages/onboarding`
+  (coverage check, `leave_hr_approval`), the transfer and exceptions screens.
+- **Deploy:** app deploy only (the Deploy workflow runs the migrations and syncs the
+  definitions). No CDK change.
+
+## Approval chains end with the account owner
+
+- **Chain.** A step is routed, in order, to: its group at the subject (or nearest
+  holder); its `escalateTo` group; the same group strictly above; each `fallback` group,
+  nearest holder first; then `ACCOUNT_OWNER`, the final approver of every step of every
+  process. The first three are the existing rules, so nothing already routed moves.
+- **SLA escalation** moves an overdue step to the next group of the same chain.
+- **Leave and swaps** go to the person's `DEPARTMENT_HEAD`, falling back to the outlet
+  manager and the area manager. The leave HR step (`OUTLET_HR`, falling back to
+  `HR_ADMIN`) is a customer setting, `leave_hr_approval` in file 00, on unless turned
+  off; when the same person already approved the first step it is skipped
+  (`same_approver`).
+- **ROLE_CHANGE** is requested only by `USER_ADMIN` and `ACCOUNT_OWNER`, and approved
+  by `SECURITY_ADMIN`, falling back to the owner.
+- **Coverage.** `wf.approval_coverage(tenant)` lists every process, step and place
+  nobody could approve. The loader runs it after access and rejects the customer, one
+  issue per case (`NO_APPROVER`), so a structure with a gap never loads.
+- **Pending-inbox visibility.** Whoever may act on a request's pending step reads its
+  subject row, however they were routed (an account owner holds no leave rights), and
+  never once the step has moved on. When they act, a decision summary (label, person,
+  amount, items or dates) is kept on the step and stays readable to them
+  (`wf.request_summary`, `wf.my_decisions`); the row itself is hidden again.
+
+## User administration guardrails
+
+`core.grant_access`, `revoke_access`, `create_user` and `set_user_status` are the only
+way the app changes access; each checks, in SQL:
+
+- **(a) Admin rights are not data access.** Admin groups can never carry data policies
+  (trigger), so a User Admin grants stock access they cannot use.
+- **(b) Scope and rank.** The place must be inside the admin's `USER_ACCESS` scope
+  (including linked delivery places) and the person's home too (`NOT_AUTHORISED`);
+  nobody grants to or changes themselves (`SELF_GRANT`); a User Admin never grants
+  `ACCOUNT_OWNER` nor modifies or deactivates an owner or anyone of higher admin rank
+  (`ABOVE_OWN_RANK`). "Beyond what the granter holds" applies to admin rank, not data
+  groups: an admin grants any everyday group within scope.
+- **(c) Sensitive grants need approval.** `OUTLET_MANAGER`, `USER_ADMIN`,
+  `ACCOUNT_OWNER`, `HR_ADMIN`, `OUTLET_HR` and any group with `COMPENSATION` access (not
+  `SELF`, which is one's own pay) become a ROLE_CHANGE request; everyday grants apply at
+  once. A new person's everyday job-role defaults apply at once, sensitive ones as
+  requests. Granting a User Admin within one's own scope is such a request.
+  - **Sole owner.** When the granter is the customer's only account owner and nobody
+    else could approve, the grant applies directly with the note "sole account owner: no
+    one else can approve" (rule 7 would otherwise leave it pending forever).
+- **(d) The last account owner stays.** A trigger on assignments and user status raises
+  `LAST_ACCOUNT_OWNER` for any change that would leave a customer without an active
+  owner, whoever makes it.
+- **(e) Audit.** Every admin action is an audited row. `core.access_audit` shows grants,
+  removals, users created and deactivated, role changes and their approvals, to account
+  owners (company) and User Admins (their scope), and never business-data audit rows.
+
+## Store-level transfers
+
+- **Where from.** A store requests from another store of its own outlet (Main Store →
+  Kitchen Store) or from a hub (central kitchen); never from another outlet
+  (`INVALID_SUBJECT`). Counts, wastage, purchase orders and par levels were already per
+  store (part 1).
+- **Who sends and receives.** The dispatch step goes to whoever runs the sending
+  location, the receipt step to whoever runs the receiving one: its `STORE_KEEPER`,
+  else `HUB_MANAGER`, else `OUTLET_MANAGER`, else the account owner.
+- **Within the site.** A hub sits above the outlets it supplies in the delivery tree, and
+  its store keeper's grant covers them, so an unbounded walk up would hand an outlet's
+  receipt to the central kitchen. For transfer steps the walk stops at the location's
+  own outlet or hub (`core.stock_site`), then crosses to the org tree as before; the
+  same bound decides who may act.
+- **By step, not by rights.** Dispatch and receipt authorise by the step
+  (`inv.require_step`), so a fallback approver without `TRANSFERS` rights can act; the
+  screen offers the step the user may act on and its lines. Rule 7 still holds: a store
+  keeper who asked for a transfer does not receive it; the next in the chain does.
+
+## People at department level
+
+- **Rosters.** Templates, shifts and publishing already worked at any org node; a
+  department head builds their department (ROSTER modify there), and a department
+  without a head is built by the outlet manager, whose grant covers it. A shift may
+  take a worker whose home is the shift's place or below it.
+- **Roster owner.** `hr.roster_owner` names who runs a place's roster: the department
+  head, then the outlet manager, area manager and account owner, leaving out the person
+  it is about. The roster-gap notice after approved leave goes to them.
+- **Exceptions.** `hr.exception_queue` lists a place and every department below it,
+  grouped by department, each with whom it waits for (the roster owner, never the
+  worker). The assignee may resolve it even without `ATTENDANCE` rights there.
+
+## Known edges
+
+- A sole account owner's own leave has no approver: rule 7 excludes them and nobody is
+  above. Coverage does not flag it (it checks places, not people); such a customer should
+  add a second owner or an HR admin before relying on leave for the owner.
+- The RLS equivalence test samples one holder per grant shape in CI. The manual
+  workflow "RLS equivalence (all users)" checks every user of both test customers (about
+  14 minutes locally); run it before the pilot and whenever access rules change.

@@ -10,11 +10,25 @@ export const stepSchema = z.strictObject({
   group: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
   scope: scopeSchema,
   when: z
-    .strictObject({ amount_gt: z.number().optional(), amount_gte: z.number().optional() })
+    .strictObject({
+      amount_gt: z.number().optional(),
+      amount_gte: z.number().optional(),
+      // a customer setting (core.tenant.settings) that turns the step on; unset means on
+      setting: z
+        .string()
+        .regex(/^[a-z][a-z0-9_]*$/)
+        .optional(),
+    })
     .optional(),
   escalateTo: z
     .string()
     .regex(/^[A-Z][A-Z0-9_]*$/)
+    .optional(),
+  // groups tried after group / escalateTo / group above, nearest holder first; the engine
+  // always ends every chain with FINAL_APPROVER (ADR 009)
+  fallback: z
+    .array(z.string().regex(/^[A-Z][A-Z0-9_]*$/))
+    .min(1)
     .optional(),
   // Approve only through the module RPC that performs the step's business action in the
   // same transaction (wf.act checks wf.module_approval). Reject stays generic.
@@ -46,6 +60,16 @@ export const processDefSchema = z
   );
 
 export type StepDef = z.infer<typeof stepSchema>;
+
+/** The last approver of every step of every process (ADR 009). */
+export const FINAL_APPROVER = 'ACCOUNT_OWNER';
+
+/** A step's approver groups in routing order (matches wf.chain_groups). */
+export function chainGroups(step: StepDef): string[] {
+  return [
+    ...new Set([step.group, step.escalateTo, ...(step.fallback ?? []), FINAL_APPROVER]),
+  ].filter((g): g is string => g !== undefined);
+}
 export type ProcessDef = z.infer<typeof processDefSchema>;
 
 /** A request as handed to an execution handler by the executor. */

@@ -19,6 +19,7 @@ const KIM = 'test.head-cook.3.0';
 const OLIVIA = 'test.bar-manager.3.0';
 const ARIA = 'test.area-manager';
 const HUGO = 'test.central-kitchen-manager';
+const CK_KEEPER = 'test.central-kitchen-store-keeper'; // runs the central kitchen store
 const CASEY = 'test.cook.3.0';
 const SAM = 'test.server.3.0';
 
@@ -603,14 +604,14 @@ describe('two-leg transfer', () => {
       expect(await progress()).toBe('awaiting_dispatch');
 
       // The generic inbox Approve cannot move stock.
-      expect(await error(c, HUGO, `select wf.act($1, 'approve')`, [req])).toBe(
+      expect(await error(c, CK_KEEPER, `select wf.act($1, 'approve')`, [req])).toBe(
         'APPROVE_VIA_MODULE',
       );
       const dispatch = `select inv.dispatch_transfer($1, $2::jsonb) as s`;
       const sent = lines([{ item_id: f.item('T-ONION'), qty: 8 }]); // garlic ships as requested
       expect(await error(c, OLIVIA, dispatch, [t.id, sent])).toBe('NOT_AUTHORISED');
 
-      await call(c, HUGO, dispatch, [t.id, sent]);
+      await call(c, CK_KEEPER, dispatch, [t.id, sent]);
       expect(await onHand(c, f, 'T-ONION', 'centralKitchen')).toBe(42);
       expect(await onHand(c, f, 'T-GARLIC', 'centralKitchen')).toBe(18);
       expect(await onHand(c, f, 'T-ONION', 'kitchen')).toBe(0);
@@ -689,7 +690,7 @@ describe('two-leg transfer', () => {
         [node('centralKitchen'), node('kitchen'), lines([{ item_id: f.item('T-LEMON'), qty: 5 }])],
       );
       const req = await requestOf(c, 'transfer', t.id);
-      await call(c, HUGO, `select wf.act($1, 'reject')`, [req]);
+      await call(c, CK_KEEPER, `select wf.act($1, 'reject')`, [req]);
       expect(await execute(c, req)).toEqual(['inv.transfer.reject']);
       expect(await statusOf(c, 'transfer', t.id)).toBe('rejected');
       expect(await onHand(c, f, 'T-LEMON', 'centralKitchen')).toBe(5);

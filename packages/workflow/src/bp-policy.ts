@@ -2,7 +2,11 @@
 // groups may approve each step (docs/LLD.md section 4, ADR 003, ADR 009). Product-wide;
 // syncProductAccess writes it into every tenant and removes rows not listed here.
 // step '*' = process-level actions. SELF = any active human acting on their own subject.
-// Every step group and escalateTo group has an approve row (definitions tests).
+// Approve rows are derived from the process definitions: every group of every step's
+// chain (group, escalateTo, fallback, ACCOUNT_OWNER) may approve that step.
+
+import { PROCESS_DEFS } from './processes';
+import { chainGroups } from './types';
 
 export interface BpRule {
   process: string;
@@ -21,25 +25,20 @@ export const BP_POLICY: readonly BpRule[] = [
     'HUB_MANAGER',
     'OUTLET_MANAGER',
   ]),
-  ...rules('STOCK_ADJUSTMENT', 'outlet_approval', 'approve', ['OUTLET_MANAGER', 'AREA_MANAGER']),
 
   ...rules('PURCHASE_ORDER', '*', 'initiate', ['STORE_KEEPER', 'OUTLET_MANAGER', 'AI_AGENT']),
-  ...rules('PURCHASE_ORDER', 'outlet_approval', 'approve', ['OUTLET_MANAGER', 'AREA_MANAGER']),
-  ...rules('PURCHASE_ORDER', 'area_approval', 'approve', ['AREA_MANAGER']),
 
   // the receiving side requests; the receiving outlet manager confirms receipt (rule 7)
   ...rules('TRANSFER', '*', 'initiate', ['STOCK_USER', 'STORE_KEEPER']),
-  ...rules('TRANSFER', 'dispatch', 'approve', ['HUB_MANAGER']),
-  ...rules('TRANSFER', 'receipt', 'approve', ['OUTLET_MANAGER']),
 
   ...rules('LEAVE', '*', 'initiate', ['SELF']),
-  ...rules('LEAVE', 'outlet_approval', 'approve', ['OUTLET_MANAGER', 'AREA_MANAGER']),
-  ...rules('LEAVE', 'hr_approval', 'approve', ['HR_ADMIN']),
 
   ...rules('SHIFT_SWAP', '*', 'initiate', ['SELF']),
-  ...rules('SHIFT_SWAP', 'outlet_approval', 'approve', ['OUTLET_MANAGER', 'AREA_MANAGER']),
 
   // user administration: User Admins and Account Owners request sensitive grants
   ...rules('ROLE_CHANGE', '*', 'initiate', ['USER_ADMIN', 'ACCOUNT_OWNER']),
-  ...rules('ROLE_CHANGE', 'security_approval', 'approve', ['SECURITY_ADMIN']),
+
+  ...PROCESS_DEFS.flatMap((d) =>
+    d.steps.flatMap((s) => rules(d.type, s.step, 'approve', chainGroups(s))),
+  ),
 ];

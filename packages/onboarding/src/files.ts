@@ -139,7 +139,10 @@ export const FILES = {
       country: text,
       currency: z.string().regex(/^[A-Z]{3}$/, 'must be a 3-letter currency code'),
       default_timezone: timezone,
+      // optional: the leave HR approval step (ADR 009); blank or absent keeps it on
+      leave_hr_approval: z.union([z.literal('').transform(() => undefined), yesNo]),
     }),
+    optional: ['leave_hr_approval'],
   },
   orgNodes: {
     file: '01_org_nodes.csv',
@@ -351,8 +354,12 @@ export function readBundle(files: Record<string, string>): { bundle: Bundle; iss
       issues.push({ file: spec.file, row: e.line, message: e.message });
       continue;
     }
+    const optionalColumns: readonly string[] = 'optional' in spec ? spec.optional : [];
     const want = Object.keys(spec.schema.shape);
-    const missing = want.filter((c) => !table.header.includes(c));
+    const missing = want.filter((c) => !table.header.includes(c) && !optionalColumns.includes(c));
+    for (const r of table.rows) {
+      for (const c of optionalColumns) r.values[c] ??= '';
+    }
     if (missing.length) {
       for (const column of missing) {
         issues.push({ file: spec.file, row: 1, column, message: 'column is missing' });

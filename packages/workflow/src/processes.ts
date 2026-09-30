@@ -1,7 +1,8 @@
 import type { ProcessDef } from './types';
 
 // The six MVP processes (docs/LLD.md section 4, ADR 003). Synced into wf.process_def by
-// `pnpm db:seed`. Approve rights per step live in core.bp_policy (seed 002_workflow.sql).
+// sync-defs (`pnpm db:seed` and every deploy). Every step's chain ends with ACCOUNT_OWNER
+// (ADR 009); bp_policy approve rows are derived from the chains (bp-policy.ts).
 
 export const STOCK_ADJUSTMENT: ProcessDef = {
   type: 'STOCK_ADJUSTMENT',
@@ -47,10 +48,13 @@ export const PURCHASE_ORDER: ProcessDef = {
   slaHours: 24,
 };
 
-// Two-sided: dispatch is scoped to the transfer's from node (hub), receipt to its to node.
+// Two-sided: dispatch goes to whoever runs the from location, receipt to whoever runs the
+// to location: its store keeper, else hub manager, else outlet manager, else the account
+// owner, looked up within the location's own outlet or hub (core.site_group_node, ADR 009).
 // Each step is approved by the module RPC that posts its ledger leg (inv.dispatch_transfer,
 // inv.receive_transfer); after dispatch the goods are in transit and the request can no
 // longer be rejected or cancelled, only received (shortfall posts as transit_loss).
+const RUNS_LOCATION = ['HUB_MANAGER', 'OUTLET_MANAGER'];
 export const TRANSFER: ProcessDef = {
   type: 'TRANSFER',
   subject: 'inv.transfer',
@@ -59,18 +63,28 @@ export const TRANSFER: ProcessDef = {
   steps: [
     {
       step: 'dispatch',
-      group: 'HUB_MANAGER',
+      group: 'STORE_KEEPER',
       scope: 'from_node',
+      fallback: RUNS_LOCATION,
       approveVia: 'module',
       irreversible: true,
     },
-    { step: 'receipt', group: 'OUTLET_MANAGER', scope: 'to_node', approveVia: 'module' },
+    {
+      step: 'receipt',
+      group: 'STORE_KEEPER',
+      scope: 'to_node',
+      fallback: RUNS_LOCATION,
+      approveVia: 'module',
+    },
   ],
   onApproved: 'inv.transfer.post',
   onRejected: 'inv.transfer.reject',
   slaHours: 24,
 };
 
+// The person's department head first, falling back up the tree (ADR 009). The HR step is
+// a customer setting (leave_hr_approval, on unless turned off); when the same person
+// already approved the first step, it is skipped (same_approver).
 export const LEAVE: ProcessDef = {
   type: 'LEAVE',
   subject: 'hr.leave_request',
@@ -78,12 +92,18 @@ export const LEAVE: ProcessDef = {
   hierarchy: 'org',
   steps: [
     {
-      step: 'outlet_approval',
-      group: 'OUTLET_MANAGER',
+      step: 'manager_approval',
+      group: 'DEPARTMENT_HEAD',
       scope: 'subject_node',
-      escalateTo: 'AREA_MANAGER',
+      fallback: ['OUTLET_MANAGER', 'AREA_MANAGER'],
     },
-    { step: 'hr_approval', group: 'HR_ADMIN', scope: 'nearest_ancestor' },
+    {
+      step: 'hr_approval',
+      group: 'OUTLET_HR',
+      scope: 'nearest_ancestor',
+      fallback: ['HR_ADMIN'],
+      when: { setting: 'leave_hr_approval' },
+    },
   ],
   onApproved: 'hr.leave.apply',
   onRejected: 'hr.leave.reject',
@@ -91,8 +111,8 @@ export const LEAVE: ProcessDef = {
 };
 
 // Initiated by the partner (B) accepting A's offer. Neither A nor B can approve
-// (hr.swap_excluded), with the usual fallback up the tree. Approval goes through
-// hr.approve_swap, which re-runs the rostering rules first (ADR 008).
+// (hr.swap_excluded). Approval goes through hr.approve_swap, which re-runs the rostering
+// rules first (ADR 008). Department head first, falling back up the tree (ADR 009).
 export const SHIFT_SWAP: ProcessDef = {
   type: 'SHIFT_SWAP',
   subject: 'hr.shift_swap',
@@ -100,10 +120,10 @@ export const SHIFT_SWAP: ProcessDef = {
   hierarchy: 'org',
   steps: [
     {
-      step: 'outlet_approval',
-      group: 'OUTLET_MANAGER',
+      step: 'manager_approval',
+      group: 'DEPARTMENT_HEAD',
       scope: 'subject_node',
-      escalateTo: 'AREA_MANAGER',
+      fallback: ['OUTLET_MANAGER', 'AREA_MANAGER'],
       approveVia: 'module',
     },
   ],

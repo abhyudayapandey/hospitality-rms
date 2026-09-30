@@ -112,7 +112,15 @@ pnpm --filter @outlet-ops/onboarding load <folder> [--apply] [--access]
                                                       validate a customer's onboarding files
                                                       and dry-run them; --apply loads (ADR 009)
 infra/scripts/build-release.sh <sha>                  linux-arm64 release bundle (CI's Deploy workflow)
+RLS_ALL_USERS=1 pnpm exec vitest run --project db packages/db/src/rls-equivalence.db.test.ts
+                                                      RLS equivalence for every user, not a sample
 ```
+The GitHub workflow "RLS equivalence (all users)" (`.github/workflows/rls-all-users.yml`,
+manual run from the Actions tab) runs that last check on a fresh seeded DB: every user of
+both test customers against every business table. Regular CI samples one user per grant
+shape. Run it before the pilot and whenever access rules change (product matrix, groups,
+job roles, RLS helpers, approval chains, or the test customers' structure), and before
+merging such a change.
 Never run `cdk deploy`, the Deploy workflow or AWS-mutating commands without explicit
 approval; `docs/deploy.md` is the runbook. Deploy context (domain, ids, pinned `amiId`)
 lives in `infra/cdk.json`; stack changes go out as `cd infra && pnpm cdk deploy` before

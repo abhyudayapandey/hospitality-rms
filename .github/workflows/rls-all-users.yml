@@ -1,0 +1,61 @@
+name: RLS equivalence (all users)
+
+# Manual only: checks that every user of both test customers sees exactly the rows
+# core.can() allows, in every business table (the regular CI run samples one user per grant
+# shape). Run before the pilot and whenever access rules change: the matrix, groups, job
+# roles, RLS helpers or the test customers' structure.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rls-all-users:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: outlet_ops
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d outlet_ops"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+
+    env:
+      # Throwaway CI-only credentials (same local-only roles as docker compose).
+      MIGRATOR_DATABASE_URL: postgres://migrator:migrator_local@localhost:5432/outlet_ops?sslmode=disable
+      TEST_DATABASE_URL: postgres://app_rw:app_rw_local@localhost:5432/outlet_ops?sslmode=disable
+      WF_EXECUTOR_DATABASE_URL: postgres://wf_executor:wf_executor_local@localhost:5432/outlet_ops?sslmode=disable
+      TURBO_TELEMETRY_DISABLED: '1'
+      RLS_ALL_USERS: '1'
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Create DB roles and extensions
+        env:
+          PGPASSWORD: postgres_ci
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d outlet_ops -f packages/db/docker/init/001-roles.sql
+
+      - run: pnpm db:migrate
+      - run: pnpm db:seed
+      - name: RLS equivalence, every user of both test customers
+        run: pnpm exec vitest run --project db packages/db/src/rls-equivalence.db.test.ts

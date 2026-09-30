@@ -152,3 +152,57 @@ describe('loader errors', () => {
     });
   });
 });
+
+describe('approvers (ADR 009)', () => {
+  const solo = readCustomerDir(join(DATA, 'test-solo-bar-co'));
+
+  it('rejects a structure where some process would have no approver, listing each case', async () => {
+    await inRolledBackTx(async (c) => {
+      // without file 08 the solo bar has no account owner: nobody approves the owner-only
+      // steps (the HR step, role changes), and nobody above the bar manager
+      // (loaded as a new customer: the existing one keeps its owner, guardrail (d))
+      const files = {
+        ...solo,
+        '00_customer.csv': solo['00_customer.csv']!.replaceAll(
+          'TEST-SOLO-COMPANY',
+          'TEST-SOLO-COPY',
+        ),
+        '08_role_assignments_extra.csv': solo['08_role_assignments_extra.csv']!.split(/\r?\n/)[0]!,
+      };
+      const before = await tenantCount(c, 'TEST-SOLO-COPY');
+      const r = await loadCustomer(c, files, { nested: true });
+      expect(r.applied).toBe(false);
+      expect(r.issues).toContainEqual({
+        file: '01_org_nodes.csv',
+        row: 6,
+        column: 'node_code',
+        message: 'LEAVE hr_approval: nobody can approve at TEST-SOLO-BAR-KITCHEN (NO_APPROVER)',
+      });
+      expect(r.issues).toContainEqual({
+        file: '01_org_nodes.csv',
+        row: 2,
+        column: 'node_code',
+        message:
+          'ROLE_CHANGE security_approval: nobody can approve at TEST-SOLO-COMPANY (NO_APPROVER)',
+      });
+      expect(r.issues.every((i) => i.message.endsWith('(NO_APPROVER)'))).toBe(true);
+      expect(await tenantCount(c, 'TEST-SOLO-COPY')).toBe(before);
+    });
+  });
+
+  it('sets the leave HR step per customer from file 00', async () => {
+    await inRolledBackTx(async (c) => {
+      const [head, row] = solo['00_customer.csv']!.trim().split(/\r?\n/);
+      const files = {
+        ...solo,
+        '00_customer.csv': `${head},leave_hr_approval\n${row},no\n`,
+      };
+      const r = await loadCustomer(c, files, { nested: true });
+      expect(r.issues).toEqual([]);
+      const { rows } = await c.query<{ s: Record<string, unknown> }>(
+        `select settings as s from core.tenant where code = 'TEST-SOLO-COMPANY'`,
+      );
+      expect(rows[0]!.s).toMatchObject({ leave_hr_approval: false });
+    });
+  });
+});

@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { PLACE, placeId, runExecutor, signInAs } from './helpers';
 
 // Test Bar 3.0's Kitchen Store: the head cook keeps it, the Bar Manager runs the outlet,
-// the central kitchen store supplies it.
+// the central kitchen store (kept by its store keeper) supplies it.
 
 async function onHand(page: Page, sku: string, node: string): Promise<number> {
   await page.goto(`/stock?node=${node}`);
@@ -10,7 +10,7 @@ async function onHand(page: Page, sku: string, node: string): Promise<number> {
   return parseFloat(text!.replace(/,/g, ''));
 }
 
-test('two-leg transfer: requested, sent by the central kitchen, received short at the store', async ({
+test('two-leg transfer: requested, sent by the central kitchen store keeper, received short at the store', async ({
   page,
 }) => {
   const store = await placeId(PLACE.store);
@@ -29,7 +29,7 @@ test('two-leg transfer: requested, sent by the central kitchen, received short a
   const id = new URL(page.url()).pathname.split('/').pop()!;
   await expect(page.getByTestId('transfer-progress')).toHaveText('awaiting dispatch');
 
-  await signInAs(page, 'Test Central Kitchen Manager');
+  await signInAs(page, 'Test Central Kitchen Store Keeper');
   await page.goto('/inbox');
   await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
   await expect(page.getByRole('button', { name: 'Approve' })).toHaveCount(0); // module only
@@ -37,6 +37,7 @@ test('two-leg transfer: requested, sent by the central kitchen, received short a
   await expect(page.getByRole('status')).toHaveText('Sent. It is now in transit.');
   await expect(page.getByTestId('transfer-progress')).toHaveText('in transit');
 
+  // the head cook runs the kitchen store but asked for it (rule 7): the outlet manager receives
   await signInAs(page, 'Test Bar Manager 3.0');
   await page.goto('/inbox');
   await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
@@ -50,6 +51,42 @@ test('two-leg transfer: requested, sent by the central kitchen, received short a
   await expect(page.getByTestId('transfer-progress')).toHaveText('received');
   // +4 in, -0.5 transit loss
   expect(await onHand(page, 'POTATOES', store)).toBeCloseTo(before + 3.5, 3);
+});
+
+test('store to store in one outlet: the main store keeper sends, the kitchen’s keeper receives', async ({
+  page,
+}) => {
+  const kitchen = await placeId('TEST-HOTEL-1.0-KITCHEN-STORE');
+  const main = await placeId('TEST-HOTEL-1.0-MAIN-STORE');
+  await signInAs(page, 'Test Sous Chef 1.0');
+  const before = await onHand(page, 'BASMATI-RICE', kitchen);
+
+  await page.goto(`/stock/transfers/new?node=${kitchen}`);
+  const from = page.getByRole('combobox', { name: 'From' });
+  // only this hotel's stores and the central kitchen: never another outlet
+  const offered = await from
+    .locator('option')
+    .evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value));
+  expect(offered).not.toContain(await placeId('TEST-HOTEL-1.1-MAIN-STORE'));
+  await from.selectOption(main);
+  await page.getByRole('textbox', { name: 'Request Test Basmati Rice' }).fill('2');
+  await page.getByRole('button', { name: 'Request 1 items' }).click();
+  await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
+  const id = new URL(page.url()).pathname.split('/').pop()!;
+
+  await signInAs(page, 'Test Store Keeper 1.0');
+  await page.goto('/inbox');
+  await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.getByTestId('transfer-progress')).toHaveText('in transit');
+
+  await signInAs(page, 'Test Executive Chef 1.0');
+  await page.goto('/inbox');
+  await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
+  await page.getByRole('button', { name: 'Confirm receipt' }).click();
+  await expect(page.getByRole('status')).toHaveText('Received.');
+  await runExecutor();
+  expect(await onHand(page, 'BASMATI-RICE', kitchen)).toBeCloseTo(before + 2, 3);
 });
 
 test('a count within tolerance posts straight away', async ({ page }) => {

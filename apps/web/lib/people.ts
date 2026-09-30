@@ -146,6 +146,8 @@ export async function candidates(tx: Tx, shift: string): Promise<Candidate[]> {
 
 export interface ExceptionRow {
   id: string;
+  place_id: string;
+  place_name: string;
   worker_name: string;
   owner_user_id: string;
   local_date: string;
@@ -156,19 +158,22 @@ export interface ExceptionRow {
   resolution_note: string | null;
   shift_start: Date | null;
   shift_end: Date | null;
+  assignee_group: string | null;
+  assignee_names: string[] | null;
+  assigned_to_me: boolean;
 }
 
-export async function exceptions(tx: Tx, node: string, status: string): Promise<ExceptionRow[]> {
+/** Exceptions of a place and every department below it, in department order (ADR 009). */
+export async function exceptions(
+  tx: Tx,
+  node: string,
+  status: 'open' | 'closed',
+): Promise<ExceptionRow[]> {
   const r = await sql<ExceptionRow>`
-    select e.id, coalesce(d.display_name, 'Worker') as worker_name, e.owner_user_id,
-           e.local_date::text as local_date, e.kind, e.phase, e.detail, e.status,
-           e.resolution_note, s.start_at as shift_start, s.end_at as shift_end
-      from hr.attendance_exception e
-      left join hr.worker_directory d on d.worker_id = e.worker_id
-      left join hr.shift s on s.id = e.shift_id
-     where e.org_node_id = ${node}::uuid and e.status = ${status}
-     order by e.local_date desc, worker_name
-     limit 100`.execute(tx);
+    select id, place_id, place_name, worker_name, owner_user_id, local_date::text as local_date,
+           kind, phase, detail, status, resolution_note, shift_start, shift_end,
+           assignee_group, assignee_names, assigned_to_me
+      from hr.exception_queue(${node}::uuid, ${status})`.execute(tx);
   return r.rows;
 }
 
