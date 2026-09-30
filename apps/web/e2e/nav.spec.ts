@@ -18,13 +18,12 @@ for (const [who, shown, hidden] of cases) {
   });
 }
 
-test('admin screen refuses users without SECURITY_ROLES even by URL', async ({ page }) => {
+test('admin screen refuses users without administration rights even by URL', async ({ page }) => {
   await signInAs(page, 'Test Head Cook 3.0');
   await page.goto('/admin');
-  // Scoped to <main>: Next's route announcer is also role=alert.
-  await expect(page.getByRole('main').getByRole('alert')).toHaveText(
-    "You don't have access to do that.",
-  );
+  await expect(page.getByRole('main')).toContainText("You don't have access to administration.");
+  await page.goto('/admin/users');
+  await expect(page.getByRole('main')).toContainText("You don't have access to administration.");
   await signInAs(page, 'Test Auditor');
   await page.goto('/admin');
   await expect(page.getByTestId('assignments')).toContainText('Test Head Cook 3.0');

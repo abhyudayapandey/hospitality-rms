@@ -24,7 +24,7 @@ export function isSameOrigin(headers: HeaderSource, appUrl: string): boolean {
 export class CrossOriginError extends Error {
   readonly code = 'CROSS_ORIGIN';
   constructor() {
-    super('CROSS_ORIGIN: request refused');
+    super('CROSS_ORIGIN');
   }
 }
 

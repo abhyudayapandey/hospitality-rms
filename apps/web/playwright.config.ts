@@ -47,14 +47,19 @@ export default defineConfig({
       url: `http://127.0.0.1:${prodPort}/login`,
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
-      env: { PORT: String(prodPort), BIND_HOST: '127.0.0.1' },
+      // APP_URL is the origin the tests use: admin actions refuse any other (ADR 011)
+      env: {
+        PORT: String(prodPort),
+        BIND_HOST: '127.0.0.1',
+        APP_URL: `http://127.0.0.1:${prodPort}`,
+      },
     },
     {
       command: `pnpm exec next dev --port ${devPort}`,
       url: `http://localhost:${devPort}/login`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
-      env: { DEV_AUTH_STUB: 'true' },
+      env: { DEV_AUTH_STUB: 'true', APP_URL: `http://localhost:${devPort}` },
     },
   ],
 });

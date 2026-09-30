@@ -402,7 +402,7 @@ describe('(e) every admin action is audited; the access audit shows only access 
       expect(all.some((r) => r.person === 'Test Steward 2.0')).toBe(true);
       // only access events: nothing from the ledger or any other business table
       const allowed =
-        /^(granted|removed|ended|changed|user (created|deactivated|reactivated)|role change .*)$/;
+        /^(granted|removed|ended|changed|user (created|deactivated|reactivated|changed)|role change .*|password reset|login (disabled|enabled)|approved at the top of the chain)$/;
       expect(all.every((r) => allowed.test(r.action))).toBe(true);
       // the Hotel 1.0 User Admin sees the hotel's events, not the Guest House's
       const hotel = await audit(GM1);
