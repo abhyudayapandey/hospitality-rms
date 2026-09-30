@@ -495,6 +495,9 @@ The production database has no dev seed.
     approver (`NO_APPROVER`, one line per case, ADR 009); fix the structure or the
     access files and dry-run again.
   - The leave HR step is on unless file 00 sets `leave_hr_approval` to `no`.
+  - The dry run also prints `WARNING` lines: people whose own requests nobody else could
+    approve (ADR 010). They do not block the load. An account owner's are approved at
+    the top of the chain; for anyone else, add an approver before they need one.
   - Before the pilot, and whenever access rules change, run **Actions → RLS equivalence
     (all users) → Run workflow** on the commit you deploy: it checks every test user
     against every business table (it never touches AWS).

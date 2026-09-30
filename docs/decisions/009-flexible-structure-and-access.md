@@ -229,9 +229,8 @@ way the app changes access; each checks, in SQL:
 
 ## Known edges
 
-- A sole account owner's own leave has no approver: rule 7 excludes them and nobody is
-  above. Coverage does not flag it (it checks places, not people); such a customer should
-  add a second owner or an HR admin before relying on leave for the owner.
+- A sole account owner's own requests had no approver (rule 7). Superseded by ADR 010:
+  they are approved at the top of the chain, and the loader warns about them.
 - The RLS equivalence test samples one holder per grant shape in CI. The manual
   workflow "RLS equivalence (all users)" checks every user of both test customers (about
   14 minutes locally); run it before the pilot and whenever access rules change.
