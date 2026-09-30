@@ -16,7 +16,6 @@ export default async function TransferPage({
 }) {
   const { id } = await params;
   const ctx = await supplyContext(searchParams);
-  if (!ctx.can('TRANSFERS') || !ctx.node) return <NoSupplyAccess />;
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
     const t = await sql<{
@@ -30,34 +29,36 @@ export default async function TransferPage({
       created_at: Date;
       dispatched_at: Date | null;
       received_at: Date | null;
-      can_from: boolean;
-      can_to: boolean;
+      my_step: string | null;
     }>`select id, from_node_id, to_node_id, from_name, to_name, progress, wf_request_id,
-              created_at, dispatched_at, received_at,
-              core.can('TRANSFERS', 'modify', null, from_node_id) as can_from,
-              core.can('TRANSFERS', 'modify', null, to_node_id) as can_to
+              created_at, dispatched_at, received_at, inv.my_transfer_step(id) as my_step
          from inv.transfer_summary where id = ${id}::uuid`.execute(tx);
-    const lines = await sql<TransferLine>`
-      select tl.item_id, i.name, i.base_uom, tl.requested_qty, tl.dispatched_qty, tl.received_qty
-        from inv.transfer_line tl join inv.item i on i.id = tl.item_id
-       where tl.transfer_id = ${id}::uuid order by i.name`.execute(tx);
+    // lines the user may act on come through the step (a fallback approver may hold no
+    // TRANSFERS rights there); otherwise as RLS allows
+    const lines = t.rows[0]?.my_step
+      ? await sql<TransferLine>`select * from inv.my_transfer_lines(${id}::uuid)`.execute(tx)
+      : await sql<TransferLine>`
+          select tl.item_id, i.name, i.base_uom, tl.requested_qty, tl.dispatched_qty,
+                 tl.received_qty
+            from inv.transfer_line tl join inv.item i on i.id = tl.item_id
+           where tl.transfer_id = ${id}::uuid order by i.name`.execute(tx);
     return { t: t.rows[0], lines: lines.rows };
   });
-  if (!data.t) return <Empty>Transfer not found.</Empty>;
+  // readable with TRANSFERS rights, or while a step of it waits for this user (ADR 009)
+  if (!data.t)
+    return ctx.can('TRANSFERS') ? <Empty>Transfer not found.</Empty> : <NoSupplyAccess />;
   const { t, lines } = data;
   const [label, style] = TRANSFER_PROGRESS[t.progress] ?? [t.progress, ''];
-  // Which side the user can act for is decided in SQL (core.can), never here.
-  const mode =
-    t.progress === 'awaiting_dispatch' && t.can_from
-      ? 'dispatch'
-      : t.progress === 'in_transit' && t.can_to
-        ? 'receive'
-        : null;
+  // Which side the user can act for is decided in SQL (the step they may act on), never here:
+  // whoever runs the sending or the receiving location, through the approval chain.
+  const mode = t.my_step === 'dispatch' ? 'dispatch' : t.my_step === 'receipt' ? 'receive' : null;
   return (
     <div className="space-y-4">
-      <Link href={`/stock/transfers?node=${ctx.node.id}`} className="text-sm text-slate-600">
-        ← Transfers
-      </Link>
+      {ctx.node && (
+        <Link href={`/stock/transfers?node=${ctx.node.id}`} className="text-sm text-slate-600">
+          ← Transfers
+        </Link>
+      )}
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <div className="flex items-baseline justify-between gap-2">
           <h1 className="text-lg font-semibold">

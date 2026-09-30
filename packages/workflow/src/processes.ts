@@ -48,10 +48,13 @@ export const PURCHASE_ORDER: ProcessDef = {
   slaHours: 24,
 };
 
-// Two-sided: dispatch is scoped to the transfer's from node (hub), receipt to its to node.
+// Two-sided: dispatch goes to whoever runs the from location, receipt to whoever runs the
+// to location: its store keeper, else hub manager, else outlet manager, else the account
+// owner, looked up within the location's own outlet or hub (core.site_group_node, ADR 009).
 // Each step is approved by the module RPC that posts its ledger leg (inv.dispatch_transfer,
 // inv.receive_transfer); after dispatch the goods are in transit and the request can no
 // longer be rejected or cancelled, only received (shortfall posts as transit_loss).
+const RUNS_LOCATION = ['HUB_MANAGER', 'OUTLET_MANAGER'];
 export const TRANSFER: ProcessDef = {
   type: 'TRANSFER',
   subject: 'inv.transfer',
@@ -60,12 +63,19 @@ export const TRANSFER: ProcessDef = {
   steps: [
     {
       step: 'dispatch',
-      group: 'HUB_MANAGER',
+      group: 'STORE_KEEPER',
       scope: 'from_node',
+      fallback: RUNS_LOCATION,
       approveVia: 'module',
       irreversible: true,
     },
-    { step: 'receipt', group: 'OUTLET_MANAGER', scope: 'to_node', approveVia: 'module' },
+    {
+      step: 'receipt',
+      group: 'STORE_KEEPER',
+      scope: 'to_node',
+      fallback: RUNS_LOCATION,
+      approveVia: 'module',
+    },
   ],
   onApproved: 'inv.transfer.post',
   onRejected: 'inv.transfer.reject',

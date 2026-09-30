@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { PLACE, placeId, runExecutor, signInAs } from './helpers';
 
 // Test Bar 3.0's Kitchen Store: the head cook keeps it, the Bar Manager runs the outlet,
-// the central kitchen store supplies it.
+// the central kitchen store (kept by its store keeper) supplies it.
 
 async function onHand(page: Page, sku: string, node: string): Promise<number> {
   await page.goto(`/stock?node=${node}`);
@@ -10,7 +10,7 @@ async function onHand(page: Page, sku: string, node: string): Promise<number> {
   return parseFloat(text!.replace(/,/g, ''));
 }
 
-test('two-leg transfer: requested, sent by the central kitchen, received short at the store', async ({
+test('two-leg transfer: requested, sent by the central kitchen store keeper, received short at the store', async ({
   page,
 }) => {
   const store = await placeId(PLACE.store);
@@ -29,7 +29,7 @@ test('two-leg transfer: requested, sent by the central kitchen, received short a
   const id = new URL(page.url()).pathname.split('/').pop()!;
   await expect(page.getByTestId('transfer-progress')).toHaveText('awaiting dispatch');
 
-  await signInAs(page, 'Test Central Kitchen Manager');
+  await signInAs(page, 'Test Central Kitchen Store Keeper');
   await page.goto('/inbox');
   await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
   await expect(page.getByRole('button', { name: 'Approve' })).toHaveCount(0); // module only
@@ -37,6 +37,7 @@ test('two-leg transfer: requested, sent by the central kitchen, received short a
   await expect(page.getByRole('status')).toHaveText('Sent. It is now in transit.');
   await expect(page.getByTestId('transfer-progress')).toHaveText('in transit');
 
+  // the head cook runs the kitchen store but asked for it (rule 7): the outlet manager receives
   await signInAs(page, 'Test Bar Manager 3.0');
   await page.goto('/inbox');
   await page.locator(`a[href^="/stock/transfers/${id}"]`).click();

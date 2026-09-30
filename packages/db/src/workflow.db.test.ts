@@ -24,6 +24,7 @@ const KIM = 'test.head-cook.3.0';
 const OLIVIA = 'test.bar-manager.3.0';
 const ARIA = 'test.area-manager';
 const HUGO = 'test.central-kitchen-manager';
+const CK_KEEPER = 'test.central-kitchen-store-keeper'; // runs the central kitchen store
 const HARPER = 'test.hr-admin';
 const SAM = 'test.server.3.0';
 const CASEY = 'test.cook.3.0';
@@ -602,7 +603,7 @@ describe('two-sided transfer', () => {
     return r.rows[0]!.state;
   }
 
-  it('scopes dispatch to the hub and receipt to the outlet; each side acts only on its step', async () => {
+  it('scopes dispatch to the hub store keeper and receipt to the outlet (the initiator keeps its store); each side acts only on its step', async () => {
     await inRolledBackTx(async (c) => {
       expect((await submit(c, OLIVIA, transfer())).error).toBe('NOT_AUTHORISED'); // not an initiator
       const id = await submitOk(c, KIM, transfer());
@@ -611,18 +612,18 @@ describe('two-sided transfer', () => {
           step: 'dispatch',
           state: 'pending',
           scope: 'TEST-CENTRAL-KITCHEN-STORE',
-          grp: 'HUB_MANAGER',
+          grp: 'STORE_KEEPER',
         },
         {
           step: 'receipt',
           state: 'waiting',
-          scope: 'TEST-BAR-3.0-KITCHEN-STORE',
+          scope: 'TEST-BAR-3.0-SUPPLY', // Kim runs the kitchen store and asked: the outlet manager
           grp: 'OUTLET_MANAGER',
         },
       ]);
       expect((await actViaModule(c, OLIVIA, id)).error).toBe('NOT_AUTHORISED');
-      expect(await approveViaModule(c, HUGO, id)).toBe('in_approval');
-      expect((await actViaModule(c, HUGO, id)).error).toBe('NOT_AUTHORISED');
+      expect(await approveViaModule(c, CK_KEEPER, id)).toBe('in_approval');
+      expect((await actViaModule(c, CK_KEEPER, id)).error).toBe('NOT_AUTHORISED');
       expect(await approveViaModule(c, OLIVIA, id)).toBe('approved');
     });
   });
@@ -648,8 +649,8 @@ describe('two-sided transfer', () => {
   it('approves transfer steps only through the module (APPROVE_VIA_MODULE)', async () => {
     await inRolledBackTx(async (c) => {
       const id = await submitOk(c, KIM, transfer());
-      expect((await act(c, HUGO, id, 'approve')).error).toBe('APPROVE_VIA_MODULE');
-      expect(await approveViaModule(c, HUGO, id)).toBe('in_approval');
+      expect((await act(c, CK_KEEPER, id, 'approve')).error).toBe('APPROVE_VIA_MODULE');
+      expect(await approveViaModule(c, CK_KEEPER, id)).toBe('in_approval');
       expect((await act(c, OLIVIA, id, 'approve')).error).toBe('APPROVE_VIA_MODULE');
     });
   });
@@ -657,13 +658,13 @@ describe('two-sided transfer', () => {
   it('can be rejected or cancelled before dispatch, but not after (IRREVERSIBLE_STEP)', async () => {
     await inRolledBackTx(async (c) => {
       const early = await submitOk(c, KIM, transfer());
-      expect(await actOk(c, HUGO, early, 'reject')).toBe('rejected');
+      expect(await actOk(c, CK_KEEPER, early, 'reject')).toBe('rejected');
 
       const cancelled = await submitOk(c, KIM, transfer());
       expect(await actOk(c, KIM, cancelled, 'cancel')).toBe('cancelled');
 
       const id = await submitOk(c, KIM, transfer());
-      await approveViaModule(c, HUGO, id);
+      await approveViaModule(c, CK_KEEPER, id);
       expect((await act(c, OLIVIA, id, 'reject')).error).toBe('IRREVERSIBLE_STEP');
       expect((await act(c, KIM, id, 'cancel')).error).toBe('IRREVERSIBLE_STEP');
       expect(await approveViaModule(c, OLIVIA, id)).toBe('approved');
@@ -746,13 +747,13 @@ describe('escalation', () => {
 
   it('keeps an overdue step pending and lists it as unroutable when no one is left in its chain', async () => {
     await inRolledBackTx(async (c) => {
-      // TRANSFER dispatch: HUB_MANAGER at the hub, nobody above the hub, and (for this
-      // test) no account owner at the end of the chain.
+      // TRANSFER dispatch: the hub's store keeper, and (for this test) nobody else in the
+      // chain: no hub manager, no central kitchen manager, no account owner.
       await c.query('alter table core.role_assignment disable trigger last_account_owner');
       await c.query(
         `update core.role_assignment set effective_from = date '2020-01-01',
-                effective_to = date '2020-12-31' where user_id = $1`,
-        [ids.user(OWNER)],
+                effective_to = date '2020-12-31' where user_id = any ($1)`,
+        [[OWNER, HUGO, 'test.central-kitchen-supervisor'].map((u) => ids.user(u))],
       );
       const id = await submitOk(c, KIM, {
         process: 'TRANSFER',
@@ -773,7 +774,7 @@ describe('escalation', () => {
         state: 'pending',
         scope: 'TEST-CENTRAL-KITCHEN-STORE',
       });
-      expect(await inbox(c, HUGO)).toContain(id);
+      expect(await inbox(c, CK_KEEPER)).toContain(id);
     });
   });
 
