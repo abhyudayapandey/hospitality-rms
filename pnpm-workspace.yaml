@@ -7,3 +7,7 @@ packages:
 onlyBuiltDependencies:
   - esbuild
   - sharp
+
+# Refuse to run scripts (lint, test, ...) when node_modules does not match the lockfile,
+# e.g. after a pull that added a workspace dependency. Fix: pnpm install.
+verifyDepsBeforeRun: error

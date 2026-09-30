@@ -82,7 +82,10 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 
 ## Commands
 ```
-pnpm i                 install
+pnpm i                 install; re-run after every pull or branch switch (pnpm 10.33 via
+                       corepack). Scripts refuse to run on a stale node_modules
+                       (verifyDepsBeforeRun), which otherwise shows up as lint
+                       "type could not be resolved" errors on workspace imports
 pnpm db:up             start local Postgres (docker compose)
 pnpm db:migrate        run dbmate migrations
 pnpm db:seed           load seed/ (org, users, policies) then seed/dev/ (items, workers,
