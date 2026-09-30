@@ -16,8 +16,7 @@ export default async function WastagePage({ searchParams }: { searchParams: Sear
   const data = await withUser(user.id, async (tx) => {
     const items = await itemOptions(tx, ctx.node!.id);
     const t = await sql<{ v: string }>`
-      select coalesce((select wastage_approval_value from inv.node_setting
-                        where delivery_node_id = ${ctx.node!.id}::uuid), 2000) as v`.execute(tx);
+      select inv.wastage_threshold(${ctx.node!.id}::uuid) as v`.execute(tx);
     const recent = await sql<{
       id: string;
       name: string;
