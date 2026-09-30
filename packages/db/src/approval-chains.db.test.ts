@@ -153,6 +153,7 @@ describe('the account owner is the final approver', () => {
         expect(rows, customer).toEqual([]);
       }
       // without its owner, the solo bar's HR step (among others) has no one left
+      await c.query('alter table core.role_assignment disable trigger last_account_owner');
       await c.query(
         `update core.role_assignment ra set effective_from = date '2020-01-01',
                 effective_to = date '2020-12-31'

@@ -160,11 +160,16 @@ describe('approvers (ADR 009)', () => {
     await inRolledBackTx(async (c) => {
       // without file 08 the solo bar has no account owner: nobody approves the owner-only
       // steps (the HR step, role changes), and nobody above the bar manager
+      // (loaded as a new customer: the existing one keeps its owner, guardrail (d))
       const files = {
         ...solo,
+        '00_customer.csv': solo['00_customer.csv']!.replaceAll(
+          'TEST-SOLO-COMPANY',
+          'TEST-SOLO-COPY',
+        ),
         '08_role_assignments_extra.csv': solo['08_role_assignments_extra.csv']!.split(/\r?\n/)[0]!,
       };
-      const before = await tenantCount(c, 'TEST-SOLO-COMPANY');
+      const before = await tenantCount(c, 'TEST-SOLO-COPY');
       const r = await loadCustomer(c, files, { nested: true });
       expect(r.applied).toBe(false);
       expect(r.issues).toContainEqual({
@@ -181,7 +186,7 @@ describe('approvers (ADR 009)', () => {
           'ROLE_CHANGE security_approval: nobody can approve at TEST-SOLO-COMPANY (NO_APPROVER)',
       });
       expect(r.issues.every((i) => i.message.endsWith('(NO_APPROVER)'))).toBe(true);
-      expect(await tenantCount(c, 'TEST-SOLO-COMPANY')).toBe(before);
+      expect(await tenantCount(c, 'TEST-SOLO-COPY')).toBe(before);
     });
   });
 

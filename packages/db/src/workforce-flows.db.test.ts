@@ -782,11 +782,12 @@ describe('ROLE_CHANGE', () => {
 
   it('only User Admins and Account Owners request; cross-tenant targets are refused', async () => {
     await inRolledBackTx(async (c) => {
-      await fixture(c);
+      const f = await fixture(c);
+      // staff have no user administration
       expect(
         await err(c, SAM(), request, [
           'grant',
-          SAM(),
+          f.pat.userId,
           'STOCK_USER',
           ids.node('TEST-BAR-3.0-KITCHEN-STORE'),
           null,

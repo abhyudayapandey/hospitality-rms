@@ -388,6 +388,8 @@ describe('purchase order routing', () => {
 
   it('falls back to the account owner, and raises NO_APPROVER only when nobody exists', async () => {
     await inRolledBackTx(async (c) => {
+      // simulate an organisation left without an owner: lift the last-owner guard (d)
+      await c.query('alter table core.role_assignment disable trigger last_account_owner');
       const end = (who: string) =>
         c.query(
           `update core.role_assignment set effective_from = date '2020-01-01',
@@ -746,6 +748,7 @@ describe('escalation', () => {
     await inRolledBackTx(async (c) => {
       // TRANSFER dispatch: HUB_MANAGER at the hub, nobody above the hub, and (for this
       // test) no account owner at the end of the chain.
+      await c.query('alter table core.role_assignment disable trigger last_account_owner');
       await c.query(
         `update core.role_assignment set effective_from = date '2020-01-01',
                 effective_to = date '2020-12-31' where user_id = $1`,

@@ -46,7 +46,7 @@ interface Registration {
 function perRowCan(r: Registration, access: 'view' | 'modify'): string {
   const legs = perRowLegs(r, access);
   return r.has_wf && access === 'view'
-    ? `((${legs}) or wf_request_id = any (wf.my_actionable_requests()))`
+    ? `((${legs}) or wf_request_id = any ((select wf.my_actionable_requests())::uuid[]))`
     : legs;
 }
 
@@ -90,8 +90,20 @@ async function registrations(c: PoolClient): Promise<Registration[]> {
   return rows;
 }
 
+// RLS_ALL_USERS=1 checks every user of every customer instead of one per grant shape: slow,
+// run by the manual "RLS equivalence (all users)" workflow before the pilot and whenever
+// access rules change.
+const ALL_USERS = process.env.RLS_ALL_USERS === '1';
+const SLOW = ALL_USERS ? 3_600_000 : 300_000;
+
 /** One holder of every distinct grant shape, plus a user with no grants at all. */
 async function userIds(c: PoolClient): Promise<{ id: string; name: string }[]> {
+  if (ALL_USERS) {
+    const { rows } = await c.query<{ id: string; name: string }>(
+      'select id, display_name as name from core.app_user order by display_name, id',
+    );
+    return rows;
+  }
   const { rows } = await c.query<{ id: string; name: string }>(
     `with shapes as (
        select distinct on (g.code, n.type, n.kind, ra.include_descendants, u.tenant_id)
@@ -218,7 +230,7 @@ describe('ADR 007 policies are equivalent to per-row core.can()', () => {
   // users x tables x a query each: slow by design, so it gets its own time limit
   it(
     'select: every seeded user sees exactly the rows core.can() allows, in every business table',
-    { timeout: 120_000 },
+    { timeout: SLOW },
     async () => {
       await inRolledBackTx(async (c) => {
         await fixtures(c);
@@ -299,7 +311,7 @@ describe('ADR 007 policies are equivalent to per-row core.can()', () => {
 
   it(
     'insert/update checks match core.can(modify), including SELF owners',
-    { timeout: 120_000 },
+    { timeout: SLOW },
     async () => {
       await inRolledBackTx(async (c) => {
         // A writable fixture table (no business table is writable by app_rw today).
