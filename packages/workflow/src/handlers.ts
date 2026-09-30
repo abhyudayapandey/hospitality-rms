@@ -11,7 +11,8 @@ import type { ClaimedRequest } from './types';
 export type Handler = (client: PoolClient, request: ClaimedRequest) => Promise<void>;
 export type HandlerMap = Readonly<Record<string, Handler>>;
 
-// Stubs until each module lands (rostering, leave, security).
+// Stubs for handlers without a module (none today; kept so a new process def never
+// leaves the executor without a handler).
 const stub: Handler = async () => {};
 
 export const STUB_HANDLERS: HandlerMap = Object.fromEntries(
@@ -39,5 +40,23 @@ export const INVENTORY_HANDLERS: HandlerMap = Object.fromEntries(
   ].map((name) => [name, inventory(name)]),
 );
 
+// Workforce handlers: hr.execute (SECURITY DEFINER, wf_executor only), same pattern.
+const hr = (name: string): Handler => {
+  return async (client, request) => {
+    await client.query('select hr.execute($1, $2)', [name, request.requestId]);
+  };
+};
+
+export const HR_HANDLERS: HandlerMap = Object.fromEntries(
+  [
+    'hr.leave.apply',
+    'hr.leave.reject',
+    'hr.shift_swap.apply',
+    'hr.shift_swap.reject',
+    'hr.role_change.apply',
+    'hr.role_change.reject',
+  ].map((name) => [name, hr(name)]),
+);
+
 /** What the executor runs: real handlers where a module exists, stubs elsewhere. */
-export const HANDLERS: HandlerMap = { ...STUB_HANDLERS, ...INVENTORY_HANDLERS };
+export const HANDLERS: HandlerMap = { ...STUB_HANDLERS, ...INVENTORY_HANDLERS, ...HR_HANDLERS };

@@ -34,6 +34,12 @@ export const ERROR_MESSAGES = {
   ROLE_MISMATCH: "Their role doesn't match this shift.",
   SHIFT_FULL: 'This shift already has everyone it needs.',
   WORKER_NOT_AT_NODE: 'They work at another location.',
+  INVALID_LEAVE_TYPE: "That leave type isn't available.",
+  INVALID_DATES: 'Check the dates and try again.',
+  LEAVE_SPANS_YEAR: 'Leave cannot cross the year end. Make two requests instead.',
+  LEAVE_OVERLAP: 'You already have leave on some of those days.',
+  INSUFFICIENT_LEAVE_BALANCE: "You don't have enough leave left for that.",
+  INVALID_GROUP: "That role isn't available.",
   SESSION_EXPIRED: 'Your session has ended. Please sign in again.',
   UNEXPECTED: 'Something went wrong. Please try again.',
 } as const;
@@ -52,6 +58,19 @@ export const ROSTER_RULE_CODES = [
   'SHIFT_STARTED',
   'INVALID_WORKER',
 ] as const satisfies readonly ErrorCode[];
+
+/**
+ * Codes an execution handler raises when a business rule fails. Retrying cannot help, so
+ * the executor fails the request at once and records the code (ADR 008). Anything else
+ * (connection loss, deadlock, a bug) is retried up to 3 attempts.
+ */
+export const BUSINESS_RULE_CODES: ReadonlySet<string> = new Set<ErrorCode>([
+  ...ROSTER_RULE_CODES,
+  'INSUFFICIENT_STOCK',
+  'INSUFFICIENT_LEAVE_BALANCE',
+  'TENANT_MISMATCH',
+  'INVALID_STATE',
+]);
 
 const INSUFFICIENT_PRIVILEGE = '42501'; // Postgres: RLS or grant refused
 
