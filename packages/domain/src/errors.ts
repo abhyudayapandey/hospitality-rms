@@ -23,11 +23,35 @@ export const ERROR_MESSAGES = {
   LEDGER_APPEND_ONLY: 'Stock history cannot be changed. Record a correcting movement instead.',
   APPROVE_VIA_MODULE: 'Open this request from its own screen to confirm it.',
   IRREVERSIBLE_STEP: 'The goods are already on their way, so this can only be received now.',
+  NOT_FOUND: "We couldn't find that. Refresh to see the latest.",
+  INVALID_WORKER: "That person isn't an active worker here.",
+  INVALID_WEEK: 'Pick a week starting on a Monday.',
+  SHIFT_STARTED: 'That shift has already started, so it can no longer be changed.',
+  SHIFT_OVERLAP: 'They are already on a shift at that time.',
+  REST_RULE: 'That leaves too little rest between their shifts.',
+  WEEKLY_HOURS_CAP: 'That would take them over the weekly hours limit.',
+  LEAVE_CONFLICT: 'They are on approved leave that day.',
+  ROLE_MISMATCH: "Their role doesn't match this shift.",
+  SHIFT_FULL: 'This shift already has everyone it needs.',
+  WORKER_NOT_AT_NODE: 'They work at another location.',
   SESSION_EXPIRED: 'Your session has ended. Please sign in again.',
   UNEXPECTED: 'Something went wrong. Please try again.',
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_MESSAGES;
+
+/** Rostering rules (hr.assignment_violation and hr.assign). */
+export const ROSTER_RULE_CODES = [
+  'SHIFT_OVERLAP',
+  'REST_RULE',
+  'WEEKLY_HOURS_CAP',
+  'LEAVE_CONFLICT',
+  'ROLE_MISMATCH',
+  'SHIFT_FULL',
+  'WORKER_NOT_AT_NODE',
+  'SHIFT_STARTED',
+  'INVALID_WORKER',
+] as const satisfies readonly ErrorCode[];
 
 const INSUFFICIENT_PRIVILEGE = '42501'; // Postgres: RLS or grant refused
 
