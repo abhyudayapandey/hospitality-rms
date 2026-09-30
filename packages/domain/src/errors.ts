@@ -23,11 +23,59 @@ export const ERROR_MESSAGES = {
   LEDGER_APPEND_ONLY: 'Stock history cannot be changed. Record a correcting movement instead.',
   APPROVE_VIA_MODULE: 'Open this request from its own screen to confirm it.',
   IRREVERSIBLE_STEP: 'The goods are already on their way, so this can only be received now.',
+  NOT_FOUND: "We couldn't find that. Refresh to see the latest.",
+  INVALID_WORKER: "That person isn't an active worker here.",
+  INVALID_WEEK: 'Pick a week starting on a Monday.',
+  SHIFT_STARTED: 'That shift has already started, so it can no longer be changed.',
+  SHIFT_OVERLAP: 'They are already on a shift at that time.',
+  REST_RULE: 'That leaves too little rest between their shifts.',
+  WEEKLY_HOURS_CAP: 'That would take them over the weekly hours limit.',
+  LEAVE_CONFLICT: 'They are on approved leave that day.',
+  ROLE_MISMATCH: "Their role doesn't match this shift.",
+  SHIFT_FULL: 'This shift already has everyone it needs.',
+  WORKER_NOT_AT_NODE: 'They work at another location.',
+  INVALID_LEAVE_TYPE: "That leave type isn't available.",
+  INVALID_DATES: 'Check the dates and try again.',
+  LEAVE_SPANS_YEAR: 'Leave cannot cross the year end. Make two requests instead.',
+  LEAVE_OVERLAP: 'You already have leave on some of those days.',
+  INSUFFICIENT_LEAVE_BALANCE: "You don't have enough leave left for that.",
+  INVALID_GROUP: "That role isn't available.",
+  ALREADY_CLOCKED_IN: "You're already clocked in. Clock out first.",
+  NOT_CLOCKED_IN: "You're not clocked in.",
+  INVALID_TIMESTAMP:
+    "That punch time isn't valid. Punches older than a day can't be synced; tell your manager.",
+  INVALID_LOCATION: "Your location couldn't be read. Try again.",
   SESSION_EXPIRED: 'Your session has ended. Please sign in again.',
   UNEXPECTED: 'Something went wrong. Please try again.',
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_MESSAGES;
+
+/** Rostering rules (hr.assignment_violation and hr.assign). */
+export const ROSTER_RULE_CODES = [
+  'SHIFT_OVERLAP',
+  'REST_RULE',
+  'WEEKLY_HOURS_CAP',
+  'LEAVE_CONFLICT',
+  'ROLE_MISMATCH',
+  'SHIFT_FULL',
+  'WORKER_NOT_AT_NODE',
+  'SHIFT_STARTED',
+  'INVALID_WORKER',
+] as const satisfies readonly ErrorCode[];
+
+/**
+ * Codes an execution handler raises when a business rule fails. Retrying cannot help, so
+ * the executor fails the request at once and records the code (ADR 008). Anything else
+ * (connection loss, deadlock, a bug) is retried up to 3 attempts.
+ */
+export const BUSINESS_RULE_CODES: ReadonlySet<string> = new Set<ErrorCode>([
+  ...ROSTER_RULE_CODES,
+  'INSUFFICIENT_STOCK',
+  'INSUFFICIENT_LEAVE_BALANCE',
+  'TENANT_MISMATCH',
+  'INVALID_STATE',
+]);
 
 const INSUFFICIENT_PRIVILEGE = '42501'; // Postgres: RLS or grant refused
 

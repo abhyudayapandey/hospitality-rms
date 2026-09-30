@@ -85,7 +85,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 pnpm i                 install
 pnpm db:up             start local Postgres (docker compose)
 pnpm db:migrate        run dbmate migrations
-pnpm db:seed           load seed org, outlets, users, items; sync workflow definitions
+pnpm db:seed           load seed/ (org, users, policies) then seed/dev/ (items, workers,
+                       shifts, leave, events); sync workflow definitions
 pnpm dev               run web app
 pnpm test              all tests (needs db:up + db:migrate)
 pnpm test:unit         unit tests only (*.test.ts)
@@ -96,6 +97,7 @@ pnpm db:new <name>     new dbmate migration
 pnpm db:rollback       roll back the last migration
 pnpm db:down           stop local Postgres
 pnpm --filter @outlet-ops/workflow execute [--once]   run the workflow executor locally
+pnpm --filter @outlet-ops/workflow attendance-nightly  nightly attendance exceptions + location purge
 pnpm --filter @outlet-ops/web e2e                     build, then Playwright vs the standalone server
                                                       (+ dev-only pages vs next dev; seeded DB)
 pnpm --filter @outlet-ops/web check:prod-dev-auth     prod build: dev login must be 404

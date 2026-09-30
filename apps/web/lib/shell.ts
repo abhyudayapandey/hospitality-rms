@@ -12,6 +12,7 @@ export interface NodeRow {
   name: string;
   depth: number;
   derived: boolean;
+  timezone: string | null;
 }
 
 export interface Shell {
@@ -20,6 +21,7 @@ export interface Shell {
   nodes: NodeRow[];
   currentNode: NodeRow | null;
   inboxCount: number;
+  unreadCount: number;
 }
 
 /** Everything the app layout needs, in one withUser transaction. */
@@ -30,10 +32,13 @@ export const loadShell = cache(async (): Promise<Shell> => {
     const domains = await sql<{ domain: string; access: 'view' | 'modify' }>`
       select * from core.my_domains()`.execute(tx);
     const nodes = await sql<NodeRow>`
-      select id, type, kind, name, depth, derived from core.nodes()`.execute(tx);
+      select id, type, kind, name, depth, derived, timezone from core.nodes()`.execute(tx);
     const inbox = await sql<{ n: number }>`select count(*)::int as n from wf.my_inbox()`.execute(
       tx,
     );
+    const unread = await sql<{ n: number }>`
+      select count(*)::int as n from ops.notification
+       where owner_user_id = core.current_user_id() and read_at is null`.execute(tx);
     const own = nodes.rows.filter((n) => !n.derived);
     const currentNode = nodes.rows.find((n) => n.id === selected) ?? own[0] ?? null;
     return {
@@ -42,6 +47,7 @@ export const loadShell = cache(async (): Promise<Shell> => {
       nodes: nodes.rows,
       currentNode,
       inboxCount: inbox.rows[0]?.n ?? 0,
+      unreadCount: unread.rows[0]?.n ?? 0,
     };
   });
 });

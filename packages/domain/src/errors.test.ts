@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ERROR_MESSAGES, errorCodeOf, failure, messageFor } from './errors';
+import { ERROR_MESSAGES, ROSTER_RULE_CODES, errorCodeOf, failure, messageFor } from './errors';
 
 describe('error mapping', () => {
   it('maps our raised codes (the error message) to user messages', () => {
@@ -51,5 +51,20 @@ describe('error mapping', () => {
     ]);
     const missing = [...raised].filter((c) => !internal.has(c) && !(c in ERROR_MESSAGES));
     expect(missing).toEqual([]);
+  });
+
+  it('knows every rostering rule code hr.assignment_violation returns', () => {
+    const dir = join(import.meta.dirname, '..', '..', 'db', 'migrations');
+    const returned = new Set<string>();
+    for (const file of readdirSync(dir)) {
+      const sql = readFileSync(join(dir, file), 'utf8');
+      for (const m of sql.matchAll(/return query select '([A-Z][A-Z_]+)'::text/g)) {
+        returned.add(m[1]!);
+      }
+    }
+    expect(returned.size).toBeGreaterThan(5);
+    expect(
+      [...returned].filter((c) => !(ROSTER_RULE_CODES as readonly string[]).includes(c)),
+    ).toEqual([]);
   });
 });

@@ -9,6 +9,7 @@ import {
   resetRole,
   type SeedIds,
 } from '../test/helpers';
+import { newWorker, workerFor } from '../test/workforce';
 
 // ADR 007: generated policies test membership in a per-query node set
 // (core.visible_nodes / core.visible_domain_nodes) instead of calling core.can() per row.
@@ -127,6 +128,54 @@ async function fixtures(c: PoolClient): Promise<void> {
       `insert into inv.stock_ledger (tenant_id, item_id, delivery_node_id, movement_type, qty,
                                      unit_cost, ref_type) values ($1, $2, $3, 'receipt', 1, 1, 'eq')`,
       [tenant, item, ids.node(`delivery:${n}`)],
+    );
+  }
+  // Workforce rows at both outlets and the hub site, owned by seeded users (SELF legs).
+  const workers = [
+    await workerFor(c, ids, 'Sam Staff', 'org:Outlet A', 'SERVER'),
+    await workerFor(c, ids, 'Olivia Outlet Manager', 'org:Outlet A', 'MANAGER'),
+    (await newWorker(c, ids, 'Eq Outlet B', 'org:Outlet B', 'SERVER')).workerId,
+    (await newWorker(c, ids, 'Eq Hub', 'org:Hub', 'STORE')).workerId,
+  ];
+  await c.query(
+    `insert into hr.leave_type (tenant_id, code, name, annual_days)
+     values ($1, 'EQ_LEAVE', 'Eq leave', 10) on conflict do nothing`,
+    [tenant],
+  );
+  for (const w of workers) {
+    await c.query(
+      `with w as (select * from hr.worker where id = $1),
+       s as (insert into hr.shift (tenant_id, org_node_id, local_date, start_at, end_at, role_code)
+             select tenant_id, org_node_id, date '2026-12-01', timestamptz '2026-12-01 03:30Z',
+                    timestamptz '2026-12-01 11:30Z', role_code from w returning *),
+       a as (insert into hr.shift_assignment (tenant_id, shift_id, worker_id, owner_user_id,
+                                              org_node_id, start_at, end_at)
+             select s.tenant_id, s.id, w.id, w.owner_user_id, s.org_node_id, s.start_at, s.end_at
+               from s, w returning *),
+       att as (insert into hr.attendance (tenant_id, worker_id, owner_user_id, org_node_id,
+                                          shift_id, clock_in_at, in_source, in_key)
+               select w.tenant_id, w.id, w.owner_user_id, w.org_node_id, s.id, s.start_at,
+                      'online', 'eq' from w, s returning *),
+       ex as (insert into hr.attendance_exception (tenant_id, org_node_id, worker_id,
+                                                   owner_user_id, attendance_id, local_date, kind)
+              select tenant_id, org_node_id, worker_id, owner_user_id, id, date '2026-12-01',
+                     'late' from att returning 1),
+       lb as (insert into hr.leave_balance (tenant_id, worker_id, owner_user_id, org_node_id,
+                                            leave_type_id, year, entitled_days)
+              select w.tenant_id, w.id, w.owner_user_id, w.org_node_id, t.id, 2026, 10
+                from w, hr.leave_type t where t.code = 'EQ_LEAVE' and t.tenant_id = w.tenant_id
+              returning 1),
+       lr as (insert into hr.leave_request (tenant_id, worker_id, owner_user_id, org_node_id,
+                                            leave_type_id, from_date, to_date, days)
+              select w.tenant_id, w.id, w.owner_user_id, w.org_node_id, t.id,
+                     date '2026-12-10', date '2026-12-10', 1
+                from w, hr.leave_type t where t.code = 'EQ_LEAVE' and t.tenant_id = w.tenant_id
+              returning 1),
+       ev as (insert into ops.event (tenant_id, org_node_id, name, starts_at, ends_at, covers)
+              select tenant_id, org_node_id, 'Eq event', timestamptz '2026-12-05 12:00Z',
+                     timestamptz '2026-12-05 16:00Z', 40 from w returning 1)
+       select ops.notify(w.tenant_id, w.owner_user_id, 'eq', 'Eq') from w`,
+      [w],
     );
   }
 }

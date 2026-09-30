@@ -33,6 +33,7 @@ insert into seed_bp_policy (process_type, step, grp, action) values
 
   ('SHIFT_SWAP', '*', 'SELF', 'initiate'),
   ('SHIFT_SWAP', 'outlet_approval', 'OUTLET_MANAGER', 'approve'),
+  ('SHIFT_SWAP', 'outlet_approval', 'AREA_MANAGER', 'approve'),           -- escalateTo
 
   ('ROLE_CHANGE', '*', 'HR_ADMIN', 'initiate'),
   ('ROLE_CHANGE', 'security_approval', 'SECURITY_ADMIN', 'approve');

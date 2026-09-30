@@ -9,7 +9,7 @@ section 7 were built.
   - `20260930100000_wf_subject_from_row` (workflow engine changes)
   - `20260930110000_inventory_schema` (tables and the ledger trigger)
   - `20260930120000_inventory_rpcs` (functions, executor SQL, views)
-- **Dev seed:** `003_inventory_dev.sql`.
+- **Dev seed:** `seed/dev/003_inventory_dev.sql`.
 - **Screens:** under `/stock` in `apps/web`.
 - **Performance:** ADR 007 (RLS computes the visible node set once per query).
 
@@ -43,9 +43,8 @@ idempotency_key)`. The old signature with caller-supplied nodes and amount is go
   - `irreversible: true`: once the step is approved, reject and cancel raise
     `IRREVERSIBLE_STEP`.
 - **Cancel now runs `onRejected`**, so a cancelled subject closes as `cancelled`.
-- **Subject types without a module yet** (LEAVE, SHIFT_SWAP, ROLE_CHANGE) have no
-  resolver, so submitting them fails with `INVALID_SUBJECT` until their modules land.
-  Engine tests use stand-in subjects.
+- **Subject types without a module yet** (LEAVE, SHIFT_SWAP, ROLE_CHANGE) had no
+  resolver at first; ADR 008 adds them. Engine tests use stand-in subjects.
 
 ## Data model and rules
 

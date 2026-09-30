@@ -7,14 +7,22 @@ export interface PickerNode {
   label: string;
 }
 
-/** Switches the delivery node of the supply screens (?node=). */
-export function NodePicker({ nodes, current }: { nodes: PickerNode[]; current: string }) {
+/** Switches the node of the supply or people screens (?node=). */
+export function NodePicker({
+  nodes,
+  current,
+  label = 'Supply location',
+}: {
+  nodes: PickerNode[];
+  current: string;
+  label?: string;
+}) {
   const router = useRouter();
   const path = usePathname();
   if (nodes.length < 2) return null;
   return (
     <select
-      aria-label="Supply location"
+      aria-label={label}
       value={current}
       onChange={(e) => router.push(`${path}?node=${e.target.value}`)}
       className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm"

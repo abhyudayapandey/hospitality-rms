@@ -1,3 +1,4 @@
+import { BUSINESS_RULE_CODES } from '@outlet-ops/domain';
 import type { Pool } from 'pg';
 import type { HandlerMap } from './handlers';
 import type { ClaimedRequest } from './types';
@@ -6,7 +7,8 @@ import type { ClaimedRequest } from './types';
 // `pool` as wf_executor. Each row is handled in one transaction:
 //   claim (FOR UPDATE SKIP LOCKED) -> savepoint -> handler -> complete -> commit
 // On handler error: rollback to savepoint, record the failure, commit. The third
-// failure marks the row and the request failed (wf.record_failure).
+// failure marks the row and the request failed (wf.record_failure); a business-rule
+// code fails it on the first attempt.
 
 export interface RunResult {
   completed: number;
@@ -72,9 +74,13 @@ export async function runOnce(
         log(`completed ${row.handler} for ${row.request_id}`);
       } catch (err) {
         await client.query('rollback to savepoint handler');
+        const message = err instanceof Error ? err.message : String(err);
+        // A business rule (REST_RULE, INSUFFICIENT_STOCK, ...) fails the same way on every
+        // retry: fail the request now and record the code (ADR 008).
+        const final = BUSINESS_RULE_CODES.has(message);
         const { rows: f } = await client.query<{ status: string }>(
-          'select wf.record_failure($1, $2, $3) as status',
-          [row.outbox_id, err instanceof Error ? err.message : String(err), now],
+          'select wf.record_failure($1, $2, $3, $4) as status',
+          [row.outbox_id, message, now, final],
         );
         if (f[0]?.status === 'failed') result.failed++;
         else result.retrying++;

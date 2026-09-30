@@ -70,9 +70,39 @@ describe('per-service credential isolation', () => {
     ]);
   });
 
+  it('the nightly attendance job gets only wf_executor', () => {
+    expect(loadCredentials('outlet-ops-attendance-nightly.service')).toEqual([
+      'db_wf_executor:/etc/outlet-ops/creds/wf_executor',
+    ]);
+  });
+
   it('services run as their own unprivileged users', () => {
     expect(read('systemd/outlet-ops-web.service')).toMatch(/^User=outletops-web$/m);
     expect(read('systemd/outlet-ops-wf-execute.service')).toMatch(/^User=outletops-wf$/m);
+    expect(read('systemd/outlet-ops-attendance-nightly.service')).toMatch(/^User=outletops-wf$/m);
+  });
+});
+
+describe('scheduled jobs', () => {
+  it('runs the attendance job nightly in India time, catching up after downtime', () => {
+    const timer = read('systemd/outlet-ops-attendance-nightly.timer');
+    expect(timer).toMatch(/^OnCalendar=\*-\*-\* 02:15:00 Asia\/Kolkata$/m);
+    expect(timer).toMatch(/^Persistent=true$/m);
+  });
+
+  it('deploy enables and starts every timer it ships', () => {
+    const deploy = read('deploy/deploy.sh');
+    for (const t of readdirSync(join(dir, 'systemd')).filter((f) => f.endsWith('.timer'))) {
+      expect(deploy.match(new RegExp(t.replace('.', '\\.'), 'g'))?.length).toBe(2);
+    }
+  });
+
+  it('the release bundles every job a unit runs', () => {
+    const build = read('../scripts/build-release.sh');
+    for (const script of ['wf-execute', 'attendance-nightly']) {
+      expect(read(`deploy/${script}.sh`)).toContain(`jobs/${script}.mjs`);
+      expect(build).toMatch(new RegExp(`:${script}[ ;]`));
+    }
   });
 });
 

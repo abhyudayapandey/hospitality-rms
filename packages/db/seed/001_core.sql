@@ -72,7 +72,8 @@ select '01920000-0000-7000-8000-000000000001', code, ht from (values
   ('AUDIT', 'org'),
   ('SHIFT_SWAPS', 'org'),
   ('SECURITY_ROLES', 'org'),
-  ('WF_CONFIG', 'org')
+  ('WF_CONFIG', 'org'),
+  ('NOTIFICATIONS', 'self')
 ) as d(code, ht)
 on conflict (tenant_id, code) do nothing;
 
@@ -153,7 +154,8 @@ insert into seed_policy_matrix (grp, dom, access) values
     ('SELF', 'ROSTER', 'view'),
     ('SELF', 'ATTENDANCE', 'modify'),
     ('SELF', 'LEAVE', 'modify'),
-    ('SELF', 'SHIFT_SWAPS', 'modify');
+    ('SELF', 'SHIFT_SWAPS', 'modify'),
+    ('SELF', 'NOTIFICATIONS', 'view');
 
 insert into core.domain_policy (tenant_id, domain_id, group_id, access)
 select '01920000-0000-7000-8000-000000000001', d.id, g.id, m.access

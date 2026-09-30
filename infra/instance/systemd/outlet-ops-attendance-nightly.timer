@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the Outlet Ops attendance job nightly (02:15 India time)
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 Asia/Kolkata
+# catch up after the instance was off at 02:15
+Persistent=true
+AccuracySec=1m
+Unit=outlet-ops-attendance-nightly.service
+
+[Install]
+WantedBy=timers.target

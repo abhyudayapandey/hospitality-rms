@@ -67,3 +67,45 @@ export async function createOrder(page: Page, item: string, qty: string): Promis
   await page.waitForURL(/\/stock\/orders\/[0-9a-f-]{36}/);
   return new URL(page.url()).pathname.split('/').pop()!;
 }
+
+/** Seeded org node ids (packages/db/seed/001_core.sql). */
+export const ORG = {
+  outletA: '01920000-0000-7000-8000-000000000104',
+} as const;
+
+/**
+ * Test setup for the people flows: clears workforce activity in one far-future week at
+ * Outlet A (shifts, assignments, swaps, leave) so the spec can re-run on the same local
+ * database. Runs as migrator, like the seed; CI starts from a fresh database anyway.
+ */
+export async function resetPeopleWeek(monday: string): Promise<void> {
+  const client = new pg.Client({ connectionString: env('MIGRATOR_DATABASE_URL') });
+  await client.connect();
+  try {
+    await client.query(
+      `with s as (select id from hr.shift
+                   where org_node_id = $1 and local_date between $2::date and $2::date + 6)
+       , sw as (delete from hr.shift_swap where shift_id in (select id from s) returning 1)
+       , ex as (delete from hr.attendance_exception where shift_id in (select id from s) returning 1)
+       select (select count(*) from sw) + (select count(*) from ex)`,
+      [ORG.outletA, monday],
+    );
+    await client.query(
+      `delete from hr.shift_assignment where shift_id in (
+         select id from hr.shift where org_node_id = $1
+            and local_date between $2::date and $2::date + 6)`,
+      [ORG.outletA, monday],
+    );
+    await client.query(
+      `delete from hr.shift where org_node_id = $1 and local_date between $2::date and $2::date + 6`,
+      [ORG.outletA, monday],
+    );
+    await client.query(
+      `delete from hr.leave_request where org_node_id = $1
+          and from_date <= $2::date + 6 and to_date >= $2::date`,
+      [ORG.outletA, monday],
+    );
+  } finally {
+    await client.end();
+  }
+}

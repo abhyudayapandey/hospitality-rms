@@ -171,6 +171,35 @@ describe('executor', () => {
     expect((await state(id)).state).toBe('completed');
   });
 
+  it('fails a business-rule code at once and records it, without retrying', async () => {
+    const id = await approvedRequest();
+    let calls = 0;
+    const handlers = {
+      'test.exec': (() => {
+        calls++;
+        return Promise.reject(new Error('REST_RULE'));
+      }) satisfies Handler,
+    };
+    expect(await runOnce(executorPool, handlers)).toEqual({ completed: 0, retrying: 0, failed: 1 });
+    expect(await runOnce(executorPool, handlers, { now: later(60) })).toEqual({
+      completed: 0,
+      retrying: 0,
+      failed: 0,
+    });
+    expect(calls).toBe(1);
+    expect(await state(id)).toEqual({
+      state: 'failed',
+      status: 'failed',
+      attempts: 1,
+      last_error: 'REST_RULE',
+    });
+    const { rows } = await migratorPool.query<{ failure_code: string }>(
+      'select failure_code from wf.request where id = $1',
+      [id],
+    );
+    expect(rows[0]!.failure_code).toBe('REST_RULE');
+  });
+
   it('retries with backoff and marks the request failed after 3 attempts', async () => {
     const id = await approvedRequest();
     let calls = 0;
