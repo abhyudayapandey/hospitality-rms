@@ -201,7 +201,9 @@ describe('suspending a customer', () => {
       const audit = await asPlatform<{ action: string; reason: string }>(
         c,
         admin,
-        'select action, reason from platform.audit() where tenant_id = $1 order by at',
+        // this transaction's events only (e2e also suspends this customer)
+        `select action, reason from platform.audit() where tenant_id = $1 and at = now()
+          order by action desc`,
         [tenant],
       );
       expect(audit.rows!.map((a) => [a.action, a.reason])).toEqual([

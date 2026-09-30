@@ -7,6 +7,8 @@ export interface OutletOpsConfig {
   alertEmail: string;
   /** Cognito managed-login domain prefix: <prefix>.auth.ap-south-1.amazoncognito.com */
   cognitoDomainPrefix: string;
+  /** The platform admins' pool domain prefix (ADR 012), e.g. outletops-ap-platform */
+  platformCognitoDomainPrefix: string;
   /** GitHub repository allowed to deploy, owner/repo */
   githubRepo: string;
   /** Numeric id of the repository owner: gh api repos/<owner>/<repo> --jq .owner.id */
@@ -32,6 +34,7 @@ export const SECRET_PARAMS = {
   migrator: `${PARAM_PREFIX}/db/migrator`,
   appRw: `${PARAM_PREFIX}/db/app_rw`,
   wfExecutor: `${PARAM_PREFIX}/db/wf_executor`,
+  platformLoader: `${PARAM_PREFIX}/db/platform_loader`,
   sessionSecret: `${PARAM_PREFIX}/web/session_secret`,
 } as const;
 
@@ -66,6 +69,7 @@ export function configFromContext(get: (key: string) => unknown): OutletOpsConfi
     domainName: required('domainName'),
     alertEmail: required('alertEmail'),
     cognitoDomainPrefix: required('cognitoDomainPrefix'),
+    platformCognitoDomainPrefix: required('platformCognitoDomainPrefix'),
     githubRepo,
     githubOwnerId: numericId('githubOwnerId'),
     githubRepoId: numericId('githubRepoId'),

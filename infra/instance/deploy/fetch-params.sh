@@ -1,6 +1,7 @@
 #!/bin/bash
 # Fetches SSM parameters into root-only files. systemd LoadCredential then hands each
-# service only its own secret (web: app_rw + session; wf-execute: wf_executor).
+# service only its own secret (web: app_rw + session; wf-execute: wf_executor;
+# platform worker: platform_loader).
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 
@@ -21,6 +22,7 @@ install -d -m 0700 "$OO_CREDS"
 write_secret "$PARAM_PREFIX/db/migrator" "$OO_CREDS/migrator"
 write_secret "$PARAM_PREFIX/db/app_rw" "$OO_CREDS/app_rw"
 write_secret "$PARAM_PREFIX/db/wf_executor" "$OO_CREDS/wf_executor"
+write_secret "$PARAM_PREFIX/db/platform_loader" "$OO_CREDS/platform_loader"
 write_secret "$PARAM_PREFIX/web/session_secret" "$OO_CREDS/session_secret"
 
 # Non-secret config (String parameters from the CDK stack).
@@ -30,6 +32,7 @@ while IFS=$'\t' read -r name value; do
 done < <(aws ssm get-parameters-by-path --path "$PARAM_PREFIX/config" \
   --query 'Parameters[].[Name,Value]' --output text)
 for key in app_url app_domain acme_email cognito_user_pool_id cognito_client_id cognito_domain \
+  platform_cognito_user_pool_id platform_cognito_client_id platform_cognito_domain \
   backup_bucket photo_bucket; do
   [ -n "${cfg[$key]:-}" ] || { echo "missing config parameter $key" >&2; exit 1; }
 done
@@ -43,6 +46,9 @@ APP_URL=${cfg[app_url]}
 COGNITO_USER_POOL_ID=${cfg[cognito_user_pool_id]}
 COGNITO_CLIENT_ID=${cfg[cognito_client_id]}
 COGNITO_DOMAIN=${cfg[cognito_domain]}
+PLATFORM_COGNITO_USER_POOL_ID=${cfg[platform_cognito_user_pool_id]}
+PLATFORM_COGNITO_CLIENT_ID=${cfg[platform_cognito_client_id]}
+PLATFORM_COGNITO_DOMAIN=${cfg[platform_cognito_domain]}
 PHOTO_BUCKET=${cfg[photo_bucket]}
 AWS_REGION=${AWS_REGION}
 ENV

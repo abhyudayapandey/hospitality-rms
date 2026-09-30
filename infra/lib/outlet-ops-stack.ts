@@ -389,6 +389,63 @@ export class OutletOpsStack extends Stack {
       useCognitoProvidedValues: true,
     });
 
+    // --- Cognito: platform admins (ADR 012) -------------------------------------------
+    // A separate pool: no self sign-up, authenticator-app MFA required (no SMS), long
+    // passwords. Only members of the platform-admins group become platform admins; the
+    // app instance has no IAM rights on this pool at all.
+    const platformPool = new cognito.UserPool(this, 'PlatformUsers', {
+      userPoolName: 'outlet-ops-platform',
+      featurePlan: cognito.FeaturePlan.ESSENTIALS,
+      selfSignUpEnabled: false,
+      signInAliases: { email: true },
+      standardAttributes: { email: { required: true, mutable: false } },
+      mfa: cognito.Mfa.REQUIRED,
+      mfaSecondFactor: { otp: true, sms: false },
+      passwordPolicy: {
+        minLength: 14,
+        requireDigits: true,
+        requireLowercase: true,
+        requireUppercase: true,
+        requireSymbols: true,
+        tempPasswordValidity: Duration.days(3),
+      },
+      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+      email: cognito.UserPoolEmail.withCognito(),
+      deletionProtection: true,
+      removalPolicy: RemovalPolicy.RETAIN,
+    });
+    costTag(platformPool, 'always-free', 'Cognito Essentials - a handful of platform admins');
+    new cognito.CfnUserPoolGroup(this, 'PlatformAdminsGroup', {
+      userPoolId: platformPool.userPoolId,
+      groupName: 'platform-admins',
+      description: 'Platform admins: the only members who may use the platform console',
+    });
+    const platformClient = platformPool.addClient('PlatformWeb', {
+      generateSecret: false,
+      authFlows: { user: true, userSrp: true },
+      oAuth: {
+        flows: { authorizationCodeGrant: true },
+        scopes: [cognito.OAuthScope.OPENID, cognito.OAuthScope.EMAIL],
+        callbackUrls: [`https://${config.domainName}/platform/auth/callback`],
+        logoutUrls: [`https://${config.domainName}/platform/signed-out`],
+      },
+      supportedIdentityProviders: [cognito.UserPoolClientIdentityProvider.COGNITO],
+      preventUserExistenceErrors: true,
+      enableTokenRevocation: true,
+      idTokenValidity: Duration.hours(1),
+      accessTokenValidity: Duration.hours(1),
+      refreshTokenValidity: Duration.hours(8),
+    });
+    platformPool.addDomain('PlatformDomain', {
+      cognitoDomain: { domainPrefix: config.platformCognitoDomainPrefix },
+      managedLoginVersion: cognito.ManagedLoginVersion.NEWER_MANAGED_LOGIN,
+    });
+    new cognito.CfnManagedLoginBranding(this, 'PlatformLoginBranding', {
+      userPoolId: platformPool.userPoolId,
+      clientId: platformClient.userPoolClientId,
+      useCognitoProvidedValues: true,
+    });
+
     // --- Non-secret config for the instance (standard String parameters, free) -------
     const cognitoDomain = `${config.cognitoDomainPrefix}.auth.${this.region}.amazoncognito.com`;
     const cfg: Record<string, string> = {
@@ -398,6 +455,9 @@ export class OutletOpsStack extends Stack {
       cognito_user_pool_id: userPool.userPoolId,
       cognito_client_id: client.userPoolClientId,
       cognito_domain: cognitoDomain,
+      platform_cognito_user_pool_id: platformPool.userPoolId,
+      platform_cognito_client_id: platformClient.userPoolClientId,
+      platform_cognito_domain: `${config.platformCognitoDomainPrefix}.auth.${this.region}.amazoncognito.com`,
       backup_bucket: backupBucket.bucketName,
       photo_bucket: photoBucket.bucketName,
     };
@@ -528,6 +588,7 @@ export class OutletOpsStack extends Stack {
     new CfnOutput(this, 'PhotoBucketName', { value: photoBucket.bucketName });
     new CfnOutput(this, 'DeployRoleArn', { value: deployRole.roleArn });
     new CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
+    new CfnOutput(this, 'PlatformUserPoolId', { value: platformPool.userPoolId });
     new CfnOutput(this, 'UserPoolClientId', { value: client.userPoolClientId });
     new CfnOutput(this, 'CognitoDomain', { value: domain.domainName });
     new CfnOutput(this, 'ParameterPrefix', { value: PARAM_PREFIX });

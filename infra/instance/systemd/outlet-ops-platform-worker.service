@@ -1,0 +1,26 @@
+[Unit]
+Description=Outlet Ops platform worker (creates customers queued in the platform console)
+After=network-online.target docker.service
+
+[Service]
+Type=simple
+User=outletops-platform
+Group=outletops-platform
+# Only the platform_loader password (ADR 012): the web app never holds it.
+LoadCredential=db_platform_loader:/etc/outlet-ops/creds/platform_loader
+ExecStart=/opt/outlet-ops/current/deploy/platform-worker.sh
+Restart=on-failure
+RestartSec=10
+MemoryMax=384M
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

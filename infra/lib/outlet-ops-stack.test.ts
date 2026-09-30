@@ -12,6 +12,7 @@ const CONFIG = {
   domainName: 'outletops.duckdns.org',
   alertEmail: 'ops@example.com',
   cognitoDomainPrefix: 'outlet-ops-test',
+  platformCognitoDomainPrefix: 'outlet-ops-test-platform',
   githubRepo: 'abhyudayapandey/hospitality-rms',
   githubOwnerId: '33194509',
   githubRepoId: '1394585977',
@@ -207,9 +208,11 @@ describe('least-privilege IAM', () => {
         'cognito-idp:AdminUserGlobalSignOut',
       ].sort(),
     );
-    const pools = Object.keys(t.findResources('AWS::Cognito::UserPool'));
-    expect(pools).toHaveLength(1);
-    expect(s.Resource).toEqual({ 'Fn::GetAtt': [pools[0], 'Arn'] });
+    const customerPools = Object.keys(t.findResources('AWS::Cognito::UserPool')).filter((id) =>
+      id.startsWith('Users'),
+    );
+    expect(customerPools).toHaveLength(1);
+    expect(s.Resource).toEqual({ 'Fn::GetAtt': [customerPools[0], 'Arn'] });
   });
 
   it('deploy role: trusted only from the production environment of this repo', () => {
@@ -306,6 +309,58 @@ describe('Cognito', () => {
     expect(pool).not.toContain('SMS_OTP');
   });
 
+  const platformPool = () => {
+    const [entry] = Object.entries(t.findResources('AWS::Cognito::UserPool')).filter(([id]) =>
+      id.startsWith('PlatformUsers'),
+    );
+    expect(entry, 'the PlatformUsers pool').toBeDefined();
+    return { id: entry![0], props: entry![1].Properties as Record<string, unknown> };
+  };
+
+  it('platform pool (ADR 012): self sign-up can never be enabled', () => {
+    expect(platformPool().props.AdminCreateUserConfig).toMatchObject({
+      AllowAdminCreateUserOnly: true,
+    });
+  });
+
+  it('platform pool: authenticator-app MFA required, no SMS, long passwords', () => {
+    const { props } = platformPool();
+    expect(props.MfaConfiguration).toBe('ON');
+    expect(props.EnabledMfas).toEqual(['SOFTWARE_TOKEN_MFA']);
+    expect(JSON.stringify(props)).not.toMatch(/SMS/);
+    expect(props.Policies).toMatchObject({
+      PasswordPolicy: {
+        MinimumLength: 14,
+        RequireUppercase: true,
+        RequireLowercase: true,
+        RequireNumbers: true,
+        RequireSymbols: true,
+      },
+    });
+    expect(props.DeletionProtection).toBe('ACTIVE');
+  });
+
+  it('platform pool: the platform-admins group and its own client to /platform only', () => {
+    const { id } = platformPool();
+    t.hasResourceProperties('AWS::Cognito::UserPoolGroup', {
+      GroupName: 'platform-admins',
+      UserPoolId: { Ref: id },
+    });
+    t.hasResourceProperties('AWS::Cognito::UserPoolClient', {
+      UserPoolId: { Ref: id },
+      GenerateSecret: false,
+      AllowedOAuthFlows: ['code'],
+      CallbackURLs: ['https://outletops.duckdns.org/platform/auth/callback'],
+      LogoutURLs: ['https://outletops.duckdns.org/platform/signed-out'],
+    });
+  });
+
+  it('the app instance has no rights on the platform pool', () => {
+    const { id } = platformPool();
+    const st = statements('InstanceRole');
+    expect(JSON.stringify(st)).not.toContain(id);
+  });
+
   it('public app client with PKCE code flow to the app domain only', () => {
     t.hasResourceProperties('AWS::Cognito::UserPoolClient', {
       GenerateSecret: false,
@@ -395,9 +450,12 @@ describe('redeploy after a failed first create', () => {
     }
   });
 
-  it('only the user pool survives a rollback, and it has no unique name to collide on', () => {
+  it('only the user pools survive a rollback, and they have no unique name to collide on', () => {
     const retained = all().filter(([, r]) => r.DeletionPolicy === 'Retain');
-    expect(retained.map(([, r]) => r.Type)).toEqual(['AWS::Cognito::UserPool']);
+    expect(retained.map(([, r]) => r.Type)).toEqual([
+      'AWS::Cognito::UserPool',
+      'AWS::Cognito::UserPool',
+    ]);
   });
 
   it('no bucket has a fixed name', () => {
