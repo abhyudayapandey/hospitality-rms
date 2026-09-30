@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { failure, type ActionResult } from '@outlet-ops/domain';
 import { loginDirectory } from '@/lib/auth/directory';
+import { generateTemporaryPassword, testRulePassword } from '@/lib/auth/passwords';
 import { sql, withPlatformAdmin, type Tx } from '@/lib/db';
 import { requirePlatformAdmin } from '@/lib/platform/server';
 import { requireSameOrigin } from '@/lib/security/same-origin';
@@ -105,4 +106,98 @@ export async function inviteOwner(jobId: string): Promise<ActionResult<string>> 
   );
   if (!linked.ok) return linked;
   return { ok: true, data: email };
+}
+
+/** Apply an import after its dry run (ADR 013): a new job; the worker loads the same upload. */
+export async function applyImport(dryRunJobId: string): Promise<ActionResult<string>> {
+  return run('request_import_apply', async (tx) => {
+    const r = await sql<{ id: string }>`
+      select platform.request_import_apply(${dryRunJobId}::uuid) as id`.execute(tx);
+    return r.rows[0]!.id;
+  });
+}
+
+export interface CreatedLogin {
+  username: string;
+  displayName: string;
+  /** Shown once and offered as a download once; never stored or logged. */
+  password: string;
+  /** Test<Role>!12 passwords are kept; generated ones are changed at the first sign-in. */
+  permanent: boolean;
+}
+
+export interface LoginBatch {
+  created: CreatedLogin[];
+  /** People skipped, with why (no job title for the Test<Role>!12 rule). */
+  skipped: { username: string; reason: string }[];
+  /** Set when a login failed part-way; the ones before it are created and shown. */
+  error: string | null;
+}
+
+/**
+ * Username logins for a customer's imported people (ADR 013). The database says who needs
+ * one and refuses the Test<Role>!12 option for customers that are not test customers; each
+ * login is created in Cognito, then linked (and audited, without the password).
+ */
+export async function createUsernameLogins(
+  tenantId: string,
+  testRule: boolean,
+): Promise<ActionResult<LoginBatch>> {
+  const people = await run('begin_logins', async (tx) => {
+    const r = await sql<{
+      user_id: string;
+      username: string;
+      display_name: string;
+      job_title: string | null;
+    }>`select * from platform.begin_logins(${tenantId}::uuid, ${testRule})`.execute(tx);
+    return r.rows;
+  });
+  if (!people.ok) return people;
+  const batch: LoginBatch = { created: [], skipped: [], error: null };
+  const directory = loginDirectory();
+  for (const p of people.data) {
+    if (testRule && !p.job_title) {
+      batch.skipped.push({
+        username: p.username,
+        reason: 'no job title for the Test<Role>!12 rule',
+      });
+      continue;
+    }
+    const password = testRule ? testRulePassword(p.job_title!) : generateTemporaryPassword();
+    try {
+      const { sub } = await directory.create({
+        username: p.username,
+        loginType: 'username',
+        temporaryPassword: password,
+      });
+      if (testRule) await directory.setPermanentPassword(p.username, password);
+      const linked = await run('link_customer_login', (tx) =>
+        sql`select platform.link_customer_login(${p.user_id}::uuid, ${sub})`.execute(tx),
+      );
+      if (!linked.ok) {
+        batch.error = `${p.username}: ${linked.message}`;
+        break;
+      }
+    } catch (err) {
+      console.error('login creation failed', (err as Error).name);
+      batch.error = `${p.username}: ${failure(new Error('UNEXPECTED')).message}`;
+      break;
+    }
+    batch.created.push({
+      username: p.username,
+      displayName: p.display_name,
+      password,
+      permanent: testRule,
+    });
+  }
+  return { ok: true, data: batch };
+}
+
+/** Queues the email invitations; the worker sends them within the daily allowance. */
+export async function requestInvites(tenantId: string): Promise<ActionResult<string | null>> {
+  return run('request_invites', async (tx) => {
+    const r = await sql<{ id: string | null }>`
+      select platform.request_invites(${tenantId}::uuid) as id`.execute(tx);
+    return r.rows[0]!.id;
+  });
 }

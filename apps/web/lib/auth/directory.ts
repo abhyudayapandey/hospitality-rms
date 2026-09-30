@@ -32,6 +32,8 @@ export interface LoginDirectory {
   /** Creates the login (or finds the existing one) and returns its sub. */
   create(login: NewLogin): Promise<{ sub: string }>;
   setTemporaryPassword(username: string, password: string): Promise<void>;
+  /** Test customers' Test<Role>!12 passwords only (ADR 013): kept at the next sign-in. */
+  setPermanentPassword(username: string, password: string): Promise<void>;
   disable(username: string): Promise<void>;
   enable(username: string): Promise<void>;
   /** Revokes every refresh token: signed out everywhere at the next token refresh. */
@@ -104,6 +106,17 @@ export class CognitoDirectory implements LoginDirectory {
     );
   }
 
+  async setPermanentPassword(username: string, password: string): Promise<void> {
+    await this.client.send(
+      new AdminSetUserPasswordCommand({
+        UserPoolId: this.userPoolId,
+        Username: username,
+        Password: password,
+        Permanent: true,
+      }),
+    );
+  }
+
   async disable(username: string): Promise<void> {
     await this.client.send(
       new AdminDisableUserCommand({ UserPoolId: this.userPoolId, Username: username }),
@@ -142,6 +155,9 @@ export class NoopDirectory implements LoginDirectory {
     return Promise.resolve({ sub: `local:${login.username}` });
   }
   setTemporaryPassword(): Promise<void> {
+    return Promise.resolve();
+  }
+  setPermanentPassword(): Promise<void> {
     return Promise.resolve();
   }
   disable(): Promise<void> {

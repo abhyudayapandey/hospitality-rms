@@ -88,6 +88,7 @@ describe('customers cannot use imports or logins', () => {
       const tenant = TEST();
       for (const [sql, params] of [
         ['select * from platform.customer($1)', [tenant]],
+        ['select * from platform.job($1)', [tenant]],
         ['select platform.request_import($1, $2::jsonb)', [tenant, JSON.stringify(upload(tenant))]],
         ['select platform.request_import_apply($1)', [tenant]],
         ['select * from platform.login_candidates($1)', [tenant]],
@@ -318,7 +319,7 @@ describe('email invites', () => {
             id: string | null;
           }
         ).id;
-      const job = await request();
+      const job = (await request())!;
       expect(job).toBeTruthy();
       expect(await request()).toBe(job); // the queued job, not a second one
 

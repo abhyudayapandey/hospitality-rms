@@ -167,6 +167,24 @@ begin
   return v_id;
 end $$;
 
+-- One job for the console, with the dry run an apply came from (no upload contents).
+create function platform.job(p_id uuid)
+returns table (id uuid, kind text, status text, tenant_id uuid, customer_code text,
+               result jsonb, error text, run_after timestamptz, dry_run uuid,
+               created_at timestamptz, finished_at timestamptz)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, platform
+as $$
+begin
+  perform platform.current_admin();
+  return query
+    select j.id, j.kind, j.status, j.tenant_id, coalesce(t.code, j.payload ->> 'code'),
+           j.result, j.error, j.run_after, (j.payload ->> 'dry_run')::uuid, j.created_at,
+           j.finished_at
+      from platform.job j left join core.tenant t on t.id = j.tenant_id
+     where j.id = p_id;
+end $$;
+
 -- The customer's people and whether each has a login yet (no secrets).
 create function platform.login_candidates(p_tenant uuid)
 returns table (user_id uuid, username text, display_name text, login_type text, email text,
@@ -322,7 +340,7 @@ grant execute on function platform.sign_in(text, text), platform.customers(),
   platform.suspend(uuid, text), platform.reactivate(uuid, text),
   platform.request_create_customer(jsonb), platform.jobs(int),
   platform.link_owner_login(uuid, text), platform.audit(int),
-  platform.customer(uuid), platform.request_import(uuid, jsonb),
+  platform.customer(uuid), platform.job(uuid), platform.request_import(uuid, jsonb),
   platform.request_import_apply(uuid), platform.login_candidates(uuid),
   platform.begin_logins(uuid, boolean), platform.link_customer_login(uuid, text),
   platform.request_invites(uuid), platform.invite_status(uuid),
@@ -359,6 +377,7 @@ drop function platform.request_invites(uuid);
 drop function platform.link_customer_login(uuid, text);
 drop function platform.begin_logins(uuid, boolean);
 drop function platform.login_candidates(uuid);
+drop function platform.job(uuid);
 drop function platform.request_import_apply(uuid);
 drop function platform.request_import(uuid, jsonb);
 drop function platform.customer(uuid);

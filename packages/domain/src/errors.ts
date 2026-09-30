@@ -59,6 +59,18 @@ export const ERROR_MESSAGES = {
   INVALID_CUSTOMER_CODE: 'Customer codes are 2 to 40 capital letters, digits or dashes.',
   INVALID_CUSTOMER: 'Fill in the company name and the owner’s name and email.',
   CUSTOMER_CODE_TAKEN: 'That customer code is already in use.',
+  CUSTOMER_MISMATCH: 'These files are for a different customer (file 00 names another code).',
+  CUSTOMER_SUSPENDED: 'This customer is suspended. Reactivate it first.',
+  TEST_RULE_NOT_ALLOWED: 'The Test<Role>!12 password rule is only for test customers.',
+  INVALID_UPLOAD: 'That upload is not stored for this customer. Upload the files again.',
+  UPLOAD_EMPTY: 'Choose a zip file or the CSV files to upload.',
+  UPLOAD_TOO_LARGE: 'That upload is too large (5 MB, 40 files and 25 MB unpacked at most).',
+  UPLOAD_TYPE: 'Upload one zip file, or the CSV files themselves.',
+  UPLOAD_UNSAFE_PATH: 'The zip has file names that point outside its folder.',
+  UPLOAD_FOLDERS: 'Put all the CSV files in one folder of the zip.',
+  UPLOAD_DUPLICATE: 'The same file is in the upload twice.',
+  UPLOAD_NOT_UTF8: 'Save the CSV files as UTF-8 and upload them again.',
+  UPLOAD_NO_CUSTOMER_FILE: 'The upload needs 00_customer.csv.',
   LAST_ACCOUNT_OWNER: 'The organisation must keep at least one active Account Owner.',
   JOB_ROLE_SCOPE: "This job role's default access doesn't fit the person's place.",
   NOT_A_STOCK_LOCATION: "Stock isn't kept at that location. Pick one of its stores.",
@@ -96,7 +108,7 @@ export const BUSINESS_RULE_CODES: ReadonlySet<string> = new Set<ErrorCode>([
 
 const INSUFFICIENT_PRIVILEGE = '42501'; // Postgres: RLS or grant refused
 
-function isErrorCode(value: string): value is ErrorCode {
+export function isErrorCode(value: string): value is ErrorCode {
   return Object.hasOwn(ERROR_MESSAGES, value);
 }
 
