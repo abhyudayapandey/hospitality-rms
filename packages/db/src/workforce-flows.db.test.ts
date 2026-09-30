@@ -258,17 +258,15 @@ describe('LEAVE', () => {
       expect(await err(c, OLIVIA(), 'select hr.assign($1, $2)', [wed, f.sam])).toBe(
         'LEAVE_CONFLICT',
       );
-      // notifications: the worker, and the outlet manager about the gap
-      expect(
-        (await as<{ kind: string }>(c, SAM(), 'select kind from ops.notification')).map(
+      // notifications: the worker, and whoever runs their roster (the department head,
+      // not the outlet manager) about the gap
+      const kinds = async (who: string) =>
+        (await as<{ kind: string }>(c, who, 'select kind from ops.notification')).map(
           (n) => n.kind,
-        ),
-      ).toContain('leave_approved');
-      expect(
-        (await as<{ kind: string }>(c, OLIVIA(), 'select kind from ops.notification')).map(
-          (n) => n.kind,
-        ),
-      ).toContain('roster_gap');
+        );
+      expect(await kinds(SAM())).toContain('leave_approved');
+      expect(await kinds(FLOOR())).toContain('roster_gap');
+      expect(await kinds(OLIVIA())).not.toContain('roster_gap');
     });
   });
 
