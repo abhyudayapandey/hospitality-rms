@@ -299,7 +299,7 @@ describe('logins are unique across all customers (one Cognito pool)', () => {
         await sqlState(
           c,
           `insert into core.app_user (tenant_id, kind, display_name, username)
-           values ($1, 'human', 'Clash', 'TEST.BELLBOY.1.0')`,
+           values ($1, 'human', 'Clash', 'test.bellboy.1.0')`,
           [ids.tenant('TEST-SOLO-COMPANY')],
         ),
       ).toBe('23505');

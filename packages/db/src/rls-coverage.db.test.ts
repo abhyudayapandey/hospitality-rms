@@ -49,10 +49,13 @@ describe('RLS coverage', () => {
   });
 
   it('audits every core table', async () => {
+    // core.rate_limit only holds sign-in and reset counters (ADR 011): auditing it would
+    // write an audit row per attempt and record nothing about access or data
     const { rows } = await migratorPool.query<{ table_name: string }>(
       `select c.oid::regclass::text as table_name
          from pg_class c join pg_namespace n on n.oid = c.relnamespace
         where n.nspname = 'core' and c.relkind in ('r', 'p') and not c.relispartition
+          and c.oid <> 'core.rate_limit'::regclass
           and not exists (
             select 1 from pg_trigger t join pg_proc p on p.oid = t.tgfoid
              where t.tgrelid = c.oid and p.oid = 'audit.capture'::regproc)
