@@ -1,5 +1,12 @@
 import 'server-only';
-import { createDb, sql, withUser as dbWithUser, type Db, type Tx } from '@outlet-ops/db';
+import {
+  createDb,
+  sql,
+  withPlatformAdmin as dbWithPlatformAdmin,
+  withUser as dbWithUser,
+  type Db,
+  type Tx,
+} from '@outlet-ops/db';
 
 // The web app's only path to Postgres (CLAUDE.md AWS overrides): every request runs
 // inside withUser(userId, fn) as app_rw, so RLS and the RPCs see the caller.
@@ -31,6 +38,26 @@ export async function userIdForCognitoSub(sub: string): Promise<string | null> {
         id: string | null;
       }>`select core.user_for_cognito_sub(${sub}) as id`.execute(tx);
       return r.rows[0]?.id ?? null;
+    });
+}
+
+/** Platform console requests (ADR 012): no customer data is visible in them. */
+export function withPlatformAdmin<T>(adminId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  return dbWithPlatformAdmin(db(), adminId, fn);
+}
+
+/**
+ * Platform sign-in only, after the platform pool's ID token was verified and its
+ * cognito:groups includes platform-admins: records the admin and returns their id.
+ */
+export async function platformSignIn(sub: string, email: string): Promise<string> {
+  return db()
+    .transaction()
+    .execute(async (tx) => {
+      const r = await sql<{ id: string }>`select platform.sign_in(${sub}, ${email}) as id`.execute(
+        tx,
+      );
+      return r.rows[0]!.id;
     });
 }
 

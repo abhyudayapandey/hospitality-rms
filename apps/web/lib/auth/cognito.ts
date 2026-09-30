@@ -9,6 +9,12 @@ export interface CognitoConfig {
   /** Hosted UI domain, e.g. outlet-ops.auth.ap-south-1.amazoncognito.com */
   domain: string;
   appUrl: string;
+  /** Where Cognito returns; default /auth/callback (the platform pool uses its own). */
+  callbackPath?: string;
+  /** Where sign-out lands; default /login. */
+  logoutPath?: string;
+  /** OAuth scopes; default 'openid phone email'. */
+  scope?: string;
 }
 
 export function cognitoConfig(
@@ -25,7 +31,7 @@ export function cognitoConfig(
 }
 
 export function redirectUri(cfg: CognitoConfig): string {
-  return `${cfg.appUrl}/auth/callback`;
+  return `${cfg.appUrl}${cfg.callbackPath ?? '/auth/callback'}`;
 }
 
 export function authorizeUrl(cfg: CognitoConfig, state: string, challenge: string): string {
@@ -33,7 +39,7 @@ export function authorizeUrl(cfg: CognitoConfig, state: string, challenge: strin
     response_type: 'code',
     client_id: cfg.clientId,
     redirect_uri: redirectUri(cfg),
-    scope: 'openid phone email',
+    scope: cfg.scope ?? 'openid phone email',
     state,
     code_challenge: challenge,
     code_challenge_method: 'S256',
@@ -42,7 +48,10 @@ export function authorizeUrl(cfg: CognitoConfig, state: string, challenge: strin
 }
 
 export function logoutUrl(cfg: CognitoConfig): string {
-  const q = new URLSearchParams({ client_id: cfg.clientId, logout_uri: `${cfg.appUrl}/login` });
+  const q = new URLSearchParams({
+    client_id: cfg.clientId,
+    logout_uri: `${cfg.appUrl}${cfg.logoutPath ?? '/login'}`,
+  });
   return `https://${cfg.domain}/logout?${q}`;
 }
 
@@ -58,13 +67,32 @@ export function createIdTokenVerifier(cfg: Pick<CognitoConfig, 'userPoolId' | 'c
 
 /** Verifies a Cognito ID token (signature, issuer, audience, expiry) and returns its sub. */
 export async function verifyIdToken(cfg: CognitoConfig, idToken: string): Promise<string> {
+  return (await verifyIdTokenClaims(cfg, idToken)).sub;
+}
+
+export interface IdTokenClaims {
+  sub: string;
+  email: string | null;
+  groups: string[];
+}
+
+/** Verifies a Cognito ID token and returns the claims the app uses (groups for platform). */
+export async function verifyIdTokenClaims(
+  cfg: CognitoConfig,
+  idToken: string,
+): Promise<IdTokenClaims> {
   let v = verifiers.get(cfg.userPoolId + cfg.clientId);
   if (!v) {
     v = createIdTokenVerifier(cfg);
     verifiers.set(cfg.userPoolId + cfg.clientId, v);
   }
   const payload = await v.verify(idToken);
-  return payload.sub;
+  const groups = payload['cognito:groups'];
+  return {
+    sub: payload.sub,
+    email: typeof payload.email === 'string' ? payload.email : null,
+    groups: Array.isArray(groups) ? groups.filter((g): g is string => typeof g === 'string') : [],
+  };
 }
 
 export interface TokenSet {

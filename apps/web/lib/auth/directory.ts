@@ -21,6 +21,11 @@ export interface NewLogin {
   email?: string | null;
   /** Username logins: set as a temporary password, changed at the next sign-in. */
   temporaryPassword?: string;
+  /**
+   * Send Cognito's invitation email (a new customer's first owner, ADR 012): they set their
+   * own password. Otherwise no message is sent.
+   */
+  invite?: boolean;
 }
 
 export interface LoginDirectory {
@@ -63,7 +68,9 @@ export class CognitoDirectory implements LoginDirectory {
           // username logins get the password from the admin; email logins sign in with a
           // one-time code and need no invitation message from Cognito
           ...(login.temporaryPassword ? { TemporaryPassword: login.temporaryPassword } : {}),
-          MessageAction: 'SUPPRESS',
+          ...(login.invite
+            ? { DesiredDeliveryMediums: ['EMAIL' as const] }
+            : { MessageAction: 'SUPPRESS' as const }),
         }),
       )) as { User?: { Attributes?: { Name?: string; Value?: string }[] } };
       const sub = r.User?.Attributes?.find((a) => a.Name === 'sub')?.Value;
