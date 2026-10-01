@@ -668,19 +668,19 @@ role and keeps them Account Owner through file 08.)
 **3. Import**: the customer's page → **Import setup files** → choose the zip →
 **Upload and dry run**. The dry run should report no problems and:
 
-- **Test Company**: "Dry run: applying would make 1574 changes." Per table (new / changed):
+- **Test Company**: "Dry run: applying would make 1580 changes." Per table (new / changed):
   org places 32 / 1 (the company root gets the file's values), delivery places 16,
   links 16, location settings 5, job roles 53, job role access 85, users 106 (the owner
   exists already), workers 106 / 1 (the owner's), extra access 3, suppliers 7, items 71,
-  item locations 326, opening stock 325 (its zero-quantity Angostura Bitters
+  item locations 329, opening stock 328 (its zero-quantity Angostura Bitters
   line at Bar 3.0 is reported unchanged), leave types 5, leave balances 321, roster
   settings 1, shift templates 90, events 4. **2 approval-coverage warnings**, both
   expected: `test.account-owner`'s own LEAVE and SHIFT_SWAP at TEST-COMPANY have no
   approver but them and are approved at the top of the chain (ADR 010).
-- **Test Solo Bar Co**: "Dry run: applying would make 232 changes." Per table: org places
+- **Test Solo Bar Co**: "Dry run: applying would make 234 changes." Per table: org places
   4 / 1, delivery places 4, links 3, location settings 1, job roles 7, job role access 12,
   users 6, workers 6 / 1, extra access 1 (the owner's Account Owner), suppliers 2, items
-  49, item locations 52, opening stock 51 (its zero-quantity Angostura Bitters line is
+  49, item locations 53, opening stock 52 (its zero-quantity Angostura Bitters line is
   reported unchanged), leave types 5, leave balances 21, roster
   settings 1, shift templates 5. **5 approval-coverage warnings**, all expected, all for
   `test.solo.bar-manager` (the only manager): their own LEAVE, PURCHASE_ORDER,
@@ -689,8 +689,8 @@ role and keeps them Account Owner through file 08.)
 Anything else (a problem listed, different counts): stop, don't apply, and send me the
 report.
 
-**4. Apply**: **Apply** on the dry run. The apply job reports "Applied: 1574 changes."
-(Test Solo Bar Co: 232). Then **The dry run this applied** → **Apply** again: it must say
+**4. Apply**: **Apply** on the dry run. The apply job reports "Applied: 1580 changes."
+(Test Solo Bar Co: 234). Then **The dry run this applied** → **Apply** again: it must say
 "Applied. No changes: everything in these files was already loaded."
 
 **5. Logins**: the customer's page → **Logins**.
