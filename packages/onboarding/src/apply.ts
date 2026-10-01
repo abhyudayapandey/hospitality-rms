@@ -1,6 +1,6 @@
 import { syncProcessDefs, syncProductAccess } from '@outlet-ops/workflow';
 import type { ClientBase } from 'pg';
-import { FILES, readBundle, type Bundle, type Issue } from './files';
+import { FILES, readBundle, TEST_ONLY_FILES, type Bundle, type Issue } from './files';
 import { menuWarnings, validateBundle } from './validate';
 
 // Loads one customer's onboarding files (ADR 009): validate, then write everything in one
@@ -110,6 +110,8 @@ export async function loadCustomer(
 class Loader {
   private tenant = '';
   private isTest = false;
+  /** The load date in the customer's time zone: test-only day offsets count from it. */
+  private today = '';
   private nodes = new Map<string, string>();
   private users = new Map<string, string>();
   private workers = new Map<string, string>();
@@ -158,6 +160,10 @@ class Loader {
     await this.leave();
     await this.rostering();
     await this.events();
+    if (this.isTest) {
+      await this.shifts();
+      await this.pastWeek();
+    }
     this.step('');
     this.report.access = await this.preview();
   }
@@ -205,6 +211,20 @@ class Loader {
       });
     }
     this.report.tenantId = this.tenant;
+    // the activity files are for test customers only (ADR 017)
+    if (!this.isTest) {
+      for (const k of TEST_ONLY_FILES.filter((x) => this.b[x].length > 0)) {
+        this.report.issues.push({
+          file: FILES[k].file,
+          message: 'this file is test data: only a test customer (is_test in file 00) may load it',
+        });
+      }
+    }
+    this.today = (
+      await this.c.query<{ d: string }>(`select (now() at time zone $1)::date::text as d`, [
+        cu.default_timezone,
+      ])
+    ).rows[0]!.d;
     if (cu.leave_hr_approval !== undefined) {
       await this.c.query(
         `update core.tenant set settings = settings || jsonb_build_object('leave_hr_approval', $2::boolean)
@@ -1281,6 +1301,281 @@ class Loader {
           );
         }
       }
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // Test-only activity (files 25 to 28, ADR 017). Each row runs through the app's own
+  // database functions as the person it names, so every rule holds: rostering rules,
+  // production rights, approvals. Day offsets count from the load date.
+  //  * Shifts (25) are the two weeks from next Monday: a later load adds the weeks that
+  //    are new by then and changes nothing else.
+  //  * The past week (26 to 28: batches, sales, the closing count) is loaded once per
+  //    customer. A second week would use up the opening stock its batches are made from
+  //    (production never goes below zero), so a later re-import would fail.
+  // ---------------------------------------------------------------------------------------
+
+  /** Runs `fn` as a person from file 07 (app.user_id), then clears it. */
+  private async as<T>(username: string, fn: () => Promise<T>): Promise<T> {
+    await this.c.query(`select set_config('app.user_id', $1, true)`, [this.users.get(username)]);
+    // on an error the transaction is aborted and rolled back: nothing to clear
+    const r = await fn();
+    await this.c.query(`select set_config('app.user_id', '', true)`);
+    return r;
+  }
+
+  private count(entity: string, created: boolean) {
+    const n = (this.report.counts[entity] ??= { created: 0, updated: 0, unchanged: 0 });
+    if (created) n.created++;
+    else n.unchanged++;
+  }
+
+  /** `today` plus `days`, as yyyy-mm-dd. */
+  private day(days: number): string {
+    const d = new Date(`${this.today}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  }
+
+  /**
+   * Prices and recipes take effect on the day they are loaded, so a test customer's past
+   * week of sales and batches would find none in force. For test customers the first
+   * version of each starts at the earliest day in files 26 and 27 instead; later
+   * versions keep their dates.
+   */
+  private async backdateMenu() {
+    const days = [...this.b.production.map((p) => p.day), ...this.b.sales.map((x) => x.day)];
+    if (days.length === 0) return;
+    const since = this.day(Math.min(...days));
+    this.step(FILES.menuOutlets.file);
+    const prices = await this.c.query(
+      `update menu.menu_outlet m set effective_from = $2
+        where m.tenant_id = $1 and m.effective_from > $2 and m.effective_from <= current_date
+          and not exists (select 1 from menu.menu_outlet o
+                           where o.menu_item_id = m.menu_item_id and o.org_node_id = m.org_node_id
+                             and o.effective_from < m.effective_from)`,
+      [this.tenant, since],
+    );
+    this.step(FILES.recipes.file);
+    const recipes = await this.c.query(
+      `update inv.recipe r set effective_from = $2
+        where r.tenant_id = $1 and r.effective_from > $2 and r.effective_from <= current_date
+          and not exists (select 1 from inv.recipe o
+                           where (o.prep_item_id = r.prep_item_id or o.menu_item_id = r.menu_item_id)
+                             and o.effective_from < r.effective_from)`,
+      [this.tenant, since],
+    );
+    const n = (this.report.counts['menu dates backdated'] ??= {
+      created: 0,
+      updated: 0,
+      unchanged: 0,
+    });
+    n.updated += (prices.rowCount ?? 0) + (recipes.rowCount ?? 0);
+  }
+
+  /** Files 26 to 28, once per customer: later loads report them unchanged. */
+  private async pastWeek() {
+    const { rowCount } = await this.c.query(
+      `select 1 from inv.production where tenant_id = $1 and idempotency_key like 'test-data %'
+       union all
+       select 1 from menu.sales_post where tenant_id = $1 and idempotency_key like 'test-data %'
+       limit 1`,
+      [this.tenant],
+    );
+    if (rowCount) {
+      const same = (entity: string, n: number) => {
+        for (let i = 0; i < n; i++) this.count(entity, false);
+      };
+      same('production batches', this.b.production.length);
+      same('sales days', new Set(this.b.sales.map((x) => `${x.outlet_code} ${x.day}`)).size);
+      same('stock counts', new Set(this.b.counts.map((x) => x.store_node_code)).size);
+      return;
+    }
+    await this.backdateMenu();
+    await this.production();
+    await this.sales();
+    await this.counts();
+  }
+
+  /** File 25: shifts from the templates, assigned (hr.assign) and published. */
+  private async shifts() {
+    const today = new Date(`${this.today}T00:00:00Z`);
+    const nextMonday = 7 - ((today.getUTCDay() + 6) % 7); // days to next Monday
+    const weeks = new Map<string, { node: string; week: string; by: string; line: number }>();
+    for (const s of this.b.shifts) {
+      this.step(FILES.shifts.file, s.line);
+      const node = this.nodes.get(s.roster_node_code)!;
+      const weekStart = this.day(nextMonday + 7 * (s.week - 1));
+      const worker = this.workers.get(s.username);
+      await this.as(s.rostered_by, async () => {
+        const made = await this.c.query<{ n: number }>(
+          `select hr.generate_week($1, $2::date) as n`,
+          [node, weekStart],
+        );
+        const n = (this.report.counts['shifts'] ??= { created: 0, updated: 0, unchanged: 0 });
+        n.created += made.rows[0]!.n;
+        for (const d of s.days) {
+          const shift = (
+            await this.c.query<{ id: string; assigned: boolean }>(
+              `select s.id, exists (select 1 from hr.shift_assignment a
+                                     where a.shift_id = s.id and a.worker_id = $5
+                                       and a.status = 'assigned') as assigned
+                 from hr.shift s join hr.shift_template t on t.id = s.template_id
+                where t.org_node_id = $1 and t.name = $2 and t.role_code = $3
+                  and s.local_date = $4::date + $6::int - 1`,
+              [node, s.shift_name, s.job_role_code, weekStart, worker, d],
+            )
+          ).rows[0]!;
+          if (!shift.assigned) {
+            await this.c.query(`select hr.assign($1, $2)`, [shift.id, worker]);
+          }
+          this.count('shift assignments', !shift.assigned);
+        }
+      });
+      weeks.set(`${node} ${weekStart}`, { node, week: weekStart, by: s.rostered_by, line: s.line });
+    }
+    for (const w of weeks.values()) {
+      this.step(FILES.shifts.file, w.line);
+      await this.as(w.by, () =>
+        this.c.query(`select hr.publish_week($1, $2::date)`, [w.node, w.week]),
+      );
+    }
+  }
+
+  /** File 26: batches made at a past time (inv.record_test_production, test customers only). */
+  private async production() {
+    for (const p of this.b.production) {
+      this.step(FILES.production.file, p.line);
+      const date = this.day(p.day);
+      const key = `test-data ${date} ${p.time} ${p.store_node_code} ${p.prep_item_code}`;
+      const store = this.nodes.get(p.store_node_code)!;
+      const done = await this.c.query(
+        `select 1 from inv.production where tenant_id = $1 and idempotency_key = $2`,
+        [this.tenant, key],
+      );
+      if (!done.rowCount) {
+        await this.as(p.made_by, () =>
+          this.c.query(
+            `select inv.record_test_production($1, $2, $3,
+                      ($4::date + $5::time) at time zone $6, $7)`,
+            [
+              store,
+              this.items.get(p.prep_item_code),
+              p.quantity,
+              date,
+              p.time,
+              this.timezoneOf(p.store_node_code),
+              key,
+            ],
+          ),
+        );
+      }
+      this.count('production batches', !done.rowCount);
+    }
+  }
+
+  /** File 27: a day's sales per outlet, posted as the person named (menu.post_sales). */
+  private async sales() {
+    const days = new Map<string, Bundle['sales']>();
+    for (const x of this.b.sales) {
+      const k = `${x.outlet_code} ${x.day} ${x.posted_by}`;
+      days.set(k, [...(days.get(k) ?? []), x]);
+    }
+    const menuItems = new Map(
+      (
+        await this.c.query<{ code: string; id: string }>(
+          `select code, id from menu.menu_item where tenant_id = $1`,
+          [this.tenant],
+        )
+      ).rows.map((r) => [r.code, r.id]),
+    );
+    for (const lines of days.values()) {
+      const first = lines[0]!;
+      this.step(FILES.sales.file, first.line);
+      const date = this.day(first.day);
+      const key = `test-data ${date}`;
+      const outlet = this.nodes.get(first.outlet_code)!;
+      const done = await this.c.query(
+        `select 1 from menu.sales_post p join menu.sales_day d on d.id = p.sales_day_id
+          where p.tenant_id = $1 and p.idempotency_key = $2 and d.org_node_id = $3`,
+        [this.tenant, key, outlet],
+      );
+      if (!done.rowCount) {
+        await this.as(first.posted_by, () =>
+          this.c.query(`select menu.post_sales($1, $2::date, $3, 'manual', $4)`, [
+            outlet,
+            date,
+            JSON.stringify(
+              lines.map((l) => ({
+                menu_item_id: menuItems.get(l.menu_item_code),
+                qty: l.quantity,
+              })),
+            ),
+            key,
+          ]),
+        );
+      }
+      this.count('sales days', !done.rowCount);
+    }
+  }
+
+  /**
+   * File 28: a closing count on the load day per store. The counter submits it
+   * (inv.submit_count); a variance beyond tolerance goes to STOCK_ADJUSTMENT approval and
+   * the approver approves it (wf.act). The executor posts it after the load commits.
+   */
+  private async counts() {
+    const stores = new Map<string, Bundle['counts']>();
+    for (const c of this.b.counts) {
+      stores.set(c.store_node_code, [...(stores.get(c.store_node_code) ?? []), c]);
+    }
+    for (const [code, lines] of stores) {
+      const first = lines[0]!;
+      this.step(FILES.counts.file, first.line);
+      const store = this.nodes.get(code)!;
+      const done = await this.c.query(
+        `select 1 from inv.stock_count
+          where delivery_node_id = $1 and status = 'submitted'
+            and (submitted_at at time zone $2)::date = $3::date`,
+        [store, this.timezoneOf(code), this.today],
+      );
+      this.count('stock counts', !done.rowCount);
+      if (done.rowCount) continue;
+      const adjustment = await this.as(first.counted_by, async () => {
+        const id = (await this.c.query<{ id: string }>(`select inv.start_count($1) as id`, [store]))
+          .rows[0]!.id;
+        const system = new Map(
+          (
+            await this.c.query<{ item_id: string; system_qty: string }>(
+              `select item_id, system_qty from inv.stock_count_line where count_id = $1`,
+              [id],
+            )
+          ).rows.map((r) => [r.item_id, Number(r.system_qty)]),
+        );
+        const counted = lines.map((l) => {
+          const item = this.items.get(l.item_code)!;
+          return {
+            item_id: item,
+            counted_qty: Math.max(0, Number(((system.get(item) ?? 0) + l.difference).toFixed(6))),
+          };
+        });
+        return (
+          await this.c.query<{ r: { adjustment_id: string | null } }>(
+            `select inv.submit_count($1, $2) as r`,
+            [id, JSON.stringify(counted)],
+          )
+        ).rows[0]!.r.adjustment_id;
+      });
+      if (!adjustment) continue;
+      const request = (
+        await this.c.query<{ id: string }>(
+          `select wf_request_id as id from inv.stock_adjustment where id = $1`,
+          [adjustment],
+        )
+      ).rows[0]!.id;
+      await this.as(first.approved_by, () =>
+        this.c.query(`select wf.act($1, 'approve', 'Closing count (test data)')`, [request]),
+      );
     }
   }
 

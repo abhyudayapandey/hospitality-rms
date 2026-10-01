@@ -1,0 +1,43 @@
+roster_node_code,shift_name,job_role_code,week,days,username,rostered_by
+TEST-HOTEL-1.0-KITCHEN,Breakfast,CHEF_DE_PARTIE,1,Mon-Fri,test.chef-de-partie.1.0,test.executive-chef.1.0
+TEST-HOTEL-1.0-KITCHEN,Breakfast,COMMIS,1,Mon-Fri,test.commis.1.0,test.executive-chef.1.0
+TEST-HOTEL-1.0-KITCHEN,Breakfast,KITCHEN_STEWARD,1,Mon-Fri,test.kitchen-steward.1.0,test.executive-chef.1.0
+TEST-HOTEL-1.0-KITCHEN,Dinner,COMMIS,1,Wed-Sun,test.commis-b.1.0,test.executive-chef.1.0
+TEST-HOTEL-1.0-BAR,Bar Evening,HEAD_BARTENDER,1,Mon-Fri,test.head-bartender.1.0,test.bar-manager.1.0
+TEST-HOTEL-1.0-BAR,Bar Evening,BARTENDER,1,Mon-Fri,test.bartender.1.0,test.bar-manager.1.0
+TEST-HOTEL-1.0-BAR,Bar Evening,BAR_BACK,1,Mon-Fri,test.bar-back.1.0,test.bar-manager.1.0
+TEST-HOTEL-1.0-BAR,Bar Late,BARTENDER,1,Fri,test.bartender-b.1.0,test.bar-manager.1.0
+TEST-HOTEL-1.0-BAR,Bar Evening,BARTENDER,1,Sat-Sun,test.bartender-b.1.0,test.bar-manager.1.0
+TEST-BAR-3.0-BAR,Bar Evening,HEAD_BARTENDER,1,Mon-Fri,test.head-bartender.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-BAR,Bar Evening,BARTENDER,1,Mon-Fri,test.bartender.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-BAR,Bar Evening,BAR_BACK,1,Mon-Fri,test.bar-back.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-FLOOR-SERVICE,Floor Evening,SERVER,1,Mon-Fri,test.server.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-FLOOR-SERVICE,Floor Evening,HOST,1,Mon-Fri,test.host.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-FLOOR-SERVICE,Floor Evening,CASHIER,1,Mon-Fri,test.cashier.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-KITCHEN,Kitchen Evening,COOK,1,Mon-Fri,test.cook.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-KITCHEN,Kitchen Evening,COMMIS,1,Mon-Fri,test.commis.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-KITCHEN,Kitchen Evening,KITCHEN_STEWARD,1,Mon-Fri,test.kitchen-steward.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-BAR,Bar Late,BARTENDER,1,Fri,test.bartender-b.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-BAR,Bar Evening,BARTENDER,1,Sat-Sun,test.bartender-b.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-FLOOR-SERVICE,Floor Evening,SERVER,1,Sat-Sun,test.server-b.3.0,test.bar-manager.3.0
+TEST-HOTEL-1.0-KITCHEN,Breakfast,CHEF_DE_PARTIE,2,Mon-Fri,test.chef-de-partie.1.0,test.executive-chef.1.0
+TEST-HOTEL-1.0-KITCHEN,Breakfast,COMMIS,2,Mon-Fri,test.commis.1.0,test.executive-chef.1.0
+TEST-HOTEL-1.0-KITCHEN,Breakfast,KITCHEN_STEWARD,2,Mon-Fri,test.kitchen-steward.1.0,test.executive-chef.1.0
+TEST-HOTEL-1.0-KITCHEN,Dinner,COMMIS,2,Wed-Sun,test.commis-b.1.0,test.executive-chef.1.0
+TEST-HOTEL-1.0-BAR,Bar Evening,HEAD_BARTENDER,2,Mon-Fri,test.head-bartender.1.0,test.bar-manager.1.0
+TEST-HOTEL-1.0-BAR,Bar Evening,BARTENDER,2,Mon-Fri,test.bartender.1.0,test.bar-manager.1.0
+TEST-HOTEL-1.0-BAR,Bar Evening,BAR_BACK,2,Mon-Fri,test.bar-back.1.0,test.bar-manager.1.0
+TEST-HOTEL-1.0-BAR,Bar Late,BARTENDER,2,Fri,test.bartender-b.1.0,test.bar-manager.1.0
+TEST-HOTEL-1.0-BAR,Bar Evening,BARTENDER,2,Sat-Sun,test.bartender-b.1.0,test.bar-manager.1.0
+TEST-BAR-3.0-BAR,Bar Evening,HEAD_BARTENDER,2,Mon-Fri,test.head-bartender.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-BAR,Bar Evening,BARTENDER,2,Mon-Fri,test.bartender.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-BAR,Bar Evening,BAR_BACK,2,Mon-Fri,test.bar-back.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-FLOOR-SERVICE,Floor Evening,SERVER,2,Mon-Fri,test.server.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-FLOOR-SERVICE,Floor Evening,HOST,2,Mon-Fri,test.host.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-FLOOR-SERVICE,Floor Evening,CASHIER,2,Mon-Fri,test.cashier.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-KITCHEN,Kitchen Evening,COOK,2,Mon-Fri,test.cook.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-KITCHEN,Kitchen Evening,COMMIS,2,Mon-Fri,test.commis.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-KITCHEN,Kitchen Evening,KITCHEN_STEWARD,2,Mon-Fri,test.kitchen-steward.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-BAR,Bar Late,BARTENDER,2,Fri,test.bartender-b.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-BAR,Bar Evening,BARTENDER,2,Sat-Sun,test.bartender-b.3.0,test.bar-manager.3.0
+TEST-BAR-3.0-FLOOR-SERVICE,Floor Evening,SERVER,2,Sat-Sun,test.server-b.3.0,test.bar-manager.3.0

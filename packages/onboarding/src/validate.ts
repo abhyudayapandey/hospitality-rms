@@ -337,7 +337,106 @@ export function validateBundle(b: Bundle): Issue[] {
   }
 
   validateMenu(b, add, { items, org, dlv, placed });
+  validateActivity(b, add, { items, org, dlv, placed }, users);
   return issues;
+}
+
+/**
+ * The test-only activity files 25 to 28 (ADR 017): every code and person exists. Who may
+ * do what (rostering rules, production rights, approvals) is checked by the database
+ * functions the loader calls as each person.
+ */
+function validateActivity(
+  b: Bundle,
+  add: Add,
+  k: Known,
+  users: Map<string, Bundle['users'][number]>,
+): void {
+  const f = (key: keyof typeof FILES) => FILES[key].file;
+  const person = (file: string, line: number, column: string, username: string) => {
+    if (!users.has(username)) add(file, line, column, `${username} is not in ${f('users')}`);
+  };
+  const store = (file: string, line: number, code: string) => {
+    const d = k.dlv.get(code);
+    if (!d) add(file, line, 'store_node_code', `${code} is not in ${f('deliveryNodes')}`);
+    else if (!d.holds_stock) add(file, line, 'store_node_code', `${code} does not hold stock`);
+  };
+
+  const templates = new Set(
+    b.shiftTemplates.map((t) => `${t.roster_node_code} ${t.shift_name} ${t.job_role_code}`),
+  );
+  for (const s of b.shifts) {
+    if (!templates.has(`${s.roster_node_code} ${s.shift_name} ${s.job_role_code}`)) {
+      add(
+        f('shifts'),
+        s.line,
+        'shift_name',
+        `${s.shift_name} for ${s.job_role_code} at ${s.roster_node_code} is not in ${f('shiftTemplates')}`,
+      );
+    }
+    person(f('shifts'), s.line, 'username', s.username);
+    person(f('shifts'), s.line, 'rostered_by', s.rostered_by);
+  }
+
+  const madeAt = new Set(
+    b.prepLocations
+      .filter((p) => p.made_here)
+      .map((p) => `${p.prep_item_code} ${p.store_node_code}`),
+  );
+  for (const p of b.production) {
+    store(f('production'), p.line, p.store_node_code);
+    if (!madeAt.has(`${p.prep_item_code} ${p.store_node_code}`)) {
+      add(
+        f('production'),
+        p.line,
+        'prep_item_code',
+        `${p.prep_item_code} is not made at ${p.store_node_code} in ${f('prepLocations')}`,
+      );
+    }
+    person(f('production'), p.line, 'made_by', p.made_by);
+  }
+
+  const sold = new Set(b.menuOutlets.map((o) => `${o.menu_item_code} ${o.outlet_code}`));
+  const salesLines = new Set<string>();
+  for (const s of b.sales) {
+    if (!sold.has(`${s.menu_item_code} ${s.outlet_code}`)) {
+      add(
+        f('sales'),
+        s.line,
+        'menu_item_code',
+        `${s.menu_item_code} is not sold at ${s.outlet_code} in ${f('menuOutlets')}`,
+      );
+    }
+    const key = `${s.outlet_code} ${s.day} ${s.menu_item_code}`;
+    if (salesLines.has(key)) add(f('sales'), s.line, 'menu_item_code', 'listed twice for that day');
+    salesLines.add(key);
+    person(f('sales'), s.line, 'posted_by', s.posted_by);
+  }
+
+  const counters = new Map<string, string>();
+  const counted = new Set<string>();
+  for (const c of b.counts) {
+    store(f('counts'), c.line, c.store_node_code);
+    if (!k.placed.has(`${c.item_code} ${c.store_node_code}`)) {
+      add(
+        f('counts'),
+        c.line,
+        'item_code',
+        `${c.item_code} is not set up at ${c.store_node_code} in ${f('itemLocations')}`,
+      );
+    }
+    const key = `${c.item_code} ${c.store_node_code}`;
+    if (counted.has(key)) add(f('counts'), c.line, 'item_code', 'listed twice for that store');
+    counted.add(key);
+    // one count per store: one person counts it and one approves it
+    const who = `${c.counted_by} ${c.approved_by}`;
+    if ((counters.get(c.store_node_code) ?? who) !== who) {
+      add(f('counts'), c.line, 'counted_by', `${c.store_node_code} is counted by one person`);
+    }
+    counters.set(c.store_node_code, who);
+    person(f('counts'), c.line, 'counted_by', c.counted_by);
+    person(f('counts'), c.line, 'approved_by', c.approved_by);
+  }
 }
 
 type Add = (file: string, row: number, column: string, message: string) => void;

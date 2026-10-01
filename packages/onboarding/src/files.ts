@@ -30,6 +30,12 @@ const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'must be a time like 
 const localDateTime = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2} ([01]\d|2[0-3]):[0-5]\d$/, 'must be like 2026-10-17 18:00');
+/** Days from the load date: 0 is the load day, -1 the day before (test-only files). */
+const dayOffset = z
+  .string()
+  .regex(/^(0|-[1-9]\d?)$/, 'must be 0 or a day before it, like -3')
+  .transform(Number)
+  .refine((v) => v >= -30, 'must be within the last 30 days');
 const recipeUnit = z.enum(['g', 'ml', 'each'], 'must be g, ml or each');
 const timezone = z.string().refine(isTimezone, 'is not a known time zone');
 const optTimezone = z.union([z.literal('').transform(() => undefined), timezone]);
@@ -408,9 +414,68 @@ export const FILES = {
       minutes: optNum.refine((v) => v === undefined || v >= 0, 'must not be negative'),
     }),
   },
+  // Test-only activity (ADR 017): refused for a customer that isn't a test customer. Dates
+  // are offsets from the load date, so the data is always recent.
+  shifts: {
+    file: '25_shifts_TEST_DATA_ONLY.csv',
+    required: false,
+    testOnly: true,
+    schema: z.object({
+      roster_node_code: code,
+      shift_name: text,
+      job_role_code: text,
+      // 1 = the week starting next Monday, 2 = the week after
+      week: int.refine((v) => v >= 1 && v <= 4, 'must be 1 to 4'),
+      days,
+      username: text,
+      rostered_by: text,
+    }),
+  },
+  production: {
+    file: '26_production_TEST_DATA_ONLY.csv',
+    required: false,
+    testOnly: true,
+    schema: z.object({
+      store_node_code: code,
+      prep_item_code: code,
+      day: dayOffset,
+      time,
+      quantity: num.refine((v) => v > 0, 'must be more than 0'),
+      made_by: text,
+    }),
+  },
+  sales: {
+    file: '27_sales_TEST_DATA_ONLY.csv',
+    required: false,
+    testOnly: true,
+    schema: z.object({
+      outlet_code: code,
+      day: dayOffset,
+      menu_item_code: code,
+      quantity: num.refine((v) => v >= 0, 'must not be negative'),
+      posted_by: text,
+    }),
+  },
+  counts: {
+    file: '28_counts_TEST_DATA_ONLY.csv',
+    required: false,
+    testOnly: true,
+    schema: z.object({
+      store_node_code: code,
+      item_code: code,
+      // counted minus what the system expects at the count; 0 = on target
+      difference: num,
+      counted_by: text,
+      approved_by: text,
+    }),
+  },
 } as const;
 
 export type FileKey = keyof typeof FILES;
+/** Files only a test customer may load (is_test in file 00). */
+export const TEST_ONLY_FILES = (Object.keys(FILES) as FileKey[]).filter(
+  (k) => 'testOnly' in FILES[k],
+);
 export type Row<K extends FileKey> = z.output<(typeof FILES)[K]['schema']> & { line: number };
 export type Bundle = { [K in FileKey]: Row<K>[] };
 

@@ -52,6 +52,8 @@ Each access row means: this person has this access group at this place. It cover
 | `13_leave_types.csv`, `14_leave_balances.csv`      | Leave types and balances                                                                                                                                  |
 | `15_roster_settings.csv`, `16_shift_templates.csv` | Rest/cap/late rules; standard shifts per department (or per outlet)                                                                                       |
 | `17_events_TEST_DATA_ONLY.csv`                     | Sample events — test only                                                                                                                                 |
+| `18_…` – `24_…`                                    | Menus, prep items and recipes (`MENU_README.md`)                                                                                                          |
+| `25_shifts_TEST_DATA_ONLY.csv` – `28_counts_…`     | Test Company only: shifts, batches, sales and a closing count (below) — test only                                                                         |
 | `99_access_preview_GENERATED.csv`                  | Every resulting access grant, with place name, what it covers, and where it came from                                                                     |
 
 ## Default access words (file 06)
@@ -74,3 +76,79 @@ Fallbacks are shown in the `source` column of file 99 (see the Guest House Cook)
 
 `Test` + job title without spaces + `!12`, e.g. Bar Manager → `TestBarManager!12`. Usernames tell outlets apart: `test.bar-manager.1.0`, `test.bar-manager.3.0`, `test.solo.bar-manager`.
 Platform Admin accounts are not in these files: they are created separately, with a strong password and authenticator-app MFA.
+
+## Second people
+
+A second person in the same job at the same place, ending in `-b`. Same password rule.
+
+- Hotel 1.0: `test.commis-b.1.0`, `test.bartender-b.1.0`, `test.steward-b.1.0`,
+  `test.room-attendant-b.1.0`.
+- Bar 3.0: `test.server-b.3.0`, `test.bartender-b.3.0`.
+- Test Solo Bar: `test.solo.server-b`, `test.solo.bartender-b`.
+
+## Activity: files 25 to 28 (test only, ADR 017)
+
+The loader refuses these files for a customer that isn't a test customer. Days count from
+the load date: `0` is the load day and `-1` the day before. Every row names who does it,
+and the loader does it as that person through the app's own rules.
+
+| File                               | What it loads                                                                                                      |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `25_shifts_TEST_DATA_ONLY.csv`     | Weeks 1 and 2 from next Monday at Hotel 1.0 Kitchen and Bar and at Bar 3.0: 19 people, 88 shifts a week, published |
+| `26_production_TEST_DATA_ONLY.csv` | Six batches on days -6 to -1, made by commis and bartenders (PRODUCTION_TEAM)                                      |
+| `27_sales_TEST_DATA_ONLY.csv`      | Days -6 to -1: the same sales each day, at Hotel 1.0 (GM) and Bar 3.0 (Bar Manager)                                |
+| `28_counts_TEST_DATA_ONLY.csv`     | A closing count of the Hotel 1.0 Bar Store on the load day: `difference` is counted minus expected                 |
+
+- **Re-imports.** Shifts follow the load date: a later re-import adds the weeks that are new
+  by then. Batches, sales and the count load once per customer. A second week would use up
+  the stock its batches are made from.
+- **The count.** The Bar Manager 1.0 (the Bar Store's store keeper) counts. The gin is
+  beyond tolerance, so it goes to approval: the GM 1.0 approves, and the executor posts it
+  (`pnpm db:seed` runs it; in production the `wf-execute` timer does, within a minute).
+
+### Expected figures
+
+For the 7 days ending on the load day. `packages/db/src/test-data-activity.db.test.ts`
+pins them.
+
+**Hotel 1.0 Bar Store** (Variance, as the GM):
+
+| Item                                      | Used by sales | Count          | Variance     | Shown as                    |
+| ----------------------------------------- | ------------- | -------------- | ------------ | --------------------------- |
+| Gin 750 ml                                | 4.8 bottles   | 1 bottle short | −1 · −₹1,800 | **unexplained loss**        |
+| Vodka 750 ml                              | 2.88 bottles  | 0.1 short      | −0.1 · −₹140 | within its 2 % tolerance    |
+| Whisky, white rum, red wine, lager, tonic | as sold       | on target      | 0            | no variance                 |
+| Sugar Syrup                               | 360 ml        | not counted    | —            | made 800, 400 into Sour Mix |
+| Sour Mix                                  | 810 ml        | not counted    | —            | made 900                    |
+
+**Bar 3.0 Bar Store** (Variance, as the Bar Manager 3.0):
+
+- **Tonic Water** is sold below zero: 34 cans on hand, 42 used (Gin & Tonic and tonic),
+  so −8 expected. It is not counted. The store keepers get a "Stock below zero after
+  sales" notification.
+- **Negroni batch:** made 2,000 ml, 1,620 ml sold.
+- Nothing is unexplained.
+
+**Cost %** (recipe cost of what sold over revenue before tax; actual adds the count
+variance):
+
+| Outlet    | Menu | Revenue   | Recipe % | Actual % |
+| --------- | ---- | --------- | -------- | -------- |
+| Hotel 1.0 | Bar  | ₹1,07,550 | 34.4     | 36.2     |
+| Hotel 1.0 | Food | ₹37,620   | 21.5     | 21.5     |
+| Bar 3.0   | Bar  | ₹58,860   | 38.1     | 38.1     |
+| Bar 3.0   | Food | ₹12,000   | 10.1     | 10.1     |
+
+**Batches:**
+
+- **Hotel 1.0 Kitchen Store.** Mint Chutney (day -5, shelf life 48 h) is **expired**, with
+  140 g left. Its Production screen shows the expired banner. Ginger Garlic Paste (day -4)
+  is still in date.
+- **Hotel 1.0 Bar Store.** Sugar Syrup (day -6) and Sour Mix (day -1).
+- **Bar 3.0.** Negroni (day -4, Bar Store) and Ginger Garlic Paste (day -2, Kitchen Store).
+
+Each batch's expiry runs from its batch time, so the other batches expire over the
+following days.
+
+**Shifts:** `test.commis-b.1.0` has 10 dinner shifts (Wed to Sun, both weeks) on My shifts.
+Open slots in those weeks stay open and published.

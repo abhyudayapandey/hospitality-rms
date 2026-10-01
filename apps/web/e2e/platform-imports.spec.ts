@@ -104,15 +104,15 @@ test('logins for a test customer with the Test<Role>!12 rule', async ({ page }) 
   try {
     await signInPlatform(page);
     await page.goto(`/platform/customers/${solo}/logins`);
-    await expect(page.getByTestId('username-summary')).toContainText('0 of 7 have a login');
+    await expect(page.getByTestId('username-summary')).toContainText('0 of 9 have a login');
     await expect(page.getByText(/about 50\s+messages a day/)).toBeVisible();
     const form = page.getByRole('form', { name: 'Create username logins' });
-    await expect(form.getByRole('button', { name: 'Create 7 username logins' })).toBeEnabled();
+    await expect(form.getByRole('button', { name: 'Create 9 username logins' })).toBeEnabled();
     await form.getByRole('checkbox').check();
-    await form.getByRole('button', { name: 'Create 7 username logins' }).click();
+    await form.getByRole('button', { name: 'Create 9 username logins' }).click();
 
     const created = page.getByTestId('created-logins');
-    await expect(created).toContainText('7 logins created');
+    await expect(created).toContainText('9 logins created');
     await expect(
       created.locator('[data-username="test.solo.bar-manager"]').getByTestId('password'),
     ).toHaveText('TestBarManager!12');
@@ -125,7 +125,7 @@ test('logins for a test customer with the Test<Role>!12 rule', async ({ page }) 
 
     // passwords are never shown again
     await page.reload();
-    await expect(page.getByTestId('username-summary')).toContainText('7 of 7 have a login');
+    await expect(page.getByTestId('username-summary')).toContainText('9 of 9 have a login');
     await expect(page.getByTestId('created-logins')).toHaveCount(0);
     await expect(page.getByTestId('password')).toHaveCount(0);
   } finally {

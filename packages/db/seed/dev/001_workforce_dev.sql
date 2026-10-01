@@ -2,7 +2,8 @@
 -- activity onboarding files do not carry. Idempotent: shifts are keyed by (template,
 -- date), so re-seeding in a later week adds that week's shifts.
 --
---   * every shift template gets this week's shifts (published) and next week's (draft);
+--   * every shift template gets this week's shifts (published) and next week's (draft;
+--     the test shifts file 25 has already published next week's for the places it covers);
 --     each worker works their role's template at their home place from Monday, one shift
 --     a day, on as many weekdays (at most five) as the weekly-hours cap allows
 --   * pay rates for the Test Bar 3.0 team
@@ -62,6 +63,12 @@ select c.tenant_id, c.shift_id, c.worker_id, c.owner_user_id, c.org_node_id, c.s
                             and hr.week_start((now() at time zone 'Asia/Kolkata')::date) + 13
        and not exists (select 1 from hr.shift_assignment a
                         where a.shift_id = s.id and a.worker_id = w.id)
+       -- a worker already rostered that week (the test shifts file 25, or an earlier
+       -- seed) is left as they are
+       and not exists (select 1 from hr.shift_assignment a
+                        where a.worker_id = w.id and a.status = 'assigned'
+                          and hr.week_start((a.start_at at time zone 'Asia/Kolkata')::date)
+                              = hr.week_start(s.local_date))
        -- respect approved leave if any was granted in the app since the last seed
        and not exists (select 1 from hr.leave_request l
                         where l.worker_id = w.id and l.status = 'approved'

@@ -11,9 +11,15 @@ test.solo.head-bartender,EARNED_LEAVE,2026,18,2
 test.solo.bartender,CASUAL_LEAVE,2026,12,3
 test.solo.bartender,SICK_LEAVE,2026,12,2
 test.solo.bartender,EARNED_LEAVE,2026,18,0
+test.solo.bartender-b,CASUAL_LEAVE,2026,12,0
+test.solo.bartender-b,SICK_LEAVE,2026,12,0
+test.solo.bartender-b,EARNED_LEAVE,2026,18,0
 test.solo.server,CASUAL_LEAVE,2026,12,0
 test.solo.server,SICK_LEAVE,2026,12,2
 test.solo.server,EARNED_LEAVE,2026,18,3
+test.solo.server-b,CASUAL_LEAVE,2026,12,0
+test.solo.server-b,SICK_LEAVE,2026,12,0
+test.solo.server-b,EARNED_LEAVE,2026,18,0
 test.solo.head-cook,CASUAL_LEAVE,2026,12,2
 test.solo.head-cook,SICK_LEAVE,2026,12,2
 test.solo.head-cook,EARNED_LEAVE,2026,18,0

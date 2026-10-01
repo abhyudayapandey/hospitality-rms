@@ -9,6 +9,9 @@ import {
   type SeedIds,
 } from '../test/helpers';
 
+// the outlets' business day (IST), not the database's UTC date
+const TODAY = `(now() at time zone 'Asia/Kolkata')::date`;
+
 // Production, sales and variance behaviour (ADR 015).
 
 let ids: SeedIds;
@@ -61,7 +64,7 @@ const sell = async (c: PoolClient, lines: [string, number][], date = 'today') =>
     attemptAs(
       c,
       ids.user(GM),
-      `select menu.post_sales($1, ${date === 'today' ? 'current_date' : '$3::date'}, $2::jsonb) as id`,
+      `select menu.post_sales($1, ${date === 'today' ? TODAY : '$3::date'}, $2::jsonb) as id`,
       [
         ids.node('TEST-HOTEL-1.0'),
         JSON.stringify(
@@ -187,8 +190,8 @@ describe('sales', () => {
 
   it('a past day is posted at the end of that day; a receipt into negative stock resets the average', async () => {
     await inRolledBackTx(async (c) => {
-      const yesterday = (await c.query<{ d: string }>(`select (current_date - 1)::text as d`))
-        .rows[0]!.d;
+      const yesterday = (await c.query<{ d: string }>(`select (${TODAY} - 1)::text as d`)).rows[0]!
+        .d;
       // the loader dates prices and recipes from the day it ran: date them a week back here
       await c.query(
         `update menu.menu_outlet set effective_from = effective_from - 7 where menu_item_id = $1`,
@@ -233,7 +236,7 @@ describe('variance and cost %', () => {
       const r = await attemptAs<Record<string, string | boolean>>(
         c,
         ids.user('test.cost-controller.1.0'),
-        `select * from inv.variance($1, current_date, current_date) where sku = 'BUTTER'`,
+        `select * from inv.variance($1, ${TODAY}, ${TODAY}) where sku = 'BUTTER'`,
         [ids.node(store)],
       );
       const v = r.rows![0]!;
@@ -261,7 +264,7 @@ describe('variance and cost %', () => {
       }>(
         c,
         ids.user('test.cost-controller.1.0'),
-        `select * from menu.cost_report($1, current_date, current_date)`,
+        `select * from menu.cost_report($1, ${TODAY}, ${TODAY})`,
         [ids.node('TEST-HOTEL-1.0')],
       );
       const food = r.rows!.find((x) => x.menu === 'Food')!;
