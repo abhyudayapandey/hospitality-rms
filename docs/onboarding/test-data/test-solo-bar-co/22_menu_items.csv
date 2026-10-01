@@ -1,0 +1,28 @@
+menu_item_code,name,menu,category,serving
+PANEER-TIKKA,Paneer Tikka,Food,Starters,6 pieces
+MASALA-FRIES,Masala Fries,Food,Starters,1 basket
+VODKA-PEG-30ML,Vodka (30 ml),Bar,Spirits,30 ml peg
+VODKA-PEG-60ML,Vodka (60 ml),Bar,Spirits,60 ml peg
+WHISKY-PEG-30ML,Blended Whisky (30 ml),Bar,Spirits,30 ml peg
+WHISKY-PEG-60ML,Blended Whisky (60 ml),Bar,Spirits,60 ml peg
+GIN-PEG-30ML,Gin (30 ml),Bar,Spirits,30 ml peg
+DARK-RUM-PEG-30ML,Dark Rum (30 ml),Bar,Spirits,30 ml peg
+TEQUILA-SHOT-30ML,Tequila Shot (30 ml),Bar,Spirits,30 ml shot
+RED-WINE-GLASS,Red Wine (glass),Bar,Wine,150 ml
+WHITE-WINE-GLASS,White Wine (glass),Bar,Wine,150 ml
+LAGER-330ML-SERVE,Lager (330 ml bottle),Bar,Beer,1 bottle
+LAGER-650ML-SERVE,Lager (650 ml bottle),Bar,Beer,1 bottle
+TONIC-WATER-SERVE,Tonic Water,Bar,Mixers,1 can
+COLA-SERVE,Cola,Bar,Mixers,1 can
+FRESH-ORANGE-JUICE-GLASS,Orange Juice,Bar,Mixers,200 ml glass
+GIN-AND-TONIC,Gin & Tonic,Bar,Cocktails,1 glass
+MOJITO,Mojito,Bar,Cocktails,1 glass
+WHISKY-SOUR,Whisky Sour,Bar,Cocktails,1 glass
+COSMOPOLITAN,Cosmopolitan,Bar,Cocktails,1 glass
+MARGARITA,Margarita,Bar,Cocktails,1 glass
+CUBA-LIBRE,Cuba Libre,Bar,Cocktails,1 glass
+ESPRESSO-MARTINI,Espresso Martini,Bar,Cocktails,1 glass
+NEGRONI-SERVE,Negroni (batched),Bar,Batched cocktails,90 ml over ice
+OLD-FASHIONED-SERVE,Old Fashioned (batched),Bar,Batched cocktails,90 ml over ice
+SANGRIA-GLASS,House Sangria (glass),Bar,Batched cocktails,200 ml
+SANGRIA-PITCHER,House Sangria (pitcher),Bar,Batched cocktails,1 litre
