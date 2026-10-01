@@ -29,8 +29,8 @@ describe('test customers', () => {
          from core.tenant t where t.code like 'TEST-%' order by t.code`,
     );
     expect(rows).toEqual([
-      { code: 'TEST-COMPANY', users: 107, places: 49, items: 64, stocked: 303 },
-      { code: 'TEST-SOLO-COMPANY', users: 7, places: 9, items: 36, stocked: 39 },
+      { code: 'TEST-COMPANY', users: 107, places: 49, items: 71, stocked: 325 },
+      { code: 'TEST-SOLO-COMPANY', users: 7, places: 9, items: 49, stocked: 51 },
     ]);
   });
 
