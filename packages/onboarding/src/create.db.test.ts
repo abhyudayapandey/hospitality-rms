@@ -278,3 +278,65 @@ describe('creating a customer, then importing its files (ADR 013)', () => {
     });
   });
 });
+
+describe('an existing owner the files do not know (ADR 013)', () => {
+  it('is a blocking problem in the dry run, naming both usernames', async () => {
+    await inRolledBackTx(async (c) => {
+      const solo = Object.fromEntries(
+        Object.entries(
+          readCustomerDir(
+            new URL('../../../docs/onboarding/test-data/test-solo-bar-co', import.meta.url)
+              .pathname,
+          ),
+        ).map(([name, text]) => [
+          name,
+          text
+            .replaceAll('TEST-SOLO-COMPANY', 'SOLOCOPY-COMPANY')
+            .replaceAll('test.solo.', 'solocopy.'),
+        ]),
+      );
+      // the production mix-up: the console owner is not the files' owner
+      await asLoader(c, () =>
+        createCustomer(
+          c,
+          {
+            code: 'SOLOCOPY-COMPANY',
+            name: 'Test Solo Bar Co.',
+            country: 'India',
+            currency: 'INR',
+            timezone: 'Asia/Kolkata',
+            isTest: true,
+            owner: {
+              displayName: 'X',
+              email: null,
+              username: 'solocopy-company.owner',
+              loginType: 'username',
+            },
+          },
+          { nested: true },
+        ),
+      );
+      for (const dryRun of [true, false]) {
+        const r = await asLoader(c, () => loadCustomer(c, solo, { nested: true, dryRun }));
+        expect(r.ok).toBe(false);
+        expect(r.applied).toBe(false);
+        expect(r.issues).toEqual([
+          {
+            file: '07_users.csv',
+            column: 'username',
+            message:
+              "the customer's account owner solocopy-company.owner has no row in this file, whose " +
+              'account owner is solocopy.bar-manager: loading it would leave both. Add ' +
+              'solocopy-company.owner to the file, or remove them first (Platform: the customer, ' +
+              'Account owners)',
+          },
+        ]);
+      }
+      const users = await c.query<{ n: number }>(
+        `select count(*)::int as n from core.app_user u join core.tenant t on t.id = u.tenant_id
+          where t.code = 'SOLOCOPY-COMPANY' and u.kind = 'human'`,
+      );
+      expect(users.rows).toEqual([{ n: 1 }]); // nothing loaded
+    });
+  });
+});

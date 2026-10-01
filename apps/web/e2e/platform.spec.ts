@@ -26,8 +26,20 @@ test('create a customer: queued, created by the worker, owner invited', async ({
   await form.getByLabel('Company name').fill(`E2E Hotels ${code}`);
   await form.getByLabel('Customer code').fill(code);
   await form.getByLabel('Owner name').fill('Asha Rao');
+  // no silent default: the suggestion is a button, and the field starts empty
+  await expect(form.getByLabel('Owner username', { exact: true })).toHaveValue('');
+  await form.getByRole('button', { name: `Use suggested: ${code.toLowerCase()}.owner` }).click();
   await form.getByLabel('Owner email').fill(`${code.toLowerCase()}@example.test`);
   await form.getByRole('button', { name: 'Create customer' }).click();
+  // the check before creating: the owner's username and sign-in type, large
+  const check = page.getByRole('dialog', { name: 'Confirm the first account owner' });
+  await expect(check.getByTestId('confirm-owner-username')).toHaveText(
+    `${code.toLowerCase()}.owner`,
+  );
+  await expect(check.getByTestId('confirm-owner-login')).toHaveText(
+    `Email login: invitation to ${code.toLowerCase()}@example.test`,
+  );
+  await check.getByRole('button', { name: 'Confirm and create' }).click();
   await page.waitForURL(/\/platform\/jobs\/[0-9a-f-]{36}/);
   await expect(page.getByTestId('job-status')).toHaveText('queued');
 

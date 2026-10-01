@@ -4,6 +4,7 @@ import { sql, withPlatformAdmin } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { requirePlatformAdmin } from '@/lib/platform/server';
 import { jobLabel, type PlatformCustomer } from '../../parts';
+import { AccountOwners, type Owner } from './owners';
 
 interface Job {
   id: string;
@@ -17,10 +18,17 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const admin = await requirePlatformAdmin();
-  const { customer, jobs } = await withPlatformAdmin(admin, async (tx) => ({
+  const { customer, jobs, owners } = await withPlatformAdmin(admin, async (tx) => ({
     customer: (
       await sql<PlatformCustomer>`select * from platform.customer(${id}::uuid)`.execute(tx)
     ).rows[0],
+    owners: (
+      await sql<Owner>`select * from platform.account_owners(${id}::uuid)`.execute(tx)
+    ).rows.map((o) => ({
+      ...o,
+      created_at: new Date(o.created_at).toISOString(),
+      last_sign_in_at: o.last_sign_in_at ? new Date(o.last_sign_in_at).toISOString() : null,
+    })),
     jobs: (
       await sql<Job>`
         select id, kind, status, created_at from platform.jobs(200)
@@ -50,6 +58,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
           Logins
         </Link>
       </div>
+      <AccountOwners tenantId={id} owners={owners} />
       {jobs.length > 0 && (
         <section className="space-y-2">
           <h2 className="font-semibold">Jobs</h2>

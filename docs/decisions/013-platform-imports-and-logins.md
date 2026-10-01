@@ -113,3 +113,29 @@ the imported people's logins.
   It was rehearsed on an empty database with the console functions and the worker:
   - both customers' access equals their file 99, with one Account Owner each;
   - a second apply reports no changes.
+
+## Addendum: an extra account owner (production, Test Company)
+
+- **What happened.** Test Company was created in the console with a username owner and
+  the username field left empty. Its placeholder showed `test-company.owner`, and the
+  database defaulted to exactly that. The import then added the file's
+  `test.account-owner` as a second person, so the customer had two account owners.
+- **Removal.** `platform.remove_account_owner(customer, person, reason)` handles a
+  customer already in that state.
+  - It deletes the person only if they never signed in, have no login, and nothing but
+    their own access and worker row refers to them. Any other reference fails the delete
+    inside the function, and it deactivates them instead, with ACCOUNT_OWNER revoked.
+  - It never removes the last owner.
+  - It is in the platform audit with its reason, and every row change is in the data
+    audit log.
+  - The console shows the owners on the customer's page, and asks for the username to be
+    typed before removing one.
+- **Prevention.**
+  - A username owner must be named explicitly: the database no longer defaults it to
+    `<code>.owner`.
+  - The form's owner username starts empty. The suggestion is a button, and the form
+    says "Importing files? Enter the owner's username from their 07_users.csv."
+  - **Create customer** first shows the owner's username and sign-in type in large text,
+    to confirm.
+  - An import whose `07_users.csv` has no row for one of the customer's active account
+    owners stops at the dry run, with a problem naming both usernames.

@@ -566,6 +566,11 @@ that is already loaded. On **Logins**, the invitation note shows the daily allow
 3. Run the Deploy workflow (two migrations: owner login type, and the Account Owner check
    the loader may defer).
 
+#### Releasing the extra-owner fix (ADR 013)
+
+App and database only: no `cdk diff` change. Run the Deploy workflow (one migration:
+`remove_account_owner`). Then fix Test Company as in "Fixing an extra account owner".
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.
@@ -649,8 +654,14 @@ passwords file (`TEST_LOGINS_do_not_commit.csv`) and the README never are:
 | Owner signs in with | Username and password (no email) | Username and password (no email)   |
 | Owner username      | `test.account-owner`             | `test.solo.bar-manager`            |
 
-There is no email field for a username owner. **Create customer**; the job page reaches
-`done` within seconds and says the owner is a username login and no email is sent.
+Type the owner username yourself: the field starts empty, and **Use suggested** would
+give `<code>.owner`, which is **not** the owner in these files. There is no email field
+for a username owner. **Create customer** shows a check with the owner's username and
+sign-in type in large text: it must read `test.account-owner` (or
+`test.solo.bar-manager`) and "Username and password: no email is sent". Then **Confirm
+and create**; the job page reaches `done` within seconds and says no email is sent.
+If the customer's existing owner is not in the files, the import's dry run stops with a
+problem naming both usernames (see "Fixing an extra account owner" below).
 (Test Solo Bar Co's owner is its bar manager: the import gives them the Bar Manager job
 role and keeps them Account Owner through file 08.)
 
@@ -696,6 +707,41 @@ report.
 `test.account-owner` / `TestAccountOwner!12` (and `test.solo.bar-manager` /
 `TestBarManager!12`); each sees only their own customer. In `/platform` both customers
 show as `active` and `test`, with 107 and 7 active people.
+
+### Fixing an extra account owner
+
+A customer created in the console with a first owner whose username is not in its
+`07_users.csv` ends up with two owners after the import (the console's and the file's).
+The import's dry run now stops with a problem naming both; for a customer already in that
+state:
+
+**1. See the owners** (read-only: the session refuses any write). From your workstation:
+
+```sh
+cat > /tmp/owners.json <<'JSON'
+{"commands":["docker exec -u postgres -e PGOPTIONS='-c default_transaction_read_only=on' outlet-ops-pg psql -d outlet_ops -X -P pager=off -c \"select u.username, u.login_type, u.status, u.created_at, u.last_sign_in_at, u.cognito_sub is not null as has_login, ra.source, n.code as at_place from core.role_assignment ra join core.security_group g on g.id = ra.group_id and g.code = 'ACCOUNT_OWNER' join core.app_user u on u.id = ra.user_id join core.hierarchy_node n on n.id = ra.node_id join core.tenant t on t.id = ra.tenant_id and t.code = 'TEST-COMPANY' order by u.created_at\""]}
+JSON
+id=$(aws ssm send-command --profile outlet-ops --region ap-south-1 \
+  --instance-ids <InstanceId> --document-name AWS-RunShellScript \
+  --parameters file:///tmp/owners.json --query Command.CommandId --output text)
+sleep 5
+aws ssm get-command-invocation --profile outlet-ops --region ap-south-1 \
+  --instance-id <InstanceId> --command-id "$id" --query StandardOutputContent --output text
+```
+
+(`TEST-COMPANY` is the customer code; change it for another customer.) The console shows
+the same on the customer's page under **Account owners**.
+
+**2. Remove the extra owner** in the console: `/platform` → the customer → **Account
+owners** → **Remove <username>** → a reason → type the username → **Remove owner**. It is
+deleted if they never signed in and nothing refers to them (a console-created owner that
+was never used), otherwise deactivated with Account Owner revoked (and their login, if
+any, disabled and signed out everywhere). The last owner can't be removed. The platform
+audit records it with the reason, and the data audit log records every row.
+
+**3. Check**: the query in step 1 lists only the file's owner; the **Logins** page no
+longer lists the removed person; a new dry run of the same zip reports no problems and
+no changes.
 
 ## Operating
 

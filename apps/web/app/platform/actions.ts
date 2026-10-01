@@ -212,3 +212,40 @@ export async function requestInvites(tenantId: string): Promise<ActionResult<str
     return r.rows[0]!.id;
   });
 }
+
+export interface RemovedOwner {
+  mode: 'deleted' | 'deactivated';
+  username: string;
+  /** Set when a Cognito login existed: it has been disabled and signed out everywhere. */
+  login: string | null;
+}
+
+/**
+ * Removes an extra account owner (ADR 013): deleted if they never signed in and nothing
+ * refers to them, otherwise deactivated with ACCOUNT_OWNER revoked. The database checks
+ * the platform admin, the reason and that another owner remains, and writes the audit;
+ * then an existing Cognito login is disabled and signed out everywhere.
+ */
+export async function removeAccountOwner(
+  tenantId: string,
+  userId: string,
+  reason: string,
+): Promise<ActionResult<RemovedOwner>> {
+  const r = await run('remove_account_owner', async (tx) => {
+    const x = await sql<{ r: RemovedOwner }>`
+      select platform.remove_account_owner(${tenantId}::uuid, ${userId}::uuid, ${reason}) as r`.execute(
+      tx,
+    );
+    return x.rows[0]!.r;
+  });
+  if (!r.ok || !r.data.login) return r;
+  try {
+    const directory = loginDirectory();
+    await directory.disable(r.data.login);
+    await directory.signOutEverywhere(r.data.login);
+  } catch (err) {
+    console.error('owner login disable failed', (err as Error).name);
+    return failure(new Error('UNEXPECTED'));
+  }
+  return r;
+}
