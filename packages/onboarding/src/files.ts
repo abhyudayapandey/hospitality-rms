@@ -30,6 +30,7 @@ const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'must be a time like 
 const localDateTime = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2} ([01]\d|2[0-3]):[0-5]\d$/, 'must be like 2026-10-17 18:00');
+const recipeUnit = z.enum(['g', 'ml', 'each'], 'must be g, ml or each');
 const timezone = z.string().refine(isTimezone, 'is not a known time zone');
 const optTimezone = z.union([z.literal('').transform(() => undefined), timezone]);
 
@@ -325,6 +326,86 @@ export const FILES = {
       ends_at: localDateTime,
       covers: int,
       requirements,
+    }),
+  },
+  // Menu, recipes and prep (MENU_README.md, ADR 014)
+  unitConversions: {
+    file: '18_item_unit_conversions.csv',
+    required: false,
+    schema: z.object({
+      item_code: code,
+      stock_unit: text,
+      recipe_unit: recipeUnit,
+      recipe_units_per_stock_unit: num.refine((v) => v > 0, 'must be more than 0'),
+    }),
+  },
+  prepItems: {
+    file: '19_prep_items.csv',
+    required: false,
+    schema: z.object({
+      prep_item_code: code,
+      name: text,
+      prep_type: z.enum(
+        ['kitchen_prep', 'house_mixer', 'batched_cocktail'],
+        'must be kitchen_prep, house_mixer or batched_cocktail',
+      ),
+      unit: recipeUnit,
+      batch_yield: num.refine((v) => v > 0, 'must be more than 0'),
+      shelf_life_hours: int.refine((v) => v > 0, 'must be more than 0'),
+    }),
+  },
+  prepLocations: {
+    file: '20_prep_locations.csv',
+    required: false,
+    schema: z.object({
+      prep_item_code: code,
+      store_node_code: code,
+      made_here: yesNo,
+      par_level: num.refine((v) => v >= 0, 'must not be negative'),
+    }),
+  },
+  recipes: {
+    file: '21_recipes.csv',
+    required: false,
+    schema: z.object({
+      recipe_for_code: code,
+      recipe_for_kind: z.enum(['prep', 'menu'], 'must be prep or menu'),
+      ingredient_code: code,
+      ingredient_kind: z.enum(['raw', 'prep'], 'must be raw or prep'),
+      quantity: num.refine((v) => v > 0, 'must be more than 0'),
+      unit: recipeUnit,
+      trim_loss_pct: num.refine((v) => v >= 0 && v < 100, 'must be 0 to under 100'),
+    }),
+  },
+  menuItems: {
+    file: '22_menu_items.csv',
+    required: false,
+    schema: z.object({
+      menu_item_code: code,
+      name: text,
+      menu: z.enum(['Food', 'Bar'], 'must be Food or Bar'),
+      category: text,
+      serving: text,
+    }),
+  },
+  menuOutlets: {
+    file: '23_menu_outlets.csv',
+    required: false,
+    schema: z.object({
+      menu_item_code: code,
+      outlet_code: code,
+      sold_from_store_code: code,
+      price_inr_before_tax: num.refine((v) => v >= 0, 'must not be negative'),
+    }),
+  },
+  prepProcedures: {
+    file: '24_prep_procedures.csv',
+    required: false,
+    schema: z.object({
+      prep_item_code: code,
+      step: int.refine((v) => v >= 1, 'must be 1 or more'),
+      instruction: text,
+      minutes: optNum.refine((v) => v === undefined || v >= 0, 'must not be negative'),
     }),
   },
 } as const;

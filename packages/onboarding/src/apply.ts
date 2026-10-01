@@ -1,7 +1,7 @@
 import { syncProcessDefs, syncProductAccess } from '@outlet-ops/workflow';
 import type { ClientBase } from 'pg';
 import { FILES, readBundle, type Bundle, type Issue } from './files';
-import { validateBundle } from './validate';
+import { menuWarnings, validateBundle } from './validate';
 
 // Loads one customer's onboarding files (ADR 009): validate, then write everything in one
 // transaction. Every write is an upsert on the natural key (codes, usernames), so loading
@@ -153,6 +153,7 @@ class Loader {
     await this.coverage();
     if (this.report.issues.length) return;
     await this.stock();
+    await this.menu();
     await this.leave();
     await this.rostering();
     await this.events();
@@ -801,6 +802,299 @@ class Loader {
       );
       if (rowCount) counts.created++;
       else counts.unchanged++;
+    }
+  }
+
+  // Files 18-24 (ADR 014). Prep items are stock items made in-house; recipes and prices
+  // are versioned: a changed recipe or price closes the open version and starts a new one
+  // today (a second change on the same day replaces today's version).
+  private async menu() {
+    this.report.warnings.push(...menuWarnings(this.b));
+    for (const u of this.b.unitConversions) {
+      this.step(FILES.unitConversions.file, u.line);
+      await this.upsert(
+        'unit conversions',
+        `insert into inv.item_unit (tenant_id, item_id, recipe_unit, recipe_units_per_stock_unit)
+         values ($1, $2, $3, $4)
+         on conflict (tenant_id, item_id) do update
+            set recipe_unit = excluded.recipe_unit,
+                recipe_units_per_stock_unit = excluded.recipe_units_per_stock_unit
+          where (inv.item_unit.recipe_unit, inv.item_unit.recipe_units_per_stock_unit)
+                is distinct from (excluded.recipe_unit, excluded.recipe_units_per_stock_unit)
+         returning id, xmax = 0 as inserted`,
+        [this.tenant, this.items.get(u.item_code), u.recipe_unit, u.recipe_units_per_stock_unit],
+      );
+    }
+    const PREP_CATEGORY = {
+      kitchen_prep: 'Kitchen prep',
+      house_mixer: 'House mixer',
+      batched_cocktail: 'Batched cocktail',
+    } as const;
+    for (const p of this.b.prepItems) {
+      this.step(FILES.prepItems.file, p.line);
+      await this.upsert(
+        'prep items',
+        `insert into inv.item (tenant_id, sku, name, category, base_uom, is_perishable, kind,
+                               prep_type, shelf_life_hours)
+         values ($1, $2, $3, $4, $5, true, 'prep', $6, $7)
+         on conflict (tenant_id, sku) do update
+            set name = excluded.name, category = excluded.category, base_uom = excluded.base_uom,
+                kind = 'prep', prep_type = excluded.prep_type,
+                shelf_life_hours = excluded.shelf_life_hours, archived_at = null
+          where (inv.item.name, inv.item.category, inv.item.base_uom, inv.item.kind,
+                 inv.item.prep_type, inv.item.shelf_life_hours, inv.item.archived_at)
+                is distinct from (excluded.name, excluded.category, excluded.base_uom, 'prep',
+                                  excluded.prep_type, excluded.shelf_life_hours, null)
+         returning id, xmax = 0 as inserted`,
+        [
+          this.tenant,
+          p.prep_item_code,
+          p.name,
+          PREP_CATEGORY[p.prep_type],
+          p.unit,
+          p.prep_type,
+          p.shelf_life_hours,
+        ],
+      );
+      this.items.set(
+        p.prep_item_code,
+        (
+          await this.c.query<{ id: string }>(
+            `select id from inv.item where tenant_id = $1 and sku = $2`,
+            [this.tenant, p.prep_item_code],
+          )
+        ).rows[0]!.id,
+      );
+    }
+    for (const l of this.b.prepLocations) {
+      this.step(FILES.prepLocations.file, l.line);
+      await this.upsert(
+        'prep locations',
+        `insert into inv.item_node (tenant_id, item_id, delivery_node_id, par_level, made_here)
+         values ($1, $2, $3, $4, $5)
+         on conflict (tenant_id, item_id, delivery_node_id) do update
+            set par_level = excluded.par_level, made_here = excluded.made_here, archived_at = null
+          where (inv.item_node.par_level, inv.item_node.made_here, inv.item_node.archived_at)
+                is distinct from (excluded.par_level, excluded.made_here, null)
+         returning id, xmax = 0 as inserted`,
+        [
+          this.tenant,
+          this.items.get(l.prep_item_code),
+          this.nodes.get(l.store_node_code),
+          l.par_level,
+          l.made_here,
+        ],
+      );
+    }
+
+    const menuItems = new Map<string, string>();
+    for (const m of this.b.menuItems) {
+      this.step(FILES.menuItems.file, m.line);
+      await this.upsert(
+        'menu items',
+        `insert into menu.menu_item (tenant_id, code, name, menu, category, serving)
+         values ($1, $2, $3, $4, $5, $6)
+         on conflict (tenant_id, code) do update
+            set name = excluded.name, menu = excluded.menu, category = excluded.category,
+                serving = excluded.serving, archived_at = null
+          where (menu.menu_item.name, menu.menu_item.menu, menu.menu_item.category,
+                 menu.menu_item.serving, menu.menu_item.archived_at)
+                is distinct from (excluded.name, excluded.menu, excluded.category,
+                                  excluded.serving, null)
+         returning id, xmax = 0 as inserted`,
+        [this.tenant, m.menu_item_code, m.name, m.menu, m.category, m.serving],
+      );
+      menuItems.set(
+        m.menu_item_code,
+        (
+          await this.c.query<{ id: string }>(
+            `select id from menu.menu_item where tenant_id = $1 and code = $2`,
+            [this.tenant, m.menu_item_code],
+          )
+        ).rows[0]!.id,
+      );
+    }
+
+    const cu = this.b.customer[0]!;
+    for (const o of this.b.menuOutlets) {
+      this.step(FILES.menuOutlets.file, o.line);
+      const counts = (this.report.counts['menu prices'] ??= {
+        created: 0,
+        updated: 0,
+        unchanged: 0,
+      });
+      const item = menuItems.get(o.menu_item_code)!;
+      const outlet = this.nodes.get(o.outlet_code)!;
+      const store = this.nodes.get(o.sold_from_store_code)!;
+      // in force today, and a change someone planned for a later date (kept as planned)
+      const { rows } = await this.c.query<{
+        id: string;
+        price: string;
+        delivery_node_id: string;
+        starts_today: boolean;
+        planned: boolean;
+        effective_from: string;
+      }>(
+        `select id, price, delivery_node_id, effective_from = current_date as starts_today,
+                effective_from > current_date as planned, effective_from::text
+           from menu.menu_outlet
+          where menu_item_id = $1 and org_node_id = $2
+            and (effective_to is null or effective_to >= current_date)
+          order by effective_from`,
+        [item, outlet],
+      );
+      const now = rows.find((r) => !r.planned);
+      const planned = rows.find((r) => r.planned);
+      if (now && Number(now.price) === o.price_inr_before_tax && now.delivery_node_id === store) {
+        counts.unchanged++;
+        continue;
+      }
+      if (now?.starts_today) {
+        await this.c.query(
+          `update menu.menu_outlet set price = $2, delivery_node_id = $3 where id = $1`,
+          [now.id, o.price_inr_before_tax, store],
+        );
+      } else {
+        if (now) {
+          await this.c.query(
+            `update menu.menu_outlet set effective_to = current_date - 1 where id = $1`,
+            [now.id],
+          );
+        }
+        await this.c.query(
+          `insert into menu.menu_outlet (tenant_id, menu_item_id, org_node_id, delivery_node_id,
+                                         price, currency, effective_from, effective_to)
+           values ($1, $2, $3, $4, $5, $6, current_date, $7::date - 1)`,
+          [
+            this.tenant,
+            item,
+            outlet,
+            store,
+            o.price_inr_before_tax,
+            cu.currency,
+            planned?.effective_from ?? null,
+          ],
+        );
+      }
+      if (now) counts.updated++;
+      else counts.created++;
+    }
+
+    // recipes, grouped by what they are for; compared with the version in force
+    const groups = new Map<string, Bundle['recipes']>();
+    for (const r of this.b.recipes) {
+      const k = `${r.recipe_for_kind} ${r.recipe_for_code}`;
+      groups.set(k, [...(groups.get(k) ?? []), r]);
+    }
+    const yields = new Map(this.b.prepItems.map((p) => [p.prep_item_code, p.batch_yield]));
+    for (const [key, lines] of groups) {
+      this.step(FILES.recipes.file, lines[0]!.line);
+      const counts = (this.report.counts['recipes'] ??= { created: 0, updated: 0, unchanged: 0 });
+      const [kind, code] = key.split(' ') as ['prep' | 'menu', string];
+      const prep = kind === 'prep' ? this.items.get(code)! : null;
+      const menuItem = kind === 'menu' ? menuItems.get(code)! : null;
+      const batchYield = kind === 'prep' ? yields.get(code)! : null;
+      const want = lines.map((l) => ({
+        ingredient: this.items.get(l.ingredient_code)!,
+        qty: l.quantity,
+        unit: l.unit,
+        trim: l.trim_loss_pct,
+      }));
+      // the version in force today, and one planned for a later date (kept as planned)
+      const versions = (
+        await this.c.query<{
+          id: string;
+          batch_yield: string | null;
+          starts_today: boolean;
+          planned: boolean;
+          effective_from: string;
+          version: number;
+        }>(
+          `select id, batch_yield, effective_from = current_date as starts_today,
+                  effective_from > current_date as planned, effective_from::text, version
+             from inv.recipe
+            where (prep_item_id = $1 or menu_item_id = $2)
+              and (effective_to is null or effective_to >= current_date)
+            order by effective_from`,
+          [prep, menuItem],
+        )
+      ).rows;
+      const open = versions.find((v) => !v.planned);
+      const planned = versions.find((v) => v.planned);
+      if (open) {
+        const have = (
+          await this.c.query<{ ingredient: string; qty: string; unit: string; trim: string }>(
+            `select ingredient_item_id as ingredient, qty, unit, trim_loss_pct as trim
+               from inv.recipe_line where recipe_id = $1 order by line_no`,
+            [open.id],
+          )
+        ).rows.map((r) => ({
+          ingredient: r.ingredient,
+          qty: Number(r.qty),
+          unit: r.unit,
+          trim: Number(r.trim),
+        }));
+        const sameYield =
+          (open.batch_yield === null ? null : Number(open.batch_yield)) === batchYield;
+        if (sameYield && JSON.stringify(have) === JSON.stringify(want)) {
+          counts.unchanged++;
+          continue;
+        }
+      }
+      let recipeId: string;
+      if (open?.starts_today) {
+        await this.c.query(`delete from inv.recipe_line where recipe_id = $1`, [open.id]);
+        await this.c.query(`update inv.recipe set batch_yield = $2 where id = $1`, [
+          open.id,
+          batchYield,
+        ]);
+        recipeId = open.id;
+      } else {
+        if (open) {
+          await this.c.query(
+            `update inv.recipe set effective_to = current_date - 1 where id = $1`,
+            [open.id],
+          );
+        }
+        recipeId = (
+          await this.c.query<{ id: string }>(
+            `insert into inv.recipe (tenant_id, prep_item_id, menu_item_id, version, effective_from,
+                                     effective_to, batch_yield)
+             values ($1, $2, $3,
+                     (select coalesce(max(version), 0) + 1 from inv.recipe
+                       where prep_item_id = $2 or menu_item_id = $3),
+                     current_date, $4::date - 1, $5)
+             returning id`,
+            [this.tenant, prep, menuItem, planned?.effective_from ?? null, batchYield],
+          )
+        ).rows[0]!.id;
+      }
+      for (const [i, l] of lines.entries()) {
+        this.step(FILES.recipes.file, l.line);
+        await this.c.query(
+          `insert into inv.recipe_line (tenant_id, recipe_id, line_no, ingredient_item_id, qty,
+                                        unit, trim_loss_pct)
+           values ($1, $2, $3, $4, $5, $6, $7)`,
+          [this.tenant, recipeId, i + 1, want[i]!.ingredient, l.quantity, l.unit, l.trim_loss_pct],
+        );
+      }
+      if (open) counts.updated++;
+      else counts.created++;
+    }
+
+    for (const p of this.b.prepProcedures) {
+      this.step(FILES.prepProcedures.file, p.line);
+      await this.upsert(
+        'prep procedures',
+        `insert into inv.prep_procedure (tenant_id, prep_item_id, step, instruction, minutes)
+         values ($1, $2, $3, $4, $5)
+         on conflict (tenant_id, prep_item_id, step) do update
+            set instruction = excluded.instruction, minutes = excluded.minutes
+          where (inv.prep_procedure.instruction, inv.prep_procedure.minutes)
+                is distinct from (excluded.instruction, excluded.minutes)
+         returning id, xmax = 0 as inserted`,
+        [this.tenant, this.items.get(p.prep_item_code), p.step, p.instruction, p.minutes ?? null],
+      );
     }
   }
 

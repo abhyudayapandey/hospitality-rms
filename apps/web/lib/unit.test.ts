@@ -30,6 +30,16 @@ describe('bottom nav', () => {
     ]);
   });
 
+  it('shows one Menu item to recipe readers and to menu cost holders alike', () => {
+    for (const d of ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM']) {
+      expect(
+        visibleNav(new Set([d])).map((i) => i.label),
+        d,
+      ).toContain('Menu');
+    }
+    expect(visibleNav(new Set(['ROSTER', 'EVENTS'])).map((i) => i.label)).not.toContain('Menu');
+  });
+
   it('shows Admin to user administrators too', () => {
     expect(visibleNav(new Set(['USER_ACCESS'])).map((i) => i.label)).toContain('Admin');
   });

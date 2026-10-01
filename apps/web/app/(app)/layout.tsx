@@ -9,6 +9,9 @@ import { loadShell } from '@/lib/shell';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const shell = await loadShell();
+  const domains = new Set(shell.domains.keys());
+  // staff read recipes through their department's store: no Menu tab if it has none
+  if (!shell.teamRecipes) domains.delete('RECIPES_TEAM');
   const options = shell.nodes.map((n) => ({
     id: n.id,
     label: `${n.name} · ${n.type === 'org' ? 'People' : 'Supply'}${n.derived ? ' (view)' : ''}`,
@@ -45,7 +48,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </header>
       <PunchSync userId={shell.user.id} />
       <main className="flex-1 px-4 pt-4 pb-24">{children}</main>
-      <BottomNav items={visibleNav(new Set(shell.domains.keys()))} inboxCount={shell.inboxCount} />
+      <BottomNav items={visibleNav(domains)} inboxCount={shell.inboxCount} />
     </div>
   );
 }

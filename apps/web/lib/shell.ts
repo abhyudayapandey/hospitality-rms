@@ -23,6 +23,8 @@ export interface Shell {
   currentNode: NodeRow | null;
   inboxCount: number;
   unreadCount: number;
+  /** a department of theirs makes or sells something (the Menu tab for staff) */
+  teamRecipes: boolean;
 }
 
 /** Everything the app layout needs, in one withUser transaction. */
@@ -42,6 +44,9 @@ export const loadShell = cache(async (): Promise<Shell> => {
     const unread = await sql<{ n: number }>`
       select count(*)::int as n from ops.notification
        where owner_user_id = core.current_user_id() and read_at is null`.execute(tx);
+    const team = domains.rows.some((d) => d.domain === 'RECIPES_TEAM')
+      ? await sql<{ v: boolean }>`select inv.team_has_recipes() as v`.execute(tx)
+      : null;
     const own = nodes.rows.filter((n) => !n.derived);
     const currentNode = nodes.rows.find((n) => n.id === selected) ?? own[0] ?? null;
     return {
@@ -51,6 +56,7 @@ export const loadShell = cache(async (): Promise<Shell> => {
       currentNode,
       inboxCount: inbox.rows[0]?.n ?? 0,
       unreadCount: unread.rows[0]?.n ?? 0,
+      teamRecipes: team?.rows[0]?.v ?? false,
     };
   });
 });

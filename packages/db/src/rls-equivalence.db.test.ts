@@ -37,6 +37,9 @@ interface Registration {
   catalog: boolean;
   has_owner_user_id: boolean;
   has_wf: boolean;
+  /** rule-visible rows (recipes, ADR 014): the per-row rule and the column it takes */
+  visible_row_fn: string | null;
+  visible_column: string | null;
 }
 
 /**
@@ -51,6 +54,9 @@ function perRowCan(r: Registration, access: 'view' | 'modify'): string {
 }
 
 function perRowLegs(r: Registration, access: 'view' | 'modify'): string {
+  if (r.visible_row_fn) {
+    return `tenant_id = core.my_tenant() and ${r.visible_row_fn}(${r.visible_column})`;
+  }
   const owner = r.owner_column ?? (r.has_owner_user_id ? 'owner_user_id' : null);
   const o = owner ?? 'null';
   if (r.domain_column) {
@@ -80,11 +86,12 @@ async function registrations(c: PoolClient): Promise<Registration[]> {
     `select dt.table_name::text as table_name, dt.domain_code, dt.hierarchy_type, dt.node_columns,
             dt.domain_column, dt.owner_column, dt.tenant_scoped, dt.catalog,
             core.has_column(dt.table_name, 'owner_user_id') as has_owner_user_id,
-            core.has_column(dt.table_name, 'wf_request_id') as has_wf
+            core.has_column(dt.table_name, 'wf_request_id') as has_wf,
+            (dt.visible_row_fn::oid)::regproc::text as visible_row_fn, dt.visible_column
        from core.domain_table dt
        join pg_class cl on cl.oid = dt.table_name
        join pg_namespace n on n.oid = cl.relnamespace
-      where n.nspname in ('hr', 'inv', 'ops', 'wf', 'ai')
+      where n.nspname in ('hr', 'inv', 'ops', 'wf', 'ai', 'menu')
       order by 1`,
   );
   return rows;
@@ -234,7 +241,8 @@ describe('ADR 007 policies are equivalent to per-row core.can()', () => {
     async () => {
       await inRolledBackTx(async (c) => {
         await fixtures(c);
-        const regs = (await registrations(c)).filter((r) => !r.catalog);
+        // rule-visible tables (recipes) have their own test below
+        const regs = (await registrations(c)).filter((r) => !r.catalog && !r.visible_row_fn);
         const users = await userIds(c);
         expect(regs.length).toBeGreaterThan(15);
         let visible = 0;
@@ -266,6 +274,92 @@ describe('ADR 007 policies are equivalent to per-row core.can()', () => {
         }
         expect(mismatches).toEqual([]);
         expect(visible).toBeGreaterThan(100); // the comparison had real rows to compare
+      });
+    },
+  );
+
+  it(
+    'rule-visible tables (recipes, ADR 014): the per-query id sets equal the per-row rule',
+    { timeout: SLOW },
+    async () => {
+      await inRolledBackTx(async (c) => {
+        const domains = ['RECIPES', 'RECIPES_TEAM', 'MENU', 'DERIVED_MENU'];
+        // one user per shape of recipe and menu grant (domain, place kind, descendants,
+        // access, customer), plus the people the menu security tests name
+        const { rows: users } = await c.query<{ id: string; name: string }>(
+          `select distinct on (sig) id, name from (
+             select u.id, u.display_name as name, u.tenant_id::text || ' ' || coalesce(string_agg(
+                      ea.domain || ':' || n.kind || ':' || ea.include_descendants || ':' || ea.access,
+                      ',' order by ea.domain, n.kind, ea.access), '') as sig
+               from core.app_user u
+               left join core.effective_access ea on ea.user_id = u.id and ea.domain = any ($1)
+               left join core.hierarchy_node n on n.tenant_id = u.tenant_id and n.path::text = ea.path::text
+              group by u.id) x
+           union
+           select id, display_name from core.app_user where username = any ($2)
+            order by 1`,
+          [
+            domains,
+            [
+              'test.bartender.1.0',
+              'test.commis.1.0',
+              'test.room-attendant.2.0',
+              'test.cook.2.0',
+              'test.executive-chef.1.0',
+              'test.bar-manager.1.0',
+              'test.general-manager.1.0',
+              'test.solo.bar-manager',
+            ],
+          ],
+        );
+        const sample = ALL_USERS
+          ? (
+              await c.query<{ id: string; name: string }>(
+                'select id, display_name as name from core.app_user',
+              )
+            ).rows
+          : users;
+        expect(sample.length).toBeGreaterThan(5);
+        const mismatches: string[] = [];
+        let visible = 0;
+        for (const u of sample) {
+          await c.query(`select set_config('app.user_id', $1, true)`, [u.id]);
+          const ids = async (sql: string, params: unknown[] = []) =>
+            (await c.query<{ id: string }>(sql, params)).rows.map((r) => r.id).sort();
+          const recipes = await ids(
+            `select id from inv.recipe where tenant_id = core.my_tenant() and inv.can_read_recipe(id)`,
+          );
+          const expected: Record<string, string[]> = {
+            'inv.recipe': recipes,
+            'inv.recipe_line': await ids(
+              `select id from inv.recipe_line where recipe_id = any ($1::uuid[])`,
+              [recipes],
+            ),
+            'inv.prep_procedure': await ids(
+              `select p.id from inv.prep_procedure p
+                where p.tenant_id = core.my_tenant()
+                  and p.prep_item_id in (select x from (select distinct prep_item_id as x
+                                                          from inv.prep_procedure) d
+                                          where inv.can_read_prep(x))`,
+            ),
+            'menu.menu_item': await ids(
+              `select id from menu.menu_item
+                where tenant_id = core.my_tenant() and menu.can_read_menu_item(id)`,
+            ),
+          };
+          await c.query(`select set_config('app.user_id', '', true)`);
+          await actAs(c, 'app_rw', u.id);
+          for (const [table, want] of Object.entries(expected)) {
+            const got = await ids(`select id from ${table}`);
+            visible += got.length;
+            if (JSON.stringify(got) !== JSON.stringify(want)) {
+              mismatches.push(`${table} as ${u.name}: expected ${want.length}, got ${got.length}`);
+            }
+          }
+          await resetRole(c);
+        }
+        expect(mismatches).toEqual([]);
+        expect(visible).toBeGreaterThan(100);
       });
     },
   );

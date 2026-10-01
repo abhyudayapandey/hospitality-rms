@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { closePools, inRolledBackTx, migratorPool } from '../test/helpers';
 
-// CLAUDE.md rules 1 and 5: every table in hr, inv, ops, wf, ai has RLS with
+// CLAUDE.md rules 1 and 5: every table in hr, inv, ops, wf, ai, menu has RLS with
 // generated policies only, is registered to a domain, and has the audit trigger.
 
 afterAll(closePools);
@@ -78,7 +78,7 @@ describe('extensions and search_path', () => {
     const { rows } = await migratorPool.query<{ fn: string; config: string[] | null }>(
       `select p.oid::regprocedure::text as fn, p.proconfig as config
          from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-        where p.prosecdef and n.nspname in ('core', 'audit', 'hr', 'inv', 'ops', 'wf', 'ai')
+        where p.prosecdef and n.nspname in ('core', 'audit', 'hr', 'inv', 'ops', 'wf', 'ai', 'menu')
         order by 1`,
     );
     expect(rows.length).toBeGreaterThan(0);

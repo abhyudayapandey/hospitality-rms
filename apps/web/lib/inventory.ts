@@ -148,9 +148,13 @@ export function movementLabel(type: string, reason: string | null): string {
   return `${base[type] ?? type}${r}`;
 }
 
+/** Decimals worth showing per unit: whole g and ml, 2 for bottles, cans and packs. */
+const UNIT_DECIMALS: Record<string, number> = { g: 0, ml: 0, each: 2, kg: 3, l: 3 };
+
 export function formatQty(qty: string | number, uom: string): string {
   const n = Number(qty);
-  const text = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 3 }).format(n);
+  const digits = UNIT_DECIMALS[uom] ?? 2;
+  const text = new Intl.NumberFormat('en-IN', { maximumFractionDigits: digits }).format(n);
   return `${text} ${uom}`;
 }
 

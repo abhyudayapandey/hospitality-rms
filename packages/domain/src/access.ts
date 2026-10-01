@@ -19,6 +19,12 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'STOCK_ADJUSTMENTS', tree: 'delivery' },
   { code: 'PURCHASE_ORDERS', tree: 'delivery' },
   { code: 'TRANSFERS', tree: 'delivery' },
+  // recipes and prep procedures where they are made or sold (no costs, ADR 014)
+  { code: 'RECIPES', tree: 'delivery' },
+  // the same through a department's linked store (kitchen staff -> kitchen store)
+  { code: 'RECIPES_TEAM', tree: 'org' },
+  // prices and costs; modify edits menus, prices and recipes
+  { code: 'MENU', tree: 'delivery' },
   { code: 'WORKERS', tree: 'org' },
   { code: 'COMPENSATION', tree: 'org' },
   { code: 'ROSTER', tree: 'org' },
@@ -31,6 +37,7 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'DERIVED_STOCK_ADJUSTMENTS', tree: 'org' },
   { code: 'DERIVED_PURCHASE_ORDERS', tree: 'org' },
   { code: 'DERIVED_TRANSFERS', tree: 'org' },
+  { code: 'DERIVED_MENU', tree: 'org' },
   { code: 'AUDIT', tree: 'org' },
   { code: 'NOTIFICATIONS', tree: 'self' },
   { code: 'USER_ACCESS', tree: 'org', admin: true },
@@ -67,12 +74,17 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       NOTIFICATIONS: v,
     },
   },
-  { code: 'STAFF', name: 'Staff', kind: 'role', grants: { ROSTER: v, EVENTS: v } },
+  {
+    code: 'STAFF',
+    name: 'Staff',
+    kind: 'role',
+    grants: { ROSTER: v, EVENTS: v, RECIPES_TEAM: v },
+  },
   {
     code: 'SUPERVISOR',
     name: 'Supervisor',
     kind: 'role',
-    grants: { ROSTER: v, ATTENDANCE: v, EVENTS: v },
+    grants: { ROSTER: v, ATTENDANCE: v, EVENTS: v, RECIPES_TEAM: v },
   },
   {
     code: 'DEPARTMENT_HEAD',
@@ -86,6 +98,8 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       WORKERS: v,
       EVENTS: m,
       AI_RECOMMENDATIONS: v,
+      RECIPES_TEAM: v,
+      DERIVED_MENU: v,
     },
   },
   {
@@ -93,7 +107,13 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     code: 'STOCK_USER',
     name: 'Stock User',
     kind: 'role',
-    grants: { STOCK_LEVELS: v, STOCK_ADJUSTMENTS: m, TRANSFERS: m, PURCHASE_ORDERS: v },
+    grants: {
+      STOCK_LEVELS: v,
+      STOCK_ADJUSTMENTS: m,
+      TRANSFERS: m,
+      PURCHASE_ORDERS: v,
+      RECIPES: v,
+    },
   },
   {
     code: 'STORE_KEEPER',
@@ -105,13 +125,21 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       TRANSFERS: m,
       PURCHASE_ORDERS: m,
       AI_RECOMMENDATIONS: v,
+      RECIPES: v,
     },
   },
   {
     code: 'COST_CONTROLLER',
     name: 'Cost Controller',
     kind: 'role',
-    grants: { STOCK_LEVELS: v, STOCK_ADJUSTMENTS: v, PURCHASE_ORDERS: v, TRANSFERS: v },
+    grants: {
+      STOCK_LEVELS: v,
+      STOCK_ADJUSTMENTS: v,
+      PURCHASE_ORDERS: v,
+      TRANSFERS: v,
+      RECIPES: v,
+      MENU: v,
+    },
   },
   {
     code: 'OUTLET_HR',
@@ -135,6 +163,9 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       EVENTS: m,
       AI_RECOMMENDATIONS: m,
       SHIFT_SWAPS: v,
+      RECIPES: v,
+      MENU: m,
+      DERIVED_MENU: v,
     },
   },
   {
@@ -153,13 +184,21 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       DERIVED_STOCK_ADJUSTMENTS: v,
       DERIVED_PURCHASE_ORDERS: v,
       DERIVED_TRANSFERS: v,
+      DERIVED_MENU: v,
     },
   },
   {
     code: 'HUB_MANAGER',
     name: 'Hub Manager',
     kind: 'role',
-    grants: { STOCK_LEVELS: v, STOCK_ADJUSTMENTS: m, PURCHASE_ORDERS: v, TRANSFERS: m },
+    grants: {
+      STOCK_LEVELS: v,
+      STOCK_ADJUSTMENTS: m,
+      PURCHASE_ORDERS: v,
+      TRANSFERS: m,
+      RECIPES: v,
+      MENU: v,
+    },
   },
   { code: 'SUPPLY_VIEWER', name: 'Supply Viewer', kind: 'role', grants: { STOCK_LEVELS: v } },
   {
@@ -198,6 +237,8 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       EVENTS: v,
       AI_RECOMMENDATIONS: m,
       SHIFT_SWAPS: v,
+      RECIPES: v,
+      MENU: v,
     },
   },
 ];
