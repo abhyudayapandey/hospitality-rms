@@ -141,6 +141,23 @@ describe('recipes are read only where they are made or sold', () => {
     });
   });
 
+  it('the central kitchen commis reads the gravies made there, through the production team’s link', async () => {
+    await inRolledBackTx(async (c) => {
+      const seen = await readable(c, 'test.central-kitchen-commis');
+      expect(seen).toContain('MAKHANI-GRAVY');
+      expect(seen).toContain('ONION-TOMATO-MASALA');
+      // made at the hotels, not here; and nothing is sold from the central kitchen
+      for (const code of [
+        'GINGER-GARLIC-PASTE',
+        'STEAMED-RICE',
+        'NEGRONI-BATCH',
+        'BUTTER-CHICKEN',
+      ]) {
+        expect(seen, code).not.toContain(code);
+      }
+    });
+  });
+
   it('a cook with stock access at the guest house store reads its food recipes', async () => {
     await inRolledBackTx(async (c) => {
       const seen = await readable(c, 'test.cook.2.0');

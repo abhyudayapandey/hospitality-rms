@@ -15,3 +15,4 @@ TEST-GUEST-HOUSE-2.0,TEST-GUEST-HOUSE-2.0-SUPPLY,Test Guest House 2.0 ↔ its su
 TEST-BAR-3.0,TEST-BAR-3.0-SUPPLY,Test Bar 3.0 ↔ its supply point
 TEST-BAR-3.0-BAR,TEST-BAR-3.0-BAR-STORE,Bar uses the Bar Store
 TEST-BAR-3.0-KITCHEN,TEST-BAR-3.0-KITCHEN-STORE,Kitchen uses the Kitchen Store
+TEST-CENTRAL-KITCHEN-PRODUCTION,TEST-CENTRAL-KITCHEN-STORE,Production team makes in the Central Kitchen store

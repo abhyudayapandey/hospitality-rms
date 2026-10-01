@@ -573,26 +573,64 @@ App and database only: no `cdk diff` change. Run the Deploy workflow (one migrat
 
 #### Releasing menu, recipes and costing (ADR 014, Prompt 9a)
 
-App and database only: no `cdk diff` change, no new parameter or secret. Run the Deploy
-workflow (three migrations: `menu_recipes`, `menu_costing`, `menu_reads`; it also syncs the
-product access, which adds the RECIPES, RECIPES_TEAM, MENU and DERIVED_MENU grants). Before
-merging, run **Actions → RLS equivalence (all users)**: access rules changed.
+App and database only: no `cdk diff` change, no new parameter or secret. Before merging,
+run **Actions → RLS equivalence (all users)**: access rules changed.
 
-Then load the menu files into each test customer already on production: the customer's
-page → **Import setup files** → the zip built as in step 7 (it now holds files 18 to 24) →
-**Upload and dry run**. A customer loaded before the menu data (Test Company) should
-report no problems, no menu warnings and **392 changes**:
+**1. Deploy.** Run the Deploy workflow. It applies three migrations (`menu_recipes`,
+`menu_costing`, `menu_reads`) and syncs the product access, which adds the RECIPES,
+RECIPES_TEAM, MENU and DERIVED_MENU grants.
 
-- items 7 new (the seven new bar and dairy items), item locations 26 new, opening stock 25
-  new (its zero-quantity Angostura Bitters line unchanged);
-- unit conversions 71, prep items 10, prep locations 34, menu items 37, menu prices 111,
-  recipes 47, prep procedures 24, all new;
-- everything else unchanged, and the same 2 approval-coverage warnings as before.
+**2. See what production holds** (read-only: the session refuses any write). From your
+workstation:
 
-**Apply**, then **Apply** again: "No changes". Test Solo Bar Co, if not loaded yet, follows
-step 7 with its full count (399). Then sign in as `test.general-manager.1.0`: **Menu**
-lists Hotel 1.0's 37 items with cost %; as `test.commis.1.0`, **Menu** lists the kitchen
-recipes only, with no prices.
+```sh
+cat > /tmp/menu-state.json <<'JSON'
+{"commands":["docker exec -u postgres -e PGOPTIONS='-c default_transaction_read_only=on' outlet-ops-pg psql -d outlet_ops -X -P pager=off -c \"select t.code, (select count(*) from inv.item i where i.tenant_id = t.id) as items, (select count(*) from inv.item_node x where x.tenant_id = t.id) as item_locations, (select count(*) from core.node_link l where l.tenant_id = t.id) as links, (select string_agg(distinct u.username, ', ') from core.role_assignment ra join core.security_group g on g.id = ra.group_id and g.code = 'ACCOUNT_OWNER' join core.app_user u on u.id = ra.user_id where ra.tenant_id = t.id) as owners from core.tenant t where t.code in ('TEST-COMPANY', 'TEST-SOLO-COMPANY') order by 1\""]}
+JSON
+id=$(aws ssm send-command --profile outlet-ops --region ap-south-1 \
+  --instance-ids <InstanceId> --document-name AWS-RunShellScript \
+  --parameters file:///tmp/menu-state.json --query Command.CommandId --output text)
+sleep 5
+aws ssm get-command-invocation --profile outlet-ops --region ap-south-1 \
+  --instance-id <InstanceId> --command-id "$id" --query StandardOutputContent --output text
+```
+
+| Row                 | Loaded before the menu data (what the dry runs below expect)                                     |
+| ------------------- | ------------------------------------------------------------------------------------------------ |
+| `TEST-COMPANY`      | 64 items, 303 item locations, 16 links, owners `test.account-owner`                              |
+| `TEST-SOLO-COMPANY` | 36 items, 39 item locations, 3 links, owners `test.solo.bar-manager`, or no row: not created yet |
+
+If Test Company's owners also list `test-company.owner`, remove it first ("Fixing an
+extra account owner" below): until then the dry run stops with a problem naming both
+owners. Any other numbers: stop and send me the output.
+
+**3. Load the menu files.** Build each zip as in step 7 (it now holds files 18 to 24 and
+Test Company's new link in file 03). The customer's page → **Import setup files** → the
+zip → **Upload and dry run**. Expected, with no problems and no menu warnings:
+
+- **Test Company** (loaded before the menu data): **"Dry run: applying would make 393
+  changes."** All new: links 1 (the central kitchen production team's store, so its cooks
+  read the gravy recipes), items 7, item locations 26, opening stock 25 (the zero-quantity
+  Angostura Bitters line at Bar 3.0 is unchanged), unit conversions 71, prep items 10,
+  prep locations 34, menu items 37, menu prices 111, recipes 47, prep procedures 24.
+  Everything else unchanged; the same 2 approval-coverage warnings as before.
+- **Test Solo Bar Co, loaded before the menu data**: **205 changes**, all new: items 13,
+  item locations 14, opening stock 13 (its zero-quantity Angostura Bitters line
+  unchanged), unit conversions 49, prep items 7, prep locations 7, menu items 27, menu
+  prices 27, recipes 34, prep procedures 14. The same 5 approval-coverage warnings.
+- **Test Solo Bar Co, not created yet**: create it and import as in step 7: **399
+  changes**.
+
+These were checked on a scratch database rebuilt the way production was: each customer
+created in the console code path with the runbook's entries, its pre-menu files applied
+(Test Company 1522 changes; production showed 1523 because the extra owner made the
+file's owner one more new user, then removed), then the current files dry-run. Logins
+made on the Logins page do not change the counts.
+
+**4. Apply**, then **Apply** again: "No changes". Then sign in as
+`test.general-manager.1.0`: **Menu** lists Hotel 1.0's 37 items with cost %. As
+`test.commis.1.0`, **Menu** lists the kitchen recipes only, with no prices; as
+`test.central-kitchen-commis`, the Makhani Gravy and Onion Tomato Masala recipes.
 
 ### 6. Onboard the customer and users
 
@@ -691,9 +729,9 @@ role and keeps them Account Owner through file 08.)
 **3. Import**: the customer's page → **Import setup files** → choose the zip →
 **Upload and dry run**. The dry run should report no problems and:
 
-- **Test Company**: "Dry run: applying would make 1914 changes." Per table (new / changed):
+- **Test Company**: "Dry run: applying would make 1915 changes." Per table (new / changed):
   org places 32 / 1 (the company root gets the file's values), delivery places 16,
-  links 16, location settings 5, job roles 53, job role access 85, users 106 (the owner
+  links 17, location settings 5, job roles 53, job role access 85, users 106 (the owner
   exists already), workers 106 / 1 (the owner's), extra access 3, suppliers 7, items 71,
   item locations 329, opening stock 328 (its zero-quantity Angostura Bitters
   line at Bar 3.0 is reported unchanged), unit conversions 71, prep items 10, prep
@@ -714,7 +752,7 @@ role and keeps them Account Owner through file 08.)
 Anything else (a problem listed, different counts): stop, don't apply, and send me the
 report.
 
-**4. Apply**: **Apply** on the dry run. The apply job reports "Applied: 1914 changes."
+**4. Apply**: **Apply** on the dry run. The apply job reports "Applied: 1915 changes."
 (Test Solo Bar Co: 399). Then **The dry run this applied** → **Apply** again: it must say
 "Applied. No changes: everything in these files was already loaded."
 
