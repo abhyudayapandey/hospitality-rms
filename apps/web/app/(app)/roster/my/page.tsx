@@ -6,9 +6,17 @@ import { requireUser } from '@/lib/auth/server';
 import { addDays, formatDay, formatSpan, formatTime, hoursBetween, localToday } from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import type { SearchParams } from '@/lib/inventory';
-import { myShifts, myWorker, openPunch, peopleContext } from '@/lib/people';
+import {
+  EXCEPTION_LABEL,
+  myExceptions,
+  myShifts,
+  myWorker,
+  openPunch,
+  peopleContext,
+} from '@/lib/people';
 
-// My shifts: the next six weeks of published shifts, with swap offers and the clock state.
+// My shifts: the next six weeks of published shifts, with swap offers and the clock state,
+// and the person's own attendance exceptions of the last two weeks (audit #10).
 export default async function MyShiftsPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await peopleContext(searchParams);
   const user = await requireUser();
@@ -17,6 +25,7 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
     worker: await myWorker(tx),
     shifts: await myShifts(tx, today, 42),
     punch: await openPunch(tx),
+    flags: await myExceptions(tx, addDays(today, -14)),
   }));
   const hours = data.shifts
     .filter((s) => s.local_date < addDays(today, 7))
@@ -52,6 +61,27 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
             {data.worker.node_name} · {data.worker.role_code.toLowerCase()} · {hours} h in the next
             7 days
           </p>
+          {data.flags.length > 0 && (
+            <section className="space-y-2" data-testid="my-exceptions">
+              <h2 className="text-sm font-semibold text-slate-500">Attendance flags</h2>
+              <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
+                {data.flags.map((f) => (
+                  <li key={f.id} className="flex justify-between gap-2 px-4 py-3 text-sm">
+                    <span>
+                      <span className="block font-medium">{EXCEPTION_LABEL[f.kind] ?? f.kind}</span>
+                      <span className="text-xs text-slate-500">{formatDay(f.local_date)}</span>
+                    </span>
+                    <span className="text-right text-xs text-slate-600">
+                      {f.status === 'open' ? 'Waiting for review' : 'Reviewed'}
+                      {f.resolution_note && (
+                        <span className="block text-slate-500">{f.resolution_note}</span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           {data.shifts.length === 0 ? (
             <Empty>No published shifts in the next six weeks.</Empty>
           ) : (

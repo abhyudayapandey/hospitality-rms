@@ -10,7 +10,7 @@ import { events, peopleContext } from '@/lib/people';
 
 // Upcoming events at a location, by day, with covers and a summary of requirements.
 export default async function EventsPage({ searchParams }: { searchParams: SearchParams }) {
-  const ctx = await peopleContext(searchParams);
+  const ctx = await peopleContext(searchParams, 'events');
   if (!ctx.can('EVENTS') || !ctx.node) {
     return <p className="text-slate-600">You don&apos;t have access to events.</p>;
   }
@@ -21,7 +21,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
   return (
     <div className="space-y-4">
       <PollRefresh />
-      <PeopleHeader ctx={ctx} active="/events" title="Events" picker />
+      <PeopleHeader ctx={ctx} active="/events" title="Events" />
       {ctx.can('EVENTS', 'modify') && (
         <Link
           href={`/events/new?node=${node.id}`}

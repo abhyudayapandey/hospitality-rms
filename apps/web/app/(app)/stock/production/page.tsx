@@ -3,17 +3,20 @@ import { Empty } from '@/components/messages';
 import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
-import { formatWhen } from '@/lib/format';
 import { formatQty, param, supplyContext, type SearchParams } from '@/lib/inventory';
 import { batches, madeHere, productionPlan } from '@/lib/production';
+import { shelfLifeText, timeLeftText } from '@/lib/shelf-life';
 import { ProductionForm } from './production-form';
 
 // Production (ADR 015): record a batch of a prep item made at this store. Ingredients leave
 // by the recipe scaled to the batch (actual quantities can be changed), the batch arrives
 // with a batch number and an expiry. Batches past their expiry ask for a wastage entry.
+// The places are the stores where the person records production and something is made
+// (stock users there, or PRODUCTION_TEAM through their department, ADR 016).
 export default async function ProductionPage({ searchParams }: { searchParams: SearchParams }) {
-  const ctx = await supplyContext(searchParams);
-  if (!ctx.can('PRODUCTION', 'modify') || !ctx.node || ctx.node.derived) return <NoSupplyAccess />;
+  const ctx = await supplyContext(searchParams, 'production');
+  if (!ctx.node || ctx.node.derived) return <NoSupplyAccess />;
+  const canWaste = ctx.can('STOCK_ADJUSTMENTS', 'modify');
   const sp = await searchParams;
   const user = await requireUser();
   const node = ctx.node.id;
@@ -34,7 +37,11 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
           className="space-y-2 rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200"
           data-testid="expired"
         >
-          <h2 className="font-semibold text-amber-900">Past their expiry: record the wastage</h2>
+          <h2 className="font-semibold text-amber-900">
+            {canWaste
+              ? 'Past their expiry: record the wastage'
+              : 'Past their expiry: tell your chef or store keeper'}
+          </h2>
           <ul className="space-y-1 text-sm">
             {expired.map((b) => (
               <li
@@ -44,12 +51,14 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
                 <span>
                   {b.name} · batch {b.batch_no} · {formatQty(b.remaining, b.unit)} left
                 </span>
-                <Link
-                  className="shrink-0 underline"
-                  href={`/stock/wastage?node=${node}&item=${b.item_id}&qty=${Number(b.remaining)}&reason=expired`}
-                >
-                  Record wastage
-                </Link>
+                {canWaste && (
+                  <Link
+                    className="shrink-0 underline"
+                    href={`/stock/wastage?node=${node}&item=${b.item_id}&qty=${Number(b.remaining)}&reason=expired`}
+                  >
+                    Record wastage
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
@@ -84,6 +93,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
             key={data.chosen.item_id}
             node={node}
             item={data.chosen}
+            shelfLife={shelfLifeText(data.plan[0]?.shelf_life_hours ?? null)}
             plan={data.plan.map((l) => ({
               ingredient_id: l.ingredient_id,
               name: l.name,
@@ -108,7 +118,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
                 <span>
                   <span className="block font-medium">{b.name}</span>
                   <span className="text-xs text-slate-500">
-                    batch {b.batch_no ?? '–'} · use by {formatWhen(b.expires_at)}
+                    batch {b.batch_no ?? '–'} · {timeLeftText(b.expires_at)}
                   </span>
                 </span>
                 <span

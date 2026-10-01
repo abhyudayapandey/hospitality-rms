@@ -1,34 +1,34 @@
 import Link from 'next/link';
 import { Empty } from '@/components/messages';
-import { requireUser } from '@/lib/auth/server';
+import { PlaceSwitcher } from '@/components/place-switcher';
 import { withUser } from '@/lib/db';
 import { formatMoney } from '@/lib/format';
 import { formatQty, param, type SearchParams } from '@/lib/inventory';
 import { menuPlaces } from '@/lib/menu';
+import { placesFor } from '@/lib/places';
 import { costReport, isoDate, salesPlaces, todayIn, variance } from '@/lib/production';
 import { MenuTabs } from '../parts';
 
 // Cost control (ADR 015): per store and period, opening + receipts + transfers in −
 // transfers out − wastage − theoretical use (sales and production) against the counts,
-// with unexplained loss highlighted; and food and beverage cost % for the outlet.
+// with unexplained loss highlighted; and food and beverage cost % for the outlet. The store
+// is the screen's "Viewing:" place (ADR 016); only the dates are in the form.
 export default async function VariancePage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
-  const user = await requireUser();
   const to = isoDate(param(sp, 'to'), todayIn());
   const from = isoDate(param(sp, 'from'), todayIn('Asia/Kolkata', -6));
-  const data = await withUser(user.id, async (tx) => {
-    const places = await menuPlaces(tx);
-    const stores = [...new Map(places.map((p) => [p.store_id, p])).values()];
-    const place = stores.find((p) => p.store_id === param(sp, 'store')) ?? stores[0];
-    if (!place) return null;
-    return {
-      stores,
-      place,
-      sales: (await salesPlaces(tx)).length > 0,
-      rows: await variance(tx, place.store_id, from, to),
-      costs: await costReport(tx, place.outlet_id, from, to),
-    };
-  });
+  const { shell, places, place: store } = await placesFor('variance', searchParams);
+  const data = !store
+    ? null
+    : await withUser(shell.user.id, async (tx) => {
+        const outlet = (await menuPlaces(tx)).find((p) => p.store_id === store.id);
+        return {
+          place: { store_id: store.id, store_name: store.name, outlet_name: outlet?.outlet_name },
+          sales: (await salesPlaces(tx)).length > 0,
+          rows: await variance(tx, store.id, from, to),
+          costs: outlet ? await costReport(tx, outlet.outlet_id, from, to) : [],
+        };
+      });
   if (!data) return <Empty>You don&rsquo;t see costs anywhere.</Empty>;
   const moved = data.rows.filter(
     (r) =>
@@ -37,6 +37,7 @@ export default async function VariancePage({ searchParams }: { searchParams: Sea
   const loss = data.rows.reduce((s, r) => s + Math.min(0, Number(r.variance_value)), 0);
   return (
     <div className="space-y-4">
+      <PlaceSwitcher screen="variance" places={places} current={data.place.store_id} quiet />
       <div className="flex items-baseline justify-between gap-2">
         <h1 className="text-xl font-semibold">Variance</h1>
         <p className="truncate text-sm text-slate-600" data-testid="variance-store">
@@ -45,20 +46,7 @@ export default async function VariancePage({ searchParams }: { searchParams: Sea
       </div>
       <MenuTabs active="variance" costs sales={data.sales} />
       <form className="grid grid-cols-2 gap-2" action="/menu/variance">
-        <label className="col-span-2 space-y-1">
-          <span className="text-sm">Store</span>
-          <select
-            name="store"
-            defaultValue={data.place.store_id}
-            className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3"
-          >
-            {data.stores.map((s) => (
-              <option key={s.store_id} value={s.store_id}>
-                {s.store_name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <input type="hidden" name="node" value={data.place.store_id} />
         <label className="space-y-1">
           <span className="text-sm">From</span>
           <input
@@ -82,30 +70,33 @@ export default async function VariancePage({ searchParams }: { searchParams: Sea
         </button>
       </form>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-slate-500">
-          Cost % at {data.place.outlet_name} (prices before tax)
-        </h2>
-        {data.costs.length === 0 ? (
-          <Empty>No sales posted in this period.</Empty>
-        ) : (
-          <ul className="grid grid-cols-2 gap-2">
-            {data.costs.map((c) => (
-              <li
-                key={c.menu}
-                className="rounded-xl bg-white p-3 ring-1 ring-slate-200"
-                data-testid="cost-pct-tile"
-              >
-                <p className="text-sm text-slate-600">{c.menu === 'Bar' ? 'Beverage' : 'Food'}</p>
-                <p className="text-2xl font-semibold tabular-nums">{c.actual_pct ?? '–'}%</p>
-                <p className="text-xs text-slate-500">
-                  recipe {c.theoretical_pct ?? '–'}% · sales {formatMoney(c.revenue)}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {/* a store nothing is sold from (a main store) has no cost % */}
+      {data.place.outlet_name && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold text-slate-500">
+            Cost % at {data.place.outlet_name} (prices before tax)
+          </h2>
+          {data.costs.length === 0 ? (
+            <Empty>No sales posted in this period.</Empty>
+          ) : (
+            <ul className="grid grid-cols-2 gap-2">
+              {data.costs.map((c) => (
+                <li
+                  key={c.menu}
+                  className="rounded-xl bg-white p-3 ring-1 ring-slate-200"
+                  data-testid="cost-pct-tile"
+                >
+                  <p className="text-sm text-slate-600">{c.menu === 'Bar' ? 'Beverage' : 'Food'}</p>
+                  <p className="text-2xl font-semibold tabular-nums">{c.actual_pct ?? '–'}%</p>
+                  <p className="text-xs text-slate-500">
+                    recipe {c.theoretical_pct ?? '–'}% · sales {formatMoney(c.revenue)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-slate-500">

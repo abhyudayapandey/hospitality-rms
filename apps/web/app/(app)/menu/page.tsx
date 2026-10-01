@@ -1,30 +1,30 @@
 import Link from 'next/link';
 import { Empty } from '@/components/messages';
-import { requireUser } from '@/lib/auth/server';
+import { PlaceSwitcher } from '@/components/place-switcher';
 import { withUser } from '@/lib/db';
 import { formatMoney } from '@/lib/format';
 import { param, type SearchParams } from '@/lib/inventory';
-import { highCost, menuPlaces, myRecipes, outletCosting } from '@/lib/menu';
+import { highCost, myRecipes, outletCosting } from '@/lib/menu';
+import { placesFor } from '@/lib/places';
 import { salesPlaces } from '@/lib/production';
 import { MenuTabs, RecipeList } from './parts';
 
 // Menu costs (ADR 014): cost per serve and cost % of each menu item at an outlet, at the
 // current weighted-average cost (standard where there is no stock yet). Only the stores
 // where the person holds MENU view are listed; without any, the recipes they may read.
+// People covering several outlets pick one with the "Viewing:" switcher (ADR 016).
 export default async function MenuPage({ searchParams }: { searchParams: SearchParams }) {
-  const user = await requireUser();
   const sp = await searchParams;
-  const data = await withUser(user.id, async (tx) => {
-    const places = await menuPlaces(tx);
-    if (places.length === 0)
-      return { places, recipes: await myRecipes(tx), rows: [], outlet: null };
-    const outlet = places.find((p) => p.outlet_id === param(sp, 'outlet')) ?? places[0]!;
+  const ctx = await placesFor('menu', searchParams);
+  // recipe pages link back with ?outlet=
+  const place = ctx.places.find((p) => p.id === param(sp, 'outlet')) ?? ctx.place;
+  const data = await withUser(ctx.shell.user.id, async (tx) => {
+    if (!place) return { recipes: await myRecipes(tx), rows: [], outlet: null };
     const recipes = await myRecipes(tx);
     return {
-      places,
       recipes,
-      rows: await outletCosting(tx, outlet.outlet_id),
-      outlet,
+      rows: await outletCosting(tx, place.id),
+      outlet: { outlet_id: place.id, outlet_name: place.name },
       sales: await salesPlaces(tx),
     };
   });
@@ -37,13 +37,13 @@ export default async function MenuPage({ searchParams }: { searchParams: SearchP
       </div>
     );
   }
-  const outlets = [...new Map(data.places.map((p) => [p.outlet_id, p.outlet_name]))];
   const recipeOf = new Map(
     data.recipes.filter((r) => r.kind === 'menu').map((r) => [r.subject_id, r]),
   );
   const groups = [...new Set(data.rows.map((r) => `${r.menu} · ${r.category}`))];
   return (
     <div className="space-y-4">
+      <PlaceSwitcher screen="menu" places={ctx.places} current={data.outlet.outlet_id} quiet />
       <div className="flex items-baseline justify-between gap-2">
         <h1 className="text-xl font-semibold">Menu costs</h1>
         <p className="truncate text-sm text-slate-600" data-testid="menu-outlet">
@@ -51,27 +51,6 @@ export default async function MenuPage({ searchParams }: { searchParams: SearchP
         </p>
       </div>
       <MenuTabs active="costs" costs sales={data.sales.length > 0} />
-      {outlets.length > 1 && (
-        <nav aria-label="Outlet" className="-mx-4 overflow-x-auto px-4">
-          <ul className="flex gap-2">
-            {outlets.map(([id, name]) => (
-              <li key={id}>
-                <Link
-                  href={`/menu?outlet=${id}`}
-                  aria-current={id === data.outlet.outlet_id ? 'true' : undefined}
-                  className={`flex min-h-11 items-center rounded-full px-4 text-sm whitespace-nowrap ${
-                    id === data.outlet.outlet_id
-                      ? 'bg-slate-200 font-semibold'
-                      : 'ring-1 ring-slate-300'
-                  }`}
-                >
-                  {name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      )}
       <p className="text-xs text-slate-500">
         Cost per serve at today&rsquo;s average stock cost (standard cost where there is no stock);
         prices before tax.

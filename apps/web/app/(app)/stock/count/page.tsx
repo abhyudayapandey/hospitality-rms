@@ -7,7 +7,7 @@ import { supplyContext, type SearchParams } from '@/lib/inventory';
 import { StartCountButton } from './start-count';
 
 export default async function CountPage({ searchParams }: { searchParams: SearchParams }) {
-  const ctx = await supplyContext(searchParams);
+  const ctx = await supplyContext(searchParams, 'count');
   if (!ctx.can('STOCK_ADJUSTMENTS', 'modify') || !ctx.node || ctx.node.derived) {
     return <NoSupplyAccess />;
   }

@@ -15,7 +15,7 @@ export default async function TransferPage({
   searchParams: SearchParams;
 }) {
   const { id } = await params;
-  const ctx = await supplyContext(searchParams);
+  const ctx = await supplyContext(searchParams, 'transfers');
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
     const t = await sql<{

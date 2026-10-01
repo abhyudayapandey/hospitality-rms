@@ -27,7 +27,7 @@ async function places(c: PoolClient, user: string, screen: string): Promise<Plac
     'select id, code, kind, type, preferred from core.screen_places($1)',
     [screen],
   );
-  if (r.error) throw new Error(`${user} ${screen}: ${r.error}`);
+  if (r.error !== undefined) throw new Error(`${user} ${screen}: ${r.error}`);
   return r.rows;
 }
 const codes = (ps: Place[]) => ps.map((p) => p.code);
@@ -153,6 +153,29 @@ describe('core.screen_places', () => {
       const menu = await places(c, 'test.area-manager', 'menu');
       expect(menu.length).toBeGreaterThan(1);
       expect(new Set(menu.map((p) => p.kind))).toEqual(new Set(['outlet']));
+    });
+  });
+
+  it('core.my_home: whether a person works at an outlet (shifts, clock and swaps)', async () => {
+    await inRolledBackTx(async (c) => {
+      const home = async (user: string) =>
+        (
+          await attemptAs<{ at_workplace: boolean }>(
+            c,
+            ids.user(user),
+            'select at_workplace from core.my_home()',
+          )
+        ).rows![0]?.at_workplace;
+      for (const u of [
+        'test.bartender.1.0',
+        'test.general-manager.1.0',
+        'test.central-kitchen-chef',
+      ]) {
+        expect(await home(u), u).toBe(true);
+      }
+      for (const u of ['test.account-owner', 'test.area-manager', 'test.hr-admin']) {
+        expect(await home(u), u).toBe(false);
+      }
     });
   });
 

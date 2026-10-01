@@ -6,7 +6,7 @@ import { itemOptions, supplyContext, type SearchParams } from '@/lib/inventory';
 import { TransferRequestForm } from './transfer-request-form';
 
 export default async function NewTransferPage({ searchParams }: { searchParams: SearchParams }) {
-  const ctx = await supplyContext(searchParams);
+  const ctx = await supplyContext(searchParams, 'transfers');
   if (!ctx.can('TRANSFERS', 'modify') || !ctx.node || ctx.node.derived) return <NoSupplyAccess />;
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => ({

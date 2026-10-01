@@ -24,7 +24,7 @@ test('two-leg transfer: requested, sent by the central kitchen store keeper, rec
   await expect(from).toHaveValue(await placeId('TEST-BAR-3.0-BAR-STORE'));
   await from.selectOption(ck);
   await page.getByRole('textbox', { name: 'Request Test Potatoes' }).fill('4');
-  await page.getByRole('button', { name: 'Request 1 items' }).click();
+  await page.getByRole('button', { name: 'Request 1 item' }).click();
   await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
   await expect(page.getByTestId('transfer-progress')).toHaveText('awaiting dispatch');
@@ -70,7 +70,7 @@ test('store to store in one outlet: the main store keeper sends, the kitchen’s
   expect(offered).not.toContain(await placeId('TEST-HOTEL-1.1-MAIN-STORE'));
   await from.selectOption(main);
   await page.getByRole('textbox', { name: 'Request Test Basmati Rice' }).fill('2');
-  await page.getByRole('button', { name: 'Request 1 items' }).click();
+  await page.getByRole('button', { name: 'Request 1 item' }).click();
   await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
 

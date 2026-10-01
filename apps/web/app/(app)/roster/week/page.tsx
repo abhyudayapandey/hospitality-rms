@@ -12,7 +12,7 @@ import { RemoveButton, WeekActions } from './week-actions';
 // The manager's week: build from templates, assign, publish. Mobile-first: one column,
 // grouped by day; each shift shows who is on it and the open slots.
 export default async function WeekPage({ searchParams }: { searchParams: SearchParams }) {
-  const ctx = await peopleContext(searchParams);
+  const ctx = await peopleContext(searchParams, 'roster');
   if (!ctx.can('ROSTER') || !ctx.node) {
     return <p className="text-slate-600">You don&apos;t have access to roster.</p>;
   }
@@ -31,7 +31,7 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
   return (
     <div className="space-y-4">
       <PollRefresh />
-      <PeopleHeader ctx={ctx} active="/roster/week" title="Roster" picker />
+      <PeopleHeader ctx={ctx} active="/roster/week" title="Roster" />
       <div className="flex items-center justify-between gap-2">
         <Link
           href={link(addDays(monday, -7))}

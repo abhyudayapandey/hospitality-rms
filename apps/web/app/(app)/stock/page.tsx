@@ -7,7 +7,7 @@ import { withUser } from '@/lib/db';
 import { formatQty, param, stockList, supplyContext, type SearchParams } from '@/lib/inventory';
 
 export default async function StockPage({ searchParams }: { searchParams: SearchParams }) {
-  const ctx = await supplyContext(searchParams);
+  const ctx = await supplyContext(searchParams, 'stock');
   if (!ctx.can('STOCK_LEVELS') || !ctx.node) return <NoSupplyAccess />;
   const belowOnly = param(await searchParams, 'below') === '1';
   const user = await requireUser();

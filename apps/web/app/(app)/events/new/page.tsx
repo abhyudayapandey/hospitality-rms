@@ -9,7 +9,7 @@ import { EventForm } from '../event-form';
 import { eventFormOptions } from '../options';
 
 export default async function NewEventPage({ searchParams }: { searchParams: SearchParams }) {
-  const ctx = await peopleContext(searchParams);
+  const ctx = await peopleContext(searchParams, 'events');
   if (!ctx.can('EVENTS', 'modify') || !ctx.node)
     return <Empty>You can&apos;t create events.</Empty>;
   const node = ctx.node;

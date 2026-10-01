@@ -8,7 +8,7 @@ import { photosEnabled } from '@/lib/photos';
 import { WastageForm } from './wastage-form';
 
 export default async function WastagePage({ searchParams }: { searchParams: SearchParams }) {
-  const ctx = await supplyContext(searchParams);
+  const ctx = await supplyContext(searchParams, 'wastage');
   if (!ctx.can('STOCK_ADJUSTMENTS', 'modify') || !ctx.node || ctx.node.derived) {
     return <NoSupplyAccess />;
   }

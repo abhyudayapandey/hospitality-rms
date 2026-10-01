@@ -4,7 +4,8 @@
 
 export const SESSION_COOKIE = 'oo_session';
 export const REFRESH_COOKIE = 'oo_refresh';
-export const NODE_COOKIE = 'oo_node';
+/** The place last chosen on each screen (ADR 016), a JSON map of screen to place id. */
+export const PLACE_COOKIE = 'oo_places';
 export const PKCE_COOKIE = 'oo_pkce';
 
 export const IDLE_TIMEOUT_S = 12 * 60 * 60; // 12 h without activity

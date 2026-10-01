@@ -1,51 +1,43 @@
 import 'server-only';
-import { loadShell, type NodeRow, type Shell } from './shell';
-import { sql, type Tx } from './db';
+import { sql, withUser, type Tx } from './db';
+import type { SearchParams } from './params';
+import { pickPlace, screenPlaces, type Place, type Screen } from './places';
+import { loadShell, type Shell } from './shell';
 
 // Reads for the supply screens. Every query runs inside withUser, so RLS decides what is
 // visible; access here only chooses what to show (ADR 004). Every list is filtered by one
 // delivery node (ADR 007: node-filtered reads stay well under 200 ms).
 
-export type SearchParams = Promise<Record<string, string | string[] | undefined>>;
-
-export function param(sp: Record<string, string | string[] | undefined>, key: string): string {
-  const v = sp[key];
-  return typeof v === 'string' ? v : '';
-}
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** Route params are user input: check before casting to uuid in SQL. */
-export function isUuid(s: string): boolean {
-  return UUID.test(s);
-}
+export { isUuid, param, type SearchParams } from './params';
 
 export interface SupplyContext {
   shell: Shell;
-  /** delivery nodes the user can see, own first, then derived (view-only) */
-  nodes: NodeRow[];
-  node: NodeRow | null;
+  screen: SupplyScreen;
+  /** the stock locations this screen can show (core.screen_places), most useful first */
+  nodes: Place[];
+  node: Place | null;
   can(domain: string, access?: 'view' | 'modify'): boolean;
 }
 
+export type SupplyScreen = Extract<
+  Screen,
+  'stock' | 'count' | 'wastage' | 'orders' | 'transfers' | 'production' | 'variance'
+>;
+
 /**
- * The delivery node the supply screens work on: ?node=, else the current node when it
- * is a delivery node, else the first stock location the user holds (own before derived).
+ * The stock location a supply screen works on (ADR 016): ?node= when the screen offers it,
+ * else the person's last choice on this screen, else the most useful one.
  */
-export async function supplyContext(sp: SearchParams): Promise<SupplyContext> {
+export async function supplyContext(
+  sp: SearchParams,
+  screen: SupplyScreen,
+): Promise<SupplyContext> {
   const shell = await loadShell();
-  const wanted = param(await sp, 'node');
-  const nodes = shell.nodes
-    .filter((n) => n.type === 'delivery' && n.holds_stock)
-    .sort((a, b) => Number(a.derived) - Number(b.derived));
-  const node =
-    nodes.find((n) => n.id === wanted) ??
-    nodes.find((n) => n.id === shell.currentNode?.id) ??
-    nodes.find((n) => !n.derived && n.holds_stock) ??
-    nodes[0] ??
-    null;
+  const nodes = await withUser(shell.user.id, (tx) => screenPlaces(tx, screen, shell));
+  const node = await pickPlace(screen, nodes, sp);
   return {
     shell,
+    screen,
     nodes,
     node,
     can(domain, access = 'view') {

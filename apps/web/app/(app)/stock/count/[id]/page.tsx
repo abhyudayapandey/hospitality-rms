@@ -14,7 +14,7 @@ export default async function CountSheetPage({
   searchParams: SearchParams;
 }) {
   const { id } = await params;
-  const ctx = await supplyContext(searchParams);
+  const ctx = await supplyContext(searchParams, 'count');
   if (!ctx.can('STOCK_ADJUSTMENTS', 'modify') || !ctx.node) return <NoSupplyAccess />;
   const user = await requireUser();
   const { count, lines } = await withUser(user.id, async (tx) => {

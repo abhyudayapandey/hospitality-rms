@@ -5,15 +5,8 @@ import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatMoney } from '@/lib/format';
 import { formatQty, isUuid, param, type SearchParams } from '@/lib/inventory';
-import {
-  lineCosts,
-  menuPlaces,
-  myRecipes,
-  outletCosting,
-  procedure,
-  recipeCard,
-  shelfLife,
-} from '@/lib/menu';
+import { lineCosts, menuPlaces, myRecipes, outletCosting, procedure, recipeCard } from '@/lib/menu';
+import { shelfLifeText } from '@/lib/shelf-life';
 import { PriceForm } from './price-form';
 
 // One recipe: ingredients for a batch (prep) or a serve (menu item), and a prep item's
@@ -69,8 +62,8 @@ export default async function RecipePage({
         <p className="text-sm text-slate-600">{recipe.grp}</p>
         {recipe.kind === 'prep' && (
           <p className="mt-1 text-sm" data-testid="batch">
-            Batch makes <strong>{formatQty(recipe.batch_yield!, recipe.unit!)}</strong> · keeps{' '}
-            <strong>{shelfLife(recipe.shelf_life_hours)}</strong>
+            Batch makes <strong>{formatQty(recipe.batch_yield!, recipe.unit!)}</strong> ·{' '}
+            <strong>{shelfLifeText(recipe.shelf_life_hours)}</strong>
           </p>
         )}
       </div>

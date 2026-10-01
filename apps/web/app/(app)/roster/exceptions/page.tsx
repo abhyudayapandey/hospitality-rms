@@ -22,9 +22,10 @@ function detail(e: ExceptionRow): string {
 // computed nightly (late, no show, no clock-out, not rostered) or at the punch (outside the
 // fence, no location). Each waits for whoever runs that department's roster (ADR 009).
 export default async function ExceptionsPage({ searchParams }: { searchParams: SearchParams }) {
-  const ctx = await peopleContext(searchParams);
-  if (!ctx.can('ATTENDANCE') || !ctx.node) {
-    return <p className="text-slate-600">You don&apos;t have access to attendance.</p>;
+  const ctx = await peopleContext(searchParams, 'exceptions');
+  if (!ctx.node) {
+    // staff see their own exceptions on My shifts (audit #10)
+    return <p className="text-slate-600">You don&apos;t review attendance anywhere.</p>;
   }
   const node = ctx.node;
   const status = param(await searchParams, 'status') === 'closed' ? 'closed' : 'open';
@@ -41,7 +42,7 @@ export default async function ExceptionsPage({ searchParams }: { searchParams: S
   return (
     <div className="space-y-4">
       <PollRefresh />
-      <PeopleHeader ctx={ctx} active="/roster/exceptions" title="Exceptions" picker />
+      <PeopleHeader ctx={ctx} active="/roster/exceptions" title="Exceptions" />
       <div className="grid grid-cols-2 gap-2 text-sm">
         {(['open', 'closed'] as const).map((s) => (
           <Link

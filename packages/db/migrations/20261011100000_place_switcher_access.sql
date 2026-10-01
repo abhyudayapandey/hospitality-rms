@@ -157,7 +157,8 @@ $$;
 -- most useful first: preferred 1 = their home place (or its outlet), 2 = the store linked
 -- to their home department, 3 = their outlet's main stock location, 9 = any other.
 create function core.screen_places(p_screen text)
-returns table (id uuid, code text, name text, kind text, type text, preferred int)
+returns table (id uuid, code text, name text, kind text, type text, timezone text,
+               preferred int)
 language plpgsql stable security definer
 set search_path = pg_catalog, core, hr, inv, menu, ops
 as $$
@@ -180,6 +181,8 @@ begin
               order by d.id limit 1);
   return query
     select n.id, n.code, n.name, n.kind, n.type,
+           coalesce(n.timezone, (select t.default_timezone from core.tenant t
+                                  where t.id = n.tenant_id)),
            case when n.id = v_home or n.id = v_outlet then 1
                 when n.id = any (v_stores) then 2
                 when n.id = v_main then 3
@@ -216,8 +219,20 @@ begin
              when 'roster' then core.can('ROSTER', 'view', n.id, null)
              else core.can('ATTENDANCE', 'modify', n.id, null) end
        end
-     order by 6, n.name;
+     order by 7, n.name;
 end $$;
+
+-- The current user's home place, and whether it is at an outlet or below (people whose
+-- home is a company, region or area have no shifts or clock: audit #13).
+create function core.my_home()
+returns table (id uuid, name text, kind text, at_workplace boolean)
+language sql stable security definer
+set search_path = pg_catalog, core, hr
+as $$
+  select n.id, n.name, n.kind, core.nearest(n.id, array['outlet', 'site']) is not null
+    from hr.worker w join core.hierarchy_node n on n.id = w.org_node_id
+   where w.owner_user_id = core.current_user_id() and w.status = 'active';
+$$;
 
 -- ---------------------------------------------------------------------------
 -- Job roles an admin can assign
@@ -374,9 +389,11 @@ end $$;
 
 revoke execute on function inv.can_produce_at(uuid), ops.can_read_event_node(uuid),
   ops.visible_event_nodes(), core.is_team_place(uuid), core.screen_places(text),
-  core.derive_job_role_access_at(uuid, text, uuid), core.admin_job_roles(uuid) from public;
+  core.my_home(), core.derive_job_role_access_at(uuid, text, uuid), core.admin_job_roles(uuid)
+  from public;
 grant execute on function inv.can_produce_at(uuid), ops.can_read_event_node(uuid),
-  ops.visible_event_nodes(), core.screen_places(text), core.admin_job_roles(uuid) to app_rw;
+  ops.visible_event_nodes(), core.screen_places(text), core.my_home(),
+  core.admin_job_roles(uuid) to app_rw;
 
 -- migrate:down
 -- Forward-only in production (ADR 005); this restores the previous shape for local work.
@@ -394,7 +411,7 @@ begin
 end $$;
 revoke execute on function core.admin_job_roles() from public;
 grant execute on function core.admin_job_roles() to app_rw;
-drop function core.screen_places(text), core.is_team_place(uuid);
+drop function core.my_home(), core.screen_places(text), core.is_team_place(uuid);
 update core.domain_table set visible_fn = null, visible_row_fn = null, visible_column = null
  where table_name in ('ops.event'::regclass, 'ops.event_requirement'::regclass);
 select core.apply_domain_rls('ops.event');
