@@ -1,0 +1,8 @@
+prep_item_code,name,unit,batch_yield,batch_cost_inr,cost_per_unit_inr
+GINGER-GARLIC-PASTE,Ginger Garlic Paste,g,1000,174.67,0.1747
+MINT-CHUTNEY,Mint Chutney,g,500,89.75,0.1795
+SUGAR-SYRUP,Sugar Syrup (house mixer),ml,800,24.0,0.03
+SOUR-MIX,Sour Mix (house mixer),ml,900,112.0,0.1244
+NEGRONI-BATCH,Negroni (pre-batched),ml,2000,4560.0,2.28
+OLD-FASHIONED-BATCH,Old Fashioned (pre-batched),ml,1500,2654.5,1.7697
+HOUSE-SANGRIA-BATCH,House Sangria (pre-batched),ml,3750,3880.83,1.0349

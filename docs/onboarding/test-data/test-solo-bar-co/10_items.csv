@@ -35,3 +35,16 @@ ORANGE-JUICE,Test Orange Juice,Mixers,l,yes,120,SUPPLIER-BEVERAGES
 CRANBERRY-JUICE,Test Cranberry Juice,Mixers,l,no,180,SUPPLIER-BEVERAGES
 ICE-CUBES,Test Ice Cubes,Bar Consumables,kg,yes,15,SUPPLIER-BEVERAGES
 COCKTAIL-NAPKINS-PACK-OF-100,Test Cocktail Napkins (Pack of 100),Bar Consumables,pack,no,90,SUPPLIER-BEVERAGES
+CURD,Test Curd,Dairy,kg,yes,90,SUPPLIER-FOOD
+CAMPARI-750ML,Test Campari 750ml,Liquor,bottle,no,2400,SUPPLIER-BEVERAGES
+SWEET-VERMOUTH-750ML,Test Sweet Vermouth 750ml,Liquor,bottle,no,1500,SUPPLIER-BEVERAGES
+TRIPLE-SEC-750ML,Test Triple Sec 750ml,Liquor,bottle,no,1300,SUPPLIER-BEVERAGES
+COFFEE-LIQUEUR-750ML,Test Coffee Liqueur 750ml,Liquor,bottle,no,1700,SUPPLIER-BEVERAGES
+ANGOSTURA-BITTERS-200ML,Test Angostura Bitters 200ml,Bar Consumables,bottle,no,1200,SUPPLIER-BEVERAGES
+COFFEE-BEANS,Test Coffee Beans,Bar Consumables,kg,no,1100,SUPPLIER-FOOD
+SUNFLOWER-OIL,Test Sunflower Oil,Dry Grocery,l,no,160,SUPPLIER-FOOD
+SALT,Test Salt,Dry Grocery,kg,no,25,SUPPLIER-FOOD
+RED-CHILLI-POWDER,Test Red Chilli Powder,Dry Grocery,kg,no,350,SUPPLIER-FOOD
+GARAM-MASALA,Test Garam Masala,Dry Grocery,kg,no,900,SUPPLIER-FOOD
+TURMERIC-POWDER,Test Turmeric Powder,Dry Grocery,kg,no,300,SUPPLIER-FOOD
+TOMATO-KETCHUP,Test Tomato Ketchup,Dry Grocery,kg,no,140,SUPPLIER-FOOD

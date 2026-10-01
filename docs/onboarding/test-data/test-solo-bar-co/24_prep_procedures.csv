@@ -1,0 +1,15 @@
+prep_item_code,step,instruction,minutes
+GINGER-GARLIC-PASTE,1,Peel ginger and garlic.,20
+GINGER-GARLIC-PASTE,2,"Blend with oil to a smooth paste; store airtight, labelled.",10
+MINT-CHUTNEY,1,Pick and wash mint and coriander.,15
+MINT-CHUTNEY,2,"Blend with chillies, lemon juice and salt; chill.",10
+SUGAR-SYRUP,1,Dissolve sugar in 500 ml hot water.,10
+SUGAR-SYRUP,2,"Cool, bottle, label with date; refrigerate.",5
+SOUR-MIX,1,Juice the lemons and strain.,15
+SOUR-MIX,2,"Mix with sugar syrup; bottle, label, refrigerate.",5
+NEGRONI-BATCH,1,"Combine gin, Campari and vermouth with 200 ml chilled water for dilution.",5
+NEGRONI-BATCH,2,"Bottle in 500 ml bottles, label with batch time; refrigerate.",10
+OLD-FASHIONED-BATCH,1,"Combine whisky, syrup and bitters with 135 ml water.",5
+OLD-FASHIONED-BATCH,2,"Bottle, label and refrigerate.",5
+HOUSE-SANGRIA-BATCH,1,Slice lemons; combine all ingredients in a dispenser.,10
+HOUSE-SANGRIA-BATCH,2,Chill at least 2 hours; discard after 48 hours.,5
