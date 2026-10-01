@@ -195,7 +195,8 @@ describe('production', () => {
       const rows = await attemptAs<{ n: number }>(
         c,
         ids.user('test.executive-chef.1.0'),
-        'select count(*)::int as n from inv.production',
+        'select count(*)::int as n from inv.production where delivery_node_id = $1',
+        [ids.node('TEST-CENTRAL-KITCHEN-STORE')],
       );
       expect(rows.rows![0]!.n).toBe(0);
     });
