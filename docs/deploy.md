@@ -571,6 +571,29 @@ that is already loaded. On **Logins**, the invitation note shows the daily allow
 App and database only: no `cdk diff` change. Run the Deploy workflow (one migration:
 `remove_account_owner`). Then fix Test Company as in "Fixing an extra account owner".
 
+#### Releasing menu, recipes and costing (ADR 014, Prompt 9a)
+
+App and database only: no `cdk diff` change, no new parameter or secret. Run the Deploy
+workflow (three migrations: `menu_recipes`, `menu_costing`, `menu_reads`; it also syncs the
+product access, which adds the RECIPES, RECIPES_TEAM, MENU and DERIVED_MENU grants). Before
+merging, run **Actions → RLS equivalence (all users)**: access rules changed.
+
+Then load the menu files into each test customer already on production: the customer's
+page → **Import setup files** → the zip built as in step 7 (it now holds files 18 to 24) →
+**Upload and dry run**. A customer loaded before the menu data (Test Company) should
+report no problems, no menu warnings and **392 changes**:
+
+- items 7 new (the seven new bar and dairy items), item locations 26 new, opening stock 25
+  new (its zero-quantity Angostura Bitters line unchanged);
+- unit conversions 71, prep items 10, prep locations 34, menu items 37, menu prices 111,
+  recipes 47, prep procedures 24, all new;
+- everything else unchanged, and the same 2 approval-coverage warnings as before.
+
+**Apply**, then **Apply** again: "No changes". Test Solo Bar Co, if not loaded yet, follows
+step 7 with its full count (399). Then sign in as `test.general-manager.1.0`: **Menu**
+lists Hotel 1.0's 37 items with cost %; as `test.commis.1.0`, **Menu** lists the kitchen
+recipes only, with no prices.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.
@@ -668,29 +691,31 @@ role and keeps them Account Owner through file 08.)
 **3. Import**: the customer's page → **Import setup files** → choose the zip →
 **Upload and dry run**. The dry run should report no problems and:
 
-- **Test Company**: "Dry run: applying would make 1580 changes." Per table (new / changed):
+- **Test Company**: "Dry run: applying would make 1914 changes." Per table (new / changed):
   org places 32 / 1 (the company root gets the file's values), delivery places 16,
   links 16, location settings 5, job roles 53, job role access 85, users 106 (the owner
   exists already), workers 106 / 1 (the owner's), extra access 3, suppliers 7, items 71,
   item locations 329, opening stock 328 (its zero-quantity Angostura Bitters
-  line at Bar 3.0 is reported unchanged), leave types 5, leave balances 321, roster
-  settings 1, shift templates 90, events 4. **2 approval-coverage warnings**, both
+  line at Bar 3.0 is reported unchanged), unit conversions 71, prep items 10, prep
+  locations 34, menu items 37, menu prices 111, recipes 47, prep procedures 24, leave types
+  5, leave balances 321, roster settings 1, shift templates 90, events 4. **2 approval-coverage warnings**, both
   expected: `test.account-owner`'s own LEAVE and SHIFT_SWAP at TEST-COMPANY have no
   approver but them and are approved at the top of the chain (ADR 010).
-- **Test Solo Bar Co**: "Dry run: applying would make 234 changes." Per table: org places
+- **Test Solo Bar Co**: "Dry run: applying would make 399 changes." Per table: org places
   4 / 1, delivery places 4, links 3, location settings 1, job roles 7, job role access 12,
   users 6, workers 6 / 1, extra access 1 (the owner's Account Owner), suppliers 2, items
   49, item locations 53, opening stock 52 (its zero-quantity Angostura Bitters line is
-  reported unchanged), leave types 5, leave balances 21, roster
-  settings 1, shift templates 5. **5 approval-coverage warnings**, all expected, all for
+  reported unchanged), unit conversions 49, prep items 7, prep locations 7, menu items
+  27, menu prices 27, recipes 34, prep procedures 14, leave types 5, leave balances 21,
+  roster settings 1, shift templates 5. **5 approval-coverage warnings**, all expected, all for
   `test.solo.bar-manager` (the only manager): their own LEAVE, PURCHASE_ORDER,
   ROLE_CHANGE, SHIFT_SWAP and STOCK_ADJUSTMENT are approved at the top of the chain.
 
 Anything else (a problem listed, different counts): stop, don't apply, and send me the
 report.
 
-**4. Apply**: **Apply** on the dry run. The apply job reports "Applied: 1580 changes."
-(Test Solo Bar Co: 234). Then **The dry run this applied** → **Apply** again: it must say
+**4. Apply**: **Apply** on the dry run. The apply job reports "Applied: 1914 changes."
+(Test Solo Bar Co: 399). Then **The dry run this applied** → **Apply** again: it must say
 "Applied. No changes: everything in these files was already loaded."
 
 **5. Logins**: the customer's page → **Logins**.

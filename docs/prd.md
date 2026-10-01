@@ -198,6 +198,30 @@ Every stock change follows this path: the database checks the user's access at t
 - **NT-1** In-app notifications with unread badge for roster publish, swap and leave decisions _(Built)_. Web push _(Planned)_.
 - **DB-1** Manager dashboard: stock below par, today's roster coverage, open approvals, open exceptions, transfers in transit _(Planned)_.
 
+### 6.9 Menu, recipes, production and cost control _(menu, recipes and costing built; production, sales and variance in progress)_
+
+Spec and test data: `docs/onboarding/test-data/MENU_README.md` and files 18 to 24 of each test customer (ADR 014). The point-of-sale import comes later and will feed the same sales path.
+
+- **MNU-1** Each raw item has a unit conversion from its stock unit to the unit recipes use (1 kg = 1000 g; one 750 ml bottle = 750 ml; 1 lemon = 1 each).
+- **MNU-2** Prep items (kitchen prep, house mixers, batched cocktails) are stock items made in-house, with a standard batch yield and a shelf life. A prep location says whether the store makes it or receives it by transfer, and its par level.
+- **MNU-3** Recipes for prep items and menu items are versioned with effective dates. A change is a new version from today or a later date and never edits an old one. Sub-recipes are allowed; a recipe that would make a prep item from itself is refused. Each line uses the ingredient's recipe unit. Recipe and price changes are in the audit log.
+- **MNU-4** Menu items (Food or Bar, category, serving) are sold by an outlet from one of its own stores at a price before tax, also versioned by date.
+- **MNU-5** Cost per serve and cost % per outlet use the store's current weighted-average cost, or the standard cost where there is no stock yet. Prep costs roll up through their sub-recipes at a store that makes them. Costs are worked out when they are read, so they follow every cost or recipe change. Line cost = quantity ÷ (1 − trim loss %) × cost per recipe unit.
+- **MNU-6** Loading files 18 to 24 checks them against each other: units agree, a prep item's ingredients are stocked where it is made, no recipe cycles, and a menu item is sold from one of the outlet's own stores. A menu item sold from a store that does not stock one of its ingredients is a warning. Costs from the loaded test data equal the generated 98 files to the paisa.
+- **MNU-7** Recipes and procedures (steps, batch size, shelf life, never costs) are readable only by people who hold stock access at a store that makes or sells them, or who work in a department linked to such a store: kitchen staff read kitchen recipes, bar staff bar recipes. Housekeeping, front office and security staff read none. Managers with cost access read every recipe used at their stores.
+- **MNU-8** Prices and costs: department heads (their own department's store), outlet managers, cost controllers, hub managers and area managers. Editing menus, prices and recipes: outlet managers, for recipes used only within their outlet; area managers view only for now.
+- **PRD-1** _(In progress)_ Recording a batch where it is made: ingredients consumed per the recipe scaled to the batch (actual quantities editable), the prep item added with a batch number and expiry from its shelf life, in one transaction. Expired batches prompt a wastage entry. Prep items transfer like other items.
+- **SAL-1** _(In progress)_ Daily sales entry per outlet (menu item × quantity) until the POS import. Sales reduce stock at once by recipe; only sales may take stock below zero, which never blocks a sale and is flagged to the store keeper.
+- **VAR-1** _(In progress)_ Variance per store and period: opening + receipts + transfers in − transfers out − wastage − theoretical use (sales and production) against the closing count, with unexplained loss highlighted, and food and beverage cost % per outlet.
+
+| Group                              | Recipes and procedures                  | Prices and costs             | Editing                                          |
+| ---------------------------------- | --------------------------------------- | ---------------------------- | ------------------------------------------------ |
+| Staff, supervisor, department head | Through their department's linked store | Department head: their store | –                                                |
+| Stock user, store keeper           | At their store                          | –                            | –                                                |
+| Cost controller, hub manager       | At their stores                         | Yes                          | –                                                |
+| Outlet manager                     | Everything used in the outlet           | Yes                          | Menus, prices, recipes used only in their outlet |
+| Area manager                       | Everything used in the area             | Yes (view)                   | –                                                |
+
 ## 7. Workflows and approvals
 
 Every state-changing business action is a workflow request: submitted, routed through approval steps, then executed by the system. Drafts live in the module; approved changes are applied in one transaction by the executor.
