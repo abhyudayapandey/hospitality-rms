@@ -54,7 +54,9 @@ This builds on ADR 014 (menus, recipes, costing).
   - it is one transaction: a short ingredient posts nothing;
   - the same idempotency key returns the first batch.
 - **Who records:** stock users and store keepers at their store, hub managers and outlet
-  managers. Cost controllers can only view production.
+  managers. Cost controllers can only view production. Since ADR 016, PRODUCTION_TEAM
+  (commis, cooks, bartenders) also records at their department's store, with no other
+  stock access.
 - **A hub's reach.** In the delivery tree the outlets' stores sit under the central kitchen
   store. So a STOCK_USER or STORE_KEEPER grant there that covers "everything below" lets
   its holder post stock at every outlet store.

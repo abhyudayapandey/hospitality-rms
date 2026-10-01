@@ -206,11 +206,16 @@ test('clock in outside the fence is recorded and flagged for the manager', async
   await expect(rows).toHaveCount(open - 1);
 });
 
-test('exceptions: a hotel’s queue is grouped by department, each with whom it waits for', async ({
+test('exceptions: a department’s queue says whom each waits for; the GM picks the department', async ({
   page,
 }) => {
   await signInAs(page, 'Test General Manager 1.0');
+  // departments only on the switcher (ADR 016): the hotel itself falls back to one of them
   await page.goto(`/roster/exceptions?node=${await placeId('TEST-HOTEL-1.0')}`);
+  await expect(
+    page.getByRole('combobox', { name: 'Viewing' }).locator('option', { hasText: /Store$/ }),
+  ).toHaveCount(0);
+  await page.goto(`/roster/exceptions?node=${await placeId('TEST-HOTEL-1.0-HOUSEKEEPING')}`);
   const housekeeping = page
     .getByTestId('exceptions')
     .getByRole('region', { name: 'Test Hotel & Bar 1.0 – Housekeeping' });

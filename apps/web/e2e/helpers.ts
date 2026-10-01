@@ -201,3 +201,24 @@ export async function setupPeopleWeek(monday: string): Promise<void> {
     await client.end();
   }
 }
+
+/**
+ * The place the "Viewing:" switcher shows (ADR 016): the chosen option when it is a
+ * picker, the label when there is only one place, '' when the screen shows none.
+ */
+export async function viewing(page: Page): Promise<string> {
+  const bar = page.getByTestId('place-switcher');
+  if ((await bar.count()) === 0) return '';
+  const picker = bar.getByRole('combobox', { name: 'Viewing' });
+  if ((await picker.count()) > 0) {
+    return (await picker.locator('option:checked').textContent())?.trim() ?? '';
+  }
+  return (await bar.getByTestId('viewing').textContent())?.trim() ?? '';
+}
+
+/** The options of the "Viewing:" picker ([] when it is a plain label or absent). */
+export async function viewingOptions(page: Page): Promise<string[]> {
+  const picker = page.getByTestId('place-switcher').getByRole('combobox', { name: 'Viewing' });
+  if ((await picker.count()) === 0) return [];
+  return (await picker.locator('option').allTextContents()).map((o) => o.trim());
+}
