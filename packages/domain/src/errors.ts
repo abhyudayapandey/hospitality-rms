@@ -82,6 +82,8 @@ export const ERROR_MESSAGES = {
   INVALID_BASIS: 'Costs are shown at current or standard cost.',
   INVALID_DATE: 'Changes take effect today or later, and after any change already planned.',
   INVALID_PRICE: 'Enter a price of zero or more.',
+  NOT_MADE_HERE: 'That prep item is not made at this store; it arrives by transfer.',
+  INVALID_SOURCE: 'Sales come from daily entry or the POS import.',
   NOT_A_STOCK_LOCATION: "Stock isn't kept at that location. Pick one of its stores.",
   SESSION_EXPIRED: 'Your session has ended. Please sign in again.',
   UNEXPECTED: 'Something went wrong. Please try again.',

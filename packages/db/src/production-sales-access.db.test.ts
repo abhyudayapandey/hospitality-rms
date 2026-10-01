@@ -80,6 +80,15 @@ const sell = async (
 describe('production', () => {
   it('is recorded by stock users at a store that makes the item, nowhere else', async () => {
     await inRolledBackTx(async (c) => {
+      // a chef de partie (stock user at the hotel kitchen) makes ginger garlic paste there
+      const own = await produce(
+        c,
+        'test.chef-de-partie.1.0',
+        'TEST-HOTEL-1.0-KITCHEN-STORE',
+        'GINGER-GARLIC-PASTE',
+        1000,
+      );
+      expect(own.error).toBeUndefined();
       const ok = await produce(
         c,
         'test.central-kitchen-chef',
@@ -97,11 +106,11 @@ describe('production', () => {
         4000,
       );
       expect(notMade.error).toMatch(/NOT_MADE_HERE/);
-      // a store the person has no stock access at
+      // a store the person has no stock access at (the next hotel's kitchen)
       const elsewhere = await produce(
         c,
-        'test.central-kitchen-chef',
-        'TEST-HOTEL-1.0-KITCHEN-STORE',
+        'test.chef-de-partie.1.0',
+        'TEST-HOTEL-1.1-KITCHEN-STORE',
         'GINGER-GARLIC-PASTE',
         1000,
       );

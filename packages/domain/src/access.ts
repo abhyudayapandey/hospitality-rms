@@ -25,6 +25,10 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'RECIPES_TEAM', tree: 'org' },
   // prices and costs; modify edits menus, prices and recipes
   { code: 'MENU', tree: 'delivery' },
+  // recording prep batches where they are made (ADR 015)
+  { code: 'PRODUCTION', tree: 'delivery' },
+  // a day's sales per outlet (manual entry, later the POS import)
+  { code: 'SALES', tree: 'delivery' },
   { code: 'WORKERS', tree: 'org' },
   { code: 'COMPENSATION', tree: 'org' },
   { code: 'ROSTER', tree: 'org' },
@@ -38,6 +42,8 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'DERIVED_PURCHASE_ORDERS', tree: 'org' },
   { code: 'DERIVED_TRANSFERS', tree: 'org' },
   { code: 'DERIVED_MENU', tree: 'org' },
+  { code: 'DERIVED_PRODUCTION', tree: 'org' },
+  { code: 'DERIVED_SALES', tree: 'org' },
   { code: 'AUDIT', tree: 'org' },
   { code: 'NOTIFICATIONS', tree: 'self' },
   { code: 'USER_ACCESS', tree: 'org', admin: true },
@@ -100,6 +106,8 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       AI_RECOMMENDATIONS: v,
       RECIPES_TEAM: v,
       DERIVED_MENU: v,
+      DERIVED_PRODUCTION: v,
+      DERIVED_SALES: v,
     },
   },
   {
@@ -113,6 +121,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       TRANSFERS: m,
       PURCHASE_ORDERS: v,
       RECIPES: v,
+      PRODUCTION: m,
     },
   },
   {
@@ -126,6 +135,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       PURCHASE_ORDERS: m,
       AI_RECOMMENDATIONS: v,
       RECIPES: v,
+      PRODUCTION: m,
     },
   },
   {
@@ -139,6 +149,8 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       TRANSFERS: v,
       RECIPES: v,
       MENU: v,
+      PRODUCTION: v,
+      SALES: m,
     },
   },
   {
@@ -166,6 +178,10 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       RECIPES: v,
       MENU: m,
       DERIVED_MENU: v,
+      PRODUCTION: m,
+      SALES: m,
+      DERIVED_PRODUCTION: v,
+      DERIVED_SALES: v,
     },
   },
   {
@@ -185,6 +201,8 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       DERIVED_PURCHASE_ORDERS: v,
       DERIVED_TRANSFERS: v,
       DERIVED_MENU: v,
+      DERIVED_PRODUCTION: v,
+      DERIVED_SALES: v,
     },
   },
   {
@@ -198,6 +216,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       TRANSFERS: m,
       RECIPES: v,
       MENU: v,
+      PRODUCTION: m,
     },
   },
   { code: 'SUPPLY_VIEWER', name: 'Supply Viewer', kind: 'role', grants: { STOCK_LEVELS: v } },
@@ -239,6 +258,8 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       SHIFT_SWAPS: v,
       RECIPES: v,
       MENU: v,
+      PRODUCTION: v,
+      SALES: v,
     },
   },
 ];
