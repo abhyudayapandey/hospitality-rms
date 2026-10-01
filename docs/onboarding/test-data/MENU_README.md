@@ -26,17 +26,17 @@ Selling a menu item uses up its recipe from the store in file 23.
 
 ## Files
 
-| File | What it defines |
-|---|---|
-| `18_item_unit_conversions.csv` | For every raw item: its stock unit, the unit recipes use, and how many recipe units are in one stock unit (1 kg = 1000 g; 1 vodka bottle = 750 ml; 1 tonic can = 300 ml; 1 lemon = 1 each) |
-| `19_prep_items.csv` | Items made in-house: type (`kitchen_prep`, `house_mixer`, `batched_cocktail`), unit, standard batch yield, shelf life in hours |
-| `20_prep_locations.csv` | Where each prep item is held, whether it is made there (`made_here`) or received by transfer, and its par level |
-| `21_recipes.csv` | Recipe lines for prep items and menu items: ingredient, quantity in the recipe unit, and trim loss % (the part thrown away while preparing, e.g. prawn shells) |
-| `22_menu_items.csv` | What is sold: name, menu (Food/Bar), category, serving |
-| `23_menu_outlets.csv` | Which outlet sells which menu item, the price before tax, and the store its ingredients come from |
-| `24_prep_procedures.csv` | Method steps and minutes for each prep item |
-| `98_prep_costing_GENERATED.csv` | Generated, not filled: cost of one batch and cost per g/ml of each prep item |
-| `98_menu_costing_GENERATED.csv` | Generated, not filled: cost per serve and cost % for every menu item at every outlet |
+| File                            | What it defines                                                                                                                                                                            |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `18_item_unit_conversions.csv`  | For every raw item: its stock unit, the unit recipes use, and how many recipe units are in one stock unit (1 kg = 1000 g; 1 vodka bottle = 750 ml; 1 tonic can = 300 ml; 1 lemon = 1 each) |
+| `19_prep_items.csv`             | Items made in-house: type (`kitchen_prep`, `house_mixer`, `batched_cocktail`), unit, standard batch yield, shelf life in hours                                                             |
+| `20_prep_locations.csv`         | Where each prep item is held, whether it is made there (`made_here`) or received by transfer, and its par level                                                                            |
+| `21_recipes.csv`                | Recipe lines for prep items and menu items: ingredient, quantity in the recipe unit, and trim loss % (the part thrown away while preparing, e.g. prawn shells)                             |
+| `22_menu_items.csv`             | What is sold: name, menu (Food/Bar), category, serving                                                                                                                                     |
+| `23_menu_outlets.csv`           | Which outlet sells which menu item, the price before tax, and the store its ingredients come from                                                                                          |
+| `24_prep_procedures.csv`        | Method steps and minutes for each prep item                                                                                                                                                |
+| `98_prep_costing_GENERATED.csv` | Generated, not filled: cost of one batch and cost per g/ml of each prep item                                                                                                               |
+| `98_menu_costing_GENERATED.csv` | Generated, not filled: cost per serve and cost % for every menu item at every outlet                                                                                                       |
 
 ## Examples worth checking
 
