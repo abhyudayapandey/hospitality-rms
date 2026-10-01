@@ -102,7 +102,7 @@ describe('loader errors', () => {
       expect(r2.issues).toEqual([
         {
           file: '07_users.csv',
-          row: 27,
+          row: 30,
           column: 'job_role_code',
           message: 'BAR_BOSS is not in 06_job_roles.csv',
         },
@@ -150,6 +150,43 @@ describe('loader errors', () => {
     });
   });
 
+  it('refuses the test-only activity files 25 to 28 for a customer that is not a test customer (ADR 017)', async () => {
+    await inRolledBackTx(async (c) => {
+      // the solo bar as a new, real customer (its own code and usernames, is_test no),
+      // with one valid row in each activity file
+      const solo = readCustomerDir(join(DATA, 'test-solo-bar-co'));
+      const copy = Object.fromEntries(
+        Object.entries(solo).map(([f, text]) => [f, text.replaceAll('test.solo.', 'real.solo.')]),
+      );
+      const by = 'real.solo.bar-manager';
+      const files = {
+        ...copy,
+        '00_customer.csv': copy['00_customer.csv']!.replace(
+          'TEST-SOLO-COMPANY',
+          'REAL-SOLO',
+        ).replace(/,yes(\r?\n?)$/, ',no$1'),
+        '25_shifts_TEST_DATA_ONLY.csv': `roster_node_code,shift_name,job_role_code,week,days,username,rostered_by\r\nTEST-SOLO-BAR-BAR,Bar Evening,BARTENDER,1,Mon,real.solo.bartender,${by}\r\n`,
+        '26_production_TEST_DATA_ONLY.csv': `store_node_code,prep_item_code,day,time,quantity,made_by\r\nTEST-SOLO-BAR-KITCHEN-STORE,MINT-CHUTNEY,-1,10:00,500,${by}\r\n`,
+        '27_sales_TEST_DATA_ONLY.csv': `outlet_code,day,menu_item_code,quantity,posted_by\r\nTEST-SOLO-BAR,-1,MASALA-FRIES,3,${by}\r\n`,
+        '28_counts_TEST_DATA_ONLY.csv': `store_node_code,item_code,difference,counted_by,approved_by\r\nTEST-SOLO-BAR-KITCHEN-STORE,TOMATOES,0,${by},${by}\r\n`,
+      };
+      expect(files['00_customer.csv']).toContain('REAL-SOLO');
+      expect(files['00_customer.csv']).toMatch(/,no\r?\n?$/);
+      const before = await tenantCount(c, 'REAL-SOLO');
+      const r = await loadCustomer(c, files, { nested: true });
+      expect(r.applied).toBe(false);
+      const refused =
+        'this file is test data: only a test customer (is_test in file 00) may load it';
+      expect(r.issues).toEqual([
+        { file: '25_shifts_TEST_DATA_ONLY.csv', message: refused },
+        { file: '26_production_TEST_DATA_ONLY.csv', message: refused },
+        { file: '27_sales_TEST_DATA_ONLY.csv', message: refused },
+        { file: '28_counts_TEST_DATA_ONLY.csv', message: refused },
+      ]);
+      expect(await tenantCount(c, 'REAL-SOLO')).toBe(before);
+    });
+  });
+
   it('rejects job roles whose scope cannot be resolved, and writes nothing', async () => {
     await inRolledBackTx(async (c) => {
       // Hotel 1.0 without a main store: its supply point holds no stock, so main_store
@@ -163,9 +200,9 @@ describe('loader errors', () => {
       const r = await loadCustomer(c, files, { nested: true });
       expect(r.applied).toBe(false);
       expect(r.issues.map((i) => `${i.file}:${i.row}:${i.column}:${i.message}`)).toEqual([
-        '07_users.csv:34:job_role_code:STORE_MANAGER at TEST-HOTEL-1.0-STORES-TEAM: MAIN_STORE_REQUIRED (main_store)',
-        '07_users.csv:35:job_role_code:STORE_KEEPER at TEST-HOTEL-1.0-STORES-TEAM: MAIN_STORE_REQUIRED (main_store)',
-        '07_users.csv:36:job_role_code:RECEIVING_CLERK at TEST-HOTEL-1.0-STORES-TEAM: MAIN_STORE_REQUIRED (main_store)',
+        '07_users.csv:38:job_role_code:STORE_MANAGER at TEST-HOTEL-1.0-STORES-TEAM: MAIN_STORE_REQUIRED (main_store)',
+        '07_users.csv:39:job_role_code:STORE_KEEPER at TEST-HOTEL-1.0-STORES-TEAM: MAIN_STORE_REQUIRED (main_store)',
+        '07_users.csv:40:job_role_code:RECEIVING_CLERK at TEST-HOTEL-1.0-STORES-TEAM: MAIN_STORE_REQUIRED (main_store)',
       ]);
       expect(await tenantCount(c, 'TEST-COMPANY')).toBe(before);
     });

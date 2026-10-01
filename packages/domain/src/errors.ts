@@ -86,6 +86,7 @@ export const ERROR_MESSAGES = {
   INVALID_SOURCE: 'Sales come from daily entry or the POS import.',
   OUTLET_REQUIRED: 'Events are planned for a whole outlet. Pick the outlet.',
   INVALID_SCREEN: "That screen doesn't show places.",
+  TEST_CUSTOMER_ONLY: 'This is for test customers only.',
   NOT_A_STOCK_LOCATION: "Stock isn't kept at that location. Pick one of its stores.",
   SESSION_EXPIRED: 'Your session has ended. Please sign in again.',
   UNEXPECTED: 'Something went wrong. Please try again.',

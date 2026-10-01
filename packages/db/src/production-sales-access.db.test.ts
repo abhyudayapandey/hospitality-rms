@@ -33,7 +33,8 @@ async function onHand(c: PoolClient, sku: string, store: string): Promise<number
   );
   return Number(rows[0]!.q);
 }
-const today = () => new Date().toISOString().slice(0, 10);
+// the outlets' business day (IST): the test data's sales fill the six days before it
+const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
 const produce = async (
   c: PoolClient,

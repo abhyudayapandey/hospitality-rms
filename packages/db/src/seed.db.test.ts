@@ -29,8 +29,8 @@ describe('test customers', () => {
          from core.tenant t where t.code like 'TEST-%' order by t.code`,
     );
     expect(rows).toEqual([
-      { code: 'TEST-COMPANY', users: 107, places: 49, items: 81, stocked: 328 },
-      { code: 'TEST-SOLO-COMPANY', users: 7, places: 9, items: 56, stocked: 52 },
+      { code: 'TEST-COMPANY', users: 113, places: 49, items: 81, stocked: 332 },
+      { code: 'TEST-SOLO-COMPANY', users: 9, places: 9, items: 56, stocked: 52 },
     ]);
   });
 
@@ -64,16 +64,21 @@ describe('test customers', () => {
 
 describe('dev layer (seed/dev/001_workforce_dev.sql)', () => {
   it('has this week published and next week in draft, and no assignment breaks a rule', async () => {
-    const { rows } = await migratorPool.query<{ week: number; status: string }>(
-      `select distinct (s.local_date - hr.week_start(${TODAY})) / 7 as week, s.status
-         from hr.shift s
+    // next week at the places the test shifts file (25) covers is published by the loader
+    const FILE_25 = `(n.code like 'TEST-BAR-3.0-%' or n.code in ('TEST-HOTEL-1.0-KITCHEN', 'TEST-HOTEL-1.0-BAR'))`;
+    const { rows } = await migratorPool.query<{ week: number; file: boolean; status: string }>(
+      `select distinct (s.local_date - hr.week_start(${TODAY})) / 7 as week,
+              ${FILE_25} as file, s.status
+         from hr.shift s join core.hierarchy_node n on n.id = s.org_node_id
         where s.local_date between hr.week_start(${TODAY}) and hr.week_start(${TODAY}) + 13
           and s.template_id is not null
-        order by 1, 2`,
+        order by 1, 2, 3`,
     );
-    expect(rows.map((r) => [r.week, r.status])).toEqual([
-      [0, 'published'],
-      [1, 'draft'],
+    expect(rows.map((r) => [r.week, r.file, r.status])).toEqual([
+      [0, false, 'published'],
+      [0, true, 'published'],
+      [1, false, 'draft'],
+      [1, true, 'published'],
     ]);
     const assigned = await migratorPool.query<{ n: number }>(
       `select count(*)::int n from hr.shift_assignment a

@@ -95,7 +95,8 @@ pnpm db:up             start local Postgres (docker compose)
 pnpm db:migrate        run dbmate migrations
 pnpm db:seed           load the test customers (docs/onboarding/test-data) with the onboarding
                        loader, then seed/dev/ (shifts, punches, pay); sync product access
-                       (groups, matrix, bp_policy) and workflow definitions into every tenant
+                       (groups, matrix, bp_policy) and workflow definitions into every tenant;
+                       run the executor once (posts the test closing count, ADR 017)
 pnpm dev               run web app
 pnpm test              all tests (needs db:up + db:migrate + db:seed)
 pnpm test:unit         unit tests only (*.test.ts)
@@ -147,7 +148,10 @@ and place codes (`TEST-BAR-3.0-KITCHEN-STORE`); `packages/db/test/helpers.ts` re
 Each customer's `99_access_preview_GENERATED.csv` is the expected access; the loader test
 fails if they differ. Files 18 to 24 are menus, prep items and recipes (`MENU_README.md`);
 the `98_*_costing_GENERATED.csv` files are the expected costs at standard cost, and a test
-fails if the costs worked out from the loaded data differ by a paisa (ADR 014). `TEST_LOGINS_do_not_commit.csv` (passwords) is never committed.
+fails if the costs worked out from the loaded data differ by a paisa (ADR 014). Files 25 to 28
+(test customers only, ADR 017) load shifts, a past week of batches and sales, and a closing
+count, with days counted from the load date; the README's expected figures are pinned by
+`packages/db/src/test-data-activity.db.test.ts`. `TEST_LOGINS_do_not_commit.csv` (passwords) is never committed.
 
 ## How to work in this repo
 - Start every task in plan mode: list files to create/change and tests to write, then wait

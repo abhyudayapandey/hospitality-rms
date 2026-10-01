@@ -1,0 +1,8 @@
+store_node_code,item_code,difference,counted_by,approved_by
+TEST-HOTEL-1.0-BAR-STORE,GIN-750ML,-1,test.bar-manager.1.0,test.general-manager.1.0
+TEST-HOTEL-1.0-BAR-STORE,VODKA-750ML,-0.1,test.bar-manager.1.0,test.general-manager.1.0
+TEST-HOTEL-1.0-BAR-STORE,BLENDED-WHISKY-750ML,0,test.bar-manager.1.0,test.general-manager.1.0
+TEST-HOTEL-1.0-BAR-STORE,WHITE-RUM-750ML,0,test.bar-manager.1.0,test.general-manager.1.0
+TEST-HOTEL-1.0-BAR-STORE,RED-WINE-750ML,0,test.bar-manager.1.0,test.general-manager.1.0
+TEST-HOTEL-1.0-BAR-STORE,LAGER-BEER-330ML,0,test.bar-manager.1.0,test.general-manager.1.0
+TEST-HOTEL-1.0-BAR-STORE,TONIC-WATER-300ML,0,test.bar-manager.1.0,test.general-manager.1.0

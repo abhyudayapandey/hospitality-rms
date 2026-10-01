@@ -760,6 +760,78 @@ Applying gave exactly the grants in each file 99, and a second load made no chan
 - **`test.executive-chef.1.0`.** **Events** has no **New event**.
 - **`test.banquet-manager.1.0`.** **Events** has **New event** at Test Hotel & Bar 1.0.
 
+#### Releasing the test activity and second people (Prompt 10b)
+
+One migration, `20261012100000_test_activity` (ADR 017). It runs in the Deploy workflow
+like every migration. There is no `cdk diff` change and no new parameter or secret. No
+access rule changes: the eight new people get their job roles' usual access.
+
+- **What the migration does.** It adds `inv.record_test_production`, which records a
+  batch at a past time. It refuses any customer that isn't a test customer.
+  `inv.record_production` behaves as before.
+- **What changed in the files.**
+  - Eight second people ending in `-b`, in files 07, 14 and 99.
+  - Test Company files 25 to 28: shifts, batches, sales and a closing count. Days count
+    from the day you import.
+
+**1. Deploy.** Run the Deploy workflow.
+
+**2. Re-import Test Company.** Build the zip as in step 7, with all its files including 25
+to 28. Then go to the customer's page → **Import setup files** → the zip → **Upload and
+dry run**. Expected:
+
+- **No problems.**
+- **"Dry run: applying would make 643 changes":**
+
+  | What                 | Count | Detail                                                   |
+  | -------------------- | ----- | -------------------------------------------------------- |
+  | users                | 6     | the `-b` people                                          |
+  | workers              | 6     |                                                          |
+  | leave balances       | 18    | 3 each                                                   |
+  | shifts               | 260   | 2 weeks of every template at the 5 places file 25 covers |
+  | shift assignments    | 176   | 19 people                                                |
+  | menu dates backdated | 158   | first prices and recipes now start on day -6             |
+  | production batches   | 6     |                                                          |
+  | sales days           | 12    | 6 days × 2 outlets                                       |
+  | stock counts         | 1     | the Hotel 1.0 Bar Store                                  |
+
+- **The same 2 approval-coverage warnings as before.**
+
+**Apply**, then wait a minute: the `wf-execute` timer posts the approved count. **Apply**
+again: "No changes". Shifts are the exception: a re-import in a later week adds the weeks
+that are new by then.
+
+**3. Re-import Test Solo Bar Co.** Do the same with its zip. Expected:
+
+- no problems;
+- **"Dry run: applying would make 10 changes"**: 2 users, 2 workers and 6 leave balances
+  (the `-b` server and bartender);
+- the same 5 approval-coverage warnings.
+
+**Apply**, then **Apply** again: "No changes".
+
+**4. Logins.** On each customer's **Logins**, **Create 6 username logins** (Test Company)
+and **Create 2 username logins** (Solo), for the `-b` people. The test password rule is
+`Test<Role>!12`.
+
+These counts were checked on a scratch database set up the way production is now:
+
+1. migrated to `master`;
+2. both customers created through the console's code path with step 7's entries;
+3. `master`'s files applied with `master`'s loader;
+4. this branch's migration run, then this branch's files dry-run and applied as
+   `platform_loader`, the executor run once, and a second dry run.
+
+The second dry run made no changes for either customer.
+
+**5. Check** (the figures are in `docs/onboarding/test-data/README.md`).
+
+- **`test.general-manager.1.0`.** **Menu → Variance** at the Bar Store highlights **Gin**
+  (−₹1,800). The Bar cost % is 36.2.
+- **`test.commis.1.0`.** **Production** shows the expired Mint Chutney batch.
+- **`test.commis-b.1.0`.** **My shifts** lists 10 dinner shifts, from next Monday's week.
+- **`test.bar-manager.3.0`.** **Variance** at the Bar Store shows Tonic Water below zero.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

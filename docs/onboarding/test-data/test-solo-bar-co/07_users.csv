@@ -3,6 +3,8 @@ test.solo.bar-manager,Test Bar Manager,BAR_MANAGER,TEST-SOLO-BAR,username,,full_
 test.solo.floor-manager,Test Floor Manager,FLOOR_MANAGER,TEST-SOLO-BAR-FLOOR-SERVICE,username,,full_time,2024-06-10,test_rule
 test.solo.head-bartender,Test Head Bartender,HEAD_BARTENDER,TEST-SOLO-BAR-BAR,username,,full_time,2024-06-10,test_rule
 test.solo.bartender,Test Bartender,BARTENDER,TEST-SOLO-BAR-BAR,username,,full_time,2024-06-10,test_rule
+test.solo.bartender-b,Test Bartender B,BARTENDER,TEST-SOLO-BAR-BAR,username,,full_time,2024-06-10,test_rule
 test.solo.server,Test Server,SERVER,TEST-SOLO-BAR-FLOOR-SERVICE,username,,full_time,2024-06-10,test_rule
+test.solo.server-b,Test Server B,SERVER,TEST-SOLO-BAR-FLOOR-SERVICE,username,,full_time,2024-06-10,test_rule
 test.solo.head-cook,Test Head Cook,HEAD_COOK,TEST-SOLO-BAR-KITCHEN,username,,full_time,2024-06-10,test_rule
 test.solo.cook,Test Cook,COOK,TEST-SOLO-BAR-KITCHEN,username,,full_time,2025-02-01,test_rule
