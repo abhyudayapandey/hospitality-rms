@@ -14,6 +14,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: '/inbox', label: 'Inbox', icon: '✓' },
   { href: '/requests', label: 'Requests', icon: '≡' },
   { href: '/stock', label: 'Stock', icon: '▦', domains: ['STOCK_LEVELS'] },
+  // menu costs for MENU holders, otherwise the recipes and procedures they may read
+  {
+    href: '/menu',
+    label: 'Menu',
+    icon: '☰',
+    domains: ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM'],
+  },
   { href: '/roster', label: 'Roster', icon: '◷', domains: ['ROSTER'] },
   // user administration (ADR 011) as well as the security roles view
   { href: '/admin', label: 'Admin', icon: '⚙', domains: ['USER_ACCESS', 'SECURITY_ROLES'] },

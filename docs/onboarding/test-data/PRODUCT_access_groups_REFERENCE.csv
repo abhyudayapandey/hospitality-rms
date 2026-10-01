@@ -2,16 +2,16 @@ access_group,meant_for,what_it_allows
 ACCOUNT_OWNER,Customer's top admin (1-2 people),"Everything USER_ADMIN does across the company, plus company settings, creating User Admins and other owners, approving sensitive access grants; final approver when nobody else exists. The last owner cannot be removed."
 USER_ADMIN,Delegated user administrator (company or one outlet),"Add, edit, deactivate users; assign job roles and extra access; reset passwords, within their scope. Gives no access to business data. Creating another User Admin needs owner approval."
 SELF,"Every user, own records only","Own shifts, attendance, leave, swaps, notifications, own pay rate (view)"
-STAFF,Frontline employee,Views the roster and events of the place it is given
-SUPERVISOR,Shift-level supervisor,Views roster and attendance of their department
-DEPARTMENT_HEAD,Head of one department,Builds and publishes the department roster; resolves attendance exceptions; first approval of leave and swaps
-STOCK_USER,Uses stock in one store,"Views stock, records counts and wastage, requests transfers, for that store only"
-STORE_KEEPER,Runs a store,"Everything STOCK_USER does, plus raises and receives purchase orders and dispatches internal transfers"
-COST_CONTROLLER,Outlet cost control,"Views stock, counts, wastage and purchase orders across all stores of the outlet (no changes)"
+STAFF,Frontline employee,"Views the roster and events of the place it is given; reads the recipes and prep procedures of the store linked to their department (no costs)"
+SUPERVISOR,Shift-level supervisor,"Views roster and attendance of their department; reads the recipes and procedures of their department's store"
+DEPARTMENT_HEAD,Head of one department,"Builds and publishes the department roster; resolves attendance exceptions; first approval of leave and swaps; reads the recipes, prices and costs of their department's store"
+STOCK_USER,Uses stock in one store,"Views stock, records counts and wastage, requests transfers, for that store only; reads the recipes and procedures made or sold at that store"
+STORE_KEEPER,Runs a store,"Everything STOCK_USER does, plus raises and receives purchase orders and dispatches internal transfers; reads recipes made or sold at the store (no prices or costs)"
+COST_CONTROLLER,Outlet cost control,"Views stock, counts, wastage and purchase orders across all stores of the outlet (no changes); recipes, prices, cost per serve and cost % of the outlet"
 OUTLET_HR,Outlet HR executive,Maintains worker records and leave for the outlet
-OUTLET_MANAGER,"Head of an outlet (GM, or Bar Manager of a standalone bar)",Everything in the outlet across all departments and stores; approves purchase orders and escalations
-AREA_MANAGER,Oversees all outlets in an area,"Views everything in the area, including linked stores (read-only); approves large purchase orders and escalations"
-HUB_MANAGER,Runs the central kitchen store,Manages stock at the central kitchen store and dispatches transfers to outlets (that store only)
+OUTLET_MANAGER,"Head of an outlet (GM, or Bar Manager of a standalone bar)","Everything in the outlet across all departments and stores; approves purchase orders and escalations; menu costs, and changes menus, prices and recipes used only within the outlet"
+AREA_MANAGER,Oversees all outlets in an area,"Views everything in the area, including linked stores (read-only); approves large purchase orders and escalations; menu costs across the area (view only)"
+HUB_MANAGER,Runs the central kitchen store,"Manages stock at the central kitchen store and dispatches transfers to outlets (that store only); recipes and costs of what the central kitchen makes"
 SUPPLY_VIEWER,Supply planning,Views stock in every store below the place it is given (no changes)
 HR_ADMIN,Company HR,"Worker records, pay rates, leave across the company"
 SECURITY_ADMIN,Company security,Approves sensitive role changes; reads the audit log
