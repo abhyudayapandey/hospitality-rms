@@ -78,7 +78,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 - Domain rows carry `org_node_id` and/or `delivery_node_id` per their domain.
 - No hard deletes on business data: `status` or `archived_at`.
 - `timestamptz` in UTC; outlet nodes store an IANA timezone.
-- Money `numeric(14,2)` + currency; quantity `numeric(14,3)` in base UOM.
+- Money `numeric(14,2)` + currency; quantity `numeric(14,3)` in base UOM, except ledger and
+  stock-level quantities, `numeric(18,6)` (a 100 ml pour from a 750 ml bottle; ADR 015).
 - DB errors raise stable codes (e.g. `INSUFFICIENT_STOCK`, `NOT_AUTHORISED`); the UI maps
   codes to messages and never shows raw SQL errors.
 - Mutating server actions accept an optional `idempotencyKey`.

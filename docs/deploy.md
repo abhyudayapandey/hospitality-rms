@@ -632,6 +632,31 @@ made on the Logins page do not change the counts.
 `test.commis.1.0`, **Menu** lists the kitchen recipes only, with no prices; as
 `test.central-kitchen-commis`, the Makhani Gravy and Onion Tomato Masala recipes.
 
+#### Releasing production, sales and cost control (ADR 015, Prompt 9b)
+
+App and database only: no `cdk diff` change, no new parameter or secret. Before merging,
+run **Actions → RLS equivalence (all users)**: access rules changed (PRODUCTION and SALES).
+
+**1. Deploy.** Run the Deploy workflow. It applies two migrations (`production_sales`,
+`production_reads`) and syncs the product access.
+
+- **The ledger rewrite.** `production_sales` changes the ledger's quantity type, which
+  rewrites `inv.stock_ledger` and `inv.stock_level` once. On the test customers' few
+  thousand rows this takes well under a second.
+- **Nothing to re-import.**
+
+**2. Check**, signed in as each test user:
+
+- `test.chef-de-partie.1.0`: **Stock → Production** at the Hotel 1.0 kitchen store lists
+  Ginger Garlic Paste, Mint Chutney and Steamed Basmati Rice; recording half a batch shows
+  it under "Batches here" with its use-by.
+- `test.general-manager.1.0`: **Menu → Sales** shows Hotel 1.0's 37 items for today.
+- `test.cost-controller.1.0`: **Menu → Variance** shows the kitchen store's items and the
+  outlet's cost %.
+
+Sales posted on production by testing are real stock movements. To undo a test day, post
+it again with zeros: stock returns by the difference.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.
