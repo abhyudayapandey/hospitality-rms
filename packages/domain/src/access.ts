@@ -27,6 +27,8 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'MENU', tree: 'delivery' },
   // recording prep batches where they are made (ADR 015)
   { code: 'PRODUCTION', tree: 'delivery' },
+  // the same through a department's linked store, for items made there (ADR 016)
+  { code: 'PRODUCTION_TEAM', tree: 'org' },
   // a day's sales per outlet (manual entry, later the POS import)
   { code: 'SALES', tree: 'delivery' },
   { code: 'WORKERS', tree: 'org' },
@@ -102,13 +104,27 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       LEAVE: v,
       SHIFT_SWAPS: v,
       WORKERS: v,
-      EVENTS: m,
+      EVENTS: v,
       AI_RECOMMENDATIONS: v,
       RECIPES_TEAM: v,
       DERIVED_MENU: v,
       DERIVED_PRODUCTION: v,
       DERIVED_SALES: v,
     },
+  },
+  {
+    // records batches at the department's store, for items made there; nothing else
+    code: 'PRODUCTION_TEAM',
+    name: 'Production Team',
+    kind: 'role',
+    grants: { PRODUCTION_TEAM: m },
+  },
+  {
+    // plans events (with their item and staff needs) for the whole outlet (ADR 016)
+    code: 'EVENT_PLANNER',
+    name: 'Event Planner',
+    kind: 'role',
+    grants: { EVENTS: m },
   },
   {
     // receives goods against an existing PO (inv.receive: PO view + adjustments modify)

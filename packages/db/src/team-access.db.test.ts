@@ -269,7 +269,7 @@ describe('EVENT_PLANNER: events are planned for the whole outlet', () => {
     });
   });
 
-  it('events go on an outlet, never a department (INVALID_LOCATION)', async () => {
+  it('events go on an outlet, never a department (OUTLET_REQUIRED)', async () => {
     await inRolledBackTx(async (c) => {
       for (const [who, node] of [
         ['test.banquet-manager.1.0', 'TEST-HOTEL-1.0-BANQUETS'],
@@ -277,7 +277,7 @@ describe('EVENT_PLANNER: events are planned for the whole outlet', () => {
         ['test.bar-manager.3.0', 'TEST-BAR-3.0-FLOOR-SERVICE'],
       ] as const) {
         expect((await attemptAs(c, ids.user(who), upsert, event(node))).error, who).toBe(
-          'INVALID_LOCATION',
+          'OUTLET_REQUIRED',
         );
       }
       // outlet managers keep modify

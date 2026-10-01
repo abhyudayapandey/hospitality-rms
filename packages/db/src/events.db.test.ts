@@ -3,8 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
 import { ensureJobRoles, newWorker, tenantOf } from '../test/workforce';
 
-// Events (ADR 008): org-tree access, requirement lines (items, roles) replaced on edit
-// and kept for the AI layer, cancel; plus marking notifications read.
+// Events (ADR 008; outlet-level since ADR 016): org-tree access, requirement lines (items,
+// roles) replaced on edit and kept for the AI layer, cancel; plus marking notifications read.
 
 let ids: SeedIds;
 beforeAll(async () => {
@@ -42,7 +42,7 @@ function reqs(item1: string, item2: string) {
 
 const EVENT = (item1: string, item2: string, key: string | null = null) => [
   null,
-  ids.node('TEST-BAR-3.0-FLOOR-SERVICE'),
+  ids.node('TEST-BAR-3.0'),
   'Wedding lunch',
   '2026-12-12T13:00:00Z',
   '2026-12-12T16:00:00Z',

@@ -84,6 +84,8 @@ export const ERROR_MESSAGES = {
   INVALID_PRICE: 'Enter a price of zero or more.',
   NOT_MADE_HERE: 'That prep item is not made at this store; it arrives by transfer.',
   INVALID_SOURCE: 'Sales come from daily entry or the POS import.',
+  OUTLET_REQUIRED: 'Events are planned for a whole outlet. Pick the outlet.',
+  INVALID_SCREEN: "That screen doesn't show places.",
   NOT_A_STOCK_LOCATION: "Stock isn't kept at that location. Pick one of its stores.",
   SESSION_EXPIRED: 'Your session has ended. Please sign in again.',
   UNEXPECTED: 'Something went wrong. Please try again.',

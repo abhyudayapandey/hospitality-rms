@@ -231,7 +231,7 @@ describe('what the admin forms offer', () => {
         `select distinct code from hr.job_role where tenant_id = $1 and archived_at is null order by 1`,
         [ids.tenant()],
       );
-      expect((await roles(c, OWNER)).sort()).toEqual(all.rows.map((r) => r.code));
+      expect((await roles(c, OWNER)).sort()).toEqual(all.rows.map((r) => r.code).sort());
       expect((await roles(c, SOLO_OWNER)).length).toBe(7);
       // a home place narrows it: a kitchen role, not one that needs the outlet's bar
       const guestHouse = await roles(c, FD2);

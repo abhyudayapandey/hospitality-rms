@@ -14,27 +14,27 @@ HOUSEKEEPING_SUPERVISOR,Housekeeping Supervisor,any,HOUSEKEEPING,SUPERVISOR@home
 ROOM_ATTENDANT,Room Attendant,any,HOUSEKEEPING,STAFF@home_department
 PUBLIC_AREA_ATTENDANT,Public Area Attendant,any,HOUSEKEEPING,STAFF@home_department
 LAUNDRY_ATTENDANT,Laundry Attendant,any,HOUSEKEEPING,STAFF@home_department; STOCK_USER@department_store
-FANDB_MANAGER,F&B Manager,any,RESTAURANT,DEPARTMENT_HEAD@home_department; DEPARTMENT_HEAD@department:BAR; DEPARTMENT_HEAD@department:BANQUETS
-RESTAURANT_MANAGER,Restaurant Manager,any,RESTAURANT,DEPARTMENT_HEAD@home_department
+FANDB_MANAGER,F&B Manager,any,RESTAURANT,DEPARTMENT_HEAD@home_department; DEPARTMENT_HEAD@department:BAR; DEPARTMENT_HEAD@department:BANQUETS; EVENT_PLANNER@whole_outlet
+RESTAURANT_MANAGER,Restaurant Manager,any,RESTAURANT,DEPARTMENT_HEAD@home_department; EVENT_PLANNER@whole_outlet
 CAPTAIN,Captain,any,RESTAURANT,SUPERVISOR@home_department; STAFF@home_department
 STEWARD,Steward,any,RESTAURANT,STAFF@home_department
 HOST,Host,any,RESTAURANT / FLOOR-SERVICE,STAFF@home_department
 EXECUTIVE_CHEF,Executive Chef,any,KITCHEN,DEPARTMENT_HEAD@home_department; STORE_KEEPER@department_store
 SOUS_CHEF,Sous Chef,any,KITCHEN,SUPERVISOR@home_department; STOCK_USER@department_store; STAFF@home_department
 CHEF_DE_PARTIE,Chef de Partie,any,KITCHEN,STOCK_USER@department_store; STAFF@home_department
-COMMIS,Commis,any,KITCHEN,STAFF@home_department
+COMMIS,Commis,any,KITCHEN,STAFF@home_department; PRODUCTION_TEAM@home_department
 KITCHEN_STEWARD,Kitchen Steward,any,KITCHEN,STAFF@home_department
 HEAD_COOK,Head Cook,any,KITCHEN,DEPARTMENT_HEAD@home_department; STORE_KEEPER@department_store
-COOK,Cook,any,KITCHEN,STOCK_USER@department_store; STAFF@home_department
+COOK,Cook,any,KITCHEN,STOCK_USER@department_store; STAFF@home_department; PRODUCTION_TEAM@home_department
 BAR_MANAGER,Bar Manager,any,BAR,DEPARTMENT_HEAD@home_department; STORE_KEEPER@department_store
 BAR_MANAGER,Bar Manager,standalone_bar,(outlet),OUTLET_MANAGER@whole_outlet; OUTLET_MANAGER@outlet_stores
 HEAD_BARTENDER,Head Bartender,any,BAR,SUPERVISOR@home_department; STOCK_USER@department_store; STAFF@home_department
-BARTENDER,Bartender,any,BAR,STAFF@home_department
+BARTENDER,Bartender,any,BAR,STAFF@home_department; PRODUCTION_TEAM@home_department
 BAR_BACK,Bar Back,any,BAR,STAFF@home_department
 FLOOR_MANAGER,Floor Manager,any,FLOOR-SERVICE,DEPARTMENT_HEAD@home_department
 SERVER,Server,any,FLOOR-SERVICE,STAFF@home_department
 CASHIER,Cashier,any,FLOOR-SERVICE,STAFF@home_department
-BANQUET_MANAGER,Banquet Manager,any,BANQUETS,DEPARTMENT_HEAD@home_department
+BANQUET_MANAGER,Banquet Manager,any,BANQUETS,DEPARTMENT_HEAD@home_department; EVENT_PLANNER@whole_outlet
 BANQUET_CAPTAIN,Banquet Captain,any,BANQUETS,SUPERVISOR@home_department; STAFF@home_department
 BANQUET_SERVER,Banquet Server,any,BANQUETS,STAFF@home_department
 STORE_MANAGER,Store Manager,any,STORES-TEAM,DEPARTMENT_HEAD@home_department; STORE_KEEPER@main_store; SUPPLY_VIEWER@outlet_stores
@@ -47,7 +47,7 @@ SECURITY_GUARD,Security Guard,any,SECURITY,STAFF@home_department
 CENTRAL_KITCHEN_MANAGER,Central Kitchen Manager,any,CENTRAL-KITCHEN-DISPATCH-TEAM,HUB_MANAGER@central_kitchen_store(this store only); SUPPLY_VIEWER@central_kitchen_store; DEPARTMENT_HEAD@home_department
 CENTRAL_KITCHEN_SUPERVISOR,Central Kitchen Supervisor,any,CENTRAL-KITCHEN-PRODUCTION,OUTLET_MANAGER@central_kitchen
 CENTRAL_KITCHEN_CHEF,Central Kitchen Chef,any,CENTRAL-KITCHEN-PRODUCTION,STOCK_USER@central_kitchen_store(this store only); STAFF@home_department
-CENTRAL_KITCHEN_COMMIS,Central Kitchen Commis,any,CENTRAL-KITCHEN-PRODUCTION,STAFF@home_department
+CENTRAL_KITCHEN_COMMIS,Central Kitchen Commis,any,CENTRAL-KITCHEN-PRODUCTION,STAFF@home_department; PRODUCTION_TEAM@home_department
 CENTRAL_KITCHEN_STORE_KEEPER,Central Kitchen Store Keeper,any,CENTRAL-KITCHEN-DISPATCH-TEAM,STORE_KEEPER@central_kitchen_store(this store only); STAFF@home_department
 DELIVERY_DRIVER,Delivery Driver,any,CENTRAL-KITCHEN-DISPATCH-TEAM,STAFF@home_department
 AREA_MANAGER,Area Manager,any,(area),AREA_MANAGER@whole_area

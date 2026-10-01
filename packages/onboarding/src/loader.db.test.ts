@@ -131,6 +131,25 @@ describe('loader errors', () => {
     });
   });
 
+  it('rejects an event at a department: events are for a whole outlet (ADR 016)', async () => {
+    await inRolledBackTx(async (c) => {
+      const files = edit(
+        '17_events_TEST_DATA_ONLY.csv',
+        'TEST-HOTEL-1.0,Test Wedding Reception',
+        'TEST-HOTEL-1.0-BANQUETS,Test Wedding Reception',
+      );
+      const r = await loadCustomer(c, files, { nested: true });
+      expect(r.issues).toEqual([
+        {
+          file: '17_events_TEST_DATA_ONLY.csv',
+          row: 2,
+          column: 'org_node_code',
+          message: 'TEST-HOTEL-1.0-BANQUETS is a department: events are for a whole outlet',
+        },
+      ]);
+    });
+  });
+
   it('rejects job roles whose scope cannot be resolved, and writes nothing', async () => {
     await inRolledBackTx(async (c) => {
       // Hotel 1.0 without a main store: its supply point holds no stock, so main_store
