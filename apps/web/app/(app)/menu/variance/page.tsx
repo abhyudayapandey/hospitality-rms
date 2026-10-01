@@ -5,7 +5,7 @@ import { withUser } from '@/lib/db';
 import { formatMoney } from '@/lib/format';
 import { formatQty, param, type SearchParams } from '@/lib/inventory';
 import { menuPlaces } from '@/lib/menu';
-import { placesFor } from '@/lib/places';
+import { pickPlace, placesFor } from '@/lib/places';
 import { costReport, isoDate, salesPlaces, todayIn, variance } from '@/lib/production';
 import { MenuTabs } from '../parts';
 
@@ -17,11 +17,16 @@ export default async function VariancePage({ searchParams }: { searchParams: Sea
   const sp = await searchParams;
   const to = isoDate(param(sp, 'to'), todayIn());
   const from = isoDate(param(sp, 'from'), todayIn('Asia/Kolkata', -6));
-  const { shell, places, place: store } = await placesFor('variance', searchParams);
+  const { shell, places: all } = await placesFor('variance', searchParams);
+  // stores that sell come first, so the default shows the outlet's cost % too
+  const selling = await withUser(shell.user.id, (tx) => menuPlaces(tx));
+  const sells = (id: string) => selling.some((p) => p.store_id === id);
+  const places = [...all.filter((p) => sells(p.id)), ...all.filter((p) => !sells(p.id))];
+  const store = await pickPlace('variance', places, searchParams);
   const data = !store
     ? null
     : await withUser(shell.user.id, async (tx) => {
-        const outlet = (await menuPlaces(tx)).find((p) => p.store_id === store.id);
+        const outlet = selling.find((p) => p.store_id === store.id);
         return {
           place: { store_id: store.id, store_name: store.name, outlet_name: outlet?.outlet_name },
           sales: (await salesPlaces(tx)).length > 0,
