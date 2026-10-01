@@ -46,9 +46,9 @@ SECURITY_SUPERVISOR,Security Supervisor,any,SECURITY,DEPARTMENT_HEAD@home_depart
 SECURITY_GUARD,Security Guard,any,SECURITY,STAFF@home_department
 CENTRAL_KITCHEN_MANAGER,Central Kitchen Manager,any,CENTRAL-KITCHEN-DISPATCH-TEAM,HUB_MANAGER@central_kitchen_store(this store only); SUPPLY_VIEWER@central_kitchen_store; DEPARTMENT_HEAD@home_department
 CENTRAL_KITCHEN_SUPERVISOR,Central Kitchen Supervisor,any,CENTRAL-KITCHEN-PRODUCTION,OUTLET_MANAGER@central_kitchen
-CENTRAL_KITCHEN_CHEF,Central Kitchen Chef,any,CENTRAL-KITCHEN-PRODUCTION,STOCK_USER@central_kitchen_store; STAFF@home_department
+CENTRAL_KITCHEN_CHEF,Central Kitchen Chef,any,CENTRAL-KITCHEN-PRODUCTION,STOCK_USER@central_kitchen_store(this store only); STAFF@home_department
 CENTRAL_KITCHEN_COMMIS,Central Kitchen Commis,any,CENTRAL-KITCHEN-PRODUCTION,STAFF@home_department
-CENTRAL_KITCHEN_STORE_KEEPER,Central Kitchen Store Keeper,any,CENTRAL-KITCHEN-DISPATCH-TEAM,STORE_KEEPER@central_kitchen_store; STAFF@home_department
+CENTRAL_KITCHEN_STORE_KEEPER,Central Kitchen Store Keeper,any,CENTRAL-KITCHEN-DISPATCH-TEAM,STORE_KEEPER@central_kitchen_store(this store only); STAFF@home_department
 DELIVERY_DRIVER,Delivery Driver,any,CENTRAL-KITCHEN-DISPATCH-TEAM,STAFF@home_department
 AREA_MANAGER,Area Manager,any,(area),AREA_MANAGER@whole_area
 HR_ADMIN,HR Admin,any,(company),HR_ADMIN@whole_company

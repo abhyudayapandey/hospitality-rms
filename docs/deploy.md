@@ -657,6 +657,45 @@ run **Actions → RLS equivalence (all users)**: access rules changed (PRODUCTIO
 Sales posted on production by testing are real stock movements. To undo a test day, post
 it again with zeros: stock returns by the difference.
 
+#### Releasing the central kitchen store scope (test data and loader warning)
+
+App only: no migration, no `cdk diff` change, no new parameter or secret. Before merging,
+run **Actions → RLS equivalence (all users)**: the test customers' access changed.
+
+- **What changed.** In Test Company's file 06, the Central Kitchen Chef's STOCK_USER and
+  the Central Kitchen Store Keeper's STORE_KEEPER now cover the central kitchen store
+  only, like the Central Kitchen Manager's HUB_MANAGER. Before, "this place and
+  everything below" reached all 11 outlet stores under it in the delivery tree.
+- **The new loader warning.** The import now warns, without blocking, about any STOCK_USER
+  or STORE_KEEPER grant that reaches more than one stock location through the places
+  below it. The warning names the person and the extra stores.
+
+**1. Deploy.** Run the Deploy workflow.
+
+**2. Re-import Test Company.** Build the zip as in step 7. Then go to the customer's page
+→ **Import setup files** → the zip → **Upload and dry run**. Expected:
+
+- **No problems.**
+- **"Dry run: applying would make 2 changes."** Both are changed job role access rows:
+  the chef's and the store keeper's central kitchen store grant. Everything else is
+  unchanged.
+- **The same 2 approval-coverage warnings as before**, and no stock-reach warnings.
+
+**Apply**, then **Apply** again: it must say "No changes".
+
+**3. Test Solo Bar Co: nothing to re-import.** Its files are unchanged. If you dry-run it
+anyway, it reports "No changes", the same 5 approval-coverage warnings, and no
+stock-reach warnings.
+
+These counts were checked on a scratch database set up the way production is now. Each
+customer was created through the console's code path with step 7's entries, the files
+from `master` were applied, and then this branch's files were dry-run. Applying gave
+both grants "this place only", and a second load made no changes.
+
+**4. Check.** Sign in as `test.central-kitchen-chef`, then as
+`test.central-kitchen-store-keeper`. For each, **Stock** lists only the Central Kitchen
+store, with no hotel or outlet stores.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

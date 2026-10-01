@@ -264,6 +264,58 @@ describe('people whose own requests nobody else could approve (ADR 010)', () => 
   });
 });
 
+describe('stock access that reaches more than one stock location', () => {
+  const reach = (w: { message: string }) => w.message.includes(' also reaches ');
+
+  it('the shipped files raise none', async () => {
+    await inRolledBackTx(async (c) => {
+      for (const customer of CUSTOMERS) {
+        const r = await loadCustomer(c, readCustomerDir(join(DATA, customer)), {
+          nested: true,
+          dryRun: true,
+        });
+        expect(r.ok, customer).toBe(true);
+        expect(r.warnings.filter(reach), customer).toEqual([]);
+      }
+    });
+  });
+
+  it('is a warning naming the person and the extra stores, not a blocker', async () => {
+    await inRolledBackTx(async (c) => {
+      const company = readCustomerDir(join(DATA, 'test-company'));
+      // the central kitchen chef's STOCK_USER without "(this store only)"
+      const files = {
+        ...company,
+        '06_job_roles.csv': company['06_job_roles.csv']!.replace(
+          'STOCK_USER@central_kitchen_store(this store only)',
+          'STOCK_USER@central_kitchen_store',
+        ),
+      };
+      expect(files['06_job_roles.csv']).not.toBe(company['06_job_roles.csv']);
+      const r = await loadCustomer(c, files, { nested: true, dryRun: true });
+      expect(r).toMatchObject({ ok: true, issues: [] });
+      const users = parseCsv(company['07_users.csv']!);
+      const chef = users.rows.find((u) => u.values.username === 'test.central-kitchen-chef')!;
+      expect(r.warnings.filter(reach)).toEqual([
+        {
+          file: '07_users.csv',
+          row: chef.line,
+          column: 'username',
+          message:
+            'test.central-kitchen-chef: STOCK_USER at TEST-CENTRAL-KITCHEN-STORE also reaches ' +
+            '11 other stock locations through the places below it: TEST-BAR-3.0-BAR-STORE, ' +
+            'TEST-BAR-3.0-KITCHEN-STORE, TEST-GUEST-HOUSE-2.0-SUPPLY, TEST-HOTEL-1.0-BAR-STORE, ' +
+            'TEST-HOTEL-1.0-HOUSEKEEPING-STORE, TEST-HOTEL-1.0-KITCHEN-STORE, ' +
+            'TEST-HOTEL-1.0-MAIN-STORE, TEST-HOTEL-1.1-BAR-STORE, ' +
+            'TEST-HOTEL-1.1-HOUSEKEEPING-STORE, TEST-HOTEL-1.1-KITCHEN-STORE, ' +
+            'TEST-HOTEL-1.1-MAIN-STORE. Add "(this store only)" if they work at ' +
+            'TEST-CENTRAL-KITCHEN-STORE only',
+        },
+      ]);
+    });
+  });
+});
+
 describe('logins are unique across customers (ADR 011)', () => {
   it('reports another customer’s username or email by file, row and column, with a suggestion', async () => {
     await inRolledBackTx(async (c) => {
