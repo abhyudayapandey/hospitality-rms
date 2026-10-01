@@ -188,3 +188,24 @@ export async function getWastageUploadUrl(
     return f;
   }
 }
+
+export interface ProductionLine {
+  ingredient_item_id: string;
+  qty: number;
+}
+
+/** A batch of a prep item made at the node (ADR 015); actual lines in recipe units. */
+export async function recordProduction(
+  node: string,
+  prepItem: string,
+  qtyMade: number,
+  actual: ProductionLine[],
+  idempotencyKey: string,
+): Promise<ActionResult<{ id: string }>> {
+  return run('record_production', async (tx) => {
+    const r = await sql<{ id: string }>`
+      select inv.record_production(${node}::uuid, ${prepItem}::uuid, ${qtyMade}::numeric,
+                                   ${json(actual)}::jsonb, ${idempotencyKey}) as id`.execute(tx);
+    return { id: r.rows[0]!.id };
+  });
+}

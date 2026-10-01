@@ -22,16 +22,23 @@ export function WastageForm({
   items,
   threshold,
   photos,
+  initial,
 }: {
   node: string;
   items: ItemOption[];
   threshold: number;
   photos: boolean;
+  /** prefilled from a link, e.g. an expired batch on the production page */
+  initial?: { item: string; qty: string; reason: string };
 }) {
   const router = useRouter();
-  const [itemId, setItemId] = useState(items[0]?.item_id ?? '');
-  const [qty, setQty] = useState('');
-  const [reason, setReason] = useState<string>('spoiled');
+  const [itemId, setItemId] = useState(
+    items.find((i) => i.item_id === initial?.item)?.item_id ?? items[0]?.item_id ?? '',
+  );
+  const [qty, setQty] = useState(initial?.qty ?? '');
+  const [reason, setReason] = useState<string>(
+    REASONS.some(([r]) => r === initial?.reason) ? initial!.reason : 'spoiled',
+  );
   const [photoKey, setPhotoKey] = useState<string | null>(null);
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [pending, start] = useTransition();

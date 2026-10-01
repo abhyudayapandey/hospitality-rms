@@ -6,6 +6,7 @@ const TABS = [
   { href: '/stock', label: 'Stock', domain: 'STOCK_LEVELS', access: 'view' },
   { href: '/stock/count', label: 'Count', domain: 'STOCK_ADJUSTMENTS', access: 'modify' },
   { href: '/stock/wastage', label: 'Wastage', domain: 'STOCK_ADJUSTMENTS', access: 'modify' },
+  { href: '/stock/production', label: 'Production', domain: 'PRODUCTION', access: 'modify' },
   { href: '/stock/orders', label: 'Orders', domain: 'PURCHASE_ORDERS', access: 'view' },
   { href: '/stock/transfers', label: 'Transfers', domain: 'TRANSFERS', access: 'view' },
 ] as const;

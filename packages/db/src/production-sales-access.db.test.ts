@@ -390,3 +390,63 @@ describe('cost control reads', () => {
     });
   });
 });
+
+describe('screen reads follow the same rules', () => {
+  it('the production plan is for stock users where the item is made', async () => {
+    await inRolledBackTx(async (c) => {
+      const plan = (who: string, store: string, sku: string) =>
+        item(c, sku).then((id) =>
+          attemptAs<{ name: string; qty: string; unit: string }>(
+            c,
+            ids.user(who),
+            'select * from inv.production_plan($1, $2)',
+            [ids.node(store), id],
+          ),
+        );
+      const ok = await plan(
+        'test.chef-de-partie.1.0',
+        'TEST-HOTEL-1.0-KITCHEN-STORE',
+        'GINGER-GARLIC-PASTE',
+      );
+      expect(ok.rows!.length).toBeGreaterThan(0);
+      expect(Object.keys(ok.rows![0]!).some((k) => k.includes('cost'))).toBe(false);
+      expect(
+        (await plan('test.commis.1.0', 'TEST-HOTEL-1.0-KITCHEN-STORE', 'GINGER-GARLIC-PASTE'))
+          .error,
+      ).toMatch(/NOT_AUTHORISED/);
+      expect(
+        (await plan('test.executive-chef.1.0', 'TEST-HOTEL-1.0-KITCHEN-STORE', 'MAKHANI-GRAVY'))
+          .error,
+      ).toMatch(/NOT_MADE_HERE/);
+    });
+  });
+
+  it('the sales sheet is for those who post the outlet’s sales', async () => {
+    await inRolledBackTx(async (c) => {
+      const sheet = (who: string, outlet: string) =>
+        attemptAs<{ code: string }>(
+          c,
+          ids.user(who),
+          'select * from menu.sales_sheet($1, current_date)',
+          [ids.node(outlet)],
+        );
+      expect((await sheet('test.cost-controller.1.0', 'TEST-HOTEL-1.0')).rows!.length).toBe(37);
+      expect((await sheet('test.cost-controller.1.0', 'TEST-HOTEL-1.1')).error).toMatch(
+        /NOT_AUTHORISED/,
+      );
+      expect((await sheet('test.bartender.1.0', 'TEST-HOTEL-1.0')).error).toMatch(/NOT_AUTHORISED/);
+      const places = await attemptAs<{ outlet_id: string }>(
+        c,
+        ids.user('test.general-manager.1.0'),
+        'select * from menu.my_sales_places()',
+      );
+      expect(places.rows!.map((p) => p.outlet_id)).toEqual([ids.node('TEST-HOTEL-1.0')]);
+      const none = await attemptAs(
+        c,
+        ids.user('test.commis.1.0'),
+        'select * from menu.my_sales_places()',
+      );
+      expect(none.rows).toEqual([]);
+    });
+  });
+});

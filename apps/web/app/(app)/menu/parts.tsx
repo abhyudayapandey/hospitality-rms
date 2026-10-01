@@ -5,19 +5,29 @@ import { shelfLife, type RecipeRow } from '@/lib/menu';
 
 // Shared pieces of the menu screens (ADR 014).
 
-export function MenuTabs({ active, costs }: { active: 'costs' | 'recipes'; costs: boolean }) {
+export function MenuTabs({
+  active,
+  costs,
+  sales = false,
+}: {
+  active: 'costs' | 'recipes' | 'sales' | 'variance';
+  costs: boolean;
+  sales?: boolean;
+}) {
   const tabs = [
     ...(costs ? [{ href: '/menu', label: 'Menu costs', key: 'costs' }] : []),
     { href: '/menu/recipes', label: 'Recipes', key: 'recipes' },
+    ...(sales ? [{ href: '/menu/sales', label: 'Sales', key: 'sales' }] : []),
+    ...(costs ? [{ href: '/menu/variance', label: 'Variance', key: 'variance' }] : []),
   ];
   return (
-    <nav aria-label="Menu" className="flex gap-2">
+    <nav aria-label="Menu" className="-mx-4 flex gap-2 overflow-x-auto px-4">
       {tabs.map((t) => (
         <Link
           key={t.key}
           href={t.href}
           aria-current={t.key === active ? 'page' : undefined}
-          className={`flex min-h-11 items-center rounded-full px-4 text-sm ${
+          className={`flex min-h-11 items-center rounded-full px-4 text-sm whitespace-nowrap ${
             t.key === active
               ? 'bg-slate-900 font-semibold text-white'
               : 'bg-white text-slate-700 ring-1 ring-slate-300'
