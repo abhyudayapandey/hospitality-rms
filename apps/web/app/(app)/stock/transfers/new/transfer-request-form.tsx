@@ -81,7 +81,9 @@ export function TransferRequestForm({
         disabled={!hydrated || pending || lines.length === 0}
         className={primaryButton}
       >
-        Request {lines.length} items
+        {lines.length === 0
+          ? 'Add quantities to request'
+          : `Request ${lines.length} item${lines.length === 1 ? '' : 's'}`}
       </button>
     </form>
   );

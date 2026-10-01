@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { BottomNav } from '@/components/bottom-nav';
-import { NodeSwitcher } from '@/components/node-switcher';
 import { PunchSync } from '@/components/punch-sync';
 import { SignOutButton } from '@/components/sign-out-button';
 import { visibleNav } from '@/lib/nav';
@@ -10,12 +9,6 @@ import { loadShell } from '@/lib/shell';
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const shell = await loadShell();
   const domains = new Set(shell.domains.keys());
-  // staff read recipes through their department's store: no Menu tab if it has none
-  if (!shell.teamRecipes) domains.delete('RECIPES_TEAM');
-  const options = shell.nodes.map((n) => ({
-    id: n.id,
-    label: `${n.name} · ${n.type === 'org' ? 'People' : 'Supply'}${n.derived ? ' (view)' : ''}`,
-  }));
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
       <header className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2">
@@ -23,7 +16,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <p className="truncate text-sm font-semibold" data-testid="current-user">
             {shell.user.name}
           </p>
-          <NodeSwitcher options={options} current={shell.currentNode?.id ?? null} />
+          {shell.home && (
+            <p className="truncate text-xs text-slate-500" data-testid="home-place">
+              {shell.home.name}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <Link
@@ -48,7 +45,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </header>
       <PunchSync userId={shell.user.id} />
       <main className="flex-1 px-4 pt-4 pb-24">{children}</main>
-      <BottomNav items={visibleNav(domains)} inboxCount={shell.inboxCount} />
+      <BottomNav items={visibleNav(domains, shell)} inboxCount={shell.inboxCount} />
     </div>
   );
 }

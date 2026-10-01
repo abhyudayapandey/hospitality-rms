@@ -122,8 +122,3 @@ export async function ingredientOptions(tx: Tx): Promise<IngredientOption[]> {
 export function highCost(menu: string, pct: string | null): boolean {
   return pct !== null && Number(pct) > (menu === 'Bar' ? 30 : 35);
 }
-
-export function shelfLife(hours: number | null): string {
-  if (hours === null) return '';
-  return hours % 24 === 0 ? `${hours / 24} day${hours === 24 ? '' : 's'}` : `${hours} hours`;
-}

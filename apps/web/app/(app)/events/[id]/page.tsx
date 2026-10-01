@@ -17,7 +17,7 @@ export default async function EventPage({
   searchParams: SearchParams;
 }) {
   const { id } = await params;
-  const ctx = await peopleContext(searchParams);
+  const ctx = await peopleContext(searchParams, 'events');
   if (!isUuid(id)) return <Empty>Event not found.</Empty>;
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {

@@ -241,8 +241,11 @@ describe('ADR 007 policies are equivalent to per-row core.can()', () => {
     async () => {
       await inRolledBackTx(async (c) => {
         await fixtures(c);
-        // rule-visible tables (recipes) have their own test below
-        const regs = (await registrations(c)).filter((r) => !r.catalog && !r.visible_row_fn);
+        // rule-visible recipe tables have their own test below; the event tables (a rule
+        // over their place, ADR 016) are compared here with the rest
+        const regs = (await registrations(c)).filter(
+          (r) => !r.catalog && (!r.visible_row_fn || r.table_name.startsWith('ops.')),
+        );
         const users = await userIds(c);
         expect(regs.length).toBeGreaterThan(15);
         let visible = 0;

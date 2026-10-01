@@ -1,5 +1,5 @@
 org_node_code,event_name,starts_at,ends_at,covers,requirements
-TEST-HOTEL-1.0-BANQUETS,Test Wedding Reception,2026-10-17 18:00,2026-10-17 23:30,250,item CHICKEN-CURRY-CUT = 45 kg; item PANEER = 20 kg; item BLENDED-WHISKY-750ML = 40 bottle; role BANQUET_SERVER = 12 (18:00-23:30); role BARTENDER = 3 (18:00-23:30)
-TEST-HOTEL-1.1-BANQUETS,Test Corporate Lunch,2026-10-08 12:30,2026-10-08 15:30,80,item BASMATI-RICE = 12 kg; item CHICKEN-BREAST = 10 kg; role BANQUET_SERVER = 5 (12:00-16:00)
-TEST-HOTEL-1.0-BAR,Test Friday Bar Night,2026-10-09 20:00,2026-10-10 01:00,120,item VODKA-750ML = 10 bottle; item LAGER-BEER-330ML = 180 bottle; item ICE-CUBES = 60 kg; role BARTENDER = 3 (19:30-01:30)
+TEST-HOTEL-1.0,Test Wedding Reception,2026-10-17 18:00,2026-10-17 23:30,250,item CHICKEN-CURRY-CUT = 45 kg; item PANEER = 20 kg; item BLENDED-WHISKY-750ML = 40 bottle; role BANQUET_SERVER = 12 (18:00-23:30); role BARTENDER = 3 (18:00-23:30)
+TEST-HOTEL-1.1,Test Corporate Lunch,2026-10-08 12:30,2026-10-08 15:30,80,item BASMATI-RICE = 12 kg; item CHICKEN-BREAST = 10 kg; role BANQUET_SERVER = 5 (12:00-16:00)
+TEST-HOTEL-1.0,Test Friday Bar Night,2026-10-09 20:00,2026-10-10 01:00,120,item VODKA-750ML = 10 bottle; item LAGER-BEER-330ML = 180 bottle; item ICE-CUBES = 60 kg; role BARTENDER = 3 (19:30-01:30)
 TEST-BAR-3.0,Test Cricket Screening Night,2026-10-11 19:00,2026-10-12 00:30,150,item LAGER-BEER-650ML = 120 bottle; item CHICKEN-BREAST = 8 kg; role SERVER = 4 (18:30-01:00); role BARTENDER = 2 (18:30-01:00)

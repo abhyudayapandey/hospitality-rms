@@ -696,6 +696,70 @@ both grants "this place only", and a second load made no changes.
 `test.central-kitchen-store-keeper`. For each, **Stock** lists only the Central Kitchen
 store, with no hotel or outlet stores.
 
+#### Releasing the place switcher, production team and event planners (Prompt 10a)
+
+One migration, `20261011100000_place_switcher_access` (ADR 016). It runs in the Deploy
+workflow like every migration. There is no `cdk diff` change and no new parameter or
+secret. Before merging, run **Actions → RLS equivalence (all users)**: access rules
+changed (two new groups, DEPARTMENT_HEAD events, outlet-level event reads).
+
+- **What the migration does.**
+  - PRODUCTION_TEAM can record production at its department's store.
+  - Events become outlet-level: the four test events move from their department to
+    their outlet, and the event tables read by the outlet rule.
+  - It adds `core.screen_places`, `core.my_home` and the narrowed
+    `core.admin_job_roles`.
+- **What the product sync does** (part of Deploy). It adds the PRODUCTION_TEAM domain and
+  the PRODUCTION_TEAM and EVENT_PLANNER groups to every customer, and sets
+  DEPARTMENT_HEAD to view events.
+- **What changed in the files.**
+  - File 06 gives PRODUCTION_TEAM to Commis, Cook, Bartender and Central Kitchen Commis,
+    and EVENT_PLANNER (whole outlet) to Banquet, F&B and Restaurant Managers.
+  - File 17's events name their outlet.
+
+**1. Deploy.** Run the Deploy workflow.
+
+**2. Re-import Test Company.** Build the zip as in step 7. Then go to the customer's page
+→ **Import setup files** → the zip → **Upload and dry run**. Expected:
+
+- **No problems.**
+- **"Dry run: applying would make 7 changes."** All 7 are new job role access rows:
+  - PRODUCTION_TEAM for Commis, Cook, Bartender and Central Kitchen Commis;
+  - EVENT_PLANNER for Banquet, F&B and Restaurant Managers.
+
+  The events are unchanged: the migration already moved them.
+
+- **The same 2 approval-coverage warnings as before.**
+
+**Apply**: 15 people gain a grant (6 EVENT_PLANNER, 9 PRODUCTION_TEAM). **Apply** again:
+it must say "No changes".
+
+**3. Re-import Test Solo Bar Co.** Do the same with its zip. Expected:
+
+- no problems;
+- **"Dry run: applying would make 2 changes"**: PRODUCTION_TEAM for Bartender and Cook;
+- the same 5 approval-coverage warnings.
+
+**Apply**, then **Apply** again: "No changes".
+
+These counts were checked on a scratch database set up the way production is now:
+
+1. migrated to `master`;
+2. both customers created through the console's code path with step 7's entries;
+3. `master`'s files applied with `master`'s loader;
+4. this branch's migration run, then this branch's files dry-run.
+
+Applying gave exactly the grants in each file 99, and a second load made no changes.
+
+**4. Check.**
+
+- **`test.general-manager.1.0`.**
+  - **Stock** shows "Viewing:" with the 4 Hotel 1.0 stores, Main Store first.
+  - **Roster → Roster** lists only Hotel 1.0's departments.
+- **`test.commis.1.0`.** The bottom nav shows **Production**, at the Kitchen Store only.
+- **`test.executive-chef.1.0`.** **Events** has no **New event**.
+- **`test.banquet-manager.1.0`.** **Events** has **New event** at Test Hotel & Bar 1.0.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

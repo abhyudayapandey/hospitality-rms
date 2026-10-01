@@ -8,7 +8,7 @@ import { formatMoney, formatWhen } from '@/lib/format';
 import { PO_PROGRESS as PROGRESS, supplyContext, type SearchParams } from '@/lib/inventory';
 
 export default async function OrdersPage({ searchParams }: { searchParams: SearchParams }) {
-  const ctx = await supplyContext(searchParams);
+  const ctx = await supplyContext(searchParams, 'orders');
   if (!ctx.can('PURCHASE_ORDERS') || !ctx.node) return <NoSupplyAccess />;
   const user = await requireUser();
   const rows = await withUser(user.id, async (tx) => {

@@ -197,6 +197,82 @@ describe('what the admin forms offer', () => {
       expect(await error(c, IN_HOTEL, 'select * from core.admin_places()')).toBe('NOT_AUTHORISED');
     });
   });
+
+  // Prompt 10 audit #14: only job roles the admin can give someone at one of their places,
+  // by the same checks saving makes (scope of every derived grant, rank).
+  const roles = async (c: PoolClient, who: string, home?: string) =>
+    (
+      await ok<{ code: string }>(
+        c,
+        who,
+        home
+          ? 'select code from core.admin_job_roles($1)'
+          : 'select code from core.admin_job_roles()',
+        home ? [ids.node(home)] : [],
+      )
+    ).map((r) => r.code);
+
+  it('job roles: only those the admin can assign at their places', async () => {
+    await inRolledBackTx(async (c) => {
+      const gm = await roles(c, GM1);
+      expect(gm).toEqual(expect.arrayContaining(['COMMIS', 'BANQUET_MANAGER', 'GENERAL_MANAGER']));
+      for (const out of [
+        'ACCOUNT_OWNER',
+        'AREA_MANAGER',
+        'HR_ADMIN',
+        'SECURITY_ADMIN',
+        'AUDITOR',
+        'CENTRAL_KITCHEN_CHEF',
+        'CENTRAL_KITCHEN_MANAGER',
+      ]) {
+        expect(gm, out).not.toContain(out);
+      }
+      const all = await c.query<{ code: string }>(
+        `select distinct code from hr.job_role where tenant_id = $1 and archived_at is null order by 1`,
+        [ids.tenant()],
+      );
+      expect((await roles(c, OWNER)).sort()).toEqual(all.rows.map((r) => r.code).sort());
+      expect((await roles(c, SOLO_OWNER)).length).toBe(7);
+      // a home place narrows it: a kitchen role, not one that needs the outlet's bar
+      const guestHouse = await roles(c, FD2);
+      expect(guestHouse).toContain('COOK');
+      expect(guestHouse).not.toContain('FANDB_MANAGER');
+      expect(await error(c, IN_HOTEL, 'select * from core.admin_job_roles()')).toBe(
+        'NOT_AUTHORISED',
+      );
+      expect(
+        await error(c, GM1, 'select * from core.admin_job_roles($1)', [
+          ids.node('TEST-GUEST-HOUSE-2.0'),
+        ]),
+      ).toBe('NOT_AUTHORISED');
+    });
+  });
+
+  it('job roles offered = roles a real save accepts at some place in scope', async () => {
+    await inRolledBackTx(async (c) => {
+      const offered = new Set(await roles(c, FD2));
+      const homes = (
+        await ok<{ id: string; type: string }>(c, FD2, 'select id, type from core.admin_places()')
+      ).filter((p) => p.type === 'org');
+      const all = await c.query<{ code: string }>(
+        `select distinct code from hr.job_role where tenant_id = $1 and archived_at is null`,
+        [ids.tenant()],
+      );
+      const mismatches: string[] = [];
+      for (const { code } of all.rows) {
+        let saves = false;
+        for (const h of homes) {
+          const r = await attemptAs(c, ids.user(FD2), PREVIEW, ['probe.user', 'Probe', h.id, code]);
+          if (!r.error) {
+            saves = true;
+            break;
+          }
+        }
+        if (saves !== offered.has(code)) mismatches.push(`${code}: saves ${saves}`);
+      }
+      expect(mismatches).toEqual([]);
+    });
+  });
 });
 
 describe('edits and login actions', () => {

@@ -1,17 +1,22 @@
 import Link from 'next/link';
 import type { SupplyContext } from '@/lib/inventory';
-import { NodePicker } from './node-picker';
+import { PlaceSwitcher } from './place-switcher';
 
 const TABS = [
   { href: '/stock', label: 'Stock', domain: 'STOCK_LEVELS', access: 'view' },
   { href: '/stock/count', label: 'Count', domain: 'STOCK_ADJUSTMENTS', access: 'modify' },
   { href: '/stock/wastage', label: 'Wastage', domain: 'STOCK_ADJUSTMENTS', access: 'modify' },
-  { href: '/stock/production', label: 'Production', domain: 'PRODUCTION', access: 'modify' },
+  { href: '/stock/production', label: 'Production', domain: null, access: 'modify' },
   { href: '/stock/orders', label: 'Orders', domain: 'PURCHASE_ORDERS', access: 'view' },
   { href: '/stock/transfers', label: 'Transfers', domain: 'TRANSFERS', access: 'view' },
 ] as const;
 
-/** Title, supply location picker and the supply tabs the user has access to. */
+/**
+ * Title, the "Viewing:" switcher of this screen's stock locations, and the supply tabs the
+ * user has. Production shows only to people with a store where something is made that
+ * they may record (audit #4). Tab links carry the place; the next screen keeps it if it
+ * offers it there.
+ */
 export function SupplyHeader({
   ctx,
   active,
@@ -23,42 +28,41 @@ export function SupplyHeader({
 }) {
   const node = ctx.node!;
   const q = `?node=${node.id}`;
-  const tabs = TABS.filter((t) => ctx.can(t.domain, t.access));
+  const tabs = TABS.filter((t) =>
+    t.domain === null ? ctx.shell.production : ctx.can(t.domain, t.access),
+  );
   return (
     <div className="space-y-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <h1 className="text-xl font-semibold">{title}</h1>
-        <p className="truncate text-sm text-slate-600" data-testid="supply-node">
-          {node.name}
-          {node.derived ? ' (view only)' : ''}
-        </p>
-      </div>
-      <NodePicker
-        nodes={ctx.nodes.map((n) => ({
+      <PlaceSwitcher
+        screen={ctx.screen}
+        places={ctx.nodes.map((n) => ({
           id: n.id,
-          label: `${n.name}${n.derived ? ' (view)' : ''}`,
+          name: `${n.name}${n.derived ? ' (view only)' : ''}`,
         }))}
         current={node.id}
       />
-      <nav aria-label="Supply" className="-mx-4 overflow-x-auto px-4">
-        <ul className="flex gap-2">
-          {tabs.map((t) => (
-            <li key={t.href}>
-              <Link
-                href={`${t.href}${q}`}
-                aria-current={t.href === active ? 'page' : undefined}
-                className={`flex min-h-11 items-center rounded-full px-4 text-sm whitespace-nowrap ${
-                  t.href === active
-                    ? 'bg-slate-900 font-semibold text-white'
-                    : 'bg-white text-slate-700 ring-1 ring-slate-300'
-                }`}
-              >
-                {t.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <h1 className="text-xl font-semibold">{title}</h1>
+      {tabs.length > 1 && (
+        <nav aria-label="Supply" className="-mx-4 overflow-x-auto px-4">
+          <ul className="flex gap-2">
+            {tabs.map((t) => (
+              <li key={t.href}>
+                <Link
+                  href={`${t.href}${q}`}
+                  aria-current={t.href === active ? 'page' : undefined}
+                  className={`flex min-h-11 items-center rounded-full px-4 text-sm whitespace-nowrap ${
+                    t.href === active
+                      ? 'bg-slate-900 font-semibold text-white'
+                      : 'bg-white text-slate-700 ring-1 ring-slate-300'
+                  }`}
+                >
+                  {t.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
     </div>
   );
 }

@@ -72,7 +72,7 @@ describe('core.my_domains', () => {
       TRANSFERS: 'modify',
       AI_RECOMMENDATIONS: 'view',
       ROSTER: 'modify', // DEPARTMENT_HEAD
-      EVENTS: 'modify', // DEPARTMENT_HEAD
+      EVENTS: 'view', // DEPARTMENT_HEAD (EVENT_PLANNER modifies, ADR 016)
       WORKERS: 'view', // DEPARTMENT_HEAD
       LEAVE: 'modify', // SELF
       ATTENDANCE: 'modify', // DEPARTMENT_HEAD

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isDevAuthEnabled } from './dev-auth';
 import { visibleNav } from './nav';
+import { isScreen, withChoice } from './place-screens';
 import { startPoller } from './poller';
 
 describe('dev auth gate', () => {
@@ -14,14 +15,16 @@ describe('dev auth gate', () => {
 });
 
 describe('bottom nav', () => {
+  const none = { menu: false, production: false };
+
   it('shows domain items only for domains the user has', () => {
-    expect(visibleNav(new Set(['STOCK_LEVELS'])).map((i) => i.label)).toEqual([
+    expect(visibleNav(new Set(['STOCK_LEVELS']), none).map((i) => i.label)).toEqual([
       'Home',
       'Inbox',
       'Requests',
       'Stock',
     ]);
-    expect(visibleNav(new Set(['ROSTER', 'SECURITY_ROLES'])).map((i) => i.label)).toEqual([
+    expect(visibleNav(new Set(['ROSTER', 'SECURITY_ROLES']), none).map((i) => i.label)).toEqual([
       'Home',
       'Inbox',
       'Requests',
@@ -30,18 +33,46 @@ describe('bottom nav', () => {
     ]);
   });
 
-  it('shows one Menu item to recipe readers and to menu cost holders alike', () => {
-    for (const d of ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM']) {
-      expect(
-        visibleNav(new Set([d])).map((i) => i.label),
-        d,
-      ).toContain('Menu');
-    }
-    expect(visibleNav(new Set(['ROSTER', 'EVENTS'])).map((i) => i.label)).not.toContain('Menu');
+  it('shows Menu only when there is a recipe or menu cost to open (audit #7)', () => {
+    expect(visibleNav(new Set(['RECIPES']), { ...none, menu: true }).map((i) => i.label)).toContain(
+      'Menu',
+    );
+    // a store keeper of a store where nothing is made or sold
+    expect(
+      visibleNav(new Set(['RECIPES', 'STOCK_LEVELS']), none).map((i) => i.label),
+    ).not.toContain('Menu');
+  });
+
+  it('gives production-only staff a Production item instead of Stock', () => {
+    const commis = visibleNav(new Set(['PRODUCTION_TEAM', 'ROSTER']), {
+      ...none,
+      production: true,
+    });
+    expect(commis.map((i) => [i.label, i.href])).toContainEqual([
+      'Production',
+      '/stock/production',
+    ]);
+    expect(commis.map((i) => i.label)).not.toContain('Stock');
+    // with stock access the Stock item leads there, Production is one of its tabs
+    const chef = visibleNav(new Set(['STOCK_LEVELS']), { ...none, production: true });
+    expect(chef.map((i) => i.label)).toContain('Stock');
+    expect(chef.map((i) => i.label)).not.toContain('Production');
+    expect(visibleNav(new Set(['ROSTER']), none).map((i) => i.label)).not.toContain('Production');
   });
 
   it('shows Admin to user administrators too', () => {
-    expect(visibleNav(new Set(['USER_ACCESS'])).map((i) => i.label)).toContain('Admin');
+    expect(visibleNav(new Set(['USER_ACCESS']), none).map((i) => i.label)).toContain('Admin');
+  });
+});
+
+describe('place switcher memory', () => {
+  it('replaces one screen’s choice and keeps the others', () => {
+    expect(JSON.parse(withChoice({ stock: 'a', roster: 'b' }, 'stock', 'c'))).toEqual({
+      stock: 'c',
+      roster: 'b',
+    });
+    expect(isScreen('production')).toBe(true);
+    expect(isScreen('inbox')).toBe(false);
   });
 });
 

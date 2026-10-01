@@ -19,7 +19,7 @@ export default async function ShiftPage({
 }) {
   const { id } = await params;
   if (!isUuid(id)) return <Empty>Not found.</Empty>;
-  const ctx = await peopleContext(searchParams);
+  const ctx = await peopleContext(searchParams, 'roster');
   if (!ctx.can('ROSTER', 'modify')) return <Empty>You can&apos;t change the roster.</Empty>;
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {

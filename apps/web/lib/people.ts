@@ -1,42 +1,59 @@
 import 'server-only';
 import { DEFAULT_TZ } from './dates';
-import { sql, type Tx } from './db';
-import { param, type SearchParams } from './inventory';
-import { loadShell, type NodeRow, type Shell } from './shell';
+import { sql, withUser, type Tx } from './db';
+import type { SearchParams } from './params';
+import { pickPlace, screenPlaces, type Place, type Screen } from './places';
+import { loadShell, type Shell } from './shell';
 
 // Reads for the people screens (roster, attendance, leave, swaps, events). Every query
 // runs inside withUser, so RLS decides what is visible; access here only chooses what to
 // show (ADR 004). Manager lists are filtered by one org node (ADR 007).
 
+export type PeopleScreen = Extract<Screen, 'roster' | 'exceptions' | 'events'>;
+
 export interface PeopleContext {
   shell: Shell;
-  /** org nodes the user can see: outlets and sites first */
-  nodes: NodeRow[];
-  node: NodeRow | null;
+  /** the screen's places (departments, or outlets for events); empty on personal screens */
+  screen: PeopleScreen | null;
+  nodes: Place[];
+  node: Place | null;
   tz: string;
+  /** People tabs beyond domain checks (audit #10, #13). */
+  tabs: { personal: boolean; exceptions: boolean };
   can(domain: string, access?: 'view' | 'modify'): boolean;
 }
 
-const WORKPLACE = new Set(['outlet', 'site']);
-
-/** The org node the people screens work on: ?node=, the current node, or the first outlet. */
-export async function peopleContext(sp: SearchParams): Promise<PeopleContext> {
+/**
+ * The people screens (ADR 016). Roster, exceptions and events show one place, picked with
+ * the "Viewing:" switcher; the personal screens (my shifts, clock, leave, swaps) show none
+ * and use the time zone of the person's home place.
+ */
+export async function peopleContext(
+  sp: SearchParams,
+  screen: PeopleScreen | null = null,
+): Promise<PeopleContext> {
   const shell = await loadShell();
-  const wanted = param(await sp, 'node');
-  const nodes = shell.nodes
-    .filter((n) => n.type === 'org')
-    .sort((a, b) => Number(!WORKPLACE.has(a.kind)) - Number(!WORKPLACE.has(b.kind)));
-  const node =
-    nodes.find((n) => n.id === wanted) ??
-    nodes.find((n) => n.id === shell.currentNode?.id && WORKPLACE.has(n.kind)) ??
-    nodes.find((n) => WORKPLACE.has(n.kind)) ??
-    nodes[0] ??
-    null;
+  const { nodes, exceptions } = await withUser(shell.user.id, async (tx) => {
+    const nodes = screen ? await screenPlaces(tx, screen, shell) : [];
+    const exceptions =
+      screen === 'exceptions'
+        ? nodes.length > 0
+        : shell.domains.get('ATTENDANCE') === 'modify' &&
+          (
+            await sql<{ v: boolean }>`
+              select exists (select 1 from core.screen_places('exceptions')) as v`.execute(tx)
+          ).rows[0]!.v;
+    return { nodes, exceptions };
+  });
+  const node = screen ? await pickPlace(screen, nodes, sp) : null;
+  const home = shell.nodes.find((n) => n.id === shell.home?.id);
   return {
     shell,
+    screen,
     nodes,
     node,
-    tz: node?.timezone ?? DEFAULT_TZ,
+    tz: node?.timezone ?? home?.timezone ?? DEFAULT_TZ,
+    tabs: { personal: shell.home?.at_workplace ?? false, exceptions },
     can(domain, access = 'view') {
       const a = shell.domains.get(domain);
       return a !== undefined && (access === 'view' || a === 'modify');
@@ -185,6 +202,25 @@ export const EXCEPTION_LABEL: Record<string, string> = {
   outside_geofence: 'Outside the outlet',
   no_location: 'No location',
 };
+
+export interface MyException {
+  id: string;
+  local_date: string;
+  kind: string;
+  status: string;
+  resolution_note: string | null;
+}
+
+/** The person's own attendance exceptions from `since` (their own rows, SELF). */
+export async function myExceptions(tx: Tx, since: string): Promise<MyException[]> {
+  const r = await sql<MyException>`
+    select id, local_date::text as local_date, kind, status, resolution_note
+      from hr.attendance_exception
+     where owner_user_id = core.current_user_id() and local_date >= ${since}::date
+     order by local_date desc, created_at desc
+     limit 20`.execute(tx);
+  return r.rows;
+}
 
 export interface Balance {
   leave_type_id: string;

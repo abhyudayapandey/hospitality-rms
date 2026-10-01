@@ -8,7 +8,7 @@ import { formatWhen } from '@/lib/format';
 import { supplyContext, TRANSFER_PROGRESS, type SearchParams } from '@/lib/inventory';
 
 export default async function TransfersPage({ searchParams }: { searchParams: SearchParams }) {
-  const ctx = await supplyContext(searchParams);
+  const ctx = await supplyContext(searchParams, 'transfers');
   if (!ctx.can('TRANSFERS') || !ctx.node) return <NoSupplyAccess />;
   const user = await requireUser();
   const rows = await withUser(user.id, async (tx) => {
@@ -31,7 +31,8 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
     <div className="space-y-4">
       <PollRefresh />
       <SupplyHeader ctx={ctx} active="/stock/transfers" title="Transfers" />
-      {ctx.can('TRANSFERS', 'modify') && !ctx.node.derived && ctx.node.kind === 'outlet' && (
+      {/* any stock location they move stock at, a store or an outlet's own (audit #5) */}
+      {ctx.can('TRANSFERS', 'modify') && !ctx.node.derived && ctx.node.holds_stock && (
         <Link
           href={`/stock/transfers/new${q}`}
           className="flex min-h-12 items-center justify-center rounded-lg bg-slate-900 font-medium text-white"

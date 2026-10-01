@@ -2,22 +2,12 @@
 
 import { useState } from 'react';
 import { ErrorBox } from '@/components/messages';
+import { PHOTO_MAX_SIDE, PHOTO_QUALITY, resizePhoto } from '@/lib/photo-resize';
 import { getWastageUploadUrl } from '../actions';
 
-// Takes or picks a photo, shrinks it on the phone (long side 1600 px, JPEG) so it
-// uploads quickly on a slow network, then posts it straight to S3 with a presigned POST.
-async function shrink(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('resize failed'))), 'image/jpeg', 0.8),
-  );
-}
-
+// Takes or picks a photo, shrinks it on the phone (lib/photo-resize: long side 1280 px,
+// JPEG 0.7) so it uploads quickly on a slow network, then posts it straight to S3 with a
+// presigned POST. Expired-batch wastage uses this same form.
 export function PhotoField({
   node,
   photoKey,
@@ -36,7 +26,7 @@ export function PhotoField({
     setError(null);
     onChange(null);
     try {
-      const blob = await shrink(file);
+      const blob = await resizePhoto(file, PHOTO_MAX_SIDE, PHOTO_QUALITY);
       const target = await getWastageUploadUrl(node, 'image/jpeg', blob.size);
       if (!target.ok) throw new Error(target.message);
       const form = new FormData();

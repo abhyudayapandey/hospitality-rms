@@ -3,7 +3,7 @@ import { appUrl } from './lib/app-url';
 import { cognitoConfig, refreshTokens, verifyIdToken } from './lib/auth/cognito';
 import {
   COGNITO_REFRESH_AFTER_S,
-  NODE_COOKIE,
+  PLACE_COOKIE,
   REFRESH_COOKIE,
   SESSION_COOKIE,
   TOUCH_AFTER_S,
@@ -32,7 +32,7 @@ function toLogin(req: NextRequest, reason: string): NextResponse {
   const url = appUrl('/login');
   url.searchParams.set('reason', reason);
   const res = NextResponse.redirect(url);
-  for (const name of [SESSION_COOKIE, REFRESH_COOKIE, NODE_COOKIE]) res.cookies.delete(name);
+  for (const name of [SESSION_COOKIE, REFRESH_COOKIE, PLACE_COOKIE]) res.cookies.delete(name);
   return res;
 }
 

@@ -22,7 +22,7 @@ export default async function ItemLedgerPage({
   searchParams: SearchParams;
 }) {
   const { id } = await params;
-  const ctx = await supplyContext(searchParams);
+  const ctx = await supplyContext(searchParams, 'stock');
   if (!ctx.can('STOCK_LEVELS') || !ctx.node) return <NoSupplyAccess />;
   const user = await requireUser();
   const { item, rows } = await withUser(user.id, async (tx) => ({

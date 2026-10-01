@@ -13,18 +13,17 @@ test('a chef de partie records a batch where it is made; it shows with its expir
   await expect(main.getByRole('heading', { name: 'Production' })).toBeVisible();
   await main.getByRole('link', { name: 'Ginger Garlic Paste' }).click();
   await expect(main.getByRole('heading', { name: 'Ginger Garlic Paste' })).toBeVisible();
+  await expect(main.getByTestId('shelf-life')).toHaveText(/^Use within \d+ (day|hour)s?$/);
   // half a batch: the ingredients follow
   await main.getByRole('textbox', { name: 'Made' }).fill('500');
   await main.getByRole('button', { name: 'Record batch' }).click();
   await expect(main.getByRole('status')).toHaveText('Batch of Ginger Garlic Paste recorded.');
   await expect(
     page.getByTestId('batch').filter({ hasText: 'Ginger Garlic Paste' }).first(),
-  ).toContainText('use by');
+  ).toContainText('Use within');
 });
 
-test('staff without stock access have no production; a bartender posts no sales', async ({
-  page,
-}) => {
+test('a bartender posts no sales', async ({ page }) => {
   await signInAs(page, 'Test Bartender 1.0');
   await page.goto('/menu/sales');
   await expect(page.locator('main')).toContainText('You don’t post sales anywhere.');

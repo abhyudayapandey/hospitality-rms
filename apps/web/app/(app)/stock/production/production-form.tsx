@@ -22,10 +22,13 @@ export function ProductionForm({
   node,
   item,
   plan,
+  shelfLife,
 }: {
   node: string;
   item: MadeHere;
   plan: Line[];
+  /** "Use within 3 days" */
+  shelfLife: string;
 }) {
   const router = useRouter();
   const hydrated = useHydrated();
@@ -72,6 +75,11 @@ export function ProductionForm({
       }}
     >
       <h2 className="font-semibold">{item.name}</h2>
+      {shelfLife && (
+        <p className="text-sm text-slate-600" data-testid="shelf-life">
+          {shelfLife}
+        </p>
+      )}
       <label className="block space-y-1">
         <span className="text-sm">
           The batch made ({item.unit}); a standard batch makes {batch}

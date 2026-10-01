@@ -20,7 +20,7 @@ export default async function OrderPage({
   searchParams: SearchParams;
 }) {
   const { id } = await params;
-  const ctx = await supplyContext(searchParams);
+  const ctx = await supplyContext(searchParams, 'orders');
   if (!ctx.can('PURCHASE_ORDERS') || !ctx.node) return <NoSupplyAccess />;
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {

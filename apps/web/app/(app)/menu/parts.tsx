@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { Empty } from '@/components/messages';
 import { formatQty } from '@/lib/inventory';
-import { shelfLife, type RecipeRow } from '@/lib/menu';
+import type { RecipeRow } from '@/lib/menu';
+import { shelfLifeText } from '@/lib/shelf-life';
 
 // Shared pieces of the menu screens (ADR 014).
 
@@ -20,6 +21,8 @@ export function MenuTabs({
     ...(sales ? [{ href: '/menu/sales', label: 'Sales', key: 'sales' }] : []),
     ...(costs ? [{ href: '/menu/variance', label: 'Variance', key: 'variance' }] : []),
   ];
+  // one tab is no choice (audit #8)
+  if (tabs.length < 2) return null;
   return (
     <nav aria-label="Menu" className="-mx-4 flex gap-2 overflow-x-auto px-4">
       {tabs.map((t) => (
@@ -68,7 +71,7 @@ export function RecipeList({ recipes }: { recipes: RecipeRow[] }) {
                       <span className="shrink-0 text-right text-xs text-slate-500">
                         batch {formatQty(r.batch_yield!, r.unit!)}
                         <br />
-                        keeps {shelfLife(r.shelf_life_hours)}
+                        {shelfLifeText(r.shelf_life_hours)}
                       </span>
                     )}
                   </Link>

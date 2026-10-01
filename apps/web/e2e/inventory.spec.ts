@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { PLACE, placeId, runExecutor, signInAs } from './helpers';
+import { PLACE, placeId, runExecutor, signInAs, viewing, viewingOptions } from './helpers';
 
 // Test Bar 3.0's Kitchen Store: the head cook keeps it, the Bar Manager runs the outlet,
 // the central kitchen store (kept by its store keeper) supplies it.
@@ -24,7 +24,7 @@ test('two-leg transfer: requested, sent by the central kitchen store keeper, rec
   await expect(from).toHaveValue(await placeId('TEST-BAR-3.0-BAR-STORE'));
   await from.selectOption(ck);
   await page.getByRole('textbox', { name: 'Request Test Potatoes' }).fill('4');
-  await page.getByRole('button', { name: 'Request 1 items' }).click();
+  await page.getByRole('button', { name: 'Request 1 item' }).click();
   await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
   await expect(page.getByTestId('transfer-progress')).toHaveText('awaiting dispatch');
@@ -61,7 +61,11 @@ test('store to store in one outlet: the main store keeper sends, the kitchen’s
   await signInAs(page, 'Test Sous Chef 1.0');
   const before = await onHand(page, 'BASMATI-RICE', kitchen);
 
-  await page.goto(`/stock/transfers/new?node=${kitchen}`);
+  // a store asks for stock from its transfers screen (audit #5: it used to want an outlet)
+  await page.goto(`/stock/transfers?node=${kitchen}`);
+  await page.getByRole('link', { name: 'Request stock' }).click();
+  await page.waitForURL(/\/stock\/transfers\/new/);
+  await expect(page.getByRole('button', { name: 'Add quantities to request' })).toBeDisabled();
   const from = page.getByRole('combobox', { name: 'From' });
   // only this hotel's stores and the central kitchen: never another outlet
   const offered = await from
@@ -70,7 +74,7 @@ test('store to store in one outlet: the main store keeper sends, the kitchen’s
   expect(offered).not.toContain(await placeId('TEST-HOTEL-1.1-MAIN-STORE'));
   await from.selectOption(main);
   await page.getByRole('textbox', { name: 'Request Test Basmati Rice' }).fill('2');
-  await page.getByRole('button', { name: 'Request 1 items' }).click();
+  await page.getByRole('button', { name: 'Request 1 item' }).click();
   await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
 
@@ -112,9 +116,7 @@ test('the area manager sees outlet stock read-only (derived view)', async ({ pag
   const store = await placeId(PLACE.store);
   await signInAs(page, 'Test Area Manager');
   await page.goto(`/stock?node=${store}`);
-  await expect(page.getByTestId('supply-node')).toHaveText(
-    'Test Bar 3.0 – Kitchen Store (view only)',
-  );
+  await expect.poll(() => viewing(page)).toBe('Test Bar 3.0 – Kitchen Store (view only)');
   await expect(page.getByTestId('stock-row').first()).toBeVisible();
   const tabs = page.getByRole('navigation', { name: 'Supply' });
   await expect(tabs.getByRole('link', { name: 'Stock' })).toBeVisible();
@@ -130,13 +132,10 @@ test('a department store keeper sees their own store, not the kitchen next door'
   // Hotel 1.0's Bar Manager keeps the Bar Store; the Kitchen Store belongs to the Kitchen
   await signInAs(page, 'Test Bar Manager 1.0');
   await page.goto(`/stock?node=${await placeId('TEST-HOTEL-1.0-BAR-STORE')}`);
-  await expect(page.getByTestId('supply-node')).toHaveText('Test Hotel & Bar 1.0 – Bar Store');
+  await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Bar Store');
   // asking for the Kitchen Store falls back to a store they can see
   await page.goto(`/stock?node=${await placeId('TEST-HOTEL-1.0-KITCHEN-STORE')}`);
-  await expect(page.getByTestId('supply-node')).toHaveText('Test Hotel & Bar 1.0 – Bar Store');
-  const options = await page
-    .getByRole('combobox', { name: 'Location' })
-    .locator('option')
-    .allTextContents();
-  expect(options.filter((o) => o.includes('Kitchen Store'))).toEqual([]);
+  await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Bar Store');
+  // one store: a plain label, no picker
+  expect(await viewingOptions(page)).toEqual([]);
 });

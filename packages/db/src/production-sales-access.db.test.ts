@@ -115,7 +115,8 @@ describe('production', () => {
         1000,
       );
       expect(elsewhere.error).toMatch(/NOT_AUTHORISED/);
-      // staff without stock access, cost controllers (view) and the AI agent
+      // the central kitchen's production team (its own store only), cost controllers (view)
+      // and the AI agent
       for (const who of ['test.central-kitchen-commis', 'test.cost-controller.1.0', 'ai-agent']) {
         const r = await produce(
           c,
@@ -393,7 +394,7 @@ describe('cost control reads', () => {
 });
 
 describe('screen reads follow the same rules', () => {
-  it('the production plan is for stock users where the item is made', async () => {
+  it('the production plan is for those who record production where the item is made', async () => {
     await inRolledBackTx(async (c) => {
       const plan = (who: string, store: string, sku: string) =>
         item(c, sku).then((id) =>
@@ -411,9 +412,19 @@ describe('screen reads follow the same rules', () => {
       );
       expect(ok.rows!.length).toBeGreaterThan(0);
       expect(Object.keys(ok.rows![0]!).some((k) => k.includes('cost'))).toBe(false);
+      // PRODUCTION_TEAM (ADR 016): the commis records at the kitchen store; the steward doesn't
       expect(
         (await plan('test.commis.1.0', 'TEST-HOTEL-1.0-KITCHEN-STORE', 'GINGER-GARLIC-PASTE'))
           .error,
+      ).toBeUndefined();
+      expect(
+        (
+          await plan(
+            'test.kitchen-steward.1.0',
+            'TEST-HOTEL-1.0-KITCHEN-STORE',
+            'GINGER-GARLIC-PASTE',
+          )
+        ).error,
       ).toMatch(/NOT_AUTHORISED/);
       expect(
         (await plan('test.executive-chef.1.0', 'TEST-HOTEL-1.0-KITCHEN-STORE', 'MAKHANI-GRAVY'))

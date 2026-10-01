@@ -6,7 +6,7 @@ import { supplyContext, type SearchParams } from '@/lib/inventory';
 import { NewOrderForm, type OrderLine } from './new-order-form';
 
 export default async function NewOrderPage({ searchParams }: { searchParams: SearchParams }) {
-  const ctx = await supplyContext(searchParams);
+  const ctx = await supplyContext(searchParams, 'orders');
   if (!ctx.can('PURCHASE_ORDERS', 'modify') || !ctx.node || ctx.node.derived) {
     return <NoSupplyAccess />;
   }

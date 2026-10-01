@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { cache } from 'react';
 import { sql, withUser } from '../db';
 import {
-  NODE_COOKIE,
+  PLACE_COOKIE,
   PKCE_COOKIE,
   REFRESH_COOKIE,
   SESSION_COOKIE,
@@ -35,7 +35,7 @@ export async function setSessionCookie(payload: SessionPayload): Promise<void> {
 
 export async function clearAuthCookies(): Promise<void> {
   const jar = await cookies();
-  for (const name of [SESSION_COOKIE, REFRESH_COOKIE, NODE_COOKIE, PKCE_COOKIE]) jar.delete(name);
+  for (const name of [SESSION_COOKIE, REFRESH_COOKIE, PLACE_COOKIE, PKCE_COOKIE]) jar.delete(name);
 }
 
 export interface CurrentUser {

@@ -305,8 +305,17 @@ export function validateBundle(b: Bundle): Issue[] {
 
   // events
   for (const e of b.events) {
-    if (!org.has(e.org_node_code)) {
+    const place = org.get(e.org_node_code);
+    if (!place) {
       add(f('events'), e.line, 'org_node_code', `${e.org_node_code} is not in ${f('orgNodes')}`);
+    } else if (place.kind !== 'outlet' && place.kind !== 'site') {
+      // events are planned for a whole outlet (ADR 016)
+      add(
+        f('events'),
+        e.line,
+        'org_node_code',
+        `${e.org_node_code} is a ${place.kind}: events are for a whole outlet`,
+      );
     }
     if (e.ends_at <= e.starts_at) add(f('events'), e.line, 'ends_at', 'must be after the start');
     for (const r of e.requirements) {
