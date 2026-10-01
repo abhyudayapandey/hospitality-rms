@@ -125,7 +125,7 @@ describe('stock changes only through the ledger (rule 3)', () => {
         await expect(c.query(stmt), stmt).rejects.toThrow('LEDGER_APPEND_ONLY');
         await c.query('rollback to savepoint s');
       }
-      expect(await level(c, item, A)).toMatchObject({ on_hand: '5.000' });
+      expect(await level(c, item, A)).toMatchObject({ on_hand: '5.000000' });
     });
   });
 
@@ -147,8 +147,8 @@ describe('stock changes only through the ledger (rule 3)', () => {
         [item],
       );
       expect(rows).toEqual([
-        { node: A, ledger: '6.750', cached: '6.750' },
-        { node: HUB, ledger: '4.000', cached: '4.000' },
+        { node: A, ledger: '6.750', cached: '6.750000' },
+        { node: HUB, ledger: '4.000', cached: '4.000000' },
       ]);
     });
   });
@@ -161,7 +161,7 @@ describe('valuation and invariants', () => {
       await move(c, item, A, 'receipt', 10, 100);
       await move(c, item, A, 'receipt', 10, 120);
       expect(await level(c, item, A)).toEqual({
-        on_hand: '20.000',
+        on_hand: '20.000000',
         avg_cost: '110.0000',
         value: '2200.00',
       });
@@ -172,7 +172,7 @@ describe('valuation and invariants', () => {
       );
       expect(rows).toEqual([{ unit_cost: '110.0000' }]);
       expect(await level(c, item, A)).toEqual({
-        on_hand: '15.000',
+        on_hand: '15.000000',
         avg_cost: '110.0000',
         value: '1650.00',
       });
@@ -195,7 +195,7 @@ describe('valuation and invariants', () => {
           await c.query('rollback to savepoint s');
         }
         await move(c, item, A, 'wastage', -3); // exactly to zero is fine
-        expect(await level(c, item, A)).toMatchObject({ on_hand: '0.000' });
+        expect(await level(c, item, A)).toMatchObject({ on_hand: '0.000000' });
       }
     });
   });

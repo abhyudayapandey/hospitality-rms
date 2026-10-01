@@ -193,7 +193,9 @@ describe('wastage', () => {
         `select movement_type, qty, reason from inv.stock_ledger where ref_id = $1`,
         [small.id],
       );
-      expect(posted.rows).toEqual([{ movement_type: 'wastage', qty: '-2.000', reason: 'spoiled' }]);
+      expect(posted.rows).toEqual([
+        { movement_type: 'wastage', qty: '-2.000000', reason: 'spoiled' },
+      ]);
 
       // 3 kg prawns = 2,700: needs a photo...
       const prawns = { item_id: f.item('W-PRAWN'), qty: 3, reason: 'expired' };
@@ -411,7 +413,7 @@ describe('count -> PO -> approve -> receive', () => {
         'select suggested_qty, on_hand from inv.suggested_order($1) where item_id = $2',
         [node('kitchen'), f.item('P-TOMATO')],
       );
-      expect(sug).toEqual({ suggested_qty: '18.500', on_hand: '11.500' });
+      expect(sug).toEqual({ suggested_qty: '18.500000', on_hand: '11.500000' });
 
       // 3. PO for the suggestion at 50/kg = 925: outlet approval only.
       const po = await call<{ id: string }>(
@@ -432,7 +434,7 @@ describe('count -> PO -> approve -> receive', () => {
         'select suggested_qty from inv.suggested_order($1) where item_id = $2',
         [node('kitchen'), f.item('P-TOMATO')],
       );
-      expect(after.suggested_qty).toBe('0.000');
+      expect(after.suggested_qty).toBe('0.000000');
       const receive = `select inv.receive($1, $2::jsonb) as id`;
       const tomato = (qty: number) => lines([{ item_id: f.item('P-TOMATO'), qty }]);
       expect(await error(c, KIM, receive, [po.id, tomato(18.5)])).toBe('INVALID_STATE');
@@ -471,7 +473,7 @@ describe('count -> PO -> approve -> receive', () => {
                 (select on_hand from inv.stock_level where item_id = $1 and delivery_node_id = $2)::text as cached`,
         [f.item('P-TOMATO'), node('kitchen')],
       );
-      expect(reconcile.rows).toEqual([{ ledger: '30.000', cached: '30.000' }]);
+      expect(reconcile.rows).toEqual([{ ledger: '30.000000', cached: '30.000000' }]);
     });
   });
 
@@ -566,8 +568,8 @@ describe('over-receipt', () => {
         [f.item('R-CHICKEN')],
       );
       expect(moves.rows).toEqual([
-        { movement_type: 'receipt', qty: '10.500', unit_cost: '300.0000' },
-        { movement_type: 'receipt', qty: '1.500', unit_cost: '300.0000' },
+        { movement_type: 'receipt', qty: '10.500000', unit_cost: '300.0000' },
+        { movement_type: 'receipt', qty: '1.500000', unit_cost: '300.0000' },
       ]);
     });
   });
@@ -653,21 +655,21 @@ describe('two-leg transfer', () => {
         {
           at: 'ck',
           movement_type: 'transfer_out',
-          qty: '-8.000',
+          qty: '-8.000000',
           reason: null,
           unit_cost: '30.0000',
         },
         {
           at: 'outlet',
           movement_type: 'transfer_in',
-          qty: '8.000',
+          qty: '8.000000',
           reason: null,
           unit_cost: '30.0000',
         },
         {
           at: 'outlet',
           movement_type: 'wastage',
-          qty: '-1.000',
+          qty: '-1.000000',
           reason: 'transit_loss',
           unit_cost: '30.0000',
         },

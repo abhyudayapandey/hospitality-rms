@@ -60,7 +60,15 @@ export default async function StockPage({ searchParams }: { searchParams: Search
                         <span className="block font-semibold tabular-nums" data-testid="on-hand">
                           {formatQty(r.on_hand, r.base_uom)}
                         </span>
-                        {r.below_par && (
+                        {Number(r.on_hand) < 0 && (
+                          <span
+                            data-testid="below-zero"
+                            className="rounded-full bg-rose-100 px-2 text-xs font-semibold text-rose-900"
+                          >
+                            below zero: count it
+                          </span>
+                        )}
+                        {r.below_par && Number(r.on_hand) >= 0 && (
                           <span className="rounded-full bg-amber-100 px-2 text-xs font-semibold text-amber-900">
                             below par
                           </span>

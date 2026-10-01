@@ -5,6 +5,7 @@ import { withUser } from '@/lib/db';
 import { formatMoney } from '@/lib/format';
 import { param, type SearchParams } from '@/lib/inventory';
 import { highCost, menuPlaces, myRecipes, outletCosting } from '@/lib/menu';
+import { salesPlaces } from '@/lib/production';
 import { MenuTabs, RecipeList } from './parts';
 
 // Menu costs (ADR 014): cost per serve and cost % of each menu item at an outlet, at the
@@ -19,7 +20,13 @@ export default async function MenuPage({ searchParams }: { searchParams: SearchP
       return { places, recipes: await myRecipes(tx), rows: [], outlet: null };
     const outlet = places.find((p) => p.outlet_id === param(sp, 'outlet')) ?? places[0]!;
     const recipes = await myRecipes(tx);
-    return { places, recipes, rows: await outletCosting(tx, outlet.outlet_id), outlet };
+    return {
+      places,
+      recipes,
+      rows: await outletCosting(tx, outlet.outlet_id),
+      outlet,
+      sales: await salesPlaces(tx),
+    };
   });
 
   if (!data.outlet) {
@@ -43,7 +50,7 @@ export default async function MenuPage({ searchParams }: { searchParams: SearchP
           {data.outlet.outlet_name}
         </p>
       </div>
-      <MenuTabs active="costs" costs />
+      <MenuTabs active="costs" costs sales={data.sales.length > 0} />
       {outlets.length > 1 && (
         <nav aria-label="Outlet" className="-mx-4 overflow-x-auto px-4">
           <ul className="flex gap-2">

@@ -3,7 +3,7 @@ import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatMoney, formatWhen } from '@/lib/format';
-import { formatQty, itemOptions, supplyContext, type SearchParams } from '@/lib/inventory';
+import { formatQty, itemOptions, param, supplyContext, type SearchParams } from '@/lib/inventory';
 import { photosEnabled } from '@/lib/photos';
 import { WastageForm } from './wastage-form';
 
@@ -12,6 +12,7 @@ export default async function WastagePage({ searchParams }: { searchParams: Sear
   if (!ctx.can('STOCK_ADJUSTMENTS', 'modify') || !ctx.node || ctx.node.derived) {
     return <NoSupplyAccess />;
   }
+  const sp = await searchParams;
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
     const items = await itemOptions(tx, ctx.node!.id);
@@ -41,6 +42,7 @@ export default async function WastagePage({ searchParams }: { searchParams: Sear
         items={data.items}
         threshold={data.threshold}
         photos={photosEnabled()}
+        initial={{ item: param(sp, 'item'), qty: param(sp, 'qty'), reason: param(sp, 'reason') }}
       />
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-slate-500">Recent wastage</h2>

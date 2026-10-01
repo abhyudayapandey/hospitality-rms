@@ -57,3 +57,18 @@ export async function setPrice(
     return { id: r.rows[0]!.id };
   });
 }
+
+/** A day's sales at an outlet (ADR 015): the day's totals per item; changes deplete stock. */
+export async function postSales(
+  outletId: string,
+  date: string,
+  lines: { menu_item_id: string; qty: number }[],
+  idempotencyKey: string,
+): Promise<ActionResult<{ id: string }>> {
+  return run('post_sales', async (tx) => {
+    const r = await sql<{ id: string }>`
+      select menu.post_sales(${outletId}::uuid, ${date}::date, ${JSON.stringify(lines)}::jsonb,
+                             'manual', ${idempotencyKey}) as id`.execute(tx);
+    return { id: r.rows[0]!.id };
+  });
+}
