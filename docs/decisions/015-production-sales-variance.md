@@ -55,10 +55,13 @@ This builds on ADR 014 (menus, recipes, costing).
   - the same idempotency key returns the first batch.
 - **Who records:** stock users and store keepers at their store, hub managers and outlet
   managers. Cost controllers can only view production.
-- **A hub's reach.** The central kitchen's chef holds STOCK_USER at the central kitchen store
-  with its descendants. In the delivery tree the hotels' supply points sit under that store,
-  so the chef's stock access already reaches the hotel stores. That comes from the job role's
-  scope and isn't new here.
+- **A hub's reach.** In the delivery tree the outlets' stores sit under the central kitchen
+  store. So a STOCK_USER or STORE_KEEPER grant there that covers "everything below" lets
+  its holder post stock at every outlet store.
+  - **Fixed after 9b.** The Central Kitchen Chef and Central Kitchen Store Keeper now hold
+    theirs "(this store only)", in Test Company's file 06.
+  - **The loader warns** (without blocking) about any STOCK_USER or STORE_KEEPER grant that
+    reaches more than one stock location, naming the person and the extra stores.
 
 ## Sales: the path the POS import will use
 

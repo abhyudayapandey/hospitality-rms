@@ -152,6 +152,7 @@ class Loader {
     await this.access();
     await this.coverage();
     if (this.report.issues.length) return;
+    await this.stockReach();
     await this.stock();
     await this.menu();
     await this.leave();
@@ -670,6 +671,48 @@ class Loader {
               ? 'approved at the top of the chain (account owner)'
               : 'their request would fail (NO_APPROVER)'
           }`,
+      });
+    }
+  }
+
+  /**
+   * STOCK_USER and STORE_KEEPER post stock. Granted "this place and everything below" on a
+   * store with other stock locations under it (a hub's store above the outlets' stores),
+   * they could post at all of them: a warning per grant, naming the extra stores.
+   */
+  private async stockReach() {
+    const { rows } = await this.c.query<{
+      username: string;
+      grp: string;
+      node: string;
+      extra: string[];
+    }>(
+      `select u.username, g.code as grp, n.code as node,
+              array_agg(d.code order by d.code) as extra
+         from core.role_assignment ra
+         join core.app_user u on u.id = ra.user_id
+         join core.security_group g on g.id = ra.group_id
+         join core.hierarchy_node n on n.id = ra.node_id
+         join core.hierarchy_node d
+           on d.tenant_id = ra.tenant_id and d.type = n.type and d.holds_stock
+          and d.id <> n.id and d.path operator(extensions.<@) n.path
+        where ra.tenant_id = $1 and ra.include_descendants and u.status = 'active'
+          and g.code in ('STOCK_USER', 'STORE_KEEPER') and u.username = any ($2)
+          and (ra.effective_to is null or ra.effective_to >= current_date)
+        group by u.username, g.code, n.code
+        order by u.username, g.code, n.code`,
+      [this.tenant, this.b.users.map((u) => u.username)],
+    );
+    for (const r of rows) {
+      const user = this.b.users.find((u) => u.username === r.username);
+      this.report.warnings.push({
+        file: FILES.users.file,
+        ...(user && { row: user.line }),
+        column: 'username',
+        message:
+          `${r.username}: ${r.grp} at ${r.node} also reaches ${r.extra.length} other stock ` +
+          `location${r.extra.length === 1 ? '' : 's'} through the places below it: ` +
+          `${r.extra.join(', ')}. Add "(this store only)" if they work at ${r.node} only`,
       });
     }
   }
