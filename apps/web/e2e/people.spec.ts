@@ -1,6 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 import { addDays, formatDay, localToday, weekStart } from '../lib/dates';
-import { asMigrator, PLACE, placeId, runExecutor, setupPeopleWeek, signInAs } from './helpers';
+import {
+  asMigrator,
+  lateTemplate,
+  PLACE,
+  placeId,
+  runExecutor,
+  setupPeopleWeek,
+  signInAs,
+} from './helpers';
 
 // Rostering, leave, swaps, clock-in and events through the real screens on the production
 // build (ADR 008), in Test Bar 3.0's Floor Service: the Bar Manager rosters the server and
@@ -34,12 +42,9 @@ function evening(page: Page, day: string, role: string) {
     .filter({ hasText: `· ${role} ·` });
 }
 
-/** Builds the week (idempotent) and assigns `worker` to the day's evening `role` shift. */
+/** Assigns `worker` to the day's evening `role` shift (setupPeopleWeek made the drafts). */
 async function assign(page: Page, day: string, role: string, worker: string) {
   await openWeek(page);
-  const build = page.getByRole('button', { name: /^(Build week|Add template shifts)$/ });
-  await build.click();
-  await expect(page.getByRole('status')).toBeVisible();
   await evening(page, day, role)
     .getByRole('link', { name: /^Assign/ })
     .click();
@@ -52,6 +57,67 @@ async function assign(page: Page, day: string, role: string, worker: string) {
   await page.waitForURL(/\/roster\/week/);
   await expect(evening(page, day, role)).toContainText(worker);
 }
+
+test('template shifts: tomorrow to day 7 only, confirm or cancel, then discard (ADR 024)', async ({
+  page,
+}) => {
+  const today = localToday('Asia/Kolkata');
+  const tomorrow = addDays(today, 1);
+  await lateTemplate(true);
+  await signInAs(page, 'Test Bar Manager 3.0');
+  await page.goto(`/roster/week?node=${await placeId(PLACE.floor)}&week=${weekStart(tomorrow)}`);
+  const window = page.getByTestId('template-window');
+  await expect(window).toContainText(`${formatDay(tomorrow)} – ${formatDay(addDays(today, 7))}`);
+  const addButton = page.getByRole('button', { name: 'Add template shifts' });
+  const discardButton = page.getByRole('button', { name: /^Discard drafts/ });
+  // the test data has next week's drafts: clear them first
+  if (await discardButton.isVisible()) {
+    await discardButton.click();
+    await page
+      .getByRole('group', { name: 'Discard drafts' })
+      .getByRole('button', { name: 'Discard' })
+      .click();
+    await expect(page.getByRole('status')).toContainText('Discarded');
+  }
+  await expect(addButton).toBeVisible();
+
+  // Cancel changes nothing
+  await addButton.click();
+  const confirm = page.getByRole('group', { name: 'Add template shifts' });
+  await expect(confirm.getByTestId('confirm-text')).toContainText(/^Add \d+ draft shifts?, /);
+  await confirm.getByRole('button', { name: 'Cancel' }).click();
+  await expect(confirm).toBeHidden();
+  await expect(addButton).toBeVisible();
+
+  // Add: the drafts start tomorrow, and Discard drafts takes Add's place
+  await addButton.click();
+  await confirm.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText(/^Added \d+ draft shifts?, /);
+  await expect(discardButton).toBeVisible();
+  await expect(addButton).toBeHidden();
+  await expect(page.getByRole('region', { name: formatDay(today) }).getByText('draft')).toHaveCount(
+    0,
+  );
+
+  // they stay after leaving the screen, until discarded
+  await page.goto('/');
+  await page.goBack();
+  await expect(discardButton).toBeVisible();
+  await discardButton.click();
+  await page
+    .getByRole('group', { name: 'Discard drafts' })
+    .getByRole('button', { name: 'Keep drafts' })
+    .click();
+  await expect(discardButton).toBeVisible();
+  await discardButton.click();
+  await page
+    .getByRole('group', { name: 'Discard drafts' })
+    .getByRole('button', { name: 'Discard' })
+    .click();
+  await expect(page.getByRole('status')).toContainText(/^Discarded \d+ draft shifts?\.$/);
+  await expect(addButton).toBeVisible();
+  await lateTemplate(false);
+});
 
 test('manager builds and publishes; approved leave drops the shift after both approvals', async ({
   page,

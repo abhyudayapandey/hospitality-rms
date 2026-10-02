@@ -4,10 +4,10 @@ import { PeopleHeader } from '@/components/people-header';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { addDays, formatDay, formatSpan, isIsoDate, localToday, weekStart } from '@/lib/dates';
-import { withUser } from '@/lib/db';
+import { sql, withUser } from '@/lib/db';
 import { param, type SearchParams } from '@/lib/inventory';
 import { peopleContext, weekRoster } from '@/lib/people';
-import { RemoveButton, WeekActions } from './week-actions';
+import { RemoveButton, WeekActions, type TemplateWindow } from './week-actions';
 import { jobTitles } from '@/lib/job-titles';
 
 // The manager's week: build from templates, assign, publish. Mobile-first: one column,
@@ -27,6 +27,7 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
   const canEdit = ctx.can('ROSTER', 'modify');
   const drafts = shifts.filter((s) => s.status === 'draft').length;
   const open = shifts.reduce((n, s) => n + Math.max(0, s.headcount - s.people.length), 0);
+  const window = canEdit ? await templateWindow(user.id, node.id, monday) : null;
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const link = (week: string) => `/roster/week?node=${node.id}&week=${week}`;
 
@@ -56,11 +57,9 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
       <p className="text-sm text-slate-600" data-testid="week-summary">
         {shifts.length} shifts · {drafts} draft · {open} open slot{open === 1 ? '' : 's'}
       </p>
-      {canEdit && (
-        <WeekActions node={node.id} monday={monday} drafts={drafts} empty={shifts.length === 0} />
-      )}
+      {window && <WeekActions node={node.id} monday={monday} drafts={drafts} window={window} />}
       {shifts.length === 0 ? (
-        <Empty>No shifts this week yet.{canEdit ? ' Build them from the templates.' : ''}</Empty>
+        <Empty>No shifts this week yet.{canEdit ? ' Add them from the templates.' : ''}</Empty>
       ) : (
         days.map((day) => {
           const list = shifts.filter((s) => s.local_date === day);
@@ -127,4 +126,28 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
       )}
     </div>
   );
+}
+
+/** Tomorrow to day 7 for this place, and what adding its template shifts would do. */
+async function templateWindow(
+  userId: string,
+  node: string,
+  monday: string,
+): Promise<TemplateWindow> {
+  const p = await withUser(userId, async (tx) => {
+    const r = await sql<{ to_add: number; drafts: number; from_day: string; to_day: string }>`
+      select to_add, drafts, from_day::text, to_day::text
+        from hr.preview_template_shifts(${node}::uuid)`.execute(tx);
+    return r.rows[0]!;
+  });
+  const sunday = addDays(monday, 6);
+  return {
+    toAdd: p.to_add,
+    drafts: p.drafts,
+    span: `${formatDay(p.from_day)} – ${formatDay(p.to_day)}`,
+    nextWeek:
+      p.to_day > sunday && p.from_day <= sunday
+        ? `/roster/week?node=${node}&week=${addDays(monday, 7)}`
+        : null,
+  };
 }

@@ -149,6 +149,178 @@ describe('hr.generate_week', () => {
   });
 });
 
+describe('template shifts for the next seven days (ADR 024)', () => {
+  const FLOOR = () => ids.node('TEST-BAR-3.0-FLOOR-SERVICE');
+
+  /** A fresh template every day at Floor Service, the only one there. */
+  async function everyDay(c: PoolClient): Promise<string> {
+    await c.query(`update hr.shift_template set archived_at = now() where org_node_id = $1`, [
+      FLOOR(),
+    ]);
+    const { rows } = await c.query<{ id: string }>(
+      `insert into hr.shift_template (tenant_id, org_node_id, name, role_code, start_time,
+                                      end_time, headcount, weekdays)
+       values ($1, $2, 'Window', 'SERVER', '09:00', '17:00', 1, '{1,2,3,4,5,6,7}') returning id`,
+      [await tenantOf(c, ids), FLOOR()],
+    );
+    return rows[0]!.id;
+  }
+
+  async function today(c: PoolClient): Promise<string> {
+    return (
+      await c.query<{ d: string }>(`select (now() at time zone 'Asia/Kolkata')::date::text d`)
+    ).rows[0]!.d;
+  }
+
+  it('adds tomorrow to day 7 only, never today or a past day, after a preview', async () => {
+    await inRolledBackTx(async (c) => {
+      await clearWorkforce(c);
+      const tpl = await everyDay(c);
+      const preview = await attemptAs<{
+        to_add: number;
+        drafts: number;
+        from_day: string;
+        to_day: string;
+      }>(
+        c,
+        OLIVIA(),
+        `select to_add, drafts, from_day::text, to_day::text from hr.preview_template_shifts($1)`,
+        [FLOOR()],
+      );
+      const t = await today(c);
+      const plus = async (n: number) =>
+        (await c.query<{ d: string }>(`select ($1::date + $2::int)::text d`, [t, n])).rows[0]!.d;
+      expect(preview.rows![0]).toEqual({
+        to_add: 7,
+        drafts: 0,
+        from_day: await plus(1),
+        to_day: await plus(7),
+      });
+      // the preview adds nothing
+      const none = await c.query(`select 1 from hr.shift where template_id = $1`, [tpl]);
+      expect(none.rowCount).toBe(0);
+
+      const add = await attemptAs<{ n: number }>(
+        c,
+        OLIVIA(),
+        'select hr.add_template_shifts($1) as n',
+        [FLOOR()],
+      );
+      expect(add.rows![0]!.n).toBe(7);
+      const { rows } = await c.query<{ min: string; max: string; drafts: number }>(
+        `select min(local_date)::text min, max(local_date)::text max,
+                count(*) filter (where status = 'draft')::int drafts
+           from hr.shift where template_id = $1`,
+        [tpl],
+      );
+      expect(rows[0]).toEqual({ min: await plus(1), max: await plus(7), drafts: 7 });
+      // twice adds nothing more
+      const again = await attemptAs<{ n: number }>(
+        c,
+        OLIVIA(),
+        'select hr.add_template_shifts($1) as n',
+        [FLOOR()],
+      );
+      expect(again.rows![0]!.n).toBe(0);
+    });
+  });
+
+  it('discard cancels the drafts in the window, frees people, leaves published shifts', async () => {
+    await inRolledBackTx(async (c) => {
+      await clearWorkforce(c);
+      const sam = await workerFor(
+        c,
+        ids,
+        'test.server.3.0',
+        'TEST-BAR-3.0-FLOOR-SERVICE',
+        'SERVER',
+      );
+      const tpl = await everyDay(c);
+      await attemptAs(c, OLIVIA(), 'select hr.add_template_shifts($1)', [FLOOR()]);
+      const shifts = (
+        await c.query<{ id: string }>(
+          `select id from hr.shift where template_id = $1 order by local_date`,
+          [tpl],
+        )
+      ).rows.map((r) => r.id);
+      // one published shift, one draft with Sam on it
+      await c.query(
+        `update hr.shift set status = 'published', published_at = now() where id = $1`,
+        [shifts[0]],
+      );
+      const assigned = await assign(c, shifts[1]!, sam);
+      expect(assigned.error).toBeUndefined();
+      const before = await c.query<{ n: number }>(
+        `select count(*)::int n from ops.notification where owner_user_id = $1`,
+        [ids.user('test.server.3.0')],
+      );
+
+      const preview = await attemptAs<{ drafts: number }>(
+        c,
+        OLIVIA(),
+        'select drafts from hr.preview_template_shifts($1)',
+        [FLOOR()],
+      );
+      expect(preview.rows![0]!.drafts).toBe(6);
+      const gone = await attemptAs<{ n: number }>(
+        c,
+        OLIVIA(),
+        'select hr.discard_drafts($1) as n',
+        [FLOOR()],
+      );
+      expect(gone.rows![0]!.n).toBe(6);
+      const { rows } = await c.query<{ status: string; n: number }>(
+        `select status, count(*)::int n from hr.shift where template_id = $1
+          group by status order by status`,
+        [tpl],
+      );
+      expect(rows).toEqual([
+        { status: 'cancelled', n: 6 },
+        { status: 'published', n: 1 },
+      ]);
+      const a = await c.query<{ status: string; drop_reason: string }>(
+        `select status, drop_reason from hr.shift_assignment where shift_id = $1`,
+        [shifts[1]],
+      );
+      expect(a.rows).toEqual([{ status: 'dropped', drop_reason: 'shift_cancelled' }]);
+      const after = await c.query<{ n: number }>(
+        `select count(*)::int n from ops.notification where owner_user_id = $1`,
+        [ids.user('test.server.3.0')],
+      );
+      expect(after.rows[0]!.n).toBe(before.rows[0]!.n);
+
+      // a discarded day can be added again
+      const re = await attemptAs<{ n: number }>(
+        c,
+        OLIVIA(),
+        'select hr.add_template_shifts($1) as n',
+        [FLOOR()],
+      );
+      expect(re.rows![0]!.n).toBe(6);
+    });
+  });
+
+  it('only people who build the roster there', async () => {
+    await inRolledBackTx(async (c) => {
+      for (const fn of [
+        'select * from hr.preview_template_shifts($1)',
+        'select hr.add_template_shifts($1)',
+        'select hr.discard_drafts($1)',
+      ]) {
+        for (const [user, node] of [
+          ['test.server.3.0', 'TEST-BAR-3.0-FLOOR-SERVICE'],
+          ['test.area-manager', 'TEST-BAR-3.0-FLOOR-SERVICE'],
+          ['test.bar-manager.3.0', 'TEST-GUEST-HOUSE-2.0'],
+          ['test.solo.bar-manager', 'TEST-BAR-3.0-FLOOR-SERVICE'],
+        ] as const) {
+          const r = await attemptAs(c, ids.user(user), fn, [ids.node(node)]);
+          expect(r.error, `${user} ${fn}`).toBe('NOT_AUTHORISED');
+        }
+      }
+    });
+  });
+});
+
 describe('hr.assign rules', () => {
   it('ROLE_MISMATCH, WORKER_NOT_AT_NODE and SHIFT_STARTED', async () => {
     await inRolledBackTx(async (c) => {

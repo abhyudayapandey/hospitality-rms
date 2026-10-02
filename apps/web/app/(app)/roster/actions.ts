@@ -30,10 +30,19 @@ async function run<T>(label: string, fn: (tx: Tx) => Promise<T>): Promise<Action
 // Rostering
 // ---------------------------------------------------------------------------
 
-export async function generateWeek(node: string, monday: string): Promise<ActionResult<number>> {
-  return run('generate_week', async (tx) => {
+/** Adds the template shifts for tomorrow to day 7 (ADR 024); returns how many. */
+export async function addTemplateShifts(node: string): Promise<ActionResult<number>> {
+  return run('add_template_shifts', async (tx) => {
     const r = await sql<{ n: number }>`
-      select hr.generate_week(${node}::uuid, ${monday}::date) as n`.execute(tx);
+      select hr.add_template_shifts(${node}::uuid) as n`.execute(tx);
+    return r.rows[0]!.n;
+  });
+}
+
+/** Cancels the unpublished drafts in the next seven days and frees anyone on them. */
+export async function discardDrafts(node: string): Promise<ActionResult<number>> {
+  return run('discard_drafts', async (tx) => {
+    const r = await sql<{ n: number }>`select hr.discard_drafts(${node}::uuid) as n`.execute(tx);
     return r.rows[0]!.n;
   });
 }

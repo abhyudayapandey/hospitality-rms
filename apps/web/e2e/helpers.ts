@@ -197,6 +197,22 @@ export async function setupPeopleWeek(monday: string): Promise<void> {
           and from_date <= $2::date + 6 and to_date >= $2::date`,
       [floor, monday],
     );
+    // the week's draft shifts from the templates: the screen adds only tomorrow to day 7
+    // (ADR 024), and this week is four weeks out
+    await client.query(
+      `insert into hr.shift (tenant_id, org_node_id, template_id, local_date, start_at, end_at,
+                             role_code, headcount)
+       select t.tenant_id, t.org_node_id, t.id, d.day,
+              (d.day + t.start_time) at time zone hr.node_tz($1),
+              (d.day + case when t.end_time > t.start_time then 0 else 1 end + t.end_time)
+                at time zone hr.node_tz($1),
+              t.role_code, t.headcount
+         from hr.shift_template t
+        cross join lateral (select $2::date + i as day from generate_series(0, 6) i) d
+        where t.org_node_id = $1 and t.archived_at is null
+          and extract(isodow from d.day)::int = any (t.weekdays)`,
+      [floor, monday],
+    );
   } finally {
     await client.end();
   }
@@ -224,4 +240,37 @@ export async function viewingOptions(page: Page): Promise<string[]> {
   return picker
     .locator('option')
     .evaluateAll((os) => os.map((o) => o.getAttribute('data-name') ?? ''));
+}
+
+/**
+ * A late template at Floor Service, for the template-shifts test (ADR 024): the test data's
+ * shifts there are published, so nothing would be left to add. `on` (re)creates it with no
+ * shifts; off archives it and cancels its shifts.
+ */
+export async function lateTemplate(on: boolean): Promise<void> {
+  const floor = await placeId(PLACE.floor);
+  const client = new pg.Client({ connectionString: env('MIGRATOR_DATABASE_URL') });
+  await client.connect();
+  try {
+    await client.query(
+      `with t as (select id from hr.shift_template where org_node_id = $1 and name = 'E2E Late'),
+       s as (update hr.shift set status = 'cancelled'
+              where template_id in (select id from t) and status <> 'cancelled' returning id)
+       update hr.shift_assignment set status = 'dropped', drop_reason = 'shift_cancelled'
+        where shift_id in (select id from s) and status = 'assigned'`,
+      [floor],
+    );
+    await client.query(
+      `insert into hr.shift_template (tenant_id, org_node_id, name, role_code, start_time,
+                                      end_time, headcount, weekdays, archived_at)
+       select tenant_id, id, 'E2E Late', 'HOST', '22:00', '23:30', 1, '{1,2,3,4,5,6,7}',
+              case when $2 then null else now() end
+         from core.hierarchy_node where id = $1
+       on conflict (tenant_id, org_node_id, name, role_code)
+       do update set archived_at = excluded.archived_at`,
+      [floor, on],
+    );
+  } finally {
+    await client.end();
+  }
 }
