@@ -93,7 +93,9 @@ describe('reports: who opens what (every user)', () => {
           await c.query(`select set_config('app.user_id', '', true)`);
           const want = rows.map((r) => r.code).sort();
           if (JSON.stringify(got) !== JSON.stringify(want)) {
-            mismatches.push(`${p.username} ${report}: got [${got}], want [${want}]`);
+            mismatches.push(
+              `${p.username} ${report}: got [${got.join(', ')}], want [${want.join(', ')}]`,
+            );
           }
         }
       }
@@ -110,7 +112,8 @@ describe('reports: who opens what (every user)', () => {
         frontline++;
         const got = await reportsOf(c, p.id);
         const want = p.worker ? ['my_week'] : [];
-        if (JSON.stringify(got) !== JSON.stringify(want)) wrong.push(`${p.username}: ${got}`);
+        if (JSON.stringify(got) !== JSON.stringify(want))
+          wrong.push(`${p.username}: ${got.join(', ')}`);
       }
       expect(wrong).toEqual([]);
       // the test data has plenty of them: servers, commis, bartenders, stewards, ...
@@ -129,7 +132,7 @@ describe('reports: who opens what (every user)', () => {
           ...(p.worker ? ['my_week'] : []),
         ];
         if (JSON.stringify(listed) !== JSON.stringify(want)) {
-          wrong.push(`${p.username}: got [${listed}], want [${want}]`);
+          wrong.push(`${p.username}: got [${listed.join(', ')}], want [${want.join(', ')}]`);
         }
       }
       expect(wrong).toEqual([]);

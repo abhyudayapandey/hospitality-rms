@@ -1,6 +1,6 @@
 # Reporting: what each role sees, and how it is built
 
-Status: **proposal, for approval** · 2026-10-02
+Status: **approved** (decisions in section 8) · **R-1 done** (ADR 023) · 2026-10-02
 
 Outlet Ops already records the facts a hospitality business needs to run on numbers: every
 stock movement, what was bought and at what price, what was made and thrown away, what was
@@ -71,6 +71,31 @@ reports that each person can act on, at the level they are responsible for.
    item.
 4. **Labour cost** needs pay rates loaded for everyone (file 07, COMPENSATION). Salaried
    staff need a monthly basis turned into a rate per hour; we already store `pay_basis`.
+
+### The POS export we will import (IDSNEXT sample, July)
+
+The sample is a month's "Sale by item" from IDSNEXT, one sheet:
+
+- **Layout.** A title rule, then the header row `Item | Description | Quantity | Rate |
+Value | Discount`. Lines are grouped as **outlet** (e.g. `LE CAFE`, `LE CAFE TAKE AWAY &
+DELIVERY`), then **menu type** (`Food`, `Liquor`, `Soft Drink`, `Others`).
+- **Total rows.** Each group closes with `Group Total`, `Menu Type Total` and
+  `Restaurant Total`, and the file ends with `Grand Total`. An `Item Total` row follows an
+  item sold at more than one rate. The importer skips every total row and checks that its
+  sums match `Grand Total`.
+- **Line fields.**
+  - **Item** is the POS item code (a number).
+  - **Description** is upper case and padded with dots (`FRENCH FRIES ..........`).
+  - **Quantity** has three decimals.
+  - **Value** is the net amount after the discount. Rate × quantity = value + discount;
+    a fully comped line has value 0.
+- **Period.** The sample covers a whole month, not a day. The importer must take a date
+  range and either refuse multi-day files or spread them only when the POS gives a date
+  per line. To be decided with SAL-1: ask for a daily export where the POS allows it.
+- **Matching to the menu.** POS codes map to menu items once per outlet (a mapping table,
+  kept by the cost controller). Unmapped codes are listed, never guessed. POS outlet names
+  map to our outlets the same way.
+
 5. **Room occupancy** (hotels) isn't in the system. Housekeeping productivity per room
    needs a PMS link or a daily "rooms occupied" figure. Later.
 
@@ -220,6 +245,23 @@ place switcher (ADR 016) narrows or widens it within their access.
 | later | E-mail digest; occupancy for housekeeping; AI signals reading the same measures (ADR 020's trace is already one).                                                                                                              |
 
 Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
+
+## Progress
+
+- **R-1 done** (ADR 023):
+  - the `rpt` schema, with four daily tables on a 06:00 business day, rebuilt nightly over
+    35 days (today and yesterday are worked out live);
+  - **Outlet today** (the daily flash, without labour cost), **Department today** and **My
+    week**;
+  - the Reports list, and Home's "Today so far" card;
+  - REPORTS lets the Account Owner read every report.
+
+  A security test signs in as every test user: frontline staff get only My week.
+
+- **Not yet:**
+  - targets (R-4), so figures are compared only with the same day last week;
+  - labour cost and labour % (R-3);
+  - area and company league tables (R-4).
 
 ## 8. Decisions (2 Oct 2026)
 
