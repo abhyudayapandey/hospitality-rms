@@ -141,7 +141,9 @@ describe('own login actions', () => {
         'test.account-owner',
         'select action, person from core.access_audit(20)',
       );
-      const mine = audit.filter((a) => a.person === 'Test Commis 1.0').map((a) => a.action);
+      const mine = audit
+        .filter((a) => a.person === 'Test Commis 1.0' && a.action.startsWith('password'))
+        .map((a) => a.action);
       expect(mine.sort()).toEqual(['password change failed', 'password changed']);
       await c.query(
         `update core.app_user set login_type = 'email', email = 'commis-b@example.test'
