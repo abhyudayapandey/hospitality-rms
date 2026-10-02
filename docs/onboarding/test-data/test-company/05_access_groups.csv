@@ -1,0 +1,2 @@
+group_code,name,rights,acts_as
+KITCHEN_LEAD,Kitchen Lead,ROSTER:modify; ATTENDANCE:view; LEAVE:view; SHIFT_SWAPS:view; TASKS:modify; CHECKLIST_TEMPLATES:modify,DEPARTMENT_HEAD

@@ -3,6 +3,7 @@ import { cache } from 'react';
 import { requireUser, type CurrentUser } from './auth/server';
 import { sql, withUser } from './db';
 import type { ModuleCode } from '@outlet-ops/domain';
+import { isProductCode } from './custom-groups';
 import { modulesOn, withModules } from './modules';
 import { navProfile, type NavInput } from './nav';
 
@@ -62,8 +63,10 @@ export const loadShell = cache(async (): Promise<Shell> => {
       ).rows,
     );
     const domainMap = withModules(new Map(all.rows.map((d) => [d.domain, d.access])), modules);
+    // the product roles a custom group stands in for count too (ADR 027)
     const groups = await sql<{ access_group: string }>`
-      select distinct access_group from core.my_access()`.execute(tx);
+      select distinct access_group from core.my_access()
+      union select r from core.my_acting_roles() r`.execute(tx);
     const has = (d: string) => domainMap.has(d);
     const nodes = await sql<NodeRow>`
       select id, type, kind, name, depth, derived, timezone, holds_stock from core.nodes()`.execute(
@@ -92,7 +95,8 @@ export const loadShell = cache(async (): Promise<Shell> => {
             select exists (select 1 from core.screen_places('production')) as v`.execute(tx)
         : null;
     // frontline staff have only their own week; others ask rpt.my_reports() (ADR 023)
-    const groupSet = new Set(groups.rows.map((g) => g.access_group));
+    // product roles only: a custom group's own code says nothing about the kind of work
+    const groupSet = new Set(groups.rows.map((g) => g.access_group).filter(isProductCode));
     const listed =
       navProfile(groupSet) === 'frontline'
         ? null

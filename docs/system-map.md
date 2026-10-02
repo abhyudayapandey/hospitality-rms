@@ -106,6 +106,11 @@ works shifts, and **Team** (Roster, Exceptions, Events) for people who build ros
 resolve exceptions or plan events, and for people above outlet level. Frontline staff see
 only Me.
 
+**Customer access groups** (ADR 027). A company may build its own groups from the product's
+rights (Admin → Access groups, Account Owner; or file 05). A group can carry a role's
+requests and approvals: Test Company's Kitchen Lead (Sous Chef 1.1, Hotel 1.1 kitchen)
+approves like the department head.
+
 **Modules** (ADR 026). Each company can switch off Events, Shift swaps, Leave, Production,
 Prep lists, Checklists, Maintenance, and Menu and sales (Admin → Modules, Account Owner
 only). What is off disappears from the table above for everyone in that company. Test Solo

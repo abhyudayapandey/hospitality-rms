@@ -29,6 +29,8 @@ export const ERROR_MESSAGES = {
   INVALID_REPORT: "That report doesn't exist.",
   MODULE_OFF: "This isn't switched on for your company.",
   INVALID_MODULE: "That module doesn't exist.",
+  GROUP_CODE_TAKEN: 'That name is taken by a product group. Choose another.',
+  GROUP_IN_USE: 'People hold this group, or a job role uses it. Take it off them first.',
   SHIFT_STARTED: 'That shift has already started, so it can no longer be changed.',
   SHIFT_OVERLAP: 'They are already on a shift at that time.',
   REST_RULE: 'That leaves too little rest between their shifts.',

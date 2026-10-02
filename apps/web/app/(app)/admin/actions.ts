@@ -281,3 +281,33 @@ export async function setModule(code: string, on: boolean): Promise<ActionResult
   if (r.ok) revalidatePath('/', 'layout');
   return r;
 }
+
+// ---------------------------------------------------------------------------
+// The company's own access groups (ADR 027): the Account Owner builds and edits them.
+// core.save_custom_group checks COMPANY_SETTINGS modify and every rule (business rights
+// only, business roles only, no product codes); the audit triggers record each change.
+
+export interface CustomGroupInput {
+  code: string;
+  name: string;
+  rights: Record<string, 'view' | 'modify'>;
+  actsAs: string[];
+}
+
+export async function saveCustomGroup(g: CustomGroupInput): Promise<ActionResult<null>> {
+  const r = await run('save_custom_group', async (tx) => {
+    await sql`select core.save_custom_group(${g.code}, ${g.name}, ${JSON.stringify(g.rights)}::jsonb,
+                                            ${g.actsAs}::text[])`.execute(tx);
+    return null;
+  });
+  // the rights of everyone holding it change at once
+  if (r.ok) revalidatePath('/', 'layout');
+  return r;
+}
+
+export async function archiveCustomGroup(code: string): Promise<ActionResult<null>> {
+  return run('archive_custom_group', async (tx) => {
+    await sql`select core.archive_custom_group(${code})`.execute(tx);
+    return null;
+  });
+}

@@ -1102,6 +1102,28 @@ parameter and no product sync change.
 - **`test.executive-chef.1.0`.** Home's Needs attention has "open slots this week"; tapping
   it opens the roster on that day.
 
+#### Releasing customer access groups (AC-1)
+
+One migration, `20261021100000_custom_groups` (ADR 027). The product sync (part of Deploy)
+now leaves customer groups alone. No stack change, no new parameter.
+
+- **What changes in the app.** **Admin → Access groups**: the Account Owner builds groups
+  from the product's rights, optionally carrying a role's requests and approvals; user
+  admins see them and give them like any group.
+- **Test data.** Test Company gains file 05 (KITCHEN_LEAD) and a file 08 row (Sous Chef
+  1.1 at Hotel 1.1's kitchen). Re-import Test Company to see it on production: the dry run
+  shows 1 access group created and 1 extra role assignment created; Apply; a second dry run
+  shows no changes.
+
+**Deploy order.** Run the Deploy workflow, then re-import Test Company.
+
+**Check.**
+
+- **`test.account-owner`.** Admin → Access groups lists Kitchen Lead (1 person, approves
+  like a Department Head). **New group** builds one; remove it again while nobody holds it.
+- **`test.sous-chef.1.1`.** A leave request from `test.commis.1.1` appears in Inbox and can
+  be approved.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

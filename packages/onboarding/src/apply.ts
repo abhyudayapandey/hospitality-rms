@@ -156,6 +156,7 @@ class Loader {
 
   async run(): Promise<void> {
     await this.customer();
+    await this.customGroups();
     await this.ownersInFiles();
     if (this.report.issues.length) return;
     await this.structure();
@@ -179,6 +180,51 @@ class Loader {
     }
     this.step('');
     this.report.access = await this.preview();
+  }
+
+  /**
+   * The customer's own access groups (file 05, ADR 027), written through
+   * core.put_custom_group, which checks them as the app does. Groups the file doesn't list
+   * are left alone: the Account Owner may have built them in the app.
+   */
+  private async customGroups() {
+    const counts = (this.report.counts['access groups'] ??= {
+      created: 0,
+      updated: 0,
+      unchanged: 0,
+    });
+    for (const g of this.b.customGroups) {
+      this.step(FILES.customGroups.file, g.line);
+      const { rows } = await this.c.query<{ name: string; acts_as: string[]; rights: unknown }>(
+        `select g.name, g.acts_as,
+                coalesce((select jsonb_object_agg(d.code, dp.access)
+                            from core.domain_policy dp join core.domain d on d.id = dp.domain_id
+                           where dp.group_id = g.id), '{}') as rights
+           from core.security_group g
+          where g.tenant_id = $1 and g.code = $2 and g.kind = 'custom' and g.archived_at is null`,
+        [this.tenant, g.group_code],
+      );
+      const was = rows[0];
+      const same =
+        was &&
+        was.name === g.name &&
+        JSON.stringify([...was.acts_as].sort()) === JSON.stringify([...g.acts_as].sort()) &&
+        JSON.stringify(sortKeys(was.rights as Record<string, string>)) ===
+          JSON.stringify(sortKeys(g.rights));
+      if (same) {
+        counts.unchanged++;
+        continue;
+      }
+      await this.c.query('select core.put_custom_group($1, $2, $3, $4, $5)', [
+        this.tenant,
+        g.group_code,
+        g.name,
+        JSON.stringify(g.rights),
+        g.acts_as,
+      ]);
+      if (was) counts.updated++;
+      else counts.created++;
+    }
   }
 
   private async customer() {
@@ -1900,4 +1946,8 @@ class Loader {
     );
     return rows;
   }
+}
+
+function sortKeys(o: Record<string, string>): [string, string][] {
+  return Object.entries(o).sort(([a], [b]) => a.localeCompare(b));
 }

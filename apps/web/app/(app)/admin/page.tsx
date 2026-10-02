@@ -92,6 +92,12 @@ export default async function AdminPage() {
             Access audit
           </Link>
           <Link
+            href="/admin/groups"
+            className="flex min-h-12 items-center justify-center rounded-lg font-medium ring-1 ring-slate-300"
+          >
+            Access groups
+          </Link>
+          <Link
             href="/admin/modules"
             className="flex min-h-12 items-center justify-center rounded-lg font-medium ring-1 ring-slate-300"
           >
