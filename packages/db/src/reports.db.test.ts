@@ -18,9 +18,8 @@ const GM = () => ids.user('test.general-manager.1.0');
 const n = (v: string | null | undefined) => Number(v ?? 0);
 
 async function today(c: PoolClient, place: string): Promise<string> {
-  return (
-    await c.query<{ d: string }>(`select rpt.today($1)::text as d`, [ids.node(place)])
-  ).rows[0]!.d;
+  return (await c.query<{ d: string }>(`select rpt.today($1)::text as d`, [ids.node(place)]))
+    .rows[0]!.d;
 }
 
 async function flash(c: PoolClient, user: string, outlet: string, day: string) {
@@ -69,9 +68,7 @@ describe('rpt figures', () => {
     await inRolledBackTx(async (c) => {
       await c.query(`select rpt.rebuild(current_date - 10, current_date)`);
       const t = await today(c, 'TEST-HOTEL-1.0');
-      const day = (
-        await c.query<{ d: string }>(`select ($1::date - 3)::text d`, [t])
-      ).rows[0]!.d;
+      const day = (await c.query<{ d: string }>(`select ($1::date - 3)::text d`, [t])).rows[0]!.d;
       const stored = await flash(c, 'test.general-manager.1.0', 'TEST-HOTEL-1.0', day);
       expect(n(stored.get('sales')!.value)).toBe(24195); // 107550/6 + 37620/6
       expect(n(stored.get('food_cost_pct')!.value)).toBe(21.5);
@@ -274,12 +271,9 @@ describe('rpt figures', () => {
 
   it('refuses a day in the future and an unknown report', async () => {
     await inRolledBackTx(async (c) => {
-      const r = await attemptAs(
-        c,
-        GM(),
-        `select * from rpt.outlet_flash($1, rpt.today($1) + 1)`,
-        [ids.node('TEST-HOTEL-1.0')],
-      );
+      const r = await attemptAs(c, GM(), `select * from rpt.outlet_flash($1, rpt.today($1) + 1)`, [
+        ids.node('TEST-HOTEL-1.0'),
+      ]);
       expect(r.error).toBe('INVALID_DATE');
       const x = await attemptAs(c, GM(), `select * from rpt.report_places('payroll')`);
       expect(x.error).toBe('INVALID_REPORT');

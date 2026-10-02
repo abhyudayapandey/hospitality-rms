@@ -24,6 +24,7 @@ describe('bottom nav', () => {
       domains: new Set([...SELF, ...domains]),
       menu: false,
       production: false,
+      reports: 'mine',
       ...f,
     }).map((i) => i.label);
 
@@ -58,15 +59,42 @@ describe('bottom nav', () => {
       'Roster',
       'Tasks',
     ]);
-    expect(nav(['STAFF', 'COST_CONTROLLER'], ['STOCK_LEVELS', 'MENU'], { menu: true })).toEqual([
+    // Reports takes Menu's place for the cost controller (ADR 023)
+    expect(
+      nav(['STAFF', 'COST_CONTROLLER'], ['STOCK_LEVELS', 'MENU'], {
+        menu: true,
+        reports: 'business',
+      }),
+    ).toEqual(['Home', 'Inbox', 'Stock', 'Reports', 'Requests']);
+    expect(nav(['HR_ADMIN'], [], { reports: 'business' })).toEqual([
       'Home',
       'Inbox',
-      'Stock',
-      'Menu',
+      'Reports',
+      'Roster',
       'Requests',
     ]);
-    expect(nav(['HR_ADMIN'], [])).toEqual(['Home', 'Inbox', 'Roster', 'Requests']);
-    expect(nav(['ACCOUNT_OWNER'], ['USER_ACCESS'])).toEqual(['Home', 'Inbox', 'Admin', 'Requests']);
+    expect(nav(['ACCOUNT_OWNER'], ['USER_ACCESS'], { reports: 'business' })).toEqual([
+      'Home',
+      'Inbox',
+      'Reports',
+      'Admin',
+      'Requests',
+    ]);
+  });
+
+  it('only business reports take a nav slot; My week opens from Home', () => {
+    expect(nav(['AUDITOR'], ['AUDIT', 'SECURITY_ROLES'])).toEqual([
+      'Home',
+      'Inbox',
+      'Admin',
+      'Requests',
+    ]);
+    expect(nav(['STAFF'], [], { reports: 'business' })).toEqual([
+      'Home',
+      'Tasks',
+      'Roster',
+      'Inbox',
+    ]);
   });
 
   it('frontline staff with stock access get Stock, which leads to Production', () => {
@@ -93,8 +121,9 @@ describe('bottom nav', () => {
       domains: new Set([...SELF, 'USER_ACCESS']),
       menu: true,
       production: false,
+      reports: 'mine' as const,
     };
-    expect(moreItems(input).map((i) => i.label)).toEqual(['Menu', 'Requests']);
+    expect(moreItems(input).map((i) => i.label)).toEqual(['Menu', 'Requests', 'Reports']);
     expect(visibleNav(input).map((i) => i.label)).toContain('Admin');
   });
 });

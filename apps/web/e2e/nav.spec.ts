@@ -18,9 +18,10 @@ const cases: [string, string[]][] = [
   ['Test General Manager 1.0', ['Home', 'Inbox', 'Stock', 'Roster', 'Tasks']],
   ['Test Bar Manager 3.0', ['Home', 'Inbox', 'Stock', 'Roster', 'Tasks']],
   ['Test Area Manager', ['Home', 'Inbox', 'Stock', 'Roster', 'Tasks']],
-  ['Test Cost Controller 1.0', ['Home', 'Inbox', 'Stock', 'Menu', 'Requests']],
-  ['Test HR Admin', ['Home', 'Inbox', 'Roster', 'Requests']],
-  ['Test Account Owner', ['Home', 'Inbox', 'Admin', 'Requests']],
+  // Reports (ADR 023) takes Menu's place for the cost controller, and joins the office nav
+  ['Test Cost Controller 1.0', ['Home', 'Inbox', 'Stock', 'Reports', 'Requests']],
+  ['Test HR Admin', ['Home', 'Inbox', 'Reports', 'Roster', 'Requests']],
+  ['Test Account Owner', ['Home', 'Inbox', 'Reports', 'Admin', 'Requests']],
 ];
 
 for (const [who, items] of cases) {

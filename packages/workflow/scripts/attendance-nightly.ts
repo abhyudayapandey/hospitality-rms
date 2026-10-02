@@ -39,9 +39,7 @@ try {
     const r = await job<{ exceptions: number; purged: number }>(
       'select * from hr.nightly_attendance()',
     );
-    console.log(
-      `[attendance-nightly] exceptions=${r?.exceptions ?? 0} purged=${r?.purged ?? 0}`,
-    );
+    console.log(`[attendance-nightly] exceptions=${r?.exceptions ?? 0} purged=${r?.purged ?? 0}`);
   }
   // the report tables (ADR 023): the last 35 business days, after the day's exceptions
   const rep = await job<{ n: number }>('select rpt.nightly() as n');

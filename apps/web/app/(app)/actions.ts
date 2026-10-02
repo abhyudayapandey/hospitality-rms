@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { requireUser } from '@/lib/auth/server';
 import { PLACE_COOKIE } from '@/lib/auth/session';
 import { sql, withUser } from '@/lib/db';
-import { isScreen, withChoice } from '@/lib/place-screens';
+import { isReportScreen, isScreen, withChoice } from '@/lib/place-screens';
 import { rememberedPlaces } from '@/lib/places';
 
 /**
@@ -19,8 +19,11 @@ export async function rememberPlace(
   if (!isScreen(screen)) return;
   const user = await requireUser();
   const ok = await withUser(user.id, async (tx) => {
-    const r = await sql<{ id: string }>`
-      select id from core.screen_places(${screen}) where id::text = ${placeId}`.execute(tx);
+    const r = isReportScreen(screen)
+      ? await sql<{ id: string }>`
+          select id from rpt.report_places(${screen}) where id::text = ${placeId}`.execute(tx)
+      : await sql<{ id: string }>`
+          select id from core.screen_places(${screen}) where id::text = ${placeId}`.execute(tx);
     return r.rows.length === 1;
   });
   if (!ok) return;

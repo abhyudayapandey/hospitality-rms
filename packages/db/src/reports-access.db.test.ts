@@ -46,7 +46,12 @@ async function everyone(c: PoolClient): Promise<Person[]> {
   return rows;
 }
 
-async function as<T extends object>(c: PoolClient, user: string, sql: string, params: unknown[] = []) {
+async function as<T extends object>(
+  c: PoolClient,
+  user: string,
+  sql: string,
+  params: unknown[] = [],
+) {
   return attemptAs<T>(c, user, sql, params);
 }
 
@@ -169,7 +174,11 @@ describe('reports: who opens what (every user)', () => {
     await inRolledBackTx(async (c) => {
       const r = (u: string) => reportsOf(c, ids.user(u));
       const pl = (u: string, rep: string) => placesOf(c, ids.user(u), rep);
-      expect(await r('test.general-manager.1.0')).toEqual(['outlet_flash', 'department', 'my_week']);
+      expect(await r('test.general-manager.1.0')).toEqual([
+        'outlet_flash',
+        'department',
+        'my_week',
+      ]);
       expect(await pl('test.general-manager.1.0', 'outlet_flash')).toEqual(['TEST-HOTEL-1.0']);
       expect(await r('test.cost-controller.1.0')).toEqual(['outlet_flash', 'my_week']);
       expect(await r('test.executive-chef.1.0')).toEqual(['department', 'my_week']);
@@ -228,7 +237,11 @@ describe('reports: the rpt tables behind them', () => {
         // staff without a store see no store figures either (stock users see their
         // store's, as they already see its stock levels)
         if (!p.groups.includes('STOCK_USER')) {
-          const r = await as<{ n: number }>(c, p.id, 'select count(*)::int as n from rpt.store_day');
+          const r = await as<{ n: number }>(
+            c,
+            p.id,
+            'select count(*)::int as n from rpt.store_day',
+          );
           if (r.error !== undefined || r.rows[0]!.n > 0) seen.push(`${p.username} rpt.store_day`);
         }
       }
