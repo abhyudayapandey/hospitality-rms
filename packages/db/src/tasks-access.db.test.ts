@@ -423,6 +423,19 @@ describe('checklist templates', () => {
       expect(await seesRow(c, 'test.area-manager', 'ops.checklist_template', id)).toBe(true);
       expect(await seesRow(c, 'test.commis.1.0', 'ops.checklist_template', id)).toBe(false);
       expect(await seesRow(c, 'test.head-bartender.1.0', 'ops.checklist_template', id)).toBe(false);
+      // the screen's list is the same rows, under the place asked for
+      const listed = async (who: string, node: string) =>
+        (
+          await attemptAs<{ id: string }>(c, ids.user(who), 'select id from ops.checklists($1)', [
+            ids.node(node),
+          ])
+        ).rows!.map((r) => r.id);
+      expect(await listed('test.sous-chef.1.0', KITCHEN)).toContain(id);
+      expect(await listed('test.area-manager', HOTEL)).toContain(id);
+      expect(await listed('test.executive-chef.1.0', BAR)).not.toContain(id);
+      expect(await listed('test.commis.1.0', KITCHEN)).toEqual([]);
+      expect(await listed('test.head-bartender.1.0', HOTEL)).not.toContain(id);
+      expect(await listed('test.solo.bar-manager', KITCHEN)).toEqual([]);
       const archive = await attemptAs(
         c,
         ids.user('test.sous-chef.1.0'),
@@ -495,6 +508,38 @@ describe('maintenance', () => {
       expect(await seesRow(c, 'test.area-manager', t, id)).toBe(true);
       for (const who of ['test.commis-b.1.0', 'test.executive-chef.1.0', 'test.bar-manager.3.0']) {
         expect(await seesRow(c, who, t, id), who).toBe(false);
+      }
+    });
+  });
+
+  it('the screens list exactly the requests RLS shows, plus those assigned to the person', async () => {
+    await inRolledBackTx(async (c) => {
+      const id = (await raise(c, 'test.commis.1.0', KITCHEN)).rows![0]!.id;
+      const listed = async (who: string, one: string | null = null) =>
+        (
+          await attemptAs<{ id: string }>(
+            c,
+            ids.user(who),
+            'select id from ops.maintenance_requests($1)',
+            [one],
+          )
+        ).rows!.map((r) => r.id);
+      for (const who of [
+        'test.commis.1.0',
+        'test.chief-engineer.1.0',
+        'test.technician.1.0',
+        'test.area-manager',
+        'test.commis-b.1.0',
+        'test.executive-chef.1.0',
+        'test.bar-manager.3.0',
+        'test.solo.bar-manager',
+      ]) {
+        expect((await listed(who)).includes(id), who).toBe(
+          await seesRow(c, who, 'ops.maintenance_request', id),
+        );
+        expect(await listed(who, id), who).toEqual(
+          (await seesRow(c, who, 'ops.maintenance_request', id)) ? [id] : [],
+        );
       }
     });
   });

@@ -1596,6 +1596,51 @@ begin
      order by u.display_name;
 end $$;
 
+-- The maintenance screens: requests the caller reads (the same rows RLS shows: their own,
+-- or MAINTENANCE view where it is handled) plus any assigned to them, with names. One
+-- request when p_id is given.
+create function ops.maintenance_requests(p_id uuid default null)
+returns table (id uuid, title text, description text, status text, org_node_id uuid,
+               handled_by text, place_name text, reported_by_name text, assigned_to uuid,
+               assigned_to_name text, photo_key text, done_photo_key text, done_note text,
+               created_at timestamptz, done_at timestamptz)
+language sql stable security definer
+set search_path = pg_catalog, core, ops
+as $$
+  select r.id, r.title, r.description, r.status, r.org_node_id, h.name, p.name,
+         rb.display_name, r.assigned_to, at.display_name, r.photo_key, r.done_photo_key,
+         r.done_note, r.created_at, r.done_at
+    from ops.maintenance_request r
+    join core.hierarchy_node h on h.id = r.org_node_id
+    join core.hierarchy_node p on p.id = r.place_node_id
+    left join core.app_user rb on rb.id = r.reported_by
+    left join core.app_user at on at.id = r.assigned_to
+   where r.tenant_id = core.my_tenant()
+     and (p_id is null or r.id = p_id)
+     and (r.reported_by = core.current_user_id() or r.assigned_to = core.current_user_id()
+          or core.can('MAINTENANCE', 'view', r.org_node_id, null))
+   order by r.status = 'done', r.created_at desc
+   limit 100;
+$$;
+
+-- The checklists screen: templates at p_node and below that the caller reads
+-- (CHECKLIST_TEMPLATES view where each one is, as RLS), with the place's name.
+create function ops.checklists(p_node uuid)
+returns table (id uuid, org_node_id uuid, place_name text, name text, schedule jsonb,
+               assign jsonb, steps jsonb, archived_at timestamptz)
+language sql stable security definer
+set search_path = pg_catalog, core, ops, extensions
+as $$
+  select t.id, t.org_node_id, n.name, t.name, t.schedule, t.assign, t.steps, t.archived_at
+    from ops.checklist_template t
+    join core.hierarchy_node n on n.id = t.org_node_id
+    join core.hierarchy_node p on p.id = p_node and p.tenant_id = t.tenant_id
+   where t.tenant_id = core.my_tenant()
+     and n.path operator(extensions.<@) p.path
+     and core.can('CHECKLIST_TEMPLATES', 'view', t.org_node_id, null)
+   order by t.archived_at is not null, n.name, t.name;
+$$;
+
 -- May the caller upload a photo for p_purpose at p_node? The server presigns an upload
 -- only then (ADR 006): a step of a task they work on there ('task', under tasks/routine/),
 -- a maintenance request where they work or one assigned to them ('maintenance', under
@@ -1694,7 +1739,8 @@ begin
     'ops.assign_expiry(uuid, uuid, timestamptz, boolean)',
     'ops.discard_expired(uuid, numeric, text)', 'inv.expired_wastage(uuid, date, date)',
     'ops.my_to_assign()', 'ops.assignable_people(uuid)',
-    'ops.can_upload_photo(text, uuid)']::regprocedure[] loop
+    'ops.can_upload_photo(text, uuid)', 'ops.maintenance_requests(uuid)',
+    'ops.checklists(uuid)']::regprocedure[] loop
     execute format('revoke execute on function %s from public', f);
   end loop;
   -- what the app calls; the rest are internal to these functions
@@ -1713,7 +1759,8 @@ begin
     'ops.assign_expiry(uuid, uuid, timestamptz, boolean)',
     'ops.discard_expired(uuid, numeric, text)', 'inv.expired_wastage(uuid, date, date)',
     'ops.my_to_assign()', 'ops.assignable_people(uuid)', 'ops.team_of_store(uuid)',
-    'ops.can_upload_photo(text, uuid)']::regprocedure[] loop
+    'ops.can_upload_photo(text, uuid)', 'ops.maintenance_requests(uuid)',
+    'ops.checklists(uuid)']::regprocedure[] loop
     execute format('grant execute on function %s to app_rw', f);
   end loop;
 end $$;
@@ -1732,7 +1779,7 @@ begin
     '         when p_screen in \(''tasks''.*?else ops\.works_at\(n\.id\) end\n', '');
   execute v_src;
 end $$;
-drop function ops.can_upload_photo(text, uuid), ops.link_test_batch(uuid, uuid), ops.assignable_people(uuid), ops.my_to_assign(), inv.expired_wastage(uuid, date, date),
+drop function ops.checklists(uuid), ops.maintenance_requests(uuid), ops.can_upload_photo(text, uuid), ops.link_test_batch(uuid, uuid), ops.assignable_people(uuid), ops.my_to_assign(), inv.expired_wastage(uuid, date, date),
   ops.discard_expired(uuid, numeric, text), ops.assign_expiry(uuid, uuid, timestamptz, boolean),
   ops.report_expired(uuid, uuid, text), ops.record_task_batch(uuid, numeric, text),
   ops.create_prep_tasks(uuid, jsonb, timestamptz, jsonb), inv.prep_suggestions(uuid),
