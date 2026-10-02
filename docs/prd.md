@@ -568,6 +568,15 @@ Photos add under ₹30 a month in every row and are included in the totals. Othe
 4. AI provider: Anthropic API vs Amazon Bedrock, decided when the AI layer is built.
 5. When to move from the AWS free plan to paid (and to a managed database) — by 15 Feb 2027 at the latest.
 6. Weekly-off-aware leave counting (currently calendar days) — Phase 2.
+7. **One person, two jobs (on hold).** Access already adds up: a person has one job role
+   plus any extra access groups (file 08 or Admin), and approvals stay safe (no one
+   approves their own request; one person approving two steps in a row approves once).
+   Rostering does not: a person can only be rostered in their own job role
+   (`ROLE_MISMATCH`), so a cashier who also serves, or a manager covering a cook's shift,
+   can't be put on the other role's shifts. The fix is "also works as": extra job roles
+   per person, for rostering only, adding no access. On hold, since small outlets that
+   share jobs (QSRs) are not the first market. Outlet formats can already give one job
+   role combined access (for example a manager with HR built in).
 
 **Risks**
 

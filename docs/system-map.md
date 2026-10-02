@@ -65,6 +65,11 @@ to their home (file 06). Extra grants come from file 08 or the Admin screens.
 | Frontline that makes things | Commis, Cook, Bartender, Chef de Partie, Laundry Attendant                                                                                                                                  | STAFF + PRODUCTION_TEAM or STOCK_USER                                  | Home, Tasks, Production or Stock, Roster, Inbox |
 | Frontline                   | Server, Steward, Host, Cashier, Bellboy, Front Desk, Guest Relations, Room / Public Area Attendant, Kitchen Steward, Bar Back, Technician, Security Guard, Delivery Driver                  | STAFF (+ SELF for everyone)                                            | Home, Tasks, Roster, Inbox                      |
 
+**One person, two jobs.** Access adds up: a person's job role gives their default access,
+and extra groups can be granted on top (file 08 or Admin). The bottom nav follows their
+most senior kind of work. Rostering uses only their own job role; rostering one person in a
+second role is on hold (PRD section 15, open question 7).
+
 `docs/onboarding/test-data/PRODUCT_access_groups_REFERENCE.csv` says what each group
 allows. Each customer's `99_access_preview_GENERATED.csv` lists every person's access.
 
