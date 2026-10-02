@@ -361,24 +361,22 @@ class Loader {
     }
     for (const s of this.b.locations) {
       this.step(FILES.locations.file, s.line);
+      const node = this.nodes.get(s.org_node_code);
+      await this.locationSetInApp(s, node);
       await this.upsert(
         'location settings',
         `insert into hr.node_setting (tenant_id, org_node_id, latitude, longitude, geofence_radius_m)
          values ($1, $2, $3, $4, $5)
          on conflict (tenant_id, org_node_id) do update
             set latitude = excluded.latitude, longitude = excluded.longitude,
-                geofence_radius_m = excluded.geofence_radius_m
+                geofence_radius_m = excluded.geofence_radius_m,
+                set_in_app_by = null, set_in_app_at = null
           where (hr.node_setting.latitude, hr.node_setting.longitude,
                  hr.node_setting.geofence_radius_m)
                 is distinct from (excluded.latitude, excluded.longitude, excluded.geofence_radius_m)
+             or hr.node_setting.set_in_app_by is not null
          returning id, xmax = 0 as inserted`,
-        [
-          this.tenant,
-          this.nodes.get(s.org_node_code),
-          s.latitude,
-          s.longitude,
-          s.geofence_radius_m,
-        ],
+        [this.tenant, node, s.latitude, s.longitude, s.geofence_radius_m],
       );
     }
   }
@@ -654,6 +652,44 @@ class Loader {
       });
     }
     await this.peopleCoverage();
+  }
+
+  /**
+   * A location set in the app since the last import (ADR 018): a warning naming who set it
+   * and when, before this file replaces it. Same values: nothing to warn about.
+   */
+  private async locationSetInApp(
+    s: {
+      line: number;
+      org_node_code: string;
+      latitude: number;
+      longitude: number;
+      geofence_radius_m: number;
+    },
+    node: string | undefined,
+  ) {
+    const { rows } = await this.c.query<{ who: string; at: string; was: string }>(
+      `select u.display_name as who,
+              to_char(ns.set_in_app_at at time zone hr.node_tz(ns.org_node_id), 'DD Mon YYYY HH24:MI')
+                || ' ' || hr.node_tz(ns.org_node_id) as at,
+              trim_scale(ns.latitude) || ', ' || trim_scale(ns.longitude) || ', '
+                || ns.geofence_radius_m || ' m' as was
+         from hr.node_setting ns join core.app_user u on u.id = ns.set_in_app_by
+        where ns.tenant_id = $1 and ns.org_node_id = $2
+          and (ns.latitude, ns.longitude, ns.geofence_radius_m)
+              is distinct from ($3::numeric, $4::numeric, $5::int)`,
+      [this.tenant, node, s.latitude, s.longitude, s.geofence_radius_m],
+    );
+    const r = rows[0];
+    if (!r) return;
+    this.report.warnings.push({
+      file: FILES.locations.file,
+      row: s.line,
+      column: 'org_node_code',
+      message:
+        `${s.org_node_code}: the location was set in the app by ${r.who} on ${r.at} (${r.was}); ` +
+        `this import replaces it with ${s.latitude}, ${s.longitude}, ${s.geofence_radius_m} m`,
+    });
   }
 
   /** People whose own requests nobody else could approve: one warning per person and process. */
@@ -1220,18 +1256,25 @@ class Loader {
       await this.upsert(
         'roster settings',
         `insert into hr.roster_setting (tenant_id, min_rest_hours, weekly_hours_cap,
-                                        late_threshold_min)
-         values ($1, coalesce($2, 10), coalesce($3, 48), coalesce($4, 10))
+                                        late_threshold_min, extra_time_min_minutes)
+         values ($1, coalesce($2, 10), coalesce($3, 48), coalesce($4, 10), coalesce($5, 30))
          on conflict (tenant_id) do update
             set min_rest_hours = excluded.min_rest_hours,
                 weekly_hours_cap = excluded.weekly_hours_cap,
-                late_threshold_min = excluded.late_threshold_min
+                late_threshold_min = excluded.late_threshold_min,
+                extra_time_min_minutes = excluded.extra_time_min_minutes
           where (hr.roster_setting.min_rest_hours, hr.roster_setting.weekly_hours_cap,
-                 hr.roster_setting.late_threshold_min)
+                 hr.roster_setting.late_threshold_min, hr.roster_setting.extra_time_min_minutes)
                 is distinct from (excluded.min_rest_hours, excluded.weekly_hours_cap,
-                                  excluded.late_threshold_min)
+                                  excluded.late_threshold_min, excluded.extra_time_min_minutes)
          returning id, xmax = 0 as inserted`,
-        [this.tenant, v('min_rest_hours'), v('weekly_hours_cap'), v('late_threshold_min')],
+        [
+          this.tenant,
+          v('min_rest_hours'),
+          v('weekly_hours_cap'),
+          v('late_threshold_min'),
+          v('extra_time_min_minutes'),
+        ],
       );
     }
     for (const t of this.b.shiftTemplates) {

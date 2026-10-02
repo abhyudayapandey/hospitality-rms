@@ -336,6 +336,73 @@ describe('nightly exceptions', () => {
     });
   });
 
+  it('raises left_early, and agrees with the timeline staff and managers see (ADR 018)', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c);
+      const early = await rostered(c, f.sam, '-20 hours'); // ended 12 h ago
+      await punch(c, f.sam, null, '-20 hours', '-13 hours'); // left an hour early
+      // a punch 15 minutes after the shift: the shift's extra time, so not unscheduled
+      const pat = await rostered(c, f.pat.workerId, '-20 hours');
+      await punch(c, f.pat.workerId, null, '-20 hours', '-12 hours');
+      await punch(c, f.pat.workerId, null, '-705 minutes', '-11 hours');
+
+      await run(c);
+      const { rows } = await c.query<{ kind: string; shift_id: string; minutes: number }>(
+        `select kind, shift_id, (detail ->> 'minutes')::int as minutes
+           from hr.attendance_exception where worker_id = any($1) order by kind`,
+        [[f.sam, f.pat.workerId]],
+      );
+      expect(rows).toEqual([{ kind: 'left_early', shift_id: early, minutes: 60 }]);
+
+      // the same answer through the timeline, as the person and as their manager
+      const timeline = 'select kind, status, early_min from hr.my_timeline($1, $2)';
+      const days = await c.query<{ from: string; to: string }>(
+        `select ((now() - interval '2 days') at time zone 'Asia/Kolkata')::date::text as from,
+                (now() at time zone 'Asia/Kolkata')::date::text as to`,
+      );
+      const w = [days.rows[0]!.from, days.rows[0]!.to];
+      expect((await attemptAs(c, SAM(), timeline, w)).rows).toEqual([
+        { kind: 'shift', status: 'left_early', early_min: 60 },
+      ]);
+      const asManager = await attemptAs<{ kind: string; status: string | null; shift_id: string }>(
+        c,
+        OLIVIA(),
+        'select kind, status, shift_id from hr.worker_timeline($1, $2, $3)',
+        [f.pat.workerId, ...w],
+      );
+      expect(asManager.rows).toEqual([
+        { kind: 'shift', status: 'on_time', shift_id: pat },
+        { kind: 'extra_after', status: null, shift_id: pat },
+      ]);
+    });
+  });
+
+  it('a worker’s timeline: their own, or ATTENDANCE view over them; never another customer’s', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c);
+      const q = 'select * from hr.worker_timeline($1, current_date - 1, current_date)';
+      expect((await attemptAs(c, SAM(), q, [f.pat.workerId])).error).toBe('NOT_AUTHORISED');
+      expect((await attemptAs(c, SAM(), q, [f.sam])).error).toBeUndefined();
+      expect((await attemptAs(c, OLIVIA(), q, [f.sam])).error).toBeUndefined();
+      expect((await attemptAs(c, ids.user('test.general-manager.1.0'), q, [f.sam])).error).toBe(
+        'NOT_AUTHORISED',
+      );
+      expect((await attemptAs(c, ids.user('test.solo.bar-manager'), q, [f.sam])).error).toBe(
+        'NOT_AUTHORISED',
+      );
+      // the pure function is not callable by the app (it reads nothing, but has no use there)
+      expect(
+        (
+          await attemptAs(
+            c,
+            SAM(),
+            `select * from hr.attendance_timeline('[]', '[]', 10, 30, now())`,
+          )
+        ).error,
+      ).toMatch(/permission denied/);
+    });
+  });
+
   it('is only callable by the executor role', async () => {
     await inRolledBackTx(async (c) => {
       const r = await attemptAs(c, OLIVIA(), 'select * from hr.nightly_attendance()');
