@@ -32,6 +32,8 @@ async function places(c: PoolClient, user: string, screen: string): Promise<Plac
 }
 const codes = (ps: Place[]) => ps.map((p) => p.code);
 
+const TASK_PLACE = `n.type = 'org' and (core.is_team_place(n.id) or n.kind in ('outlet', 'site'))`;
+
 /** The rule each screen applies, row by row, as an independent check (n = a hierarchy_node). */
 const RULES: Record<string, string> = {
   stock: `n.type = 'delivery' and n.holds_stock and core.can('STOCK_LEVELS', 'view', null, n.id)`,
@@ -54,6 +56,11 @@ const RULES: Record<string, string> = {
   roster: `n.type = 'org' and core.is_team_place(n.id) and core.can('ROSTER', 'view', n.id, null)`,
   exceptions: `n.type = 'org' and core.is_team_place(n.id) and core.can('ATTENDANCE', 'modify', n.id, null)`,
   events: `n.type = 'org' and n.kind in ('outlet', 'site') and ops.can_read_event_node(n.id)`,
+  tasks: `${TASK_PLACE} and core.can('TASKS', 'view', n.id, null)`,
+  tasks_new: `${TASK_PLACE} and core.can('TASKS', 'modify', n.id, null)`,
+  checklists: `${TASK_PLACE} and core.can('CHECKLIST_TEMPLATES', 'view', n.id, null)`,
+  maintenance: `${TASK_PLACE} and core.can('MAINTENANCE', 'view', n.id, null)`,
+  report: `${TASK_PLACE} and ops.works_at(n.id)`,
 };
 
 describe('core.screen_places', () => {

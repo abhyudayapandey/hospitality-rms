@@ -451,7 +451,7 @@ The workflow does the following:
 1. Builds the linux-arm64 release bundle in CI with `infra/scripts/build-release.sh`.
    The bundle contains:
    - the Next.js standalone server, built with the dev login compiled out
-   - esbuild bundles of wf-execute, sync-defs and attendance-nightly
+   - esbuild bundles of wf-execute, sync-defs, attendance-nightly and tasks-tick
    - Node 22 (sha256-verified), Caddy (sha512-verified) and dbmate
    - migrations, systemd units, Postgres config and the deploy scripts
 2. Uploads it to `s3://<DeployBucket>/releases/<sha>.tgz`.
@@ -890,6 +890,90 @@ right they already hold.
 weekly hours: the offer is sent. When they accept, the approver's review shows the warning
 and **Approve anyway**, and lists the others who could take it.
 
+#### Releasing tasks, checklists, prep lists and maintenance (Prompt 11b)
+
+One migration, `20261015100000_tasks` (ADR 020), a stack change, and a new timer.
+
+- **What the stack change does** (`cd infra && pnpm cdk diff`; template only, nothing is
+  replaced):
+  - `InstanceRoleDefaultPolicy` gains `TaskPhotos`: `s3:PutObject` and `s3:GetObject` on
+    `tasks/*` in the photo bucket. No delete.
+  - `PhotoBucket` lifecycle gains two rules: `tasks/routine/` expires after 90 days,
+    `tasks/keep/` after 400.
+  - The `CostNote` tag mentions task photos.
+- **What the migration does.**
+  - Domains TASKS, CHECKLIST_TEMPLATES and MAINTENANCE, and the access matrix of ADR 020.
+    The Deploy workflow's product sync puts them in every tenant.
+  - Tables `ops.checklist_template`, `ops.task`, `ops.task_step` and
+    `ops.maintenance_request` (RLS, audit), and `task_id` on production and wastage lines.
+  - The `ops.*` task, checklist, prep, maintenance and expired-batch functions, and
+    `ops.tasks_tick` for the executor role.
+  - `inv.record_wastage` is the same for callers; its body moves to `inv.post_wastage`,
+    which the expired-batch discard also uses.
+  - Five place-switcher screens in `core.screen_places`.
+- **The new timer.** `outlet-ops-tasks-tick.timer` runs every 5 minutes as `outletops-wf`
+  with only the `wf_executor` credential. It creates checklist rounds 24 hours ahead,
+  sends reminders and escalates overdue tasks. `deploy.sh` enables it.
+- **What changed in the files.**
+  - `29_checklist_templates.csv`: a normal file, for both test customers.
+  - Test Company files 30 to 32 (test customers only): tasks, one maintenance request
+    and a prep list.
+  - On production, where files 26 to 28 are already loaded, file 32 counts its days from
+    the day those were loaded and links the batches already there.
+
+**Deploy order.**
+
+1. `cd infra && pnpm cdk diff`. Expect only the three changes above. Then
+   `pnpm cdk deploy` (it needs your approval). The app keeps running; the instance is not
+   replaced.
+2. Run the Deploy workflow. It runs the migration, syncs the product access, installs and
+   starts the tasks timer, and restarts the app.
+3. Re-import both test customers, as below.
+
+**Re-import Test Company.** Build the zip as in step 7. Then go to the customer's page →
+**Import setup files** → the zip → **Upload and dry run**. Expected:
+
+- **No problems.**
+- **"Dry run: applying would make 21 changes":**
+
+  | What                 | Count | Detail                                                                   |
+  | -------------------- | ----- | ------------------------------------------------------------------------ |
+  | checklists           | 11    | Hotel 1.0 Kitchen, Bar, Front Office, Housekeeping; Bar 3.0 Kitchen, Bar |
+  | tasks                | 5     | file 30                                                                  |
+  | maintenance requests | 1     | the Hotel 1.0 dishwasher                                                 |
+  | prep tasks           | 4     | three done, linked to file 26's batches; one open                        |
+
+- **The same 2 approval-coverage warnings as before.**
+
+**Apply**, then **Apply** again: "No changes".
+
+**Re-import Test Solo Bar Co.** Do the same with its zip. Expected: no problems, **"Dry
+run: applying would make 4 changes"** (4 checklists), the same 5 warnings. **Apply**, then
+**Apply** again: "No changes".
+
+These counts were checked on a scratch database set up the way production is now:
+`master` migrated and both customers loaded with `master`'s files, then this branch's
+migration and product sync, then this branch's files dry-run and applied as
+`platform_loader`, and a second dry run (no changes). The tasks job then created 27
+checklist rounds.
+
+**Check** (the figures are in `docs/onboarding/test-data/README.md`).
+
+- **The timer.** `systemctl list-timers 'outlet-ops-*'` lists `outlet-ops-tasks-tick`;
+  `journalctl -u outlet-ops-tasks-tick` shows `created=… reminded=… escalated=…`.
+- **`test.commis.1.0`.** The bottom nav reads Home, Tasks, Production, Roster, Inbox.
+  **Tasks** shows **Deep clean the walk-in chiller** under Overdue, and the kitchen
+  opening round for the job role.
+- **`test.server.3.0`.** The bottom nav reads Home, Tasks, Roster, Inbox; **My requests**
+  is on Home.
+- **`test.chief-engineer.1.0`.** **Inbox → To assign** lists **Dishwasher leaking at the
+  door**.
+- **`test.executive-chef.1.0`.** **Tasks → Prep list** at the Kitchen Store suggests
+  amounts; **Tasks → Team** shows completion per department.
+- **`test.commis.1.0` → Production.** The expired Mint Chutney batch has a **Report**
+  button. Don't press it on production unless you want to walk the flow: the executive
+  chef then sees it under **To assign**.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.
@@ -958,7 +1042,7 @@ passwords file (`TEST_LOGINS_do_not_commit.csv`) and the README never are:
 (cd docs/onboarding/test-data/test-solo-bar-co && zip -q -FS ~/test-solo-bar-co.zip [0-9][0-9]_*.csv)
 ```
 
-`test-company.zip` holds 18 files, `test-solo-bar-co.zip` 17.
+`test-company.zip` holds 35 files, `test-solo-bar-co.zip` 27.
 
 **2. Create each customer**: `/platform` → **New customer**. Fill in exactly:
 
@@ -1076,6 +1160,7 @@ no changes.
 - `journalctl -u outlet-ops-web`
 - `-u outlet-ops-wf-execute`
 - `-u outlet-ops-attendance-nightly`
+- `-u outlet-ops-tasks-tick`
 - `-u outlet-ops-caddy`
 - `-u outlet-ops-pg-backup`
 - `docker logs outlet-ops-pg`
@@ -1111,7 +1196,7 @@ returns nothing.
 
 - **From a `pg_dump`** (data loss up to 6 hours):
   1. Stop the writers:
-     `systemctl stop outlet-ops-web outlet-ops-wf-execute.timer outlet-ops-pg-backup.timer outlet-ops-attendance-nightly.timer`.
+     `systemctl stop outlet-ops-web outlet-ops-wf-execute.timer outlet-ops-pg-backup.timer outlet-ops-attendance-nightly.timer outlet-ops-tasks-tick.timer`.
   2. Take a safety dump of the current state if the database is readable.
   3. Recreate the database:
      `docker exec -u postgres outlet-ops-pg psql -c 'drop database outlet_ops with (force)' -c 'create database outlet_ops'`.

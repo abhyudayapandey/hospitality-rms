@@ -7,6 +7,7 @@ import { formatQty, param, type SearchParams } from '@/lib/inventory';
 import { menuPlaces } from '@/lib/menu';
 import { pickPlace, placesFor } from '@/lib/places';
 import { costReport, isoDate, salesPlaces, todayIn, variance } from '@/lib/production';
+import { expiredWastage } from '@/lib/tasks';
 import { MenuTabs } from '../parts';
 
 // Cost control (ADR 015): per store and period, opening + receipts + transfers in −
@@ -32,6 +33,7 @@ export default async function VariancePage({ searchParams }: { searchParams: Sea
           sales: (await salesPlaces(tx)).length > 0,
           rows: await variance(tx, store.id, from, to),
           costs: outlet ? await costReport(tx, outlet.outlet_id, from, to) : [],
+          expired: await expiredWastage(tx, store.id, from, to),
         };
       });
   if (!data) return <Empty>You don&rsquo;t see costs anywhere.</Empty>;
@@ -39,6 +41,7 @@ export default async function VariancePage({ searchParams }: { searchParams: Sea
     (r) =>
       Number(r.opening) !== 0 || Number(r.expected_closing) !== 0 || Number(r.variance_qty) !== 0,
   );
+  const expiredValue = data.expired.reduce((t, e) => t + Number(e.value), 0);
   const loss = data.rows.reduce((s, r) => s + Math.min(0, Number(r.variance_value)), 0);
   return (
     <div className="space-y-4">
@@ -102,6 +105,41 @@ export default async function VariancePage({ searchParams }: { searchParams: Sea
           )}
         </section>
       )}
+
+      {/* expired batches thrown away, each traced to its batch, report and remake (ADR 020) */}
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold text-slate-500">
+          Expired {expiredValue > 0 && <>· {formatMoney(expiredValue)}</>}
+        </h2>
+        {data.expired.length === 0 ? (
+          <Empty>Nothing expired was thrown away in this period.</Empty>
+        ) : (
+          <ul
+            data-testid="expired-wastage"
+            className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
+          >
+            {data.expired.map((e, i) => (
+              <li key={i} className="flex justify-between gap-2 px-4 py-3 text-sm">
+                <span className="min-w-0">
+                  <span className="block font-medium">{e.name}</span>
+                  <span className="block text-xs text-slate-500">
+                    {e.batch_no ? `batch ${e.batch_no}` : 'no batch'}
+                    {e.made_qty && ` of ${formatQty(e.made_qty, e.unit)}`}
+                    {e.reported_by && ` · reported by ${e.reported_by}`}
+                    {e.discarded_by && ` · thrown away by ${e.discarded_by}`}
+                    {e.remade_qty && ` · remade ${formatQty(e.remade_qty, e.unit)}`}
+                    {e.outcome === 'approval' && ' · waiting for approval'}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right tabular-nums">
+                  {formatQty(e.wasted_qty, e.unit)}
+                  <span className="block text-xs text-slate-500">{formatMoney(e.value)}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-slate-500">

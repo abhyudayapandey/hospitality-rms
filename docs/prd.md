@@ -215,9 +215,9 @@ Spec and test data: `docs/onboarding/test-data/MENU_README.md` and files 18 to 2
 - **MNU-6** Loading files 18 to 24 checks them against each other: units agree, a prep item's ingredients are stocked where it is made, no recipe cycles, and a menu item is sold from one of the outlet's own stores. A menu item sold from a store that does not stock one of its ingredients is a warning. Costs from the loaded test data equal the generated 98 files to the paisa.
 - **MNU-7** Recipes and procedures (steps, batch size, shelf life, never costs) are readable only by people who hold stock access at a store that makes or sells them, or who work in a department linked to such a store: kitchen staff read kitchen recipes, bar staff bar recipes. Housekeeping, front office and security staff read none. Managers with cost access read every recipe used at their stores.
 - **MNU-8** Prices and costs: department heads (their own department's store), outlet managers, cost controllers, hub managers and area managers. Editing menus, prices and recipes: outlet managers, for recipes used only within their outlet; area managers view only for now.
-- **PRD-1** Recording a batch where it is made: ingredients consumed per the recipe scaled to the batch (actual quantities editable), the prep item added with a batch number and expiry from its shelf life, in one transaction. Expired batches prompt a wastage entry. Prep items transfer like other items.
+- **PRD-1** Recording a batch where it is made: ingredients consumed per the recipe scaled to the batch (actual quantities editable), the prep item added with a batch number and expiry from its shelf life, in one transaction. Expired batches are reported to the lead, who assigns the discard and a remake (TSK-6). Prep items transfer like other items.
 - **SAL-1** Daily sales entry per outlet (menu item × quantity) until the POS import. Sales reduce stock at once by recipe; only sales may take stock below zero, which never blocks a sale and is flagged to the store keeper.
-- **VAR-1** Variance per store and period: opening + receipts + transfers in − transfers out − wastage − theoretical use (sales and production) against the closing count, with unexplained loss highlighted, and food and beverage cost % per outlet.
+- **VAR-1** Variance per store and period: opening + receipts + transfers in − transfers out − wastage − theoretical use (sales and production) against the closing count, with unexplained loss highlighted, and food and beverage cost % per outlet. An **Expired** line lists expired wastage traced to its batch, report and remake (TSK-6).
 
 | Group                              | Recipes and procedures                  | Prices and costs             | Editing                                          |
 | ---------------------------------- | --------------------------------------- | ---------------------------- | ------------------------------------------------ |
@@ -226,6 +226,28 @@ Spec and test data: `docs/onboarding/test-data/MENU_README.md` and files 18 to 2
 | Cost controller, hub manager       | At their stores                         | Yes                          | –                                                |
 | Outlet manager                     | Everything used in the outlet           | Yes                          | Menus, prices, recipes used only in their outlet |
 | Area manager                       | Everything used in the area             | Yes (view)                   | –                                                |
+
+### 6.10 Tasks, checklists, prep lists and maintenance _(Built, ADR 020)_
+
+Spec and test data: file 29 (checklists, any customer) and files 30 to 32 (test customers only) in `docs/onboarding/test-data`.
+
+- **TSK-1** One-off tasks: title, details, place, due time, priority and optional steps. A task goes to a person, a job role at the place, or whoever is on shift there when it is due; for a role or a shift the first to start it takes it. Supervisors and department heads give tasks in their department, outlet managers anywhere in the outlet, only to people who work there.
+- **TSK-2** Steps are a tick, a number with an acceptable range, text or a photo; any step may need a photo. A reading outside its range is flagged, the leads are told, and its photo is kept 400 days instead of 90.
+- **TSK-3** Checklists: templates at a place with a schedule (daily at times; some weekdays at times; every N hours within a window) and steps. A job every 5 minutes creates each round 24 hours ahead, reminds 30 minutes before, and escalates when overdue: to whoever assigned it at the due time, to the place's lead an hour later. Department heads and outlet managers edit templates; supervisors read them. Stopping a checklist cancels its future rounds.
+- **TSK-4** Prep list per store: for each item made there, par + event needs in the next 48 hours − usable stock on hand − what open prep tasks will make. Chosen lines become prep tasks for the team; a task is done by recording the batch (partial batches allowed), which is linked to it.
+- **TSK-5** Maintenance: anyone reports a problem where they work, with an optional photo. It goes to the outlet's Engineering department head, else the outlet manager; they assign it to someone there, who starts it and closes it with a photo of the fix. Open → assigned → in progress → done.
+- **TSK-6** Expired batches: anyone who sees one taps Report; the department head (else the outlet manager) gets it under Inbox → To assign and gives "Discard" or "Discard and remake" to someone in the department. The discard records expired wastage through the normal path, linked to the report; above the store's limit it still needs a photo and the outlet manager's approval. The cost report's Expired line and AI read the whole trace.
+- **TSK-7** Screens: My tasks (overdue first), task detail, new task, Team tasks (today's tasks, and completion % per department this week and last), checklists, prep list, maintenance.
+- **NAV-1** The bottom nav has at most five items, chosen by the kind of work a person does; everything else is on Home. Frontline staff without approvals (server, room attendant, technician) have Home, Tasks, Roster, Inbox; cooks and bartenders add Production.
+
+| Group                  | Tasks                               | Checklists | Maintenance                          |
+| ---------------------- | ----------------------------------- | ---------- | ------------------------------------ |
+| Everyone               | Their own                           | –          | Raise where they work; their own     |
+| Staff                  | –                                   | –          | Their department's queue (view)      |
+| Supervisor             | Give and manage in their department | Read       | –                                    |
+| Department head        | Give and manage in their department | Edit       | Assign and manage their department's |
+| Outlet manager         | Give and manage in the outlet       | Edit       | Assign and manage in the outlet      |
+| Area manager, AI agent | View                                | View       | View                                 |
 
 ## 7. Workflows and approvals
 
@@ -283,7 +305,7 @@ If the worker's department has no head, the request goes to the GM, then the are
 - **USR-3** Password reset for username users (temporary password, change at next sign-in); deactivate leavers (login disabled immediately).
 - **USR-4** Access-audit view: who granted or removed what, when, and who approved it.
 
-**Setup files.** One file per data type: customer, people tree, stock tree, links, locations, job roles, users, extra access, suppliers, items, item locations, opening stock, leave types, leave balances, roster settings, shift templates. A generated access preview lets the customer check who can do what before loading.
+**Setup files.** One file per data type: customer, people tree, stock tree, links, locations, job roles, users, extra access, suppliers, items, item locations, opening stock, leave types, leave balances, roster settings, shift templates, menus and recipes, checklist templates. A generated access preview lets the customer check who can do what before loading.
 
 **Login.** Email one-time code, or username and password for staff without email. Sessions last up to 12 hours idle and 30 days in total. SMS login needs Indian DLT registration and is deferred.
 

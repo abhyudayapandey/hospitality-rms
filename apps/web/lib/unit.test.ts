@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isDevAuthEnabled } from './dev-auth';
-import { visibleNav } from './nav';
+import { ACCESS_GROUPS, DOMAINS } from '@outlet-ops/domain';
+import { MAX_NAV_ITEMS, moreItems, visibleNav, type NavFeatures } from './nav';
 import { isScreen, withChoice } from './place-screens';
 import { startPoller } from './poller';
 
@@ -15,53 +16,86 @@ describe('dev auth gate', () => {
 });
 
 describe('bottom nav', () => {
-  const none = { menu: false, production: false };
+  // the domains each kind of person has (core.my_domains() includes SELF's)
+  const SELF = ['ROSTER', 'TASKS', 'MAINTENANCE', 'LEAVE', 'ATTENDANCE'];
+  const nav = (groups: string[], domains: string[], f: Partial<NavFeatures> = {}) =>
+    visibleNav({
+      groups: new Set(['SELF', ...groups]),
+      domains: new Set([...SELF, ...domains]),
+      menu: false,
+      production: false,
+      ...f,
+    }).map((i) => i.label);
 
-  it('shows domain items only for domains the user has', () => {
-    expect(visibleNav(new Set(['STOCK_LEVELS']), none).map((i) => i.label)).toEqual([
+  it('follows the approved table (ADR 020)', () => {
+    expect(nav(['STAFF', 'PRODUCTION_TEAM'], ['PRODUCTION_TEAM'], { production: true })).toEqual([
+      'Home',
+      'Tasks',
+      'Production',
+      'Roster',
+      'Inbox',
+    ]);
+    expect(nav(['STAFF'], [])).toEqual(['Home', 'Tasks', 'Roster', 'Inbox']);
+    expect(nav(['STAFF', 'STORE_KEEPER'], ['STOCK_LEVELS'])).toEqual([
       'Home',
       'Inbox',
-      'Requests',
+      'Stock',
+      'Tasks',
+      'Roster',
+    ]);
+    expect(nav(['DEPARTMENT_HEAD', 'STORE_KEEPER'], ['STOCK_LEVELS'], { menu: true })).toEqual([
+      'Home',
+      'Inbox',
+      'Tasks',
+      'Roster',
       'Stock',
     ]);
-    expect(visibleNav(new Set(['ROSTER', 'SECURITY_ROLES']), none).map((i) => i.label)).toEqual([
+    expect(nav(['DEPARTMENT_HEAD'], [])).toEqual(['Home', 'Inbox', 'Tasks', 'Roster', 'Requests']);
+    expect(nav(['OUTLET_MANAGER', 'USER_ADMIN'], ['STOCK_LEVELS', 'USER_ACCESS'])).toEqual([
       'Home',
       'Inbox',
-      'Requests',
+      'Stock',
       'Roster',
-      'Admin',
+      'Tasks',
     ]);
-  });
-
-  it('shows Menu only when there is a recipe or menu cost to open (audit #7)', () => {
-    expect(visibleNav(new Set(['RECIPES']), { ...none, menu: true }).map((i) => i.label)).toContain(
+    expect(nav(['STAFF', 'COST_CONTROLLER'], ['STOCK_LEVELS', 'MENU'], { menu: true })).toEqual([
+      'Home',
+      'Inbox',
+      'Stock',
       'Menu',
-    );
-    // a store keeper of a store where nothing is made or sold
-    expect(
-      visibleNav(new Set(['RECIPES', 'STOCK_LEVELS']), none).map((i) => i.label),
-    ).not.toContain('Menu');
-  });
-
-  it('gives production-only staff a Production item instead of Stock', () => {
-    const commis = visibleNav(new Set(['PRODUCTION_TEAM', 'ROSTER']), {
-      ...none,
-      production: true,
-    });
-    expect(commis.map((i) => [i.label, i.href])).toContainEqual([
-      'Production',
-      '/stock/production',
+      'Requests',
     ]);
-    expect(commis.map((i) => i.label)).not.toContain('Stock');
-    // with stock access the Stock item leads there, Production is one of its tabs
-    const chef = visibleNav(new Set(['STOCK_LEVELS']), { ...none, production: true });
-    expect(chef.map((i) => i.label)).toContain('Stock');
-    expect(chef.map((i) => i.label)).not.toContain('Production');
-    expect(visibleNav(new Set(['ROSTER']), none).map((i) => i.label)).not.toContain('Production');
+    expect(nav(['HR_ADMIN'], [])).toEqual(['Home', 'Inbox', 'Roster', 'Requests']);
+    expect(nav(['ACCOUNT_OWNER'], ['USER_ACCESS'])).toEqual(['Home', 'Inbox', 'Admin', 'Requests']);
   });
 
-  it('shows Admin to user administrators too', () => {
-    expect(visibleNav(new Set(['USER_ACCESS']), none).map((i) => i.label)).toContain('Admin');
+  it('frontline staff with stock access get Stock, which leads to Production', () => {
+    expect(
+      nav(['STAFF', 'PRODUCTION_TEAM', 'STOCK_USER'], ['STOCK_LEVELS'], { production: true }),
+    ).toEqual(['Home', 'Tasks', 'Stock', 'Roster', 'Inbox']);
+  });
+
+  it('never shows more than five items, for any mix of groups', () => {
+    const all = ACCESS_GROUPS.map((g) => g.code);
+    const domains = DOMAINS.map((d) => d.code);
+    for (const g of all) {
+      for (const h of all) {
+        expect(nav([g, h], domains, { menu: true, production: true }).length).toBeLessThanOrEqual(
+          MAX_NAV_ITEMS,
+        );
+      }
+    }
+  });
+
+  it('Home links to what the nav leaves out', () => {
+    const input = {
+      groups: new Set(['SELF', 'STAFF']),
+      domains: new Set([...SELF, 'USER_ACCESS']),
+      menu: true,
+      production: false,
+    };
+    expect(moreItems(input).map((i) => i.label)).toEqual(['Menu', 'Requests']);
+    expect(visibleNav(input).map((i) => i.label)).toContain('Admin');
   });
 });
 

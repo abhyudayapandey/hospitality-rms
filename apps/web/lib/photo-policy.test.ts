@@ -2,7 +2,9 @@ import { S3Client } from '@aws-sdk/client-s3';
 import { describe, expect, it } from 'vitest';
 import {
   isPhotoType,
+  keptKey,
   MAX_PHOTO_BYTES,
+  photoKeyPattern,
   presignUpload,
   presignView,
   wastageKeyPattern,
@@ -19,7 +21,7 @@ const NODE = '01920000-0000-7000-8000-000000000203';
 
 describe('wastage photo upload policy', () => {
   it('pins the key prefix, the content type, 1 byte..5 MB and 5 minutes', async () => {
-    const t = await presignUpload(client, 'photos-bucket', TENANT, NODE, 'image/jpeg');
+    const t = await presignUpload(client, 'photos-bucket', 'wastage', TENANT, NODE, 'image/jpeg');
     expect(t.key).toMatch(wastageKeyPattern(TENANT, NODE));
     expect(t.url).toContain('photos-bucket');
     const policy = JSON.parse(Buffer.from(t.fields.Policy!, 'base64').toString()) as {
@@ -47,6 +49,15 @@ describe('wastage photo upload policy', () => {
     expect(re.test(`wastage/${TENANT}/${NODE}/${crypto.randomUUID()}.png`)).toBe(true);
     expect(re.test(`wastage/${TENANT}/other/${crypto.randomUUID()}.png`)).toBe(false);
     expect(re.test(`wastage/${TENANT}/${NODE}/../x.png`)).toBe(false);
+  });
+
+  it('puts task photos under tasks/routine or tasks/keep, and keeps a routine one by name', async () => {
+    const t = await presignUpload(client, 'b', 'tasks/routine', TENANT, NODE, 'image/webp');
+    expect(t.key).toMatch(photoKeyPattern('tasks/routine', TENANT, NODE));
+    expect(t.key).not.toMatch(photoKeyPattern('tasks/keep', TENANT, NODE));
+    expect(keptKey(t.key)).toBe(t.key.replace('tasks/routine/', 'tasks/keep/'));
+    expect(keptKey(t.key.replace('tasks/routine/', 'wastage/'))).toBeNull();
+    expect(keptKey(`tasks/routine/${TENANT}/${NODE}/../x.jpg`)).toBeNull();
   });
 
   it('issues short-lived GET URLs', async () => {

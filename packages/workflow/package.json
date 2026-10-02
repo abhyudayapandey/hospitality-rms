@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "sync-defs": "tsx scripts/sync-defs.ts",
     "execute": "tsx scripts/execute.ts",
-    "attendance-nightly": "tsx scripts/attendance-nightly.ts"
+    "attendance-nightly": "tsx scripts/attendance-nightly.ts",
+    "tasks-tick": "tsx scripts/tasks-tick.ts"
   },
   "dependencies": {
     "@outlet-ops/domain": "workspace:*",

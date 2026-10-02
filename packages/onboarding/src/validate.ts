@@ -1,5 +1,5 @@
 import { ACCESS_GROUPS } from '@outlet-ops/domain';
-import type { Bundle, Issue } from './files';
+import type { AssignTo, Bundle, Issue } from './files';
 import { FILES } from './files';
 
 // Checks across files: every code refers to something that exists, the trees have the
@@ -338,7 +338,113 @@ export function validateBundle(b: Bundle): Issue[] {
 
   validateMenu(b, add, { items, org, dlv, placed });
   validateActivity(b, add, { items, org, dlv, placed }, users);
+  validateTasks(b, add, { items, org, dlv, placed }, users, roles);
   return issues;
+}
+
+/**
+ * Checklists (file 29) and the test-only tasks, maintenance and prep files (30 to 32,
+ * ADR 020): every place, person and job role exists, and each template's rows agree.
+ * Whether people may do it there is checked by the database functions the loader calls.
+ */
+function validateTasks(
+  b: Bundle,
+  add: Add,
+  k: Known,
+  users: Map<string, Bundle['users'][number]>,
+  roles: Map<string, Set<string>>,
+): void {
+  const f = (key: keyof typeof FILES) => FILES[key].file;
+  const place = (file: string, line: number, column: string, code: string) => {
+    if (!k.org.has(code)) add(file, line, column, `${code} is not in ${f('orgNodes')}`);
+  };
+  const person = (file: string, line: number, column: string, username?: string) => {
+    if (username !== undefined && !users.has(username)) {
+      add(file, line, column, `${username} is not in ${f('users')}`);
+    }
+  };
+  const assignee = (file: string, line: number, a: AssignTo) => {
+    if (a.mode === 'person') person(file, line, 'assign_to', a.username);
+    if (a.mode === 'job_role' && !roles.has(a.role)) {
+      add(file, line, 'assign_to', `${a.role} is not in ${f('jobRoles')}`);
+    }
+  };
+
+  const templates = new Map<string, Bundle['checklistTemplates'][number]>();
+  const steps = new Map<string, Set<number>>();
+  for (const t of b.checklistTemplates) {
+    const file = f('checklistTemplates');
+    const first = templates.get(t.template_code);
+    if (!first) {
+      templates.set(t.template_code, t);
+      place(file, t.line, 'place_code', t.place_code);
+      assignee(file, t.line, t.assign_to);
+    } else {
+      for (const col of ['place_code', 'name', 'schedule', 'assign_to'] as const) {
+        if (JSON.stringify(first[col]) !== JSON.stringify(t[col])) {
+          add(file, t.line, col, `differs from line ${first.line} of ${t.template_code}`);
+        }
+      }
+    }
+    const seen = steps.get(t.template_code) ?? new Set<number>();
+    if (seen.has(t.step)) add(file, t.line, 'step', `step ${t.step} is listed twice`);
+    seen.add(t.step);
+    steps.set(t.template_code, seen);
+    if (t.min !== undefined && t.max !== undefined && t.min > t.max) {
+      add(file, t.line, 'min', 'must not be more than max');
+    }
+    if ((t.min !== undefined || t.max !== undefined) && t.step_kind !== 'number') {
+      add(file, t.line, 'step_kind', 'only a number step has a range');
+    }
+  }
+
+  for (const t of b.tasks) {
+    place(f('tasks'), t.line, 'place_code', t.place_code);
+    assignee(f('tasks'), t.line, t.assign_to);
+    person(f('tasks'), t.line, 'created_by', t.created_by);
+    person(f('tasks'), t.line, 'done_by', t.done_by);
+    if (
+      t.done_by !== undefined &&
+      t.assign_to.mode === 'person' &&
+      t.assign_to.username !== t.done_by
+    ) {
+      add(f('tasks'), t.line, 'done_by', 'must be the person it is assigned to');
+    }
+  }
+  for (const m of b.maintenance) {
+    place(f('maintenance'), m.line, 'place_code', m.place_code);
+    person(f('maintenance'), m.line, 'reported_by', m.reported_by);
+    person(f('maintenance'), m.line, 'assigned_to', m.assigned_to);
+    person(f('maintenance'), m.line, 'assigned_by', m.assigned_by);
+    if ((m.assigned_to === undefined) !== (m.assigned_by === undefined)) {
+      add(f('maintenance'), m.line, 'assigned_by', 'assigned_to and assigned_by go together');
+    }
+  }
+  const madeAt = new Set(
+    b.prepLocations
+      .filter((p) => p.made_here)
+      .map((p) => `${p.prep_item_code} ${p.store_node_code}`),
+  );
+  for (const p of b.prepTasks) {
+    if (!k.dlv.has(p.store_node_code)) {
+      add(
+        f('prepTasks'),
+        p.line,
+        'store_node_code',
+        `${p.store_node_code} is not in ${f('deliveryNodes')}`,
+      );
+    }
+    if (!madeAt.has(`${p.prep_item_code} ${p.store_node_code}`)) {
+      add(
+        f('prepTasks'),
+        p.line,
+        'prep_item_code',
+        `${p.prep_item_code} is not made at ${p.store_node_code} in ${f('prepLocations')}`,
+      );
+    }
+    assignee(f('prepTasks'), p.line, p.assign_to);
+    person(f('prepTasks'), p.line, 'created_by', p.created_by);
+  }
 }
 
 /**

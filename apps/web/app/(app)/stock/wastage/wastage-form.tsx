@@ -6,8 +6,8 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
 import { formatMoney } from '@/lib/format';
 import type { ItemOption } from '@/lib/inventory';
-import { recordWastage } from '../actions';
-import { PhotoField } from './photo-field';
+import { PhotoField } from '@/components/photo-field';
+import { getWastageUploadUrl, recordWastage } from '../actions';
 
 const REASONS = [
   ['spoiled', 'Spoiled'],
@@ -125,7 +125,13 @@ export function WastageForm({
       )}
       {needsApproval &&
         (photos ? (
-          <PhotoField node={node} photoKey={photoKey} onChange={setPhotoKey} />
+          <PhotoField
+            node={node}
+            photoKey={photoKey}
+            onChange={setPhotoKey}
+            getUploadUrl={getWastageUploadUrl}
+            label="Wastage photo"
+          />
         ) : (
           <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
             Photo upload isn&apos;t set up here, so this can&apos;t be recorded.

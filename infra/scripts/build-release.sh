@@ -2,6 +2,7 @@
 # Builds the linux-arm64 release bundle in CI (the instance never builds anything):
 #   node/  Node 22 runtime (checksum-verified)   bin/  caddy, dbmate
 #   web/   Next.js standalone server             jobs/ wf-execute, sync-defs, attendance-nightly,
+#                                                      tasks-tick,
 #                                                      platform-worker
 #   migrations/  deploy/  systemd/  postgres/  caddy/
 # Usage: infra/scripts/build-release.sh <git-sha>   -> dist/release-<sha>.tgz
@@ -26,7 +27,8 @@ cp -a apps/web/public "$OUT/web/apps/web/public"
 
 echo "== Job bundles (esbuild)"
 banner="import { createRequire as __ooCreateRequire } from 'node:module'; const require = __ooCreateRequire(import.meta.url);"
-for job in execute:wf-execute sync-defs:sync-defs attendance-nightly:attendance-nightly; do
+for job in execute:wf-execute sync-defs:sync-defs attendance-nightly:attendance-nightly \
+  tasks-tick:tasks-tick; do
   pnpm --filter @outlet-ops/workflow exec esbuild "scripts/${job%%:*}.ts" --bundle \
     --platform=node --target=node22 --format=esm --banner:js="$banner" \
     --outfile="$OUT/jobs/${job##*:}.mjs" --log-level=warning

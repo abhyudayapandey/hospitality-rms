@@ -1,27 +1,70 @@
 import { expect, test } from '@playwright/test';
-import { signInAs } from './helpers';
+import { newSession, SESSION_COOKIE, signSession } from '../lib/auth/session';
+import { asMigrator, signInAs } from './helpers';
 
-// Bottom nav follows core.my_domains(), and Menu and Production what there is to open;
-// the pages themselves are enforced in the DB.
-const cases: [string, string[], string[]][] = [
-  ['Test Head Cook 3.0', ['Home', 'Inbox', 'Requests', 'Stock', 'Roster'], ['Admin']],
-  ['Test HR Admin', ['Home', 'Inbox', 'Requests', 'Roster'], ['Stock', 'Admin']],
-  ['Test Account Owner', ['Home', 'Inbox', 'Requests', 'Admin'], ['Stock']],
-  ['Test Server 3.0', ['Home', 'Inbox', 'Requests', 'Roster'], ['Stock', 'Admin']],
-  // records batches at the kitchen store only (PRODUCTION_TEAM, ADR 016)
-  ['Test Commis 1.0', ['Home', 'Inbox', 'Requests', 'Production', 'Menu', 'Roster'], ['Stock']],
-  // the main store makes and sells nothing: no Menu (audit #7)
-  ['Test Store Keeper 1.0', ['Home', 'Inbox', 'Requests', 'Stock', 'Roster'], ['Menu', 'Admin']],
+// Bottom nav: at most five items, chosen by the kind of work a person does (ADR 020); the
+// pages themselves are enforced in the DB. These rows are the approved table, in order.
+const cases: [string, string[]][] = [
+  ['Test Commis 1.0', ['Home', 'Tasks', 'Production', 'Roster', 'Inbox']],
+  ['Test Bartender 1.0', ['Home', 'Tasks', 'Production', 'Roster', 'Inbox']],
+  // frontline without approvals: Requests is on Home
+  ['Test Server 3.0', ['Home', 'Tasks', 'Roster', 'Inbox']],
+  ['Test Room Attendant 1.0', ['Home', 'Tasks', 'Roster', 'Inbox']],
+  ['Test Technician 1.0', ['Home', 'Tasks', 'Roster', 'Inbox']],
+  ['Test Store Keeper 1.0', ['Home', 'Inbox', 'Stock', 'Tasks', 'Roster']],
+  ['Test Head Cook 3.0', ['Home', 'Inbox', 'Tasks', 'Roster', 'Stock']],
+  ['Test Executive Chef 1.0', ['Home', 'Inbox', 'Tasks', 'Roster', 'Stock']],
+  ['Test Chief Engineer 1.0', ['Home', 'Inbox', 'Tasks', 'Roster', 'Requests']],
+  ['Test General Manager 1.0', ['Home', 'Inbox', 'Stock', 'Roster', 'Tasks']],
+  ['Test Bar Manager 3.0', ['Home', 'Inbox', 'Stock', 'Roster', 'Tasks']],
+  ['Test Area Manager', ['Home', 'Inbox', 'Stock', 'Roster', 'Tasks']],
+  ['Test Cost Controller 1.0', ['Home', 'Inbox', 'Stock', 'Menu', 'Requests']],
+  ['Test HR Admin', ['Home', 'Inbox', 'Roster', 'Requests']],
+  ['Test Account Owner', ['Home', 'Inbox', 'Admin', 'Requests']],
 ];
 
-for (const [who, shown, hidden] of cases) {
+for (const [who, items] of cases) {
   test(`nav for ${who}`, async ({ page }) => {
     await signInAs(page, who);
     const nav = page.getByRole('navigation', { name: 'Main' });
-    for (const label of shown) await expect(nav.getByRole('link', { name: label })).toBeVisible();
-    for (const label of hidden) await expect(nav.getByRole('link', { name: label })).toHaveCount(0);
+    await expect(nav.getByTestId('nav-label')).toHaveText(items);
   });
 }
+
+test('Home links to what the nav leaves out', async ({ page }) => {
+  await signInAs(page, 'Test Server 3.0');
+  const more = page.getByRole('navigation', { name: 'More' });
+  await expect(more.getByRole('link', { name: 'My requests' })).toBeVisible();
+  await more.getByRole('link', { name: 'My requests' }).click();
+  await expect(page).toHaveURL(/\/requests$/);
+  await signInAs(page, 'Test General Manager 1.0');
+  await expect(
+    page.getByRole('navigation', { name: 'More' }).getByRole('link', { name: 'Admin' }),
+  ).toBeVisible();
+});
+
+test('no one in either test customer gets more than five nav items', async ({ page }) => {
+  test.setTimeout(300_000);
+  const users = await asMigrator<{ id: string; username: string }>(
+    `select u.id, u.username from core.app_user u join core.tenant t on t.id = u.tenant_id
+      where t.code in ('TEST-COMPANY', 'TEST-SOLO-COMPANY') and u.kind = 'human'
+        and u.status = 'active'
+      order by u.username`,
+    [],
+  );
+  expect(users.length).toBeGreaterThan(100);
+  const over: string[] = [];
+  for (const u of users) {
+    const token = await signSession(newSession(u.id, 'cognito'), process.env.SESSION_SECRET!);
+    const res = await page.request.get('/', { headers: { cookie: `${SESSION_COOKIE}=${token}` } });
+    expect(res.status(), u.username).toBe(200);
+    const html = await res.text();
+    const nav = /<nav aria-label="Main"[\s\S]*?<\/nav>/.exec(html)?.[0] ?? '';
+    const n = (nav.match(/<a /g) ?? []).length;
+    if (n < 2 || n > 5) over.push(`${u.username}: ${n}`);
+  }
+  expect(over).toEqual([]);
+});
 
 test('admin screen refuses users without administration rights even by URL', async ({ page }) => {
   await signInAs(page, 'Test Head Cook 3.0');

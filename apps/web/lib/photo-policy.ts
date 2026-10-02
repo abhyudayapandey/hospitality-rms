@@ -3,7 +3,7 @@ import { GetObjectCommand, type S3Client } from '@aws-sdk/client-s3';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// The presign rules for wastage photos (ADR 006), free of server-only/env so unit tests
+// The presign rules for photos (wastage, ADR 006; tasks and maintenance, ADR 020), free of server-only/env so unit tests
 // can exercise them with fake credentials. lib/photos.ts supplies bucket and client.
 
 export const PHOTO_TYPES = {
@@ -19,9 +19,27 @@ export function isPhotoType(t: string): t is PhotoType {
   return Object.hasOwn(PHOTO_TYPES, t);
 }
 
-/** The only keys uploads may use: wastage/<tenant>/<delivery node>/<uuid>.<ext>. */
+/**
+ * Where photos live. The bucket's lifecycle keeps tasks/routine/ 90 days and tasks/keep/
+ * (flagged readings, maintenance) 400 days (ADR 020).
+ */
+export const PHOTO_PREFIXES = ['wastage', 'tasks/routine', 'tasks/keep'] as const;
+export type PhotoPrefix = (typeof PHOTO_PREFIXES)[number];
+
+/** The only keys uploads may use: <prefix>/<tenant>/<node>/<uuid>.<ext>. */
+export function photoKeyPattern(prefix: PhotoPrefix, tenantId: string, nodeId: string): RegExp {
+  return new RegExp(`^${prefix}/${tenantId}/${nodeId}/[0-9a-f-]{36}\\.(jpg|png|webp)$`);
+}
+
 export function wastageKeyPattern(tenantId: string, nodeId: string): RegExp {
-  return new RegExp(`^wastage/${tenantId}/${nodeId}/[0-9a-f-]{36}\\.(jpg|png|webp)$`);
+  return photoKeyPattern('wastage', tenantId, nodeId);
+}
+
+/** A routine task photo's key once kept (a flagged reading): same name under tasks/keep/. */
+export function keptKey(key: string): string | null {
+  return /^tasks\/routine\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/.test(key)
+    ? key.replace(/^tasks\/routine\//, 'tasks/keep/')
+    : null;
 }
 
 export interface UploadTarget {
@@ -37,11 +55,12 @@ export interface UploadTarget {
 export async function presignUpload(
   client: S3Client,
   bucket: string,
+  prefix: PhotoPrefix,
   tenantId: string,
   nodeId: string,
   contentType: PhotoType,
 ): Promise<UploadTarget> {
-  const key = `wastage/${tenantId}/${nodeId}/${randomUUID()}.${PHOTO_TYPES[contentType]}`;
+  const key = `${prefix}/${tenantId}/${nodeId}/${randomUUID()}.${PHOTO_TYPES[contentType]}`;
   const { url, fields } = await createPresignedPost(client, {
     Bucket: bucket,
     Key: key,

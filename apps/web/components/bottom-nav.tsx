@@ -26,7 +26,7 @@ export function BottomNav({ items, inboxCount }: { items: NavItem[]; inboxCount:
                 <span aria-hidden className="text-lg leading-none">
                   {item.icon}
                 </span>
-                {item.label}
+                <span data-testid="nav-label">{item.label}</span>
                 {item.href === '/inbox' && inboxCount > 0 && (
                   <span
                     aria-label={`${inboxCount} waiting`}

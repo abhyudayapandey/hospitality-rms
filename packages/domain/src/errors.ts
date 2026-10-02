@@ -18,7 +18,7 @@ export const ERROR_MESSAGES = {
   INVALID_ITEM: "That item isn't set up for this location.",
   INVALID_QUANTITY: 'Check the quantities and try again.',
   INVALID_SUPPLIER: "That supplier isn't available.",
-  PHOTO_REQUIRED: 'This wastage is worth enough to need a photo. Add one and submit again.',
+  PHOTO_REQUIRED: 'This needs a photo. Add one and submit again.',
   INVALID_PHOTO: "The photo didn't upload for this location. Take it again.",
   LEDGER_APPEND_ONLY: 'Stock history cannot be changed. Record a correcting movement instead.',
   APPROVE_VIA_MODULE: 'Open this request from its own screen to confirm it.',
@@ -95,6 +95,17 @@ export const ERROR_MESSAGES = {
   PASSWORD_POLICY:
     'The new password needs at least 10 characters, a digit and a lower-case letter.',
   PASSWORDS_DIFFER: 'The two new passwords are not the same.',
+  INVALID_ASSIGNEE: 'Pick someone who works at this place.',
+  INVALID_STEPS: 'Check the steps: each needs a name, and a range needs its lowest value first.',
+  INVALID_SCHEDULE: 'Check the schedule: times are like 07:30, and pick at least one day.',
+  TASK_TAKEN: 'Someone else has already started this task.',
+  INVALID_DUE: 'Add when it is due.',
+  INVALID_PRIORITY: 'Pick low, normal or high.',
+  INVALID_TITLE: 'Add a name or a short description.',
+  INVALID_STEP: 'That step is done by recording the wastage or the batch.',
+  INVALID_VALUE: 'Fill in this step before saving it.',
+  STEPS_INCOMPLETE: 'Finish every step first.',
+  NOT_EXPIRED: 'Only a batch past its expiry with something left can be reported.',
   UNEXPECTED: 'Something went wrong. Please try again.',
 } as const;
 

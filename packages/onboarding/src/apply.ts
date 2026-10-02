@@ -1,6 +1,13 @@
 import { syncProcessDefs, syncProductAccess } from '@outlet-ops/workflow';
 import type { ClientBase } from 'pg';
-import { FILES, readBundle, TEST_ONLY_FILES, type Bundle, type Issue } from './files';
+import {
+  FILES,
+  readBundle,
+  TEST_ONLY_FILES,
+  type AssignTo,
+  type Bundle,
+  type Issue,
+} from './files';
 import { menuWarnings, validateBundle } from './validate';
 
 // Loads one customer's onboarding files (ADR 009): validate, then write everything in one
@@ -118,6 +125,8 @@ class Loader {
   private suppliers = new Map<string, string>();
   private items = new Map<string, string>();
   private leaveTypes = new Map<string, string>();
+  /** `store item day` -> the prep task from file 32, for the batches of file 26 */
+  private prepTaskIds = new Map<string, string>();
 
   constructor(
     private c: ClientBase,
@@ -160,9 +169,12 @@ class Loader {
     await this.leave();
     await this.rostering();
     await this.events();
+    await this.checklists();
     if (this.isTest) {
       await this.shifts();
       await this.pastWeek();
+      await this.tasks();
+      await this.maintenance();
     }
     this.step('');
     this.report.access = await this.preview();
@@ -1374,8 +1386,8 @@ class Loader {
   }
 
   /** `today` plus `days`, as yyyy-mm-dd. */
-  private day(days: number): string {
-    const d = new Date(`${this.today}T00:00:00Z`);
+  private day(days: number, base: string = this.today): string {
+    const d = new Date(`${base}T00:00:00Z`);
     d.setUTCDate(d.getUTCDate() + days);
     return d.toISOString().slice(0, 10);
   }
@@ -1432,9 +1444,18 @@ class Loader {
       same('production batches', this.b.production.length);
       same('sales days', new Set(this.b.sales.map((x) => `${x.outlet_code} ${x.day}`)).size);
       same('stock counts', new Set(this.b.counts.map((x) => x.store_node_code)).size);
+      // file 32 came after files 26 to 28: its tasks follow the day those were loaded
+      const loaded = await this.pastWeekDay();
+      if (loaded) {
+        await this.prepTasks(loaded);
+        await this.linkPastBatches(loaded);
+      } else {
+        same('prep tasks', this.b.prepTasks.length);
+      }
       return;
     }
     await this.backdateMenu();
+    await this.prepTasks();
     await this.production();
     await this.sales();
     await this.counts();
@@ -1497,10 +1518,10 @@ class Loader {
         [this.tenant, key],
       );
       if (!done.rowCount) {
-        await this.as(p.made_by, () =>
-          this.c.query(
+        const made = await this.as(p.made_by, () =>
+          this.c.query<{ id: string }>(
             `select inv.record_test_production($1, $2, $3,
-                      ($4::date + $5::time) at time zone $6, $7)`,
+                      ($4::date + $5::time) at time zone $6, $7) as id`,
             [
               store,
               this.items.get(p.prep_item_code),
@@ -1512,6 +1533,11 @@ class Loader {
             ],
           ),
         );
+        // the prep task (file 32) this batch fulfils
+        const task = this.prepTaskIds.get(`${p.store_node_code} ${p.prep_item_code} ${p.day}`);
+        if (task) {
+          await this.c.query(`select ops.link_test_batch($1, $2)`, [task, made.rows[0]!.id]);
+        }
       }
       this.count('production batches', !done.rowCount);
     }
@@ -1619,6 +1645,214 @@ class Loader {
       await this.as(first.approved_by, () =>
         this.c.query(`select wf.act($1, 'approve', 'Closing count (test data)')`, [request]),
       );
+    }
+  }
+
+  /** A task's assignee as the database takes it (ops.check_assign). */
+  private assignJson(a: AssignTo): object {
+    return a.mode === 'person' ? { mode: 'person', user_id: this.users.get(a.username) } : a;
+  }
+
+  /** File 29: checklist templates, one per template_code (ADR 020); re-imports update them. */
+  private async checklists() {
+    const groups = new Map<string, Bundle['checklistTemplates']>();
+    for (const t of this.b.checklistTemplates) {
+      groups.set(t.template_code, [...(groups.get(t.template_code) ?? []), t]);
+    }
+    for (const [code, rows] of groups) {
+      const first = rows[0]!;
+      this.step(FILES.checklistTemplates.file, first.line);
+      const node = this.nodes.get(first.place_code);
+      const assign = JSON.stringify(this.assignJson(first.assign_to));
+      const steps = JSON.stringify(
+        [...rows]
+          .sort((a, b) => a.step - b.step)
+          .map((r) => ({
+            label: r.step_label,
+            kind: r.step_kind,
+            ...(r.min !== undefined && { min: r.min }),
+            ...(r.max !== undefined && { max: r.max }),
+            ...(r.unit !== undefined && { unit: r.unit }),
+            ...(r.photo_required && { photo_required: true }),
+          })),
+      );
+      const schedule = JSON.stringify(first.schedule);
+      // the rules the app's checklist editor applies
+      await this.c.query(
+        `select ops.check_schedule($1), ops.check_steps($2), ops.check_assign($3, $4)`,
+        [schedule, steps, node, assign],
+      );
+      await this.upsert(
+        'checklists',
+        `insert into ops.checklist_template as t (tenant_id, org_node_id, code, name, schedule,
+                                                 assign, steps)
+         values ($1, $2, $3, $4, $5, $6, $7)
+         on conflict (tenant_id, code) where code is not null do update
+            set org_node_id = excluded.org_node_id, name = excluded.name,
+                schedule = excluded.schedule, assign = excluded.assign, steps = excluded.steps,
+                archived_at = null
+          where (t.org_node_id, t.name, t.schedule, t.assign, t.steps, t.archived_at)
+                is distinct from (excluded.org_node_id, excluded.name, excluded.schedule,
+                                  excluded.assign, excluded.steps, null)
+         returning id, xmax = 0 as inserted`,
+        [this.tenant, node, code, first.name, schedule, assign, steps],
+      );
+    }
+  }
+
+  /** File 30: one-off tasks, created (and, with done_by, finished) as the people named. */
+  private async tasks() {
+    for (const t of this.b.tasks) {
+      this.step(FILES.tasks.file, t.line);
+      const key = `test-data task ${t.place_code} ${t.title}`;
+      const existed = await this.c.query(
+        `select 1 from ops.task where tenant_id = $1 and idempotency_key = $2`,
+        [this.tenant, key],
+      );
+      const steps = (t.steps ?? '')
+        .split(';')
+        .map((x) => x.trim())
+        .filter(Boolean)
+        .map((label) => ({ label, kind: 'tick' }));
+      const id = await this.as(t.created_by, async () => {
+        const r = await this.c.query<{ id: string }>(
+          `select ops.create_task($1, $2, $3, ($4::date + $5::time) at time zone $6, $7, $8, $9,
+                                  $10) as id`,
+          [
+            this.nodes.get(t.place_code),
+            t.title,
+            t.description ?? null,
+            this.day(t.day),
+            t.due_time,
+            this.timezoneOf(t.place_code),
+            t.priority,
+            JSON.stringify(this.assignJson(t.assign_to)),
+            JSON.stringify(steps),
+            key,
+          ],
+        );
+        return r.rows[0]!.id;
+      });
+      this.count('tasks', !existed.rowCount);
+      if (existed.rowCount || t.done_by === undefined) continue;
+      await this.as(t.done_by, async () => {
+        const s = await this.c.query<{ id: string }>(
+          `select id from ops.task_step where task_id = $1 order by position`,
+          [id],
+        );
+        for (const step of s.rows) {
+          await this.c.query(`select ops.complete_step($1, $2, '{"done": true}')`, [id, step.id]);
+        }
+        await this.c.query(`select ops.complete_task($1)`, [id]);
+      });
+    }
+  }
+
+  /** File 31: maintenance requests, raised (and assigned) as the people named. */
+  private async maintenance() {
+    for (const m of this.b.maintenance) {
+      this.step(FILES.maintenance.file, m.line);
+      const key = `test-data maintenance ${m.place_code} ${m.title}`;
+      const existed = await this.c.query(
+        `select 1 from ops.maintenance_request where tenant_id = $1 and idempotency_key = $2`,
+        [this.tenant, key],
+      );
+      const id = await this.as(m.reported_by, async () => {
+        const r = await this.c.query<{ id: string }>(
+          `select ops.raise_maintenance($1, $2, $3, null, $4) as id`,
+          [this.nodes.get(m.place_code), m.title, m.description ?? null, key],
+        );
+        return r.rows[0]!.id;
+      });
+      this.count('maintenance requests', !existed.rowCount);
+      if (existed.rowCount || m.assigned_to === undefined || m.assigned_by === undefined) continue;
+      await this.as(m.assigned_by, () =>
+        this.c.query(`select ops.assign_maintenance($1, $2)`, [id, this.users.get(m.assigned_to!)]),
+      );
+    }
+  }
+
+  /**
+   * File 32: prep tasks set on past days, before the batches of file 26 are recorded; a
+   * batch made at the same store, of the same item, on the same day completes its task.
+   */
+  /**
+   * File 32: prep tasks, days counted from `base` (the day files 26 to 28 were loaded),
+   * each once: the task keeps a key naming its line.
+   */
+  private async prepTasks(base: string = this.today) {
+    for (const p of this.b.prepTasks) {
+      this.step(FILES.prepTasks.file, p.line);
+      const key = `test-data prep ${p.store_node_code} ${p.prep_item_code} ${p.day}`;
+      const map = `${p.store_node_code} ${p.prep_item_code} ${p.day}`;
+      const had = await this.c.query<{ id: string }>(
+        `select id from ops.task where tenant_id = $1 and kind = 'prep' and idempotency_key = $2`,
+        [this.tenant, key],
+      );
+      if (had.rows[0]) {
+        this.prepTaskIds.set(map, had.rows[0].id);
+        this.count('prep tasks', false);
+        continue;
+      }
+      const ids = await this.as(p.created_by, async () => {
+        const r = await this.c.query<{ ids: string[] }>(
+          `select ops.create_prep_tasks($1, $2, ($3::date + $4::time) at time zone $5, $6) as ids`,
+          [
+            this.nodes.get(p.store_node_code),
+            JSON.stringify([{ item_id: this.items.get(p.prep_item_code), qty: p.quantity }]),
+            this.day(p.day, base),
+            p.due_time,
+            this.timezoneOf(p.store_node_code),
+            JSON.stringify(this.assignJson(p.assign_to)),
+          ],
+        );
+        return r.rows[0]!.ids;
+      });
+      await this.c.query(`update ops.task set idempotency_key = $1 where id = $2`, [key, ids[0]]);
+      this.prepTaskIds.set(map, ids[0]!);
+      this.count('prep tasks', true);
+    }
+  }
+
+  /** The day files 26 to 28 were loaded, from their batches' keys (null if none match). */
+  private async pastWeekDay(): Promise<string | null> {
+    const first = this.b.production[0];
+    if (!first) return null;
+    const { rows } = await this.c.query<{ k: string }>(
+      `select idempotency_key as k from inv.production
+        where tenant_id = $1 and idempotency_key like $2`,
+      [this.tenant, `test-data % ${first.time} ${first.store_node_code} ${first.prep_item_code}`],
+    );
+    for (const { k } of rows) {
+      const base = this.day(-first.day, k.split(' ')[1]);
+      const keys = this.b.production.map(
+        (p) =>
+          `test-data ${this.day(p.day, base)} ${p.time} ${p.store_node_code} ${p.prep_item_code}`,
+      );
+      const found = await this.c.query(
+        `select 1 from inv.production where tenant_id = $1 and idempotency_key = any ($2)`,
+        [this.tenant, keys],
+      );
+      if (found.rowCount === keys.length) return base;
+    }
+    return null;
+  }
+
+  /** Links the batches loaded earlier (file 26) to the prep tasks they fulfil (file 32). */
+  private async linkPastBatches(base: string) {
+    for (const p of this.b.production) {
+      const task = this.prepTaskIds.get(`${p.store_node_code} ${p.prep_item_code} ${p.day}`);
+      if (!task) continue;
+      const key = `test-data ${this.day(p.day, base)} ${p.time} ${p.store_node_code} ${p.prep_item_code}`;
+      const made = await this.c.query<{ id: string }>(
+        `select id from inv.production
+          where tenant_id = $1 and idempotency_key = $2 and task_id is null`,
+        [this.tenant, key],
+      );
+      if (made.rows[0]) {
+        this.step(FILES.production.file, p.line);
+        await this.c.query(`select ops.link_test_batch($1, $2)`, [task, made.rows[0].id]);
+      }
     }
   }
 

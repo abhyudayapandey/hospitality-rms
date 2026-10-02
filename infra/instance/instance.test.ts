@@ -76,6 +76,12 @@ describe('per-service credential isolation', () => {
     ]);
   });
 
+  it('the tasks job gets only wf_executor (ADR 020)', () => {
+    expect(loadCredentials('outlet-ops-tasks-tick.service')).toEqual([
+      'db_wf_executor:/etc/outlet-ops/creds/wf_executor',
+    ]);
+  });
+
   it('the platform worker gets only platform_loader, and nothing else does (ADR 012)', () => {
     expect(loadCredentials('outlet-ops-platform-worker.service')).toEqual([
       'db_platform_loader:/etc/outlet-ops/creds/platform_loader',
@@ -112,6 +118,7 @@ describe('per-service credential isolation', () => {
     expect(read('systemd/outlet-ops-web.service')).toMatch(/^User=outletops-web$/m);
     expect(read('systemd/outlet-ops-wf-execute.service')).toMatch(/^User=outletops-wf$/m);
     expect(read('systemd/outlet-ops-attendance-nightly.service')).toMatch(/^User=outletops-wf$/m);
+    expect(read('systemd/outlet-ops-tasks-tick.service')).toMatch(/^User=outletops-wf$/m);
   });
 });
 
@@ -120,6 +127,12 @@ describe('scheduled jobs', () => {
     const timer = read('systemd/outlet-ops-attendance-nightly.timer');
     expect(timer).toMatch(/^OnCalendar=\*-\*-\* 02:15:00 Asia\/Kolkata$/m);
     expect(timer).toMatch(/^Persistent=true$/m);
+  });
+
+  it('runs the tasks job every 5 minutes (ADR 020)', () => {
+    expect(read('systemd/outlet-ops-tasks-tick.timer')).toMatch(
+      /^OnCalendar=\*-\*-\* \*:00\/5:30$/m,
+    );
   });
 
   it('deploy enables and starts every timer it ships', () => {
@@ -140,7 +153,7 @@ describe('scheduled jobs', () => {
     expect(read('deploy/platform-worker.sh')).toContain('jobs/platform-worker.mjs');
     expect(build).toContain('--outfile="$OUT/jobs/platform-worker.mjs"');
     expect(read('deploy/deploy.sh')).toMatch(/enable[^;]*outlet-ops-platform-worker\.service/);
-    for (const script of ['wf-execute', 'attendance-nightly']) {
+    for (const script of ['wf-execute', 'attendance-nightly', 'tasks-tick']) {
       expect(read(`deploy/${script}.sh`)).toContain(`jobs/${script}.mjs`);
       expect(build).toMatch(new RegExp(`:${script}[ ;]`));
     }

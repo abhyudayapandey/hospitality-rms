@@ -202,3 +202,79 @@ describe('Test Company activity (files 25 to 28): the README figures', () => {
     });
   });
 });
+
+describe('Test Company tasks (files 29 to 32): the README figures', () => {
+  it('tasks: the commis has an overdue deep clean; commis B finished the descale', async () => {
+    await inRolledBackTx(async (c) => {
+      const mine = await attemptAs<{ title: string; overdue: boolean; status: string }>(
+        c,
+        ids.user('test.commis.1.0'),
+        `select title, overdue, status from ops.my_tasks() where kind = 'one_off' order by due_at`,
+      );
+      expect(mine.rows).toEqual([
+        { title: 'Deep clean the walk-in chiller', overdue: true, status: 'open' },
+        { title: 'Label the dry store shelves', overdue: false, status: 'open' },
+      ]);
+      const done = await c.query<{ status: string; done_by: string }>(
+        `select t.status, u.username as done_by from ops.task t
+           join core.app_user u on u.id = t.completed_by
+          where t.tenant_id = $1 and t.title = 'Descale the combi oven'`,
+        [ids.tenant()],
+      );
+      expect(done.rows).toEqual([{ status: 'done', done_by: 'test.commis-b.1.0' }]);
+      const servers = await attemptAs<{ title: string }>(
+        c,
+        ids.user('test.server-b.3.0'),
+        `select title from ops.my_tasks() where kind = 'one_off'`,
+      );
+      expect(servers.rows).toEqual([{ title: 'Wipe down the menu cards' }]);
+    });
+  });
+
+  it('maintenance: one open request, for Hotel 1.0 Engineering to assign', async () => {
+    await inRolledBackTx(async (c) => {
+      const r = await attemptAs<{ kind: string; title: string }>(
+        c,
+        ids.user('test.chief-engineer.1.0'),
+        `select kind, title from ops.my_to_assign()`,
+      );
+      expect(r.rows).toEqual([{ kind: 'maintenance', title: 'Dishwasher leaking at the door' }]);
+    });
+  });
+
+  it('prep: three tasks done by their batches from file 26, one open for the load day', async () => {
+    await inRolledBackTx(async (c) => {
+      const { rows } = await c.query<{ title: string; status: string; batches: number }>(
+        `select t.title, t.status,
+                (select count(*)::int from inv.production p where p.task_id = t.id) as batches
+           from ops.task t where t.tenant_id = $1 and t.kind = 'prep' order by t.due_at`,
+        [ids.tenant()],
+      );
+      expect(rows).toEqual([
+        { title: 'Make Mint Chutney 500 g', status: 'done', batches: 1 },
+        { title: 'Make Ginger Garlic Paste 1000 g', status: 'done', batches: 1 },
+        { title: 'Make Negroni (pre-batched) 2000 ml', status: 'done', batches: 1 },
+        { title: 'Make Mint Chutney 1000 g', status: 'open', batches: 0 },
+      ]);
+    });
+  });
+
+  it('checklists: each customer’s templates, with tasks for the next 24 hours', async () => {
+    await inRolledBackTx(async (c) => {
+      const { rows } = await c.query<{ customer: string; templates: number; upcoming: number }>(
+        `select tn.code as customer, count(distinct ct.id)::int as templates,
+                count(t.id) filter (where t.due_at > now())::int as upcoming
+           from ops.checklist_template ct
+           join core.tenant tn on tn.id = ct.tenant_id
+           left join ops.task t on t.template_id = ct.id
+          where tn.code in ('TEST-COMPANY', 'TEST-SOLO-COMPANY') and ct.archived_at is null
+          group by tn.code order by tn.code`,
+      );
+      expect(rows.map((r) => [r.customer, r.templates])).toEqual([
+        ['TEST-COMPANY', 11],
+        ['TEST-SOLO-COMPANY', 4],
+      ]);
+      for (const r of rows) expect(r.upcoming, r.customer).toBeGreaterThan(0);
+    });
+  });
+});

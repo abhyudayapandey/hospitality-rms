@@ -14,6 +14,12 @@ export const PLACE_SCREENS = [
   'roster',
   'exceptions',
   'events',
+  // tasks (ADR 020): team places and outlets
+  'tasks',
+  'tasks_new',
+  'checklists',
+  'maintenance',
+  'report',
 ] as const;
 
 export type Screen = (typeof PLACE_SCREENS)[number];

@@ -114,6 +114,69 @@ export type Requirement =
   | { kind: 'role'; role: string; headcount: number; start: string; end: string };
 
 /** `item PANEER = 20 kg; role BARTENDER = 3 (18:00-23:30)` */
+export type Schedule =
+  | { kind: 'daily'; times: string[] }
+  | { kind: 'weekly'; weekdays: number[]; times: string[] }
+  | { kind: 'every_n_hours'; every: number; from: string; to: string };
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+/**
+ * A checklist's schedule (ADR 020), times local to its place: `daily 07:00 15:00`,
+ * `weekly Mon,Thu 09:00` or `every 2h 08:00-22:00`.
+ */
+const schedule = z.string().transform((v, ctx): Schedule => {
+  const parts = v.trim().split(/\s+/);
+  const bad = (message: string) => {
+    ctx.addIssue({ code: 'custom', message });
+    return z.NEVER;
+  };
+  if (parts[0] === 'daily') {
+    const times = parts.slice(1);
+    if (times.length === 0 || !times.every((t) => HHMM.test(t))) {
+      return bad('must be like "daily 07:00 15:00"');
+    }
+    return { kind: 'daily', times };
+  }
+  if (parts[0] === 'weekly') {
+    const weekdays = new Set<number>();
+    for (const d of (parts[1] ?? '').split(',')) {
+      if (!(d in DAY)) return bad('must be like "weekly Mon,Thu 09:00"');
+      weekdays.add(DAY[d as Day]);
+    }
+    const times = parts.slice(2);
+    if (times.length === 0 || !times.every((t) => HHMM.test(t))) {
+      return bad('must be like "weekly Mon,Thu 09:00"');
+    }
+    return { kind: 'weekly', weekdays: [...weekdays].sort(), times };
+  }
+  const m = /^every (1|2|3|4|6|8|12)h ([0-2]\d:[0-5]\d)-([0-2]\d:[0-5]\d)$/.exec(parts.join(' '));
+  if (m && HHMM.test(m[2]!) && HHMM.test(m[3]!)) {
+    return { kind: 'every_n_hours', every: Number(m[1]), from: m[2]!, to: m[3]! };
+  }
+  return bad(
+    'must be "daily 07:00", "weekly Mon,Thu 09:00" or "every 2h 08:00-22:00" (1, 2, 3, 4, 6, 8 or 12 hours)',
+  );
+});
+
+export type AssignTo =
+  { mode: 'job_role'; role: string } | { mode: 'on_shift' } | { mode: 'person'; username: string };
+/** Who a task goes to: `role:COMMIS`, `on_shift` or `person:test.commis.1.0`. */
+const assignTo = z.string().transform((v, ctx): AssignTo => {
+  if (v === 'on_shift') return { mode: 'on_shift' };
+  const role = /^role:([A-Z][A-Z0-9_]*)$/.exec(v);
+  if (role) return { mode: 'job_role', role: role[1]! };
+  const person = /^person:(\S+)$/.exec(v);
+  if (person) return { mode: 'person', username: person[1]! };
+  ctx.addIssue({ code: 'custom', message: 'must be role:JOB_ROLE, on_shift or person:username' });
+  return z.NEVER;
+});
+/** Days from the load date, before or after it (test-only tasks). */
+const dayAround = z
+  .string()
+  .regex(/^(0|-?[1-9]\d?)$/, 'must be a whole number of days, like -1 or 2')
+  .transform(Number)
+  .refine((v) => v >= -14 && v <= 14, 'must be within 14 days of the load date');
+const optYesNo = z.union([z.literal('').transform(() => false), yesNo]);
+
 const requirements = z.string().transform((v, ctx): Requirement[] => {
   const out: Requirement[] = [];
   for (const part of v
@@ -472,6 +535,72 @@ export const FILES = {
       difference: num,
       counted_by: text,
       approved_by: text,
+    }),
+  },
+  // Checklists (ADR 020): one row per step; the other columns repeat on every step row of
+  // the same template_code.
+  checklistTemplates: {
+    file: '29_checklist_templates.csv',
+    required: false,
+    schema: z.object({
+      template_code: code,
+      place_code: code,
+      name: text,
+      schedule,
+      assign_to: assignTo,
+      step: int.refine((v) => v >= 1 && v <= 30, 'must be 1 to 30'),
+      step_label: text,
+      step_kind: z.enum(['tick', 'number', 'text', 'photo'], 'must be tick, number, text or photo'),
+      min: optNum,
+      max: optNum,
+      unit: optional,
+      photo_required: optYesNo,
+    }),
+  },
+  // Test-only tasks (ADR 020): one-off tasks, open maintenance requests and prep lists.
+  tasks: {
+    file: '30_tasks_TEST_DATA_ONLY.csv',
+    required: false,
+    testOnly: true,
+    schema: z.object({
+      place_code: code,
+      title: text,
+      description: optional,
+      day: dayAround,
+      due_time: time,
+      priority: z.enum(['low', 'normal', 'high'], 'must be low, normal or high'),
+      assign_to: assignTo,
+      // tick steps, separated by ";"
+      steps: optional,
+      created_by: text,
+      done_by: optional,
+    }),
+  },
+  maintenance: {
+    file: '31_maintenance_TEST_DATA_ONLY.csv',
+    required: false,
+    testOnly: true,
+    schema: z.object({
+      place_code: code,
+      title: text,
+      description: optional,
+      reported_by: text,
+      assigned_to: optional,
+      assigned_by: optional,
+    }),
+  },
+  prepTasks: {
+    file: '32_prep_tasks_TEST_DATA_ONLY.csv',
+    required: false,
+    testOnly: true,
+    schema: z.object({
+      store_node_code: code,
+      prep_item_code: code,
+      day: dayOffset,
+      due_time: time,
+      quantity: num.refine((v) => v > 0, 'must be more than 0'),
+      assign_to: assignTo,
+      created_by: text,
     }),
   },
 } as const;
