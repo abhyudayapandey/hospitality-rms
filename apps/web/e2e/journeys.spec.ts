@@ -1,0 +1,190 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { asMigrator, signInAs } from './helpers';
+
+// How many taps the common jobs take, from Home (UX review U-27, ADR 026). Each journey
+// starts on Home, walks to the job and stops at its last button, which it checks is ready
+// and counts without pressing, so nothing is written. "To get there" is the taps from Home
+// to the job's screen; "In the form" the choices and the last button; "Typed" the fields
+// filled in. The test fails if a job takes more taps than its budget, so a later change
+// can't quietly make one longer. The table goes to test-results/journeys.md.
+
+interface Result {
+  job: string;
+  who: string;
+  there: number;
+  form: number;
+  typed: number;
+}
+const results: Result[] = [];
+
+class Journey {
+  there = 0;
+  form = 0;
+  typed = 0;
+  /** A tap that moves towards the job. */
+  async go(l: Locator) {
+    this.there++;
+    await l.click();
+  }
+  /** A choice in the job's form. */
+  async choose(l: Locator, option: { index: number }) {
+    this.form++;
+    await l.selectOption(option);
+  }
+  async type(l: Locator, text: string) {
+    this.typed++;
+    await l.fill(text);
+  }
+  /** The job's last button: ready, counted, not pressed. */
+  async last(l: Locator) {
+    this.form++;
+    await expect(l).toBeEnabled();
+  }
+  done(job: string, who: string, budget: { there: number; form: number }) {
+    results.push({
+      job,
+      who,
+      there: this.there,
+      form: this.form,
+      typed: this.typed,
+    });
+    expect(this.there, `${job}: taps to get there`).toBeLessThanOrEqual(budget.there);
+    expect(this.form, `${job}: taps in the form`).toBeLessThanOrEqual(budget.form);
+  }
+}
+
+async function start(page: Page, who: string): Promise<Journey> {
+  await signInAs(page, who); // lands on Home
+  return new Journey();
+}
+
+const nav = (page: Page, name: string) =>
+  page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name, exact: true });
+
+test.afterAll(() => {
+  const dir = join(import.meta.dirname, '..', 'test-results');
+  mkdirSync(dir, { recursive: true });
+  const lines = [
+    '| Job | Who | Taps to get there | Taps in the form | Fields typed |',
+    '| --- | --- | --- | --- | --- |',
+    ...results.map((r) => `| ${r.job} | ${r.who} | ${r.there} | ${r.form} | ${r.typed} |`),
+  ];
+  writeFileSync(join(dir, 'journeys.md'), `${lines.join('\n')}\n`);
+  console.log(lines.join('\n'));
+});
+
+test('clock in (server)', async ({ page }) => {
+  const j = await start(page, 'Test Server 3.0');
+  const card = page.getByTestId('shift-card').getByRole('link', { name: /Clock (in|out)/ });
+  if (await card.isVisible()) {
+    await j.go(card);
+  } else {
+    await j.go(nav(page, 'Roster'));
+    await j.go(page.getByTestId('clock-card'));
+  }
+  await j.last(page.getByRole('button', { name: /^Clock (in|out)$/ }));
+  j.done('Clock in', 'Server', { there: 2, form: 1 });
+});
+
+test('open my next task (commis)', async ({ page }) => {
+  const j = await start(page, 'Test Commis 1.0');
+  await j.go(page.getByTestId('tasks-card').getByRole('link').first());
+  await page.waitForURL(/\/tasks\/[0-9a-f-]{36}/);
+  await j.last(
+    page
+      .getByRole('button')
+      .filter({ hasText: /^(Done|Save|Record the batch)$/ })
+      .first(),
+  );
+  j.done('Open my next task', 'Commis', { there: 1, form: 1 });
+});
+
+test('report a problem (commis)', async ({ page }) => {
+  const j = await start(page, 'Test Commis 1.0');
+  await j.go(nav(page, 'Tasks'));
+  await j.go(page.getByRole('link', { name: 'Report a problem' }));
+  await j.type(page.getByLabel('What is wrong'), 'Fridge door does not close');
+  await j.last(page.getByRole('button', { name: 'Send to maintenance' }));
+  j.done('Report a problem', 'Commis', { there: 2, form: 1 });
+});
+
+test('record wastage (store keeper)', async ({ page }) => {
+  const j = await start(page, 'Test Store Keeper 1.0');
+  await j.go(nav(page, 'Stock'));
+  await j.go(
+    page.getByRole('navigation', { name: 'Supply' }).getByRole('link', { name: 'Wastage' }),
+  );
+  await j.choose(page.getByLabel('Item'), { index: 1 });
+  await j.type(page.getByLabel(/^Quantity/), '1');
+  await j.last(page.getByRole('button', { name: 'Record wastage' }));
+  j.done('Record wastage', 'Store keeper', { there: 2, form: 2 });
+});
+
+test('count a store (store keeper)', async ({ page }) => {
+  const j = await start(page, 'Test Store Keeper 1.0');
+  await j.go(nav(page, 'Stock'));
+  await j.go(page.getByRole('navigation', { name: 'Supply' }).getByRole('link', { name: 'Count' }));
+  await j.last(page.getByRole('button', { name: 'Start a count' }));
+  j.done('Start a count', 'Store keeper', { there: 2, form: 1 });
+});
+
+test('approve leave (floor manager)', async ({ page }) => {
+  // a leave request from the server, far enough out to touch no shift (once per database)
+  await asMigrator(
+    `with me as materialized (
+       select set_config('app.user_id', u.id::text, true) as s
+         from core.app_user u where u.username = 'test.server.3.0')
+     select hr.request_leave(t.id, current_date + 150, current_date + 150, 'journeys')
+       from me, hr.leave_type t join core.tenant te on te.id = t.tenant_id
+      where te.code = 'TEST-COMPANY' and t.code = 'UNPAID_LEAVE'
+        and not exists (select 1 from hr.leave_request l
+                         where l.owner_user_id = (select id from core.app_user
+                                                   where username = 'test.server.3.0')
+                           and l.from_date = current_date + 150 and l.status <> 'cancelled')`,
+    [],
+  );
+  const j = await start(page, 'Test Floor Manager 3.0');
+  await j.go(page.getByRole('link', { name: /Waiting for you/ }));
+  await j.go(
+    page
+      .getByTestId('inbox-item')
+      .filter({ hasText: 'Test Server 3.0' })
+      .filter({ hasText: 'Leave' })
+      .getByRole('link', { name: 'Review' })
+      .first(),
+  );
+  await j.last(page.getByRole('button', { name: 'Approve' }));
+  j.done('Approve leave', 'Department head', { there: 2, form: 1 });
+});
+
+test('fill an open slot (executive chef)', async ({ page }) => {
+  // Home's "Needs attention" links to the first day with an open slot (U-27): before, this
+  // took Roster → the day → Assign
+  const j = await start(page, 'Test Executive Chef 1.0');
+  await j.go(
+    page.getByTestId('attention-card').getByRole('link', { name: /open slots? this week/ }),
+  );
+  await j.go(
+    page
+      .getByTestId('roster-day')
+      .getByRole('link', { name: /^Assign/ })
+      .first(),
+  );
+  await j.last(page.getByTestId('candidates').getByRole('button', { name: 'Assign' }).first());
+  j.done('Fill an open slot', 'Department head', { there: 2, form: 1 });
+});
+
+test("today's sales (cost controller)", async ({ page }) => {
+  const j = await start(page, 'Test Cost Controller 1.0');
+  await expect(page.getByTestId('tile-sales')).toBeVisible();
+  j.done("See today's sales", 'Cost controller', { there: 0, form: 0 });
+});
+
+test('my week (server)', async ({ page }) => {
+  const j = await start(page, 'Test Server 3.0');
+  await j.go(page.getByRole('link', { name: 'My week', exact: true }).first());
+  await expect(page.getByTestId('report-week')).toBeVisible();
+  j.done('See my week', 'Server', { there: 1, form: 0 });
+});

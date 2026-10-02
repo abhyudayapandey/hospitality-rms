@@ -8,6 +8,7 @@ import type { SearchParams } from '@/lib/inventory';
 import { mySwaps, peopleContext } from '@/lib/people';
 import { SwapResponse } from './swap-response';
 import { jobTitles } from '@/lib/job-titles';
+import { ModuleOff } from '@/components/module-gate';
 
 const STATUS: Record<string, string> = {
   proposed: 'Waiting for your colleague',
@@ -23,6 +24,7 @@ const STATUS: Record<string, string> = {
 // Shift swaps I offered or was offered. The colleague accepting sends it to the manager.
 export default async function SwapsPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await peopleContext(searchParams);
+  if (!ctx.shell.modules.has('swaps')) return <ModuleOff code="swaps" />;
   const user = await requireUser();
   const title = await withUser(user.id, jobTitles);
   const swaps = await withUser(user.id, (tx) => mySwaps(tx));

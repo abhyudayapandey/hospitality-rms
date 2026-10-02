@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MODULE_CODES } from '@outlet-ops/domain';
 import { CsvError, parseCsv } from './csv';
 
 // The onboarding files (docs/onboarding/test-data/README.md): one zod schema per file turns
@@ -18,6 +19,7 @@ const optional = z.string().transform((v) => (v === '' ? undefined : v));
 const code = z.string().regex(/^[A-Z0-9][A-Z0-9_.-]*$/, 'must be an upper-case code');
 const optCode = z.union([z.literal('').transform(() => undefined), code]);
 const yesNo = z.enum(['yes', 'no'], 'must be yes or no').transform((v) => v === 'yes');
+const keepYesNo = z.union([z.literal('').transform(() => undefined), yesNo]);
 const num = z
   .string()
   .regex(/^-?\d+(\.\d+)?$/, 'must be a number')
@@ -213,8 +215,18 @@ export const FILES = {
       leave_hr_approval: z.union([z.literal('').transform(() => undefined), yesNo]),
       // optional: a test customer (ADR 012); only when the customer is created, never changed
       is_test: z.union([z.literal('').transform(() => undefined), yesNo]),
+      // optional: modules on or off (ADR 026); blank or absent leaves the module as it is
+      // (on for a new customer); the Account Owner can also change them in the app
+      events: keepYesNo,
+      swaps: keepYesNo,
+      leave: keepYesNo,
+      production: keepYesNo,
+      prep_lists: keepYesNo,
+      checklists: keepYesNo,
+      maintenance: keepYesNo,
+      menu_sales: keepYesNo,
     }),
-    optional: ['leave_hr_approval', 'is_test'],
+    optional: ['leave_hr_approval', 'is_test', ...MODULE_CODES],
   },
   orgNodes: {
     file: '01_org_nodes.csv',

@@ -71,10 +71,18 @@ describe('splitShortcuts', () => {
 
 describe('attentionLines', () => {
   it('only lines with something in them, in plain words', () => {
-    expect(attentionLines({ belowPar: 3, flags: 0, repairs: 1 })).toEqual([
+    const none = { belowPar: 0, flags: 0, repairs: 0, openSlots: 0, openSlotHref: null };
+    expect(attentionLines({ ...none, belowPar: 3, repairs: 1 })).toEqual([
       { href: '/stock', n: 3, text: 'items below par' },
       { href: '/tasks/maintenance', n: 1, text: 'open repair' },
     ]);
-    expect(attentionLines({ belowPar: 0, flags: 0, repairs: 0 })).toEqual([]);
+    expect(attentionLines(none)).toEqual([]);
+  });
+  it('open slots link to the first day that has one', () => {
+    const none = { belowPar: 0, flags: 0, repairs: 0, openSlots: 0, openSlotHref: null };
+    const href = '/roster/week?node=n1&week=2026-10-05&day=2026-10-06';
+    expect(attentionLines({ ...none, openSlots: 4, openSlotHref: href })).toEqual([
+      { href, n: 4, text: 'open slots this week' },
+    ]);
   });
 });

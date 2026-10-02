@@ -6,6 +6,7 @@ import { param } from './params';
 import type { ReportScreen } from './place-screens';
 import { isIsoDate } from './dates';
 import type { MeasureRow, ReportCode } from './reports';
+import { SALES_MEASURES } from './modules';
 
 // Reads for the reports (ADR 023). Every rpt.* function checks core.can() at the place it
 // is asked about and refuses otherwise (NOT_AUTHORISED); nothing here decides access.
@@ -35,11 +36,15 @@ export async function reportToday(tx: Tx, node: string): Promise<string> {
   return r.rows[0]!.d;
 }
 
+/** The outlet's day; without Menu and sales (ADR 026) the figures from sales are left out. */
 export async function outletFlash(tx: Tx, node: string, day: string): Promise<MeasureRow[]> {
-  const r = await sql<MeasureRow>`
-    select measure, value::text, last_week::text
+  const r = await sql<MeasureRow & { sales_on: boolean }>`
+    select measure, value::text, last_week::text,
+           (select "on" from core.my_modules() where code = 'menu_sales') as sales_on
       from rpt.outlet_flash(${node}::uuid, ${day}::date)`.execute(tx);
-  return r.rows;
+  return r.rows
+    .filter((x) => x.sales_on || !SALES_MEASURES.has(x.measure))
+    .map(({ sales_on: _, ...row }) => row);
 }
 
 export async function departmentDay(tx: Tx, node: string, day: string): Promise<MeasureRow[]> {

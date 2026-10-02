@@ -8,6 +8,7 @@ import { withUser } from '@/lib/db';
 import type { SearchParams } from '@/lib/inventory';
 import { balances, myLeave, myWorker, peopleContext } from '@/lib/people';
 import { LeaveForm } from './leave-form';
+import { ModuleOff } from '@/components/module-gate';
 
 const STATUS: Record<string, string> = {
   submitted: 'Waiting for approval',
@@ -20,6 +21,7 @@ const STATUS: Record<string, string> = {
 // My leave: balances (entitled, used, pending, available), a request form and history.
 export default async function LeavePage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await peopleContext(searchParams);
+  if (!ctx.shell.modules.has('leave')) return <ModuleOff code="leave" />;
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
     const worker = await myWorker(tx);

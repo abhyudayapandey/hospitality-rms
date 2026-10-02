@@ -7,11 +7,13 @@ import { isUuid, param, type SearchParams } from '@/lib/inventory';
 import { peopleContext } from '@/lib/people';
 import { OfferForm } from './offer-form';
 import { jobTitles } from '@/lib/job-titles';
+import { ModuleOff } from '@/components/module-gate';
 
 // Offer one of my shifts to a colleague with the same role at my location. Names come
 // from hr.worker_directory (display name, role, node only).
 export default async function NewSwapPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await peopleContext(searchParams);
+  if (!ctx.shell.modules.has('swaps')) return <ModuleOff code="swaps" />;
   const assignment = param(await searchParams, 'assignment');
   if (!isUuid(assignment)) return <Empty>That shift can&apos;t be swapped.</Empty>;
   const user = await requireUser();

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { failure, type ActionResult } from '@outlet-ops/domain';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser, type Tx } from '@/lib/db';
+import { requireModule } from '@/lib/modules-server';
 
 // People writes: rostering, attendance, leave, swaps, events and notifications. Each calls
 // one hr.* / ops.* SECURITY DEFINER function that checks core.can() (CLAUDE.md rule 2);
@@ -137,6 +138,7 @@ export async function requestLeave(
   idempotencyKey: string,
 ): Promise<ActionResult<string>> {
   return run('request_leave', async (tx) => {
+    await requireModule(tx, 'leave');
     const r = await sql<{ id: string }>`
       select hr.request_leave(${type}::uuid, ${from}::date, ${to}::date, ${reason || null},
                               ${idempotencyKey}) as id`.execute(tx);
@@ -154,6 +156,7 @@ export async function offerSwap(
   note: string,
 ): Promise<ActionResult<string>> {
   return run('request_swap', async (tx) => {
+    await requireModule(tx, 'swaps');
     const r = await sql<{ id: string }>`
       select hr.request_swap(${assignment}::uuid, ${toWorker}::uuid, ${note || null}) as id`.execute(
       tx,
@@ -164,6 +167,7 @@ export async function offerSwap(
 
 export async function respondSwap(swap: string, accept: boolean): Promise<ActionResult<string>> {
   return run('respond_swap', async (tx) => {
+    await requireModule(tx, 'swaps');
     const r = await sql<{ s: string }>`
       select hr.respond_swap(${swap}::uuid, ${accept}) as s`.execute(tx);
     return r.rows[0]!.s;
@@ -172,6 +176,7 @@ export async function respondSwap(swap: string, accept: boolean): Promise<Action
 
 export async function withdrawSwap(swap: string): Promise<ActionResult<null>> {
   return run('withdraw_swap', async (tx) => {
+    await requireModule(tx, 'swaps');
     await sql`select hr.withdraw_swap(${swap}::uuid)`.execute(tx);
     return null;
   });
@@ -237,6 +242,7 @@ export interface EventInput {
 
 export async function saveEvent(input: EventInput): Promise<ActionResult<string>> {
   return run('upsert_event', async (tx) => {
+    await requireModule(tx, 'events');
     const r = await sql<{ id: string }>`
       select ops.upsert_event(${input.id}::uuid, ${input.node}::uuid, ${input.name},
                               ${input.startsAt}::timestamptz, ${input.endsAt}::timestamptz,
@@ -249,6 +255,7 @@ export async function saveEvent(input: EventInput): Promise<ActionResult<string>
 
 export async function cancelEvent(id: string): Promise<ActionResult<null>> {
   return run('cancel_event', async (tx) => {
+    await requireModule(tx, 'events');
     await sql`select ops.cancel_event(${id}::uuid)`.execute(tx);
     return null;
   });

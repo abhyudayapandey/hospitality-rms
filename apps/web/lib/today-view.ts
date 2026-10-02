@@ -72,6 +72,10 @@ export interface Attention {
   belowPar: number;
   flags: number;
   repairs: number;
+  /** future open slots in the next seven days, at places where they build the roster */
+  openSlots: number;
+  /** the roster day of the first of them (UX U-27: Home → that day → Assign) */
+  openSlotHref: string | null;
 }
 
 /** The "Needs attention" lines that have something in them. */
@@ -91,6 +95,11 @@ export function attentionLines(a: Attention): { href: string; text: string; n: n
       href: '/tasks/maintenance',
       n: a.repairs,
       text: a.repairs === 1 ? 'open repair' : 'open repairs',
+    },
+    {
+      href: a.openSlotHref ?? '/roster',
+      n: a.openSlots,
+      text: a.openSlots === 1 ? 'open slot this week' : 'open slots this week',
     },
   ];
   return lines.filter((l) => l.n > 0);

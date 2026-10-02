@@ -1,5 +1,5 @@
 import 'server-only';
-import { addDays, localToday } from './dates';
+import { addDays, localToday, weekStart } from './dates';
 import { sql, withUser } from './db';
 import { navProfile } from './nav';
 import { myShifts, openPunch, type MyShift, type OpenPunch } from './people';
@@ -48,7 +48,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
 
     let attention: Attention | null = null;
     if (lead) {
-      const a = await sql<Attention>`
+      const a = await sql<Omit<Attention, 'openSlots' | 'openSlotHref'>>`
         select
           (select count(*) from inv.item_node n
              join inv.item i on i.id = n.item_id and i.archived_at is null
@@ -61,9 +61,40 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
               and x.org_node_id in (select id from core.screen_places('exceptions')))::int as flags,
           (select count(*) from ops.maintenance_requests() m
             where m.status in ('open', 'assigned', 'in_progress')
+              and (select "on" from core.my_modules() where code = 'maintenance')
               and exists (select 1 from core.screen_places('maintenance') p
                            where p.id = m.org_node_id))::int as repairs`.execute(tx);
-      attention = a.rows[0] ?? null;
+      // open slots in shifts that haven't started, the next seven days, where they build the
+      // roster (ROSTER modify there, checked by core.can; RLS shows the shifts)
+      const slots =
+        shell.domains.get('ROSTER') === 'modify'
+          ? await sql<{ n: number; node: string | null; day: string | null }>`
+            with open as (
+              select s.org_node_id, s.local_date,
+                     s.headcount - (select count(*) from hr.shift_assignment x
+                                     where x.shift_id = s.id and x.status = 'assigned') as gap
+                from hr.shift s
+               where s.status <> 'cancelled' and s.start_at > now()
+                 and s.start_at < now() + interval '7 days'
+                 and core.can('ROSTER', 'modify', s.org_node_id, null))
+            select coalesce(sum(gap) filter (where gap > 0), 0)::int as n,
+                   (array_agg(org_node_id order by local_date, org_node_id)
+                      filter (where gap > 0))[1] as node,
+                   (array_agg(local_date::text order by local_date, org_node_id)
+                      filter (where gap > 0))[1] as day
+              from open`.execute(tx)
+          : null;
+      const s = slots?.rows[0];
+      attention = a.rows[0]
+        ? {
+            ...a.rows[0],
+            openSlots: s?.n ?? 0,
+            openSlotHref:
+              s?.node && s.day
+                ? `/roster/week?node=${s.node}&week=${weekStart(s.day)}&day=${s.day}`
+                : null,
+          }
+        : null;
     }
 
     let numbers: TodayNumbers | null = null;

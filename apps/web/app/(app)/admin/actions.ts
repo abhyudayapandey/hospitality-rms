@@ -266,3 +266,18 @@ export async function revokeAccess(
     return { status: r.rows[0]!.r.status };
   });
 }
+
+// ---------------------------------------------------------------------------
+// Modules (ADR 026): the Account Owner turns a module on or off for the whole company.
+// core.set_module checks COMPANY_SETTINGS modify at the company; the tenant's audit
+// trigger records the change.
+
+export async function setModule(code: string, on: boolean): Promise<ActionResult<null>> {
+  const r = await run('set_module', async (tx) => {
+    await sql`select core.set_module(${code}, ${on})`.execute(tx);
+    return null;
+  });
+  // every screen's tabs and links follow the modules
+  if (r.ok) revalidatePath('/', 'layout');
+  return r;
+}

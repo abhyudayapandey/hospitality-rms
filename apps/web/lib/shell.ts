@@ -2,6 +2,8 @@ import 'server-only';
 import { cache } from 'react';
 import { requireUser, type CurrentUser } from './auth/server';
 import { sql, withUser } from './db';
+import type { ModuleCode } from '@outlet-ops/domain';
+import { modulesOn, withModules } from './modules';
 import { navProfile, type NavInput } from './nav';
 
 export interface NodeRow {
@@ -25,7 +27,10 @@ export interface HomePlace {
 
 export interface Shell {
   user: CurrentUser;
+  /** core.my_domains(), without the domains of switched-off modules (ADR 026) */
   domains: Map<string, 'view' | 'modify'>;
+  /** the company's modules that are on (ADR 026) */
+  modules: ReadonlySet<ModuleCode>;
   /** access group codes (core.my_access(), SELF included): the bottom nav's profile */
   groups: Set<string>;
   nodes: NodeRow[];
@@ -47,11 +52,19 @@ const MENU_DOMAINS = ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM'];
 export const loadShell = cache(async (): Promise<Shell> => {
   const user = await requireUser();
   return withUser(user.id, async (tx) => {
-    const domains = await sql<{ domain: string; access: 'view' | 'modify' }>`
+    const all = await sql<{ domain: string; access: 'view' | 'modify' }>`
       select * from core.my_domains()`.execute(tx);
+    const modules = modulesOn(
+      (
+        await sql<{ code: string; on: boolean }>`select code, "on" from core.my_modules()`.execute(
+          tx,
+        )
+      ).rows,
+    );
+    const domainMap = withModules(new Map(all.rows.map((d) => [d.domain, d.access])), modules);
     const groups = await sql<{ access_group: string }>`
       select distinct access_group from core.my_access()`.execute(tx);
-    const has = (d: string) => domains.rows.some((r) => r.domain === d);
+    const has = (d: string) => domainMap.has(d);
     const nodes = await sql<NodeRow>`
       select id, type, kind, name, depth, derived, timezone, holds_stock from core.nodes()`.execute(
       tx,
@@ -60,7 +73,10 @@ export const loadShell = cache(async (): Promise<Shell> => {
     // approvals, plus expired batches and maintenance requests to assign (ADR 020)
     const inbox = await sql<{ n: number }>`
       select (select count(*) from wf.my_inbox())::int
-           + (select count(*) from ops.my_to_assign())::int as n`.execute(tx);
+           + (select count(*) from ops.my_to_assign() a
+               where (select "on" from core.my_modules()
+                       where code = case a.kind when 'expiry' then 'production'
+                                                else 'maintenance' end))::int as n`.execute(tx);
     const unread = await sql<{ n: number }>`
       select count(*)::int as n from ops.notification
        where owner_user_id = core.current_user_id() and read_at is null`.execute(tx);
@@ -92,7 +108,8 @@ export const loadShell = cache(async (): Promise<Shell> => {
         : 'none';
     return {
       user,
-      domains: new Map(domains.rows.map((d) => [d.domain, d.access])),
+      domains: domainMap,
+      modules,
       groups: groupSet,
       nodes: nodes.rows,
       home: home.rows[0] ?? null,

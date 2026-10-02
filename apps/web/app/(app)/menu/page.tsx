@@ -17,7 +17,10 @@ export default async function MenuPage({ searchParams }: { searchParams: SearchP
   const sp = await searchParams;
   const ctx = await placesFor('menu', searchParams);
   // recipe pages link back with ?outlet=
-  const place = ctx.places.find((p) => p.id === param(sp, 'outlet')) ?? ctx.place;
+  // without Menu and sales (ADR 026) the screen is the recipes, as for people without costs
+  const place = ctx.shell.modules.has('menu_sales')
+    ? (ctx.places.find((p) => p.id === param(sp, 'outlet')) ?? ctx.place)
+    : null;
   const data = await withUser(ctx.shell.user.id, async (tx) => {
     if (!place) return { recipes: await myRecipes(tx), rows: [], outlet: null };
     const recipes = await myRecipes(tx);

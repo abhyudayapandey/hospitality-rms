@@ -206,8 +206,16 @@ export interface ToAssign {
   org_node_id: string;
 }
 
+/** Expired batches and repairs to assign, leaving out switched-off modules (ADR 026). */
 export async function toAssign(tx: Tx): Promise<ToAssign[]> {
-  return (await sql<ToAssign>`select * from ops.my_to_assign()`.execute(tx)).rows;
+  return (
+    await sql<ToAssign>`
+      select a.* from ops.my_to_assign() a
+       where (select "on" from core.my_modules()
+               where code = case a.kind when 'expiry' then 'production' else 'maintenance' end)`.execute(
+      tx,
+    )
+  ).rows;
 }
 
 export interface PrepSuggestion {
@@ -232,16 +240,25 @@ export interface TaskTabs {
   create: boolean;
   checklists: boolean;
   prep: boolean;
+  /** Maintenance and "Report a problem": the module is on (ADR 026) */
+  maintenance: boolean;
 }
 
-/** Which task screens have a place for the person (core.screen_places, ADR 016). */
+/**
+ * Which task screens have a place for the person (core.screen_places, ADR 016), leaving
+ * out the modules their company switched off (core.my_modules, ADR 026).
+ */
 export async function taskTabs(tx: Tx): Promise<TaskTabs> {
   const r = await sql<TaskTabs>`
+    with m as (select code, "on" from core.my_modules())
     select exists (select 1 from core.screen_places('tasks')) as team,
            exists (select 1 from core.screen_places('tasks_new')) as create,
-           exists (select 1 from core.screen_places('checklists')) as checklists,
+           exists (select 1 from core.screen_places('checklists'))
+             and (select "on" from m where code = 'checklists') as checklists,
            exists (select 1 from core.screen_places('tasks_new'))
-             and exists (select 1 from core.screen_places('production')) as prep`.execute(tx);
+             and exists (select 1 from core.screen_places('production'))
+             and (select "on" from m where code = 'prep_lists') as prep,
+           (select "on" from m where code = 'maintenance') as maintenance`.execute(tx);
   return r.rows[0]!;
 }
 
