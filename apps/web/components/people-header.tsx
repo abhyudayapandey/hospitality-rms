@@ -1,28 +1,15 @@
 import Link from 'next/link';
-import type { PeopleContext } from '@/lib/people';
+import { tabAccess, type PeopleContext } from '@/lib/people';
+import { PEOPLE_TABS, peopleTabs, type PeopleTab, type Side } from '@/lib/roster-view';
 import { PlaceSwitcher } from './place-switcher';
 
-const TABS = [
-  { href: '/roster/my', label: 'My shifts', domain: 'ROSTER', access: 'view', personal: true },
-  { href: '/roster/clock', label: 'Clock', domain: 'ATTENDANCE', access: 'modify', personal: true },
-  { href: '/leave', label: 'Leave', domain: 'LEAVE', access: 'view', personal: false },
-  { href: '/roster/swaps', label: 'Swaps', domain: 'SHIFT_SWAPS', access: 'view', personal: true },
-  { href: '/roster/week', label: 'Roster', domain: 'ROSTER', access: 'modify', personal: false },
-  {
-    href: '/roster/exceptions',
-    label: 'Exceptions',
-    domain: null,
-    access: 'modify',
-    personal: false,
-  },
-  { href: '/events', label: 'Events', domain: 'EVENTS', access: 'view', personal: false },
-] as const;
-
-export type PeopleTab = (typeof TABS)[number]['href'];
+export type { PeopleTab } from '@/lib/roster-view';
 
 /**
- * Title, the "Place:" switcher on roster, exceptions and events (ADR 016), and the
- * people tabs the user has. My shifts, Clock and Swaps only for people who work at an
+ * Title, the "Place:" switcher on roster, exceptions and events (ADR 016), and the people
+ * tabs on two sides (ADR 025): **Me** (my shifts, clock, leave, swaps) and **Team**
+ * (roster, exceptions, events). The Me / Team switch shows only to people with both;
+ * frontline staff see Me alone. My shifts, Clock and Swaps only for people who work at an
  * outlet (audit #13); Exceptions only for those who resolve them somewhere (audit #10).
  */
 export function PeopleHeader({
@@ -34,12 +21,12 @@ export function PeopleHeader({
   active: PeopleTab;
   title: string;
 }) {
-  const tabs = TABS.filter(
-    (t) =>
-      (t.domain === null ? ctx.tabs.exceptions : ctx.can(t.domain, t.access)) &&
-      (!t.personal || ctx.tabs.personal),
-  );
-  const q = ctx.node ? `?node=${ctx.node.id}` : '';
+  const sides = peopleTabs(tabAccess(ctx));
+  const side: Side = PEOPLE_TABS.find((t) => t.href === active)!.side;
+  const tabs = sides[side];
+  // Team tabs keep the place on screen; Me tabs have none
+  const href = (t: { href: string; side: Side }) =>
+    t.side === 'team' && ctx.node ? `${t.href}?node=${ctx.node.id}` : t.href;
   return (
     <div className="space-y-3">
       {ctx.screen && ctx.node && (
@@ -50,13 +37,29 @@ export function PeopleHeader({
         />
       )}
       <h1 className="text-xl font-semibold">{title}</h1>
+      {sides.me[0] && sides.team[0] && (
+        <nav aria-label="Me or team" className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
+          {(['me', 'team'] as const).map((s) => (
+            <Link
+              key={s}
+              href={href(sides[s][0]!)}
+              aria-current={s === side ? 'true' : undefined}
+              className={`flex min-h-11 items-center justify-center rounded-lg text-sm ${
+                s === side ? 'bg-white font-semibold shadow-sm' : 'text-slate-600'
+              }`}
+            >
+              {s === 'me' ? 'Me' : 'Team'}
+            </Link>
+          ))}
+        </nav>
+      )}
       {tabs.length > 1 && (
-        <nav aria-label="People" className="-mx-4 overflow-x-auto px-4">
+        <nav aria-label={side === 'me' ? 'Me' : 'Team'} className="-mx-4 overflow-x-auto px-4">
           <ul className="flex gap-2">
             {tabs.map((t) => (
               <li key={t.href}>
                 <Link
-                  href={`${t.href}${t.personal || t.href === '/leave' ? '' : q}`}
+                  href={href(t)}
                   aria-current={t.href === active ? 'page' : undefined}
                   className={`flex min-h-11 items-center rounded-full px-4 text-sm whitespace-nowrap ${
                     t.href === active

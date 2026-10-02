@@ -29,7 +29,7 @@ test('the general manager sees only stores on Stock and only departments on Rost
   // the GM's home (the outlet) isn't a roster place: Roster opens on a department with
   // shifts, not the first one alphabetically (UX U-7)
   await expect.poll(() => viewing(page)).not.toBe('Test Hotel & Bar 1.0 – Admin & Finance');
-  await expect(page.getByTestId('roster-shift').first()).toBeVisible();
+  await expect(page.getByTestId('week-summary')).not.toHaveText(/^0 shifts/);
 });
 
 test('reporting a problem starts where you work, with a way to pick elsewhere (UX U-8)', async ({

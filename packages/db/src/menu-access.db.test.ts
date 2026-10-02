@@ -422,6 +422,47 @@ describe('screen reads follow the same rules', () => {
     return rows[0]!.id;
   }
 
+  it('my_recipes and the prep ids list the readable recipes, worked out once per call', async () => {
+    // they compared each recipe with visible_recipe_ids() inline, re-running it per row
+    // (9 s for a cost controller's Menu page); migration 20261019100000
+    await inRolledBackTx(async (c) => {
+      for (const u of ['test.cost-controller.1.0', 'test.general-manager.1.0', 'test.commis.1.0']) {
+        const who = ids.user(u);
+        const started = Date.now();
+        const list = await attemptAs<{ recipe_id: string }>(
+          c,
+          who,
+          'select * from inv.my_recipes()',
+        );
+        const prep = await attemptAs<{ ids: string[] }>(
+          c,
+          who,
+          'select inv.visible_prep_item_ids() as ids',
+        );
+        const took = Date.now() - started;
+        const rls = await attemptAs<{ id: string; prep_item_id: string | null }>(
+          c,
+          who,
+          `select id, prep_item_id from inv.recipe
+            where effective_from <= current_date
+              and (effective_to is null or effective_to >= current_date)`,
+        );
+        const all = await attemptAs<{ prep_item_id: string }>(
+          c,
+          who,
+          'select distinct prep_item_id from inv.recipe where prep_item_id is not null',
+        );
+        expect(list.rows!.map((r) => r.recipe_id).sort(), u).toEqual(
+          rls.rows!.map((r) => r.id).sort(),
+        );
+        expect([...prep.rows![0]!.ids].sort(), u).toEqual(
+          all.rows!.map((r) => r.prep_item_id).sort(),
+        );
+        expect(took, `${u}: ${took} ms`).toBeLessThan(2000);
+      }
+    });
+  });
+
   it('a commis lists and opens kitchen recipes, with names but no costs', async () => {
     await inRolledBackTx(async (c) => {
       const who = ids.user('test.commis.1.0');

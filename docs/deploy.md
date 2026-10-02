@@ -1056,6 +1056,30 @@ the restart.
 - **`test.bar-manager.3.0`.** On **Roster** for next week, **Add template shifts** asks
   first; **Cancel** adds nothing.
 
+#### Releasing Roster as Me and Team (UX-3)
+
+One migration, `20261019100000_recipe_reads_once` (ADR 025): the Menu page's recipe list is
+worked out once per call instead of once per recipe (it took about 9 s). There is no stack
+change, no new parameter, no product sync change and no re-import.
+
+- **What changes in the app.**
+  - Roster has two sides, **Me** (My shifts, Clock, Leave, Swaps) and **Team** (Roster,
+    Exceptions, Events). Frontline staff see only Me, and the next 7 days' events on My
+    shifts.
+  - The week roster is a day strip with one day's shifts grouped by time; **List view**
+    keeps the old cards.
+
+**Deploy order.** Run the Deploy workflow.
+
+**Check.**
+
+- **`test.executive-chef.1.0`.** **Roster** opens on Team, with the day strip showing open
+  slots per day. **Me** shows their own shifts.
+- **`test.commis.1.0`.** **Roster** shows My shifts, Clock, Leave, Swaps, and no Me | Team
+  switch.
+- **`test.cost-controller.1.0`.** **Reports → Menu costs and prices** opens in about a
+  second.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

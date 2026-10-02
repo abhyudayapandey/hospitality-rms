@@ -3,7 +3,16 @@ import { Empty } from '@/components/messages';
 import { PeopleHeader } from '@/components/people-header';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
-import { addDays, formatDay, formatTime, hoursBetween, localToday } from '@/lib/dates';
+import {
+  addDays,
+  formatDay,
+  formatSpan,
+  formatTime,
+  hoursBetween,
+  localDate,
+  localToday,
+  localToInstant,
+} from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import type { SearchParams } from '@/lib/inventory';
 import {
@@ -16,6 +25,8 @@ import {
   openPunch,
   peopleContext,
   type MyShift,
+  upcomingEvents,
+  type UpcomingEvent,
 } from '@/lib/people';
 import {
   formatDuration,
@@ -55,6 +66,14 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
       shifts: await myShifts(tx, today, UPCOMING_DAYS),
       punch: await openPunch(tx),
       flags: await myExceptions(tx, addDays(today, -14)),
+      // the next 7 days' events where they work: Events itself is on the Team side
+      events: ctx.can('EVENTS')
+        ? await upcomingEvents(
+            tx,
+            localToInstant(today, '00:00', ctx.tz),
+            localToInstant(addDays(today, 7), '00:00', ctx.tz),
+          )
+        : [],
     };
   });
   const swaps = new Map(data.shifts.map((s) => [s.shift_id, s]));
@@ -96,6 +115,7 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
           <p className="text-sm text-slate-600">
             {data.worker.node_name} · {title(data.worker.role_code)} · {hours} h in the next 7 days
           </p>
+          {data.events.length > 0 && <EventsThisWeek events={data.events} tz={ctx.tz} />}
           {data.flags.length > 0 && (
             // the latest flag, with what happens next; earlier ones folded away so a run of
             // seeded or old flags doesn't read like a warning letter (UX U-15)
@@ -250,5 +270,35 @@ function FlagRow({ f }: { f: MyException }) {
         {f.resolution_note && <span className="block text-slate-500">{f.resolution_note}</span>}
       </span>
     </li>
+  );
+}
+
+function EventsThisWeek({ events, tz }: { events: UpcomingEvent[]; tz: string }) {
+  return (
+    <section className="space-y-2" data-testid="events-this-week">
+      <h2 className="text-sm font-semibold text-slate-500">Events this week</h2>
+      <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
+        {events.map((e) => (
+          <li key={e.id}>
+            <Link
+              href={`/events/${e.id}?node=${e.org_node_id}`}
+              className="flex min-h-12 items-center justify-between gap-2 px-4 py-2"
+            >
+              <span>
+                <span className="block text-sm font-medium">{e.name}</span>
+                <span className="text-xs text-slate-500 tabular-nums">
+                  {formatDay(localDate(e.starts_at, tz))} · {formatSpan(e.starts_at, e.ends_at, tz)}{' '}
+                  · {e.place_name}
+                </span>
+              </span>
+              <span className="shrink-0 text-right text-xs text-slate-600">
+                <span className="block text-base font-semibold tabular-nums">{e.covers}</span>
+                covers
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
