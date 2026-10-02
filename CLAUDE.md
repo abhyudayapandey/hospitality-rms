@@ -8,6 +8,8 @@ MVP target: one real outlet running end-to-end in 21 days, with 3 roles
 (staff, outlet manager, area manager).
 
 Source of truth for design: `docs/LLD.md`. `docs/goal.md` has the product goal.
+`docs/system-map.md` is the current map of places, people and screens; `docs/ux-review.md`
+and `docs/reporting.md` are the approved-or-pending plans for the next work.
 **The LLD mentions Supabase. We are on AWS instead. The "AWS overrides" section below wins
 wherever they conflict.**
 
