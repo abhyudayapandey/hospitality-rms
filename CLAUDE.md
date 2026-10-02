@@ -96,7 +96,8 @@ pnpm db:migrate        run dbmate migrations
 pnpm db:seed           load the test customers (docs/onboarding/test-data) with the onboarding
                        loader, then seed/dev/ (shifts, punches, pay); sync product access
                        (groups, matrix, bp_policy) and workflow definitions into every tenant;
-                       run the executor once (posts the test closing count, ADR 017)
+                       run the executor once (posts the test closing count, ADR 017) and the
+                       tasks job once (checklist rounds, ADR 020)
 pnpm dev               run web app
 pnpm test              all tests (needs db:up + db:migrate + db:seed)
 pnpm test:unit         unit tests only (*.test.ts)
@@ -108,6 +109,8 @@ pnpm db:rollback       roll back the last migration
 pnpm db:down           stop local Postgres
 pnpm --filter @outlet-ops/workflow execute [--once]   run the workflow executor locally
 pnpm --filter @outlet-ops/workflow attendance-nightly  nightly attendance exceptions + location purge
+pnpm --filter @outlet-ops/workflow tasks-tick          checklist rounds 24 h ahead, reminders and
+                                                      escalation (the 5-minute timer, ADR 020)
 pnpm --filter @outlet-ops/web e2e                     build, then Playwright vs the standalone server
                                                       (+ dev-only pages vs next dev; seeded DB)
 pnpm --filter @outlet-ops/web check:prod-dev-auth     prod build: dev login must be 404
@@ -151,7 +154,10 @@ the `98_*_costing_GENERATED.csv` files are the expected costs at standard cost, 
 fails if the costs worked out from the loaded data differ by a paisa (ADR 014). Files 25 to 28
 (test customers only, ADR 017) load shifts, a past week of batches and sales, and a closing
 count, with days counted from the load date; the README's expected figures are pinned by
-`packages/db/src/test-data-activity.db.test.ts`. `TEST_LOGINS_do_not_commit.csv` (passwords) is never committed.
+`packages/db/src/test-data-activity.db.test.ts`. File 29 is checklist templates (a normal file, any
+customer); files 30 to 32 (test customers only, ADR 020) load one-off tasks, a maintenance
+request and a prep list linked to file 26's batches, also pinned by that test.
+`TEST_LOGINS_do_not_commit.csv` (passwords) is never committed.
 
 ## How to work in this repo
 - Start every task in plan mode: list files to create/change and tests to write, then wait
