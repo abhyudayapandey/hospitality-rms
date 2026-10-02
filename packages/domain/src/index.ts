@@ -2,3 +2,4 @@
 export const PACKAGE = '@outlet-ops/domain';
 export * from './errors';
 export * from './access';
+export * from './access-words';

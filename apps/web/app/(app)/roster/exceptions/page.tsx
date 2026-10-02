@@ -11,6 +11,9 @@ import { ResolveForm } from './resolve-form';
 
 function detail(e: ExceptionRow): string {
   if (e.kind === 'late' && e.detail.minutes !== undefined) return `${e.detail.minutes} min late`;
+  if (e.kind === 'left_early' && e.detail.minutes !== undefined) {
+    return `Left ${e.detail.minutes} min early`;
+  }
   if (e.kind === 'outside_geofence' && e.detail.distance_m !== undefined) {
     return `${Math.round(e.detail.distance_m)} m away at clock-${e.phase ?? 'in'}`;
   }

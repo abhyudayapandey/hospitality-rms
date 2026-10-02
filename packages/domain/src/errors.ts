@@ -89,6 +89,12 @@ export const ERROR_MESSAGES = {
   TEST_CUSTOMER_ONLY: 'This is for test customers only.',
   NOT_A_STOCK_LOCATION: "Stock isn't kept at that location. Pick one of its stores.",
   SESSION_EXPIRED: 'Your session has ended. Please sign in again.',
+  INVALID_PLACE: 'A location is set for a whole outlet or site.',
+  INVALID_RADIUS: 'The radius must be between 10 and 5000 metres.',
+  WRONG_PASSWORD: 'Your current password is not right. Try again.',
+  PASSWORD_POLICY:
+    'The new password needs at least 10 characters, a digit and a lower-case letter.',
+  PASSWORDS_DIFFER: 'The two new passwords are not the same.',
   UNEXPECTED: 'Something went wrong. Please try again.',
 } as const;
 

@@ -153,12 +153,12 @@ revoke execute on function hr.can_set_location(uuid) from public;
 create function hr.location_places()
 returns table (node_id uuid, code text, name text, kind text, latitude numeric,
                longitude numeric, geofence_radius_m int, set_in_app_by text,
-               set_in_app_at timestamptz)
+               set_in_app_at timestamptz, timezone text)
 language sql stable security definer
 set search_path = pg_catalog, core, hr
 as $$
   select n.id, n.code, n.name, n.kind, s.latitude, s.longitude, s.geofence_radius_m,
-         u.display_name, s.set_in_app_at
+         u.display_name, s.set_in_app_at, hr.node_tz(n.id)
     from core.hierarchy_node n
     left join hr.node_setting s on s.org_node_id = n.id
     left join core.app_user u on u.id = s.set_in_app_by
@@ -429,7 +429,7 @@ begin
     perform hr.fail('NOT_AUTHORISED', 'attendance of this worker');
   end if;
   if p_to < p_from or p_to - p_from > 92 then
-    perform hr.fail('INVALID_DATE', 'at most 93 days');
+    perform hr.fail('INVALID_DATES', 'at most 93 days');
   end if;
   return query select * from hr.timeline_rows(v_w, p_from, p_to, now());
 end $$;

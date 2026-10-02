@@ -8,6 +8,7 @@ import {
   PKCE_COOKIE,
   REFRESH_COOKIE,
   SESSION_COOKIE,
+  issuedBeforeSignOut,
   sessionMaxAge,
   signSession,
   verifySession,
@@ -46,7 +47,10 @@ export interface CurrentUser {
   source: SessionPayload['src'];
 }
 
-/** The signed-in user, re-checked against core.me() (inactive users are signed out). */
+/**
+ * The signed-in user, re-checked against core.me() (inactive users are signed out) and
+ * against "sign out of all devices" (core.my_sessions_valid_from, ADR 018).
+ */
 export const currentUser = cache(async (): Promise<CurrentUser | null> => {
   const jar = await cookies();
   const v = await verifySession(jar.get(SESSION_COOKIE)?.value, sessionSecret());
@@ -57,12 +61,13 @@ export const currentUser = cache(async (): Promise<CurrentUser | null> => {
       tenant_id: string;
       kind: 'human' | 'service';
       display_name: string;
+      valid_from: Date | null;
     }>`
-      select * from core.me()`.execute(tx);
+      select m.*, core.my_sessions_valid_from() as valid_from from core.me() m`.execute(tx);
     return r.rows;
   });
   const me = rows[0];
-  if (!me) return null;
+  if (!me || issuedBeforeSignOut(v.payload.iat, me.valid_from)) return null;
   return {
     id: me.id,
     tenantId: me.tenant_id,

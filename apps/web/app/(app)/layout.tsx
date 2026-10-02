@@ -12,7 +12,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
       <header className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2">
-        <div className="min-w-0">
+        <Link href="/profile" aria-label="Your profile" className="min-w-0 rounded-lg py-1">
           <p className="truncate text-sm font-semibold" data-testid="current-user">
             {shell.user.name}
           </p>
@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               {shell.home.name}
             </p>
           )}
-        </div>
+        </Link>
         <div className="flex items-center gap-1">
           <Link
             href="/notifications"

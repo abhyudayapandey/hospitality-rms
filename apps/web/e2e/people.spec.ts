@@ -130,7 +130,7 @@ test('shift swap: offered, accepted by the colleague, approved by the manager', 
   await page.goto('/roster/my');
   await page
     .getByTestId('my-shifts')
-    .locator('li')
+    .getByTestId('shift-day')
     .filter({ hasText: formatDay(MONDAY) })
     .getByRole('link', { name: 'Swap' })
     .click();

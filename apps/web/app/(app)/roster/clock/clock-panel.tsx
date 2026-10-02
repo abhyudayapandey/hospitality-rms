@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import { ErrorBox, primaryButton, StatusBox } from '@/components/messages';
 import { formatTime } from '@/lib/dates';
+import { currentPosition } from '@/lib/geo';
+import { formatDuration } from '@/lib/timeline';
 import {
   indexedDbStore,
   pending as queued,
@@ -11,30 +13,6 @@ import {
   type QueuedPunch,
 } from '@/lib/punch-queue';
 import { clock, type PunchInput } from '../actions';
-
-interface Position {
-  lat: number | null;
-  lng: number | null;
-  accuracy: number | null;
-}
-
-/** The device position, or nulls when denied, unavailable or slower than 10 s. */
-function currentPosition(): Promise<Position> {
-  const none = { lat: null, lng: null, accuracy: null };
-  if (!('geolocation' in navigator)) return Promise.resolve(none);
-  return new Promise((resolve) =>
-    navigator.geolocation.getCurrentPosition(
-      (p) =>
-        resolve({
-          lat: Math.round(p.coords.latitude * 1e6) / 1e6,
-          lng: Math.round(p.coords.longitude * 1e6) / 1e6,
-          accuracy: Math.round(p.coords.accuracy),
-        }),
-      () => resolve(none),
-      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
-    ),
-  );
-}
 
 /**
  * Clock in/out. Online first; with no connection the punch is saved on the phone with its
@@ -55,6 +33,11 @@ export function ClockPanel({
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [waiting, setWaiting] = useState<QueuedPunch[]>([]);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(t);
+  }, []);
 
   const reload = useCallback(() => {
     if (!('indexedDB' in window)) return;
@@ -120,7 +103,11 @@ export function ClockPanel({
     <div className="space-y-3">
       <div className="rounded-xl bg-white p-6 text-center ring-1 ring-slate-200">
         <p className="text-sm text-slate-600" data-testid="clock-state">
-          {inSince ? `Clocked in since ${formatTime(inSince, tz)}` : 'Not clocked in'}
+          {inSince
+            ? `Clocked in since ${formatTime(inSince, tz)}, ${formatDuration(
+                Math.max(0, Math.floor((now - new Date(inSince).getTime()) / 60_000)),
+              )}`
+            : 'Not clocked in'}
         </p>
         {waiting.length > 0 && (
           <p className="mt-1 text-xs text-amber-700" data-testid="clock-waiting">

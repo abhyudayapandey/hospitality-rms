@@ -43,3 +43,16 @@ export function generateTemporaryPassword(
 export function testRulePassword(jobTitle: string): string {
   return `Test${jobTitle.replace(/\s+/g, '')}!12`;
 }
+
+/**
+ * What a new password lacks under the customer pool's policy (infra: at least 10
+ * characters, a digit and a lower-case letter), for the form's early feedback. Cognito
+ * applies the same policy when the password is changed.
+ */
+export function passwordProblems(password: string): string[] {
+  return [
+    ...(password.length < 10 ? ['at least 10 characters'] : []),
+    ...(/[0-9]/.test(password) ? [] : ['a digit']),
+    ...(/[a-z]/.test(password) ? [] : ['a lower-case letter']),
+  ];
+}
