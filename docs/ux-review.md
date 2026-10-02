@@ -86,10 +86,8 @@ S is under a day, M is a few days, L is a week or more.
 - **U-5 · S.** Place names repeat the outlet on every line ("Test Hotel & Bar 1.0 –
   Kitchen", "Test Hotel & Bar 1.0 – Bar", …). Inside one outlet, show "Kitchen", "Bar",
   and group the switcher by outlet.
-- **U-6 · L.** **Language.** Every word is English. Most kitchen, housekeeping and
-  security staff in India read Hindi or a regional language more easily. Add Hindi first,
-  with the language chosen on the profile. The screens are short and the strings are in
-  the code, so this is mainly extraction and translation. **Decision needed** (see below).
+- **U-6 · decided: English only.** Everyone in hospitality reads enough basic English. The
+  answer is short, plain words (B, above), not translation.
 
 ### C. "Where am I?": the place switcher
 
@@ -194,16 +192,16 @@ Each step is its own branch and PR, with e2e coverage.
 | UX-3  | Roster split into Me / Team; day-strip roster                                                               | U-10, U-11                        | M    |
 | UX-4  | Stock store hub; sales entry search and copy-yesterday; grouped notifications                               | U-12, U-13, U-21                  | M    |
 | UX-5  | HR Team → People and Leave; owner read-only reports (with Reports R-1)                                      | U-18, U-19                        | M    |
-| UX-6  | Hindi (and the i18n plumbing)                                                                               | U-6                               | L    |
 | later | Web push                                                                                                    | U-22                              | M    |
 
 The variance redesign (U-14) and the owner's view (U-18) are part of the reporting plan.
 
-## Decisions needed
+## Decisions (2 Oct 2026)
 
-1. **Owner's view.** Read-only access to every report in the company for the Account Owner
-   (U-18). Recommended: yes.
-2. **Language.** Hindi first, chosen per person (U-6). Which other languages, and in which
-   order?
-3. **Roster split** into Me and Team (U-10). It changes where people find things, so it
-   needs a short note to pilot users.
+1. **Owner's view: yes.** The Account Owner reads every report in the company (U-18,
+   `docs/reporting.md`).
+2. **Language: English only** (U-6 dropped). Plain words matter more for that reason.
+3. **Roster split into Me and Team: agreed** (U-10).
+4. **Order of work:** UX-1 first (small, no new data), then UX-2 with R-1, because the
+   "Today" home and the first reports share the same cards. Then UX-3, R-2, UX-4, UX-5
+   with R-3 and R-4.

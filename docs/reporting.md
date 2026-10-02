@@ -63,10 +63,12 @@ reports that each person can act on, at the level they are responsible for.
 
 1. **Sales are typed in by hand**, one total per item per day. The POS / CSV import
    (SAL-1) is the biggest win for report quality.
-2. **No covers or guest counts**, except on events. Average spend per cover needs covers on
-   the day's sales. Recommended: one "covers" field per outlet per day, typed in or
-   imported.
-3. **Discounts, comps and voids** aren't recorded; they arrive with the POS import.
+2. **No covers or guest counts**, except on events. Decided: no typed-in covers. Average
+   spend per cover waits for a POS export that includes covers.
+3. **Discounts.** The POS import (decided, next) brings them. Every POS export we expect
+   (IDSNEXT first) has item, description, quantity, rate, value and discount per line, so
+   sales become gross, discount and net, and the reports show discount % per outlet and
+   item.
 4. **Labour cost** needs pay rates loaded for everyone (file 07, COMPENSATION). Salaried
    staff need a monthly basis turned into a rate per hour; we already store `pay_basis`.
 5. **Room occupancy** (hotels) isn't in the system. Housekeeping productivity per room
@@ -77,7 +79,8 @@ reports that each person can act on, at the level they are responsible for.
 ### Dimensions
 
 - **Date.** The business day in the outlet's time zone. A bar's day ends at its closing
-  time, not at midnight: add a per-outlet `day_starts_at` (default 05:00) and use it
+  time, not at midnight. Decided: the business day starts at **06:00 local time** and is
+  used
   everywhere.
 - **Place.** Two trees, as now:
   - org: company → region → area → outlet or site → department;
@@ -97,7 +100,7 @@ place per business day, rebuilt by a nightly job.
 | Table            | Grain                   | Columns (all money in ₹ at average cost)                                                                                     |
 | ---------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `rpt.store_day`  | store × day             | opening value, receipts, transfers in / out, production in / out, wastage, count adjustments, sales depletion, closing value |
-| `rpt.sales_day`  | outlet × day × food/bev | sales, theoretical cost, quantity, covers (when known)                                                                       |
+| `rpt.sales_day`  | outlet × day × food/bev | sales, theoretical cost, quantity, discount (from the POS import)                                                            |
 | `rpt.labour_day` | department × day        | scheduled hours, worked hours, overtime hours, open slots, late, no-shows, labour cost                                       |
 | `rpt.task_day`   | department × day        | due, done, done on time, flagged readings, overdue at end of day                                                             |
 
@@ -130,8 +133,7 @@ A report row is visible where its **source domain** is visible:
   outlet. Totals per department per day reveal no one's salary, except in a department of
   one person: show labour cost only for groups of three or more, otherwise fold it into
   the outlet.
-- **Proposed grants:** OUTLET_MANAGER, AREA_MANAGER, HR_ADMIN, and the Account Owner if
-  approved (`docs/ux-review.md`, U-18).
+- **Grants (decided):** OUTLET_MANAGER, AREA_MANAGER, HR_ADMIN and ACCOUNT_OWNER.
 
 Every report function checks `core.can()` at the requested place, as the screens do now
 (rule 2). The RLS equivalence tests extend to the `rpt` tables.
@@ -184,7 +186,7 @@ place switcher (ADR 016) narrows or widens it within their access.
 | **Central kitchen manager / supervisor**                                                                                           | central kitchen   | **Production** made vs planned, yield, expired %, **dispatch fill rate** per outlet, in transit, stock valuation of the hub.                                                                                                                                                        |
 | **Area manager**                                                                                                                   | area              | **Outlet league table** of every flash measure, never blended; drill into any outlet. Approval turnaround.                                                                                                                                                                          |
 | **HR executive / HR admin**                                                                                                        | outlet / company  | Headcount, attendance and lateness, no-shows, overtime, leave taken and **leave liability**, swap volume. Labour cost for HR admin.                                                                                                                                                 |
-| **Account Owner** (if approved)                                                                                                    | company           | **Company flash** and the area league tables; prime cost by outlet; trends.                                                                                                                                                                                                         |
+| **Account Owner**                                                                                                                  | company           | **Company flash** and the area league tables; prime cost by outlet; trends.                                                                                                                                                                                                         |
 | **Auditor / security admin**                                                                                                       | company           | The access audit, as now.                                                                                                                                                                                                                                                           |
 
 ## 6. How the reports look
@@ -214,20 +216,26 @@ place switcher (ADR 016) narrows or widens it within their access.
 | R-1   | `rpt` schema, the four daily tables and the nightly rebuild (security tests first). Home "Today's numbers" and Department today. Reports list. Daily flash for outlet and department (without labour cost). My week for staff. |
 | R-2   | Cost controller suite: actual vs theoretical by item, purchase price variance, supplier fill rate, stock valuation and days on hand, dead stock, menu engineering. Replaces today's Variance screen (UX U-14).                 |
 | R-3   | LABOUR_COST domain and labour %, SPLH, prime cost; HR reports; central kitchen reports.                                                                                                                                        |
-| R-4   | Area and company league tables; Account Owner view (if approved); CSV export; targets in company settings.                                                                                                                     |
-| later | E-mail digest; covers and POS import (SAL-1) feeding sales and comps; occupancy for housekeeping; AI signals reading the same measures (ADR 020's trace is already one).                                                       |
+| R-4   | Area and company league tables; Account Owner view; CSV export; targets in company settings.                                                                                                                                   |
+| later | E-mail digest; occupancy for housekeeping; AI signals reading the same measures (ADR 020's trace is already one).                                                                                                              |
 
 Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
 
-## 8. Decisions needed
+## 8. Decisions (2 Oct 2026)
 
-1. **LABOUR_COST** as a new domain for outlet managers, area managers and HR admin:
-   totals only, groups of three or more.
-2. **The Account Owner sees every report** (read-only, whole company).
-3. **Covers.** Add a daily covers figure per outlet, typed in until the POS import exists.
-4. **Business day start.** Per outlet, default 05:00.
-5. **Targets.** Food %, beverage %, labour % and task compliance as company settings, with
-   an outlet override.
+1. **LABOUR_COST**: yes. Totals only, groups of three or more, for outlet managers, area
+   managers, HR admin and the Account Owner.
+2. **The Account Owner sees every report**, read-only, across the company.
+3. **Only the right people see each report.** Frontline staff see only their own figures
+   ("My week"): a server never sees the outlet's sales, costs or P&L. This is enforced by
+   the source domains above, not by hiding menu items, and R-1 starts with a security test
+   that signs in as every test user and checks which reports each one can open.
+4. **No typed-in covers.** The **POS import** comes soon (SAL-1): one Excel export per
+   outlet per day (IDSNEXT first, others alike), with item, description, quantity, rate,
+   value and discount per line.
+5. **Business day: 06:00 local time**, for every outlet.
+6. **Targets** (food %, beverage %, labour %, task compliance): still open; proposed as
+   company settings with an outlet override, in R-4.
 
 ## Sources
 
