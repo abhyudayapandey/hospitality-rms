@@ -974,6 +974,26 @@ checklist rounds.
   button. Don't press it on production unless you want to walk the flow: the executive
   chef then sees it under **To assign**.
 
+#### Releasing "who threw it away" on over-limit discards (after Prompt 11b)
+
+One migration, `20261016100000_discard_on_behalf` (ADR 021). No stack change, no new
+parameter, no re-import, no access change.
+
+- **What the migration does.**
+  - `audit.log` gains `for_user_id` (null on every existing row); `audit.capture()`
+    fills it from `app.for_user`.
+  - `inv.submit_adjustment` gains a `p_payload` overload.
+  - `inv.post_wastage`: an over-limit discard sent in the lead's name carries
+    `recorded_by`, `recorded_by_name` and `task_id`, and its audit rows are
+    `actor_kind = 'system'` for the commis.
+
+**Deploy order.** Run the Deploy workflow (it runs the migration and restarts the app).
+Adding a nullable column is a catalog change only; the audit table is not rewritten.
+
+**Check.** Nothing to walk on production unless a store's limit is below an expired
+batch's value. Locally, `tasks-access.db.test.ts` → "the over-limit discard records who
+threw it away" covers the request, the audit rows and the Expired trail.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

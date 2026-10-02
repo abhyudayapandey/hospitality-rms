@@ -731,6 +731,113 @@ describe('expired batches', () => {
     });
   });
 
+  it('the over-limit discard records who threw it away: request, audit log and trail', async () => {
+    await inRolledBackTx(async (c) => {
+      await c.query(
+        `insert into inv.node_setting (tenant_id, delivery_node_id, wastage_approval_value)
+         values ($1, $2, 1)
+         on conflict (tenant_id, delivery_node_id) do update set wastage_approval_value = 1`,
+        [ids.tenant(), ids.node(KITCHEN_STORE)],
+      );
+      const task = (await report(c, 'test.commis.1.0')).rows![0]!.id;
+      await attemptAs(
+        c,
+        ids.user('test.executive-chef.1.0'),
+        'select ops.assign_expiry($1, $2, $3, false)',
+        [task, ids.user('test.commis-b.1.0'), inHours(2)],
+      );
+      const photo = `wastage/${ids.tenant()}/${ids.node(KITCHEN_STORE)}/0190a8a2-0000-7000-8000-000000000003.jpg`;
+      // read the settings after the discard, in the same transaction: they are put back, so
+      // what the commis does next is theirs again
+      const r = await attemptAs<{ id: string; me: string; kind: string | null; for_user: null }>(
+        c,
+        ids.user('test.commis-b.1.0'),
+        `select d.id, core.current_user_id() as me,
+                nullif(current_setting('app.actor_kind', true), '') as kind,
+                nullif(current_setting('app.for_user', true), '') as for_user
+           from (select ops.discard_expired($1, 140, $2) as id offset 0) d`,
+        [task, photo],
+      );
+      expect(r.error).toBeUndefined();
+      expect(r.rows![0]).toMatchObject({
+        me: ids.user('test.commis-b.1.0'),
+        kind: null,
+        for_user: null,
+      });
+      const chef = ids.user('test.executive-chef.1.0');
+      const commis = ids.user('test.commis-b.1.0');
+      const { rows: req } = await c.query<{
+        request: string;
+        adjustment: string;
+        initiator: string;
+        payload: Record<string, unknown>;
+      }>(
+        `select q.id as request, a.id as adjustment, q.initiator_id as initiator, q.payload
+           from inv.wastage w join inv.stock_adjustment a on a.id = w.adjustment_id
+           join wf.request q on q.id = a.wf_request_id
+          where w.id = $1`,
+        [r.rows![0]!.id],
+      );
+      // the request history: from the lead, for the commis who threw the batch away
+      expect(req[0]!.initiator).toBe(chef);
+      expect(req[0]!.payload).toMatchObject({
+        recorded_by: commis,
+        recorded_by_name: 'Test Commis B 1.0',
+        task_id: task,
+      });
+
+      // the audit log: the request, its adjustment and approval steps were written by the
+      // system in the lead's name for the commis; the wastage itself by the commis
+      const { rows: audit } = await c.query<{
+        table_name: string;
+        actor_id: string;
+        actor_kind: string;
+        for_user_id: string | null;
+      }>(
+        `select distinct table_name, actor_id, actor_kind, for_user_id
+           from audit.log
+          where op = 'INSERT'
+            and (row_id in ($1, $2) or request_id = $1
+                 or row_id in (select id from inv.wastage_line where wastage_id = $3)
+                 or row_id in (select id from inv.stock_adjustment_line where adjustment_id = $2)
+                 or row_id = $3)
+          order by table_name`,
+        [req[0]!.request, req[0]!.adjustment, r.rows![0]!.id],
+      );
+      const onBehalf = { actor_id: chef, actor_kind: 'system', for_user_id: commis };
+      expect(audit).toEqual(
+        expect.arrayContaining([
+          { table_name: 'inv.stock_adjustment', ...onBehalf },
+          { table_name: 'inv.stock_adjustment_line', ...onBehalf },
+          { table_name: 'wf.request', ...onBehalf },
+          { table_name: 'wf.step_instance', ...onBehalf },
+          { table_name: 'inv.wastage', actor_id: commis, actor_kind: 'human', for_user_id: null },
+          {
+            table_name: 'inv.wastage_line',
+            actor_id: commis,
+            actor_kind: 'human',
+            for_user_id: null,
+          },
+        ]),
+      );
+      // nothing in the discard was written as the lead acting by themselves
+      expect(audit.filter((a) => a.actor_id === chef && a.actor_kind !== 'system')).toEqual([]);
+
+      // the Variance / expired trail names the commis
+      const trail = await attemptAs<{ discarded_by: string; reported_by: string }>(
+        c,
+        ids.user('test.cost-controller.1.0'),
+        `select discarded_by, reported_by
+           from inv.expired_wastage($1, current_date - 1, current_date + 1)
+          where outcome = 'approval'`,
+        [ids.node(KITCHEN_STORE)],
+      );
+      expect(trail.rows).toEqual([
+        { discarded_by: 'Test Commis B 1.0', reported_by: 'Test Commis 1.0' },
+      ]);
+    });
+  });
+
   it('the remake is recorded by the assignee through production, linked to the task', async () => {
     await inRolledBackTx(async (c) => {
       const task = (await report(c, 'test.commis.1.0')).rows![0]!.id;

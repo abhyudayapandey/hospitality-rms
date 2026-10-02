@@ -119,6 +119,8 @@ not. So a discard above the limit is submitted in the name of the person who ass
 
 - The commis is still the one who recorded the wastage (`created_by` on the wastage
   lines), and the audit log keeps both.
+- ADR 021 adds the commis to the request itself and to its audit rows ("for the commis,
+  by the system, on behalf of the lead").
 - The approver is the outlet manager, as for any wastage. Rule 7 holds: the initiator is
   the lead, and they cannot approve it.
 
