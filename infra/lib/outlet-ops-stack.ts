@@ -138,8 +138,8 @@ export class OutletOpsStack extends Stack {
       'S3 Standard pg_dump every 6 h kept 30 days - cents per month',
     );
 
-    // Wastage photos: private, written and read only through presigned URLs that the web
-    // app issues with the instance role (POST: 5 MB, image types; GET: 5 minutes).
+    // Wastage and task photos: private, written and read only through presigned URLs that
+    // the web app issues with the instance role (POST: 5 MB, image types; GET: 5 minutes).
     const photoBucket = new s3.Bucket(this, 'PhotoBucket', {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
@@ -148,6 +148,10 @@ export class OutletOpsStack extends Stack {
         { prefix: 'wastage/', expiration: Duration.days(400) },
         // onboarding uploads (ADR 013): kept between a dry run and its apply, then gone
         { prefix: 'onboarding/', expiration: Duration.days(30) },
+        // task photos (ADR 020): routine checklist photos 90 days; flagged steps and
+        // maintenance requests 400 days (the app copies a flagged photo to keep/)
+        { prefix: 'tasks/routine/', expiration: Duration.days(90) },
+        { prefix: 'tasks/keep/', expiration: Duration.days(400) },
       ],
       // browsers upload straight to S3 from the app's origin only
       cors: [
@@ -163,7 +167,7 @@ export class OutletOpsStack extends Stack {
     costTag(
       photoBucket,
       'credits',
-      'S3 Standard wastage photos about 200 KB each kept 400 days - under 0.01 USD per month',
+      'S3 Standard wastage and task photos about 200 KB each kept 90 to 400 days - under 0.10 USD per month',
     );
 
     // --- Instance role (least privilege) --------------------------------------------
@@ -240,6 +244,15 @@ export class OutletOpsStack extends Stack {
         sid: 'OnboardingUploads',
         actions: ['s3:PutObject', 's3:GetObject'],
         resources: [photoBucket.arnForObjects('onboarding/*')],
+      }),
+    );
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        // checklist and maintenance photos (ADR 020); a flagged step's photo is copied from
+        // routine/ to keep/ (CopyObject is a GetObject plus a PutObject)
+        sid: 'TaskPhotos',
+        actions: ['s3:PutObject', 's3:GetObject'],
+        resources: [photoBucket.arnForObjects('tasks/*')],
       }),
     );
     role.addToPolicy(

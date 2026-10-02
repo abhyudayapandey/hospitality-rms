@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the Outlet Ops tasks job every 5 minutes
+
+[Timer]
+OnCalendar=*-*-* *:00/5:30
+AccuracySec=10s
+Unit=outlet-ops-tasks-tick.service
+
+[Install]
+WantedBy=timers.target

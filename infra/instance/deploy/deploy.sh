@@ -34,11 +34,12 @@ mv -T "$OO_ROOT/current.new" "$OO_ROOT/current"
 
 systemctl enable -q outlet-ops-caddy.service outlet-ops-web.service \
   outlet-ops-platform-worker.service \
-  outlet-ops-wf-execute.timer outlet-ops-pg-backup.timer outlet-ops-attendance-nightly.timer
+  outlet-ops-wf-execute.timer outlet-ops-pg-backup.timer outlet-ops-attendance-nightly.timer \
+  outlet-ops-tasks-tick.timer
 systemctl restart outlet-ops-web.service outlet-ops-platform-worker.service
 systemctl reload-or-restart outlet-ops-caddy.service
 systemctl start outlet-ops-wf-execute.timer outlet-ops-pg-backup.timer \
-  outlet-ops-attendance-nightly.timer
+  outlet-ops-attendance-nightly.timer outlet-ops-tasks-tick.timer
 
 ok=
 for _ in $(seq 1 30); do
