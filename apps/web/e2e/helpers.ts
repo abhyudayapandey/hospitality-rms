@@ -203,22 +203,25 @@ export async function setupPeopleWeek(monday: string): Promise<void> {
 }
 
 /**
- * The place the "Viewing:" switcher shows (ADR 016): the chosen option when it is a
- * picker, the label when there is only one place, '' when the screen shows none.
+ * The place the "Place:" switcher shows (ADR 016), by its full name: the chosen option
+ * when it is a picker (options show short names; data-name has the full one), the label
+ * when there is only one place, '' when the screen shows none.
  */
 export async function viewing(page: Page): Promise<string> {
   const bar = page.getByTestId('place-switcher');
   if ((await bar.count()) === 0) return '';
-  const picker = bar.getByRole('combobox', { name: 'Viewing' });
+  const picker = bar.getByRole('combobox', { name: 'Place' });
   if ((await picker.count()) > 0) {
-    return (await picker.locator('option:checked').textContent())?.trim() ?? '';
+    return (await picker.locator('option:checked').getAttribute('data-name')) ?? '';
   }
   return (await bar.getByTestId('viewing').textContent())?.trim() ?? '';
 }
 
-/** The options of the "Viewing:" picker ([] when it is a plain label or absent). */
+/** The full names of the "Place:" picker's options ([] when it is a plain label or absent). */
 export async function viewingOptions(page: Page): Promise<string[]> {
-  const picker = page.getByTestId('place-switcher').getByRole('combobox', { name: 'Viewing' });
+  const picker = page.getByTestId('place-switcher').getByRole('combobox', { name: 'Place' });
   if ((await picker.count()) === 0) return [];
-  return (await picker.locator('option').allTextContents()).map((o) => o.trim());
+  return picker
+    .locator('option')
+    .evaluateAll((os) => os.map((o) => o.getAttribute('data-name') ?? ''));
 }

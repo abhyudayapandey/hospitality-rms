@@ -4,12 +4,14 @@ import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import type { AdminUserRow } from '../page';
 import { AccessList, AddAccess, EditPerson, LoginActions, type AccessRow } from './person-panel';
+import { jobTitles } from '@/lib/job-titles';
 
 // One person (PRD USR-1..3): details, access with dates (extra and cover access), password
 // reset and deactivation. core.admin_user refuses anyone outside the admin's scope.
 export default async function UserPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
+  const title = await withUser(user.id, jobTitles);
   let data;
   try {
     data = await withUser(user.id, async (tx) => ({
@@ -53,7 +55,7 @@ export default async function UserPage({ params }: { params: Promise<{ id: strin
         </div>
         <p className="text-sm text-slate-600">
           {p.login_type === 'username' ? `Username ${p.username}` : `Email ${p.email}`} ·{' '}
-          {p.job_role_code ?? 'no job role'} · {p.home_node_name}
+          {p.job_role_code ? title(p.job_role_code) : 'no job role'} · {p.home_node_name}
         </p>
         <p className="text-xs text-slate-500">
           {p.last_sign_in_at

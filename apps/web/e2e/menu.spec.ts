@@ -38,7 +38,7 @@ test('a commis reads kitchen recipes and procedures, with no costs and no bar re
 
   // a batched cocktail's page is refused, not just hidden from the list
   await page.goto(`/menu/recipes/${await recipeId('NEGRONI-BATCH')}`);
-  await expect(main).toContainText('You can’t open this recipe.');
+  await expect(main).toContainText("You can't open this recipe.");
 });
 
 test('a room attendant has no menu at all', async ({ page }) => {

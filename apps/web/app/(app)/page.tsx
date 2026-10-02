@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { moreItems } from '@/lib/nav';
+import { formatLongDay } from '@/lib/dates';
+import { moreItems, visibleNav } from '@/lib/nav';
 import { loadShell, navInput } from '@/lib/shell';
 
 // Links to every main screen not in the bottom nav (ADR 020). Shortcuts need the same access as the tab they open (audit #3); shifts, clock and swaps
@@ -14,10 +15,17 @@ export default async function Home() {
   const shell = await loadShell();
   const atWork = shell.home?.at_workplace ?? false;
   // what is not in their bottom nav (at most five items)
-  const more = moreItems(navInput(shell));
+  const input = navInput(shell);
+  const more = moreItems(input);
+  // shortcuts the bottom nav already has are left out (UX U-1)
+  const inNav = new Set(visibleNav(input).map((n) => n.href));
+  const tz = shell.nodes.find((n) => n.id === shell.home?.id)?.timezone ?? undefined;
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Hello, {shell.user.name.split(' ')[0]}</h1>
+      {/* the date, not "Hello, <first word of the name>" (UX U-2): the header has the name */}
+      <h1 className="text-xl font-semibold" data-testid="today">
+        {formatLongDay(new Date(), tz)}
+      </h1>
       {shell.home && (
         <p className="text-sm text-slate-600">
           Working at <strong>{shell.home.name}</strong>
@@ -41,7 +49,12 @@ export default async function Home() {
               className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-white font-medium shadow-sm ring-1 ring-slate-200"
             >
               <span aria-hidden>{item.icon}</span>
-              {item.label === 'Requests' ? 'My requests' : item.label}
+              {item.label === 'Requests'
+                ? 'My requests'
+                : // without menu costs, the Menu screen is the recipes (UX U-4)
+                  item.href === '/menu' && !shell.domains.has('MENU')
+                  ? 'Recipes'
+                  : item.label}
             </Link>
           ))}
         </nav>
@@ -50,12 +63,12 @@ export default async function Home() {
         {(
           [
             ['/roster/my', 'My shifts', atWork && can(shell.domains, 'ROSTER')],
-            ['/roster/clock', 'Clock in', atWork && can(shell.domains, 'ATTENDANCE', 'modify')],
+            ['/roster/clock', 'Clock', atWork && can(shell.domains, 'ATTENDANCE', 'modify')],
             ['/leave', 'Leave', can(shell.domains, 'LEAVE')],
             ['/events', 'Events', can(shell.domains, 'EVENTS')],
           ] as const
         )
-          .filter(([, , show]) => show)
+          .filter(([href, , show]) => show && !inNav.has(href))
           .map(([href, label]) => (
             <Link
               key={href}
@@ -78,7 +91,7 @@ export default async function Home() {
               ['/stock/transfers', 'Transfers', can(shell.domains, 'TRANSFERS')],
             ] as const
           )
-            .filter(([, , show]) => show)
+            .filter(([href, , show]) => show && !inNav.has(href))
             .map(([href, label]) => (
               <Link
                 key={href}

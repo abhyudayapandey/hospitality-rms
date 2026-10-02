@@ -101,3 +101,13 @@ export function localToInstant(date: string, time: string, tz: string = DEFAULT_
   }
   return new Date(guess).toISOString();
 }
+
+/** 'Friday, 2 October' for the day `at` falls on in `tz`. */
+export function formatLongDay(at: Date | string, tz: string = DEFAULT_TZ): string {
+  return new Intl.DateTimeFormat('en-IN', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: tz,
+  }).format(new Date(at));
+}

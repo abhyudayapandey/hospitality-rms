@@ -12,7 +12,7 @@ const TABS = [
 ] as const;
 
 /**
- * Title, the "Viewing:" switcher of this screen's stock locations, and the supply tabs the
+ * Title, the "Place:" switcher of this screen's stock locations, and the supply tabs the
  * user has. Production shows only to people with a store where something is made that
  * they may record (audit #4). Tab links carry the place; the next screen keeps it if it
  * offers it there.

@@ -7,6 +7,7 @@ import { formatDay, formatSpan, localDate, localToday, localToInstant } from '@/
 import { withUser } from '@/lib/db';
 import type { SearchParams } from '@/lib/inventory';
 import { events, peopleContext } from '@/lib/people';
+import { jobTitles } from '@/lib/job-titles';
 
 // Upcoming events at a location, by day, with covers and a summary of requirements.
 export default async function EventsPage({ searchParams }: { searchParams: SearchParams }) {
@@ -16,6 +17,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
   }
   const node = ctx.node;
   const user = await requireUser();
+  const title = await withUser(user.id, jobTitles);
   const from = localToInstant(localToday(ctx.tz), '00:00', ctx.tz);
   const rows = await withUser(user.id, (tx) => events(tx, node.id, from));
   return (
@@ -59,7 +61,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
                   <p className="mt-1 text-xs text-slate-500">
                     {e.status}
                     {roles.length > 0 &&
-                      ` · ${roles.map((r) => `${r.headcount} ${r.role_code!.toLowerCase()}`).join(', ')}`}
+                      ` · ${roles.map((r) => `${r.headcount} ${title(r.role_code)}`).join(', ')}`}
                     {items.length > 0 && ` · ${items.length} item${items.length === 1 ? '' : 's'}`}
                   </p>
                 </Link>

@@ -26,7 +26,7 @@ export default async function EditRecipePage({
     if (!recipe || !place?.can_edit) return null;
     return { recipe, lines: await recipeCard(tx, id), options: await ingredientOptions(tx) };
   });
-  if (!data) return <Empty>You can&rsquo;t change this recipe.</Empty>;
+  if (!data) return <Empty>You can&apos;t change this recipe.</Empty>;
   const back = `/menu/recipes/${id}?${new URLSearchParams({
     store: param(sp, 'store'),
     ...(param(sp, 'outlet') && { outlet: param(sp, 'outlet') }),

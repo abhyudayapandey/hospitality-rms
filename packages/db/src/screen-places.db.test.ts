@@ -141,6 +141,28 @@ describe('core.screen_places', () => {
     });
   });
 
+  it('home before outlet; a manager opens a department with work on it (UX U-7, U-8)', async () => {
+    await inRolledBackTx(async (c) => {
+      // reporting a problem starts where the commis works, not at the outlet
+      expect((await places(c, 'test.commis.1.0', 'report'))[0]!.code).toBe(
+        'TEST-HOTEL-1.0-KITCHEN',
+      );
+      // the GM's home (the outlet) isn't on Roster: a department with shifts comes before
+      // the empty ones, which were first alphabetically (Admin & Finance)
+      const roster = await places(c, 'test.general-manager.1.0', 'roster');
+      const first = roster[0]!;
+      const withShifts = await c.query<{ n: number }>(
+        `select count(*)::int as n from hr.shift
+          where org_node_id = $1 and local_date between current_date - 7 and current_date + 7`,
+        [first.id],
+      );
+      expect(withShifts.rows[0]!.n).toBeGreaterThan(0);
+      expect(first.code).not.toBe('TEST-HOTEL-1.0-ADMIN-FINANCE');
+      // which places are listed is unchanged: only the order moves
+      expect(roster.length).toBe(10);
+    });
+  });
+
   it('frontline staff: no stock places; production at their store only', async () => {
     await inRolledBackTx(async (c) => {
       expect(await places(c, 'test.bartender.1.0', 'stock')).toEqual([]);

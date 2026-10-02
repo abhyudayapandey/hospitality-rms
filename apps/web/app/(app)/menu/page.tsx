@@ -12,7 +12,7 @@ import { MenuTabs, RecipeList } from './parts';
 // Menu costs (ADR 014): cost per serve and cost % of each menu item at an outlet, at the
 // current weighted-average cost (standard where there is no stock yet). Only the stores
 // where the person holds MENU view are listed; without any, the recipes they may read.
-// People covering several outlets pick one with the "Viewing:" switcher (ADR 016).
+// People covering several outlets pick one with the "Place:" switcher (ADR 016).
 export default async function MenuPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const ctx = await placesFor('menu', searchParams);
@@ -52,7 +52,7 @@ export default async function MenuPage({ searchParams }: { searchParams: SearchP
       </div>
       <MenuTabs active="costs" costs sales={data.sales.length > 0} />
       <p className="text-xs text-slate-500">
-        Cost per serve at today&rsquo;s average stock cost (standard cost where there is no stock);
+        Cost per serve at today&apos;s average stock cost (standard cost where there is no stock);
         prices before tax.
       </p>
       {data.rows.length === 0 ? (

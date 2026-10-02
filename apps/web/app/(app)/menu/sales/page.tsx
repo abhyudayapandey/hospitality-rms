@@ -15,9 +15,9 @@ export default async function SalesPage({ searchParams }: { searchParams: Search
   const sp = await searchParams;
   const today = todayIn();
   const date = isoDate(param(sp, 'date'), today);
-  // the outlets where they post sales: the "Viewing:" switcher (ADR 016)
+  // the outlets where they post sales: the "Place:" switcher (ADR 016)
   const { shell, places, place } = await placesFor('sales', searchParams);
-  if (!place) return <Empty>You don&rsquo;t post sales anywhere.</Empty>;
+  if (!place) return <Empty>You don&apos;t post sales anywhere.</Empty>;
   const data = await withUser(shell.user.id, async (tx) => ({
     outlet: { outlet_id: place.id, outlet_name: place.name },
     costs: (await menuPlaces(tx)).length > 0,
@@ -48,7 +48,7 @@ export default async function SalesPage({ searchParams }: { searchParams: Search
         <button className="min-h-12 rounded-lg border border-slate-300 bg-white px-4">Show</button>
       </form>
       {data.sheet.length === 0 ? (
-        <Empty>Nothing is on this outlet&rsquo;s menu that day.</Empty>
+        <Empty>Nothing is on this outlet&apos;s menu that day.</Empty>
       ) : (
         <SalesForm
           key={`${data.outlet.outlet_id}-${date}`}

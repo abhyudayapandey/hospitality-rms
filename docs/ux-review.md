@@ -196,6 +196,12 @@ Each step is its own branch and PR, with e2e coverage.
 
 The variance redesign (U-14) and the owner's view (U-18) are part of the reporting plan.
 
+## Progress
+
+- **UX-1 done** (ADR 022): job titles; the place switcher (Place, short names, defaults,
+  Change on Report a problem); Home date and labels; staff flags; Clock wording; units and
+  dates. U-17 and U-23 needed no change (see ADR 022).
+
 ## Decisions (2 Oct 2026)
 
 1. **Owner's view: yes.** The Account Owner reads every report in the company (U-18,

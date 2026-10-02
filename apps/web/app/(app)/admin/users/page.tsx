@@ -3,6 +3,7 @@ import { Empty } from '@/components/messages';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
+import { jobTitles } from '@/lib/job-titles';
 
 export interface AdminUserRow {
   user_id: string;
@@ -26,6 +27,7 @@ export default async function UsersPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const user = await requireUser();
+  const title = await withUser(user.id, jobTitles);
   const q = ((await searchParams).q ?? '').trim().toLowerCase();
   let rows: AdminUserRow[];
   try {
@@ -38,7 +40,7 @@ export default async function UsersPage({
   }
   const shown = q
     ? rows.filter((r) =>
-        [r.display_name, r.username, r.email, r.job_role_code, r.home_node_name].some((v) =>
+        [r.display_name, r.username, r.email, title(r.job_role_code), r.home_node_name].some((v) =>
           v?.toLowerCase().includes(q),
         ),
       )
@@ -83,7 +85,8 @@ export default async function UsersPage({
                   )}
                 </span>
                 <span className="block text-sm text-slate-600">
-                  {r.username ?? r.email} · {r.job_role_code ?? 'no job role'} · {r.home_node_name}
+                  {r.username ?? r.email} ·{' '}
+                  {r.job_role_code ? title(r.job_role_code) : 'no job role'} · {r.home_node_name}
                 </span>
                 <span className="block text-xs text-slate-500">
                   {r.last_sign_in_at

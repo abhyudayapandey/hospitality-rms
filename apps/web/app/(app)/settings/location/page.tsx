@@ -39,7 +39,7 @@ export default async function LocationPage() {
         </p>
       </div>
       {places.length === 0 ? (
-        <Empty>You can’t set the location of any place.</Empty>
+        <Empty>You can&apos;t set the location of any place.</Empty>
       ) : (
         <ul className="space-y-4">
           {places.map((p) => (

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { PHOTO_MAX_SIDE, PHOTO_QUALITY, resizePhoto } from '../lib/photo-resize';
 import { placeId, signInAs, viewing, viewingOptions } from './helpers';
 
-// The "Viewing:" switcher (ADR 016): each screen lists only its own kind of place, with the
+// The "Place:" switcher (ADR 016): each screen lists only its own kind of place, with the
 // most useful one first and the last choice remembered per screen.
 
 test('the general manager sees only stores on Stock and only departments on Roster', async ({
@@ -26,6 +26,22 @@ test('the general manager sees only stores on Stock and only departments on Rost
     expect(d).not.toMatch(/Store$/); // no stores among people places
   }
   expect(departments).toContain('Test Hotel & Bar 1.0 – Kitchen');
+  // the GM's home (the outlet) isn't a roster place: Roster opens on a department with
+  // shifts, not the first one alphabetically (UX U-7)
+  await expect.poll(() => viewing(page)).not.toBe('Test Hotel & Bar 1.0 – Admin & Finance');
+  await expect(page.getByTestId('roster-shift').first()).toBeVisible();
+});
+
+test('reporting a problem starts where you work, with a way to pick elsewhere (UX U-8)', async ({
+  page,
+}) => {
+  await signInAs(page, 'Test Commis 1.0');
+  await page.goto('/tasks/maintenance/new');
+  const bar = page.getByTestId('place-switcher');
+  await expect(bar.getByTestId('viewing')).toHaveText('Test Hotel & Bar 1.0 – Kitchen');
+  await expect(bar.getByRole('combobox', { name: 'Place' })).toHaveCount(0);
+  await bar.getByRole('button', { name: 'Change' }).click();
+  await expect(bar.getByRole('combobox', { name: 'Place' })).toBeVisible();
 });
 
 test('the choice is remembered per screen, and tabs carry the place where it fits', async ({
@@ -33,8 +49,10 @@ test('the choice is remembered per screen, and tabs carry the place where it fit
 }) => {
   await signInAs(page, 'Test General Manager 1.0');
   await page.goto('/stock');
-  const picker = page.getByRole('combobox', { name: 'Viewing' });
-  await picker.selectOption({ label: 'Test Hotel & Bar 1.0 – Kitchen Store' });
+  const picker = page.getByRole('combobox', { name: 'Place' });
+  // inside one outlet the options read "Kitchen Store", not the outlet again (UX U-5)
+  await expect(picker.locator('option:checked')).toHaveText('Main Store');
+  await picker.selectOption(await placeId('TEST-HOTEL-1.0-KITCHEN-STORE'));
   await page.waitForURL(new RegExp(`node=${await placeId('TEST-HOTEL-1.0-KITCHEN-STORE')}`));
   await expect(page.getByTestId('stock-row').first()).toBeVisible();
   // back to Stock without ?node=: the remembered store
@@ -52,8 +70,8 @@ test('the choice is remembered per screen, and tabs carry the place where it fit
   // put Stock back for the other tests
   await page.goto('/stock');
   await page
-    .getByRole('combobox', { name: 'Viewing' })
-    .selectOption({ label: 'Test Hotel & Bar 1.0 – Main Store' });
+    .getByRole('combobox', { name: 'Place' })
+    .selectOption(await placeId('TEST-HOTEL-1.0-MAIN-STORE'));
   await page.waitForURL(new RegExp(`node=${await placeId('TEST-HOTEL-1.0-MAIN-STORE')}`));
 });
 

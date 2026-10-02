@@ -21,7 +21,7 @@ const TABS = [
 export type PeopleTab = (typeof TABS)[number]['href'];
 
 /**
- * Title, the "Viewing:" switcher on roster, exceptions and events (ADR 016), and the
+ * Title, the "Place:" switcher on roster, exceptions and events (ADR 016), and the
  * people tabs the user has. My shifts, Clock and Swaps only for people who work at an
  * outlet (audit #13); Exceptions only for those who resolve them somewhere (audit #10).
  */
@@ -45,7 +45,7 @@ export function PeopleHeader({
       {ctx.screen && ctx.node && (
         <PlaceSwitcher
           screen={ctx.screen}
-          places={ctx.nodes.map((n) => ({ id: n.id, name: n.name }))}
+          places={ctx.nodes.map((n) => ({ id: n.id, name: n.name, kind: n.kind }))}
           current={ctx.node.id}
         />
       )}

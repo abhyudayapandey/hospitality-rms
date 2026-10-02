@@ -23,9 +23,13 @@ export default async function ClockPage({ searchParams }: { searchParams: Search
     past: await pastSessions(tx, addDays(today, -14), ctx.tz),
   }));
   const next = data.shifts.find((s) => new Date(s.end_at) > new Date());
+  // today's shift that is already over (UX U-16): say so instead of "no shift"
+  const ended = data.shifts.findLast(
+    (s) => s.local_date === today && new Date(s.end_at) <= new Date(),
+  );
   return (
     <div className="space-y-4">
-      <PeopleHeader ctx={ctx} active="/roster/clock" title="Clock in" />
+      <PeopleHeader ctx={ctx} active="/roster/clock" title="Clock" />
       {!data.worker ? (
         <Empty>You are not set up as a worker.</Empty>
       ) : (
@@ -33,7 +37,9 @@ export default async function ClockPage({ searchParams }: { searchParams: Search
           <p className="text-sm text-slate-600" data-testid="next-shift">
             {next
               ? `${next.local_date === today ? 'Today' : 'Tomorrow'} ${formatSpan(next.start_at, next.end_at, ctx.tz)} at ${next.node_name}`
-              : 'No shift rostered today.'}
+              : ended
+                ? `Today's shift (${formatSpan(ended.start_at, ended.end_at, ctx.tz)}) has ended.`
+                : 'No shift today or tomorrow.'}
           </p>
           <ClockPanel
             clockedInAt={data.punch ? new Date(data.punch.clock_in_at).toISOString() : null}

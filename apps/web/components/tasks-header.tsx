@@ -13,7 +13,7 @@ const TABS = [
 
 export type TasksTab = (typeof TABS)[number]['href'];
 
-/** Title, the "Viewing:" switcher where the screen shows one place, and the task tabs. */
+/** Title, the "Place:" switcher where the screen shows one place, and the task tabs. */
 export function TasksHeader({
   tabs,
   active,
@@ -23,7 +23,8 @@ export function TasksHeader({
   tabs: TaskTabs;
   active: TasksTab | null;
   title: string;
-  switcher?: { screen: Screen; places: SwitcherPlace[]; current: string } | undefined;
+  switcher?:
+    { screen: Screen; places: SwitcherPlace[]; current: string; collapsed?: boolean } | undefined;
 }) {
   const shown = TABS.filter((t) => t.show(tabs));
   return (

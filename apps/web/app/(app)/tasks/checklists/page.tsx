@@ -37,7 +37,7 @@ export default async function ChecklistsPage({ searchParams }: { searchParams: S
           place
             ? {
                 screen: 'checklists',
-                places: places.map((p) => ({ id: p.id, name: p.name })),
+                places: places.map((p) => ({ id: p.id, name: p.name, kind: p.kind })),
                 current: place.id,
               }
             : undefined

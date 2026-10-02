@@ -9,6 +9,7 @@ import type { SearchParams } from '@/lib/inventory';
 import {
   EXCEPTION_LABEL,
   myExceptions,
+  type MyException,
   myShifts,
   myTimeline,
   myWorker,
@@ -24,6 +25,7 @@ import {
   statusLabel,
   type TimelineRow,
 } from '@/lib/timeline';
+import { jobTitles } from '@/lib/job-titles';
 
 // My shifts (ADR 018): the past 14 days and every upcoming published shift (six weeks),
 // grouped by day, today first. Past rows show In/Out and a status; time worked outside a
@@ -41,6 +43,7 @@ function groupByDay(rows: TimelineRow[]): [string, TimelineRow[]][] {
 export default async function MyShiftsPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await peopleContext(searchParams);
   const user = await requireUser();
+  const title = await withUser(user.id, jobTitles);
   const today = localToday(ctx.tz);
   const data = await withUser(user.id, async (tx) => {
     const worker = await myWorker(tx);
@@ -91,28 +94,33 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
             </span>
           </Link>
           <p className="text-sm text-slate-600">
-            {data.worker.node_name} · {data.worker.role_code.toLowerCase()} · {hours} h in the next
-            7 days
+            {data.worker.node_name} · {title(data.worker.role_code)} · {hours} h in the next 7 days
           </p>
           {data.flags.length > 0 && (
+            // the latest flag, with what happens next; earlier ones folded away so a run of
+            // seeded or old flags doesn't read like a warning letter (UX U-15)
             <section className="space-y-2" data-testid="my-exceptions">
-              <h2 className="text-sm font-semibold text-slate-500">Attendance flags</h2>
+              <h2 className="text-sm font-semibold text-slate-500">Attendance</h2>
+              <p className="text-sm text-slate-600">
+                Your manager reviews these. If one is wrong, tell them.
+              </p>
               <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-                {data.flags.map((f) => (
-                  <li key={f.id} className="flex justify-between gap-2 px-4 py-3 text-sm">
-                    <span>
-                      <span className="block font-medium">{EXCEPTION_LABEL[f.kind] ?? f.kind}</span>
-                      <span className="text-xs text-slate-500">{formatDay(f.local_date)}</span>
-                    </span>
-                    <span className="text-right text-xs text-slate-600">
-                      {f.status === 'open' ? 'Waiting for review' : 'Reviewed'}
-                      {f.resolution_note && (
-                        <span className="block text-slate-500">{f.resolution_note}</span>
-                      )}
-                    </span>
-                  </li>
+                {data.flags.slice(0, 1).map((f) => (
+                  <FlagRow key={f.id} f={f} />
                 ))}
               </ul>
+              {data.flags.length > 1 && (
+                <details className="text-sm">
+                  <summary className="min-h-11 cursor-pointer py-2 text-slate-600">
+                    {data.flags.length - 1} earlier
+                  </summary>
+                  <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
+                    {data.flags.slice(1).map((f) => (
+                      <FlagRow key={f.id} f={f} />
+                    ))}
+                  </ul>
+                </details>
+              )}
             </section>
           )}
           {data.timeline.length === 0 ? (
@@ -225,6 +233,21 @@ function Row({
             Swap
           </Link>
         ) : null}
+      </span>
+    </li>
+  );
+}
+
+function FlagRow({ f }: { f: MyException }) {
+  return (
+    <li className="flex justify-between gap-2 px-4 py-3 text-sm">
+      <span>
+        <span className="block font-medium">{EXCEPTION_LABEL[f.kind] ?? f.kind}</span>
+        <span className="text-xs text-slate-500">{formatDay(f.local_date)}</span>
+      </span>
+      <span className="text-right text-xs text-slate-600">
+        {f.status === 'open' ? 'Not reviewed yet' : 'Reviewed'}
+        {f.resolution_note && <span className="block text-slate-500">{f.resolution_note}</span>}
       </span>
     </li>
   );
