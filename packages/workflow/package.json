@@ -11,6 +11,7 @@
     "sync-defs": "tsx scripts/sync-defs.ts",
     "execute": "tsx scripts/execute.ts",
     "attendance-nightly": "tsx scripts/attendance-nightly.ts",
+    "reports-rebuild": "tsx scripts/attendance-nightly.ts --reports-only",
     "tasks-tick": "tsx scripts/tasks-tick.ts"
   },
   "dependencies": {

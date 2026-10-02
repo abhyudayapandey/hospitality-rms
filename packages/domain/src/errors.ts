@@ -26,6 +26,7 @@ export const ERROR_MESSAGES = {
   NOT_FOUND: "We couldn't find that. Refresh to see the latest.",
   INVALID_WORKER: "That person isn't an active worker here.",
   INVALID_WEEK: 'Pick a week starting on a Monday.',
+  INVALID_REPORT: "That report doesn't exist.",
   SHIFT_STARTED: 'That shift has already started, so it can no longer be changed.',
   SHIFT_OVERLAP: 'They are already on a shift at that time.',
   REST_RULE: 'That leaves too little rest between their shifts.',

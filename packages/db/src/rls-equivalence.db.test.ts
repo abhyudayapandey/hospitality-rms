@@ -91,7 +91,7 @@ async function registrations(c: PoolClient): Promise<Registration[]> {
        from core.domain_table dt
        join pg_class cl on cl.oid = dt.table_name
        join pg_namespace n on n.oid = cl.relnamespace
-      where n.nspname in ('hr', 'inv', 'ops', 'wf', 'ai', 'menu')
+      where n.nspname in ('hr', 'inv', 'ops', 'wf', 'ai', 'menu', 'rpt')
       order by 1`,
   );
   return rows;

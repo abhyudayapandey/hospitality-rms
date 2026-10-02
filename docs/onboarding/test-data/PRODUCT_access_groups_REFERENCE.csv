@@ -1,5 +1,5 @@
 access_group,meant_for,what_it_allows
-ACCOUNT_OWNER,Customer's top admin (1-2 people),"Everything USER_ADMIN does across the company, plus company settings, creating User Admins and other owners, approving sensitive access grants; final approver when nobody else exists. The last owner cannot be removed."
+ACCOUNT_OWNER,Customer's top admin (1-2 people),"Everything USER_ADMIN does across the company, plus company settings, creating User Admins and other owners, approving sensitive access grants; final approver when nobody else exists. Sees every report in the company, read-only (totals, never single rows). The last owner cannot be removed."
 USER_ADMIN,Delegated user administrator (company or one outlet),"Add, edit, deactivate users; assign job roles and extra access; reset passwords, within their scope. Gives no access to business data. Creating another User Admin needs owner approval."
 SELF,"Every user, own records only","Own shifts, attendance, leave, swaps, notifications, own pay rate (view); their own tasks; reports maintenance problems where they work"
 STAFF,Frontline employee,"Views the roster of the place it is given and the events of its outlet; reads the recipes and prep procedures of the store linked to their department (no costs); sees their department's maintenance queue"

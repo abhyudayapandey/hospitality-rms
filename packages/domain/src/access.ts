@@ -56,6 +56,9 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'COMPANY_SETTINGS', tree: 'org', admin: true },
   { code: 'SECURITY_ROLES', tree: 'org', admin: true },
   { code: 'WF_CONFIG', tree: 'org', admin: true },
+  // every report in the company, read-only: totals, never a single row of business data
+  // (ADR 023); the Account Owner's only window on the numbers
+  { code: 'REPORTS', tree: 'org', admin: true },
 ];
 
 export type GroupKind = 'role' | 'admin' | 'user_based';
@@ -276,7 +279,13 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     code: 'ACCOUNT_OWNER',
     name: 'Account Owner',
     kind: 'admin',
-    grants: { USER_ACCESS: m, COMPANY_SETTINGS: m, SECURITY_ROLES: v, WF_CONFIG: v },
+    grants: {
+      USER_ACCESS: m,
+      COMPANY_SETTINGS: m,
+      SECURITY_ROLES: v,
+      WF_CONFIG: v,
+      REPORTS: v,
+    },
   },
   {
     // service user for AI recommendations: view only, except its own recommendations
