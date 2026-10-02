@@ -839,3 +839,44 @@ describe('the lead’s list of things to assign', () => {
     });
   });
 });
+
+describe('photo uploads', () => {
+  const may = async (c: PoolClient, who: string, purpose: string, node: string) =>
+    (
+      await attemptAs<{ ok: boolean }>(
+        c,
+        ids.user(who),
+        'select ops.can_upload_photo($1, $2) as ok',
+        [purpose, ids.node(node)],
+      )
+    ).rows![0]!.ok;
+
+  it('are presigned only for a task, request or discard the person works on there', async () => {
+    await inRolledBackTx(async (c) => {
+      await created(c, 'test.executive-chef.1.0', KITCHEN, person('test.commis.1.0'));
+      expect(await may(c, 'test.commis.1.0', 'task', KITCHEN)).toBe(true);
+      expect(await may(c, 'test.bartender.1.0', 'task', KITCHEN)).toBe(false);
+      expect(await may(c, 'test.commis.1.0', 'task', BAR)).toBe(false);
+      // maintenance: where they work, or a request assigned to them at Engineering
+      expect(await may(c, 'test.commis.1.0', 'maintenance', KITCHEN)).toBe(true);
+      expect(await may(c, 'test.commis.1.0', 'maintenance', 'TEST-BAR-3.0-KITCHEN')).toBe(false);
+      expect(await may(c, 'test.solo.bartender', 'maintenance', KITCHEN)).toBe(false);
+      // discard: only the assignee of an expiry task at that store
+      const task = (await report(c, 'test.commis.1.0')).rows![0]!.id;
+      expect(await may(c, 'test.commis-b.1.0', 'discard', KITCHEN_STORE)).toBe(false);
+      expect(
+        (
+          await attemptAs(
+            c,
+            ids.user('test.executive-chef.1.0'),
+            'select ops.assign_expiry($1, $2, $3, false)',
+            [task, ids.user('test.commis-b.1.0'), inHours(2)],
+          )
+        ).error,
+      ).toBeUndefined();
+      expect(await may(c, 'test.commis-b.1.0', 'discard', KITCHEN_STORE)).toBe(true);
+      expect(await may(c, 'test.commis.1.0', 'discard', KITCHEN_STORE)).toBe(false);
+      expect(await may(c, 'test.commis.1.0', 'selfie', KITCHEN)).toBe(false);
+    });
+  });
+});

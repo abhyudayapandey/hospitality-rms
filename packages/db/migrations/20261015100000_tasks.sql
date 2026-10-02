@@ -1596,6 +1596,58 @@ begin
      order by u.display_name;
 end $$;
 
+-- May the caller upload a photo for p_purpose at p_node? The server presigns an upload
+-- only then (ADR 006): a step of a task they work on there ('task', under tasks/routine/),
+-- a maintenance request where they work or one assigned to them ('maintenance', under
+-- tasks/keep/), or the discard of an expired batch they were given ('discard', under
+-- wastage/ at the store).
+create function ops.can_upload_photo(p_purpose text, p_node uuid) returns boolean
+language sql stable security definer
+set search_path = pg_catalog, core, ops
+as $$
+  select coalesce(case p_purpose
+    when 'task' then exists (
+      select 1 from ops.task t
+       where t.org_node_id = p_node and t.tenant_id = core.my_tenant()
+         and ops.can_work(t, core.current_user_id()))
+    when 'maintenance' then ops.works_at(p_node) or exists (
+      select 1 from ops.maintenance_request r
+       where r.org_node_id = p_node and r.tenant_id = core.my_tenant()
+         and r.assigned_to = core.current_user_id() and r.status in ('assigned', 'in_progress'))
+    when 'discard' then exists (
+      select 1 from ops.task t
+       where t.kind = 'expiry' and t.delivery_node_id = p_node and t.tenant_id = core.my_tenant()
+         and ops.can_work(t, core.current_user_id()))
+  end, false);
+$$;
+
+-- The place switcher's task screens (ADR 016): team places and outlets where the caller
+-- reads tasks, creates them, reads checklists, reads maintenance, or may report a problem.
+do $$
+declare
+  v_src text := pg_get_functiondef('core.screen_places(text)'::regprocedure);
+  v_old1 text := '''variance'', ''production'', ''sales'', ''menu'', ''roster'', ''exceptions'', ''events'')';
+  v_new1 text := '''variance'', ''production'', ''sales'', ''menu'', ''roster'', ''exceptions'', ''events'',
+      ''tasks'', ''tasks_new'', ''checklists'', ''maintenance'', ''report'')';
+  v_old2 text := '         else
+           core.is_team_place(n.id)';
+  v_new2 text := '         when p_screen in (''tasks'', ''tasks_new'', ''checklists'', ''maintenance'', ''report'') then
+           n.type = ''org'' and (core.is_team_place(n.id) or n.kind in (''outlet'', ''site''))
+           and case p_screen
+             when ''tasks'' then core.can(''TASKS'', ''view'', n.id, null)
+             when ''tasks_new'' then core.can(''TASKS'', ''modify'', n.id, null)
+             when ''checklists'' then core.can(''CHECKLIST_TEMPLATES'', ''view'', n.id, null)
+             when ''maintenance'' then core.can(''MAINTENANCE'', ''view'', n.id, null)
+             else ops.works_at(n.id) end
+         else
+           core.is_team_place(n.id)';
+begin
+  if position(v_old1 in v_src) = 0 or position(v_old2 in v_src) = 0 then
+    raise exception 'core.screen_places changed; update this migration';
+  end if;
+  execute replace(replace(v_src, v_old1, v_new1), v_old2, v_new2);
+end $$;
+
 -- ---------------------------------------------------------------------------
 -- RLS registration (rule 1), audit (rule 5), grants
 -- ---------------------------------------------------------------------------
@@ -1641,7 +1693,8 @@ begin
     'ops.record_task_batch(uuid, numeric, text)', 'ops.report_expired(uuid, uuid, text)',
     'ops.assign_expiry(uuid, uuid, timestamptz, boolean)',
     'ops.discard_expired(uuid, numeric, text)', 'inv.expired_wastage(uuid, date, date)',
-    'ops.my_to_assign()', 'ops.assignable_people(uuid)']::regprocedure[] loop
+    'ops.my_to_assign()', 'ops.assignable_people(uuid)',
+    'ops.can_upload_photo(text, uuid)']::regprocedure[] loop
     execute format('revoke execute on function %s from public', f);
   end loop;
   -- what the app calls; the rest are internal to these functions
@@ -1659,7 +1712,8 @@ begin
     'ops.record_task_batch(uuid, numeric, text)', 'ops.report_expired(uuid, uuid, text)',
     'ops.assign_expiry(uuid, uuid, timestamptz, boolean)',
     'ops.discard_expired(uuid, numeric, text)', 'inv.expired_wastage(uuid, date, date)',
-    'ops.my_to_assign()', 'ops.assignable_people(uuid)', 'ops.team_of_store(uuid)']::regprocedure[] loop
+    'ops.my_to_assign()', 'ops.assignable_people(uuid)', 'ops.team_of_store(uuid)',
+    'ops.can_upload_photo(text, uuid)']::regprocedure[] loop
     execute format('grant execute on function %s to app_rw', f);
   end loop;
 end $$;
@@ -1667,7 +1721,18 @@ grant execute on function ops.tasks_tick(timestamptz) to wf_executor;
 
 -- migrate:down
 -- Forward-only in production (ADR 005); this restores the previous shape for local work.
-drop function ops.link_test_batch(uuid, uuid), ops.assignable_people(uuid), ops.my_to_assign(), inv.expired_wastage(uuid, date, date),
+do $$
+declare
+  v_src text := pg_get_functiondef('core.screen_places(text)'::regprocedure);
+begin
+  v_src := replace(v_src, '''variance'', ''production'', ''sales'', ''menu'', ''roster'', ''exceptions'', ''events'',
+      ''tasks'', ''tasks_new'', ''checklists'', ''maintenance'', ''report'')',
+    '''variance'', ''production'', ''sales'', ''menu'', ''roster'', ''exceptions'', ''events'')');
+  v_src := regexp_replace(v_src,
+    '         when p_screen in \(''tasks''.*?else ops\.works_at\(n\.id\) end\n', '');
+  execute v_src;
+end $$;
+drop function ops.can_upload_photo(text, uuid), ops.link_test_batch(uuid, uuid), ops.assignable_people(uuid), ops.my_to_assign(), inv.expired_wastage(uuid, date, date),
   ops.discard_expired(uuid, numeric, text), ops.assign_expiry(uuid, uuid, timestamptz, boolean),
   ops.report_expired(uuid, uuid, text), ops.record_task_batch(uuid, numeric, text),
   ops.create_prep_tasks(uuid, jsonb, timestamptz, jsonb), inv.prep_suggestions(uuid),
