@@ -1249,6 +1249,41 @@ begin
   return v_id;
 end $$;
 
+-- Test customers only (ADR 017): links a batch the loader recorded in the past (file 26)
+-- to the prep task it fulfils (file 32), as if it had been recorded from the task.
+create function ops.link_test_batch(p_task uuid, p_production uuid) returns void
+language plpgsql security definer
+set search_path = pg_catalog, core, ops, inv
+as $$
+declare
+  v_t ops.task;
+  v_p inv.production;
+  v_made numeric;
+begin
+  select * into v_t from ops.task where id = p_task for update;
+  select * into v_p from inv.production where id = p_production;
+  if v_t.id is null or v_p.id is null
+     or not coalesce((select is_test from core.tenant where id = v_t.tenant_id), false)
+     or v_t.kind <> 'prep' or v_p.delivery_node_id <> v_t.delivery_node_id
+     or v_p.prep_item_id <> v_t.item_id then
+    raise exception 'NOT_AUTHORISED' using detail = 'test customers'' prep tasks only';
+  end if;
+  update inv.production set task_id = v_t.id where id = v_p.id;
+  v_made := (select sum(qty_made) from inv.production where task_id = v_t.id);
+  update ops.task_step
+     set ref_id = v_p.id, value_num = v_made,
+         done_by = case when v_made >= v_t.target_qty then v_p.created_by end,
+         done_at = case when v_made >= v_t.target_qty then v_p.made_at end
+   where task_id = v_t.id and kind = 'batch';
+  update ops.task
+     set status = case when v_made >= v_t.target_qty then 'done' else 'in_progress' end,
+         assignee_user_id = coalesce(assignee_user_id, v_p.created_by),
+         completed_by = case when v_made >= v_t.target_qty then v_p.created_by end,
+         completed_at = case when v_made >= v_t.target_qty then v_p.made_at end
+   where id = v_t.id;
+end $$;
+revoke execute on function ops.link_test_batch(uuid, uuid) from public;
+
 -- ---------------------------------------------------------------------------
 -- Expired batches
 -- ---------------------------------------------------------------------------
@@ -1580,8 +1615,6 @@ begin
     perform audit.enable(t);
   end loop;
 end $$;
--- the onboarding loader writes checklist templates (file 29)
-grant select, insert, update on ops.checklist_template to platform_loader;
 
 do $$
 declare
@@ -1634,7 +1667,7 @@ grant execute on function ops.tasks_tick(timestamptz) to wf_executor;
 
 -- migrate:down
 -- Forward-only in production (ADR 005); this restores the previous shape for local work.
-drop function ops.assignable_people(uuid), ops.my_to_assign(), inv.expired_wastage(uuid, date, date),
+drop function ops.link_test_batch(uuid, uuid), ops.assignable_people(uuid), ops.my_to_assign(), inv.expired_wastage(uuid, date, date),
   ops.discard_expired(uuid, numeric, text), ops.assign_expiry(uuid, uuid, timestamptz, boolean),
   ops.report_expired(uuid, uuid, text), ops.record_task_batch(uuid, numeric, text),
   ops.create_prep_tasks(uuid, jsonb, timestamptz, jsonb), inv.prep_suggestions(uuid),

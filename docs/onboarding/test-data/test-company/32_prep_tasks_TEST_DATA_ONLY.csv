@@ -1,0 +1,5 @@
+store_node_code,prep_item_code,day,due_time,quantity,assign_to,created_by
+TEST-HOTEL-1.0-KITCHEN-STORE,MINT-CHUTNEY,-5,11:00,500,role:COMMIS,test.sous-chef.1.0
+TEST-HOTEL-1.0-KITCHEN-STORE,GINGER-GARLIC-PASTE,-4,11:00,1000,role:COMMIS,test.sous-chef.1.0
+TEST-BAR-3.0-BAR-STORE,NEGRONI-BATCH,-4,17:00,2000,role:BARTENDER,test.head-bartender.3.0
+TEST-HOTEL-1.0-KITCHEN-STORE,MINT-CHUTNEY,0,18:00,1000,role:COMMIS,test.sous-chef.1.0

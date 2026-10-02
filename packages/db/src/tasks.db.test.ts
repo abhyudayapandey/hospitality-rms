@@ -58,7 +58,8 @@ async function tick(c: PoolClient, now: string) {
 const notes = async (c: PoolClient, who: string, kind: string) =>
   (
     await c.query<{ title: string }>(
-      `select title from ops.notification where owner_user_id = $1 and kind = $2 order by created_at`,
+      `select title from ops.notification
+        where owner_user_id = $1 and kind = $2 and created_at >= now() order by created_at`,
       [ids.user(who), kind],
     )
   ).rows.map((r) => r.title);
@@ -209,6 +210,12 @@ describe('the tasks job', () => {
 
   it('reminds 30 minutes before, then tells the assigner, then the lead an hour late', async () => {
     await inRolledBackTx(async (c) => {
+      // the test data's checklists would fall due in the same window
+      await c.query(`update ops.checklist_template set archived_at = now()`);
+      // and its open tasks are all overdue by 2099: as if already chased
+      await c.query(
+        `update ops.task set reminded_at = now(), escalated_at = now(), escalated_head_at = now()`,
+      );
       const [t] = await run<{ id: string }>(
         c,
         'test.sous-chef.1.0',
@@ -373,6 +380,21 @@ describe('working through a checklist', () => {
 
   it('weekly completion counts tasks due so far, per department', async () => {
     await inRolledBackTx(async (c) => {
+      // last week (IST), so every task below is due by now whatever the time of day
+      const { rows: w } = await c.query<{ monday: string }>(
+        `select (date_trunc('week', now() at time zone 'Asia/Kolkata') - interval '7 days')::date::text as monday`,
+      );
+      const monday = w[0]!.monday;
+      const completion = async (week: string) =>
+        run<{ place_name: string; due: number; done: number; on_time: number; pct: number | null }>(
+          c,
+          'test.general-manager.1.0',
+          'select place_name, due, done, on_time, pct from ops.completion($1, $2::date)',
+          [ids.node('TEST-HOTEL-1.0'), week],
+        );
+      const kitchen = async (week: string) =>
+        (await completion(week)).find((r) => r.place_name.endsWith('Kitchen'))!;
+      const before = await kitchen(monday);
       const create = (due: string) =>
         run<{ id: string }>(
           c,
@@ -384,23 +406,25 @@ describe('working through a checklist', () => {
             JSON.stringify({ mode: 'person', user_id: ids.user('test.commis.1.0') }),
           ],
         );
-      const [a] = await create(new Date(Date.now() - 2 * 3_600_000).toISOString());
-      await create(new Date(Date.now() - 3_600_000).toISOString());
-      // due later this week: not counted yet
-      await create(new Date(Date.now() + 3_600_000).toISOString());
+      const [a] = await create(`${monday} 10:00+05:30`);
+      await create(`${monday} 11:00+05:30`);
       await run(c, 'test.commis.1.0', 'select ops.complete_task($1)', [a!.id]);
-      const monday = await c.query<{ d: string }>(
-        `select to_char(date_trunc('week', (now() at time zone 'Asia/Kolkata') - interval '2 hours'), 'YYYY-MM-DD') as d`,
+      const after = await kitchen(monday);
+      // done late (after its due time): done, not on time
+      expect([
+        after.due - before.due,
+        after.done - before.done,
+        after.on_time - before.on_time,
+      ]).toEqual([2, 1, 0]);
+      // a task due later is not counted yet
+      const { rows: n } = await c.query<{ monday: string }>(
+        `select date_trunc('week', (now() + interval '1 hour') at time zone 'Asia/Kolkata')::date::text as monday`,
       );
-      const rows = await run<{ place_name: string; due: number; done: number; pct: number }>(
-        c,
-        'test.general-manager.1.0',
-        'select place_name, due, done, pct from ops.completion($1, $2::date)',
-        [ids.node('TEST-HOTEL-1.0'), monday.rows[0]!.d],
-      );
-      const kitchen = rows.find((r) => r.place_name.endsWith('Kitchen'));
-      expect(kitchen).toMatchObject({ due: 2, done: 1, pct: 50 });
-      // every department of the hotel is listed, with nothing due as no percentage
+      const soon = await kitchen(n[0]!.monday);
+      await create(new Date(Date.now() + 3_600_000).toISOString());
+      expect((await kitchen(n[0]!.monday)).due).toBe(soon.due);
+      // every department of the hotel is listed; nothing due shows no percentage
+      const rows = await completion(monday);
       expect(rows.length).toBe(10);
       expect(rows.find((r) => r.place_name.endsWith('Security'))).toMatchObject({
         due: 0,
@@ -413,6 +437,10 @@ describe('working through a checklist', () => {
 describe('prep lists', () => {
   it('suggest par plus event needs minus what is usable, less prep already set', async () => {
     await inRolledBackTx(async (c) => {
+      // set aside the test data's open prep list (file 32)
+      await c.query(
+        `update ops.task set status = 'cancelled' where kind = 'prep' and status = 'open'`,
+      );
       const store = ids.node(KITCHEN_STORE);
       const { rows: items } = await c.query<{ id: string }>(
         `select i.id from inv.item i join core.tenant t on t.id = i.tenant_id

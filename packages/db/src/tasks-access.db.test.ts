@@ -153,7 +153,8 @@ const report = async (c: PoolClient, who: string) => {
 
 async function notified(c: PoolClient, username: string, kind: string): Promise<number> {
   const { rows } = await c.query<{ n: number }>(
-    `select count(*)::int as n from ops.notification where owner_user_id = $1 and kind = $2`,
+    `select count(*)::int as n from ops.notification
+      where owner_user_id = $1 and kind = $2 and created_at >= now()`,
     [ids.user(username), kind],
   );
   return rows[0]!.n;
@@ -783,6 +784,32 @@ describe('prep lists', () => {
           ])
         ).error,
       ).toBeUndefined();
+    });
+  });
+});
+
+describe('test data', () => {
+  it('only the loader links past batches to prep tasks, and only for test customers', async () => {
+    await inRolledBackTx(async (c) => {
+      const r = await attemptAs(
+        c,
+        ids.user('test.general-manager.1.0'),
+        'select ops.link_test_batch(core.uuid_v7(), core.uuid_v7())',
+      );
+      expect(r.error).toMatch(/permission denied/);
+      // a customer that is not a test customer
+      const { rows } = await c.query<{ task: string; batch: string }>(
+        `select t.id as task, p.id as batch from ops.task t
+           join inv.production p on p.task_id = t.id where t.kind = 'prep' limit 1`,
+      );
+      // (is_test never changes in the app; the fixture lifts that guard inside the rollback)
+      await c.query('alter table core.tenant disable trigger is_test_fixed');
+      await c.query(`update core.tenant set is_test = false where id = $1`, [ids.tenant()]);
+      await c.query('savepoint s');
+      await expect(
+        c.query('select ops.link_test_batch($1, $2)', [rows[0]!.task, rows[0]!.batch]),
+      ).rejects.toThrow(/NOT_AUTHORISED/);
+      await c.query('rollback to savepoint s');
     });
   });
 });

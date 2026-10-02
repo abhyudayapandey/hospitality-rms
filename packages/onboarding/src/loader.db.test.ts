@@ -150,7 +150,7 @@ describe('loader errors', () => {
     });
   });
 
-  it('refuses the test-only activity files 25 to 28 for a customer that is not a test customer (ADR 017)', async () => {
+  it('refuses the test-only activity files 25 to 28 and 30 to 32 for a customer that is not a test customer (ADR 017, ADR 020)', async () => {
     await inRolledBackTx(async (c) => {
       // the solo bar as a new, real customer (its own code and usernames, is_test no),
       // with one valid row in each activity file
@@ -169,6 +169,9 @@ describe('loader errors', () => {
         '26_production_TEST_DATA_ONLY.csv': `store_node_code,prep_item_code,day,time,quantity,made_by\r\nTEST-SOLO-BAR-KITCHEN-STORE,MINT-CHUTNEY,-1,10:00,500,${by}\r\n`,
         '27_sales_TEST_DATA_ONLY.csv': `outlet_code,day,menu_item_code,quantity,posted_by\r\nTEST-SOLO-BAR,-1,MASALA-FRIES,3,${by}\r\n`,
         '28_counts_TEST_DATA_ONLY.csv': `store_node_code,item_code,difference,counted_by,approved_by\r\nTEST-SOLO-BAR-KITCHEN-STORE,TOMATOES,0,${by},${by}\r\n`,
+        '30_tasks_TEST_DATA_ONLY.csv': `place_code,title,description,day,due_time,priority,assign_to,steps,created_by,done_by\r\nTEST-SOLO-BAR-BAR,Polish glasses,,1,17:00,normal,role:BARTENDER,,${by},\r\n`,
+        '31_maintenance_TEST_DATA_ONLY.csv': `place_code,title,description,reported_by,assigned_to,assigned_by\r\nTEST-SOLO-BAR-BAR,Tap leaking,,${by},,\r\n`,
+        '32_prep_tasks_TEST_DATA_ONLY.csv': `store_node_code,prep_item_code,day,due_time,quantity,assign_to,created_by\r\nTEST-SOLO-BAR-KITCHEN-STORE,MINT-CHUTNEY,0,12:00,500,role:COOK,${by}\r\n`,
       };
       expect(files['00_customer.csv']).toContain('REAL-SOLO');
       expect(files['00_customer.csv']).toMatch(/,no\r?\n?$/);
@@ -182,8 +185,61 @@ describe('loader errors', () => {
         { file: '26_production_TEST_DATA_ONLY.csv', message: refused },
         { file: '27_sales_TEST_DATA_ONLY.csv', message: refused },
         { file: '28_counts_TEST_DATA_ONLY.csv', message: refused },
+        { file: '30_tasks_TEST_DATA_ONLY.csv', message: refused },
+        { file: '31_maintenance_TEST_DATA_ONLY.csv', message: refused },
+        { file: '32_prep_tasks_TEST_DATA_ONLY.csv', message: refused },
       ]);
       expect(await tenantCount(c, 'REAL-SOLO')).toBe(before);
+    });
+  });
+
+  it('checks checklists (file 29): schedules, matching rows, and who they go to (ADR 020)', async () => {
+    await inRolledBackTx(async (c) => {
+      const file = '29_checklist_templates.csv';
+      // an unreadable schedule, on the template's first row
+      const r1 = await loadCustomer(
+        c,
+        edit(
+          file,
+          'Kitchen opening,daily 07:00,role:COMMIS,1,',
+          'Kitchen opening,at 7am,role:COMMIS,1,',
+        ),
+        { nested: true },
+      );
+      expect(r1.issues).toContainEqual(
+        expect.objectContaining({ file, row: 2, column: 'schedule' }),
+      );
+      // a later row of the same template that disagrees
+      const r2 = await loadCustomer(
+        c,
+        edit(
+          file,
+          'Kitchen opening,daily 07:00,role:COMMIS,2,',
+          'Kitchen opening,daily 08:00,role:COMMIS,2,',
+        ),
+        { nested: true },
+      );
+      expect(r2.issues).toEqual([
+        {
+          file,
+          row: 3,
+          column: 'schedule',
+          message: 'differs from line 2 of HOTEL-1.0-KITCHEN-OPENING',
+        },
+      ]);
+      // a job role nobody holds at the place is refused by the database, and nothing loads
+      const r3 = await loadCustomer(
+        c,
+        {
+          ...base,
+          [file]: base[file]!.replaceAll('role:PUBLIC_AREA_ATTENDANT', 'role:TECHNICIAN'),
+        },
+        { nested: true },
+      );
+      expect(r3.applied).toBe(false);
+      expect(r3.issues).toEqual([
+        { file, row: 18, message: 'INVALID_ASSIGNEE: nobody in that job role works at this place' },
+      ]);
     });
   });
 

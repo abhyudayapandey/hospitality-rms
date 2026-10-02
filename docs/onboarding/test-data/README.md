@@ -54,6 +54,8 @@ Each access row means: this person has this access group at this place. It cover
 | `17_events_TEST_DATA_ONLY.csv`                     | Sample events — test only                                                                                                                                 |
 | `18_…` – `24_…`                                    | Menus, prep items and recipes (`MENU_README.md`)                                                                                                          |
 | `25_shifts_TEST_DATA_ONLY.csv` – `28_counts_…`     | Test Company only: shifts, batches, sales and a closing count (below) — test only                                                                         |
+| `29_checklist_templates.csv`                       | Recurring checklists per department: schedule, who does them, and their steps (below)                                                                     |
+| `30_tasks_…` – `32_prep_tasks_…`                   | Test Company only: one-off tasks, a maintenance request and a prep list (below) — test only                                                               |
 | `99_access_preview_GENERATED.csv`                  | Every resulting access grant, with place name, what it covers, and where it came from                                                                     |
 
 ## Default access words (file 06)
@@ -152,3 +154,55 @@ following days.
 
 **Shifts:** `test.commis-b.1.0` has 10 dinner shifts (Wed to Sun, both weeks) on My shifts.
 Open slots in those weeks stay open and published.
+
+## Checklists: file 29 (ADR 020)
+
+A normal onboarding file: a real customer loads its own. One row per step; `template_code`,
+`place_code`, `name`, `schedule` and `assign_to` repeat on each step row of a template.
+
+- **`schedule`**, local to the place: `daily 07:00 15:00`, `weekly Mon,Thu 09:00`, or
+  `every 2h 08:00-22:00` (1, 2, 3, 4, 6, 8 or 12 hours; a window like `22:00-02:00` runs past
+  midnight).
+- **`assign_to`**: `role:COMMIS` (everyone in that job role at the place; the first to start
+  takes it), `on_shift` (whoever is rostered there at the due time) or `person:username`.
+- **`step_kind`**: `tick`, `number` (with an optional `min`/`max`: outside it is flagged and
+  the place's lead is told), `text` or `photo`. `photo_required` = yes needs a photo with the
+  step.
+
+The tasks job (`pnpm --filter @outlet-ops/workflow tasks-tick`, every 5 minutes on the
+instance) makes each checklist's tasks for the next 24 hours.
+
+| Customer      | Place                  | Checklists                                                           |
+| ------------- | ---------------------- | -------------------------------------------------------------------- |
+| Test Company  | Hotel 1.0 Kitchen      | Kitchen opening, Kitchen closing, Fridge temperature log (every 4 h) |
+| Test Company  | Hotel 1.0 Bar          | Bar setup, Bar closing                                               |
+| Test Company  | Hotel 1.0 Front Office | Front desk shift handover (07:00, 15:00, 23:00)                      |
+| Test Company  | Hotel 1.0 Housekeeping | Lobby washroom check (every 2 h), Linen room count (Mondays)         |
+| Test Company  | Bar 3.0 Kitchen, Bar   | Kitchen opening and closing; Bar setup                               |
+| Test Solo Bar | Kitchen, Bar           | Kitchen opening and closing; Bar setup and closing                   |
+
+## Tasks: files 30 to 32 (test only, ADR 020)
+
+Refused for a customer that isn't a test customer. Days count from the load date, as in
+files 25 to 28; file 30 also takes days after it (up to 14).
+
+| File                                | What it loads                                                                                     |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `30_tasks_TEST_DATA_ONLY.csv`       | Five one-off tasks, created by the person in `created_by`, finished by `done_by` when filled in   |
+| `31_maintenance_TEST_DATA_ONLY.csv` | One open request: the Hotel 1.0 kitchen dishwasher, raised by the commis, waiting for Engineering |
+| `32_prep_tasks_TEST_DATA_ONLY.csv`  | A prep list matching the batches of file 26, and one for the load day                             |
+
+**Expected figures** (`packages/db/src/test-data-activity.db.test.ts` pins them):
+
+- **Tasks.** `test.commis.1.0` has **Deep clean the walk-in chiller** due yesterday, still
+  open: **overdue**. `test.commis-b.1.0` finished **Descale the combi oven** (day -2). Label
+  the dry store shelves (Hotel 1.0 commis), Polish the back-bar glassware (Hotel 1.0
+  bartenders) and Wipe down the menu cards (Bar 3.0 servers) are upcoming, for everyone in
+  that role.
+- **Maintenance.** One open request, handled by Hotel 1.0 Engineering: the Chief Engineer
+  sees it in their Inbox to assign to the technician.
+- **Prep.** Mint Chutney (day -5, 500 g), Ginger Garlic Paste (day -4, 1 kg) and the Negroni
+  (Bar 3.0, day -4, 2 l) are done, each linked to its batch from file 26. Mint Chutney
+  1 kg for the load day is open for the Hotel 1.0 commis (the last batch has expired).
+- **Checklists.** After `pnpm db:seed` (it runs the tasks job once) each checklist has its
+  tasks for the next 24 hours.

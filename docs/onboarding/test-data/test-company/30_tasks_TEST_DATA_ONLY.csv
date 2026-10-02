@@ -1,0 +1,6 @@
+place_code,title,description,day,due_time,priority,assign_to,steps,created_by,done_by
+TEST-HOTEL-1.0-KITCHEN,Deep clean the walk-in chiller,"Empty, wipe shelves and door seal, then restock oldest first",-1,16:00,high,person:test.commis.1.0,Shelves wiped;Door seal cleaned;Restocked oldest first,test.executive-chef.1.0,
+TEST-HOTEL-1.0-KITCHEN,Descale the combi oven,,-2,15:00,normal,person:test.commis-b.1.0,Descaler run;Oven rinsed,test.sous-chef.1.0,test.commis-b.1.0
+TEST-HOTEL-1.0-KITCHEN,Label the dry store shelves,New shelf labels from the store manager,1,12:00,low,role:COMMIS,,test.sous-chef.1.0,
+TEST-HOTEL-1.0-BAR,Polish the back-bar glassware,,2,17:00,normal,role:BARTENDER,,test.bar-manager.1.0,
+TEST-BAR-3.0-FLOOR-SERVICE,Wipe down the menu cards,,1,17:30,low,role:SERVER,,test.floor-manager.3.0,
