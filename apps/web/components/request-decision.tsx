@@ -14,10 +14,13 @@ export function RequestDecision({
   requestId,
   back,
   approve,
+  approveLabel = 'Approve',
 }: {
   requestId: string;
   back: string;
   approve?: () => Promise<ActionResult<unknown>>;
+  /** e.g. "Approve anyway" when the approver has warnings in front of them */
+  approveLabel?: string;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -55,7 +58,7 @@ export function RequestDecision({
             onClick={() => act('approve')}
             className={primaryButton}
           >
-            Approve
+            {approveLabel}
           </button>
         </div>
       )}

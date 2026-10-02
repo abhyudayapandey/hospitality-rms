@@ -2,3 +2,4 @@ setting,value,meaning
 min_rest_hours,10,Minimum hours between the end of one shift and the start of the next
 weekly_hours_cap,48,"Maximum rostered hours per worker, Monday to Sunday"
 late_threshold_min,10,Minutes after shift start before a clock-in counts as late
+extra_time_min_minutes,30,"Minutes worked before or after a shift that show as their own row (Extra before/after shift); shorter differences show only in the In/Out times"

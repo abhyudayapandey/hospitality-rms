@@ -557,22 +557,274 @@ describe('SHIFT_SWAP', () => {
     });
   });
 
-  it('re-checks the rules at approval and shows the approver the code', async () => {
+  // ADR 019: rest and weekly hours are warnings for the approver, not blocks.
+  async function requestOf(c: PoolClient, swapId: string): Promise<string> {
+    return (
+      await one<{ r: string }>(c, 'select wf_request_id r from hr.shift_swap where id = $1', [
+        swapId,
+      ])
+    ).r;
+  }
+
+  async function checks(c: PoolClient, user: string, swapId: string) {
+    return as<{ code: string; detail: string; warning: boolean }>(
+      c,
+      user,
+      'select code, detail, warning from hr.swap_checks($1) order by code',
+      [swapId],
+    );
+  }
+
+  it('rest and weekly hours do not stop the offer or the acceptance', async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c);
-      const { swapId } = await offered(c, f, f.sam, SAM(), f.pat.workerId);
-      await as(c, f.pat.userId, 'select hr.respond_swap($1, true)', [swapId]);
-      // Pat is rostered at 20:00 the evening before: less than 10 h rest before 09:00
+      // Pat works until midnight the evening before: 9 h rest before the 09:00 shift
       await assign(c, await shift(c, f, 0, '20:00', 4), f.pat.workerId);
+      const { swapId } = await offered(c, f, f.sam, SAM(), f.pat.workerId);
+      expect(
+        (
+          await as<{ s: string }>(c, f.pat.userId, 'select hr.respond_swap($1, true) as s', [
+            swapId,
+          ])
+        )[0]!.s,
+      ).toBe('submitted');
+    });
+  });
+
+  it('the approver sees the warnings, and approves only past the ones they saw', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c);
+      const { shiftId, swapId } = await offered(c, f, f.sam, SAM(), f.pat.workerId);
+      await as(c, f.pat.userId, 'select hr.respond_swap($1, true)', [swapId]);
+      expect(await checks(c, FLOOR(), swapId)).toEqual([]);
+      // after acceptance: Pat is rostered until midnight before, and the cap drops to 10 h
+      await assign(c, await shift(c, f, 0, '20:00', 4), f.pat.workerId);
+      await c.query(
+        `insert into hr.roster_setting (tenant_id, weekly_hours_cap) values ($1, 10)
+         on conflict (tenant_id) do update set weekly_hours_cap = 10`,
+        [f.tenant],
+      );
+      expect(await checks(c, FLOOR(), swapId)).toEqual([
+        {
+          code: 'REST_RULE',
+          detail: 'would have 9 h rest between shifts (needs 10 h)',
+          warning: true,
+        },
+        {
+          code: 'WEEKLY_HOURS_CAP',
+          detail: 'would have 12 h this week (limit 10 h)',
+          warning: true,
+        },
+      ]);
+      // without acknowledging them, approval stops on the first
       expect(await err(c, FLOOR(), 'select hr.approve_swap($1)', [swapId])).toBe('REST_RULE');
-      const req = (
-        await one<{ r: string }>(c, 'select wf_request_id r from hr.shift_swap where id = $1', [
-          swapId,
-        ])
-      ).r;
+      expect(await err(c, FLOOR(), `select hr.approve_swap($1, null, '{}')`, [swapId])).toBe(
+        'REST_RULE',
+      );
+      // a warning the approver did not see (it appeared after the screen opened) stops it too
+      expect(
+        await err(c, FLOOR(), `select hr.approve_swap($1, null, '{REST_RULE}')`, [swapId]),
+      ).toBe('WEEKLY_HOURS_CAP');
+      const req = await requestOf(c, swapId);
       expect(
         (await one<{ s: string }>(c, 'select state s from wf.request where id = $1', [req])).s,
       ).toBe('in_approval');
+
+      expect(
+        (
+          await as<{ s: string }>(
+            c,
+            FLOOR(),
+            `select hr.approve_swap($1, 'short-staffed', '{REST_RULE,WEEKLY_HOURS_CAP}') as s`,
+            [swapId],
+          )
+        )[0]!.s,
+      ).toBe('approved');
+      expect(
+        (
+          await one<{ w: string[] }>(
+            c,
+            'select warnings_accepted w from hr.shift_swap where id = $1',
+            [swapId],
+          )
+        ).w,
+      ).toEqual(['REST_RULE', 'WEEKLY_HOURS_CAP']);
+      // the executor applies it; the new assignment carries what was approved past
+      await execute(c, req);
+      const pat = await one<{ status: string; w: string[] }>(
+        c,
+        `select status, warnings_accepted w from hr.shift_assignment
+          where shift_id = $1 and worker_id = $2`,
+        [shiftId, f.pat.workerId],
+      );
+      expect(pat).toEqual({ status: 'assigned', w: ['REST_RULE', 'WEEKLY_HOURS_CAP'] });
+    });
+  });
+
+  it('hard rules still block the offer, the acceptance and the approval', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c);
+      // Pat is already on a shift at the same time: no offer
+      const busy = await assign(c, await shift(c, f, 1, '12:00', 4), f.pat.workerId);
+      const s = await shift(c, f, 1, '09:00', 8);
+      const a = await assign(c, s, f.sam);
+      expect(await err(c, SAM(), 'select hr.request_swap($1, $2)', [a, f.pat.workerId])).toBe(
+        'SHIFT_OVERLAP',
+      );
+      // offered while free, then the clash lands before acceptance and before approval
+      await as(c, OLIVIA(), 'select hr.unassign($1)', [busy]);
+      const { id: swapId } = await first<{ id: string }>(
+        c,
+        SAM(),
+        'select hr.request_swap($1, $2) as id',
+        [a, f.pat.workerId],
+      );
+      const again = await assign(c, await shift(c, f, 1, '12:00', 4), f.pat.workerId);
+      expect(await err(c, f.pat.userId, 'select hr.respond_swap($1, true)', [swapId])).toBe(
+        'SHIFT_OVERLAP',
+      );
+      await as(c, OLIVIA(), 'select hr.unassign($1)', [again]);
+      await as(c, f.pat.userId, 'select hr.respond_swap($1, true)', [swapId]);
+      await assign(c, await shift(c, f, 1, '13:00', 4), f.pat.workerId);
+      expect(await checks(c, FLOOR(), swapId)).toContainEqual(
+        expect.objectContaining({ code: 'SHIFT_OVERLAP', warning: false }),
+      );
+      expect(
+        await err(
+          c,
+          FLOOR(),
+          `select hr.approve_swap($1, null, '{REST_RULE,WEEKLY_HOURS_CAP,SHIFT_OVERLAP}')`,
+          [swapId],
+        ),
+      ).toBe('SHIFT_OVERLAP');
+    });
+  });
+
+  it('only a pending approver reads the checks', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c);
+      const { swapId } = await offered(c, f, f.sam, SAM(), f.pat.workerId);
+      // not submitted yet
+      expect(await err(c, FLOOR(), 'select * from hr.swap_checks($1)', [swapId])).toBe(
+        'INVALID_STATE',
+      );
+      await as(c, f.pat.userId, 'select hr.respond_swap($1, true)', [swapId]);
+      for (const u of [SAM(), f.pat.userId]) {
+        expect(await err(c, u, 'select * from hr.swap_checks($1)', [swapId])).toBe(
+          'SEGREGATION_OF_DUTIES',
+        );
+      }
+      expect(await err(c, f.mia.userId, 'select * from hr.swap_checks($1)', [swapId])).toBe(
+        'NOT_AUTHORISED',
+      );
+      expect(await err(c, f.omar.userId, 'select * from hr.swap_checks($1)', [swapId])).toBe(
+        'NOT_AUTHORISED',
+      );
+    });
+  });
+
+  it('the approver assigns the shift to someone else: no approval, the swap closes', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c);
+      const quinn = await newWorker(c, ids, 'Quinn Server', 'TEST-BAR-3.0-FLOOR-SERVICE', 'SERVER');
+      const { shiftId, assignmentId, swapId } = await offered(c, f, f.sam, SAM(), f.pat.workerId);
+      await as(c, f.pat.userId, 'select hr.respond_swap($1, true)', [swapId]);
+      const req = await requestOf(c, swapId);
+      // Quinn ends at midnight before: a warning the approver must acknowledge here too
+      await assign(c, await shift(c, f, 0, '20:00', 4), quinn.workerId);
+      expect(
+        await err(c, FLOOR(), `select hr.reassign_swap($1, $2, '{}')`, [swapId, quinn.workerId]),
+      ).toBe('REST_RULE');
+      const { id } = await first<{ id: string }>(
+        c,
+        FLOOR(),
+        `select hr.reassign_swap($1, $2, '{REST_RULE}') as id`,
+        [swapId, quinn.workerId],
+      );
+
+      const rows = await c.query<{ id: string; worker_id: string; status: string }>(
+        `select id, worker_id, status from hr.shift_assignment where shift_id = $1
+          order by created_at, id`,
+        [shiftId],
+      );
+      expect(rows.rows).toEqual([
+        { id: assignmentId, worker_id: f.sam, status: 'swapped' },
+        { id, worker_id: quinn.workerId, status: 'assigned' },
+      ]);
+      const sw = await one<{ status: string; reassigned_worker_id: string; w: string[] }>(
+        c,
+        `select status, reassigned_worker_id, warnings_accepted w from hr.shift_swap
+          where id = $1`,
+        [swapId],
+      );
+      expect(sw).toEqual({
+        status: 'reassigned',
+        reassigned_worker_id: quinn.workerId,
+        w: ['REST_RULE'],
+      });
+      const r = await one<{ state: string }>(c, 'select state from wf.request where id = $1', [
+        req,
+      ]);
+      expect(r.state).toBe('rejected');
+      // the reject handler leaves a reassigned swap alone
+      await execute(c, req);
+      expect(
+        (await one<{ s: string }>(c, 'select status s from hr.shift_swap where id = $1', [swapId]))
+          .s,
+      ).toBe('reassigned');
+      expect(await err(c, FLOOR(), `select hr.approve_swap($1, null, '{}')`, [swapId])).toBe(
+        'INVALID_STATE',
+      );
+      // everyone hears: both parties that it went to Quinn, Quinn that it is theirs
+      const kinds = async (u: string) =>
+        (await as<{ kind: string }>(c, u, 'select kind from ops.notification')).map((n) => n.kind);
+      expect(await kinds(SAM())).toContain('swap_reassigned');
+      expect(await kinds(f.pat.userId)).toContain('swap_reassigned');
+      expect(await kinds(f.pat.userId)).not.toContain('swap_rejected');
+      expect(await kinds(quinn.userId)).toContain('roster_changed');
+    });
+  });
+
+  it('reassigning: approvers with roster rights only, never to a party or to yourself', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c);
+      const quinn = await newWorker(c, ids, 'Quinn Server', 'TEST-BAR-3.0-FLOOR-SERVICE', 'SERVER');
+      const { swapId } = await offered(c, f, f.sam, SAM(), f.pat.workerId);
+      await as(c, f.pat.userId, 'select hr.respond_swap($1, true)', [swapId]);
+      const reassign = (u: string, w: string) =>
+        err(c, u, `select hr.reassign_swap($1, $2, '{}')`, [swapId, w]);
+      expect(await reassign(SAM(), quinn.workerId)).toBe('SEGREGATION_OF_DUTIES');
+      expect(await reassign(f.pat.userId, quinn.workerId)).toBe('SEGREGATION_OF_DUTIES');
+      expect(await reassign(f.mia.userId, quinn.workerId)).toBe('NOT_AUTHORISED');
+      expect(await reassign(f.omar.userId, quinn.workerId)).toBe('NOT_AUTHORISED');
+      // back to the person giving it away is a reject; to the colleague is an approve
+      expect(await reassign(FLOOR(), f.sam)).toBe('INVALID_WORKER');
+      expect(await reassign(FLOOR(), f.pat.workerId)).toBe('INVALID_WORKER');
+      // the approver can't hand it to themselves
+      const floor = await workerFor(
+        c,
+        ids,
+        'test.floor-manager.3.0',
+        'TEST-BAR-3.0-FLOOR-SERVICE',
+        'SERVER',
+      );
+      expect(await reassign(FLOOR(), floor)).toBe('SEGREGATION_OF_DUTIES');
+
+      // an area manager approving (the fallback) sees the roster but can't change it
+      await c.query(
+        `update wf.step_instance si set assignee_group_id = g.id
+           from core.security_group g
+          where si.request_id = $1 and si.state = 'pending'
+            and g.tenant_id = si.tenant_id and g.code = 'AREA_MANAGER'`,
+        [await requestOf(c, swapId)],
+      );
+      expect(await checks(c, ARIA(), swapId)).toEqual([]);
+      expect(await reassign(ARIA(), quinn.workerId)).toBe('NOT_AUTHORISED');
+      // nothing moved
+      expect(
+        (await one<{ s: string }>(c, 'select status s from hr.shift_swap where id = $1', [swapId]))
+          .s,
+      ).toBe('submitted');
     });
   });
 

@@ -190,7 +190,7 @@ export const FILES = {
       org_node_code: code,
       latitude: num.refine((v) => v >= -90 && v <= 90, 'must be between -90 and 90'),
       longitude: num.refine((v) => v >= -180 && v <= 180, 'must be between -180 and 180'),
-      geofence_radius_m: int.refine((v) => v > 0 && v <= 5000, 'must be 1 to 5000'),
+      geofence_radius_m: int.refine((v) => v >= 10 && v <= 5000, 'must be 10 to 5000'),
     }),
   },
   jobRoles: {
@@ -304,7 +304,12 @@ export const FILES = {
     file: '15_roster_settings.csv',
     required: false,
     schema: z.object({
-      setting: z.enum(['min_rest_hours', 'weekly_hours_cap', 'late_threshold_min']),
+      setting: z.enum([
+        'min_rest_hours',
+        'weekly_hours_cap',
+        'late_threshold_min',
+        'extra_time_min_minutes',
+      ]),
       value: num,
       meaning: optional,
     }),

@@ -173,20 +173,25 @@ Every stock change follows this path: the database checks the user's access at t
 ### 6.4 Rostering _(Built at outlet level; department level in progress)_
 
 - **ROS-1** Shift templates per department (or outlet), weekly roster generation, assignment, publish.
-- **ROS-2** Every assignment checked for overlap, minimum rest, weekly hours cap, approved leave, role match and home place; rules are per-customer settings (defaults 10 h rest, 48 h/week, 10 min late threshold).
+- **ROS-2** Every assignment checked for overlap, minimum rest, weekly hours cap, approved leave, role match and home place; rules are per-customer settings (defaults 10 h rest, 48 h/week, 10 min late threshold). Minimum rest and the weekly hours cap are warnings: the manager sees them and can assign anyway; the others block (ADR 019).
 - **ROS-3** Shift times in the outlet's time zone; overnight shifts supported.
 
 ### 6.5 Attendance _(Built)_
 
 - **ATT-1** Clock in/out with location compared to the outlet's geofence; outside or missing location is flagged, not blocked.
 - **ATT-2** Works offline; punches sync later with the original time (up to 24 h old).
-- **ATT-3** Nightly exceptions: late, no-show, missing clock-out, unrostered; resolved by department heads or outlet heads.
+- **ATT-3** Nightly exceptions: late, left early, no-show, missing clock-out, unrostered; resolved by department heads or outlet heads.
+- **ATT-4** One matching rule (ADR 018) for My shifts, Clock, the nightly job and the managers' exceptions screen. A session belongs to a shift it overlaps, or starts or ends within 30 minutes of; otherwise it is unrostered. Time worked outside a shift becomes its own "extra before/after shift" row from `extra_time_min_minutes` (company setting, default 30); shorter differences show only in the In/Out times _(Built)_.
+- **ATT-5** My shifts: the past 14 days and every upcoming published shift, grouped by day, today highlighted; past rows show "In hh:mm · Out hh:mm" and on time, late, left early, no-show or missing clock-out. Clock: the open session with how long it has run, and the past 14 days' sessions _(Built)_.
+- **ATT-6** The GM, AGM or Account Owner sets each outlet's or site's location and clock-in radius in the app, from the phone's location with its accuracy and a map link; audited, used from the next clock-in. Re-importing file 04 still sets it, after a dry-run warning naming who changed it in the app and when _(Built)_.
 
 ### 6.6 Leave and shift swaps _(Built)_
 
 - **LV-1** Leave types and yearly entitlements per customer; balance checked at request including pending requests.
 - **LV-2** Approval screen shows the balance and the shifts approval will drop.
 - **SW-1** A swap needs the colleague's acceptance before a manager sees it; rules re-checked at approval; neither party can approve their own swap.
+- **SW-2** Minimum rest and the weekly hours cap never stop the offer or the acceptance. The approver sees them as warnings ("Test Commis B 1.0 would have 52 h this week (limit 48 h)") and can approve anyway; the warnings approved past are recorded (ADR 019).
+- **SW-3** An approver who can change the roster may instead give the shift to someone else: it goes straight onto that person's roster without further approval, the swap closes as "given to someone else", and all three are notified (ADR 019).
 
 ### 6.7 Events _(Built)_
 
@@ -281,6 +286,12 @@ If the worker's department has no head, the request goes to the GM, then the are
 **Setup files.** One file per data type: customer, people tree, stock tree, links, locations, job roles, users, extra access, suppliers, items, item locations, opening stock, leave types, leave balances, roster settings, shift templates. A generated access preview lets the customer check who can do what before loading.
 
 **Login.** Email one-time code, or username and password for staff without email. Sessions last up to 12 hours idle and 30 days in total. SMS login needs Indian DLT registration and is deferred.
+
+**Profile** _(Built, ADR 018)_
+
+- **PRF-1** Tap your name: your name, username, job role, home place, sign-in method, and your access per place in plain words. Read-only; name and email changes stay with an admin.
+- **PRF-2** Change your own password (username logins): current password and the new one twice, the pool's policy, 5 attempts an hour, audited. Hidden for email-code logins.
+- **PRF-3** Sign out of all devices: every app session ends on its next request and Cognito revokes every refresh token; audited.
 
 ## 9. AI layer _(Planned — last in the build sequence)_
 

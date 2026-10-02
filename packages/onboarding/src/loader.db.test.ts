@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { closePools, inRolledBackTx } from '@outlet-ops/db/test-helpers';
+import { attemptAs, closePools, inRolledBackTx, loadSeedIds } from '@outlet-ops/db/test-helpers';
 import type { PoolClient } from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
 import { loadCustomer, type AccessRow } from './apply';
@@ -391,6 +391,75 @@ describe('logins are unique across customers (ADR 011)', () => {
         message: `${rest[0]!.split(',')[0]} is used by another customer (USERNAME_TAKEN); try acme.${rest[0]!.split(',')[0]}`,
       });
       expect(r.issues.every((i) => i.message.includes('_TAKEN'))).toBe(true);
+    });
+  });
+});
+
+describe('a location set in the app (file 04, ADR 018)', () => {
+  const moved = (w: { message: string }) => w.message.includes('set in the app');
+
+  it('the dry run warns, naming who changed it and when; applying puts the file back', async () => {
+    await inRolledBackTx(async (c) => {
+      const ids = await loadSeedIds();
+      const company = readCustomerDir(join(DATA, 'test-company'));
+      const gm = await attemptAs(
+        c,
+        ids.user('test.general-manager.1.0'),
+        'select hr.set_place_location($1, 19.06, 72.83, 200)',
+        [ids.node('TEST-HOTEL-1.0')],
+      );
+      expect(gm.error).toBeUndefined();
+      const when = (
+        await c.query<{ t: string }>(
+          `select to_char(now() at time zone 'Asia/Kolkata', 'DD Mon YYYY HH24:MI') t`,
+        )
+      ).rows[0]!.t;
+      const row = parseCsv(company['04_location_settings.csv']!).rows.find(
+        (r) => r.values.org_node_code === 'TEST-HOTEL-1.0',
+      )!;
+
+      const dry = await loadCustomer(c, company, { nested: true, dryRun: true });
+      expect(dry).toMatchObject({ ok: true, issues: [] });
+      expect(dry.warnings.filter(moved)).toEqual([
+        {
+          file: '04_location_settings.csv',
+          row: row.line,
+          column: 'org_node_code',
+          message:
+            `TEST-HOTEL-1.0: the location was set in the app by Test General Manager 1.0 on ` +
+            `${when} Asia/Kolkata (19.06, 72.83, 200 m); this import replaces it with ` +
+            `19.0596, 72.8295, 150 m`,
+        },
+      ]);
+
+      const applied = await loadCustomer(c, company, { nested: true });
+      expect(applied.warnings.filter(moved)).toHaveLength(1);
+      const after = await c.query(
+        `select latitude, geofence_radius_m, set_in_app_by from hr.node_setting where org_node_id = $1`,
+        [ids.node('TEST-HOTEL-1.0')],
+      );
+      expect(after.rows).toEqual([
+        { latitude: '19.059600', geofence_radius_m: 150, set_in_app_by: null },
+      ]);
+      const again = await loadCustomer(c, company, { nested: true, dryRun: true });
+      expect(again.warnings.filter(moved)).toEqual([]);
+    });
+  });
+
+  it('no warning when the app set the same values the file has', async () => {
+    await inRolledBackTx(async (c) => {
+      const ids = await loadSeedIds();
+      await attemptAs(
+        c,
+        ids.user('test.general-manager.1.0'),
+        'select hr.set_place_location($1, 19.0596, 72.8295, 150)',
+        [ids.node('TEST-HOTEL-1.0')],
+      );
+      const dry = await loadCustomer(c, readCustomerDir(join(DATA, 'test-company')), {
+        nested: true,
+        dryRun: true,
+      });
+      expect(dry.warnings.filter(moved)).toEqual([]);
     });
   });
 });

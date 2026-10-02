@@ -249,6 +249,51 @@ describe('hr.assign rules', () => {
     });
   });
 
+  it('rest and weekly hours are warnings: assign anyway by naming them (ADR 019)', async () => {
+    await inRolledBackTx(async (c) => {
+      await clearWorkforce(c);
+      const sam = await workerFor(
+        c,
+        ids,
+        'test.server.3.0',
+        'TEST-BAR-3.0-FLOOR-SERVICE',
+        'SERVER',
+      );
+      const monday = await futureMonday(c);
+      expect((await assign(c, await shift(c, monday, 0, '09:00', 8), sam)).error).toBeUndefined();
+      await c.query(
+        `insert into hr.roster_setting (tenant_id, weekly_hours_cap) values ($1, 12)
+         on conflict (tenant_id) do update set weekly_hours_cap = 12`,
+        [await tenantOf(c, ids)],
+      );
+      // 9 h after the 17:00 end, and 14 h that week
+      const late = await shift(c, monday, 1, '02:00', 6);
+      const anyway = (accept: string) =>
+        attemptAs<{ id: string }>(c, OLIVIA(), 'select hr.assign($1, $2, $3) as id', [
+          late,
+          sam,
+          accept,
+        ]);
+      expect((await anyway('{}')).error).toBe('REST_RULE');
+      expect((await anyway('{REST_RULE}')).error).toBe('WEEKLY_HOURS_CAP');
+      const ok = await anyway('{REST_RULE,WEEKLY_HOURS_CAP}');
+      expect(ok.error).toBeUndefined();
+      const a = await c.query<{ w: string[] }>(
+        'select warnings_accepted w from hr.shift_assignment where id = $1',
+        [ok.rows![0]!.id],
+      );
+      expect(a.rows[0]!.w).toEqual(['REST_RULE', 'WEEKLY_HOURS_CAP']);
+      // a hard rule is never waved through
+      const clash = await shift(c, monday, 0, '16:00', 4);
+      const r = await attemptAs(c, OLIVIA(), 'select hr.assign($1, $2, $3)', [
+        clash,
+        sam,
+        '{REST_RULE,WEEKLY_HOURS_CAP,SHIFT_OVERLAP}',
+      ]);
+      expect(r.error).toBe('SHIFT_OVERLAP');
+    });
+  });
+
   it('LEAVE_CONFLICT: approved leave blocks the dates; pending leave does not', async () => {
     await inRolledBackTx(async (c) => {
       await clearWorkforce(c);
@@ -362,18 +407,30 @@ describe('candidates, publish and notifications', () => {
       const r = await attemptAs<{
         worker_id: string;
         violation: string | null;
+        warnings: { code: string; detail: string }[];
         week_hours: string;
-      }>(c, OLIVIA(), 'select worker_id, violation, week_hours from hr.assign_candidates($1)', [
-        target,
-      ]);
-      // other seeded servers may be listed too; these two show both outcomes
+      }>(
+        c,
+        OLIVIA(),
+        'select worker_id, violation, warnings, week_hours from hr.assign_candidates($1)',
+        [target],
+      );
+      // other seeded servers may be listed too; these two show both outcomes. Rest is a
+      // warning (ADR 019): Sam can still be assigned, after acknowledging it
       expect(r.rows!.filter((x) => [pat.workerId, sam].includes(x.worker_id))).toEqual([
-        { worker_id: pat.workerId, violation: null, week_hours: '0.0' },
-        { worker_id: sam, violation: 'REST_RULE', week_hours: '8.0' },
+        { worker_id: pat.workerId, violation: null, warnings: [], week_hours: '0.0' },
+        {
+          worker_id: sam,
+          violation: null,
+          warnings: [
+            { code: 'REST_RULE', detail: 'would have 3 h rest between shifts (needs 10 h)' },
+          ],
+          week_hours: '8.0',
+        },
       ]);
-      // assignable candidates come first
-      expect(r.rows!.findIndex((x) => x.violation !== null)).toBeGreaterThan(
-        r.rows!.findLastIndex((x) => x.violation === null),
+      // candidates without warnings come first
+      expect(r.rows!.findIndex((x) => x.warnings.length > 0)).toBeGreaterThan(
+        r.rows!.findLastIndex((x) => x.violation === null && x.warnings.length === 0),
       );
     });
   });

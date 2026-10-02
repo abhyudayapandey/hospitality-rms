@@ -3,6 +3,7 @@ import { DEFAULT_TZ } from './dates';
 import { sql, withUser, type Tx } from './db';
 import type { SearchParams } from './params';
 import { pickPlace, screenPlaces, type Place, type Screen } from './places';
+import type { TimelineRow } from './timeline';
 import { loadShell, type Shell } from './shell';
 
 // Reads for the people screens (roster, attendance, leave, swaps, events). Every query
@@ -102,6 +103,36 @@ export async function myShifts(tx: Tx, from: string, days: number): Promise<MySh
   return r.rows;
 }
 
+/**
+ * The current user's shifts and clock sessions for local days from..to, matched and split
+ * by hr.my_timeline (ADR 018). Times come back as ISO strings.
+ */
+export async function myTimeline(tx: Tx, from: string, to: string): Promise<TimelineRow[]> {
+  const r = await sql<TimelineRow>`
+    select local_date::text as local_date, kind, shift_id,
+           to_json(shift_start) #>> '{}' as shift_start, to_json(shift_end) #>> '{}' as shift_end,
+           to_json(from_at) #>> '{}' as from_at, to_json(to_at) #>> '{}' as to_at,
+           minutes, status, late_min, early_min, role_code, place_name
+      from hr.my_timeline(${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+export interface PastSession {
+  id: string;
+  clock_in_at: Date;
+  clock_out_at: Date;
+}
+
+/** The current user's closed clock sessions since `from` (local date), newest first. */
+export async function pastSessions(tx: Tx, from: string, tz: string): Promise<PastSession[]> {
+  const r = await sql<PastSession>`
+    select id, clock_in_at, clock_out_at from hr.attendance
+     where owner_user_id = core.current_user_id() and clock_out_at is not null
+       and clock_in_at >= (${from}::date)::timestamp at time zone ${tz}
+     order by clock_in_at desc`.execute(tx);
+  return r.rows;
+}
+
 export interface OpenPunch {
   id: string;
   clock_in_at: Date;
@@ -152,12 +183,30 @@ export interface Candidate {
   violation: string | null;
   violation_detail: string | null;
   week_hours: string;
+  /** Rest and weekly hours: shown, and assignable past (ADR 019). */
+  warnings: RuleWarning[];
+}
+
+export interface RuleWarning {
+  code: string;
+  /** Worded for "<name> would have ...". */
+  detail: string;
 }
 
 export async function candidates(tx: Tx, shift: string): Promise<Candidate[]> {
   const r = await sql<Candidate>`
-    select worker_id, display_name, violation, violation_detail, week_hours
+    select worker_id, display_name, violation, violation_detail, week_hours, warnings
       from hr.assign_candidates(${shift}::uuid)`.execute(tx);
+  return r.rows;
+}
+
+/** Every rule that applies to the colleague taking a swap; for its pending approver. */
+export async function swapChecks(
+  tx: Tx,
+  swap: string,
+): Promise<(RuleWarning & { warning: boolean })[]> {
+  const r = await sql<RuleWarning & { warning: boolean }>`
+    select code, detail, warning from hr.swap_checks(${swap}::uuid)`.execute(tx);
   return r.rows;
 }
 
@@ -196,6 +245,7 @@ export async function exceptions(
 
 export const EXCEPTION_LABEL: Record<string, string> = {
   late: 'Late',
+  left_early: 'Left early',
   no_show: 'No show',
   missing_clock_out: 'No clock-out',
   unscheduled: 'Not rostered',

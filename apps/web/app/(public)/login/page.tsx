@@ -8,6 +8,7 @@ const REASONS: Record<string, string> = {
   unknown_user: "That account isn't set up for Outlet Ops yet. Ask your manager.",
   rate_limited: 'Too many sign-in attempts from here. Wait a few minutes and try again.',
   cognito: 'Sign-in failed. Please try again.',
+  signed_out_everywhere: 'You are signed out on all your devices. Sign in again to carry on here.',
 };
 
 export default async function LoginPage({

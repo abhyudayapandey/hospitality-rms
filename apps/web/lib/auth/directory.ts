@@ -6,7 +6,10 @@ import {
   AdminSetUserPasswordCommand,
   AdminUpdateUserAttributesCommand,
   AdminUserGlobalSignOutCommand,
+  ChangePasswordCommand,
   CognitoIdentityProviderClient,
+  InitiateAuthCommand,
+  NotAuthorizedException,
   UsernameExistsException,
 } from '@aws-sdk/client-cognito-identity-provider';
 
@@ -14,6 +17,10 @@ import {
 // made only after the matching core.* function has checked scope and rank and written the
 // audit row; Cognito is the second step, and each operation can be retried safely.
 // Without Cognito configured (dev, e2e) the no-op directory stands in.
+//
+// changeOwnPassword is the one call made as the person, not as an admin (ADR 018): a
+// USER_PASSWORD_AUTH sign-in with their current password (the Web client allows it), then
+// ChangePassword with that session's access token. Cognito applies the pool's policy.
 
 export interface NewLogin {
   username: string;
@@ -39,7 +46,11 @@ export interface LoginDirectory {
   /** Revokes every refresh token: signed out everywhere at the next token refresh. */
   signOutEverywhere(username: string): Promise<void>;
   setEmail(username: string, email: string): Promise<void>;
+  /** The person's own change: their current password, then the new one. */
+  changeOwnPassword(username: string, current: string, next: string): Promise<OwnPasswordResult>;
 }
+
+export type OwnPasswordResult = 'ok' | 'wrong_password';
 
 /** The subset of the SDK client the directory uses (tests pass a fake). */
 export interface CognitoSender {
@@ -50,6 +61,7 @@ export class CognitoDirectory implements LoginDirectory {
   constructor(
     private readonly client: CognitoSender,
     private readonly userPoolId: string,
+    private readonly clientId?: string,
   ) {}
 
   async create(login: NewLogin): Promise<{ sub: string }> {
@@ -142,6 +154,38 @@ export class CognitoDirectory implements LoginDirectory {
     );
   }
 
+  async changeOwnPassword(
+    username: string,
+    current: string,
+    next: string,
+  ): Promise<OwnPasswordResult> {
+    if (!this.clientId) throw new Error('COGNITO_CLIENT_ID is not set');
+    let auth: { AuthenticationResult?: { AccessToken?: string } };
+    try {
+      auth = (await this.client.send(
+        new InitiateAuthCommand({
+          ClientId: this.clientId,
+          AuthFlow: 'USER_PASSWORD_AUTH',
+          AuthParameters: { USERNAME: username, PASSWORD: current },
+        }),
+      )) as typeof auth;
+    } catch (err) {
+      if (err instanceof NotAuthorizedException) return 'wrong_password';
+      throw err;
+    }
+    // a challenge (a temporary password not yet changed) gives no session to change with
+    const token = auth.AuthenticationResult?.AccessToken;
+    if (!token) return 'wrong_password';
+    await this.client.send(
+      new ChangePasswordCommand({
+        AccessToken: token,
+        PreviousPassword: current,
+        ProposedPassword: next,
+      }),
+    );
+    return 'ok';
+  }
+
   async setEmail(username: string, email: string): Promise<void> {
     await this.client.send(
       new AdminUpdateUserAttributesCommand({
@@ -179,6 +223,9 @@ export class NoopDirectory implements LoginDirectory {
   setEmail(): Promise<void> {
     return Promise.resolve();
   }
+  changeOwnPassword(): Promise<OwnPasswordResult> {
+    return Promise.resolve('ok');
+  }
 }
 
 let cached: LoginDirectory | undefined;
@@ -193,6 +240,7 @@ export function loginDirectory(
     ? new CognitoDirectory(
         new CognitoIdentityProviderClient({ region: poolId.split('_')[0] ?? 'ap-south-1' }),
         poolId,
+        env.COGNITO_CLIENT_ID,
       )
     : new NoopDirectory();
   return cached;

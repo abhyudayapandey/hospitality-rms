@@ -109,6 +109,15 @@ export async function verifySession(
   return { ok: true, payload };
 }
 
+/**
+ * True when a session was issued before the person signed out of all devices (ADR 018):
+ * its cookie is refused. iat is in whole seconds, so a sign-in in the same second counts
+ * as after.
+ */
+export function issuedBeforeSignOut(iat: number, validFrom: Date | null): boolean {
+  return validFrom !== null && iat < Math.floor(validFrom.getTime() / 1000);
+}
+
 /** Cookie max-age: until the absolute timeout. */
 export function sessionMaxAge(payload: SessionPayload, now = nowSeconds()): number {
   return Math.max(0, payload.iat + ABSOLUTE_TIMEOUT_S - now);

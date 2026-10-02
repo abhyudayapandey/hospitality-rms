@@ -16,6 +16,7 @@ const STATUS: Record<string, string> = {
   approved: 'Approved',
   rejected: 'Not approved',
   cancelled: 'Cancelled',
+  reassigned: 'Your manager gave the shift to someone else',
 };
 
 // Shift swaps I offered or was offered. The colleague accepting sends it to the manager.
