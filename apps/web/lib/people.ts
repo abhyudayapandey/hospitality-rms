@@ -183,12 +183,30 @@ export interface Candidate {
   violation: string | null;
   violation_detail: string | null;
   week_hours: string;
+  /** Rest and weekly hours: shown, and assignable past (ADR 019). */
+  warnings: RuleWarning[];
+}
+
+export interface RuleWarning {
+  code: string;
+  /** Worded for "<name> would have ...". */
+  detail: string;
 }
 
 export async function candidates(tx: Tx, shift: string): Promise<Candidate[]> {
   const r = await sql<Candidate>`
-    select worker_id, display_name, violation, violation_detail, week_hours
+    select worker_id, display_name, violation, violation_detail, week_hours, warnings
       from hr.assign_candidates(${shift}::uuid)`.execute(tx);
+  return r.rows;
+}
+
+/** Every rule that applies to the colleague taking a swap; for its pending approver. */
+export async function swapChecks(
+  tx: Tx,
+  swap: string,
+): Promise<(RuleWarning & { warning: boolean })[]> {
+  const r = await sql<RuleWarning & { warning: boolean }>`
+    select code, detail, warning from hr.swap_checks(${swap}::uuid)`.execute(tx);
   return r.rows;
 }
 

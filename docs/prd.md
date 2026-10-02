@@ -173,7 +173,7 @@ Every stock change follows this path: the database checks the user's access at t
 ### 6.4 Rostering _(Built at outlet level; department level in progress)_
 
 - **ROS-1** Shift templates per department (or outlet), weekly roster generation, assignment, publish.
-- **ROS-2** Every assignment checked for overlap, minimum rest, weekly hours cap, approved leave, role match and home place; rules are per-customer settings (defaults 10 h rest, 48 h/week, 10 min late threshold).
+- **ROS-2** Every assignment checked for overlap, minimum rest, weekly hours cap, approved leave, role match and home place; rules are per-customer settings (defaults 10 h rest, 48 h/week, 10 min late threshold). Minimum rest and the weekly hours cap are warnings: the manager sees them and can assign anyway; the others block (ADR 019).
 - **ROS-3** Shift times in the outlet's time zone; overnight shifts supported.
 
 ### 6.5 Attendance _(Built)_
@@ -190,6 +190,8 @@ Every stock change follows this path: the database checks the user's access at t
 - **LV-1** Leave types and yearly entitlements per customer; balance checked at request including pending requests.
 - **LV-2** Approval screen shows the balance and the shifts approval will drop.
 - **SW-1** A swap needs the colleague's acceptance before a manager sees it; rules re-checked at approval; neither party can approve their own swap.
+- **SW-2** Minimum rest and the weekly hours cap never stop the offer or the acceptance. The approver sees them as warnings ("Test Commis B 1.0 would have 52 h this week (limit 48 h)") and can approve anyway; the warnings approved past are recorded (ADR 019).
+- **SW-3** An approver who can change the roster may instead give the shift to someone else: it goes straight onto that person's roster without further approval, the swap closes as "given to someone else", and all three are notified (ADR 019).
 
 ### 6.7 Events _(Built)_
 

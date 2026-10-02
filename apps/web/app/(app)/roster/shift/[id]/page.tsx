@@ -6,10 +6,12 @@ import { formatDay, formatSpan } from '@/lib/dates';
 import { sql, withUser } from '@/lib/db';
 import { isUuid, type SearchParams } from '@/lib/inventory';
 import { candidates, peopleContext } from '@/lib/people';
+import { warningPhrase } from '@/lib/roster-warnings';
 import { AssignButton } from './assign-button';
 
-// Assign a shift: every worker at the node with the shift's role, assignable ones first,
-// the others with the rule they would break (hr.assignment_violation).
+// Assign a shift: every worker at the node with the shift's role, assignable ones first.
+// Rest and weekly hours are warnings: shown, with "Assign anyway" (ADR 019). Any other
+// rule they would break is shown instead of the button (hr.assign_candidates).
 export default async function ShiftPage({
   params,
   searchParams,
@@ -72,9 +74,24 @@ export default async function ShiftPage({
                 <span className={`text-xs ${p.violation ? 'text-rose-700' : 'text-slate-500'}`}>
                   {p.violation ? reason(p.violation) : `${p.week_hours} h this week`}
                 </span>
+                {!p.violation &&
+                  p.warnings.map((w) => (
+                    <span
+                      key={w.code}
+                      data-testid="candidate-warning"
+                      className="block text-xs text-amber-800"
+                    >
+                      {warningPhrase(w.detail)}
+                    </span>
+                  ))}
               </span>
               {!p.violation && !full && (
-                <AssignButton shift={id} worker={p.worker_id} back={back} />
+                <AssignButton
+                  shift={id}
+                  worker={p.worker_id}
+                  back={back}
+                  accept={p.warnings.map((w) => w.code)}
+                />
               )}
             </li>
           ))}

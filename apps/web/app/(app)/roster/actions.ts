@@ -46,10 +46,18 @@ export async function publishWeek(node: string, monday: string): Promise<ActionR
   });
 }
 
-export async function assignShift(shift: string, worker: string): Promise<ActionResult<string>> {
+/**
+ * Assign through hr.assign. `accept` names the warnings (rest, weekly hours) the manager
+ * saw and assigns past (ADR 019); a warning not named, or any other rule, stops it.
+ */
+export async function assignShift(
+  shift: string,
+  worker: string,
+  accept: string[] = [],
+): Promise<ActionResult<string>> {
   return run('assign', async (tx) => {
     const r = await sql<{ id: string }>`
-      select hr.assign(${shift}::uuid, ${worker}::uuid) as id`.execute(tx);
+      select hr.assign(${shift}::uuid, ${worker}::uuid, ${accept}::text[]) as id`.execute(tx);
     return r.rows[0]!.id;
   });
 }
@@ -160,12 +168,34 @@ export async function withdrawSwap(swap: string): Promise<ActionResult<null>> {
   });
 }
 
-/** Approve through hr.approve_swap, which re-runs the rostering rules first. */
-export async function approveSwap(swap: string, comment: string): Promise<ActionResult<string>> {
+/**
+ * Approve through hr.approve_swap, which re-runs the rostering rules first. `accept` names
+ * the warnings the approver saw (ADR 019).
+ */
+export async function approveSwap(
+  swap: string,
+  comment: string,
+  accept: string[] = [],
+): Promise<ActionResult<string>> {
   return run('approve_swap', async (tx) => {
     const r = await sql<{ s: string }>`
-      select hr.approve_swap(${swap}::uuid, ${comment || null}) as s`.execute(tx);
+      select hr.approve_swap(${swap}::uuid, ${comment || null}, ${accept}::text[]) as s`.execute(
+      tx,
+    );
     return r.rows[0]!.s;
+  });
+}
+
+/** The approver gives the shift to someone else instead: no further approval (ADR 019). */
+export async function reassignSwap(
+  swap: string,
+  worker: string,
+  accept: string[] = [],
+): Promise<ActionResult<string>> {
+  return run('reassign_swap', async (tx) => {
+    const r = await sql<{ id: string }>`
+      select hr.reassign_swap(${swap}::uuid, ${worker}::uuid, ${accept}::text[]) as id`.execute(tx);
+    return r.rows[0]!.id;
   });
 }
 

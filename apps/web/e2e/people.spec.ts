@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { addDays, formatDay, localToday, weekStart } from '../lib/dates';
-import { PLACE, placeId, runExecutor, setupPeopleWeek, signInAs } from './helpers';
+import { asMigrator, PLACE, placeId, runExecutor, setupPeopleWeek, signInAs } from './helpers';
 
 // Rostering, leave, swaps, clock-in and events through the real screens on the production
 // build (ADR 008), in Test Bar 3.0's Floor Service: the Bar Manager rosters the server and
@@ -169,6 +169,107 @@ test('shift swap: offered, accepted by the colleague, approved by the manager', 
   const shift = evening(page, MONDAY, 'server');
   await expect(shift).toContainText('E2E Server 3.0');
   await expect(shift).not.toContainText('Test Server 3.0');
+});
+
+test('swap past a rest warning: offered and accepted, the approver gives it to someone else', async ({
+  page,
+}) => {
+  // ADR 019. A third server for the approver to pick, and a morning shift for the
+  // colleague that leaves 5 h rest before Wednesday's 17:00 shift
+  const WED = addDays(W, 2);
+  const floor = await placeId(PLACE.floor);
+  await asMigrator(
+    `with t as (select id from core.tenant where code = 'TEST-COMPANY'),
+     u as (insert into core.app_user (tenant_id, kind, display_name, username)
+           select id, 'human', 'E2E Server B 3.0', 'e2e.server-b.3.0' from t
+           on conflict (tenant_id, username) where username is not null
+           do update set status = 'active' returning id, tenant_id),
+     w as (insert into hr.worker (tenant_id, owner_user_id, org_node_id, role_code)
+           select tenant_id, id, $1, 'SERVER' from u
+           on conflict (tenant_id, owner_user_id) do nothing returning 1)
+     insert into core.role_assignment (tenant_id, user_id, group_id, node_id)
+     select u.tenant_id, u.id, g.id, $1 from u
+       join core.security_group g on g.tenant_id = u.tenant_id and g.code = 'STAFF'
+      where not exists (select 1 from core.role_assignment ra
+                         where ra.user_id = u.id and ra.group_id = g.id)`,
+    [floor],
+  );
+  await asMigrator(
+    `with w as (select w.* from hr.worker w join core.app_user u on u.id = w.owner_user_id
+                 where u.username = 'e2e.server.3.0'),
+          s as (insert into hr.shift (tenant_id, org_node_id, local_date, start_at, end_at,
+                                      role_code, status, published_at)
+                select w.tenant_id, $1, $2::date, ($2::date + time '06:00') at time zone 'Asia/Kolkata',
+                       ($2::date + time '12:00') at time zone 'Asia/Kolkata', 'SERVER',
+                       'published', now()
+                  from w returning *)
+     insert into hr.shift_assignment (tenant_id, shift_id, worker_id, owner_user_id,
+                                      org_node_id, start_at, end_at)
+     select s.tenant_id, s.id, w.id, w.owner_user_id, s.org_node_id, s.start_at, s.end_at
+       from s, w`,
+    [floor, WED],
+  );
+
+  await signInAs(page, 'Test Bar Manager 3.0');
+  await assign(page, WED, 'server', 'Test Server 3.0');
+  const publish = page.getByRole('button', { name: /^Publish/ });
+  if (await publish.isEnabled()) await publish.click();
+
+  // the offer and the acceptance go through: the rest rule is the approver's to weigh
+  await signInAs(page, 'Test Server 3.0');
+  await page.goto('/roster/my');
+  await page
+    .getByTestId('my-shifts')
+    .getByTestId('shift-day')
+    .filter({ hasText: formatDay(WED) })
+    .getByRole('link', { name: 'Swap' })
+    .click();
+  await page.getByLabel('E2E Server 3.0', { exact: true }).check();
+  await page.getByRole('button', { name: 'Send offer' }).click();
+  await page.waitForURL('**/roster/swaps');
+
+  await signInAs(page, 'E2E Server 3.0');
+  await page.goto('/roster/swaps');
+  const offer = page
+    .getByTestId('swaps')
+    .locator('li')
+    .filter({ hasText: 'Test Server 3.0 offers you' })
+    .filter({ hasText: formatDay(WED) })
+    .first();
+  await offer.getByRole('button', { name: 'Accept' }).click();
+  await expect(offer).toContainText('Waiting for manager approval');
+
+  await signInAs(page, 'Test Floor Manager 3.0');
+  await page.goto('/inbox');
+  await page
+    .getByTestId('inbox-item')
+    .filter({ hasText: 'Shift Swap' })
+    .filter({ hasText: 'E2E Server 3.0' })
+    .getByRole('link', { name: 'Review' })
+    .first()
+    .click();
+  await expect(page.getByTestId('swap-warnings')).toContainText(
+    'E2E Server 3.0 would have 5 h rest between shifts (needs 10 h).',
+  );
+  await expect(page.getByRole('button', { name: 'Approve anyway' })).toBeVisible();
+  const other = page.getByTestId('reassign-candidate').filter({ hasText: 'E2E Server B 3.0' });
+  await other.getByRole('button', { name: 'Assign' }).click();
+  await expect(other.getByRole('button', { name: 'Assigned' })).toBeVisible();
+
+  await openWeek(page);
+  const shift = evening(page, WED, 'server');
+  await expect(shift).toContainText('E2E Server B 3.0');
+  await expect(shift).not.toContainText('Test Server 3.0');
+
+  await signInAs(page, 'Test Server 3.0');
+  await page.goto('/roster/swaps');
+  await expect(
+    page
+      .getByTestId('swaps')
+      .locator('li')
+      .filter({ hasText: formatDay(WED) })
+      .first(),
+  ).toContainText('Your manager gave the shift to someone else');
 });
 
 test('clock in outside the fence is recorded and flagged for the manager', async ({

@@ -870,6 +870,26 @@ when, and applying puts file 04's values back.
 - **After the next 02:15 run.** **Roster → Exceptions** may show **Left early** next to
   the usual kinds.
 
+#### Releasing swap warnings (with Prompt 11a)
+
+One more migration, `20261014100000_swap_warnings` (ADR 019). No stack change, no new
+parameter, no re-import. Who may approve swaps or change rosters is unchanged; the
+approver gains one option, assigning the shift to someone else, which needs the roster
+right they already hold.
+
+- **What the migration does.**
+  - Minimum rest and the weekly hours cap become warnings. Offering and accepting a swap
+    no longer stop on them; approving, and a manager assigning a shift, go ahead when the
+    person names them ("Approve anyway", "Assign anyway").
+  - `hr.reassign_swap`: the approver gives the shift to someone else.
+  - `warnings_accepted` on assignments and swaps, `reassigned` as a swap status.
+
+**Deploy order.** It ships in the same Deploy run as the 11a release above.
+
+**Check.** As `test.commis.1.0`, offer a shift to a colleague who would go over the
+weekly hours: the offer is sent. When they accept, the approver's review shows the warning
+and **Approve anyway**, and lists the others who could take it.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.
