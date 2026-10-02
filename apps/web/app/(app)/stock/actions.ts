@@ -11,6 +11,7 @@ import {
   presignWastageUpload,
   type UploadTarget,
 } from '@/lib/photos';
+import { requireModule } from '@/lib/modules-server';
 
 // Supply writes. Each calls one inv.* SECURITY DEFINER function, which checks core.can()
 // on the node and changes stock only through ledger rows (CLAUDE.md rules 2 and 3). The
@@ -203,6 +204,7 @@ export async function recordProduction(
   idempotencyKey: string,
 ): Promise<ActionResult<{ id: string }>> {
   return run('record_production', async (tx) => {
+    await requireModule(tx, 'production');
     const r = await sql<{ id: string }>`
       select inv.record_production(${node}::uuid, ${prepItem}::uuid, ${qtyMade}::numeric,
                                    ${json(actual)}::jsonb, ${idempotencyKey}) as id`.execute(tx);

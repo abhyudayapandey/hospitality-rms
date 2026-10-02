@@ -1,4 +1,5 @@
 import { syncProcessDefs, syncProductAccess } from '@outlet-ops/workflow';
+import { MODULE_CODES } from '@outlet-ops/domain';
 import type { ClientBase } from 'pg';
 import {
   FILES,
@@ -242,6 +243,18 @@ class Loader {
         `update core.tenant set settings = settings || jsonb_build_object('leave_hr_approval', $2::boolean)
           where id = $1 and (settings ->> 'leave_hr_approval')::boolean is distinct from $2`,
         [this.tenant, cu.leave_hr_approval],
+      );
+    }
+    // modules on or off (ADR 026): only the ones the file sets
+    for (const m of MODULE_CODES) {
+      const on = cu[m];
+      if (on === undefined) continue;
+      await this.c.query(
+        `update core.tenant
+            set settings = jsonb_set(settings, '{modules}',
+                                     coalesce(settings -> 'modules', '{}') || jsonb_build_object($2::text, $3::boolean))
+          where id = $1 and (settings -> 'modules' -> $2::text) is distinct from to_jsonb($3::boolean)`,
+        [this.tenant, m, on],
       );
     }
     // groups, domains and the policy matrix the assignments below refer to

@@ -8,7 +8,7 @@ const TABS = [
   { href: '/tasks/team', label: 'Team', show: (t: TaskTabs) => t.team },
   { href: '/tasks/checklists', label: 'Checklists', show: (t: TaskTabs) => t.checklists },
   { href: '/tasks/prep', label: 'Prep list', show: (t: TaskTabs) => t.prep },
-  { href: '/tasks/maintenance', label: 'Maintenance', show: () => true },
+  { href: '/tasks/maintenance', label: 'Maintenance', show: (t: TaskTabs) => t.maintenance },
 ] as const;
 
 export type TasksTab = (typeof TABS)[number]['href'];

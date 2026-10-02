@@ -27,6 +27,8 @@ export const ERROR_MESSAGES = {
   INVALID_WORKER: "That person isn't an active worker here.",
   INVALID_WEEK: 'Pick a week starting on a Monday.',
   INVALID_REPORT: "That report doesn't exist.",
+  MODULE_OFF: "This isn't switched on for your company.",
+  INVALID_MODULE: "That module doesn't exist.",
   SHIFT_STARTED: 'That shift has already started, so it can no longer be changed.',
   SHIFT_OVERLAP: 'They are already on a shift at that time.',
   REST_RULE: 'That leaves too little rest between their shifts.',

@@ -16,6 +16,7 @@ import {
   type UploadTarget,
 } from '@/lib/photos';
 import type { Schedule, StepInput } from '@/lib/tasks-view';
+import { requireModule } from '@/lib/modules-server';
 
 // Task, checklist and maintenance writes (ADR 020). Each calls one ops.* SECURITY DEFINER
 // function, which checks core.can() or the task's assignee and raises stable codes
@@ -111,6 +112,7 @@ export async function recordTaskBatch(
   idempotencyKey: string,
 ): Promise<ActionResult<{ id: string }>> {
   return run('record_task_batch', async (tx) => {
+    await requireModule(tx, 'production');
     const r = await sql<{ id: string }>`
       select ops.record_task_batch(${task}::uuid, ${qty}, ${idempotencyKey}) as id`.execute(tx);
     revalidatePath('/stock', 'layout');
@@ -126,6 +128,7 @@ export async function reportExpired(
   batchNo: string,
 ): Promise<ActionResult<{ id: string }>> {
   return run('report_expired', async (tx) => {
+    await requireModule(tx, 'production');
     const r = await sql<{ id: string }>`
       select ops.report_expired(${store}::uuid, ${item}::uuid, ${batchNo}) as id`.execute(tx);
     revalidatePath('/stock', 'layout');
@@ -140,6 +143,7 @@ export async function assignExpiry(
   remake: boolean,
 ): Promise<ActionResult<null>> {
   return run('assign_expiry', async (tx) => {
+    await requireModule(tx, 'production');
     await sql`select ops.assign_expiry(${task}::uuid, ${user}::uuid, ${due}::timestamptz,
                                        ${remake})`.execute(tx);
     return null;
@@ -156,6 +160,7 @@ export async function discardExpired(
   photoKey: string | null,
 ): Promise<ActionResult<{ id: string }>> {
   return run('discard_expired', async (tx) => {
+    await requireModule(tx, 'production');
     const r = await sql<{ id: string }>`
       select ops.discard_expired(${task}::uuid, ${qty}, ${photoKey}) as id`.execute(tx);
     revalidatePath('/stock', 'layout');
@@ -174,6 +179,7 @@ export async function saveChecklist(input: {
   steps: StepInput[];
 }): Promise<ActionResult<{ id: string }>> {
   return run('save_template', async (tx) => {
+    await requireModule(tx, 'checklists');
     const r = await sql<{ id: string }>`
       select ops.save_template(${input.id}::uuid, ${input.node}::uuid, ${input.name},
                                ${json(input.schedule)}::jsonb, ${json(input.assign)}::jsonb,
@@ -184,6 +190,7 @@ export async function saveChecklist(input: {
 
 export async function archiveChecklist(id: string): Promise<ActionResult<null>> {
   return run('archive_template', async (tx) => {
+    await requireModule(tx, 'checklists');
     await sql`select ops.archive_template(${id}::uuid)`.execute(tx);
     return null;
   });
@@ -198,6 +205,7 @@ export async function createPrepTasks(input: {
   assign: Assign;
 }): Promise<ActionResult<{ ids: string[] }>> {
   return run('create_prep_tasks', async (tx) => {
+    await requireModule(tx, 'prep_lists');
     const r = await sql<{ ids: string[] }>`
       select ops.create_prep_tasks(${input.store}::uuid, ${json(input.lines)}::jsonb,
                                    ${input.due}::timestamptz, ${json(input.assign)}::jsonb) as ids`.execute(
@@ -217,6 +225,7 @@ export async function raiseMaintenance(input: {
   idempotencyKey: string;
 }): Promise<ActionResult<{ id: string }>> {
   return run('raise_maintenance', async (tx) => {
+    await requireModule(tx, 'maintenance');
     const r = await sql<{ id: string }>`
       select ops.raise_maintenance(${input.place}::uuid, ${input.title}, ${input.description},
                                    ${input.photoKey}, ${input.idempotencyKey}) as id`.execute(tx);
@@ -226,6 +235,7 @@ export async function raiseMaintenance(input: {
 
 export async function assignMaintenance(id: string, user: string): Promise<ActionResult<null>> {
   return run('assign_maintenance', async (tx) => {
+    await requireModule(tx, 'maintenance');
     await sql`select ops.assign_maintenance(${id}::uuid, ${user}::uuid)`.execute(tx);
     return null;
   });
@@ -233,6 +243,7 @@ export async function assignMaintenance(id: string, user: string): Promise<Actio
 
 export async function startMaintenance(id: string): Promise<ActionResult<null>> {
   return run('start_maintenance', async (tx) => {
+    await requireModule(tx, 'maintenance');
     await sql`select ops.start_maintenance(${id}::uuid)`.execute(tx);
     return null;
   });
@@ -244,6 +255,7 @@ export async function closeMaintenance(
   note: string,
 ): Promise<ActionResult<null>> {
   return run('close_maintenance', async (tx) => {
+    await requireModule(tx, 'maintenance');
     await sql`select ops.close_maintenance(${id}::uuid, ${photoKey}, ${note})`.execute(tx);
     return null;
   });

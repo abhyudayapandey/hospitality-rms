@@ -49,9 +49,11 @@ export default async function MyWeekReport({ searchParams }: { searchParams: Sea
         )}
       </div>
       <ReportSections report="my_week" rows={rows} />
-      <Link href="/leave" className="block text-sm text-slate-700 underline">
-        Leave balance and requests
-      </Link>
+      {shell.domains.has('LEAVE') && (
+        <Link href="/leave" className="block text-sm text-slate-700 underline">
+          Leave balance and requests
+        </Link>
+      )}
     </div>
   );
 }

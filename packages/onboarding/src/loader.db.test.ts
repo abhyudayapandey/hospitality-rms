@@ -1,3 +1,4 @@
+import { MODULE_CODES } from '@outlet-ops/domain';
 import { join } from 'node:path';
 import { attemptAs, closePools, inRolledBackTx, loadSeedIds } from '@outlet-ops/db/test-helpers';
 import type { PoolClient } from 'pg';
@@ -214,10 +215,9 @@ describe('loader errors', () => {
       const by = 'real.solo.bar-manager';
       const files = {
         ...copy,
-        '00_customer.csv': copy['00_customer.csv']!.replace(
-          'TEST-SOLO-COMPANY',
-          'REAL-SOLO',
-        ).replace(/,yes(\r?\n?)$/, ',no$1'),
+        '00_customer.csv':
+          'customer_code,company_name,country,currency,default_timezone,is_test\r\n' +
+          'REAL-SOLO,Real Solo Bar,India,INR,Asia/Kolkata,no\r\n',
         '25_shifts_TEST_DATA_ONLY.csv': `roster_node_code,shift_name,job_role_code,week,days,username,rostered_by\r\nTEST-SOLO-BAR-BAR,Bar Evening,BARTENDER,1,Mon,real.solo.bartender,${by}\r\n`,
         '26_production_TEST_DATA_ONLY.csv': `store_node_code,prep_item_code,day,time,quantity,made_by\r\nTEST-SOLO-BAR-KITCHEN-STORE,MINT-CHUTNEY,-1,10:00,500,${by}\r\n`,
         '27_sales_TEST_DATA_ONLY.csv': `outlet_code,day,menu_item_code,quantity,posted_by\r\nTEST-SOLO-BAR,-1,MASALA-FRIES,3,${by}\r\n`,
@@ -375,6 +375,49 @@ describe('approvers (ADR 009)', () => {
         `select settings as s from core.tenant where code = 'TEST-SOLO-COMPANY'`,
       );
       expect(rows[0]!.s).toMatchObject({ leave_hr_approval: false });
+    });
+  });
+
+  it("the module columns are the database's modules (ADR 026)", async () => {
+    await inRolledBackTx(async (c) => {
+      const { rows } = await c.query<{ codes: string[] }>('select core.module_codes() as codes');
+      expect([...rows[0]!.codes].sort()).toEqual([...MODULE_CODES].sort());
+    });
+  });
+
+  it('sets modules from file 00; blank keeps what the owner chose; a second load changes nothing (ADR 026)', async () => {
+    await inRolledBackTx(async (c) => {
+      const modules = async () =>
+        (
+          await c.query<{ m: Record<string, boolean> }>(
+            `select settings -> 'modules' as m from core.tenant where code = 'TEST-SOLO-COMPANY'`,
+          )
+        ).rows[0]!.m;
+      // the test data turns Events and Swaps off
+      expect(await modules()).toEqual({ events: false, swaps: false });
+      const [head, row] = solo['00_customer.csv']!.trim().split(/\r?\n/);
+      const withMaint = { ...solo, '00_customer.csv': `${head},maintenance\n${row},no\n` };
+      expect((await loadCustomer(c, withMaint, { nested: true })).issues).toEqual([]);
+      expect(await modules()).toEqual({ events: false, swaps: false, maintenance: false });
+      const audit = async () =>
+        (
+          await c.query<{ n: number }>(
+            `select count(*)::int as n from audit.log where table_name = 'core.tenant'
+               and row_id = (select id from core.tenant where code = 'TEST-SOLO-COMPANY')`,
+          )
+        ).rows[0]!.n;
+      const before = await audit();
+      expect((await loadCustomer(c, withMaint, { nested: true })).issues).toEqual([]);
+      expect(await audit()).toBe(before);
+      // a blank column leaves the module as it is
+      const blank = { ...solo, '00_customer.csv': `${head},maintenance\n${row},\n` };
+      expect((await loadCustomer(c, blank, { nested: true })).issues).toEqual([]);
+      expect((await modules()).maintenance).toBe(false);
+      const bad = { ...solo, '00_customer.csv': `${head},maintenance\n${row},maybe\n` };
+      expect((await loadCustomer(c, bad, { nested: true })).issues[0]).toMatchObject({
+        file: '00_customer.csv',
+        column: 'maintenance',
+      });
     });
   });
 });

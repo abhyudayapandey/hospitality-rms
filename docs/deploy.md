@@ -1080,6 +1080,28 @@ change, no new parameter, no product sync change and no re-import.
 - **`test.cost-controller.1.0`.** **Reports → Menu costs and prices** opens in about a
   second.
 
+#### Releasing modules per company and tap counts (UX-3b)
+
+One migration, `20261020100000_modules` (ADR 026). There is no stack change, no new
+parameter and no product sync change.
+
+- **What changes in the app.**
+  - **Admin → Modules** for the Account Owner: Events, Shift swaps, Leave, Production,
+    Prep lists, Checklists, Maintenance, and Menu and sales, each on or off. Everything is on
+    until the owner turns something off, so nothing changes for existing customers.
+  - Leads who build the roster see "N open slots this week" on Home, linking to that day.
+- **Test data.** File 00 of Test Solo Bar Co. turns Events and Swaps off. Re-import it only
+  if you want production's test customers to show that.
+
+**Deploy order.** Run the Deploy workflow.
+
+**Check.**
+
+- **`test.solo.bar-manager`.** Admin → Modules shows Events and Shift swaps **Off** (after the
+  re-import) or all **On** (without it). Turning Maintenance off asks first; turn it back on.
+- **`test.executive-chef.1.0`.** Home's Needs attention has "open slots this week"; tapping
+  it opens the roster on that day.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

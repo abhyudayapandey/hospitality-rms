@@ -230,6 +230,14 @@ one customer's roles or one person's rights differ from the rest?
 
 ## Progress
 
+- **UX-3b done** (ADR 026): modules on or off per company (U-26). The Account Owner turns
+  Events, Shift swaps, Leave, Production, Prep lists, Checklists, Maintenance, and Menu and
+  sales on or off in Admin → Modules (or file 00). Off means hidden from every screen and
+  writes refused; the data is kept. Taps counted for nine common jobs (U-27,
+  `e2e/journeys.spec.ts`): none needs more than two taps from Home to reach its screen.
+  Filling an open slot took four; Home's "Needs attention" now links to the first day with
+  an open slot.
+
 - **UX-3 done** (ADR 025): Roster is two sides, **Me** (My shifts, Clock, Leave, Swaps) and
   **Team** (Roster, Exceptions, Events), with a Me | Team switch for people who have both.
   Frontline staff see only Me, and read the week's events on My shifts. The week roster is a

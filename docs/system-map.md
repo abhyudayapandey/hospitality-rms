@@ -106,6 +106,11 @@ works shifts, and **Team** (Roster, Exceptions, Events) for people who build ros
 resolve exceptions or plan events, and for people above outlet level. Frontline staff see
 only Me.
 
+**Modules** (ADR 026). Each company can switch off Events, Shift swaps, Leave, Production,
+Prep lists, Checklists, Maintenance, and Menu and sales (Admin → Modules, Account Owner
+only). What is off disappears from the table above for everyone in that company. Test Solo
+Bar Co. has Events and Swaps off.
+
 ### Approval processes (Inbox)
 
 LEAVE, SHIFT_SWAP, PURCHASE_ORDER, STOCK_ADJUSTMENT (count differences, wastage over the

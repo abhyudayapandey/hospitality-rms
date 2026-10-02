@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { failure, type ActionResult } from '@outlet-ops/domain';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser, type Tx } from '@/lib/db';
+import { requireModule } from '@/lib/modules-server';
 
 // Menu and recipe edits (ADR 014). Each calls one SECURITY DEFINER function that checks
 // MENU modify at every store the recipe or price is used at; a change is a new version from
@@ -51,6 +52,7 @@ export async function setPrice(
   effectiveFrom: string,
 ): Promise<ActionResult<{ id: string }>> {
   return run('set_price', async (tx) => {
+    await requireModule(tx, 'menu_sales');
     const r = await sql<{ id: string }>`
       select menu.set_price(${menuItemId}::uuid, ${outletId}::uuid, ${price}::numeric,
                             ${effectiveFrom}::date) as id`.execute(tx);
@@ -66,6 +68,7 @@ export async function postSales(
   idempotencyKey: string,
 ): Promise<ActionResult<{ id: string }>> {
   return run('post_sales', async (tx) => {
+    await requireModule(tx, 'menu_sales');
     const r = await sql<{ id: string }>`
       select menu.post_sales(${outletId}::uuid, ${date}::date, ${JSON.stringify(lines)}::jsonb,
                              'manual', ${idempotencyKey}) as id`.execute(tx);

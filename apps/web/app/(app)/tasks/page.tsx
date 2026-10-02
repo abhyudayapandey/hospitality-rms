@@ -15,9 +15,9 @@ export default async function MyTasksPage() {
   const data = await withUser(user.id, async (tx) => {
     const tasks = await myTasks(tx);
     const tabs = await taskTabs(tx);
-    const fixes = (await maintenanceList(tx)).filter(
-      (r) => r.assigned_to === user.id && r.status !== 'done',
-    );
+    const fixes = tabs.maintenance
+      ? (await maintenanceList(tx)).filter((r) => r.assigned_to === user.id && r.status !== 'done')
+      : [];
     return { tasks, tabs, fixes };
   });
   const groups = groupTasks(data.tasks);
@@ -36,12 +36,14 @@ export default async function MyTasksPage() {
             New task
           </Link>
         )}
-        <Link
-          href="/tasks/maintenance/new"
-          className="flex min-h-12 items-center justify-center rounded-xl bg-white font-medium ring-1 ring-slate-300"
-        >
-          Report a problem
-        </Link>
+        {data.tabs.maintenance && (
+          <Link
+            href="/tasks/maintenance/new"
+            className="flex min-h-12 items-center justify-center rounded-xl bg-white font-medium ring-1 ring-slate-300"
+          >
+            Report a problem
+          </Link>
+        )}
       </div>
       {data.fixes.length > 0 && (
         <section className="space-y-2">
