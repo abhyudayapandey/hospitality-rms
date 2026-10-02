@@ -113,7 +113,11 @@ export default async function InboxPage() {
                 step: r.step,
                 amount: formatMoney(r.amount),
                 waitingSince: formatWhen(r.activated_at),
-                from: r.initiator_name,
+                // a discard sent in the lead's name for whoever threw the batch away (ADR 021)
+                from:
+                  typeof r.payload.recorded_by_name === 'string'
+                    ? `${r.initiator_name} for ${r.payload.recorded_by_name}`
+                    : r.initiator_name,
                 ...moduleLink(r),
               }}
             />

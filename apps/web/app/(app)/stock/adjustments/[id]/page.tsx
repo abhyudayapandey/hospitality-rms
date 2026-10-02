@@ -29,12 +29,16 @@ export default async function AdjustmentPage({ params }: { params: Promise<{ id:
       wf_request_id: string;
       created_at: Date;
       initiator: string | null;
+      recorded_by: string | null;
       can_view: boolean;
       pending_for_me: boolean;
     }>`
       select a.id, a.tenant_id, a.delivery_node_id, core.node_name(a.delivery_node_id) as node_name,
              a.reason, a.status, a.amount, a.wf_request_id, a.created_at,
              (select initiator_name from wf.my_inbox() where request_id = a.wf_request_id) as initiator,
+             -- sent in the lead's name for the person who threw an expired batch away (ADR 021)
+             (select payload ->> 'recorded_by_name' from wf.request where id = a.wf_request_id)
+               as recorded_by,
              core.can('STOCK_ADJUSTMENTS', 'view', null, a.delivery_node_id) as can_view,
              exists (select 1 from wf.my_inbox() where request_id = a.wf_request_id) as pending_for_me
         from inv.stock_adjustment a where a.id = ${id}::uuid`.execute(tx);
@@ -76,6 +80,12 @@ export default async function AdjustmentPage({ params }: { params: Promise<{ id:
           {a.node_name} · {formatWhen(a.created_at)}
           {a.initiator ? ` · by ${a.initiator}` : ''}
         </p>
+        {a.recorded_by && (
+          <p className="text-sm text-slate-600" data-testid="recorded-by">
+            Thrown away by {a.recorded_by}; sent for them by the system
+            {a.initiator ? ` on behalf of ${a.initiator}` : ''}.
+          </p>
+        )}
         <p className="mt-1 text-lg font-semibold tabular-nums">{formatMoney(a.amount)}</p>
         <p className="text-sm text-slate-600">Status: {a.status}</p>
       </div>
