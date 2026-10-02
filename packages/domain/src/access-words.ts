@@ -39,6 +39,7 @@ export const DOMAIN_WORDS: Readonly<Record<string, string>> = {
   COMPANY_SETTINGS: 'company settings',
   SECURITY_ROLES: 'security roles',
   WF_CONFIG: 'approval settings',
+  REPORTS: 'company reports',
 };
 
 export interface AccessSummary {

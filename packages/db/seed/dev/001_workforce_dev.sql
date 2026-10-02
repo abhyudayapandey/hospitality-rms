@@ -33,7 +33,8 @@ select t.tenant_id, t.org_node_id, t.id, d.day,
      from generate_series(0, 6) i) d
  where t.archived_at is null
    and extract(isodow from d.day)::int = any (t.weekdays)
-on conflict (template_id, local_date) where template_id is not null do nothing;
+on conflict (template_id, local_date) where template_id is not null and status <> 'cancelled'
+do nothing;
 
 -- each worker's template: the earliest one for their role at their home place
 insert into hr.shift_assignment (tenant_id, shift_id, worker_id, owner_user_id, org_node_id,

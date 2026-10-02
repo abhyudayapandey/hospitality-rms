@@ -1486,7 +1486,7 @@ class Loader {
                                        and a.status = 'assigned') as assigned
                  from hr.shift s join hr.shift_template t on t.id = s.template_id
                 where t.org_node_id = $1 and t.name = $2 and t.role_code = $3
-                  and s.local_date = $4::date + $6::int - 1`,
+                  and s.local_date = $4::date + $6::int - 1 and s.status <> 'cancelled'`,
               [node, s.shift_name, s.job_role_code, weekStart, worker, d],
             )
           ).rows[0]!;

@@ -15,6 +15,8 @@ export interface NavFeatures {
   menu: boolean;
   /** a store where they record production */
   production: boolean;
+  /** business reports (an outlet or department), only their own week, or none (ADR 023) */
+  reports: 'business' | 'mine' | 'none';
 }
 
 export interface NavInput extends NavFeatures {
@@ -27,7 +29,16 @@ export interface NavInput extends NavFeatures {
 export const MAX_NAV_ITEMS = 5;
 
 export type NavKey =
-  'home' | 'inbox' | 'tasks' | 'production' | 'stock' | 'menu' | 'roster' | 'requests' | 'admin';
+  | 'home'
+  | 'inbox'
+  | 'tasks'
+  | 'production'
+  | 'stock'
+  | 'menu'
+  | 'roster'
+  | 'requests'
+  | 'admin'
+  | 'reports';
 
 export const NAV_ITEMS: Readonly<Record<NavKey, NavItem>> = {
   home: { href: '/', label: 'Home', icon: '⌂' },
@@ -41,6 +52,8 @@ export const NAV_ITEMS: Readonly<Record<NavKey, NavItem>> = {
   requests: { href: '/requests', label: 'Requests', icon: '≡' },
   // user administration (ADR 011) as well as the security roles view
   admin: { href: '/admin', label: 'Admin', icon: '⚙' },
+  // reports (ADR 023): in the nav only for the cost controller and the office profile
+  reports: { href: '/reports', label: 'Reports', icon: '◔' },
 };
 
 /** Whether the person can open each item at all (the nav or Home). */
@@ -59,6 +72,8 @@ export function canOpen(key: NavKey, i: NavInput): boolean {
       return i.domains.has('TASKS');
     case 'admin':
       return i.domains.has('USER_ACCESS') || i.domains.has('SECURITY_ROLES');
+    case 'reports':
+      return i.reports !== 'none';
     default:
       return true;
   }
@@ -88,17 +103,22 @@ const PROFILES: Readonly<Record<NavProfile, readonly (NavKey | readonly NavKey[]
   outlet: ['home', 'inbox', 'stock', 'roster', 'tasks'],
   department: ['home', 'inbox', 'tasks', 'roster', ['stock', 'requests']],
   store: ['home', 'inbox', 'stock', 'tasks', 'roster'],
-  cost: ['home', 'inbox', 'stock', 'menu', 'requests'],
+  // Reports takes Menu's place; Menu opens from Reports and Home (docs/reporting.md 6)
+  cost: ['home', 'inbox', 'stock', 'reports', 'requests'],
   frontline: ['home', 'tasks', ['stock', 'production', 'admin'], 'roster', 'inbox'],
   // HR, administrators, auditors: no tasks of their own on the floor
-  office: ['home', 'inbox', ['admin', 'roster'], 'requests'],
+  // the Account Owner reads every report (REPORTS); HR the departments' attendance
+  office: ['home', 'inbox', 'reports', ['admin', 'roster'], 'requests'],
 };
 
 export function visibleNav(i: NavInput): NavItem[] {
   const keys: NavKey[] = [];
   for (const slot of PROFILES[navProfile(i.groups)]) {
     const options = typeof slot === 'string' ? [slot] : slot;
-    const pick = options.find((k) => canOpen(k, i) && !keys.includes(k));
+    // a report slot only for business reports: "My week" opens from Home
+    const pick = options.find(
+      (k) => canOpen(k, i) && !keys.includes(k) && (k !== 'reports' || i.reports === 'business'),
+    );
     if (pick) keys.push(pick);
   }
   return keys.slice(0, MAX_NAV_ITEMS).map((k) => NAV_ITEMS[k]);

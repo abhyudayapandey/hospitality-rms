@@ -198,6 +198,18 @@ The variance redesign (U-14) and the owner's view (U-18) are part of the reporti
 
 ## Progress
 
+- **UX-2 done** (ADR 023): Home is "Today". Cards:
+  - your shift, with Clock in or out;
+  - your tasks, overdue first;
+  - waiting for you;
+  - needs attention (leads);
+  - today's numbers;
+  - at most four shortcuts, with the rest under "All screens".
+
+  Reports takes Menu's place in the cost controller's nav and joins the owner's and HR's.
+  Roster "Add template shifts" now covers only tomorrow to day 7, asks first, and offers
+  "Discard drafts" (ADR 024).
+
 - **UX-1 done** (ADR 022): job titles; the place switcher (Place, short names, defaults,
   Change on Report a problem); Home date and labels; staff flags; Clock wording; units and
   dates. U-17 and U-23 needed no change (see ADR 022).

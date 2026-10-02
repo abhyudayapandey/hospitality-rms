@@ -2,7 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { requireUser, type CurrentUser } from './auth/server';
 import { sql, withUser } from './db';
-import type { NavInput } from './nav';
+import { navProfile, type NavInput } from './nav';
 
 export interface NodeRow {
   id: string;
@@ -37,6 +37,8 @@ export interface Shell {
   menu: boolean;
   /** they record production somewhere (the Production tab) */
   production: boolean;
+  /** what Reports offers them (ADR 023) */
+  reports: NavInput['reports'];
 }
 
 const MENU_DOMAINS = ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM'];
@@ -73,16 +75,32 @@ export const loadShell = cache(async (): Promise<Shell> => {
         ? await sql<{ v: boolean }>`
             select exists (select 1 from core.screen_places('production')) as v`.execute(tx)
         : null;
+    // frontline staff have only their own week; others ask rpt.my_reports() (ADR 023)
+    const groupSet = new Set(groups.rows.map((g) => g.access_group));
+    const listed =
+      navProfile(groupSet) === 'frontline'
+        ? null
+        : await sql<{ report: string }>`select report from rpt.my_reports()`.execute(tx);
+    const reports: NavInput['reports'] = listed
+      ? listed.rows.some((r) => r.report !== 'my_week')
+        ? 'business'
+        : listed.rows.length > 0
+          ? 'mine'
+          : 'none'
+      : home.rows.length > 0
+        ? 'mine'
+        : 'none';
     return {
       user,
       domains: new Map(domains.rows.map((d) => [d.domain, d.access])),
-      groups: new Set(groups.rows.map((g) => g.access_group)),
+      groups: groupSet,
       nodes: nodes.rows,
       home: home.rows[0] ?? null,
       inboxCount: inbox.rows[0]?.n ?? 0,
       unreadCount: unread.rows[0]?.n ?? 0,
       menu: menu?.rows[0]?.v ?? false,
       production: production?.rows[0]?.v ?? false,
+      reports,
     };
   });
 });
@@ -94,5 +112,6 @@ export function navInput(shell: Shell): NavInput {
     domains: new Set(shell.domains.keys()),
     menu: shell.menu,
     production: shell.production,
+    reports: shell.reports,
   };
 }

@@ -1019,6 +1019,43 @@ parameter, no re-import, no access change.
 - **`test.commis.1.0`.** **Tasks → Report a problem** shows "Place: Test Hotel & Bar 1.0 –
   Kitchen" with **Change**.
 
+#### Releasing the Today home and the first reports (UX-2, R-1)
+
+There are two migrations: `20261018100000_template_shifts_ahead` (ADR 024) and
+`20261018110000_reports` (ADR 023). There is no stack change, no new parameter and no
+re-import.
+
+- **Product sync** (part of Deploy). It adds the REPORTS domain and gives it to
+  ACCOUNT_OWNER (view). No group assignments change.
+- **Report tables.** They fill at the first nightly run (02:15 India time) after the
+  release.
+  - Until then, today and yesterday still show, because they are worked out live, but
+    the "vs last week" comparison is empty.
+  - The nightly job is the existing `outlet-ops-attendance-nightly` timer; it now also
+    runs `rpt.nightly()`.
+- **What changes in the app.**
+  - Home is "Today": shift, tasks, waiting for you, needs attention, today's numbers, and
+    at most four shortcuts with the rest under **All screens**.
+  - **Reports** has Outlet today, Department today and My week.
+  - The cost controller's nav has Reports instead of Menu, and the owner and HR have
+    Reports in theirs.
+  - Roster's **Add template shifts** covers tomorrow to day 7, asks first, and **Discard
+    drafts** takes its place while there are drafts.
+
+**Deploy order.** Run the Deploy workflow. It runs the migrations, the product sync and
+the restart.
+
+**Check.**
+
+- **`test.general-manager.1.0`.** Home shows **Today so far · Test Hotel & Bar 1.0**, with
+  sales and food cost. **Open the report** → day before shows yesterday's figures.
+- **`test.server.3.0`.** Home has a **My week** shortcut. **Reports** lists only My week;
+  `/reports/outlet` says "You don't have access to this report."
+- **`test.account-owner`.** The nav has **Reports**; Outlet today lets them pick any of
+  the four outlets.
+- **`test.bar-manager.3.0`.** On **Roster** for next week, **Add template shifts** asks
+  first; **Cancel** adds nothing.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

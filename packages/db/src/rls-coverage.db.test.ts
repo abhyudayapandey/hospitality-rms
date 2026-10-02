@@ -78,7 +78,7 @@ describe('extensions and search_path', () => {
     const { rows } = await migratorPool.query<{ fn: string; config: string[] | null }>(
       `select p.oid::regprocedure::text as fn, p.proconfig as config
          from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-        where p.prosecdef and n.nspname in ('core', 'audit', 'hr', 'inv', 'ops', 'wf', 'ai', 'menu')
+        where p.prosecdef and n.nspname in ('core', 'audit', 'hr', 'inv', 'ops', 'wf', 'ai', 'menu', 'rpt')
         order by 1`,
     );
     expect(rows.length).toBeGreaterThan(0);
