@@ -13,7 +13,7 @@ import { MenuTabs } from '../parts';
 // Cost control (ADR 015): per store and period, opening + receipts + transfers in −
 // transfers out − wastage − theoretical use (sales and production) against the counts,
 // with unexplained loss highlighted; and food and beverage cost % for the outlet. The store
-// is the screen's "Viewing:" place (ADR 016); only the dates are in the form.
+// is the screen's "Place:" place (ADR 016); only the dates are in the form.
 export default async function VariancePage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const to = isoDate(param(sp, 'to'), todayIn());
@@ -36,7 +36,7 @@ export default async function VariancePage({ searchParams }: { searchParams: Sea
           expired: await expiredWastage(tx, store.id, from, to),
         };
       });
-  if (!data) return <Empty>You don&rsquo;t see costs anywhere.</Empty>;
+  if (!data) return <Empty>You don&apos;t see costs anywhere.</Empty>;
   const moved = data.rows.filter(
     (r) =>
       Number(r.opening) !== 0 || Number(r.expected_closing) !== 0 || Number(r.variance_qty) !== 0,
@@ -191,7 +191,7 @@ export default async function VariancePage({ searchParams }: { searchParams: Sea
           </ul>
         )}
         <p className="text-xs text-slate-500">
-          Highlighted: a loss beyond the item&rsquo;s count tolerance. Count the store at the end of
+          Highlighted: a loss beyond the item&apos;s count tolerance. Count the store at the end of
           the period to see its variance.{' '}
           <Link className="underline" href={`/stock/count?node=${data.place.store_id}`}>
             Start a count

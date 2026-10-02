@@ -8,6 +8,7 @@ import { isUuid } from '@/lib/inventory';
 import { candidates, swapChecks } from '@/lib/people';
 import { warningPhrase, warningSentence } from '@/lib/roster-warnings';
 import { ReassignButton, SwapDecision } from './swap-decision';
+import { jobTitles } from '@/lib/job-titles';
 
 const STATUS: Record<string, string> = {
   submitted: 'Waiting for approval',
@@ -25,6 +26,7 @@ export default async function SwapReviewPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   if (!isUuid(id)) return <Empty>Not found.</Empty>;
   const user = await requireUser();
+  const title = await withUser(user.id, jobTitles);
   const data = await withUser(user.id, async (tx) => {
     const r = await sql<{
       id: string;
@@ -87,7 +89,7 @@ export default async function SwapReviewPage({ params }: { params: Promise<{ id:
         <h1 className="text-lg font-semibold">Shift swap</h1>
         <p className="text-sm text-slate-600 tabular-nums">
           {formatDay(s.local_date)} · {formatSpan(s.start_at, s.end_at, s.tz ?? 'Asia/Kolkata')} ·{' '}
-          {s.role_code.toLowerCase()}
+          {title(s.role_code)}
         </p>
         <p className="mt-2" data-testid="swap-parties">
           {s.from_name ?? 'Worker'} → {s.to_name ?? 'Worker'}
@@ -101,7 +103,7 @@ export default async function SwapReviewPage({ params }: { params: Promise<{ id:
 
       {blockers.length > 0 && (
         <div role="alert" className="rounded-xl bg-rose-50 p-4 text-sm text-rose-800">
-          <p className="font-medium">This swap can’t be approved</p>
+          <p className="font-medium">This swap can&apos;t be approved</p>
           <ul className="mt-1 list-disc pl-5">
             {blockers.map((b) => (
               <li key={b.code}>

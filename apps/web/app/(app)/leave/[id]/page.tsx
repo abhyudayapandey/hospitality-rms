@@ -6,6 +6,7 @@ import { sql, withUser } from '@/lib/db';
 import { isUuid } from '@/lib/inventory';
 import { balances } from '@/lib/people';
 import { RequestDecision } from '@/components/request-decision';
+import { jobTitles } from '@/lib/job-titles';
 
 // A leave request: the worker, dates and days, their balance for that type, and the
 // assigned shifts that approval would drop, all shown before the approver decides.
@@ -13,6 +14,7 @@ export default async function LeaveRequestPage({ params }: { params: Promise<{ i
   const { id } = await params;
   if (!isUuid(id)) return <Empty>Not found.</Empty>;
   const user = await requireUser();
+  const title = await withUser(user.id, jobTitles);
   const data = await withUser(user.id, async (tx) => {
     const l = await sql<{
       id: string;
@@ -105,7 +107,7 @@ export default async function LeaveRequestPage({ params }: { params: Promise<{ i
             {drops.map((d) => (
               <li key={d.assignment_id} className="tabular-nums">
                 {formatDay(d.local_date)} · {formatSpan(d.start_at, d.end_at, tz)} ·{' '}
-                {d.role_code.toLowerCase()}
+                {title(d.role_code)}
               </li>
             ))}
           </ul>

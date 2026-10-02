@@ -15,12 +15,26 @@ export function formatMoney(amount: string | number | null, currency = 'INR'): s
   }).format(Number(amount));
 }
 
-export function formatWhen(d: Date | string): string {
-  return new Intl.DateTimeFormat('en-IN', {
+/**
+ * When something happened, in one short style (UX review U-25): "today, 2:54 pm",
+ * "yesterday, 9:10 am", else "2 Oct, 2:54 pm". Times are the outlet's (Asia/Kolkata).
+ */
+export function formatWhen(d: Date | string, now: Date = new Date()): string {
+  const tz = 'Asia/Kolkata';
+  const at = new Date(d);
+  const day = (x: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(x);
+  const time = new Intl.DateTimeFormat('en-IN', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: tz,
+  }).format(at);
+  if (day(at) === day(now)) return `today, ${time}`;
+  if (day(at) === day(new Date(now.getTime() - 86_400_000))) return `yesterday, ${time}`;
+  const date = new Intl.DateTimeFormat('en-IN', {
     day: 'numeric',
     month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Asia/Kolkata',
-  }).format(new Date(d));
+    timeZone: tz,
+  }).format(at);
+  return `${date}, ${time}`;
 }

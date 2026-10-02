@@ -144,7 +144,7 @@ Requests escalate up the operational chain, skipping any level an outlet doesn't
 
 ## 6. Functional requirements by module
 
-### 6.1 Inventory _(Built at outlet level; store level in progress)_
+### 6.1 Inventory _(Built, outlet and store level)_
 
 - **INV-1** Item catalogue per customer: code, name, category, base unit, perishable flag, standard cost, preferred supplier.
 - **INV-2** Per stock location: par level, reorder quantity, count tolerance.
@@ -165,12 +165,12 @@ Every stock change follows this path: the database checks the user's access at t
 - **PO-2** Approval by the outlet head; above a threshold (default ₹50,000) also by the area manager or owner.
 - **PO-3** Receiving against a PO by stock users; receipts capped at ordered quantity plus 5%; any excess recorded as a supplier-excess adjustment for approval.
 
-### 6.3 Transfers _(Built for central kitchen → outlet; store-to-store in progress)_
+### 6.3 Transfers _(Built: central kitchen → outlet and store to store)_
 
 - **TR-1** Requested by stock users; dispatched by whoever runs the sending location; received by whoever runs the receiving location.
 - **TR-2** Stock leaves at dispatch and arrives at receipt; shortfalls post as transit loss; dispatched transfers show as in transit and cannot be rejected.
 
-### 6.4 Rostering _(Built at outlet level; department level in progress)_
+### 6.4 Rostering _(Built, outlet and department level)_
 
 - **ROS-1** Shift templates per department (or outlet), weekly roster generation, assignment, publish.
 - **ROS-2** Every assignment checked for overlap, minimum rest, weekly hours cap, approved leave, role match and home place; rules are per-customer settings (defaults 10 h rest, 48 h/week, 10 min late threshold). Minimum rest and the weekly hours cap are warnings: the manager sees them and can assign anyway; the others block (ADR 019).
@@ -200,8 +200,8 @@ Every stock change follows this path: the database checks the user's access at t
 
 ### 6.8 Notifications and dashboard
 
-- **NT-1** In-app notifications with unread badge for roster publish, swap and leave decisions _(Built)_. Web push _(Planned)_.
-- **DB-1** Manager dashboard: stock below par, today's roster coverage, open approvals, open exceptions, transfers in transit _(Planned)_.
+- **NT-1** In-app notifications with unread badge for roster publish, swap and leave decisions, tasks, reminders and escalations _(Built)_. Web push _(Planned)_.
+- **DB-1** Manager dashboard: stock below par, today's roster coverage, open approvals, open exceptions, transfers in transit _(Planned: Home becomes "Today", `docs/ux-review.md` U-1, and "Today's numbers", `docs/reporting.md`)_.
 
 ### 6.9 Menu, recipes, production and cost control _(Built; POS import later)_
 
@@ -248,6 +248,14 @@ Spec and test data: file 29 (checklists, any customer) and files 30 to 32 (test 
 | Department head        | Give and manage in their department | Edit       | Assign and manage their department's |
 | Outlet manager         | Give and manage in the outlet       | Edit       | Assign and manage in the outlet      |
 | Area manager, AI agent | View                                | View       | View                                 |
+
+### 6.11 Reporting _(Proposed, `docs/reporting.md`)_
+
+- **RPT-2** Every report respects place-based access: a person sees their own figures, their department's, or their outlet's and above, according to the domain the figures come from. A new LABOUR_COST domain shows labour totals, never one person's pay.
+- **RPT-3** A nightly job keeps daily summaries per store, outlet and department (stock movements and value, sales and recipe cost, hours and labour, tasks) for the last 35 days; today is computed live.
+- **RPT-4** Daily flash per outlet and department: sales, food % and beverage % against recipe, labour % and prime cost, wastage, task compliance, attendance flags, open approvals and repairs. Area and company views are league tables of outlets, never one blended figure.
+- **RPT-5** Cost control: actual vs theoretical by item, purchase price variance, supplier and transfer fill rates, stock valuation and days on hand, dead stock, menu engineering.
+- **RPT-6** Staff see only "My week": hours, punctuality, leave and their tasks.
 
 ## 7. Workflows and approvals
 
@@ -362,17 +370,20 @@ One EC2 server in Mumbai runs the web app, the background jobs and the database;
 
 ## 11. Release plan and roadmap
 
-| Stage                       | Scope                                                                                                                                                                                                                                                                                                                                                                                              | Status                  |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| Foundation                  | Security core, workflow engine, mobile app shell, AWS deployment                                                                                                                                                                                                                                                                                                                                   | Done                    |
-| Operations modules          | Inventory, orders, transfers; rosters, attendance, leave, swaps, events                                                                                                                                                                                                                                                                                                                            | Done (outlet level)     |
-| Structure and access (PR A) | Departments and stores, outlet formats, new access groups, job-role defaults, onboarding loader                                                                                                                                                                                                                                                                                                    | In progress             |
-| Approvals and stores (PR B) | Approval chains to the owner, admin guardrails, store-level inventory, department rosters                                                                                                                                                                                                                                                                                                          | Next                    |
-| Admin                       | In-app user administration; platform admin console with customer creation and file import                                                                                                                                                                                                                                                                                                          | Next                    |
-| Pilot readiness             | Manager dashboard, restore drill, alarms, pilot walkthrough on production; recipes (RCP-1), sales CSV import (SAL-1), bar count mode (INV-7), offline counts (INV-8), PO to supplier (PO-4), variance and valuation reports (RPT-1)                                                                                                                                                                | Next                    |
-| Pilot                       | One real outlet, \[2–4\] weeks                                                                                                                                                                                                                                                                                                                                                                     | \[Date\]                |
-| AI layer                    | Bill scanning to draft receipts (BILL-1) first; then signals, recommendations, accept-to-approve                                                                                                                                                                                                                                                                                                   | After pilot data exists |
-| Later                       | POS integration, web push, payroll export, supplier integrations, structure editing in the app, cross-outlet benchmarking, AI auto-approval within limits; theoretical vs actual variance (VAR-1), Petpooja sales connector, expiry tracking (INV-9), usage-based order quantities (PO-5), excise register (EXC-1), event costing (EV-3), production planning, Tally/Zoho export, menu engineering | Planned                 |
+| Stage                       | Scope                                                                                                                                                                                                                                                                                                                              | Status                  |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| Foundation                  | Security core, workflow engine, mobile app shell, AWS deployment                                                                                                                                                                                                                                                                   | Done                    |
+| Operations modules          | Inventory, orders, transfers; rosters, attendance, leave, swaps, events                                                                                                                                                                                                                                                            | Done                    |
+| Structure and access (PR A) | Departments and stores, outlet formats, new access groups, job-role defaults, onboarding loader                                                                                                                                                                                                                                    | Done                    |
+| Approvals and stores (PR B) | Approval chains to the owner, admin guardrails, store-level inventory, department rosters                                                                                                                                                                                                                                          | Done                    |
+| Admin                       | In-app user administration; platform admin console with customer creation and file import                                                                                                                                                                                                                                          | Done                    |
+| Menu, production and tasks  | Recipes and costing (RCP-1), production, daily sales, variance, expiry tracking (INV-9); tasks, checklists, prep lists (production planning), maintenance                                                                                                                                                                          | Done                    |
+| Simpler app                 | Home becomes "Today", words and codes, place defaults, roster split into Me / Team, stock hub, HR and owner screens (`docs/ux-review.md`, UX-1 to UX-5)                                                                                                                                                                            | Proposed                |
+| Reporting                   | Daily summaries, role-based reports, daily flash, actual vs theoretical, purchasing, labour %, prime cost, league tables (`docs/reporting.md`, R-1 to R-4; supersedes RPT-1 and DB-1)                                                                                                                                              | Proposed                |
+| Pilot readiness             | Manager dashboard, restore drill, alarms, pilot walkthrough on production; sales CSV import (SAL-1), bar count mode (INV-7), offline counts (INV-8), PO to supplier (PO-4); Today home (UX-2) and the first reports (R-1)                                                                                                          | Next                    |
+| Pilot                       | One real outlet, \[2–4\] weeks                                                                                                                                                                                                                                                                                                     | \[Date\]                |
+| AI layer                    | Bill scanning to draft receipts (BILL-1) first; then signals, recommendations, accept-to-approve                                                                                                                                                                                                                                   | After pilot data exists |
+| Later                       | POS integration, web push, payroll export, supplier integrations, structure editing in the app, cross-outlet benchmarking, AI auto-approval within limits; theoretical vs actual variance (VAR-1), Petpooja sales connector, usage-based order quantities (PO-5), excise register (EXC-1), event costing (EV-3), Tally/Zoho export | Planned                 |
 
 ## 12. Competitor analysis: Barometer Technologies
 
@@ -557,6 +568,15 @@ Photos add under ₹30 a month in every row and are included in the totals. Othe
 4. AI provider: Anthropic API vs Amazon Bedrock, decided when the AI layer is built.
 5. When to move from the AWS free plan to paid (and to a managed database) — by 15 Feb 2027 at the latest.
 6. Weekly-off-aware leave counting (currently calendar days) — Phase 2.
+7. **One person, two jobs (on hold).** Access already adds up: a person has one job role
+   plus any extra access groups (file 08 or Admin), and approvals stay safe (no one
+   approves their own request; one person approving two steps in a row approves once).
+   Rostering does not: a person can only be rostered in their own job role
+   (`ROLE_MISMATCH`), so a cashier who also serves, or a manager covering a cook's shift,
+   can't be put on the other role's shifts. The fix is "also works as": extra job roles
+   per person, for rostering only, adding no access. On hold, since small outlets that
+   share jobs (QSRs) are not the first market. Outlet formats can already give one job
+   role combined access (for example a manager with HR built in).
 
 **Risks**
 

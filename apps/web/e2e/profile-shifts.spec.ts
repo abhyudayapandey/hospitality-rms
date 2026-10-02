@@ -83,7 +83,7 @@ test.describe('outlet location', () => {
   test('a department head cannot set it', async ({ page }) => {
     await signInAs(page, 'Test Executive Chef 1.0');
     await page.goto('/settings/location');
-    await expect(page.getByText('You can’t set the location of any place.')).toBeVisible();
+    await expect(page.getByText("You can't set the location of any place.")).toBeVisible();
   });
 });
 

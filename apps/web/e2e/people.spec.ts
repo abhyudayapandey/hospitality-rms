@@ -314,7 +314,7 @@ test('exceptions: a department’s queue says whom each waits for; the GM picks 
   // departments only on the switcher (ADR 016): the hotel itself falls back to one of them
   await page.goto(`/roster/exceptions?node=${await placeId('TEST-HOTEL-1.0')}`);
   await expect(
-    page.getByRole('combobox', { name: 'Viewing' }).locator('option', { hasText: /Store$/ }),
+    page.getByRole('combobox', { name: 'Place' }).locator('option', { hasText: /Store$/ }),
   ).toHaveCount(0);
   await page.goto(`/roster/exceptions?node=${await placeId('TEST-HOTEL-1.0-HOUSEKEEPING')}`);
   const housekeeping = page
@@ -343,7 +343,7 @@ test('events: the manager plans one with staff needed; staff can read it', async
   await form.getByLabel('Headcount').fill('3');
   await form.getByRole('button', { name: 'Create event' }).click();
   await page.waitForURL(/\/events\/[0-9a-f-]{36}/);
-  await expect(page.getByTestId('event-requirements')).toContainText('3 × server');
+  await expect(page.getByTestId('event-requirements')).toContainText('3 × Server');
 
   await signInAs(page, 'Test Server 3.0');
   await page.goto('/events');

@@ -8,6 +8,7 @@ import { withUser } from '@/lib/db';
 import { param, type SearchParams } from '@/lib/inventory';
 import { peopleContext, weekRoster } from '@/lib/people';
 import { RemoveButton, WeekActions } from './week-actions';
+import { jobTitles } from '@/lib/job-titles';
 
 // The manager's week: build from templates, assign, publish. Mobile-first: one column,
 // grouped by day; each shift shows who is on it and the open slots.
@@ -21,6 +22,7 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
   const asked = param(sp, 'week');
   const monday = weekStart(isIsoDate(asked) ? asked : localToday(ctx.tz));
   const user = await requireUser();
+  const title = await withUser(user.id, jobTitles);
   const shifts = await withUser(user.id, (tx) => weekRoster(tx, node.id, monday));
   const canEdit = ctx.can('ROSTER', 'modify');
   const drafts = shifts.filter((s) => s.status === 'draft').length;
@@ -79,8 +81,8 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
                           {formatSpan(s.start_at, s.end_at, ctx.tz)}
                         </span>
                         <span className="text-xs text-slate-500">
-                          {s.template_name ?? 'Shift'} · {s.role_code.toLowerCase()} ·{' '}
-                          {s.people.length}/{s.headcount}
+                          {s.template_name ?? 'Shift'} · {title(s.role_code)} · {s.people.length}/
+                          {s.headcount}
                         </span>
                       </span>
                       <span

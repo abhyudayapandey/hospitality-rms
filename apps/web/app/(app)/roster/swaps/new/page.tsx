@@ -6,6 +6,7 @@ import { sql, withUser } from '@/lib/db';
 import { isUuid, param, type SearchParams } from '@/lib/inventory';
 import { peopleContext } from '@/lib/people';
 import { OfferForm } from './offer-form';
+import { jobTitles } from '@/lib/job-titles';
 
 // Offer one of my shifts to a colleague with the same role at my location. Names come
 // from hr.worker_directory (display name, role, node only).
@@ -14,6 +15,7 @@ export default async function NewSwapPage({ searchParams }: { searchParams: Sear
   const assignment = param(await searchParams, 'assignment');
   if (!isUuid(assignment)) return <Empty>That shift can&apos;t be swapped.</Empty>;
   const user = await requireUser();
+  const title = await withUser(user.id, jobTitles);
   const data = await withUser(user.id, async (tx) => {
     const a = await sql<{
       id: string;
@@ -49,7 +51,7 @@ export default async function NewSwapPage({ searchParams }: { searchParams: Sear
         <h1 className="text-lg font-semibold">Offer a shift</h1>
         <p className="text-sm text-slate-600 tabular-nums">
           {formatDay(shift.local_date)} · {formatSpan(shift.start_at, shift.end_at, ctx.tz)} ·{' '}
-          {shift.role_code.toLowerCase()}
+          {title(shift.role_code)}
         </p>
       </div>
       {colleagues.length === 0 ? (

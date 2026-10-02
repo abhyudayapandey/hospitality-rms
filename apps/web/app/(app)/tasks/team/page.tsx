@@ -40,7 +40,7 @@ export default async function TeamTasksPage({ searchParams }: { searchParams: Se
           place
             ? {
                 screen: 'tasks',
-                places: places.map((p) => ({ id: p.id, name: p.name })),
+                places: places.map((p) => ({ id: p.id, name: p.name, kind: p.kind })),
                 current: place.id,
               }
             : undefined

@@ -8,7 +8,7 @@ import { isScreen, withChoice } from '@/lib/place-screens';
 import { rememberedPlaces } from '@/lib/places';
 
 /**
- * Remembers the place chosen on a screen's "Viewing:" switcher (ADR 016). Only a place
+ * Remembers the place chosen on a screen's "Place:" switcher (ADR 016). Only a place
  * core.screen_places() offers on that screen is kept. The page itself follows ?node=.
  */
 export async function rememberPlace(

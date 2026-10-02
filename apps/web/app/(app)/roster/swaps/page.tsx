@@ -7,6 +7,7 @@ import { withUser } from '@/lib/db';
 import type { SearchParams } from '@/lib/inventory';
 import { mySwaps, peopleContext } from '@/lib/people';
 import { SwapResponse } from './swap-response';
+import { jobTitles } from '@/lib/job-titles';
 
 const STATUS: Record<string, string> = {
   proposed: 'Waiting for your colleague',
@@ -23,6 +24,7 @@ const STATUS: Record<string, string> = {
 export default async function SwapsPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await peopleContext(searchParams);
   const user = await requireUser();
+  const title = await withUser(user.id, jobTitles);
   const swaps = await withUser(user.id, (tx) => mySwaps(tx));
   return (
     <div className="space-y-4">
@@ -44,7 +46,7 @@ export default async function SwapsPage({ searchParams }: { searchParams: Search
               </p>
               <p className="text-sm text-slate-600 tabular-nums">
                 {formatDay(localDate(s.start_at, ctx.tz))} ·{' '}
-                {formatSpan(s.start_at, s.end_at, ctx.tz)} · {s.role_code.toLowerCase()}
+                {formatSpan(s.start_at, s.end_at, ctx.tz)} · {title(s.role_code)}
               </p>
               {s.note && <p className="mt-1 text-sm">“{s.note}”</p>}
               <p className="mt-1 text-xs text-slate-500">{STATUS[s.status] ?? s.status}</p>

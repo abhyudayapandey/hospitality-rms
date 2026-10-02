@@ -44,7 +44,7 @@ export function LocationForm({ place }: Props) {
     const p = await currentPosition(0);
     setLocating(false);
     if (p.lat === null || p.lng === null) {
-      setError('Your location couldn’t be read. Allow location for this site and try again.');
+      setError("Your location couldn't be read. Allow location for this site and try again.");
       return;
     }
     setLat(p.lat.toString());

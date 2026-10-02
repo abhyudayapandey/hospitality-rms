@@ -21,8 +21,10 @@ export default async function ReportProblemPage({ searchParams }: { searchParams
           place
             ? {
                 screen: 'report',
-                places: places.map((p) => ({ id: p.id, name: p.name })),
+                places: places.map((p) => ({ id: p.id, name: p.name, kind: p.kind })),
                 current: place.id,
+                // most people report where they work (UX U-8)
+                collapsed: true,
               }
             : undefined
         }

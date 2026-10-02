@@ -2,6 +2,14 @@
 
 Sep 27, 2026 · @AP
 
+> **Reading this today.** This is the original design. Since then:
+>
+> - `CLAUDE.md`'s AWS overrides replace the Supabase parts.
+> - The ADRs in `docs/decisions/` record every later decision: structure and access (009),
+>   approvals (010), admin and platform (011–013), menu and cost control (014–015), tasks
+>   (020).
+> - `docs/system-map.md` describes the system as it is now.
+
 ## 1. Scope and conventions
 
 The MVP is one modular monolith: a Next.js PWA on Supabase (Postgres 15, Auth, RLS, Realtime, Storage, pg\_cron, Edge Functions), with the Claude API for the AI layer. Security is enforced in Postgres, not in app code.

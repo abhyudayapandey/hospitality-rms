@@ -8,6 +8,7 @@ import { isUuid, type SearchParams } from '@/lib/inventory';
 import { candidates, peopleContext } from '@/lib/people';
 import { warningPhrase } from '@/lib/roster-warnings';
 import { AssignButton } from './assign-button';
+import { jobTitles } from '@/lib/job-titles';
 
 // Assign a shift: every worker at the node with the shift's role, assignable ones first.
 // Rest and weekly hours are warnings: shown, with "Assign anyway" (ADR 019). Any other
@@ -24,6 +25,7 @@ export default async function ShiftPage({
   const ctx = await peopleContext(searchParams, 'roster');
   if (!ctx.can('ROSTER', 'modify')) return <Empty>You can&apos;t change the roster.</Empty>;
   const user = await requireUser();
+  const title = await withUser(user.id, jobTitles);
   const data = await withUser(user.id, async (tx) => {
     const s = await sql<{
       org_node_id: string;
@@ -56,12 +58,12 @@ export default async function ShiftPage({
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <h1 className="text-lg font-semibold">{formatDay(shift.local_date)}</h1>
         <p className="text-sm text-slate-600 tabular-nums">
-          {formatSpan(shift.start_at, shift.end_at, ctx.tz)} · {shift.role_code.toLowerCase()} ·{' '}
+          {formatSpan(shift.start_at, shift.end_at, ctx.tz)} · {title(shift.role_code)} ·{' '}
           {shift.filled}/{shift.headcount} filled
         </p>
       </div>
       {people.length === 0 ? (
-        <Empty>No other {shift.role_code.toLowerCase()} works here.</Empty>
+        <Empty>No other {title(shift.role_code)} works here.</Empty>
       ) : (
         <ul className="space-y-2" data-testid="candidates">
           {people.map((p) => (

@@ -10,6 +10,8 @@ import { createPrepTasks, type Assign } from '../actions';
 import { AssignPicker } from '../assign-picker';
 
 const n = (s: string) => Number(Number(s).toFixed(3));
+/** '2,000 g': Indian digit grouping, the unit on every figure (UX U-24) */
+const q = (s: string, unit: string) => `${n(s).toLocaleString('en-IN')} ${unit}`;
 
 export function PrepForm({
   store,
@@ -78,9 +80,9 @@ export function PrepForm({
             <span className="min-w-0 text-sm">
               <span className="block font-medium">{l.name}</span>
               <span className="block text-xs text-slate-500">
-                par {n(l.par)} · on hand {n(l.on_hand)}
-                {n(l.event_need) > 0 && ` · events ${n(l.event_need)}`}
-                {n(l.open_tasks) > 0 && ` · in prep ${n(l.open_tasks)}`} {l.unit}
+                par {q(l.par, l.unit)} · on hand {q(l.on_hand, l.unit)}
+                {n(l.event_need) > 0 && ` · events ${q(l.event_need, l.unit)}`}
+                {n(l.open_tasks) > 0 && ` · in prep ${q(l.open_tasks, l.unit)}`}
               </span>
             </span>
             {canCreate ? (

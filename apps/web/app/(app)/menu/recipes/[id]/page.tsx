@@ -41,7 +41,7 @@ export default async function RecipePage({
     return { recipe, lines, steps, places, place, costs, outlet, priced };
   });
   if (!data) {
-    return <Empty>You can&rsquo;t open this recipe.</Empty>;
+    return <Empty>You can&apos;t open this recipe.</Empty>;
   }
   const { recipe, lines, steps, place, costs, outlet, priced } = data;
   const cost = new Map(costs?.map((c) => [c.line_no, c]) ?? []);

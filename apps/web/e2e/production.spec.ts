@@ -26,7 +26,7 @@ test('a chef de partie records a batch where it is made; it shows with its expir
 test('a bartender posts no sales', async ({ page }) => {
   await signInAs(page, 'Test Bartender 1.0');
   await page.goto('/menu/sales');
-  await expect(page.locator('main')).toContainText('You don’t post sales anywhere.');
+  await expect(page.locator('main')).toContainText("You don't post sales anywhere.");
   await page.goto('/menu/recipes');
   await expect(
     page.getByRole('navigation', { name: 'Menu' }).getByRole('link', { name: 'Sales' }),
@@ -43,7 +43,7 @@ test('the general manager posts a day’s bar sales; stock goes below zero and t
   await expect(page.getByTestId('sales-outlet')).toHaveText('Test Hotel & Bar 1.0');
   // far more gin and tonics than there are tonic cans: the sale is never blocked
   await main.getByRole('textbox', { name: 'Sold Gin & Tonic' }).fill('400');
-  await main.getByRole('button', { name: 'Save the day’s sales' }).click();
+  await main.getByRole('button', { name: "Save the day's sales" }).click();
   await expect(main.getByRole('status')).toContainText('stock is updated');
 
   await signInAs(page, 'Test Bar Manager 1.0');

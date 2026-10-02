@@ -8,6 +8,7 @@ import { events, peopleContext } from '@/lib/people';
 import { EventForm } from '../event-form';
 import { eventFormOptions } from '../options';
 import { CancelEvent } from './cancel-event';
+import { jobTitles } from '@/lib/job-titles';
 
 export default async function EventPage({
   params,
@@ -20,6 +21,7 @@ export default async function EventPage({
   const ctx = await peopleContext(searchParams, 'events');
   if (!isUuid(id)) return <Empty>Event not found.</Empty>;
   const user = await requireUser();
+  const title = await withUser(user.id, jobTitles);
   const data = await withUser(user.id, async (tx) => {
     const [e] = await events(tx, '', '', id);
     if (!e) return null;
@@ -45,7 +47,7 @@ export default async function EventPage({
           {e.requirements.map((r, i) => (
             <li key={i} className="tabular-nums">
               {r.kind === 'role'
-                ? `${r.headcount} × ${r.role_code!.toLowerCase()} · ${formatTime(r.starts_at!, tz)}–${formatTime(r.ends_at!, tz)}`
+                ? `${r.headcount} × ${title(r.role_code)} · ${formatTime(r.starts_at!, tz)}–${formatTime(r.ends_at!, tz)}`
                 : `${r.item_name ?? 'Item'} · ${Number(r.qty)} ${r.base_uom ?? ''}`}
             </li>
           ))}

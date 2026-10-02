@@ -994,6 +994,31 @@ Adding a nullable column is a catalog change only; the audit table is not rewrit
 batch's value. Locally, `tasks-access.db.test.ts` → "the over-limit discard records who
 threw it away" covers the request, the audit rows and the Expired trail.
 
+#### Releasing plain words and place defaults (UX-1)
+
+One migration, `20261017100000_screen_place_defaults` (ADR 022). No stack change, no new
+parameter, no re-import, no access change.
+
+- **What the migration does.** `core.screen_places` orders places differently: home first,
+  then the outlet; on Roster and Exceptions, departments with shifts or open flags come
+  first. The same places are listed.
+- **What changes in the app.**
+  - Job titles replace job role codes.
+  - The place switcher reads **Place**, with short names grouped by outlet.
+  - Home heads with the date.
+  - My shifts folds earlier attendance flags.
+  - Clock says when today's shift has ended.
+  - One short date style.
+
+**Deploy order.** Run the Deploy workflow (it runs the migration and restarts the app).
+
+**Check.**
+
+- **`test.general-manager.1.0`.** **Roster** opens on a department with shifts, not Admin
+  & Finance. The roster says "Chef de Partie", not `chef_de_partie`.
+- **`test.commis.1.0`.** **Tasks → Report a problem** shows "Place: Test Hotel & Bar 1.0 –
+  Kitchen" with **Change**.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

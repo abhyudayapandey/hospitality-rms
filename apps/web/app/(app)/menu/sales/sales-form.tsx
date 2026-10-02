@@ -88,7 +88,7 @@ export function SalesForm({ outlet, date, rows }: { outlet: string; date: string
       <ErrorBox message={error} />
       <StatusBox message={done} />
       <button className={primaryButton} disabled={!hydrated || pending}>
-        {pending ? 'Saving…' : 'Save the day’s sales'}
+        {pending ? 'Saving…' : "Save the day's sales"}
       </button>
     </form>
   );
