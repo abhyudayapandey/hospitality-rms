@@ -192,3 +192,4 @@ test.auditor,Test Auditor,AUDITOR,TEST-COMPANY,Test Company,this place and every
 test.general-manager.1.0,Test General Manager 1.0,USER_ADMIN,TEST-HOTEL-1.0,Test Hotel & Bar 1.0,this place and everything below,extra (file 08)
 test.front-desk-executive.2.0,Test Front Desk Executive 2.0,USER_ADMIN,TEST-GUEST-HOUSE-2.0,Test Guest House 2.0,this place and everything below,extra (file 08)
 test.sous-chef.1.1,Test Sous Chef 1.1,STOCK_USER,TEST-HOTEL-1.0-KITCHEN-STORE,Test Hotel & Bar 1.0 – Kitchen Store,this place and everything below,extra (file 08)
+test.sous-chef.1.1,Test Sous Chef 1.1,KITCHEN_LEAD,TEST-HOTEL-1.1-KITCHEN,Test Hotel & Bar 1.1 – Kitchen,this place and everything below,extra (file 08)

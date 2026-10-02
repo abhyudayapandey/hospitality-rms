@@ -6,8 +6,9 @@ import { processDefSchema, type ProcessDef } from './types';
 
 /**
  * Writes the product-wide access definition into every tenant (or one): domains, access
- * groups, the domain policy matrix and bp_policy. Authoritative: a tenant's policy and
- * bp_policy rows that are not in the definition are removed. Run as migrator; part of
+ * groups, the domain policy matrix and bp_policy. Authoritative for product groups: their
+ * policy and bp_policy rows that are not in the definition are removed. A company's own
+ * groups (kind 'custom', ADR 027) and their rights are left alone. Run as migrator; part of
  * `pnpm db:seed`, every deploy (sync-defs) and the onboarding loader.
  */
 export async function syncProductAccess(client: ClientBase, tenantId?: string): Promise<void> {
@@ -24,6 +25,17 @@ export async function syncProductAccess(client: ClientBase, tenantId?: string): 
   );
   const bp: readonly BpRule[] = BP_POLICY;
   for (const t of tenants) {
+    // a product group added since a company built a group with the same code
+    const clash = await client.query<{ code: string }>(
+      `select code from core.security_group
+        where tenant_id = $1 and kind = 'custom' and code = any ($2)`,
+      [t, groups.map((g) => g.code)],
+    );
+    if (clash.rows.length) {
+      throw new Error(
+        `tenant ${t}: custom groups use product codes: ${clash.rows.map((r) => r.code).join(', ')}`,
+      );
+    }
     await client.query(
       `insert into core.domain (tenant_id, code, hierarchy_type, admin)
        select $1, d.code, d.tree, d.admin
@@ -50,6 +62,8 @@ export async function syncProductAccess(client: ClientBase, tenantId?: string): 
        gone as (
          delete from core.domain_policy dp
           where dp.tenant_id = $1
+            and dp.group_id not in (select id from core.security_group
+                                     where tenant_id = $1 and kind = 'custom')
             and not exists (select 1 from want w
                              where w.group_id = dp.group_id and w.domain_id = dp.domain_id)
          returning 1)

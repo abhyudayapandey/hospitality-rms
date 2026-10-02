@@ -29,7 +29,7 @@ describe('product access', () => {
            from core.domain_policy dp
            join core.security_group g on g.id = dp.group_id
            join core.domain d on d.id = dp.domain_id
-          where dp.tenant_id = $1 order by 1`,
+          where dp.tenant_id = $1 and g.kind <> 'custom' order by 1`,
         [id],
       );
       expect(rows.map((r) => r.k).sort()).toEqual(want);
@@ -72,6 +72,34 @@ describe('product access', () => {
       await syncProductAccess(c);
       expect(await policy('STAFF', 'ROSTER')).toBe('view');
       expect(await policy('STAFF', 'COMPENSATION')).toBeNull();
+    });
+  });
+
+  it("leaves a company's own groups alone, and refuses one that took a product code (ADR 027)", async () => {
+    await inRolledBackTx(async (c) => {
+      const rights = async () =>
+        (
+          await c.query<{ k: string }>(
+            `select string_agg(d.code || ':' || dp.access, ',' order by d.code) as k
+               from core.domain_policy dp join core.security_group g on g.id = dp.group_id
+               join core.domain d on d.id = dp.domain_id
+              where g.code = 'KITCHEN_LEAD' and g.kind = 'custom'`,
+          )
+        ).rows[0]!.k;
+      const before = await rights();
+      expect(before).toContain('ROSTER:modify');
+      await syncProductAccess(c);
+      expect(await rights()).toBe(before);
+      // a later product group with the same code as a company's group: the sync stops
+      await c.query(
+        `update core.security_group set code = 'SUPPLY_VIEWER_X' where code = 'SUPPLY_VIEWER'`,
+      );
+      await c.query(
+        `update core.security_group set code = 'SUPPLY_VIEWER' where code = 'KITCHEN_LEAD'`,
+      );
+      await expect(syncProductAccess(c)).rejects.toThrow(
+        /custom groups use product codes: SUPPLY_VIEWER/,
+      );
     });
   });
 

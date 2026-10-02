@@ -2,3 +2,4 @@ username,access_group,node_code,include_descendants,reason
 test.general-manager.1.0,USER_ADMIN,TEST-HOTEL-1.0,true,GM is also User Admin for Hotel 1.0 only
 test.front-desk-executive.2.0,USER_ADMIN,TEST-GUEST-HOUSE-2.0,true,Front desk executive manages Guest House users
 test.sous-chef.1.1,STOCK_USER,TEST-HOTEL-1.0-KITCHEN-STORE,true,Example: covering Hotel 1.0's kitchen store while its chef is on leave
+test.sous-chef.1.1,KITCHEN_LEAD,TEST-HOTEL-1.1-KITCHEN,true,Runs the 1.1 kitchen with the executive chef: a custom group (file 05) that approves like a department head

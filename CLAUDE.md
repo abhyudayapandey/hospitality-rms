@@ -154,7 +154,8 @@ Test Company (four outlet shapes and a central kitchen) and Test Solo Bar Co. `p
 loads both. DB tests, e2e and the dev login use their usernames (`test.bar-manager.3.0`)
 and place codes (`TEST-BAR-3.0-KITCHEN-STORE`); `packages/db/test/helpers.ts` resolves them.
 Each customer's `99_access_preview_GENERATED.csv` is the expected access; the loader test
-fails if they differ. Files 18 to 24 are menus, prep items and recipes (`MENU_README.md`);
+fails if they differ. File 05 is the customer's own access groups (ADR 027; Test Company's
+KITCHEN_LEAD). Files 18 to 24 are menus, prep items and recipes (`MENU_README.md`);
 the `98_*_costing_GENERATED.csv` files are the expected costs at standard cost, and a test
 fails if the costs worked out from the loaded data differ by a paisa (ADR 014). Files 25 to 28
 (test customers only, ADR 017) load shifts, a past week of batches and sales, and a closing

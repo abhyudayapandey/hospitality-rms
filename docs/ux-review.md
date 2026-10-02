@@ -230,6 +230,11 @@ one customer's roles or one person's rights differ from the rest?
 
 ## Progress
 
+- **AC-1 done** (ADR 027): customer-specific access groups (U-28). The Account Owner builds
+  groups in Admin → Access groups, or a platform admin in file 05, from the product's
+  business rights; a group can carry the requests and approvals of product roles ("approves
+  like a Department Head"). Test Company's Kitchen Lead shows it working.
+
 - **UX-3b done** (ADR 026): modules on or off per company (U-26). The Account Owner turns
   Events, Shift swaps, Leave, Production, Prep lists, Checklists, Maintenance, and Menu and
   sales on or off in Admin → Modules (or file 00). Off means hidden from every screen and
@@ -274,3 +279,7 @@ one customer's roles or one person's rights differ from the rest?
 6. **Day and List view** live in the address only; nothing is saved per person.
 7. **UX-3b and AC-1 added** (U-26 to U-28). **AC-1 comes before R-2.** Order now: UX-3,
    UX-3b, AC-1, R-2, UX-4, UX-5 with R-3 and R-4.
+8. **AC-1:** groups are built by the Account Owner or a platform admin. Someone given extra
+   access must be able to do those duties, approvals included: a custom group can carry a
+   role's requests and approvals. Edits apply at once, after a preview of who is affected.
+   AC-1 and R-2 are separate PRs.

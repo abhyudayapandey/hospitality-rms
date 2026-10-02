@@ -71,15 +71,32 @@ export interface AccessDefault {
 }
 
 /** `OUTLET_MANAGER@whole_outlet; HUB_MANAGER@central_kitchen_store(this store only)` */
+const rights = z.string().transform((v, ctx): Record<string, 'view' | 'modify'> => {
+  const out: Record<string, 'view' | 'modify'> = {};
+  for (const part of v
+    .split(';')
+    .map((p) => p.trim())
+    .filter(Boolean)) {
+    const m = /^([A-Z][A-Z_]*):(view|modify)$/.exec(part);
+    if (!m) {
+      ctx.addIssue({ code: 'custom', message: `"${part}" is not DOMAIN:view or DOMAIN:modify` });
+      continue;
+    }
+    out[m[1]!] = m[2] as 'view' | 'modify';
+  }
+  return out;
+});
+
 const defaultAccess = z.string().transform((v, ctx): AccessDefault[] => {
   const out: AccessDefault[] = [];
   for (const part of v
     .split(';')
     .map((p) => p.trim())
     .filter(Boolean)) {
-    const m = /^([A-Z][A-Z_]*)@([a-z_]+|department:[A-Z0-9][A-Z0-9-]*)(\(this store only\))?$/.exec(
-      part,
-    );
+    const m =
+      /^([A-Z][A-Z0-9_]*)@([a-z_]+|department:[A-Z0-9][A-Z0-9-]*)(\(this store only\))?$/.exec(
+        part,
+      );
     if (!m || !(m[2]!.startsWith('department:') || (SCOPES as readonly string[]).includes(m[2]!))) {
       ctx.addIssue({ code: 'custom', message: `"${part}" is not GROUP@scope` });
       continue;
@@ -268,6 +285,25 @@ export const FILES = {
       geofence_radius_m: int.refine((v) => v >= 10 && v <= 5000, 'must be 10 to 5000'),
     }),
   },
+  // the customer's own access groups (ADR 027): rights "DOMAIN:view; DOMAIN:modify", and the
+  // product roles whose request and approval duties the group carries
+  customGroups: {
+    file: '05_access_groups.csv',
+    required: false,
+    schema: z.object({
+      group_code: z
+        .string()
+        .regex(/^[A-Z][A-Z0-9_]{2,39}$/, 'must be an upper-case code (3 to 40: A-Z 0-9 _)'),
+      name: text,
+      rights: rights,
+      acts_as: z.string().transform((v) =>
+        v
+          .split(';')
+          .map((p) => p.trim())
+          .filter(Boolean),
+      ),
+    }),
+  },
   jobRoles: {
     file: '06_job_roles.csv',
     required: true,
@@ -299,7 +335,7 @@ export const FILES = {
     required: false,
     schema: z.object({
       username: text,
-      access_group: z.string().regex(/^[A-Z][A-Z_]*$/, 'must be an access group code'),
+      access_group: z.string().regex(/^[A-Z][A-Z0-9_]*$/, 'must be an access group code'),
       node_code: code,
       include_descendants: z.enum(['true', 'false']).transform((v) => v === 'true'),
       reason: text,

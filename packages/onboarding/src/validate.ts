@@ -1,4 +1,4 @@
-import { ACCESS_GROUPS } from '@outlet-ops/domain';
+import { ACCESS_GROUPS, DOMAINS } from '@outlet-ops/domain';
 import type { AssignTo, Bundle, Issue } from './files';
 import { FILES } from './files';
 
@@ -149,7 +149,40 @@ export function validateBundle(b: Bundle): Issue[] {
     }
   }
 
-  // job roles: product groups only, one row per role and format, an `any` row per role
+  // the customer's own groups (file 05, ADR 027): business rights only; the duties of
+  // business roles only; never a product group's code
+  const custom = new Set<string>();
+  const businessDomains = new Set(DOMAINS.filter((d) => !d.admin).map((d) => d.code));
+  const carriable = new Set(
+    ACCESS_GROUPS.filter(
+      (g) => g.kind === 'role' && !['AI_AGENT', 'SECURITY_ADMIN', 'AUDITOR'].includes(g.code),
+    ).map((g) => g.code),
+  );
+  for (const g of b.customGroups) {
+    if (ACCESS_GROUPS.some((p) => p.code === g.group_code)) {
+      add(f('customGroups'), g.line, 'group_code', `${g.group_code} is a product access group`);
+    }
+    if (custom.has(g.group_code)) {
+      add(f('customGroups'), g.line, 'group_code', `${g.group_code} is listed twice`);
+    }
+    custom.add(g.group_code);
+    for (const d of Object.keys(g.rights)) {
+      if (!businessDomains.has(d)) {
+        add(f('customGroups'), g.line, 'rights', `${d} is not a business right`);
+      }
+    }
+    for (const r of g.acts_as) {
+      if (!carriable.has(r)) {
+        add(f('customGroups'), g.line, 'acts_as', `${r} is not a business role`);
+      }
+    }
+    if (Object.keys(g.rights).length === 0 && g.acts_as.length === 0) {
+      add(f('customGroups'), g.line, 'rights', 'a group needs at least one right or role');
+    }
+  }
+  const assignable = (code: string) => ASSIGNABLE.has(code) || custom.has(code);
+
+  // job roles: access groups only, one row per role and format, an `any` row per role
   const roles = new Map<string, Set<string>>();
   for (const r of b.jobRoles) {
     const formats = roles.get(r.job_role_code) ?? new Set();
@@ -164,7 +197,7 @@ export function validateBundle(b: Bundle): Issue[] {
     formats.add(r.outlet_format);
     roles.set(r.job_role_code, formats);
     for (const a of r.default_access) {
-      if (!ASSIGNABLE.has(a.group)) {
+      if (!assignable(a.group)) {
         add(f('jobRoles'), r.line, 'default_access', `${a.group} is not an access group`);
       }
     }
@@ -189,7 +222,7 @@ export function validateBundle(b: Bundle): Issue[] {
     if (!users.has(e.username)) {
       add(f('extraAccess'), e.line, 'username', `${e.username} is not in ${f('users')}`);
     }
-    if (!ASSIGNABLE.has(e.access_group)) {
+    if (!assignable(e.access_group)) {
       add(f('extraAccess'), e.line, 'access_group', `${e.access_group} is not an access group`);
     }
     if (!org.has(e.node_code) && !dlv.has(e.node_code)) {
