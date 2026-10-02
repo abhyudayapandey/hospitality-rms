@@ -7,10 +7,12 @@ import { formatQty, param, supplyContext, type SearchParams } from '@/lib/invent
 import { batches, madeHere, productionPlan } from '@/lib/production';
 import { shelfLifeText, timeLeftText } from '@/lib/shelf-life';
 import { ProductionForm } from './production-form';
+import { ReportExpired } from './report-expired';
 
 // Production (ADR 015): record a batch of a prep item made at this store. Ingredients leave
 // by the recipe scaled to the batch (actual quantities can be changed), the batch arrives
-// with a batch number and an expiry. Batches past their expiry ask for a wastage entry.
+// with a batch number and an expiry. Batches past their expiry are reported to the lead,
+// who gives the discard (and a remake) to someone (ADR 020).
 // The places are the stores where the person records production and something is made
 // (stock users there, or PRODUCTION_TEAM through their department, ADR 016).
 export default async function ProductionPage({ searchParams }: { searchParams: SearchParams }) {
@@ -38,11 +40,9 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
           data-testid="expired"
         >
           <h2 className="font-semibold text-amber-900">
-            {canWaste
-              ? 'Past their expiry: record the wastage'
-              : 'Past their expiry: tell your chef or store keeper'}
+            Past their expiry: report them to your lead
           </h2>
-          <ul className="space-y-1 text-sm">
+          <ul className="space-y-2 text-sm">
             {expired.map((b) => (
               <li
                 key={`${b.item_id}-${b.batch_no}`}
@@ -50,15 +50,16 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
               >
                 <span>
                   {b.name} · batch {b.batch_no} · {formatQty(b.remaining, b.unit)} left
+                  {canWaste && (
+                    <Link
+                      className="block text-xs underline"
+                      href={`/stock/wastage?node=${node}&item=${b.item_id}&qty=${Number(b.remaining)}&reason=expired`}
+                    >
+                      or record the wastage yourself
+                    </Link>
+                  )}
                 </span>
-                {canWaste && (
-                  <Link
-                    className="shrink-0 underline"
-                    href={`/stock/wastage?node=${node}&item=${b.item_id}&qty=${Number(b.remaining)}&reason=expired`}
-                  >
-                    Record wastage
-                  </Link>
-                )}
+                {b.batch_no && <ReportExpired store={node} item={b.item_id} batchNo={b.batch_no} />}
               </li>
             ))}
           </ul>

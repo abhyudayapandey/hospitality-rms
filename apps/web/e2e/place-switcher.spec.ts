@@ -82,9 +82,12 @@ test('a commis sees only the Kitchen Store on Production, and no other stock scr
   expect(await viewingOptions(page)).toEqual([]);
   const main = page.locator('main');
   await expect(main.getByRole('heading', { name: 'Production' })).toBeVisible();
-  // production only: no stock tabs, and no wastage shortcut for an expired batch
+  // production only: no stock tabs; an expired batch is reported to the lead, not wasted
   await expect(page.getByRole('navigation', { name: 'Supply' })).toHaveCount(0);
-  await expect(main.getByRole('link', { name: 'Record wastage' })).toHaveCount(0);
+  await expect(main.getByRole('link', { name: /record the wastage/ })).toHaveCount(0);
+  await expect(page.getByTestId('expired').getByRole('button', { name: 'Report' })).not.toHaveCount(
+    0,
+  );
   await expect(main.getByRole('link', { name: 'Mint Chutney' })).toBeVisible();
 });
 

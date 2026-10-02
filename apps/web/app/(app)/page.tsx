@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { loadShell } from '@/lib/shell';
+import { moreItems } from '@/lib/nav';
+import { loadShell, navInput } from '@/lib/shell';
 
-// Shortcuts need the same access as the tab they open (audit #3); shifts, clock and swaps
+// Links to every main screen not in the bottom nav (ADR 020). Shortcuts need the same access as the tab they open (audit #3); shifts, clock and swaps
 // only for people who work at an outlet (audit #13).
 const can = (
   domains: Map<string, 'view' | 'modify'>,
@@ -12,6 +13,8 @@ const can = (
 export default async function Home() {
   const shell = await loadShell();
   const atWork = shell.home?.at_workplace ?? false;
+  // what is not in their bottom nav (at most five items)
+  const more = moreItems(navInput(shell));
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Hello, {shell.user.name.split(' ')[0]}</h1>
@@ -29,12 +32,20 @@ export default async function Home() {
           {shell.inboxCount}
         </span>
       </Link>
-      <Link
-        href="/requests"
-        className="flex min-h-16 items-center rounded-xl bg-white p-4 font-medium shadow-sm ring-1 ring-slate-200"
-      >
-        My requests
-      </Link>
+      {more.length > 0 && (
+        <nav aria-label="More" className="grid grid-cols-2 gap-2">
+          {more.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-white font-medium shadow-sm ring-1 ring-slate-200"
+            >
+              <span aria-hidden>{item.icon}</span>
+              {item.label === 'Requests' ? 'My requests' : item.label}
+            </Link>
+          ))}
+        </nav>
+      )}
       <nav aria-label="People shortcuts" className="grid grid-cols-2 gap-2">
         {(
           [

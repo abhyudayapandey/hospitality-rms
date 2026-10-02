@@ -4,11 +4,10 @@ import { BottomNav } from '@/components/bottom-nav';
 import { PunchSync } from '@/components/punch-sync';
 import { SignOutButton } from '@/components/sign-out-button';
 import { visibleNav } from '@/lib/nav';
-import { loadShell } from '@/lib/shell';
+import { loadShell, navInput } from '@/lib/shell';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const shell = await loadShell();
-  const domains = new Set(shell.domains.keys());
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
       <header className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2">
@@ -45,7 +44,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </header>
       <PunchSync userId={shell.user.id} />
       <main className="flex-1 px-4 pt-4 pb-24">{children}</main>
-      <BottomNav items={visibleNav(domains, shell)} inboxCount={shell.inboxCount} />
+      <BottomNav items={visibleNav(navInput(shell))} inboxCount={shell.inboxCount} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { requireUser, type CurrentUser } from './auth/server';
 import { sql, withUser } from './db';
+import type { NavInput } from './nav';
 
 export interface NodeRow {
   id: string;
@@ -25,6 +26,8 @@ export interface HomePlace {
 export interface Shell {
   user: CurrentUser;
   domains: Map<string, 'view' | 'modify'>;
+  /** access group codes (core.my_access(), SELF included): the bottom nav's profile */
+  groups: Set<string>;
   nodes: NodeRow[];
   /** where the person works (their worker row), if they have one */
   home: HomePlace | null;
@@ -44,15 +47,18 @@ export const loadShell = cache(async (): Promise<Shell> => {
   return withUser(user.id, async (tx) => {
     const domains = await sql<{ domain: string; access: 'view' | 'modify' }>`
       select * from core.my_domains()`.execute(tx);
+    const groups = await sql<{ access_group: string }>`
+      select distinct access_group from core.my_access()`.execute(tx);
     const has = (d: string) => domains.rows.some((r) => r.domain === d);
     const nodes = await sql<NodeRow>`
       select id, type, kind, name, depth, derived, timezone, holds_stock from core.nodes()`.execute(
       tx,
     );
     const home = await sql<HomePlace>`select * from core.my_home()`.execute(tx);
-    const inbox = await sql<{ n: number }>`select count(*)::int as n from wf.my_inbox()`.execute(
-      tx,
-    );
+    // approvals, plus expired batches and maintenance requests to assign (ADR 020)
+    const inbox = await sql<{ n: number }>`
+      select (select count(*) from wf.my_inbox())::int
+           + (select count(*) from ops.my_to_assign())::int as n`.execute(tx);
     const unread = await sql<{ n: number }>`
       select count(*)::int as n from ops.notification
        where owner_user_id = core.current_user_id() and read_at is null`.execute(tx);
@@ -70,6 +76,7 @@ export const loadShell = cache(async (): Promise<Shell> => {
     return {
       user,
       domains: new Map(domains.rows.map((d) => [d.domain, d.access])),
+      groups: new Set(groups.rows.map((g) => g.access_group)),
       nodes: nodes.rows,
       home: home.rows[0] ?? null,
       inboxCount: inbox.rows[0]?.n ?? 0,
@@ -79,3 +86,13 @@ export const loadShell = cache(async (): Promise<Shell> => {
     };
   });
 });
+
+/** What the bottom nav and Home's links are chosen from. */
+export function navInput(shell: Shell): NavInput {
+  return {
+    groups: shell.groups,
+    domains: new Set(shell.domains.keys()),
+    menu: shell.menu,
+    production: shell.production,
+  };
+}

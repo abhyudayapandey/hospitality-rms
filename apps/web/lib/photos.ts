@@ -1,15 +1,24 @@
 import 'server-only';
-import { S3Client } from '@aws-sdk/client-s3';
-import { presignUpload, presignView, type PhotoType, type UploadTarget } from './photo-policy';
+import { CopyObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  presignUpload,
+  presignView,
+  type PhotoPrefix,
+  type PhotoType,
+  type UploadTarget,
+} from './photo-policy';
 
-// Wastage photos (ADR 006): a private S3 bucket (PHOTO_BUCKET), written and read only
+// Wastage photos (ADR 006) and task photos (ADR 020): a private S3 bucket (PHOTO_BUCKET), written and read only
 // through short-lived presigned URLs issued here with the instance role's credentials.
 // Callers check core.can() in SQL before asking for a URL (never in TypeScript).
 
 export {
   isPhotoType,
+  keptKey,
   MAX_PHOTO_BYTES,
+  photoKeyPattern,
   wastageKeyPattern,
+  type PhotoPrefix,
   type PhotoType,
   type UploadTarget,
 } from './photo-policy';
@@ -36,7 +45,23 @@ export function presignWastageUpload(
   nodeId: string,
   contentType: PhotoType,
 ): Promise<UploadTarget> {
-  return presignUpload(s3(), bucket(), tenantId, nodeId, contentType);
+  return presignUpload(s3(), bucket(), 'wastage', tenantId, nodeId, contentType);
+}
+
+export function presignPhotoUpload(
+  prefix: PhotoPrefix,
+  tenantId: string,
+  nodeId: string,
+  contentType: PhotoType,
+): Promise<UploadTarget> {
+  return presignUpload(s3(), bucket(), prefix, tenantId, nodeId, contentType);
+}
+
+/** Copies a photo to another key in the bucket (a routine task photo kept for 400 days). */
+export async function copyPhoto(from: string, to: string): Promise<void> {
+  await s3().send(
+    new CopyObjectCommand({ Bucket: bucket(), CopySource: `${bucket()}/${from}`, Key: to }),
+  );
 }
 
 export function presignPhotoView(key: string): Promise<string> {

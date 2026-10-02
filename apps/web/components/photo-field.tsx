@@ -3,19 +3,32 @@
 import { useState } from 'react';
 import { ErrorBox } from '@/components/messages';
 import { PHOTO_MAX_SIDE, PHOTO_QUALITY, resizePhoto } from '@/lib/photo-resize';
-import { getWastageUploadUrl } from '../actions';
+import type { ActionResult } from '@outlet-ops/domain';
+import type { UploadTarget } from '@/lib/photo-policy';
+
+/** A server action that checks access in SQL and presigns one upload. */
+export type GetUploadUrl = (
+  node: string,
+  contentType: string,
+  size: number,
+) => Promise<ActionResult<UploadTarget>>;
 
 // Takes or picks a photo, shrinks it on the phone (lib/photo-resize: long side 1280 px,
 // JPEG 0.7) so it uploads quickly on a slow network, then posts it straight to S3 with a
-// presigned POST. Expired-batch wastage uses this same form.
+// presigned POST. Wastage, task steps, maintenance and expired-batch discards use it, each
+// with its own presign action.
 export function PhotoField({
   node,
   photoKey,
   onChange,
+  getUploadUrl,
+  label = 'Photo',
 }: {
   node: string;
   photoKey: string | null;
   onChange: (key: string | null) => void;
+  getUploadUrl: GetUploadUrl;
+  label?: string;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +40,7 @@ export function PhotoField({
     onChange(null);
     try {
       const blob = await resizePhoto(file, PHOTO_MAX_SIDE, PHOTO_QUALITY);
-      const target = await getWastageUploadUrl(node, 'image/jpeg', blob.size);
+      const target = await getUploadUrl(node, 'image/jpeg', blob.size);
       if (!target.ok) throw new Error(target.message);
       const form = new FormData();
       for (const [k, v] of Object.entries(target.data.fields)) form.append(k, v);
@@ -61,7 +74,7 @@ export function PhotoField({
       </label>
       {preview && photoKey && (
         // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
-        <img src={preview} alt="Wastage photo" className="max-h-48 rounded-lg" />
+        <img src={preview} alt={label} className="max-h-48 rounded-lg" />
       )}
       <ErrorBox message={error} />
     </div>
