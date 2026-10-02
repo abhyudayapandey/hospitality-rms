@@ -1,16 +1,13 @@
 import { redirect } from 'next/navigation';
-import { loadShell } from '@/lib/shell';
+import type { SearchParams } from '@/lib/inventory';
+import { peopleContext, tabAccess } from '@/lib/people';
+import { rosterLanding } from '@/lib/roster-view';
 
-// Managers, and people whose home is above outlet level (no shifts of their own), land on
-// the week roster; everyone else on their own shifts.
-export default async function RosterPage() {
-  const shell = await loadShell();
-  if (!shell.domains.has('ROSTER')) {
-    return <p className="text-slate-600">You don&apos;t have access to roster.</p>;
-  }
-  redirect(
-    shell.domains.get('ROSTER') === 'modify' || !shell.home?.at_workplace
-      ? '/roster/week'
-      : '/roster/my',
-  );
+// Roster opens on Team (the week roster) for roster builders and for people with no shifts
+// of their own; everyone else on Me (their own shifts). ADR 025.
+export default async function RosterPage({ searchParams }: { searchParams: SearchParams }) {
+  const ctx = await peopleContext(searchParams);
+  const to = ctx.can('ROSTER') ? rosterLanding(tabAccess(ctx)) : null;
+  if (!to) return <p className="text-slate-600">You don&apos;t have access to roster.</p>;
+  redirect(to);
 }

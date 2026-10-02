@@ -190,13 +190,51 @@ Each step is its own branch and PR, with e2e coverage.
 | UX-1  | Words and codes; place names; switcher defaults; refusal pages; staff flags; Clock wording; units and dates | U-2–5, U-7, U-8, U-15–17, U-23–25 | M    |
 | UX-2  | Home → Today (cards per role)                                                                               | U-1, U-20                         | M    |
 | UX-3  | Roster split into Me / Team; day-strip roster                                                               | U-10, U-11                        | M    |
+| UX-3b | Modules on or off per customer; taps counted for each role's five most common jobs                          | U-26, U-27                        | S    |
+| AC-1  | Customer-specific access groups, built from the product's domains                                           | U-28                              | M    |
 | UX-4  | Stock store hub; sales entry search and copy-yesterday; grouped notifications                               | U-12, U-13, U-21                  | M    |
 | UX-5  | HR Team → People and Leave; owner read-only reports (with Reports R-1)                                      | U-18, U-19                        | M    |
 | later | Web push                                                                                                    | U-22                              | M    |
 
 The variance redesign (U-14) and the owner's view (U-18) are part of the reporting plan.
 
+### Added 2 Oct 2026: fewer options, and access per customer
+
+Asked after UX-2: are there too many options for people to use the app quickly, and can
+one customer's roles or one person's rights differ from the rest?
+
+- **U-26 · S. Modules every customer gets.** A customer that never uses Events or Prep lists
+  still shows their tabs and links to everyone. Add a customer setting per module (events,
+  prep lists, production, maintenance, swaps); an off module disappears from tabs, Home and
+  the nav for that customer. The data and access rules stay; only the screens hide.
+- **U-27 · S. Count the taps.** For each role, time the five most common jobs (clock in,
+  record wastage, count a store, approve leave, assign a shift) in taps and screens, before
+  and after UX-3 and UX-4. Anything over about three taps gets a fix.
+- **U-28 · M. Access per customer.** What works today:
+  - one person can get more: Admin → Users → add an access group at a place (sensitive
+    grants need approval, every change is in the access audit), or file 08;
+  - one customer's job roles can differ from another's (file 06, per outlet format);
+  - one customer's approval chains can differ (file 00).
+
+  What doesn't: a customer cannot change what a group allows ("our supervisors may approve
+  wastage"), nor give one right alone. The groups are product code, and the deploy sync
+  writes them into every customer and removes anything else (ADR 009).
+
+  **AC-1:** customer-specific groups built from the product's domains, for example "Kitchen
+  lead" = Stock User + wastage approval + Roster view. The domain matrix is already stored
+  per customer and `core.can` already reads it per customer, so the work is: the sync leaves
+  customer groups alone; an onboarding file and an Admin screen to build them; the existing
+  guards (admin groups hold no business domains, sensitive grants need approval, labour cost
+  only in groups of three or more, every change audited). Security tests first and the
+  all-users RLS run, since it changes access rules.
+
 ## Progress
+
+- **UX-3 done** (ADR 025): Roster is two sides, **Me** (My shifts, Clock, Leave, Swaps) and
+  **Team** (Roster, Exceptions, Events), with a Me | Team switch for people who have both.
+  Frontline staff see only Me, and read the week's events on My shifts. The week roster is a
+  day strip (open slots per day) with one day's shifts grouped by time; "List view" keeps
+  the old cards.
 
 - **UX-2 done** (ADR 023): Home is "Today". Cards:
   - your shift, with Clock in or out;
@@ -223,3 +261,8 @@ The variance redesign (U-14) and the owner's view (U-18) are part of the reporti
 4. **Order of work:** UX-1 first (small, no new data), then UX-2 with R-1, because the
    "Today" home and the first reports share the same cards. Then UX-3, R-2, UX-4, UX-5
    with R-3 and R-4.
+5. **Events for frontline staff** (UX-3): Events is a Team tab; staff see the next seven
+   days' events on My shifts, read-only.
+6. **Day and List view** live in the address only; nothing is saved per person.
+7. **UX-3b and AC-1 added** (U-26 to U-28). **AC-1 comes before R-2.** Order now: UX-3,
+   UX-3b, AC-1, R-2, UX-4, UX-5 with R-3 and R-4.

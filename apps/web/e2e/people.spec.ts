@@ -28,23 +28,23 @@ test.beforeAll(async () => {
   await setupPeopleWeek(W);
 });
 
-async function openWeek(page: Page) {
-  await page.goto(`/roster/week?node=${await placeId(PLACE.floor)}&week=${W}`);
+async function openWeek(page: Page, day = W) {
+  await page.goto(`/roster/week?node=${await placeId(PLACE.floor)}&week=${W}&day=${day}`);
   await expect(page.getByTestId('week-label')).toHaveText(`Week of ${formatDay(W)}`);
 }
 
-/** The day's 17:00 evening shift for a role (lower-case role code, as the card shows it). */
+/** The day's 17:00 evening shift for a role, in the day view's 17:00 time group (ADR 025). */
 function evening(page: Page, day: string, role: string) {
   return page
     .getByRole('region', { name: formatDay(day) })
+    .getByRole('region', { name: /^17:00–/ })
     .getByTestId('roster-shift')
-    .filter({ hasText: '17:00–' })
     .filter({ hasText: `· ${role} ·` });
 }
 
 /** Assigns `worker` to the day's evening `role` shift (setupPeopleWeek made the drafts). */
 async function assign(page: Page, day: string, role: string, worker: string) {
-  await openWeek(page);
+  await openWeek(page, day);
   await evening(page, day, role)
     .getByRole('link', { name: /^Assign/ })
     .click();
@@ -178,7 +178,7 @@ test('manager builds and publishes; approved leave drops the shift after both ap
   await expect(page.getByTestId('notifications')).toContainText('Leave approved');
 
   await signInAs(page, 'Test Bar Manager 3.0');
-  await openWeek(page);
+  await openWeek(page, FRIDAY);
   const shift = evening(page, FRIDAY, 'host');
   await expect(shift).not.toContainText('Test Host 3.0');
   await expect(shift).toContainText('0/1');
@@ -322,7 +322,7 @@ test('swap past a rest warning: offered and accepted, the approver gives it to s
   await other.getByRole('button', { name: 'Assign' }).click();
   await expect(other.getByRole('button', { name: 'Assigned' })).toBeVisible();
 
-  await openWeek(page);
+  await openWeek(page, WED);
   const shift = evening(page, WED, 'server');
   await expect(shift).toContainText('E2E Server B 3.0');
   await expect(shift).not.toContainText('Test Server 3.0');
@@ -396,13 +396,16 @@ test('exceptions: a department’s queue says whom each waits for; the GM picks 
   ).toBeVisible();
 });
 
-test('events: the manager plans one with staff needed; staff can read it', async ({ page }) => {
+test('events: the manager plans one with staff needed; staff read it on My shifts', async ({
+  page,
+}) => {
   const name = `E2E tasting ${Date.now()}`;
   await signInAs(page, 'Test Bar Manager 3.0');
   await page.goto(`/events?node=${await placeId(PLACE.floor)}`);
   await page.getByRole('link', { name: 'New event' }).click();
   const form = page.getByRole('form', { name: 'Event' });
   await form.getByLabel('Name').fill(name);
+  await form.getByLabel('Date').fill(addDays(localToday('Asia/Kolkata'), 2));
   await form.getByLabel('Covers').fill('35');
   await form.getByRole('button', { name: 'Add staff' }).click();
   await form.getByLabel('Role').selectOption({ label: 'Server' });
@@ -411,10 +414,90 @@ test('events: the manager plans one with staff needed; staff can read it', async
   await page.waitForURL(/\/events\/[0-9a-f-]{36}/);
   await expect(page.getByTestId('event-requirements')).toContainText('3 × Server');
 
+  // Events is on the Team side, which staff don't have: they see the week's events on My
+  // shifts, and open one read-only (ADR 025)
   await signInAs(page, 'Test Server 3.0');
+  await page.goto('/roster/my');
+  await expect(page.getByRole('navigation', { name: 'Me', exact: true })).not.toContainText(
+    'Events',
+  );
+  const week = page.getByTestId('events-this-week');
+  await week.getByRole('link', { name: new RegExp(name) }).click();
+  await page.waitForURL(/\/events\/[0-9a-f-]{36}/);
+  await expect(page.getByTestId('event-requirements')).toContainText('3 × Server');
   await page.goto('/events');
   await expect(page.getByTestId('events')).toContainText(name);
   await expect(page.getByRole('link', { name: 'New event' })).toHaveCount(0);
+});
+
+test('Roster is Me and Team: staff see only Me; the manager switches; HR has Team (ADR 025)', async ({
+  page,
+}) => {
+  const sides = (p: Page) => p.getByRole('navigation', { name: 'Me or team' });
+  const tabs = async (p: Page, side: 'Me' | 'Team') =>
+    p.getByRole('navigation', { name: side, exact: true }).getByRole('link').allInnerTexts();
+
+  // a server: Roster opens on My shifts; no switch, no team tabs
+  await signInAs(page, 'Test Server 3.0');
+  await page.goto('/roster');
+  await page.waitForURL('**/roster/my');
+  await expect(sides(page)).toHaveCount(0);
+  expect(await tabs(page, 'Me')).toEqual(['My shifts', 'Clock', 'Leave', 'Swaps']);
+
+  // the bar manager: Roster opens on Team; the switch goes to Me and back
+  await signInAs(page, 'Test Bar Manager 3.0');
+  await page.goto('/roster');
+  await page.waitForURL(/\/roster\/week/);
+  expect(await tabs(page, 'Team')).toEqual(['Roster', 'Exceptions', 'Events']);
+  await expect(sides(page).getByRole('link', { name: 'Team' })).toHaveAttribute(
+    'aria-current',
+    'true',
+  );
+  await sides(page).getByRole('link', { name: 'Me' }).click();
+  await page.waitForURL('**/roster/my');
+  expect(await tabs(page, 'Me')).toEqual(['My shifts', 'Clock', 'Leave', 'Swaps']);
+  await sides(page).getByRole('link', { name: 'Team' }).click();
+  await page.waitForURL(/\/roster\/week/);
+
+  // HR at head office has no shifts of their own: Team, and their own Leave on Me
+  await signInAs(page, 'Test HR Admin');
+  await page.goto('/roster');
+  await page.waitForURL(/\/roster\/week/);
+  await sides(page).getByRole('link', { name: 'Me' }).click();
+  await page.waitForURL('**/leave');
+  await expect(page.getByRole('navigation', { name: 'Me', exact: true })).toHaveCount(0);
+});
+
+test('day strip: open slots per day match the list view; a day shows its time groups (ADR 025)', async ({
+  page,
+}) => {
+  await signInAs(page, 'Test Bar Manager 3.0');
+  await openWeek(page, FRIDAY);
+  const chips = page.getByRole('navigation', { name: 'Days' }).getByTestId('day-chip');
+  await expect(chips).toHaveCount(7);
+  await expect(chips.nth(4)).toHaveAttribute('aria-current', 'date');
+  const day = page.getByTestId('roster-day');
+  await expect(day).toHaveAttribute('aria-label', formatDay(FRIDAY));
+  await expect(day.getByTestId('time-group').first()).toBeVisible();
+
+  // Friday's shifts in the day view equal Friday's cards in the list view
+  const dayCount = await day.getByTestId('roster-shift').count();
+  const open = Number(await chips.nth(4).getAttribute('data-open'));
+  await page.getByRole('link', { name: 'List view' }).click();
+  await page.waitForURL(/view=list/);
+  const friday = page.getByRole('region', { name: formatDay(FRIDAY) });
+  await expect(friday.getByTestId('roster-shift')).toHaveCount(dayCount);
+  const slots = await friday.getByTestId('roster-shift').allInnerTexts();
+  const openInList = slots
+    .map((t) => /(\d+)\/(\d+)/.exec(t)!)
+    .reduce((n, m) => n + Math.max(0, Number(m[2]) - Number(m[1])), 0);
+  expect(openInList).toBe(open);
+
+  // the week arrows keep List view; Day view goes back to the strip
+  await page.getByRole('link', { name: 'Next week' }).click();
+  await page.waitForURL(/view=list/);
+  await page.getByRole('link', { name: 'Day view' }).click();
+  await expect(page.getByRole('navigation', { name: 'Days' })).toBeVisible();
 });
 
 test('offline clock-in is saved on the phone and synced with its time when back online', async ({

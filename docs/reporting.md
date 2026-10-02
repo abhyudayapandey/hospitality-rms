@@ -278,6 +278,8 @@ Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
 5. **Business day: 06:00 local time**, for every outlet.
 6. **Targets** (food %, beverage %, labour %, task compliance): still open; proposed as
    company settings with an outlet override, in R-4.
+7. **Order:** R-2 comes after UX-3, UX-3b and AC-1 (customer-specific access groups,
+   `docs/ux-review.md`), so the cost controller suite can be granted per customer.
 
 ## Sources
 

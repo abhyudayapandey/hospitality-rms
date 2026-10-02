@@ -3,6 +3,7 @@ import { DEFAULT_TZ } from './dates';
 import { sql, withUser, type Tx } from './db';
 import type { SearchParams } from './params';
 import { pickPlace, screenPlaces, type Place, type Screen } from './places';
+import type { TabAccess } from './roster-view';
 import type { TimelineRow } from './timeline';
 import { loadShell, type Shell } from './shell';
 
@@ -371,4 +372,39 @@ export async function events(
      order by e.starts_at
      limit 60`.execute(tx);
   return r.rows;
+}
+
+export interface UpcomingEvent {
+  id: string;
+  org_node_id: string;
+  name: string;
+  starts_at: Date;
+  ends_at: Date;
+  covers: number;
+  place_name: string;
+}
+
+/**
+ * Events that start in [from, to) at every place the person may see (EVENTS view, RLS);
+ * frontline staff read them on My shifts, since Events is on the Team side (ADR 025).
+ */
+export async function upcomingEvents(
+  tx: Tx,
+  fromIso: string,
+  toIso: string,
+): Promise<UpcomingEvent[]> {
+  const r = await sql<UpcomingEvent>`
+    select e.id, e.org_node_id, e.name, e.starts_at, e.ends_at, e.covers,
+           core.node_name(e.org_node_id) as place_name
+      from ops.event e
+     where e.status <> 'cancelled'
+       and e.starts_at >= ${fromIso}::timestamptz and e.starts_at < ${toIso}::timestamptz
+     order by e.starts_at
+     limit 20`.execute(tx);
+  return r.rows;
+}
+
+/** What decides the Me and Team tabs (lib/roster-view, ADR 025). */
+export function tabAccess(ctx: PeopleContext): TabAccess {
+  return { can: (d, a) => ctx.can(d, a), ...ctx.tabs };
 }
