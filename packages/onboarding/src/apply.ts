@@ -1386,8 +1386,8 @@ class Loader {
   }
 
   /** `today` plus `days`, as yyyy-mm-dd. */
-  private day(days: number): string {
-    const d = new Date(`${this.today}T00:00:00Z`);
+  private day(days: number, base: string = this.today): string {
+    const d = new Date(`${base}T00:00:00Z`);
     d.setUTCDate(d.getUTCDate() + days);
     return d.toISOString().slice(0, 10);
   }
@@ -1444,7 +1444,14 @@ class Loader {
       same('production batches', this.b.production.length);
       same('sales days', new Set(this.b.sales.map((x) => `${x.outlet_code} ${x.day}`)).size);
       same('stock counts', new Set(this.b.counts.map((x) => x.store_node_code)).size);
-      same('prep tasks', this.b.prepTasks.length);
+      // file 32 came after files 26 to 28: its tasks follow the day those were loaded
+      const loaded = await this.pastWeekDay();
+      if (loaded) {
+        await this.prepTasks(loaded);
+        await this.linkPastBatches(loaded);
+      } else {
+        same('prep tasks', this.b.prepTasks.length);
+      }
       return;
     }
     await this.backdateMenu();
@@ -1769,16 +1776,31 @@ class Loader {
    * File 32: prep tasks set on past days, before the batches of file 26 are recorded; a
    * batch made at the same store, of the same item, on the same day completes its task.
    */
-  private async prepTasks() {
+  /**
+   * File 32: prep tasks, days counted from `base` (the day files 26 to 28 were loaded),
+   * each once: the task keeps a key naming its line.
+   */
+  private async prepTasks(base: string = this.today) {
     for (const p of this.b.prepTasks) {
       this.step(FILES.prepTasks.file, p.line);
+      const key = `test-data prep ${p.store_node_code} ${p.prep_item_code} ${p.day}`;
+      const map = `${p.store_node_code} ${p.prep_item_code} ${p.day}`;
+      const had = await this.c.query<{ id: string }>(
+        `select id from ops.task where tenant_id = $1 and kind = 'prep' and idempotency_key = $2`,
+        [this.tenant, key],
+      );
+      if (had.rows[0]) {
+        this.prepTaskIds.set(map, had.rows[0].id);
+        this.count('prep tasks', false);
+        continue;
+      }
       const ids = await this.as(p.created_by, async () => {
         const r = await this.c.query<{ ids: string[] }>(
           `select ops.create_prep_tasks($1, $2, ($3::date + $4::time) at time zone $5, $6) as ids`,
           [
             this.nodes.get(p.store_node_code),
             JSON.stringify([{ item_id: this.items.get(p.prep_item_code), qty: p.quantity }]),
-            this.day(p.day),
+            this.day(p.day, base),
             p.due_time,
             this.timezoneOf(p.store_node_code),
             JSON.stringify(this.assignJson(p.assign_to)),
@@ -1786,8 +1808,51 @@ class Loader {
         );
         return r.rows[0]!.ids;
       });
-      this.prepTaskIds.set(`${p.store_node_code} ${p.prep_item_code} ${p.day}`, ids[0]!);
+      await this.c.query(`update ops.task set idempotency_key = $1 where id = $2`, [key, ids[0]]);
+      this.prepTaskIds.set(map, ids[0]!);
       this.count('prep tasks', true);
+    }
+  }
+
+  /** The day files 26 to 28 were loaded, from their batches' keys (null if none match). */
+  private async pastWeekDay(): Promise<string | null> {
+    const first = this.b.production[0];
+    if (!first) return null;
+    const { rows } = await this.c.query<{ k: string }>(
+      `select idempotency_key as k from inv.production
+        where tenant_id = $1 and idempotency_key like $2`,
+      [this.tenant, `test-data % ${first.time} ${first.store_node_code} ${first.prep_item_code}`],
+    );
+    for (const { k } of rows) {
+      const base = this.day(-first.day, k.split(' ')[1]);
+      const keys = this.b.production.map(
+        (p) =>
+          `test-data ${this.day(p.day, base)} ${p.time} ${p.store_node_code} ${p.prep_item_code}`,
+      );
+      const found = await this.c.query(
+        `select 1 from inv.production where tenant_id = $1 and idempotency_key = any ($2)`,
+        [this.tenant, keys],
+      );
+      if (found.rowCount === keys.length) return base;
+    }
+    return null;
+  }
+
+  /** Links the batches loaded earlier (file 26) to the prep tasks they fulfil (file 32). */
+  private async linkPastBatches(base: string) {
+    for (const p of this.b.production) {
+      const task = this.prepTaskIds.get(`${p.store_node_code} ${p.prep_item_code} ${p.day}`);
+      if (!task) continue;
+      const key = `test-data ${this.day(p.day, base)} ${p.time} ${p.store_node_code} ${p.prep_item_code}`;
+      const made = await this.c.query<{ id: string }>(
+        `select id from inv.production
+          where tenant_id = $1 and idempotency_key = $2 and task_id is null`,
+        [this.tenant, key],
+      );
+      if (made.rows[0]) {
+        this.step(FILES.production.file, p.line);
+        await this.c.query(`select ops.link_test_batch($1, $2)`, [task, made.rows[0].id]);
+      }
     }
   }
 
