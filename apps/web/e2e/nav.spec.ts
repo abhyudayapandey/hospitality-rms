@@ -34,7 +34,7 @@ for (const [who, items] of cases) {
 
 test('Me has every screen the tabs leave out', async ({ page }) => {
   await signInAs(page, 'Test Server 3.0');
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Me' }).click();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Me', exact: true }).click();
   await page.getByTestId('me-requests').click();
   await expect(page).toHaveURL(/\/requests$/);
   await signInAs(page, 'Test General Manager 1.0');
