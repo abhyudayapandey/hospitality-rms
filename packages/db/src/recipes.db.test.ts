@@ -14,7 +14,9 @@ afterAll(closePools);
 
 const SOLO = 'TEST-SOLO-COMPANY';
 const OWNER = 'test.solo.bar-manager';
-const tomorrow = () => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+// tomorrow in India, as the test connections' current_date (ADR 037)
+const tomorrow = () =>
+  new Date(Date.now() + 86_400_000).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
 async function item(c: PoolClient, sku: string, customer = SOLO): Promise<string> {
   const { rows } = await c.query<{ id: string }>(

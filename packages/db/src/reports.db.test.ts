@@ -37,7 +37,8 @@ describe('rpt figures', () => {
   it('sales and recipe cost agree with the cost report for the test week (file 27)', async () => {
     await inRolledBackTx(async (c) => {
       await c.query(`select rpt.rebuild(current_date - 10, current_date)`);
-      const t = await today(c, 'TEST-HOTEL-1.0');
+      // the test week counts from the load day (a calendar day), not the business day
+      const t = (await c.query<{ d: string }>(`select current_date::text as d`)).rows[0]!.d;
       const { rows } = await c.query<{ menu: string; sales: string; pct: string }>(
         `select menu, sum(sales)::text sales,
                 round(sum(theoretical_cost) * 100 / sum(sales), 1)::text pct
