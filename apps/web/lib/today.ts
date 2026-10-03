@@ -59,11 +59,11 @@ export interface StoreWork {
   low: number;
 }
 
-/** Expired and expiring batches at the stores they see, and the store with the most. */
+/** Expired and expiring batches at all the stores they see; the banners open them with
+ * "All stores" chosen (ADR 038). */
 export interface ExpiryCounts {
-  /** store: the one store with such batches; null when they are in several (open them all) */
-  expiring: { n: number; store: string | null };
-  expired: { n: number; store: string | null };
+  expiring: { n: number };
+  expired: { n: number };
 }
 
 export interface TodayLeague {
@@ -197,17 +197,8 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     let expiry: ExpiryCounts | null = null;
     if (lead && shell.domains.has('STOCK_LEVELS')) {
       const rows = await expiryList(tx);
-      const most = (expired: boolean) => {
-        const by = new Map<string, number>();
-        for (const b of rows.filter((x) => x.expired === expired)) {
-          by.set(b.store_id, (by.get(b.store_id) ?? 0) + 1);
-        }
-        // the count is every store's; it opens that store when there is only one, else the
-        // list of all of them, so the list matches the count
-        const only = by.size === 1 ? [...by.keys()][0]! : null;
-        return { n: [...by.values()].reduce((a, b) => a + b, 0), store: only };
-      };
-      expiry = { expiring: most(false), expired: most(true) };
+      const n = (expired: boolean) => rows.filter((x) => x.expired === expired).length;
+      expiry = { expiring: { n: n(false) }, expired: { n: n(true) } };
     }
 
     let numbers: TodayNumbers | null = null;

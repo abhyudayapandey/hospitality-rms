@@ -86,6 +86,9 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   codes to messages and never shows raw SQL errors.
 - Mutating server actions accept an optional `idempotencyKey`.
 - Mobile-first UI: design for 380px width first; large tap targets; works on slow networks.
+- A list that can span several stores or places offers "All stores" (or "All outlets") as
+  the first option of its Place picker, and a count across all of them opens its list with
+  it chosen (ADR 038). No separate "all / only this one" links.
 
 ## Commands
 ```

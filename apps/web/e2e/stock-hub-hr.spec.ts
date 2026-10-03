@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { placeId, signInAs } from './helpers';
+import { placeId, signInAs, viewing, viewingOptions } from './helpers';
 
 // UX-4 and UX-5 (ADR 035) through the real screens: the Stock hub, sales entry with search
 // and copy, Team → People and Leave, and deactivation through approval. Who may do what
@@ -91,8 +91,41 @@ test('Home expiry banners open a list with as many items as they count', async (
     const n = Number((await banner.locator('.tabular-nums').innerText()).trim());
     await banner.click();
     await page.waitForURL(/\/stock\/expiry/);
+    // "All stores" chosen in the Place picker (ADR 038)
+    expect(await viewing(page)).toBe('All stores');
     await expect(page.getByTestId('expiry-row')).toHaveCount(n);
   }
+});
+
+test('the expiry lists: All stores or one store, from the Place picker', async ({ page }) => {
+  await signInAs(page, 'Test General Manager 1.0');
+  await page.goto('/');
+  await page.getByTestId('banner-expiring').click();
+  await page.waitForURL(/all=1/);
+  const picker = page.getByTestId('place-switcher').getByRole('combobox', { name: 'Place' });
+  expect((await viewingOptions(page))[0]).toBe('All stores');
+  const all = await page.getByTestId('expiry-row').count();
+  // one store: only its batches, without the store on each line
+  await picker.selectOption({ label: 'Kitchen Store' });
+  await page.waitForURL((u) => !u.searchParams.has('all'));
+  expect(await viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen Store');
+  await expect(page.getByTestId('expiry-store')).toHaveCount(0);
+  await expect(page.locator('[data-sku="GINGER-GARLIC-PASTE"]')).toBeVisible();
+  expect(await page.getByTestId('expiry-row').count()).toBeLessThanOrEqual(all);
+  // the Expired tab keeps the choice
+  await page.getByRole('link', { name: /^Expired/ }).click();
+  expect(await viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen Store');
+  await expect(page.locator('[data-sku="MINT-CHUTNEY"]')).toBeVisible();
+  // and back to all of them, each line naming its store
+  await picker.selectOption({ label: 'All stores' });
+  await page.waitForURL(/all=1/);
+  expect(await viewing(page)).toBe('All stores');
+  await expect(page.getByRole('link', { name: /^Expired/ })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  const rows = await page.getByTestId('expiry-row').count();
+  await expect(page.getByTestId('expiry-store')).toHaveCount(rows);
 });
 
 test('People report: a department opens the names of the people in it', async ({ page }) => {
