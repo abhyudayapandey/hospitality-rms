@@ -32,7 +32,7 @@ export default class TimedSequencer extends BaseSequencer {
     return WEIGHTS[relative(this.ctx.config.root, spec.moduleId)] ?? DEFAULT;
   }
 
-  override async shard(files: TestSpecification[]): Promise<TestSpecification[]> {
+  override shard(files: TestSpecification[]): Promise<TestSpecification[]> {
     const { index, count } = this.ctx.config.shard!;
     const load = new Array<number>(count).fill(0);
     const mine: TestSpecification[] = [];
@@ -44,7 +44,7 @@ export default class TimedSequencer extends BaseSequencer {
       load[shard] = (load[shard] ?? 0) + this.weight(spec);
       if (shard === index - 1) mine.push(spec);
     }
-    return mine;
+    return Promise.resolve(mine);
   }
 
   // the slowest files start first, so a worker isn't left with one long file at the end
