@@ -33,6 +33,7 @@ const STORE_RULE = `n.type = 'delivery' and n.holds_stock
 
 /** Every report with places, in the order rpt.my_reports() lists them. */
 const PLACED = [
+  'league',
   'outlet_flash',
   'department',
   'cost_of_sales',
@@ -73,6 +74,15 @@ const RULES: Record<string, string> = {
                   join core.hierarchy_node site on site.type = 'org' and site.kind = 'site'
                                                and o.path operator(extensions.<@) site.path
                  where l.delivery_node_id = n.id)`,
+  // R-4 (ADR 031): the outlets of a company, region or area side by side, for whoever reads
+  // their sales there (the Area Manager) or holds REPORTS, when two or more are theirs
+  league: `n.type = 'org' and n.kind in ('company', 'region', 'area')
+           and (core.can('REPORTS', 'view', n.id, null)
+                or core.can('DERIVED_SALES', 'view', n.id, null))
+           and (select count(*) from core.hierarchy_node o
+                 where o.type = 'org' and o.kind = 'outlet' and o.archived_at is null
+                   and o.path operator(extensions.<@) n.path
+                   and rpt.can_open('outlet_flash', o.id)) >= 2`,
   // whoever keeps the worker records (HR), at any level above a department
   people: `n.type = 'org' and n.kind in ('company', 'region', 'area', 'outlet', 'site')
            and (core.can('REPORTS', 'view', n.id, null)

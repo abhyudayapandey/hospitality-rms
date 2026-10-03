@@ -26,6 +26,14 @@ const num = z
   .transform(Number);
 const optNum = z.union([z.literal('').transform(() => undefined), num]);
 const int = z.string().regex(/^\d+$/, 'must be a whole number').transform(Number);
+/** A phone number for WhatsApp (PO-4): digits, spaces, brackets and dashes, 8 to 15 digits. */
+const phone = z
+  .string()
+  .refine(
+    (v) => v === '' || (/^\+?[0-9 ()-]+$/.test(v) && /^(\D*\d){8,15}\D*$/.test(v)),
+    'must be a phone number with 8 to 15 digits',
+  )
+  .transform((v) => (v === '' ? undefined : v));
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'must be a date like 2026-10-01');
 const optDate = z.union([z.literal('').transform(() => undefined), date]);
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'must be a time like 07:00');
@@ -349,6 +357,8 @@ export const FILES = {
       name: text,
       lead_time_days: int,
       contact_email: optional,
+      // PO-4 (ADR 032): optional column; blank keeps what was set in the app
+      contact_phone: phone.optional(),
     }),
   },
   items: {

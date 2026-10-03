@@ -10,7 +10,13 @@ import {
   supplyContext,
   type SearchParams,
 } from '@/lib/inventory';
+import { mailtoLink, orderRef, orderSubject, orderText, whatsappLink } from '@/lib/po-message';
+import { companySettings } from '@/lib/settings-data';
+import { ContactForm } from './contact-form';
 import { ReceiveForm, type ReceiveLine } from './receive-form';
+import { SendCard } from './send-card';
+
+const CHANNEL = { whatsapp: 'on WhatsApp', email: 'by email', print: 'printed' } as const;
 
 export default async function OrderPage({
   params,
@@ -27,15 +33,21 @@ export default async function OrderPage({
     const po = await sql<{
       id: string;
       delivery_node_id: string;
+      store: string;
+      supplier_id: string;
       supplier: string;
+      phone: string | null;
+      email: string | null;
       total: string;
+      status: string;
       progress: string;
       notes: string | null;
       created_at: Date;
       can_modify: boolean;
     }>`
-      select po.id, po.delivery_node_id, s.name as supplier, po.total, po.progress, po.notes,
-             po.created_at,
+      select po.id, po.delivery_node_id, core.node_name(po.delivery_node_id) as store,
+             s.id as supplier_id, s.name as supplier, s.phone, s.contact as email, po.total,
+             po.status, po.progress, po.notes, po.created_at,
              core.can('PURCHASE_ORDERS', 'modify', null, po.delivery_node_id) as can_modify
         from inv.purchase_order_summary po join inv.supplier s on s.id = po.supplier_id
        where po.id = ${id}::uuid`.execute(tx);
@@ -45,10 +57,36 @@ export default async function OrderPage({
                         where gl.po_line_id = pl.id), 0) as received
         from inv.purchase_order_line pl join inv.item i on i.id = pl.item_id
        where pl.po_id = ${id}::uuid order by i.name`.execute(tx);
-    return { po: po.rows[0], lines: lines.rows };
+    const sends = po.rows[0]
+      ? await sql<{ channel: 'whatsapp' | 'email' | 'print'; sent_at: Date; sent_by_name: string }>`
+          select channel, sent_at, sent_by_name from inv.po_sends(${id}::uuid)`.execute(tx)
+      : { rows: [] };
+    return {
+      po: po.rows[0],
+      lines: lines.rows,
+      sends: sends.rows,
+      prices: (await companySettings(tx)).po_send_prices,
+    };
   });
   if (!data.po) return <Empty>Order not found.</Empty>;
-  const { po, lines } = data;
+  const { po, lines, sends, prices } = data;
+  // PO-4 (ADR 032): a released order goes to the supplier from this phone
+  const message = {
+    store: po.store,
+    supplier: po.supplier,
+    ref: orderRef(po.id),
+    orderedOn: new Date(po.created_at).toISOString().slice(0, 10),
+    lines: lines.map((l) => ({
+      name: l.name,
+      qty: l.ordered,
+      unit: l.base_uom,
+      unitCost: l.unit_cost,
+    })),
+    prices,
+    sender: user.name,
+  };
+  const text = orderText(message);
+  const canSend = po.can_modify && po.status === 'released';
   const [label, style] = PROGRESS[po.progress] ?? [po.progress, ''];
   const canReceive =
     po.can_modify && (po.progress === 'released' || po.progress === 'partially_received');
@@ -72,6 +110,26 @@ export default async function OrderPage({
         </p>
         {po.notes && <p className="mt-1 text-sm">{po.notes}</p>}
       </div>
+      {canSend && (
+        <SendCard
+          po={po.id}
+          whatsapp={whatsappLink(po.phone, text)}
+          mailto={mailtoLink(po.email, orderSubject(message), text)}
+          sent={sends.map((x) => ({
+            channel: x.channel,
+            label: `Sent ${CHANNEL[x.channel]} by ${x.sent_by_name}, ${formatWhen(x.sent_at)}`,
+          }))}
+        />
+      )}
+      {!canSend && sends.length > 0 && (
+        <ul className="space-y-1 text-sm text-slate-600" data-testid="sends">
+          {sends.map((x, i) => (
+            <li key={i}>
+              Sent {CHANNEL[x.channel]} by {x.sent_by_name}, {formatWhen(x.sent_at)}
+            </li>
+          ))}
+        </ul>
+      )}
       {canReceive ? (
         <ReceiveForm po={po.id} lines={lines} />
       ) : (
@@ -89,6 +147,7 @@ export default async function OrderPage({
           ))}
         </ul>
       )}
+      {po.can_modify && <ContactForm supplier={po.supplier_id} phone={po.phone} email={po.email} />}
     </div>
   );
 }

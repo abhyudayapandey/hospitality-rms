@@ -29,6 +29,11 @@ export const ERROR_MESSAGES = {
   INVALID_REPORT: "That report doesn't exist.",
   MODULE_OFF: "This isn't switched on for your company.",
   INVALID_MODULE: "That module doesn't exist.",
+  // R-4, PO-4 (ADR 031, 032)
+  INVALID_SETTING:
+    'Check the values: targets are 0 to 100%, popularity 10 to 100%, overtime 1× to 3×.',
+  INVALID_CHANNEL: 'Send the order by WhatsApp, email or print.',
+  INVALID_CONTACT: 'Check the phone number (8 to 15 digits) and the email address.',
   GROUP_CODE_TAKEN: 'That name is taken by a product group. Choose another.',
   GROUP_IN_USE: 'People hold this group, or a job role uses it. Take it off them first.',
   SHIFT_STARTED: 'That shift has already started, so it can no longer be changed.',

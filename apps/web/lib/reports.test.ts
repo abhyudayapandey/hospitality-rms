@@ -12,6 +12,7 @@ import {
   PERIODS,
   REPORTS,
   sectionRows,
+  sortLeague,
   SECTIONS,
   topLosses,
 } from './reports';
@@ -78,6 +79,7 @@ describe('sections', () => {
 describe('the cost controller reports (ADR 028)', () => {
   it('every report has a page, and the four new ones come after the R-1 reports', () => {
     expect(Object.keys(REPORTS)).toEqual([
+      'league',
       'outlet_flash',
       'department',
       'cost_of_sales',
@@ -181,5 +183,43 @@ describe('where the money went (R-3, ADR 030)', () => {
   it('capRange: at most 93 days, ending where asked', () => {
     expect(capRange('2026-01-01', '2026-10-02')).toEqual({ from: '2026-07-02', to: '2026-10-02' });
     expect(capRange('2026-09-26', '2026-10-02')).toEqual({ from: '2026-09-26', to: '2026-10-02' });
+  });
+});
+
+describe('the league table (R-4, ADR 031)', () => {
+  const row = (name: string, sales: string, food: string | null, tasks: string | null) => ({
+    outlet_id: name,
+    code: name,
+    name,
+    sales,
+    food_pct: food,
+    drink_pct: null,
+    labour_pct: null,
+    prime_pct: null,
+    wastage_pct: null,
+    tasks_pct: tasks,
+  });
+  const rows = [
+    row('Bar 3.0', '1000', '25', '80'),
+    row('Hotel 1.0', '5000', '21.5', null),
+    row('Guest House 2.0', '0', null, '95'),
+  ];
+
+  it('best first: highest sales, lowest cost, highest task score; no figure last', () => {
+    expect(sortLeague(rows).map((r) => r.name)).toEqual([
+      'Hotel 1.0',
+      'Bar 3.0',
+      'Guest House 2.0',
+    ]);
+    expect(sortLeague(rows, 'food_pct').map((r) => r.name)).toEqual([
+      'Hotel 1.0',
+      'Bar 3.0',
+      'Guest House 2.0',
+    ]);
+    expect(sortLeague(rows, 'tasks_pct').map((r) => r.name)).toEqual([
+      'Guest House 2.0',
+      'Bar 3.0',
+      'Hotel 1.0',
+    ]);
   });
 });

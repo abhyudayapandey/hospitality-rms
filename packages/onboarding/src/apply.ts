@@ -854,16 +854,27 @@ class Loader {
       this.step(FILES.suppliers.file, s.line);
       await this.upsert(
         'suppliers',
-        `insert into inv.supplier (tenant_id, code, name, lead_time_days, contact)
-         values ($1, $2, $3, $4, $5)
+        // a blank email or phone keeps what was set in the app (PO-4, ADR 032)
+        `insert into inv.supplier (tenant_id, code, name, lead_time_days, contact, phone)
+         values ($1, $2, $3, $4, $5, $6)
          on conflict (tenant_id, code) where code is not null do update
             set name = excluded.name, lead_time_days = excluded.lead_time_days,
-                contact = excluded.contact, archived_at = null
+                contact = coalesce(excluded.contact, inv.supplier.contact),
+                phone = coalesce(excluded.phone, inv.supplier.phone), archived_at = null
           where (inv.supplier.name, inv.supplier.lead_time_days, inv.supplier.contact,
-                 inv.supplier.archived_at)
-                is distinct from (excluded.name, excluded.lead_time_days, excluded.contact, null)
+                 inv.supplier.phone, inv.supplier.archived_at)
+                is distinct from (excluded.name, excluded.lead_time_days,
+                                  coalesce(excluded.contact, inv.supplier.contact),
+                                  coalesce(excluded.phone, inv.supplier.phone), null)
          returning id, xmax = 0 as inserted`,
-        [this.tenant, s.supplier_code, s.name, s.lead_time_days, s.contact_email ?? null],
+        [
+          this.tenant,
+          s.supplier_code,
+          s.name,
+          s.lead_time_days,
+          s.contact_email ?? null,
+          s.contact_phone ?? null,
+        ],
       );
       this.suppliers.set(
         s.supplier_code,

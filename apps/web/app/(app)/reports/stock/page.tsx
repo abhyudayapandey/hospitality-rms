@@ -1,5 +1,5 @@
 import { Empty } from '@/components/messages';
-import { NoReport, ReportHeader, ReportSections } from '@/components/report-view';
+import { CsvLink, NoReport, ReportHeader, ReportSections } from '@/components/report-view';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatMoney } from '@/lib/format';
@@ -89,6 +89,7 @@ export default async function StockPosition({ searchParams }: { searchParams: Se
           </ul>
         )}
       </section>
+      <CsvLink report="stock_items" node={place.id} label="Every item as CSV" />
       <p className="text-xs text-slate-500">
         Use is stock that left for sales, production, other use, wastage and transfers, over the
         last 28 days (fewer while the store is new, at least 7). Opening stock doesn&apos;t count as

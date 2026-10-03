@@ -7,6 +7,7 @@ import type { ReportScreen } from './place-screens';
 import { isIsoDate } from './dates';
 import {
   periodRange,
+  type LeagueRow,
   type CostItem,
   type CostPartRow,
   type MeasureRow,
@@ -518,5 +519,19 @@ export async function transfersIn(
     select from_id, from_name, transfers, requested_value::text, received_value::text,
            fill_pct::text, transit_loss::text, short_lines
       from rpt.transfers_in(${store}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+/** The outlets of a company, region or area side by side (R-4, ADR 031). */
+export async function league(
+  tx: Tx,
+  place: string,
+  from: string,
+  to: string,
+): Promise<LeagueRow[]> {
+  const r = await sql<LeagueRow>`
+    select outlet_id, code, name, sales::text, food_pct::text, drink_pct::text,
+           labour_pct::text, prime_pct::text, wastage_pct::text, tasks_pct::text
+      from rpt.league(${place}::uuid, ${from}::date, ${to}::date)`.execute(tx);
   return r.rows;
 }

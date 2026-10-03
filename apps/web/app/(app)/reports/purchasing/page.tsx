@@ -1,5 +1,5 @@
 import { Empty } from '@/components/messages';
-import { NoReport, PeriodPicker, ReportHeader } from '@/components/report-view';
+import { CsvLink, NoReport, PeriodPicker, ReportHeader } from '@/components/report-view';
 import { requireUser } from '@/lib/auth/server';
 import { formatDay } from '@/lib/dates';
 import { withUser } from '@/lib/db';
@@ -187,6 +187,15 @@ export default async function Purchasing({ searchParams }: { searchParams: Searc
           </ul>
         </section>
       )}
+      <div className="flex flex-wrap gap-x-4">
+        <CsvLink
+          report="price_changes"
+          node={place.id}
+          period={range}
+          label="Price changes as CSV"
+        />
+        <CsvLink report="supplier_fill" node={place.id} period={range} label="Suppliers as CSV" />
+      </div>
       <p className="text-xs text-slate-500">
         Orders released {formatDay(range.from)} to {formatDay(range.to)}. Fill rate is what was
         received over what was ordered, at the ordered price; on time is a first delivery by the

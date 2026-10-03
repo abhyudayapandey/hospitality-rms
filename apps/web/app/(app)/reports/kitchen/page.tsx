@@ -1,5 +1,11 @@
 import { Empty } from '@/components/messages';
-import { NoReport, PeriodPicker, ReportHeader, ReportSections } from '@/components/report-view';
+import {
+  CsvLink,
+  NoReport,
+  PeriodPicker,
+  ReportHeader,
+  ReportSections,
+} from '@/components/report-view';
 import { requireUser } from '@/lib/auth/server';
 import { formatDay } from '@/lib/dates';
 import { withUser } from '@/lib/db';
@@ -120,6 +126,9 @@ export default async function KitchenReport({ searchParams }: { searchParams: Se
         )}
       </section>
 
+      {dispatch.length > 0 && (
+        <CsvLink report="kitchen_dispatch" node={place.id} period={range} label="Outlets as CSV" />
+      )}
       {transit.length > 0 && (
         <section aria-label="On the way" className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-700">On the way now</h2>

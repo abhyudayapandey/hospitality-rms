@@ -2,6 +2,7 @@
 // the figures come from rpt.* functions, which decide who may see what (rule 2).
 
 export type ReportCode =
+  | 'league'
   | 'outlet_flash'
   | 'department'
   | 'cost_of_sales'
@@ -14,6 +15,12 @@ export type ReportCode =
 
 export const REPORTS: Readonly<Record<ReportCode, { title: string; href: string; blurb: string }>> =
   {
+    // R-4 (ADR 031): the area manager's and owner's first report
+    league: {
+      title: 'Outlets side by side',
+      href: '/reports/league',
+      blurb: 'Every outlet’s sales, costs, wastage and tasks against the targets.',
+    },
     outlet_flash: {
       title: 'Outlet today',
       href: '/reports/outlet',
@@ -205,6 +212,7 @@ export const SECTIONS: Readonly<Record<ReportCode, readonly [string, readonly st
     ['Now', ['in_transit_value']],
   ],
   // lists, not measures
+  league: [],
   menu_engineering: [],
   purchasing: [],
 };
@@ -468,4 +476,63 @@ export function flashCostParts(rows: readonly MeasureRow[]): CostPartRow[] {
 export function capRange(from: string, to: string, days = 93): { from: string; to: string } {
   const earliest = shift(to, -(days - 1));
   return { from: from < earliest ? earliest : from, to };
+}
+
+// ---------------------------------------------------------------------------------------
+// The league table (R-4, ADR 031)
+// ---------------------------------------------------------------------------------------
+
+export interface LeagueRow {
+  outlet_id: string;
+  code: string;
+  name: string;
+  sales: string;
+  food_pct: string | null;
+  drink_pct: string | null;
+  labour_pct: string | null;
+  prime_pct: string | null;
+  wastage_pct: string | null;
+  tasks_pct: string | null;
+}
+
+export type LeagueColumn = Exclude<keyof LeagueRow, 'outlet_id' | 'code' | 'name'>;
+
+/** The columns, in order; a cost is better low, tasks and sales better high. */
+export const LEAGUE_COLUMNS: readonly {
+  key: LeagueColumn;
+  label: string;
+  better: 'up' | 'down';
+}[] = [
+  { key: 'sales', label: 'Sales', better: 'up' },
+  { key: 'food_pct', label: 'Food cost', better: 'down' },
+  { key: 'drink_pct', label: 'Drinks cost', better: 'down' },
+  { key: 'labour_pct', label: 'People cost', better: 'down' },
+  { key: 'prime_pct', label: 'Prime cost', better: 'down' },
+  { key: 'wastage_pct', label: 'Wastage', better: 'down' },
+  { key: 'tasks_pct', label: 'Tasks on time', better: 'up' },
+];
+
+export function isLeagueColumn(s: string | undefined): s is LeagueColumn {
+  return LEAGUE_COLUMNS.some((c) => c.key === s);
+}
+
+/**
+ * Best first by the column asked for (sales by default): the lowest cost, the highest sales
+ * or task score. Outlets with no figure go last, then by name.
+ */
+export function sortLeague<T extends LeagueRow>(
+  rows: readonly T[],
+  column: LeagueColumn = 'sales',
+): T[] {
+  const better = LEAGUE_COLUMNS.find((c) => c.key === column)!.better;
+  const val = (r: T) => (r[column] === null || r[column] === '' ? null : Number(r[column]));
+  return [...rows].sort((a, b) => {
+    const x = val(a);
+    const y = val(b);
+    if (x === null && y === null) return a.name.localeCompare(b.name);
+    if (x === null) return 1;
+    if (y === null) return -1;
+    if (x === y) return a.name.localeCompare(b.name);
+    return better === 'up' ? y - x : x - y;
+  });
 }

@@ -1,3 +1,3 @@
-supplier_code,name,lead_time_days,contact_email
-SUPPLIER-BEVERAGES,Test Solo Supplier – Beverages,2,beverages@test-supplier.example
-SUPPLIER-FOOD,Test Solo Supplier – Food,1,food@test-supplier.example
+supplier_code,name,lead_time_days,contact_email,contact_phone
+SUPPLIER-BEVERAGES,Test Solo Supplier – Beverages,2,beverages@test-supplier.example,+91 98200 20001
+SUPPLIER-FOOD,Test Solo Supplier – Food,1,food@test-supplier.example,+91 98200 20002
