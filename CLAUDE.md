@@ -105,6 +105,9 @@ pnpm dev               run web app
 pnpm test              all tests (needs db:up + db:migrate + db:seed)
 pnpm test:unit         unit tests only (*.test.ts)
 pnpm test:db           DB integration tests only (*.db.test.ts)
+                       with DB_TEST_WORKERS=n (and PG_ADMIN_URL, the local superuser) the DB
+                       tests run n files at once, each worker on its own copy of the seeded
+                       database (ADR 029); CI runs them that way, in shards
 pnpm lint && pnpm typecheck
 pnpm format            prettier --write
 pnpm db:new <name>     new dbmate migration

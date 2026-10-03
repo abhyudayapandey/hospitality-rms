@@ -1,6 +1,6 @@
-import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
+import { closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
+import { as, everyone, placesOf, reportsOf } from '../test/report-access';
 
 // Who may open which report (docs/reporting.md section 5, ADR 023), for every person in
 // both test customers. A report opens where its source is visible: the outlet flash where
@@ -23,55 +23,6 @@ afterAll(closePools);
 
 /** Groups that make someone frontline: they never see business numbers. */
 const FRONTLINE = new Set(['SELF', 'STAFF', 'STOCK_USER', 'PRODUCTION_TEAM']);
-
-interface Person {
-  id: string;
-  username: string;
-  tenant: string;
-  groups: string[];
-  worker: boolean;
-}
-
-async function everyone(c: PoolClient): Promise<Person[]> {
-  const { rows } = await c.query<Person>(
-    `select u.id, u.username, t.code as tenant,
-            coalesce(array_agg(distinct g.code) filter (where g.code is not null), '{}') as groups,
-            exists (select 1 from hr.worker w where w.owner_user_id = u.id and w.status = 'active')
-              as worker
-       from core.app_user u
-       join core.tenant t on t.id = u.tenant_id
-       left join core.role_assignment ra on ra.user_id = u.id
-                                        and ra.effective_from <= current_date
-                                        and (ra.effective_to is null or ra.effective_to >= current_date)
-       left join core.security_group g on g.id = ra.group_id
-      where t.code in ('TEST-COMPANY', 'TEST-SOLO-COMPANY') and u.kind = 'human'
-        and u.status = 'active' and u.username is not null
-      group by u.id, u.username, t.code
-      order by u.username`,
-  );
-  return rows;
-}
-
-async function as<T extends object>(
-  c: PoolClient,
-  user: string,
-  sql: string,
-  params: unknown[] = [],
-) {
-  return attemptAs<T>(c, user, sql, params);
-}
-
-async function reportsOf(c: PoolClient, user: string): Promise<string[]> {
-  const r = await as<{ report: string }>(c, user, 'select report from rpt.my_reports()');
-  if (r.error !== undefined) throw new Error(r.error);
-  return r.rows.map((x) => x.report);
-}
-
-async function placesOf(c: PoolClient, user: string, report: string): Promise<string[]> {
-  const r = await as<{ code: string }>(c, user, 'select code from rpt.report_places($1)', [report]);
-  if (r.error !== undefined) throw new Error(`${report}: ${r.error}`);
-  return r.rows.map((x) => x.code).sort();
-}
 
 /** The store reports: a stock-holding store, for the people who answer for its cost. */
 const STORE_RULE = `n.type = 'delivery' and n.holds_stock
@@ -171,93 +122,6 @@ describe('reports: who opens what (every user)', () => {
         }
       }
       expect(wrong).toEqual([]);
-    });
-  }, 180_000);
-
-  it('a report refuses every place it does not list', async () => {
-    await inRolledBackTx(async (c) => {
-      const outlets = await c.query<{ id: string; code: string; tenant: string }>(
-        `select n.id, n.code, t.code as tenant from core.hierarchy_node n
-           join core.tenant t on t.id = n.tenant_id
-          where t.code in ('TEST-COMPANY', 'TEST-SOLO-COMPANY') and n.type = 'org'
-            and n.kind = 'outlet'`,
-      );
-      const depts = await c.query<{ id: string; code: string }>(
-        `select n.id, n.code from core.hierarchy_node n
-          where n.code in ('TEST-HOTEL-1.0-KITCHEN', 'TEST-BAR-3.0-FLOOR-SERVICE',
-                           'TEST-GUEST-HOUSE-2.0', 'TEST-SOLO-BAR')`,
-      );
-      const sites = await c.query<{ id: string; code: string }>(
-        `select n.id, n.code from core.hierarchy_node n
-          where n.code in ('TEST-CENTRAL-KITCHEN')`,
-      );
-      const stores = await c.query<{ id: string; code: string }>(
-        `select n.id, n.code from core.hierarchy_node n
-          where n.code in ('TEST-HOTEL-1.0-KITCHEN-STORE', 'TEST-HOTEL-1.0-BAR-STORE',
-                           'TEST-HOTEL-1.0-MAIN-STORE', 'TEST-BAR-3.0-BAR-STORE',
-                           'TEST-CENTRAL-KITCHEN-STORE', 'TEST-SOLO-BAR-BAR-STORE')`,
-      );
-      expect(stores.rows).toHaveLength(6);
-      const leaks: string[] = [];
-      for (const p of await everyone(c)) {
-        const flash = new Set(await placesOf(c, p.id, 'outlet_flash'));
-        for (const o of outlets.rows) {
-          if (flash.has(o.code)) continue;
-          const r = await as(c, p.id, 'select * from rpt.outlet_flash($1, current_date)', [o.id]);
-          if (r.error !== 'NOT_AUTHORISED') leaks.push(`${p.username} outlet_flash ${o.code}`);
-        }
-        const cost = new Set(await placesOf(c, p.id, 'cost_of_sales'));
-        for (const o of [...outlets.rows, ...sites.rows]) {
-          if (cost.has(o.code)) continue;
-          for (const fn of [
-            'rpt.cost_items($1, current_date - 6, current_date)',
-            'rpt.cost_totals($1, current_date - 6, current_date)',
-          ]) {
-            const r = await as(c, p.id, `select * from ${fn}`, [o.id]);
-            if (r.error !== 'NOT_AUTHORISED') leaks.push(`${p.username} ${fn} ${o.code}`);
-          }
-        }
-        const menu = new Set(await placesOf(c, p.id, 'menu_engineering'));
-        for (const o of outlets.rows) {
-          if (menu.has(o.code)) continue;
-          const r = await as(
-            c,
-            p.id,
-            'select * from rpt.menu_engineering($1, current_date - 6, current_date)',
-            [o.id],
-          );
-          if (r.error !== 'NOT_AUTHORISED') leaks.push(`${p.username} menu_engineering ${o.code}`);
-        }
-        for (const [report, fns] of [
-          ['stock_position', ['rpt.stock_summary($1)', 'rpt.stock_items($1)']],
-          [
-            'purchasing',
-            [
-              'rpt.price_changes($1, current_date - 27, current_date)',
-              'rpt.supplier_fill($1, current_date - 27, current_date)',
-              'rpt.short_deliveries($1, current_date - 27, current_date)',
-            ],
-          ],
-        ] as const) {
-          const mine = new Set(await placesOf(c, p.id, report));
-          for (const st of stores.rows) {
-            if (mine.has(st.code)) continue;
-            for (const fn of fns) {
-              const r = await as(c, p.id, `select * from ${fn}`, [st.id]);
-              if (r.error !== 'NOT_AUTHORISED') leaks.push(`${p.username} ${fn} ${st.code}`);
-            }
-          }
-        }
-        const dept = new Set(await placesOf(c, p.id, 'department'));
-        for (const d of depts.rows) {
-          if (dept.has(d.code)) continue;
-          for (const fn of ['rpt.department_day($1, current_date)', 'rpt.department_people($1)']) {
-            const r = await as(c, p.id, `select * from ${fn}`, [d.id]);
-            if (r.error !== 'NOT_AUTHORISED') leaks.push(`${p.username} ${fn} ${d.code}`);
-          }
-        }
-      }
-      expect(leaks).toEqual([]);
     });
   }, 180_000);
 
