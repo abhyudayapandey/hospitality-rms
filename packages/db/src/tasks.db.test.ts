@@ -573,7 +573,10 @@ describe('an expired batch, end to end', () => {
       ).toBe('done');
 
       // the cost side: expired wastage, line by line, traced to its batch and report
-      const today = new Date().toLocaleDateString('en-CA', { timeZone: IST });
+      // the business day, which starts at 06:00 (ADR 023, 037)
+      const today = new Date(Date.now() - 6 * 3_600_000).toLocaleDateString('en-CA', {
+        timeZone: IST,
+      });
       const lines = await run<{
         sku: string;
         batch_no: string;

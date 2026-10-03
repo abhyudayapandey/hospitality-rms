@@ -1385,6 +1385,20 @@ No re-import for Test Solo Bar Co.
   goes. Roster → My shifts still has the swap button (Test Company has it off).
 - **`test.account-owner`.** Admin → Settings: "People and stock" with both settings.
 
+#### Releasing tests that pass at any hour (ADR 037)
+
+Two migrations. `20261028100000_expiring_calendar_day`: Stock position's "expiring within 3
+days" counts from the store's calendar day, like the Stock banners.
+`20261029100000_cost_business_day`: Cost of sales, Purchasing and the expired-stock lines
+run their days 06:00 to 06:00, like the other reports, so a count, wastage or receipt
+between midnight and 06:00 shows under the night before. No stack change, no parameter, no
+access change, no test data change. Run the Deploy workflow; no re-import.
+
+**Check.** `test.cost-controller.1.0`: Reports → Stock position → Hotel 1.0 Kitchen Store
+shows the same expiring value as the Stock banner's items, at any hour; Reports → Cost of
+sales → Hotel 1.0 shows the closing count's loss (₹1,940 on the test data) in the last 7
+days, also between midnight and 06:00.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

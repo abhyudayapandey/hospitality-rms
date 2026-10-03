@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { placeId, signInAs } from './helpers';
+import { asMigrator, placeId, signInAs } from './helpers';
 
 // The cost controller's reports (R-2, ADR 028) on the test data. The figures are pinned
 // by packages/db/src/cost-reports.db.test.ts; here, what people see and tap.
@@ -52,7 +52,17 @@ test('stock position and purchasing: the executive chef at the Kitchen Store', a
   await signInAs(page, 'Test Executive Chef 1.0');
   await page.goto('/reports/stock');
   await expect(page.getByTestId('viewing')).toHaveText('Test Hotel & Bar 1.0 – Kitchen Store');
-  await expect(page.getByTestId('measure-days_on_hand').getByTestId('value')).toContainText('days');
+  // days on hand need 7 days of use; before 06:00 the business day is still yesterday, one
+  // day fewer (ADR 037), and it shows none yet
+  const lag = (
+    await asMigrator<{ lag: number }>(
+      `select (now() at time zone 'Asia/Kolkata')::date - rpt.today($1) as lag`,
+      [await placeId('TEST-HOTEL-1.0-KITCHEN-STORE')],
+    )
+  )[0]!.lag;
+  await expect(page.getByTestId('measure-days_on_hand').getByTestId('value')).toContainText(
+    lag === 0 ? 'days' : '–',
+  );
   // nothing but opening stock in 30 days: dead stock (decided 2 Oct)
   await expect(page.getByTestId('dead-stock').locator('[data-sku="MUTTON"]')).toBeVisible();
   await expect(page.getByTestId('dead-stock').locator('[data-sku="PANEER"]')).toHaveCount(0);

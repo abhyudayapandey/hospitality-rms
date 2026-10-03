@@ -9,8 +9,12 @@ import {
   type SeedIds,
 } from '../test/helpers';
 
-// the outlets' business day (IST), not the database's UTC date
+// today's date in India (IST), not the database's UTC date: the loader dates prices and
+// recipes from it
 const TODAY = `(now() at time zone 'Asia/Kolkata')::date`;
+// the business day, which starts at 06:00 (ADR 023), so before 06:00 is still yesterday: a
+// period from it to TODAY holds everything done today at any hour (ADR 037)
+const BUSINESS_DAY = `((now() at time zone 'Asia/Kolkata') - interval '6 hours')::date`;
 
 // Production, sales and variance behaviour (ADR 015).
 
@@ -227,6 +231,20 @@ describe('variance and cost %', () => {
       const store = 'TEST-HOTEL-1.0-KITCHEN-STORE';
       const butter = await item(c, 'BUTTER');
       const start = (await level(c, 'BUTTER', store)).onHand;
+      const variance = async () => {
+        const r = await attemptAs<Record<string, string | boolean>>(
+          c,
+          ids.user('test.cost-controller.1.0'),
+          `select * from inv.variance($1, ${BUSINESS_DAY}, ${TODAY}) where sku = 'BUTTER'`,
+          [ids.node(store)],
+        );
+        const x: Record<string, string | boolean> = r.rows![0]!;
+        return { unexplained: x.unexplained, num: (k: string) => Number(x[k]) };
+      };
+      // what the period held before (the seed's opening stock, and at night the test data's
+      // evening before too)
+      const was = await variance();
+      expect(was.num('expected_closing') + was.num('variance_qty')).toBeCloseTo(start, 6);
       await sell(c, [['BUTTER-NAAN', 20]]); // 20 × 10 g = 0.2 kg
       await c.query(
         `insert into inv.stock_ledger (tenant_id, item_id, delivery_node_id, movement_type, qty, unit_cost, ref_type, reason)
@@ -234,22 +252,17 @@ describe('variance and cost %', () => {
                 ($1, $2, $3, 'count_adjust', -0.5, 0, 'test', 'count_variance')`,
         [ids.tenant(), butter, ids.node(store)],
       );
-      const r = await attemptAs<Record<string, string | boolean>>(
-        c,
-        ids.user('test.cost-controller.1.0'),
-        `select * from inv.variance($1, ${TODAY}, ${TODAY}) where sku = 'BUTTER'`,
-        [ids.node(store)],
+      const v = await variance();
+      expect(v.num('opening') + v.num('receipts')).toBeCloseTo(
+        was.num('opening') + was.num('receipts'),
+        6,
       );
-      const v = r.rows![0]!;
-      // the opening balance was posted today by the seed, so it is a receipt in this period
-      const opening = Number(v.opening) + Number(v.receipts);
-      expect(opening).toBeCloseTo(start, 6);
-      expect(Number(v.sales_use)).toBeCloseTo(0.2, 6);
-      expect(Number(v.wastage)).toBeCloseTo(0.1, 6);
-      expect(Number(v.expected_closing)).toBeCloseTo(start - 0.3, 6);
-      expect(Number(v.variance_qty)).toBeCloseTo(-0.5, 6);
-      expect(Number(v.closing)).toBeCloseTo(start - 0.8, 6);
-      expect(Number(v.variance_value)).toBeLessThan(0);
+      expect(v.num('sales_use') - was.num('sales_use')).toBeCloseTo(0.2, 6);
+      expect(v.num('wastage') - was.num('wastage')).toBeCloseTo(0.1, 6);
+      expect(v.num('expected_closing') - was.num('expected_closing')).toBeCloseTo(-0.3, 6);
+      expect(v.num('variance_qty') - was.num('variance_qty')).toBeCloseTo(-0.5, 6);
+      expect(v.num('closing')).toBeCloseTo(start - 0.8, 6);
+      expect(v.num('variance_value')).toBeLessThan(0);
       expect(v.unexplained).toBe(true);
     });
   });
