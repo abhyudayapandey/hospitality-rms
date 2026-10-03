@@ -252,7 +252,7 @@ place switcher (ADR 016) narrows or widens it within their access.
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | R-1   | `rpt` schema, the four daily tables and the nightly rebuild (security tests first). Home "Today's numbers" and Department today. Reports list. Daily flash for outlet and department (without labour cost). My week for staff.               |
 | R-2   | _(Done, ADR 028)_ Cost controller suite: actual vs theoretical by item (Cost of sales), purchase price variance, supplier fill rate, stock valuation and days on hand, dead stock, menu engineering. Replaces the Variance screen (UX U-14). |
-| R-3   | LABOUR_COST domain and labour %, SPLH, prime cost; HR reports; central kitchen reports, with transfer fill rate.                                                                                                                             |
+| R-3   | _(Done, ADR 030)_ LABOUR_COST domain and labour %, SPLH, prime cost, with the cost broken into its parts; People (HR) report; central kitchen report, with transfer fill rate.                                                               |
 | R-4   | Area and company league tables; Account Owner view; CSV export; targets in company settings.                                                                                                                                                 |
 | later | E-mail digest; occupancy for housekeeping; AI signals reading the same measures (ADR 020's trace is already one).                                                                                                                            |
 
@@ -282,10 +282,23 @@ Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
 
   Transfer fill rate (section 4) moves to R-3 with the central kitchen reports.
 
+- **R-3 done** (ADR 030):
+  - **labour cost** on Outlet today and Department today: people cost, labour %, prime
+    cost and sales per hour worked, for LABOUR_COST holders and the Account Owner, never
+    for a group of fewer than 3 paid people;
+  - **"Where the money went"** wherever a total cost shows (Outlet today, Cost of sales):
+    raw materials by part, people, and prime cost, each in ₹ and % of sales; and people
+    cost by department on Cost of sales;
+  - **People**: headcount, shifts, lateness, hours, overtime and leave, with leave
+    liability in ₹ only with LABOUR_COST;
+  - **Central kitchen**: production against the prep lists, fill rate and transit loss per
+    outlet, what is on the way; and "From the central kitchen" on Purchasing;
+  - test data: pay rates (file 34), a week of attendance (35) and two kitchen transfers
+    (36).
+
 - **Not yet:**
   - targets (R-4), so figures are compared only with the same day last week;
-  - labour cost and labour % (R-3);
-  - area and company league tables (R-4).
+  - area and company league tables and CSV export (R-4).
 
 ## 8. Decisions (2 Oct 2026)
 
@@ -300,8 +313,9 @@ Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
    outlet per day (IDSNEXT first, others alike), with item, description, quantity, rate,
    value and discount per line.
 5. **Business day: 06:00 local time**, for every outlet.
-6. **Targets** (food %, beverage %, labour %, task compliance): still open; proposed as
-   company settings with an outlet override, in R-4.
+6. **Targets** (food %, beverage %, labour %, task compliance): company settings with an
+   outlet override, in R-4 (decided 3 Oct: food 30, drink 22, labour 25, prime 60,
+   wastage 2, tasks 90; red only when worse by more than 2 points).
 7. **Order:** R-2 comes after UX-3, UX-3b and AC-1 (customer-specific access groups,
    `docs/ux-review.md`), so the cost controller suite can be granted per customer.
 8. **R-2 in one change** (asked 2 Oct), with these rules:
@@ -327,3 +341,14 @@ Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
 - [BinWise liquor cost percentage](https://home.binwise.com/blog/liquor-cost-percentage)
 - [Jolt, Culver's case study](https://www.jolt.com/customer-success-stories/culvers/) and [Zenput vs Jolt](https://xenia.team/articles/zenput-vs-jolt)
 - [Menu engineering matrix (Loaded)](https://www.loadedhub.com/resources/menu-engineering-matrix-restaurant) and [Toast](https://pos.toasttab.com/es-us/blog/on-the-line/menu-engineering-matrix)
+
+## 9. Decisions (3 Oct 2026, R-3)
+
+1. **Labour cost:** salaried staff at the monthly rate × 12 ÷ 365 per day employed; hourly
+   staff at hours worked × rate. Every total cost shows its parts, in ₹ and % of sales.
+2. **Overtime** at 1×, shown in hours; the multiplier becomes a setting in R-4.
+3. **Small groups:** under 3 paid people go into Other departments; if Other is still under
+   3, the smallest shown department joins it; an outlet under 3 shows nothing.
+4. **Leave liability:** days for the HR Executive; ₹ only with LABOUR_COST.
+5. **Central kitchen report:** the R-2 store rule.
+6. **One change** for labour, People and the central kitchen.

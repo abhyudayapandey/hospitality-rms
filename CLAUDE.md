@@ -168,6 +168,9 @@ customer); files 30 to 32 (test customers only, ADR 020) load one-off tasks, a m
 request and a prep list linked to file 26's batches, also pinned by that test. File 33 (test
 customers only, ADR 028) loads past purchase orders, approved and received in full, short or
 not at all; the purchasing and stock figures are pinned by `packages/db/src/cost-reports.db.test.ts`.
+File 34 is pay rates (any customer); files 35 and 36 (test customers only, ADR 030) load a
+past week of attendance and two central kitchen transfers; the labour, People and central
+kitchen figures are pinned by `packages/db/src/labour-reports.db.test.ts`.
 `TEST_LOGINS_do_not_commit.csv` (passwords) is never committed.
 
 ## How to work in this repo

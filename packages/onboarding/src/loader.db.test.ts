@@ -126,6 +126,62 @@ describe('the prep list (file 32) after the past week was loaded on an earlier d
   });
 });
 
+describe('rows for a store new to files 26 and 32, after the past week was loaded', () => {
+  // production loaded files 26 to 32 before the central kitchen's rows existed (ADR 030)
+  it('are loaded from today; the other stores keep their day; a second load changes nothing', async () => {
+    await inRolledBackTx(async (c) => {
+      const tenant = (
+        await c.query<{ id: string }>(`select id from core.tenant where code = 'TEST-COMPANY'`)
+      ).rows[0]!.id;
+      // as if the outlets' batches had been loaded ten days ago, and the kitchen's never
+      await c.query(
+        `update inv.production
+            set idempotency_key = case
+                  when idempotency_key like '% TEST-CENTRAL-KITCHEN-STORE %'
+                    then 'earlier ' || idempotency_key
+                  else regexp_replace(idempotency_key, '^test-data (\\S+)',
+                         'test-data ' || ((split_part(idempotency_key, ' ', 2))::date - 10)::text)
+                end
+          where tenant_id = $1 and idempotency_key like 'test-data %'`,
+        [tenant],
+      );
+      const kitchenTasks = `select id from ops.task where tenant_id = $1 and kind = 'prep'
+                               and idempotency_key like 'test-data prep TEST-CENTRAL-KITCHEN-STORE %'`;
+      await c.query(`update inv.production set task_id = null where task_id in (${kitchenTasks})`, [
+        tenant,
+      ]);
+      await c.query(`delete from ops.task_step where task_id in (${kitchenTasks})`, [tenant]);
+      await c.query(`delete from ops.task where id in (${kitchenTasks})`, [tenant]);
+
+      const files = readCustomerDir(join(DATA, 'test-company'));
+      const r = await loadCustomer(c, files, { nested: true });
+      expect(r.issues).toEqual([]);
+      expect(r.counts['production batches']).toMatchObject({ created: 2 });
+      expect(r.counts['prep tasks']).toMatchObject({ created: 2 });
+      const { rows } = await c.query<{ k: string; linked: boolean }>(
+        `select idempotency_key as k, task_id is not null as linked from inv.production
+          where tenant_id = $1 and idempotency_key like 'test-data % TEST-CENTRAL-KITCHEN-STORE %'
+          order by 1`,
+        [tenant],
+      );
+      // file 26: days -2 and -1 from today, each made against its prep list
+      const day = async (n: number) =>
+        (await c.query<{ d: string }>(`select (current_date + $1::int)::text as d`, [n])).rows[0]!
+          .d;
+      expect(rows.map((x) => [x.k.split(' ')[1], x.linked])).toEqual([
+        [await day(-2), true],
+        [await day(-1), true],
+      ]);
+
+      const again = await loadCustomer(c, files, { nested: true });
+      const changed = Object.entries(again.counts).filter(
+        ([, n]) => n.created !== 0 || n.updated !== 0,
+      );
+      expect(changed).toEqual([]);
+    });
+  });
+});
+
 describe('loader errors', () => {
   const base = readCustomerDir(join(DATA, 'test-company'));
   const edit = (file: string, from: string, to: string) => ({
