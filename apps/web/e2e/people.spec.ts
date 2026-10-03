@@ -176,6 +176,16 @@ test('manager builds and publishes; approved leave drops the shift after both ap
   await expect(page.getByTestId('my-leave').locator('li').first()).toContainText('Approved');
   await page.goto('/notifications');
   await expect(page.getByTestId('notifications')).toContainText('Leave approved');
+  // opening a notification marks it read (and goes where it points)
+  const approved = page
+    .getByTestId('notifications')
+    .locator('li')
+    .filter({ hasText: 'Leave approved' });
+  await expect(approved.getByLabel('unread')).toBeVisible();
+  await approved.locator('a').click();
+  await expect(page).not.toHaveURL(/\/notifications/);
+  await page.goto('/notifications');
+  await expect(approved.getByLabel('unread')).toHaveCount(0);
 
   await signInAs(page, 'Test Bar Manager 3.0');
   await openWeek(page, FRIDAY);
@@ -448,7 +458,7 @@ test('Roster is Me and Team: staff see only Me; the manager switches; HR has Tea
   await signInAs(page, 'Test Bar Manager 3.0');
   await page.goto('/roster');
   await page.waitForURL(/\/roster\/week/);
-  expect(await tabs(page, 'Team')).toEqual(['Roster', 'Exceptions', 'Events']);
+  expect(await tabs(page, 'Team')).toEqual(['Roster', 'Exceptions', 'Events', 'People', 'Leave']);
   await expect(sides(page).getByRole('link', { name: 'Team' })).toHaveAttribute(
     'aria-current',
     'true',

@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { Empty } from '@/components/messages';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
@@ -6,7 +5,7 @@ import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { groupNotifications, type NotificationRow } from '@/lib/notifications-view';
 import { loadShell } from '@/lib/shell';
-import { MarkAllRead } from './mark-read';
+import { MarkAllRead, NotificationItem } from './mark-read';
 
 // In-app notifications (roster published or changed, swap and leave decisions), grouped by
 // kind and day: "5 new tasks" rather than five lines (U-21, ADR 035). Web push is Phase 2
@@ -55,13 +54,9 @@ export default async function NotificationsPage() {
             const cls = 'block rounded-xl bg-white p-4 ring-1 ring-slate-200';
             return (
               <li key={n.key} data-count={n.count}>
-                {n.link ? (
-                  <Link href={n.link} className={cls}>
-                    {inner}
-                  </Link>
-                ) : (
-                  <div className={cls}>{inner}</div>
-                )}
+                <NotificationItem ids={n.ids} link={n.link} unread={!read} className={cls}>
+                  {inner}
+                </NotificationItem>
               </li>
             );
           })}

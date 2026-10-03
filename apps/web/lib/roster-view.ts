@@ -58,8 +58,9 @@ export function peopleTabs(a: TabAccess): Record<Side, PeopleTabDef[]> {
   });
   const roster = a.can('ROSTER', 'modify') || (!a.personal && a.can('ROSTER'));
   const events = a.can('EVENTS') && (roster || a.exceptions || a.can('EVENTS', 'modify'));
-  // People and the team's leave: anyone who sees worker records (HR, leads)
-  const people = a.can('WORKERS');
+  // People and the team's leave: those who manage worker records (HR, outlet managers);
+  // everyone holds WORKERS view on their own record, so view alone is not enough
+  const people = a.can('WORKERS', 'modify');
   const team: PeopleTabDef[] = PEOPLE_TABS.filter((t) => t.side === 'team').filter((t) => {
     switch (t.href) {
       case '/roster/week':

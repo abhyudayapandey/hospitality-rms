@@ -30,6 +30,8 @@ export function MenuTabs({
         <Link
           key={t.key}
           href={t.href}
+          // switching tabs replaces the entry, so Back leaves Menu rather than the tab
+          replace
           aria-current={t.key === active ? 'page' : undefined}
           className={`flex min-h-11 items-center rounded-full px-4 text-sm whitespace-nowrap ${
             t.key === active
