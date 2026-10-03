@@ -23,7 +23,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
       <header className="sticky top-0 z-10 flex print:hidden items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2">
-        <Link href="/me" className="flex min-w-0 items-center gap-2.5 rounded-lg py-1">
+        <Link
+          href="/profile"
+          aria-label="Your profile"
+          className="flex min-w-0 items-center gap-2.5 rounded-lg py-1"
+        >
           <span
             aria-hidden
             className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700"
