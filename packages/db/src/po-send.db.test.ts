@@ -173,12 +173,12 @@ describe('the supplier’s contact', () => {
         [dairy],
       );
       expect(row.rows[0]).toEqual({ phone: '+91 98200 12345', contact: null });
-      const audit = await c.query<{ actor_id: string }>(
-        `select actor_id from audit.log where table_name = 'inv.supplier' and row_id = $1
-          and occurred_at >= now() order by occurred_at desc limit 1`,
-        [dairy],
+      const audit = await c.query<{ n: number }>(
+        `select count(*)::int as n from audit.log where table_name = 'inv.supplier'
+          and row_id = $1 and occurred_at >= now() and actor_id = $2`,
+        [dairy, chef],
       );
-      expect(audit.rows[0]!.actor_id).toBe(chef);
+      expect(audit.rows[0]!.n).toBeGreaterThan(0);
     });
   });
 

@@ -27,12 +27,11 @@ interface LeagueRow {
   tasks_pct: string | null;
 }
 
-const LEAGUE = `select n.code, l.sales::text, l.food_pct::text, l.drink_pct::text,
+const LEAGUE = `select l.code, l.sales::text, l.food_pct::text, l.drink_pct::text,
                        l.labour_pct::text, l.prime_pct::text, l.wastage_pct::text,
                        l.tasks_pct::text
                   from rpt.league($1, current_date - $2::int, current_date - $3::int) l
-                  join core.hierarchy_node n on n.id = l.outlet_id
-                 order by n.code`;
+                 order by l.code`;
 
 async function league(c: PoolClient, user: string, place: string, from = 7, to = 1) {
   return as<LeagueRow>(c, user, LEAGUE, [ids.node(place), from, to]);
