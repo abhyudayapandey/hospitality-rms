@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { attentionLines, currentShift, shiftLine, splitShortcuts, todaysTasks } from './today-view';
+import {
+  attentionGroups,
+  currentShift,
+  shiftLine,
+  splitShortcuts,
+  todaysTasks,
+  type PlaceDepartment,
+} from './today-view';
 
 const TZ = 'Asia/Kolkata';
 // 2 Oct 2026, 10:00 in Kolkata
@@ -69,20 +76,97 @@ describe('splitShortcuts', () => {
   });
 });
 
-describe('attentionLines', () => {
-  it('only lines with something in them, in plain words', () => {
-    const none = { belowPar: 0, flags: 0, repairs: 0, openSlots: 0, openSlotHref: null };
-    expect(attentionLines({ ...none, belowPar: 3, repairs: 1 })).toEqual([
-      { href: '/stock', n: 3, text: 'items below par' },
-      { href: '/tasks/maintenance', n: 1, text: 'open repair' },
-    ]);
-    expect(attentionLines(none)).toEqual([]);
+describe('attentionGroups (DB-2)', () => {
+  const o = 'Test Hotel & Bar 1.0';
+  const place = (
+    node: string,
+    department: string | null,
+    rank: number,
+    outlet = o,
+    outletId = 'o1',
+  ): PlaceDepartment => ({
+    node_id: node,
+    department_id: department ? `d-${outlet}-${department}` : null,
+    department: department ? `${outlet} – ${department}` : null,
+    rank,
+    outlet_id: outletId,
+    outlet,
   });
-  it('open slots link to the first day that has one', () => {
-    const none = { belowPar: 0, flags: 0, repairs: 0, openSlots: 0, openSlotHref: null };
-    const href = '/roster/week?node=n1&week=2026-10-05&day=2026-10-06';
-    expect(attentionLines({ ...none, openSlots: 4, openSlotHref: href })).toEqual([
-      { href, n: 4, text: 'open slots this week' },
+  const places = [
+    place('kitchen-store', 'Kitchen', 1),
+    place('kitchen', 'Kitchen', 1),
+    place('restaurant', 'Restaurant', 2),
+    place('bar-store', 'Bar', 2),
+    place('hk', 'Housekeeping', 3),
+    place('security', 'Security', 4),
+    place('outlet', null, 5),
+  ];
+
+  it('Kitchen, then service, then housekeeping, then the rest; the outlet itself last', () => {
+    const g = attentionGroups(
+      [
+        { kind: 'flags', node: 'outlet', n: 2 },
+        { kind: 'flags', node: 'security', n: 1 },
+        { kind: 'repairs', node: 'hk', n: 1 },
+        { kind: 'flags', node: 'restaurant', n: 3 },
+        { kind: 'belowPar', node: 'bar-store', n: 4 },
+        { kind: 'flags', node: 'kitchen', n: 1 },
+        { kind: 'belowPar', node: 'kitchen-store', n: 5 },
+      ],
+      places,
+    );
+    expect(g.map((x) => x.label)).toEqual([
+      'Kitchen',
+      'Bar',
+      'Restaurant',
+      'Housekeeping',
+      'Security',
+      'Whole outlet',
+    ]);
+    // a store's counts go to the department it serves; lines in a fixed order
+    expect(g[0]!.lines).toEqual([
+      { href: '/stock', n: 5, text: 'items below par' },
+      { href: '/roster/exceptions', n: 1, text: 'attendance flag' },
+    ]);
+  });
+
+  it('open slots link to the first day that has one; zero counts are left out', () => {
+    const href = '/roster/week?node=k&week=2026-10-05&day=2026-10-06';
+    const g = attentionGroups(
+      [
+        { kind: 'openSlots', node: 'kitchen', n: 4, href },
+        { kind: 'openSlots', node: 'kitchen', n: 1, href: '/later' },
+        { kind: 'repairs', node: 'hk', n: 0 },
+      ],
+      places,
+    );
+    expect(g).toEqual([
+      {
+        key: 'd-Test Hotel & Bar 1.0-Kitchen',
+        label: 'Kitchen',
+        lines: [{ href, n: 5, text: 'open slots this week' }],
+      },
+    ]);
+    expect(attentionGroups([], places)).toEqual([]);
+  });
+
+  it('across outlets the outlet stays in the name', () => {
+    const g = attentionGroups(
+      [
+        { kind: 'flags', node: 'k2', n: 1 },
+        { kind: 'flags', node: 'kitchen', n: 1 },
+        { kind: 'flags', node: 'o2', n: 1 },
+      ],
+      [
+        ...places,
+        place('k2', 'Kitchen', 1, 'Test Bar 3.0', 'o2'),
+        place('o2', null, 5, 'Test Bar 3.0', 'o2'),
+      ],
+    );
+    expect(g.map((x) => x.label)).toEqual([
+      'Test Bar 3.0 – Kitchen',
+      'Test Hotel & Bar 1.0 – Kitchen',
+      'Test Bar 3.0',
     ]);
   });
 });

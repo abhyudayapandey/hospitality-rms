@@ -64,9 +64,10 @@ test('the choice is remembered per screen, and tabs carry the place where it fit
     .getByRole('link', { name: 'Orders' })
     .click();
   await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen Store');
-  // another screen keeps its own default
+  // another screen keeps its own default: stock position opens on all the outlet's stores
+  // (RPT-14, ADR 033)
   await page.goto('/reports/stock');
-  await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Bar Store');
+  await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – All stores');
   // put Stock back for the other tests
   await page.goto('/stock');
   await page

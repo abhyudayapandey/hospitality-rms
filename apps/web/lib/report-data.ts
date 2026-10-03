@@ -201,6 +201,7 @@ export async function stockSummary(tx: Tx, store: string): Promise<MeasureRow[]>
 }
 
 export interface StockItemRow {
+  store: string;
   sku: string;
   name: string;
   category: string;
@@ -210,13 +211,16 @@ export interface StockItemRow {
   days_on_hand: string | null;
   last_moved_at: string | null;
   dead: boolean;
+  expired_value: string;
+  expiring_value: string;
 }
 
-export async function stockItems(tx: Tx, store: string): Promise<StockItemRow[]> {
+/** A store's items, or (RPT-14) every item of all the stores of an outlet's supply point. */
+export async function stockItems(tx: Tx, place: string): Promise<StockItemRow[]> {
   const r = await sql<StockItemRow>`
-    select sku, name, category, unit, on_hand::text, value::text, days_on_hand::text,
-           last_moved_at::text, dead
-      from rpt.stock_items(${store}::uuid)`.execute(tx);
+    select store, sku, name, category, unit, on_hand::text, value::text, days_on_hand::text,
+           last_moved_at::text, dead, expired_value::text, expiring_value::text
+      from rpt.stock_items(${place}::uuid)`.execute(tx);
   return r.rows;
 }
 

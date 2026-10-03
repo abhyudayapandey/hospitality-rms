@@ -25,11 +25,19 @@ afterAll(closePools);
 const FRONTLINE = new Set(['SELF', 'STAFF', 'STOCK_USER', 'PRODUCTION_TEAM']);
 
 /** The store reports: a stock-holding store, for the people who answer for its cost. */
-const STORE_RULE = `n.type = 'delivery' and n.holds_stock
-  and (core.can('MENU', 'view', null, n.id)
-       or core.can('PURCHASE_ORDERS', 'modify', null, n.id)
-       or exists (select 1 from core.node_link l where l.delivery_node_id = n.id
+const storeRule = (n: string) => `${n}.type = 'delivery' and ${n}.holds_stock
+  and (core.can('MENU', 'view', null, ${n}.id)
+       or core.can('PURCHASE_ORDERS', 'modify', null, ${n}.id)
+       or exists (select 1 from core.node_link l where l.delivery_node_id = ${n}.id
                      and core.can('REPORTS', 'view', l.org_node_id, null)))`;
+const STORE_RULE = storeRule('n');
+
+/** Stock position also opens for all the stores of an outlet (or hub) together, where the
+ * person opens it at two or more of them (RPT-14, ADR 033). */
+const ALL_STORES_RULE = `n.type = 'delivery' and n.kind in ('outlet', 'hub')
+  and (select count(*) from core.hierarchy_node s
+        where s.type = 'delivery' and s.archived_at is null and core.stock_site(s.id) = n.id
+          and ${storeRule('s')}) >= 2`;
 
 /** Every report with places, in the order rpt.my_reports() lists them. */
 const PLACED = [
@@ -65,7 +73,7 @@ const RULES: Record<string, string> = {
                      and exists (select 1 from menu.menu_outlet mo where mo.org_node_id = n.id
                                     and (core.can('REPORTS', 'view', n.id, null)
                                          or core.can('MENU', 'view', null, mo.delivery_node_id)))`,
-  stock_position: STORE_RULE,
+  stock_position: `(${STORE_RULE}) or (${ALL_STORES_RULE})`,
   purchasing: STORE_RULE,
   // R-3 (ADR 030): a central kitchen's store, for its cost people
   central_kitchen: `${STORE_RULE}
@@ -174,6 +182,13 @@ describe('reports: who opens what (every user)', () => {
       ]);
       expect(await pl('test.cost-controller.1.0', 'stock_position')).toEqual(
         expect.arrayContaining(['TEST-HOTEL-1.0-BAR-STORE', 'TEST-HOTEL-1.0-KITCHEN-STORE']),
+      );
+      // all of the outlet's stores together (RPT-14): the supply point stands for them
+      expect(await pl('test.cost-controller.1.0', 'stock_position')).toContain(
+        'TEST-HOTEL-1.0-SUPPLY',
+      );
+      expect(await pl('test.general-manager.1.0', 'stock_position')).toContain(
+        'TEST-HOTEL-1.0-SUPPLY',
       );
       // the executive chef answers for the kitchen store: its cost of sales, stock and orders
       expect(await r('test.executive-chef.1.0')).toEqual([

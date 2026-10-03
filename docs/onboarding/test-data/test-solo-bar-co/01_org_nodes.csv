@@ -1,6 +1,6 @@
-node_code,name,kind,parent_code,timezone,outlet_format
-TEST-SOLO-COMPANY,Test Solo Bar Co.,company,,,
-TEST-SOLO-BAR,Test Solo Bar,outlet,TEST-SOLO-COMPANY,Asia/Kolkata,standalone_bar
-TEST-SOLO-BAR-BAR,Test Solo Bar – Bar,department,TEST-SOLO-BAR,Asia/Kolkata,
-TEST-SOLO-BAR-FLOOR-SERVICE,Test Solo Bar – Floor Service,department,TEST-SOLO-BAR,Asia/Kolkata,
-TEST-SOLO-BAR-KITCHEN,Test Solo Bar – Kitchen,department,TEST-SOLO-BAR,Asia/Kolkata,
+node_code,name,kind,parent_code,timezone,outlet_format,department_type
+TEST-SOLO-COMPANY,Test Solo Bar Co.,company,,,,
+TEST-SOLO-BAR,Test Solo Bar,outlet,TEST-SOLO-COMPANY,Asia/Kolkata,standalone_bar,
+TEST-SOLO-BAR-BAR,Test Solo Bar – Bar,department,TEST-SOLO-BAR,Asia/Kolkata,,service
+TEST-SOLO-BAR-FLOOR-SERVICE,Test Solo Bar – Floor Service,department,TEST-SOLO-BAR,Asia/Kolkata,,service
+TEST-SOLO-BAR-KITCHEN,Test Solo Bar – Kitchen,department,TEST-SOLO-BAR,Asia/Kolkata,,kitchen

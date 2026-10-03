@@ -49,6 +49,7 @@ describe('error mapping', () => {
       'INVALID_NODE_LINK',
       'HANDLER_NOT_FOUND', // executor-side; recorded on the outbox row
       'INVALID_KEY', // the test-data loader's attendance (ADR 030); platform_loader only
+      'INVALID_DAYS', // inv.expiry_list: the app always asks for 3 days (ADR 033)
     ]);
     const missing = [...raised].filter((c) => !internal.has(c) && !(c in ERROR_MESSAGES));
     expect(missing).toEqual([]);

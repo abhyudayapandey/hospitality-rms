@@ -1,5 +1,6 @@
 import 'server-only';
 import { sql, withUser, type Tx } from './db';
+import type { ExpiryBatch } from './expiry';
 import type { SearchParams } from './params';
 import { pickPlace, screenPlaces, type Place, type Screen } from './places';
 import { loadShell, type Shell } from './shell';
@@ -58,6 +59,16 @@ export interface StockRow {
   avg_cost: string | null;
   value: string | null;
   below_par: boolean;
+}
+
+/** Dated batches expired or expiring within 3 days, at the stores the person sees stock
+ * levels at (INV-12; inv.expiry_list checks). */
+export async function expiryList(tx: Tx): Promise<ExpiryBatch[]> {
+  const r = await sql<ExpiryBatch>`
+    select store_id::text, store, item_id::text, sku, name, unit, batch_no,
+           expires_at::text, remaining::text, expired
+      from inv.expiry_list(3)`.execute(tx);
+  return r.rows;
 }
 
 export async function stockList(tx: Tx, node: string): Promise<StockRow[]> {

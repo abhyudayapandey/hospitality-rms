@@ -4,13 +4,7 @@ import { moreItems, visibleNav } from '@/lib/nav';
 import { compare, formatMeasure, MEASURES, type MeasureRow } from '@/lib/reports';
 import { loadShell, navInput } from '@/lib/shell';
 import { loadToday, type TodayNumbers } from '@/lib/today';
-import {
-  attentionLines,
-  shiftLine,
-  splitShortcuts,
-  todaysTasks,
-  type Shortcut,
-} from '@/lib/today-view';
+import { shiftLine, splitShortcuts, todaysTasks, type Shortcut } from '@/lib/today-view';
 
 // Home is "Today" (UX review U-1, UX-2): a short list of cards, each with one action,
 // shown by what the person has: their shift, their tasks, what waits for them, what needs
@@ -37,7 +31,7 @@ export default async function Home() {
   const input = navInput(shell);
   const inNav = new Set(visibleNav(input).map((n) => n.href));
   const tasks = todaysTasks(today.tasks, now, tz);
-  const attention = today.attention ? attentionLines(today.attention) : [];
+  const attention = today.attention ?? [];
 
   // shortcuts, most useful first: reports, requests, admin, menu, then people and supply
   const more: Shortcut[] = moreItems(input).map((item) =>
@@ -150,16 +144,33 @@ export default async function Home() {
       {attention.length > 0 && (
         <section aria-label="Needs attention" className={card} data-testid="attention-card">
           <h2 className="text-sm font-semibold text-slate-600">Needs attention</h2>
-          <ul className="mt-2 space-y-1">
-            {attention.map((a) => (
-              <li key={a.href}>
-                <Link href={a.href} className="flex min-h-11 items-center gap-2">
-                  <span className="text-lg font-semibold tabular-nums">{a.n}</span>
-                  <span>{a.text}</span>
-                </Link>
-              </li>
+          {/* by department, Kitchen first (DB-2); one department needs no heading */}
+          <div className="mt-2 divide-y divide-slate-100">
+            {attention.map((g) => (
+              <section
+                key={g.key}
+                aria-label={g.label}
+                className="py-1 first:pt-0 last:pb-0"
+                data-testid="attention-group"
+              >
+                {attention.length > 1 && (
+                  <h3 className="pt-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                    {g.label}
+                  </h3>
+                )}
+                <ul className="space-y-1">
+                  {g.lines.map((a) => (
+                    <li key={a.text}>
+                      <Link href={a.href} className="flex min-h-11 items-center gap-2">
+                        <span className="text-lg font-semibold tabular-nums">{a.n}</span>
+                        <span>{a.text}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ))}
-          </ul>
+          </div>
         </section>
       )}
 
