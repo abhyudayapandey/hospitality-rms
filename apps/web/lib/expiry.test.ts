@@ -30,6 +30,17 @@ describe('splitExpiry (INV-12)', () => {
     expect(r.expired.map((b) => b.name)).toEqual(['recent', 'old']);
   });
 
+  it('every store when no store is given, as Home counts them', () => {
+    const r = splitExpiry(
+      [
+        batch('here', '2026-10-05T04:00:00Z', false),
+        batch('there', '2026-10-04T04:00:00Z', false, 's2'),
+      ],
+      null,
+    );
+    expect(r.expiring.map((b) => b.name)).toEqual(['there', 'here']);
+  });
+
   it('opens on the expiring list unless asked for the expired one', () => {
     expect(expiryShow('expired')).toBe('expired');
     expect(expiryShow(undefined)).toBe('expiring');

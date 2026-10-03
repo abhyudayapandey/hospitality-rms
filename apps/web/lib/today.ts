@@ -61,6 +61,7 @@ export interface StoreWork {
 
 /** Expired and expiring batches at the stores they see, and the store with the most. */
 export interface ExpiryCounts {
+  /** store: the one store with such batches; null when they are in several (open them all) */
   expiring: { n: number; store: string | null };
   expired: { n: number; store: string | null };
 }
@@ -201,8 +202,10 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
         for (const b of rows.filter((x) => x.expired === expired)) {
           by.set(b.store_id, (by.get(b.store_id) ?? 0) + 1);
         }
-        const top = [...by].sort((a, b) => b[1] - a[1])[0];
-        return { n: [...by.values()].reduce((a, b) => a + b, 0), store: top?.[0] ?? null };
+        // the count is every store's; it opens that store when there is only one, else the
+        // list of all of them, so the list matches the count
+        const only = by.size === 1 ? [...by.keys()][0]! : null;
+        return { n: [...by.values()].reduce((a, b) => a + b, 0), store: only };
       };
       expiry = { expiring: most(false), expired: most(true) };
     }
