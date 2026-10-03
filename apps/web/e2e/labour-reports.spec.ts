@@ -12,8 +12,12 @@ test('the GM: people cost and prime cost on Outlet today, by department on Cost 
 }) => {
   const hotel = await placeId('TEST-HOTEL-1.0');
   // the same day as the DB test: days in the test data count from the load date
-  const day = (await asMigrator<{ day: string }>('select (current_date - 2)::text as day', []))[0]!
-    .day;
+  const day = (
+    await asMigrator<{ day: string }>(
+      "select ((now() at time zone 'Asia/Kolkata')::date - 2)::text as day",
+      [],
+    )
+  )[0]!.day;
   await signInAs(page, 'Test General Manager 1.0');
   // two days back: the test attendance and salaried pay (labour-reports.db.test.ts)
   await page.goto(`/reports/outlet?node=${hotel}&day=${day}`);

@@ -6,8 +6,15 @@ import pg from 'pg';
 //              transaction that is always rolled back, then SET LOCAL ROLE to
 //              app_rw / wf_executor to exercise the generated policies.
 
-export const appPool = new pg.Pool({ connectionString: process.env.TEST_DATABASE_URL });
-export const migratorPool = new pg.Pool({ connectionString: process.env.MIGRATOR_DATABASE_URL });
+// The test customers count their days from today in India (the loader's default timezone,
+// file 00), so current_date in a test is India's date too: otherwise, between 00:00 and
+// 05:30 IST, the tests and the test data would be a day apart.
+const options = '-c TimeZone=Asia/Kolkata';
+export const appPool = new pg.Pool({ connectionString: process.env.TEST_DATABASE_URL, options });
+export const migratorPool = new pg.Pool({
+  connectionString: process.env.MIGRATOR_DATABASE_URL,
+  options,
+});
 
 export async function closePools(): Promise<void> {
   await Promise.all([appPool.end(), migratorPool.end()]);
