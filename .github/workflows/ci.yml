@@ -1,19 +1,64 @@
 name: CI
 
+# Three kinds of job run side by side (about 6 minutes instead of 21):
+#   static  lint, typecheck, unit tests, CDK synth; no database
+#   db      the DB tests in 2 shards; in each, 2 workers on their own copies of the
+#           seeded database (packages/db/test/worker-databases.ts)
+#   e2e     Playwright in 3 shards, each with its own seeded database; shard 1 also
+#           proves the production build refuses dev auth
+# A change to Markdown files only runs nothing; test data under docs/ is CSV and still
+# runs everything.
+
 on:
   pull_request:
+    paths-ignore: ['**/*.md']
   push:
     branches: [master]
+    paths-ignore: ['**/*.md']
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-jobs:
-  check:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
+env:
+  # Throwaway CI-only credentials (same local-only roles as docker compose).
+  MIGRATOR_DATABASE_URL: postgres://migrator:migrator_local@localhost:5432/outlet_ops?sslmode=disable
+  TEST_DATABASE_URL: postgres://app_rw:app_rw_local@localhost:5432/outlet_ops?sslmode=disable
+  WF_EXECUTOR_DATABASE_URL: postgres://wf_executor:wf_executor_local@localhost:5432/outlet_ops?sslmode=disable
+  PLATFORM_LOADER_DATABASE_URL: postgres://platform_loader:platform_loader_local@localhost:5432/outlet_ops?sslmode=disable
+  PG_ADMIN_URL: postgres://postgres:postgres_ci@localhost:5432/postgres?sslmode=disable
+  # Web app (e2e + production check): app_rw connection and a CI-only session key.
+  DATABASE_URL: postgres://app_rw:app_rw_local@localhost:5432/outlet_ops?sslmode=disable
+  SESSION_SECRET: ci-only-session-secret-0123456789-abcdef
+  APP_URL: http://localhost:3100
+  TURBO_TELEMETRY_DISABLED: '1'
+  NEXT_TELEMETRY_DISABLED: '1'
 
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test:unit
+      - name: CDK synth (never deploys)
+        run: pnpm --filter @outlet-ops/infra synth
+
+  db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     services:
       postgres:
         image: postgres:16
@@ -28,45 +73,68 @@ jobs:
           --health-interval 2s
           --health-timeout 5s
           --health-retries 30
-
     env:
-      # Throwaway CI-only credentials (same local-only roles as docker compose).
-      MIGRATOR_DATABASE_URL: postgres://migrator:migrator_local@localhost:5432/outlet_ops?sslmode=disable
-      TEST_DATABASE_URL: postgres://app_rw:app_rw_local@localhost:5432/outlet_ops?sslmode=disable
-      WF_EXECUTOR_DATABASE_URL: postgres://wf_executor:wf_executor_local@localhost:5432/outlet_ops?sslmode=disable
-      PLATFORM_LOADER_DATABASE_URL: postgres://platform_loader:platform_loader_local@localhost:5432/outlet_ops?sslmode=disable
-      # Web app (e2e + production check): app_rw connection and a CI-only session key.
-      DATABASE_URL: postgres://app_rw:app_rw_local@localhost:5432/outlet_ops?sslmode=disable
-      SESSION_SECRET: ci-only-session-secret-0123456789-abcdef
-      APP_URL: http://localhost:3100
-      TURBO_TELEMETRY_DISABLED: '1'
-      NEXT_TELEMETRY_DISABLED: '1'
-
+      DB_TEST_WORKERS: '2'
     steps:
       - uses: actions/checkout@v7
-
       - uses: pnpm/action-setup@v6
-
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
-
       - run: pnpm install --frozen-lockfile
-
       - name: Create DB roles and extensions
         env:
           PGPASSWORD: postgres_ci
         run: psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d outlet_ops -f packages/db/docker/init/001-roles.sql
-
       - run: pnpm db:migrate
       - run: pnpm db:seed
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - name: CDK synth (never deploys)
-        run: pnpm --filter @outlet-ops/infra synth
+      - name: DB tests (shard ${{ matrix.shard }} of 2)
+        run: pnpm exec vitest run --project db --shard=${{ matrix.shard }}/2
 
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: outlet_ops
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d outlet_ops"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Create DB roles and extensions
+        env:
+          PGPASSWORD: postgres_ci
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d outlet_ops -f packages/db/docker/init/001-roles.sql
+      - run: pnpm db:migrate
+      - run: pnpm db:seed
+
+      - name: Cache the Next.js build
+        uses: actions/cache@v6
+        with:
+          path: apps/web/.next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx', 'packages/*/src/**/*.ts') }}
+          restore-keys: |
+            next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Playwright version
         id: pw
         run: echo "version=$(pnpm --filter @outlet-ops/web exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
@@ -83,15 +151,16 @@ jobs:
         if: steps.pw-cache.outputs.cache-hit == 'true'
         run: pnpm --filter @outlet-ops/web exec playwright install-deps chromium
 
-      - name: End-to-end tests
-        run: pnpm --filter @outlet-ops/web e2e
+      - name: End-to-end tests (shard ${{ matrix.shard }} of 3)
+        run: pnpm --filter @outlet-ops/web e2e --shard=${{ matrix.shard }}/3
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: apps/web/playwright-report
           retention-days: 7
 
       - name: Production build refuses dev auth (/dev-login is 404)
+        if: matrix.shard == 1
         run: pnpm --filter @outlet-ops/web check:prod-dev-auth
