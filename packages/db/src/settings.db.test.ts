@@ -19,7 +19,13 @@ const DEFAULTS = {
   menu_popular_pct: 70,
   overtime_multiplier: 1,
   po_send_prices: false,
+  // SW-4 and the count due (ADR 035)
+  swaps_managers_only: true,
+  count_due_days: 7,
 };
+
+// Test Company's file 00 lets its staff swap shifts (swaps_managers_only no)
+const TEST_COMPANY = { ...DEFAULTS, swaps_managers_only: false };
 
 async function settings(c: PoolClient, who: string): Promise<typeof DEFAULTS> {
   const r = await attemptAs<{ s: typeof DEFAULTS }>(
@@ -39,7 +45,7 @@ const set = (c: PoolClient, who: string, value: unknown) =>
 describe('company settings', () => {
   it('everyone in the company reads them; with nothing set, the defaults', async () => {
     await inRolledBackTx(async (c) => {
-      expect(await settings(c, 'test.server.3.0')).toEqual(DEFAULTS);
+      expect(await settings(c, 'test.server.3.0')).toEqual(TEST_COMPANY);
       expect(await settings(c, 'test.solo.server')).toEqual(DEFAULTS);
     });
   });
@@ -61,7 +67,7 @@ describe('company settings', () => {
       });
       expect(r.error).toBeUndefined();
       expect(await settings(c, 'test.commis.1.0')).toEqual({
-        ...DEFAULTS,
+        ...TEST_COMPANY,
         targets: { ...DEFAULTS.targets, food: 28 },
         overtime_multiplier: 1.5,
         po_send_prices: true,
@@ -93,7 +99,7 @@ describe('company settings', () => {
       ]) {
         expect((await set(c, who, { targets: { food: 10 } })).error, who).toBe('NOT_AUTHORISED');
       }
-      expect(await settings(c, 'test.commis.1.0')).toEqual(DEFAULTS);
+      expect(await settings(c, 'test.commis.1.0')).toEqual(TEST_COMPANY);
     });
   });
 
@@ -116,7 +122,7 @@ describe('company settings', () => {
           'INVALID_SETTING',
         );
       }
-      expect(await settings(c, 'test.commis.1.0')).toEqual(DEFAULTS);
+      expect(await settings(c, 'test.commis.1.0')).toEqual(TEST_COMPANY);
     });
   });
 });

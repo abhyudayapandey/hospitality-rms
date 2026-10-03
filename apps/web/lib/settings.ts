@@ -9,6 +9,10 @@ export interface CompanySettings {
   menu_popular_pct: number;
   overtime_multiplier: number;
   po_send_prices: boolean;
+  /** SW-4 (ADR 035): only people who change the roster swap shifts */
+  swaps_managers_only: boolean;
+  /** UX-4 (ADR 035): a store's count is due this many days after its last one */
+  count_due_days: number;
 }
 
 export const DEFAULT_SETTINGS: CompanySettings = {
@@ -16,6 +20,8 @@ export const DEFAULT_SETTINGS: CompanySettings = {
   menu_popular_pct: 70,
   overtime_multiplier: 1,
   po_send_prices: false,
+  swaps_managers_only: true,
+  count_due_days: 7,
 };
 
 /** The targets in the order Admin → Settings shows them, and which way is good. */
@@ -72,5 +78,7 @@ export function readSettings(raw: unknown): CompanySettings {
     menu_popular_pct: r.menu_popular_pct ?? DEFAULT_SETTINGS.menu_popular_pct,
     overtime_multiplier: r.overtime_multiplier ?? DEFAULT_SETTINGS.overtime_multiplier,
     po_send_prices: r.po_send_prices ?? DEFAULT_SETTINGS.po_send_prices,
+    swaps_managers_only: r.swaps_managers_only ?? DEFAULT_SETTINGS.swaps_managers_only,
+    count_due_days: r.count_due_days ?? DEFAULT_SETTINGS.count_due_days,
   };
 }

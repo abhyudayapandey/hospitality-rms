@@ -109,7 +109,13 @@ export default async function InboxPage() {
               key={r.request_id}
               entry={{
                 requestId: r.request_id,
-                processLabel: processLabel(r.process_type),
+                // a deactivation names the person and why (UX-5, ADR 035)
+                processLabel:
+                  r.process_type === 'DEACTIVATION' && typeof r.payload.person === 'string'
+                    ? `Deactivate ${r.payload.person}${
+                        typeof r.payload.reason === 'string' ? `: ${r.payload.reason}` : ''
+                      }`
+                    : processLabel(r.process_type),
                 step: r.step,
                 amount: formatMoney(r.amount),
                 waitingSince: formatWhen(r.activated_at),

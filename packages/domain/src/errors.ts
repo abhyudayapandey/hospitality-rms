@@ -57,6 +57,7 @@ export const ERROR_MESSAGES = {
   INVALID_LOCATION: "Your location couldn't be read. Try again.",
   ADMIN_NOT_DATA: 'Admin access cannot include business data.',
   SELF_GRANT: "You can't change your own access. Ask another administrator.",
+  SWAPS_MANAGERS_ONLY: 'Your company lets only managers swap shifts. Ask your manager.',
   ABOVE_OWN_RANK: "That's beyond your own administration rights.",
   INVALID_JOB_ROLE: "That job role isn't set up for this organisation.",
   USERNAME_TAKEN: 'That username is already in use.',

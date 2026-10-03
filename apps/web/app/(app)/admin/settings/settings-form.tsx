@@ -30,6 +30,8 @@ export function SettingsForm({
   const [popular, setPopular] = useState(String(settings.menu_popular_pct));
   const [overtime, setOvertime] = useState(String(settings.overtime_multiplier));
   const [prices, setPrices] = useState(settings.po_send_prices);
+  const [swaps, setSwaps] = useState(settings.swaps_managers_only);
+  const [countDays, setCountDays] = useState(String(settings.count_due_days));
 
   const save = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +41,8 @@ export function SettingsForm({
         menu_popular_pct: Number(popular),
         overtime_multiplier: Number(overtime),
         po_send_prices: prices,
+        swaps_managers_only: swaps,
+        count_due_days: Number(countDays),
       });
       if (!r.ok) {
         setError(r.message);
@@ -154,6 +158,49 @@ export function SettingsForm({
             onChange={(e) => setPrices(e.target.checked)}
           />
         </label>
+      </fieldset>
+
+      <fieldset className="space-y-2" disabled={!canEdit}>
+        <legend className="text-sm font-semibold text-slate-700">People and stock</legend>
+        <label className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+          <span className="min-w-0">
+            <span className="block font-medium">Only managers swap shifts</span>
+            <span className="block text-xs text-slate-500">
+              On: only people who change the roster offer a swap. Off: staff swap with each other,
+              and a manager approves.
+            </span>
+          </span>
+          <input
+            id="swaps-managers-only"
+            type="checkbox"
+            className="h-6 w-6 shrink-0"
+            checked={swaps}
+            onChange={(e) => setSwaps(e.target.checked)}
+          />
+        </label>
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+          <label htmlFor="count-due" className="min-w-0">
+            <span className="block font-medium">Count each store every</span>
+            <span className="block text-xs text-slate-500">
+              The Stock screen says when a count is due.
+            </span>
+          </label>
+          <span className="flex items-center gap-1">
+            <input
+              id="count-due"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={60}
+              step="1"
+              required
+              className={field}
+              value={countDays}
+              onChange={(e) => setCountDays(e.target.value)}
+            />
+            <span className="text-sm text-slate-600">days</span>
+          </span>
+        </div>
       </fieldset>
 
       {canEdit && (

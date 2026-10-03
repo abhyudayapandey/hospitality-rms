@@ -271,3 +271,24 @@ export async function markRead(ids: string[] | null): Promise<ActionResult<numbe
     return r.rows[0]!.n;
   });
 }
+
+// ---------------------------------------------------------------------------
+// Team → People (UX-5, ADR 035)
+// ---------------------------------------------------------------------------
+
+/** Asks for a person to be deactivated; hr.request_deactivation checks WORKERS modify. */
+export async function requestDeactivation(
+  user: string,
+  reason: string,
+  idempotencyKey?: string,
+): Promise<ActionResult<{ id: string }>> {
+  const r = await run('request_deactivation', async (tx) => {
+    const x = await sql<{ id: string }>`
+      select hr.request_deactivation(${user}::uuid, ${reason}, ${idempotencyKey ?? null}) as id`.execute(
+      tx,
+    );
+    return x.rows[0]!;
+  });
+  if (r.ok) revalidatePath('/team', 'layout');
+  return r;
+}

@@ -144,6 +144,20 @@ export const ROLE_CHANGE: ProcessDef = {
   slaHours: 24,
 };
 
+// UX-5 (ADR 035): HR, or anyone else holding WORKERS modify where the person works, asks
+// for a person to be deactivated; approved like a role change. The person never approves
+// it (hr.deactivation_excluded). The executor makes the login and the worker inactive.
+export const DEACTIVATION: ProcessDef = {
+  type: 'DEACTIVATION',
+  subject: 'hr.deactivation',
+  domain: 'WORKERS',
+  hierarchy: 'org',
+  steps: [{ step: 'security_approval', group: 'SECURITY_ADMIN', scope: 'nearest_ancestor' }],
+  onApproved: 'hr.deactivation.apply',
+  onRejected: 'hr.deactivation.reject',
+  slaHours: 24,
+};
+
 export const PROCESS_DEFS: readonly ProcessDef[] = [
   STOCK_ADJUSTMENT,
   PURCHASE_ORDER,
@@ -151,4 +165,5 @@ export const PROCESS_DEFS: readonly ProcessDef[] = [
   LEAVE,
   SHIFT_SWAP,
   ROLE_CHANGE,
+  DEACTIVATION,
 ];
