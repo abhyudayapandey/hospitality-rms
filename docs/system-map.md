@@ -1,6 +1,6 @@
 # System map: people, places and who uses what
 
-Status: current as of 2026-10-02 (after ADR 024). This page describes what exists today.
+Status: current as of 2026-10-03 (after ADR 030). This page describes what exists today.
 `docs/ux-review.md` and `docs/reporting.md` describe what is proposed. The test customers
 in `docs/onboarding/test-data` are the worked example.
 
@@ -46,12 +46,59 @@ checklists at the Housekeeping department. Room-level work would need a PMS link
 
 ## 2. People
 
-### Inside a customer
+### Two things decide what someone sees
+
+1. **Level: how much they decide.** Doing the work, leading a shift (or running a store),
+   running a department, running the outlet. This sets what they approve and whose work they
+   see.
+2. **Department and job: what the work is.** This sets their shifts, checklists, what they
+   make, the store they use and the recipes they read.
+
+A cook and a bartender are on the same level but do different jobs: the same rung of a
+different ladder. The level is never a job description.
+
+### The outlet, department by department (Test Hotel & Bar 1.0)
+
+| Level ↓ / Department → | Kitchen                                         | Bar                 | Restaurant                      | Floor service (Bar 3.0) | Banquets        | Front Office                                         | Housekeeping                                             | Stores          | Engineering    | Security            |
+| ---------------------- | ----------------------------------------------- | ------------------- | ------------------------------- | ----------------------- | --------------- | ---------------------------------------------------- | -------------------------------------------------------- | --------------- | -------------- | ------------------- |
+| Runs the outlet        | General Manager, Assistant GM (all departments) |                     |                                 |                         |                 |                                                      |                                                          |                 |                |                     |
+| Runs a department      | Executive Chef (Head Cook in a small outlet)    | Bar Manager         | F&B Manager, Restaurant Manager | Floor Manager           | Banquet Manager | Front Office Manager                                 | Executive Housekeeper                                    | Store Manager   | Chief Engineer | Security Supervisor |
+| Leads a shift / store  | Sous Chef                                       | Head Bartender      | Captain                         |                         | Banquet Captain | Bell Captain                                         | Housekeeping Supervisor                                  | Store Keeper    |                |                     |
+| Does the work          | Chef de Partie, Cook, Commis, Kitchen Steward   | Bartender, Bar Back | Steward, Host                   | Server, Cashier, Host   | Banquet Server  | Front Desk Executive, Guest Relations Exec., Bellboy | Room Attendant, Public Area Attendant, Laundry Attendant | Receiving Clerk | Technician     | Security Guard      |
+
+Above the outlet: the Area Manager (the outlets of an area) and, company-wide, the Account
+Owner, HR Admin, Security Admin and Auditor. HR Executive and Cost Controller work across
+one outlet. The central kitchen has its own ladder (manager, supervisor, chef, commis, store
+keeper, driver).
+
+### Same level, different job
+
+Everyone on the "does the work" level has the same personal screens (their shifts and
+clock-in, leave, tasks, My week). What differs is the job (files 06, 16, 20 and 29):
+
+| Job (department)              | Shifts                            | Checklists                                  | Makes                                                 | Store                                     | Recipes             |
+| ----------------------------- | --------------------------------- | ------------------------------------------- | ----------------------------------------------------- | ----------------------------------------- | ------------------- |
+| Cook (Kitchen, Bar 3.0)       | Kitchen Evening 16:00–00:00       | Kitchen opening 11:00, closing (on shift)   | Ginger Garlic Paste, Mint Chutney                     | Kitchen Store: counts, wastage, transfers | Kitchen, no costs   |
+| Commis (Kitchen)              | Breakfast 06:00–14:00, Dinner     | Kitchen opening 07:00, fridge log every 4 h | Ginger Garlic Paste, Mint Chutney, Steamed Rice       | none (records batches)                    | Kitchen, no costs   |
+| Bartender (Bar)               | Bar Evening 17:00–01:00, Bar Late | Bar setup 17:00, Bar closing (on shift)     | Sugar Syrup, Sour Mix, pre-batched Negroni and others | none (records batches)                    | Cocktails, no costs |
+| Steward (Restaurant)          | Breakfast 06:30–14:30, Dinner     | tasks from the Captain                      | nothing                                               | none                                      | none                |
+| Room Attendant (Housekeeping) | Morning 08:00–16:00, Evening      | Linen room count, Mondays 10:00             | nothing                                               | none                                      | none                |
+| Public Area Attendant         | Morning, Evening                  | Lobby washroom check every 2 h              | nothing                                               | none                                      | none                |
+| Laundry Attendant             | Morning 08:00–16:00               | tasks from the supervisor                   | nothing                                               | Housekeeping Store: counts, wastage       | none                |
+| Front Desk Executive          | Morning, Evening, Night           | Shift handover 07:00, 15:00, 23:00          | nothing                                               | none                                      | none                |
+| Technician (Engineering)      | Engineering Day 09:00–18:00       | repair requests assigned to them            | nothing                                               | none                                      | none                |
+| Receiving Clerk (Stores)      | Stores Day 08:00–17:00            |                                             | nothing                                               | Main Store: counts, wastage, transfers    | none                |
+
+The prospect-facing version, with any two jobs compared side by side, is the "Who does
+what" page.
+
+### Access behind it
 
 Everyone has a **job role**. The role gives default **access groups** at places relative
-to their home (file 06). Extra grants come from file 08 or the Admin screens.
+to their home (file 06). Extra grants come from file 08 or the Admin screens. The first
+column below is the level and kind of work, not a job description.
 
-| Kind of work                | Job roles (examples)                                                                                                                                                                        | Access groups                                                          | Bottom nav                                               |
+| Level / kind of work        | Job roles (examples)                                                                                                                                                                        | Access groups                                                          | Bottom nav                                               |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------- |
 | Owner                       | Account Owner                                                                                                                                                                               | ACCOUNT_OWNER (admin of the company; every report, read-only)          | Home, Inbox, Reports, Admin, Requests                    |
 | Area                        | Area Manager                                                                                                                                                                                | AREA_MANAGER (view the area, approve large ones)                       | Home, Inbox, Stock, Roster, Tasks                        |
