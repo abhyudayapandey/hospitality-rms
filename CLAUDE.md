@@ -175,7 +175,9 @@ Company settings (targets, menu engineering threshold, overtime multiplier, pric
 orders) live in `core.tenant.settings` beside the modules (ADR 031); file 09 has an
 optional supplier `contact_phone` for sending orders (ADR 032); file 01 has an optional
 `department_type` (kitchen, service, housekeeping, other) that orders Home's Needs
-attention (ADR 033).
+attention (ADR 033). File 00 has an optional `swaps_managers_only` (on by default; Test
+Company sets it to no so its swap flows work) and the settings hold `count_due_days`
+(ADR 035).
 `TEST_LOGINS_do_not_commit.csv` (passwords) is never committed.
 
 ## How to work in this repo

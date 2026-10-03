@@ -133,7 +133,7 @@ allows. Each customer's `99_access_preview_GENERATED.csv` lists every person's a
 
 | Area of the app                                                                     | Frontline                   | Supervisor          | Dept head                     | Store keeper                             | Cost controller | Outlet head                                        | Area / owner / HR / audit                                             |
 | ----------------------------------------------------------------------------------- | --------------------------- | ------------------- | ----------------------------- | ---------------------------------------- | --------------- | -------------------------------------------------- | --------------------------------------------------------------------- |
-| My shifts, clock in/out, leave, swaps                                               | ✔                           | ✔                   | ✔                             | ✔                                        | ✔               | ✔                                                  | HR: all leave (no screen yet)                                         |
+| My shifts, clock in/out, leave, swaps (swaps: managers only by default, ADR 035)    | ✔                           | ✔                   | ✔                             | ✔                                        | ✔               | ✔                                                  | HR: all leave (no screen yet)                                         |
 | Roster (build, publish), attendance exceptions                                      | view own place              | view dept           | **build / resolve** dept      |                                          |                 | **build / resolve** outlet                         | area: view                                                            |
 | Tasks: do my tasks, report a problem                                                | ✔                           | ✔                   | ✔                             | ✔                                        | ✔               | ✔                                                  |                                                                       |
 | Tasks: give out, team view, checklists, prep list                                   |                             | dept                | dept (+ edit checklists)      |                                          |                 | outlet                                             | area: view                                                            |
@@ -153,11 +153,13 @@ allows. Each customer's `99_access_preview_GENERATED.csv` lists every person's a
 | Outlets side by side (ADR 031): the league table                                    |                             |                     |                               |                                          |                 |                                                    | area manager: their area; owner: company, regions, areas              |
 | Send an order to its supplier (ADR 032): WhatsApp, email, print                     |                             |                     | their store's orders          | ✔                                        |                 | ✔                                                  |                                                                       |
 | Targets and settings (ADR 031)                                                      |                             |                     |                               |                                          |                 |                                                    | owner: changes; other admins: see                                     |
+| Team → People and Leave; ask to deactivate (ADR 035)                                |                             |                     |                               |                                          |                 | ✔ (WORKERS modify)                                 | HR: ✔; security admin approves the deactivation                       |
 | People and access (Admin)                                                           |                             |                     |                               |                                          |                 | outlet (user admin)                                | owner: company; auditor: audit log                                    |
 
 Roster has two sides (ADR 025): **Me** (My shifts, Clock, Leave, Swaps) for everyone who
-works shifts, and **Team** (Roster, Exceptions, Events) for people who build rosters,
-resolve exceptions or plan events, and for people above outlet level. Frontline staff see
+works shifts, and **Team** (Roster, Exceptions, Events, and People and Leave for those who manage worker
+records, ADR 035) for people who build rosters, resolve exceptions or plan events, and for
+people above outlet level. Frontline staff see
 only Me.
 
 **Customer access groups** (ADR 027). A company may build its own groups from the product's
@@ -173,7 +175,8 @@ Bar Co. has Events and Swaps off.
 ### Approval processes (Inbox)
 
 LEAVE, SHIFT_SWAP, PURCHASE_ORDER, STOCK_ADJUSTMENT (count differences, wastage over the
-limit, delivery excess), TRANSFER, ROLE_CHANGE.
+limit, delivery excess), TRANSFER, ROLE_CHANGE, DEACTIVATION (a leaver, approved by the
+security admin, ADR 035).
 
 The chain walks up from the place to whoever holds the group, and ends at the Account
 Owner (ADR 010). The person who started a request never approves it.
