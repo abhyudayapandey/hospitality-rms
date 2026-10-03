@@ -111,7 +111,7 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
                 data-open={c.open}
                 className={`relative flex min-h-16 flex-col items-center justify-center rounded-lg text-xs ${
                   c.day === day
-                    ? 'bg-slate-900 text-white'
+                    ? 'bg-brand-700 text-white'
                     : 'bg-white text-slate-700 ring-1 ring-slate-200'
                 }`}
               >

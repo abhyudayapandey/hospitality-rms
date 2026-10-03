@@ -55,7 +55,7 @@ export default async function UsersPage({
       </div>
       <Link
         href="/admin/users/new"
-        className="flex min-h-12 items-center justify-center rounded-lg bg-slate-900 font-medium text-white"
+        className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
       >
         Add a person
       </Link>

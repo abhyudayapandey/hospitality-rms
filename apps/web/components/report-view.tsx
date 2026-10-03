@@ -163,7 +163,7 @@ export function PeriodPicker({
 }) {
   const chip = (on: boolean) =>
     `flex min-h-11 items-center rounded-full px-4 text-sm whitespace-nowrap ${
-      on ? 'bg-slate-900 font-semibold text-white' : 'bg-white text-slate-700 ring-1 ring-slate-300'
+      on ? 'bg-brand-700 font-semibold text-white' : 'bg-white text-slate-700 ring-1 ring-slate-300'
     }`;
   return (
     <div className="space-y-2" data-testid="period">

@@ -81,7 +81,7 @@ export default async function AdminPage() {
         <nav className="grid grid-cols-2 gap-2" aria-label="Administration">
           <Link
             href="/admin/users"
-            className="flex min-h-12 items-center justify-center rounded-lg bg-slate-900 font-medium text-white"
+            className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
           >
             People ({people})
           </Link>

@@ -3,22 +3,11 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import type { InboxEntry } from '@/lib/inbox';
 import { actOnRequest } from './actions';
 
-export interface InboxEntry {
-  requestId: string;
-  processLabel: string;
-  step: string;
-  amount: string | null;
-  waitingSince: string;
-  from: string;
-  /** module screen for this request (order, adjustment review, transfer) */
-  link?: { href: string; label: string };
-  /** show Approve/Reject here (false when the decision belongs on the module screen) */
-  inline: boolean;
-}
-
-export function InboxItem({ entry }: { entry: InboxEntry }) {
+/** One request; `compact` on Home: who and what, then No and Approve (UX-6). */
+export function InboxItem({ entry, compact = false }: { entry: InboxEntry; compact?: boolean }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -37,7 +26,11 @@ export function InboxItem({ entry }: { entry: InboxEntry }) {
     });
   return (
     <li
-      className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200"
+      className={
+        compact
+          ? 'py-3 first:pt-0 last:pb-0'
+          : 'rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200'
+      }
       data-testid="inbox-item"
       data-request-id={entry.requestId}
     >
@@ -46,13 +39,15 @@ export function InboxItem({ entry }: { entry: InboxEntry }) {
         {entry.amount && <p className="font-semibold tabular-nums">{entry.amount}</p>}
       </div>
       <p className="text-sm text-slate-600">
-        {entry.from} · {entry.step.replace(/_/g, ' ')} · waiting since {entry.waitingSince}
+        {compact
+          ? `${entry.from} · ${entry.waitingSince}`
+          : `${entry.from} · ${entry.step.replace(/_/g, ' ')} · waiting since ${entry.waitingSince}`}
       </p>
       {entry.link && (
         <Link
           href={entry.link.href}
           className={`mt-3 flex min-h-12 items-center justify-center rounded-lg font-medium ${
-            entry.inline ? 'text-slate-700 underline' : 'bg-slate-900 text-white'
+            entry.inline ? 'text-slate-700 underline' : 'bg-brand-700 text-white'
           }`}
         >
           {entry.link.label}
@@ -75,13 +70,13 @@ export function InboxItem({ entry }: { entry: InboxEntry }) {
             onClick={() => act('reject')}
             className="min-h-12 rounded-lg border border-slate-300 font-medium disabled:opacity-50"
           >
-            Reject
+            {compact ? 'No' : 'Reject'}
           </button>
           <button
             type="button"
             disabled={pending}
             onClick={() => act('approve')}
-            className="min-h-12 rounded-lg bg-slate-900 font-medium text-white disabled:opacity-50"
+            className="min-h-12 rounded-lg bg-brand-700 font-medium text-white disabled:opacity-50"
           >
             Approve
           </button>

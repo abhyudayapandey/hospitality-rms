@@ -1,13 +1,15 @@
 // Bottom navigation: at most five items, chosen by the kind of work a person does (their
 // access groups, core.my_access()), then filtered by what they can open (core.my_domains()
-// and what there is to open: Menu and Production, audit ADR 016). Everything else they can
-// open is linked from Home. This is presentation only: RLS and the RPCs enforce access
-// (ADR 004).
+// and what there is to open: Menu and Production, audit ADR 016). Frontline staff get three
+// (Home, Tasks, Me; UX-6, ADR 034); everything else a person can open is on Me. This is
+// presentation only: RLS and the RPCs enforce access (ADR 004).
+
+import type { IconName } from '@/components/icon';
 
 export interface NavItem {
   href: string;
   label: string;
-  icon: string;
+  icon: IconName;
 }
 
 export interface NavFeatures {
@@ -38,22 +40,27 @@ export type NavKey =
   | 'roster'
   | 'requests'
   | 'admin'
-  | 'reports';
+  | 'reports'
+  | 'me';
 
 export const NAV_ITEMS: Readonly<Record<NavKey, NavItem>> = {
-  home: { href: '/', label: 'Home', icon: '⌂' },
-  inbox: { href: '/inbox', label: 'Inbox', icon: '✓' },
-  tasks: { href: '/tasks', label: 'Tasks', icon: '☑' },
-  production: { href: '/stock/production', label: 'Production', icon: '▦' },
-  stock: { href: '/stock', label: 'Stock', icon: '▦' },
+  home: { href: '/', label: 'Home', icon: 'home' },
+  // approvals and other requests waiting for the person (wf.my_inbox)
+  inbox: { href: '/inbox', label: 'Approvals', icon: 'inbox' },
+  tasks: { href: '/tasks', label: 'Tasks', icon: 'tasks' },
+  // plain words (UX-6): "Make", not "Production"
+  production: { href: '/stock/production', label: 'Make', icon: 'pot' },
+  stock: { href: '/stock', label: 'Stock', icon: 'box' },
   // menu costs for MENU holders, otherwise the recipes and procedures they may read
-  menu: { href: '/menu', label: 'Menu', icon: '☰' },
-  roster: { href: '/roster', label: 'Roster', icon: '◷' },
-  requests: { href: '/requests', label: 'Requests', icon: '≡' },
+  menu: { href: '/menu', label: 'Menu', icon: 'book' },
+  roster: { href: '/roster', label: 'Roster', icon: 'calendar' },
+  requests: { href: '/requests', label: 'Requests', icon: 'list' },
   // user administration (ADR 011) as well as the security roles view
-  admin: { href: '/admin', label: 'Admin', icon: '⚙' },
-  // reports (ADR 023): in the nav only for the cost controller and the office profile
-  reports: { href: '/reports', label: 'Reports', icon: '◔' },
+  admin: { href: '/admin', label: 'Admin', icon: 'gear' },
+  // reports (ADR 023): business reports only; "My week" is on Me
+  reports: { href: '/reports', label: 'Reports', icon: 'chart' },
+  // the person's own things and every other screen they can open (UX-6)
+  me: { href: '/me', label: 'Me', icon: 'user' },
 };
 
 /** Whether the person can open each item at all (the nav or Home). */
@@ -96,19 +103,21 @@ export function navProfile(groups: ReadonlySet<string>): NavProfile {
 }
 
 /**
- * Candidates in order per profile. Alternatives in a slot (an array) take the first one the
- * person can open; a slot with none is skipped.
+ * Candidates in order per profile (the UX-6 mock-ups). Alternatives in a slot (an array)
+ * take the first one the person can open; a slot with none is skipped. Me is always last.
  */
 const PROFILES: Readonly<Record<NavProfile, readonly (NavKey | readonly NavKey[])[]>> = {
-  outlet: ['home', 'inbox', 'stock', 'roster', 'tasks'],
-  department: ['home', 'inbox', 'tasks', 'roster', ['stock', 'requests']],
-  store: ['home', 'inbox', 'stock', 'tasks', 'roster'],
-  // Reports takes Menu's place; Menu opens from Reports and Home (docs/reporting.md 6)
-  cost: ['home', 'inbox', 'stock', 'reports', 'requests'],
-  frontline: ['home', 'tasks', ['stock', 'production', 'admin'], 'roster', 'inbox'],
+  // GM, area and hub managers: their day on Home, then what waits for their yes
+  outlet: ['home', 'inbox', ['reports', 'stock'], 'me'],
+  // department heads: approvals sit on Home; Roster and their stock or tasks are tabs
+  department: ['home', 'roster', ['stock', 'tasks'], 'reports', 'me'],
+  store: ['home', 'stock', 'tasks', 'me'],
+  cost: ['home', 'stock', 'reports', 'inbox', 'me'],
+  // four tiles on Home do the rest (UX-6)
+  frontline: ['home', 'tasks', 'me'],
   // HR, administrators, auditors: no tasks of their own on the floor
   // the Account Owner reads every report (REPORTS); HR the departments' attendance
-  office: ['home', 'inbox', 'reports', ['admin', 'roster'], 'requests'],
+  office: ['home', 'inbox', 'reports', ['admin', 'roster'], 'me'],
 };
 
 export function visibleNav(i: NavInput): NavItem[] {
@@ -124,14 +133,7 @@ export function visibleNav(i: NavInput): NavItem[] {
   return keys.slice(0, MAX_NAV_ITEMS).map((k) => NAV_ITEMS[k]);
 }
 
-/** Items the person can open that are not in their bottom nav: Home links to these. */
-export function moreItems(i: NavInput): NavItem[] {
-  const inNav = new Set(visibleNav(i).map((n) => n.href));
-  return (
-    (Object.keys(NAV_ITEMS) as NavKey[])
-      // Home has its own Stock and Production shortcuts
-      .filter((k) => !['home', 'stock', 'production'].includes(k))
-      .filter((k) => canOpen(k, i) && !inNav.has(NAV_ITEMS[k].href))
-      .map((k) => NAV_ITEMS[k])
-  );
+/** Whether Approvals is a tab; if not, the header carries it (UX-6). */
+export function approvalsInNav(i: NavInput): boolean {
+  return visibleNav(i).some((n) => n.href === NAV_ITEMS.inbox.href);
 }

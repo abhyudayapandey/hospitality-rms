@@ -88,19 +88,17 @@ test('a bartender sees no switcher on Stock and only the Bar Store on Production
   expect(await viewingOptions(page)).toEqual([]);
 });
 
-test('a commis sees only the Kitchen Store on Production, and no other stock screen', async ({
+test('a commis sees only the Kitchen Store on Make, and no other stock screen', async ({
   page,
 }) => {
   await signInAs(page, 'Test Commis 1.0');
-  await page
-    .getByRole('navigation', { name: 'Main' })
-    .getByRole('link', { name: 'Production' })
-    .click();
+  // Make is one of the commis's four tiles on Home (UX-6)
+  await page.getByTestId('tile-make').click();
   await page.waitForURL(/\/stock\/production/);
   await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen Store');
   expect(await viewingOptions(page)).toEqual([]);
   const main = page.locator('main');
-  await expect(main.getByRole('heading', { name: 'Production' })).toBeVisible();
+  await expect(main.getByRole('heading', { name: 'Make' })).toBeVisible();
   // production only: no stock tabs; an expired batch is reported to the lead, not wasted
   await expect(page.getByRole('navigation', { name: 'Supply' })).toHaveCount(0);
   await expect(main.getByRole('link', { name: /record the wastage/ })).toHaveCount(0);

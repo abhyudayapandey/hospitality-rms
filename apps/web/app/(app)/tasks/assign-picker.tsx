@@ -30,7 +30,7 @@ export function AssignPicker({
             key={mode}
             className={`flex min-h-11 items-center justify-center rounded-lg px-2 text-center text-sm ring-1 ${
               value.mode === mode
-                ? 'bg-slate-900 text-white ring-slate-900'
+                ? 'bg-brand-700 text-white ring-brand-700'
                 : 'bg-white ring-slate-300'
             }`}
           >

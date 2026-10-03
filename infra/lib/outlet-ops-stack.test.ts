@@ -526,17 +526,19 @@ describe('wastage photos (ADR 006)', () => {
     );
   });
 
-  it('lets the instance role put and get wastage/*, onboarding/* and tasks/* in the photo bucket, nothing else', () => {
+  it('lets the instance role put and get wastage/*, onboarding/*, tasks/* and items/* in the photo bucket, nothing else', () => {
     const { id } = photoBucket();
     const st = statements('InstanceRole').filter((s) => JSON.stringify(s.Resource).includes(id));
     expect(st.map((s) => [s.Sid, actions(s).sort()])).toEqual([
       ['WastagePhotos', ['s3:GetObject', 's3:PutObject']],
       ['OnboardingUploads', ['s3:GetObject', 's3:PutObject']],
       ['TaskPhotos', ['s3:GetObject', 's3:PutObject']],
+      ['ItemPhotos', ['s3:GetObject', 's3:PutObject']],
     ]);
     expect(JSON.stringify(st[0]!.Resource)).toContain('/wastage/*');
     expect(JSON.stringify(st[1]!.Resource)).toContain('/onboarding/*');
     expect(JSON.stringify(st[2]!.Resource)).toContain('/tasks/*');
+    expect(JSON.stringify(st[3]!.Resource)).toContain('/items/*');
     // no list or delete: the lifecycle rule removes old uploads
     expect(st.flatMap(actions)).not.toContain('s3:DeleteObject');
   });

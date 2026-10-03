@@ -8,6 +8,7 @@ import {
   isPhotoType,
   MAX_PHOTO_BYTES,
   photosEnabled,
+  presignPhotoUpload,
   presignWastageUpload,
   type UploadTarget,
 } from '@/lib/photos';
@@ -237,6 +238,49 @@ export async function updateSupplierContact(
   return run('update_supplier_contact', async (tx) => {
     await sql`select inv.update_supplier_contact(${supplier}::uuid, ${phone || null},
                                                  ${email || null})`.execute(tx);
+    return null;
+  });
+}
+
+// --- item photos (UX-6, ADR 034) -------------------------------------------------------
+
+/**
+ * One presigned POST for an item's photo, after inv.can_set_item_photo() says the caller
+ * may set it (rule 2). The key is items/<tenant>/<item>/<uuid>, the only shape
+ * inv.set_item_photo accepts.
+ */
+export async function getItemUploadUrl(
+  item: string,
+  contentType: string,
+  size: number,
+): Promise<ActionResult<UploadTarget>> {
+  if (!photosEnabled()) return { ok: false, code: 'INVALID_PHOTO', message: 'Photos are off.' };
+  if (!isPhotoType(contentType) || size < 1 || size > MAX_PHOTO_BYTES) {
+    return failure(new Error('INVALID_PHOTO'));
+  }
+  const user = await requireUser();
+  try {
+    const tenant = await withUser(user.id, async (tx) => {
+      const r = await sql<{ ok: boolean; tenant: string | null }>`
+        select inv.can_set_item_photo(${item}::uuid) as ok, core.my_tenant() as tenant`.execute(tx);
+      if (!r.rows[0]?.ok || !r.rows[0].tenant) throw new Error('NOT_AUTHORISED');
+      return r.rows[0].tenant;
+    });
+    return { ok: true, data: await presignPhotoUpload('items', tenant, item, contentType) };
+  } catch (err) {
+    const f = failure(err);
+    if (f.code === 'UNEXPECTED') console.error('item photo presign failed', err);
+    return f;
+  }
+}
+
+/** Sets (or with null clears) the item's photo; inv.set_item_photo checks who and the key. */
+export async function setItemPhoto(
+  item: string,
+  photoKey: string | null,
+): Promise<ActionResult<null>> {
+  return run('set_item_photo', async (tx) => {
+    await sql`select inv.set_item_photo(${item}::uuid, ${photoKey})`.execute(tx);
     return null;
   });
 }

@@ -59,19 +59,48 @@ export function TaskWork({
       else router.refresh();
     });
 
+  // one step at a time for whoever does the task (UX-6): what is done, then the step
+  // to do now; the rest wait. Anyone else sees every step.
+  const focus = canWork && open && task.steps.length > 1;
+  const current = focus ? task.steps.find((s) => !s.done_at) : undefined;
+  const doneCount = task.steps.filter((s) => s.done_at).length;
+  const shown = focus ? task.steps.filter((s) => s.done_at || s.id === current?.id) : task.steps;
+  const later = focus ? task.steps.filter((s) => !s.done_at && s.id !== current?.id) : [];
+
   return (
     <section className="space-y-3">
+      {focus && (
+        <div className="space-y-1" data-testid="step-progress">
+          <p className="text-sm font-medium text-slate-600">
+            {current
+              ? `Step ${task.steps.indexOf(current) + 1} of ${task.steps.length}`
+              : `All ${task.steps.length} steps done`}
+          </p>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+            <div
+              className="h-full rounded-full bg-brand-700"
+              style={{ width: `${(100 * doneCount) / task.steps.length}%` }}
+            />
+          </div>
+        </div>
+      )}
       <ol className="space-y-2" data-testid="steps">
-        {task.steps.map((s) => (
+        {shown.map((s) => (
           <li
             key={s.id}
             data-testid="step"
             className={`space-y-2 rounded-xl p-3 ring-1 ${
-              s.flagged ? 'bg-amber-50 ring-amber-300' : 'bg-white ring-slate-200'
+              s.flagged
+                ? 'bg-amber-50 ring-amber-300'
+                : focus && s.id === current?.id
+                  ? 'bg-white ring-2 ring-brand-700'
+                  : 'bg-white ring-slate-200'
             }`}
           >
             <p className="flex items-start justify-between gap-2">
-              <span className="font-medium">{s.label}</span>
+              <span className={`font-medium ${focus && s.id === current?.id ? 'text-lg' : ''}`}>
+                {s.label}
+              </span>
               {s.done_at && <span className="text-xs text-emerald-700">✓ done</span>}
             </p>
             {s.kind === 'number' && range(s) && (
@@ -91,6 +120,11 @@ export function TaskWork({
           </li>
         ))}
       </ol>
+      {later.length > 0 && (
+        <p className="text-sm text-slate-500" data-testid="steps-later">
+          Then {later.length} more: {later.map((s) => s.label).join(', ')}
+        </p>
+      )}
       {canWork && open && manual && allDone && (
         <div className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
           <label className="block space-y-1">

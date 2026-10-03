@@ -1297,6 +1297,40 @@ same 5 warnings. Apply, then dry-run again: no changes.
 - **`test.cost-controller.1.0`.** Reports → Menu engineering: 3 months is selected; 12
   months shows the same dishes with "Price … · cost … · margin … a serve".
 
+#### Releasing the simple, visual app (UX-6)
+
+One migration, `20261026100000_item_photos` (ADR 034), and one stack change: the
+instance role may put and get `items/*` in the photo bucket (`ItemPhotos`). There is no
+new parameter, no product sync change and no test data change. Access rules are
+unchanged: the new tabs, Me and the Home cards only show what people could already open.
+
+**Deploy order.**
+
+1. `cd infra && pnpm cdk diff`. Expect one change only: `InstanceRole`'s default policy
+   gains an `ItemPhotos` statement for `s3:PutObject` and `s3:GetObject` on the photo
+   bucket's `items/*`. Stop if anything says replace, or if other resources change.
+2. `pnpm cdk deploy`.
+3. Run the Deploy workflow.
+
+No re-import.
+
+**Check.**
+
+- **`test.commis.1.0`.** Three tabs (Home, Tasks, Me). Home shows Next with a Start
+  button and four tiles (My tasks, Make, My shifts, Leave). Me lists everything else and
+  has Sign out at the bottom. Approvals is the tray icon in the header.
+- **`test.store-keeper.1.0`.** Home has four tiles: Receive, Send, Running low, Count.
+  Stock → an item → **Add a photo**: take one and save it. It shows on the item and as the
+  item's picture on the stock list.
+- **`test.general-manager.1.0`.** Tabs: Home, Approvals, Reports, Me. Home shows:
+  - the expiry banners;
+  - Needs your yes;
+  - Needs attention, one line per department with a red or amber bar;
+  - today's figures against the targets.
+- **`test.area-manager`.** Home shows the outlets side by side for the last 7 days.
+- **Anyone with a checklist task due** (Tasks): it shows one step at a time with a progress
+  bar.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

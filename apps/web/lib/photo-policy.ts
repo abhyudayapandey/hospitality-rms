@@ -21,9 +21,10 @@ export function isPhotoType(t: string): t is PhotoType {
 
 /**
  * Where photos live. The bucket's lifecycle keeps tasks/routine/ 90 days and tasks/keep/
- * (flagged readings, maintenance) 400 days (ADR 020).
+ * (flagged readings, maintenance) 400 days (ADR 020); items/ (item photos, ADR 034) as long
+ * as the item, under items/<tenant>/<item>/.
  */
-export const PHOTO_PREFIXES = ['wastage', 'tasks/routine', 'tasks/keep'] as const;
+export const PHOTO_PREFIXES = ['wastage', 'tasks/routine', 'tasks/keep', 'items'] as const;
 export type PhotoPrefix = (typeof PHOTO_PREFIXES)[number];
 
 /** The only keys uploads may use: <prefix>/<tenant>/<node>/<uuid>.<ext>. */

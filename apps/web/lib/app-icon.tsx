@@ -11,7 +11,7 @@ export function appIcon(size: number, maskable = false): ImageResponse {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#0f172a',
+        background: '#1f5f57',
         borderRadius: maskable ? 0 : size * 0.18,
         padding: pad,
       }}

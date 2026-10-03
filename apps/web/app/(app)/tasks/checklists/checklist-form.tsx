@@ -117,7 +117,7 @@ export function ChecklistForm({
               <label
                 key={d}
                 className={`flex min-h-11 items-center justify-center rounded-lg text-xs ring-1 ${
-                  days.includes(i + 1) ? 'bg-slate-900 text-white ring-slate-900' : 'ring-slate-300'
+                  days.includes(i + 1) ? 'bg-brand-700 text-white ring-brand-700' : 'ring-slate-300'
                 }`}
               >
                 <input

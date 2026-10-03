@@ -32,7 +32,7 @@ export default async function CountPage({ searchParams }: { searchParams: Search
       {open ? (
         <Link
           href={`/stock/count/${open.id}${q}`}
-          className="flex min-h-12 items-center justify-center rounded-lg bg-slate-900 font-medium text-white"
+          className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
         >
           Continue the count started {formatWhen(open.started_at)}
         </Link>

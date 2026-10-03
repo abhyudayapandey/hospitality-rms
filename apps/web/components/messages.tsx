@@ -27,6 +27,6 @@ export function Empty({ children }: { children: React.ReactNode }) {
 export const inputClass =
   'min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base tabular-nums';
 export const primaryButton =
-  'min-h-12 w-full rounded-lg bg-slate-900 font-medium text-white disabled:opacity-50';
+  'min-h-12 w-full rounded-lg bg-brand-700 font-medium text-white disabled:opacity-50';
 export const secondaryButton =
   'min-h-12 w-full rounded-lg border border-slate-300 bg-white font-medium disabled:opacity-50';
