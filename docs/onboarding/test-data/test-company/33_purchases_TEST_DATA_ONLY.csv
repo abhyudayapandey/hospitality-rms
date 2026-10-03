@@ -1,0 +1,8 @@
+order_ref,store_node_code,supplier_code,item_code,quantity,unit_cost_inr,ordered_day,ordered_by,approved_by,received_day,received_quantity,received_by
+PO-1,TEST-HOTEL-1.0-KITCHEN-STORE,SUPPLIER-FRESH-PRODUCE,TOMATOES,15,40,-6,test.executive-chef.1.0,test.general-manager.1.0,-5,15,test.executive-chef.1.0
+PO-1,TEST-HOTEL-1.0-KITCHEN-STORE,SUPPLIER-FRESH-PRODUCE,ONIONS,20,35,-6,test.executive-chef.1.0,test.general-manager.1.0,-5,20,test.executive-chef.1.0
+PO-2,TEST-HOTEL-1.0-KITCHEN-STORE,SUPPLIER-FRESH-PRODUCE,TOMATOES,15,44,-4,test.executive-chef.1.0,test.general-manager.1.0,-2,15,test.executive-chef.1.0
+PO-2,TEST-HOTEL-1.0-KITCHEN-STORE,SUPPLIER-FRESH-PRODUCE,ONIONS,20,35,-4,test.executive-chef.1.0,test.general-manager.1.0,-2,16,test.executive-chef.1.0
+PO-3,TEST-HOTEL-1.0-KITCHEN-STORE,SUPPLIER-FRESH-PRODUCE,TOMATOES,15,48,-2,test.executive-chef.1.0,test.general-manager.1.0,-1,15,test.executive-chef.1.0
+PO-4,TEST-HOTEL-1.0-KITCHEN-STORE,SUPPLIER-DAIRY-POULTRY,PANEER,5,380,-3,test.executive-chef.1.0,test.general-manager.1.0,,,
+PO-4,TEST-HOTEL-1.0-KITCHEN-STORE,SUPPLIER-DAIRY-POULTRY,MILK,20,60,-3,test.executive-chef.1.0,test.general-manager.1.0,,,

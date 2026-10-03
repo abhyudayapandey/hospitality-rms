@@ -136,7 +136,7 @@ test('an expired batch: reported, assigned by the chef, thrown away and remade, 
   await expect(page.getByTestId('task-status')).toHaveText(/^Done/);
 
   await signInAs(page, 'Test Cost Controller 1.0');
-  await page.goto(`/menu/variance?node=${store}`);
+  await page.goto('/reports/cost');
   const line = page
     .getByTestId('expired-wastage')
     .getByRole('listitem')

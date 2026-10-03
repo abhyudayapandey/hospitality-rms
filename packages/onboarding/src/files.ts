@@ -651,6 +651,28 @@ export const FILES = {
       created_by: text,
     }),
   },
+  // Test-only purchases (ADR 028): orders over the past days, approved, and received in
+  // full, short or not at all. One row per order line; the order's columns repeat.
+  purchases: {
+    file: '33_purchases_TEST_DATA_ONLY.csv',
+    required: false,
+    testOnly: true,
+    schema: z.object({
+      order_ref: code,
+      store_node_code: code,
+      supplier_code: code,
+      item_code: code,
+      quantity: num.refine((v) => v > 0, 'must be more than 0'),
+      unit_cost_inr: num.refine((v) => v >= 0, 'must not be negative'),
+      ordered_day: dayOffset,
+      ordered_by: text,
+      approved_by: text,
+      // blank: not delivered yet
+      received_day: z.union([z.literal('').transform(() => undefined), dayOffset]),
+      received_quantity: optNum.refine((v) => v === undefined || v >= 0, 'must not be negative'),
+      received_by: optional,
+    }),
+  },
 } as const;
 
 export type FileKey = keyof typeof FILES;

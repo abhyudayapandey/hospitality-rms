@@ -20,13 +20,24 @@ export const PLACE_SCREENS = [
   'checklists',
   'maintenance',
   'report',
-  // reports (ADR 023): rpt.report_places(), not core.screen_places()
+  // reports (ADR 023, 028): rpt.report_places(), not core.screen_places()
   'outlet_flash',
   'department',
+  'cost_of_sales',
+  'menu_engineering',
+  'stock_position',
+  'purchasing',
 ] as const;
 
 /** Report screens: their places come from rpt.report_places(). */
-export const REPORT_SCREENS = ['outlet_flash', 'department'] as const;
+export const REPORT_SCREENS = [
+  'outlet_flash',
+  'department',
+  'cost_of_sales',
+  'menu_engineering',
+  'stock_position',
+  'purchasing',
+] as const;
 export type ReportScreen = (typeof REPORT_SCREENS)[number];
 
 export function isReportScreen(s: string): s is ReportScreen {

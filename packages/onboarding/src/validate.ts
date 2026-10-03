@@ -481,7 +481,7 @@ function validateTasks(
 }
 
 /**
- * The test-only activity files 25 to 28 (ADR 017): every code and person exists. Who may
+ * The test-only activity files 25 to 28 and 33 (ADR 017, 028): every code and person exists. Who may
  * do what (rostering rules, production rights, approvals) is checked by the database
  * functions the loader calls as each person.
  */
@@ -575,6 +575,61 @@ function validateActivity(
     counters.set(c.store_node_code, who);
     person(f('counts'), c.line, 'counted_by', c.counted_by);
     person(f('counts'), c.line, 'approved_by', c.approved_by);
+  }
+
+  // file 33: an order's columns agree on every line; it is received after it is ordered
+  const suppliers = new Set(b.suppliers.map((s) => s.supplier_code));
+  const orders = new Map<string, Bundle['purchases'][number]>();
+  const ordered = new Set<string>();
+  const ORDER_COLUMNS = [
+    'store_node_code',
+    'supplier_code',
+    'ordered_day',
+    'ordered_by',
+    'approved_by',
+    'received_day',
+    'received_by',
+  ] as const;
+  for (const p of b.purchases) {
+    const file = f('purchases');
+    const first = orders.get(p.order_ref);
+    if (first) {
+      for (const col of ORDER_COLUMNS) {
+        if (first[col] !== p[col]) add(file, p.line, col, `differs from line ${first.line}`);
+      }
+    } else {
+      orders.set(p.order_ref, p);
+      store(file, p.line, p.store_node_code);
+      if (!suppliers.has(p.supplier_code)) {
+        add(file, p.line, 'supplier_code', `${p.supplier_code} is not in ${f('suppliers')}`);
+      }
+      person(file, p.line, 'ordered_by', p.ordered_by);
+      person(file, p.line, 'approved_by', p.approved_by);
+      if (p.ordered_by === p.approved_by) {
+        add(file, p.line, 'approved_by', 'nobody approves their own order');
+      }
+      if (p.received_day !== undefined) {
+        if (p.received_by === undefined) add(file, p.line, 'received_by', 'is required');
+        else person(file, p.line, 'received_by', p.received_by);
+        if (p.received_day < p.ordered_day) {
+          add(file, p.line, 'received_day', 'must not be before ordered_day');
+        }
+      }
+    }
+    if (!k.placed.has(`${p.item_code} ${p.store_node_code}`)) {
+      add(
+        file,
+        p.line,
+        'item_code',
+        `${p.item_code} is not set up at ${p.store_node_code} in ${f('itemLocations')}`,
+      );
+    }
+    const key = `${p.order_ref} ${p.item_code}`;
+    if (ordered.has(key)) add(file, p.line, 'item_code', 'listed twice on that order');
+    ordered.add(key);
+    if (p.received_day === undefined && p.received_quantity !== undefined) {
+      add(file, p.line, 'received_quantity', 'needs a received_day');
+    }
   }
 }
 

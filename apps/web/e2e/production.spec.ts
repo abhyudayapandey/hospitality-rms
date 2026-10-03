@@ -55,11 +55,14 @@ test('the general manager posts a day’s bar sales; stock goes below zero and t
   ).toBeVisible();
 });
 
-test('the cost controller reads variance and beverage cost % for the outlet', async ({ page }) => {
+test('the cost controller reads cost of sales for the outlet; Variance leads there', async ({
+  page,
+}) => {
   await signInAs(page, 'Test Cost Controller 1.0');
   await page.goto('/menu/variance');
+  await page.waitForURL('**/reports/cost');
   const main = page.locator('main');
-  await expect(main.getByRole('heading', { name: 'Variance' })).toBeVisible();
-  await expect(main.getByText('Cost % at Test Hotel & Bar 1.0')).toBeVisible();
+  await expect(main.getByRole('heading', { name: 'Cost of sales' })).toBeVisible();
+  await expect(page.getByTestId('measure-bar_cost_pct')).toBeVisible();
   await expect(page.getByTestId('variance-row').first()).toBeVisible();
 });

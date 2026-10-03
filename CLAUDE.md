@@ -162,7 +162,9 @@ fails if the costs worked out from the loaded data differ by a paisa (ADR 014). 
 count, with days counted from the load date; the README's expected figures are pinned by
 `packages/db/src/test-data-activity.db.test.ts`. File 29 is checklist templates (a normal file, any
 customer); files 30 to 32 (test customers only, ADR 020) load one-off tasks, a maintenance
-request and a prep list linked to file 26's batches, also pinned by that test.
+request and a prep list linked to file 26's batches, also pinned by that test. File 33 (test
+customers only, ADR 028) loads past purchase orders, approved and received in full, short or
+not at all; the purchasing and stock figures are pinned by `packages/db/src/cost-reports.db.test.ts`.
 `TEST_LOGINS_do_not_commit.csv` (passwords) is never committed.
 
 ## How to work in this repo

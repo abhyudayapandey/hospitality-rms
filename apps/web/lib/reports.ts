@@ -1,7 +1,14 @@
 // Reports (ADR 023): names, the measures each report shows, and how a figure reads. Pure:
 // the figures come from rpt.* functions, which decide who may see what (rule 2).
 
-export type ReportCode = 'outlet_flash' | 'department' | 'my_week';
+export type ReportCode =
+  | 'outlet_flash'
+  | 'department'
+  | 'cost_of_sales'
+  | 'menu_engineering'
+  | 'stock_position'
+  | 'purchasing'
+  | 'my_week';
 
 export const REPORTS: Readonly<Record<ReportCode, { title: string; href: string; blurb: string }>> =
   {
@@ -15,6 +22,27 @@ export const REPORTS: Readonly<Record<ReportCode, { title: string; href: string;
       href: '/reports/department',
       blurb: 'Who is on shift, hours, open slots and tasks done on time.',
     },
+    // the cost controller's reports (R-2, ADR 028)
+    cost_of_sales: {
+      title: 'Cost of sales',
+      href: '/reports/cost',
+      blurb: 'Food and drink cost against the recipes, and the items losing the most.',
+    },
+    menu_engineering: {
+      title: 'Menu engineering',
+      href: '/reports/menu',
+      blurb: 'Each dish by margin and popularity: stars, plowhorses, puzzles and dogs.',
+    },
+    stock_position: {
+      title: 'Stock position',
+      href: '/reports/stock',
+      blurb: 'Stock value, days on hand and stock that has not moved.',
+    },
+    purchasing: {
+      title: 'Purchasing',
+      href: '/reports/purchasing',
+      blurb: 'Price changes and how fully and on time suppliers deliver.',
+    },
     my_week: {
       title: 'My week',
       href: '/reports/my-week',
@@ -26,7 +54,7 @@ export function isReportCode(s: string): s is ReportCode {
   return s in REPORTS;
 }
 
-export type Unit = 'money' | 'pct' | 'hours' | 'count';
+export type Unit = 'money' | 'pct' | 'hours' | 'count' | 'days';
 
 export interface MeasureDef {
   label: string;
@@ -57,6 +85,23 @@ export const MEASURES: Readonly<Record<string, MeasureDef>> = {
   task_pct: { label: 'Tasks on time', unit: 'pct', better: 'up' },
   flagged: { label: 'Readings flagged', unit: 'count', better: 'down' },
   overdue: { label: 'Overdue', unit: 'count', better: 'down' },
+  // cost of sales
+  food_recipe_pct: { label: 'Food cost by recipe', unit: 'pct' },
+  bar_recipe_pct: { label: 'Drinks cost by recipe', unit: 'pct' },
+  count_loss: { label: 'Lost at the count', unit: 'money', better: 'down' },
+  beyond_tolerance: { label: 'Items beyond tolerance', unit: 'count', better: 'down' },
+  not_counted: { label: 'Items not counted', unit: 'count' },
+  expired: { label: 'Expired, thrown away', unit: 'money', better: 'down' },
+  // stock position
+  value_7: { label: 'A week ago', unit: 'money' },
+  value_14: { label: '2 weeks ago', unit: 'money' },
+  value_21: { label: '3 weeks ago', unit: 'money' },
+  value_28: { label: '4 weeks ago', unit: 'money' },
+  used_value: { label: 'Used in the last 28 days', unit: 'money' },
+  basis_days: { label: 'Days of use averaged', unit: 'days' },
+  days_on_hand: { label: 'Days on hand', unit: 'days' },
+  dead_items: { label: 'Items not moved in 30 days', unit: 'count', better: 'down' },
+  dead_value: { label: 'Their value', unit: 'money', better: 'down' },
 };
 
 /** The sections of each report, in order (a measure missing from the data is skipped). */
@@ -77,6 +122,22 @@ export const SECTIONS: Readonly<Record<ReportCode, readonly [string, readonly st
     ['Shifts', ['shifts', 'scheduled_hours', 'worked_hours', 'on_time', 'late', 'no_shows']],
     ['Tasks', ['tasks_done', 'tasks_on_time']],
   ],
+  cost_of_sales: [
+    ['Sales', ['food_sales', 'bar_sales']],
+    [
+      'Cost against the recipes',
+      ['food_cost_pct', 'food_recipe_pct', 'bar_cost_pct', 'bar_recipe_pct'],
+    ],
+    ['Losses', ['count_loss', 'beyond_tolerance', 'not_counted', 'wastage', 'expired']],
+  ],
+  stock_position: [
+    ['Value', ['stock_value', 'value_7', 'value_14', 'value_21', 'value_28']],
+    ['Use', ['used_value', 'days_on_hand', 'basis_days']],
+    ['Dead stock', ['dead_items', 'dead_value']],
+  ],
+  // lists, not measures
+  menu_engineering: [],
+  purchasing: [],
 };
 
 const group = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
@@ -96,6 +157,8 @@ export function formatMeasure(unit: Unit, value: string | number | null | undefi
       return `${hours.format(v)} h`;
     case 'count':
       return group.format(v);
+    case 'days':
+      return `${hours.format(v)} ${v === 1 ? 'day' : 'days'}`;
   }
 }
 
@@ -143,4 +206,112 @@ export function sectionRows(rows: readonly MeasureRow[], measures: readonly stri
     const def = MEASURES[m];
     return r && def ? [{ ...r, def }] : [];
   });
+}
+
+// ---------------------------------------------------------------------------------------
+// The cost controller's reports (R-2, ADR 028)
+// ---------------------------------------------------------------------------------------
+
+export type Period = 'yesterday' | 'week' | 'four_weeks' | 'month' | 'custom';
+
+export const PERIODS: readonly { code: Period; label: string }[] = [
+  { code: 'yesterday', label: 'Yesterday' },
+  { code: 'week', label: 'Last 7 days' },
+  { code: 'four_weeks', label: 'Last 4 weeks' },
+  { code: 'month', label: 'This month' },
+  { code: 'custom', label: 'Pick dates' },
+];
+
+const isIso = (s: string | undefined): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+
+function shift(day: string, days: number): string {
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * The days a period covers, ending today at the latest. "Last 7 days" ends today, as the
+ * Variance screen did; custom dates are put in order and kept to today.
+ */
+export function periodRange(
+  period: string | undefined,
+  today: string,
+  from?: string,
+  to?: string,
+): { period: Period; from: string; to: string } {
+  if (period === 'yesterday') {
+    const y = shift(today, -1);
+    return { period, from: y, to: y };
+  }
+  if (period === 'four_weeks') return { period, from: shift(today, -27), to: today };
+  if (period === 'month') return { period, from: `${today.slice(0, 8)}01`, to: today };
+  if (period === 'custom' && isIso(from) && isIso(to)) {
+    const [a, b] = from <= to ? [from, to] : [to, from];
+    const end = b > today ? today : b;
+    return { period, from: a > end ? end : a, to: end };
+  }
+  return { period: 'week', from: shift(today, -6), to: today };
+}
+
+export interface CostItem {
+  store_name: string;
+  sku: string;
+  name: string;
+  unit: string;
+  variance_qty: string;
+  variance_value: string;
+  counted: boolean;
+  unexplained: boolean;
+}
+
+/** "Where the money went": the items that lost the most at the count, biggest first. */
+export function topLosses<T extends Pick<CostItem, 'variance_value'>>(
+  items: readonly T[],
+  n = 5,
+): T[] {
+  return items
+    .filter((i) => Number(i.variance_value) < 0)
+    .sort((a, b) => Number(a.variance_value) - Number(b.variance_value))
+    .slice(0, n);
+}
+
+export type DishClass = 'star' | 'plowhorse' | 'puzzle' | 'dog';
+
+/** The four groups of the menu engineering matrix, in the order the screen shows them. */
+export const DISH_CLASSES: readonly {
+  code: DishClass;
+  title: string;
+  what: string;
+  hint: string;
+}[] = [
+  {
+    code: 'star',
+    title: 'Stars',
+    what: 'Popular, high margin',
+    hint: 'Keep them as they are and make them easy to find.',
+  },
+  {
+    code: 'plowhorse',
+    title: 'Plowhorses',
+    what: 'Popular, low margin',
+    hint: 'Raise the price a little or cut the recipe cost.',
+  },
+  {
+    code: 'puzzle',
+    title: 'Puzzles',
+    what: 'High margin, not popular',
+    hint: 'Promote them: a better place on the menu, a staff suggestion.',
+  },
+  {
+    code: 'dog',
+    title: 'Dogs',
+    what: 'Low margin, not popular',
+    hint: 'Rework them or take them off the menu.',
+  },
+];
+
+/** A dish class from the database, or null when there is none (nothing sold, no recipe). */
+export function dishClass(s: string | null): DishClass | null {
+  return s === 'star' || s === 'plowhorse' || s === 'puzzle' || s === 'dog' ? s : null;
 }
