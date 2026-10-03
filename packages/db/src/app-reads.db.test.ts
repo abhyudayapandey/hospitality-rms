@@ -183,7 +183,9 @@ describe('wf.my_processes', () => {
       'STOCK_ADJUSTMENT',
       'TRANSFER',
     ]);
+    // the outlet manager may ask for a leaver to be deactivated (ADR 035)
     expect(await procs('test.bar-manager.3.0')).toEqual([
+      'DEACTIVATION',
       'LEAVE',
       'PURCHASE_ORDER',
       'SHIFT_SWAP',
@@ -191,7 +193,7 @@ describe('wf.my_processes', () => {
     ]);
     expect(await procs('ai-agent')).toEqual(['PURCHASE_ORDER']); // no SELF for services
     // user administration moved to User Admins and Account Owners (ADR 009)
-    expect(await procs('test.hr-admin')).toEqual(['LEAVE', 'SHIFT_SWAP']);
+    expect(await procs('test.hr-admin')).toEqual(['DEACTIVATION', 'LEAVE', 'SHIFT_SWAP']);
     expect(await procs('test.account-owner')).toEqual(['LEAVE', 'ROLE_CHANGE', 'SHIFT_SWAP']);
   });
 });
