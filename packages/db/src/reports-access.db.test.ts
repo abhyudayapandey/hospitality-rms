@@ -160,16 +160,18 @@ describe('reports: who opens what (every user)', () => {
     await inRolledBackTx(async (c) => {
       const r = (u: string) => reportsOf(c, ids.user(u));
       const pl = (u: string, rep: string) => placesOf(c, ids.user(u), rep);
-      const all6 = [
+      // People follows WORKERS modify, which the outlet manager holds since ADR 035
+      expect(await r('test.general-manager.1.0')).toEqual([
         'outlet_flash',
         'department',
         'cost_of_sales',
         'menu_engineering',
         'stock_position',
         'purchasing',
+        'people',
         'my_week',
-      ];
-      expect(await r('test.general-manager.1.0')).toEqual(all6);
+      ]);
+      expect(await pl('test.general-manager.1.0', 'people')).toEqual(['TEST-HOTEL-1.0']);
       expect(await pl('test.general-manager.1.0', 'outlet_flash')).toEqual(['TEST-HOTEL-1.0']);
       expect(await pl('test.general-manager.1.0', 'cost_of_sales')).toEqual(['TEST-HOTEL-1.0']);
       expect(await r('test.cost-controller.1.0')).toEqual([

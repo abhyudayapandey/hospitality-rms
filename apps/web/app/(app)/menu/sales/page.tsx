@@ -4,7 +4,9 @@ import { withUser } from '@/lib/db';
 import { param, type SearchParams } from '@/lib/inventory';
 import { menuPlaces } from '@/lib/menu';
 import { placesFor } from '@/lib/places';
+import { addDays } from '@/lib/dates';
 import { isoDate, salesSheet, todayIn } from '@/lib/production';
+import { weekdayName } from '@/lib/sales-entry';
 import { MenuTabs } from '../parts';
 import { SalesForm } from './sales-form';
 
@@ -18,11 +20,20 @@ export default async function SalesPage({ searchParams }: { searchParams: Search
   // the outlets where they post sales: the "Place:" switcher (ADR 016)
   const { shell, places, place } = await placesFor('sales', searchParams);
   if (!place) return <Empty>You don&apos;t post sales anywhere.</Empty>;
+  // UX-4: copy yesterday's, or the same day last week's (weekends differ from weekdays)
+  const yesterday = addDays(date, -1);
+  const lastWeek = addDays(date, -7);
   const data = await withUser(shell.user.id, async (tx) => ({
     outlet: { outlet_id: place.id, outlet_name: place.name },
     costs: (await menuPlaces(tx)).length > 0,
     sheet: await salesSheet(tx, place.id, date),
+    yesterday: await salesSheet(tx, place.id, yesterday),
+    lastWeek: await salesSheet(tx, place.id, lastWeek),
   }));
+  const posted = (rows: typeof data.sheet) =>
+    Object.fromEntries(
+      rows.filter((r) => r.posted_qty !== null).map((r) => [r.menu_item_id, Number(r.posted_qty)]),
+    );
   return (
     <div className="space-y-4">
       <PlaceSwitcher screen="sales" places={places} current={place.id} quiet />
@@ -54,6 +65,10 @@ export default async function SalesPage({ searchParams }: { searchParams: Search
           key={`${data.outlet.outlet_id}-${date}`}
           outlet={data.outlet.outlet_id}
           date={date}
+          copies={[
+            { label: 'Copy yesterday', qty: posted(data.yesterday) },
+            { label: `Copy last ${weekdayName(lastWeek)}`, qty: posted(data.lastWeek) },
+          ]}
           rows={data.sheet.map((r) => ({
             menu_item_id: r.menu_item_id,
             code: r.code,

@@ -1,2 +1,2 @@
-customer_code,company_name,country,currency,default_timezone,is_test
-TEST-COMPANY,Test Company,India,INR,Asia/Kolkata,yes
+customer_code,company_name,country,currency,default_timezone,is_test,swaps_managers_only
+TEST-COMPANY,Test Company,India,INR,Asia/Kolkata,yes,no

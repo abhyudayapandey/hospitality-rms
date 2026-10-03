@@ -1331,6 +1331,58 @@ No re-import.
 - **Anyone with a checklist task due** (Tasks): it shows one step at a time with a progress
   bar.
 
+#### Releasing the stock hub, Team People and Leave, and swaps for management (UX-4, UX-5, SW-4)
+
+One migration, `20261027100000_stock_hub_hr` (ADR 035). No stack change and no new
+parameter. The product sync (part of Deploy) gives the outlet manager WORKERS modify
+(was view) and adds the DEACTIVATION process and its bp-policy to every tenant. This
+changes access, so run **Actions → RLS equivalence (all users) → Run workflow** on the
+commit before merging.
+
+- **What changes in the app.**
+  - **Stock** opens with what needs doing first (Running low, the expiry banners, On its
+    way here, Count due) and four buttons: Count, Record wastage, Order, Request stock.
+  - **Sales** has a search box, Copy yesterday, Copy last <weekday> and the total sold.
+  - **Notifications** are grouped by kind and day, and opening one marks it read.
+  - **Roster → Team** gains **People** and **Leave** for HR and the outlet manager. People
+    has **Deactivate** (with a reason); the security admin approves it in Approvals.
+  - **Admin → Settings** gains "People and stock": swaps for managers only (on by default)
+    and the days between counts (7).
+  - New companies: frontline staff see no swap button until swaps for managers only is
+    turned off.
+  - **Reports**: Menu costs and prices is a card like the reports; Menu has a Back link.
+  - The outlet manager now also gets the **People** report for their outlet (it follows
+    WORKERS modify, ADR 030).
+- **Test data.** Test Company's file 00 gains `swaps_managers_only` = `no`, so its staff
+  keep offering swaps. Test Solo Bar Co has swaps off as a module: no change.
+
+**Deploy order.** Run the Deploy workflow, then re-import Test Company.
+
+Until the re-import, Test Company's staff see no swap button (the new default).
+
+**Re-import Test Company** (40 files). The dry run should report no problems, the same 2
+approval-coverage warnings and no changes, apart from any shifts for weeks that are new
+since the last import (the setting is written on Apply and does not show as a count).
+Apply, then dry-run again: no changes.
+
+No re-import for Test Solo Bar Co.
+
+**Check.**
+
+- **`test.store-keeper.1.0`.** Stock at the Kitchen Store: the attention cards on top
+  (Count due, "Last counted … days ago" or "Never counted here"), then Count, Record
+  wastage, Order and Request stock.
+- **`test.general-manager.1.0`.**
+  - Roster → Team: Roster, Exceptions, Events, People, Leave. People lists the hotel's
+    staff; open **Deactivate** on someone, type a reason and send it ("Deactivation
+    waiting" shows).
+  - Menu → Sales: Copy last <weekday> fills the day; don't save.
+- **`test.security-admin`.** Approvals: "Deactivate <name>: <reason>". **Reject** it, so the
+  test person keeps working.
+- **`test.commis.1.0`.** The bell: tasks grouped as "N new tasks"; open it and the dot
+  goes. Roster → My shifts still has the swap button (Test Company has it off).
+- **`test.account-owner`.** Admin → Settings: "People and stock" with both settings.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

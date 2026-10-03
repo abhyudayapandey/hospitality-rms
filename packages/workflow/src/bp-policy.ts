@@ -38,6 +38,10 @@ export const BP_POLICY: readonly BpRule[] = [
   // user administration: User Admins and Account Owners request sensitive grants
   ...rules('ROLE_CHANGE', '*', 'initiate', ['USER_ADMIN', 'ACCOUNT_OWNER']),
 
+  // HR and outlet managers ask for a person to be deactivated (UX-5, ADR 035); the
+  // request itself checks WORKERS modify where the person works
+  ...rules('DEACTIVATION', '*', 'initiate', ['OUTLET_HR', 'HR_ADMIN', 'OUTLET_MANAGER']),
+
   ...PROCESS_DEFS.flatMap((d) =>
     d.steps.flatMap((s) => rules(d.type, s.step, 'approve', chainGroups(s))),
   ),

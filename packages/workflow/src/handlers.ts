@@ -55,6 +55,8 @@ export const HR_HANDLERS: HandlerMap = Object.fromEntries(
     'hr.shift_swap.reject',
     'hr.role_change.apply',
     'hr.role_change.reject',
+    'hr.deactivation.apply',
+    'hr.deactivation.reject',
   ].map((name) => [name, hr(name)]),
 );
 

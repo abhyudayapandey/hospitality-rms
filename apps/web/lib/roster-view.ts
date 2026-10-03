@@ -1,5 +1,6 @@
 // Roster as two sides (UX review U-10, U-11; ADR 025): "Me" (my shifts, clock, leave,
-// swaps) and "Team" (roster, exceptions, events), and the week roster as a day strip.
+// swaps) and "Team" (roster, exceptions, events; people and the team's leave, ADR 035), and
+// the week roster as a day strip.
 // Pure, so they can be unit tested; which tabs show still comes from the person's domain
 // access (rule 2), never from a check made here.
 
@@ -19,6 +20,9 @@ export const PEOPLE_TABS = [
   { href: '/roster/week', label: 'Roster', side: 'team' },
   { href: '/roster/exceptions', label: 'Exceptions', side: 'team' },
   { href: '/events', label: 'Events', side: 'team' },
+  // UX-5 (ADR 035): worker records and the team's leave, for HR and leads
+  { href: '/team/people', label: 'People', side: 'team' },
+  { href: '/team/leave', label: 'Leave', side: 'team' },
 ] as const satisfies readonly PeopleTabDef[];
 
 export type PeopleTab = (typeof PEOPLE_TABS)[number]['href'];
@@ -54,9 +58,23 @@ export function peopleTabs(a: TabAccess): Record<Side, PeopleTabDef[]> {
   });
   const roster = a.can('ROSTER', 'modify') || (!a.personal && a.can('ROSTER'));
   const events = a.can('EVENTS') && (roster || a.exceptions || a.can('EVENTS', 'modify'));
-  const team: PeopleTabDef[] = PEOPLE_TABS.filter((t) => t.side === 'team').filter((t) =>
-    t.href === '/roster/week' ? roster : t.href === '/roster/exceptions' ? a.exceptions : events,
-  );
+  // People and the team's leave: those who manage worker records (HR, outlet managers);
+  // everyone holds WORKERS view on their own record, so view alone is not enough
+  const people = a.can('WORKERS', 'modify');
+  const team: PeopleTabDef[] = PEOPLE_TABS.filter((t) => t.side === 'team').filter((t) => {
+    switch (t.href) {
+      case '/roster/week':
+        return roster;
+      case '/roster/exceptions':
+        return a.exceptions;
+      case '/events':
+        return events;
+      case '/team/people':
+        return people;
+      default:
+        return people && a.can('LEAVE');
+    }
+  });
   return { me, team };
 }
 
@@ -134,4 +152,13 @@ export function groupByTime<S extends StripShift>(shifts: readonly S[]): TimeGro
     groups.set(key, g);
   }
   return [...groups.values()];
+}
+
+/**
+ * Whether My shifts offers a Swap button (SW-4, ADR 035): swap access, and when the company
+ * keeps swaps for management, the right to change the roster. hr.request_swap checks the
+ * same at the shift's place.
+ */
+export function canOfferSwap(a: TabAccess, managersOnly: boolean): boolean {
+  return a.can('SHIFT_SWAPS', 'modify') && (!managersOnly || a.can('ROSTER', 'modify'));
 }

@@ -295,6 +295,13 @@ class Loader {
         [this.tenant, cu.leave_hr_approval],
       );
     }
+    if (cu.swaps_managers_only !== undefined) {
+      await this.c.query(
+        `update core.tenant set settings = settings || jsonb_build_object('swaps_managers_only', $2::boolean)
+          where id = $1 and (settings ->> 'swaps_managers_only')::boolean is distinct from $2`,
+        [this.tenant, cu.swaps_managers_only],
+      );
+    }
     // modules on or off (ADR 026): only the ones the file sets
     for (const m of MODULE_CODES) {
       const on = cu[m];

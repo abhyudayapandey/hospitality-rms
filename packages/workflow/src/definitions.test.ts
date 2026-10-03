@@ -4,8 +4,9 @@ import { LEAVE, PROCESS_DEFS, TRANSFER } from './processes';
 import { chainGroups, FINAL_APPROVER, processDefSchema } from './types';
 
 describe('process definitions', () => {
-  it('has the six MVP processes', () => {
+  it('has the six MVP processes and deactivation (ADR 035)', () => {
     expect(PROCESS_DEFS.map((d) => d.type).sort()).toEqual([
+      'DEACTIVATION',
       'LEAVE',
       'PURCHASE_ORDER',
       'ROLE_CHANGE',

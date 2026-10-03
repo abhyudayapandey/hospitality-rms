@@ -11,7 +11,10 @@ import { loadShell, type Shell } from './shell';
 // runs inside withUser, so RLS decides what is visible; access here only chooses what to
 // show (ADR 004). Manager lists are filtered by one org node (ADR 007).
 
-export type PeopleScreen = Extract<Screen, 'roster' | 'exceptions' | 'events'>;
+export type PeopleScreen = Extract<
+  Screen,
+  'roster' | 'exceptions' | 'events' | 'team_people' | 'team_leave'
+>;
 
 export interface PeopleContext {
   shell: Shell;
@@ -407,4 +410,59 @@ export async function upcomingEvents(
 /** What decides the Me and Team tabs (lib/roster-view, ADR 025). */
 export function tabAccess(ctx: PeopleContext): TabAccess {
   return { can: (d, a) => ctx.can(d, a), ...ctx.tabs };
+}
+
+// ---------------------------------------------------------------------------
+// Team → People and Leave (UX-5, ADR 035)
+// ---------------------------------------------------------------------------
+
+export interface TeamPerson {
+  worker_id: string;
+  user_id: string;
+  name: string;
+  username: string | null;
+  job_role: string;
+  place_id: string;
+  place: string;
+  employment_type: string;
+  joined_on: string | null;
+  status: 'active' | 'inactive';
+  waiting: boolean;
+  can_deactivate: boolean;
+}
+
+/** The place's people; hr.team_people refuses where they don't see worker records. */
+export async function teamPeople(tx: Tx, node: string): Promise<TeamPerson[]> {
+  const r = await sql<TeamPerson>`
+    select worker_id, user_id, name, username, job_role, place_id, place, employment_type,
+           joined_on::text, status, waiting, can_deactivate
+      from hr.team_people(${node}::uuid)`.execute(tx);
+  return r.rows;
+}
+
+export interface TeamLeave {
+  leave_id: string;
+  worker_id: string;
+  name: string;
+  job_role: string;
+  place: string;
+  leave_type: string;
+  from_date: string;
+  to_date: string;
+  days: string;
+  status: 'submitted' | 'approved';
+}
+
+/** Leave waiting or approved at the place over a period (up to three months). */
+export async function teamLeave(
+  tx: Tx,
+  node: string,
+  from: string,
+  to: string,
+): Promise<TeamLeave[]> {
+  const r = await sql<TeamLeave>`
+    select leave_id, worker_id, name, job_role, place, leave_type, from_date::text,
+           to_date::text, days::text, status
+      from hr.team_leave(${node}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
 }

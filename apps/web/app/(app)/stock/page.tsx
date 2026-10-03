@@ -3,7 +3,10 @@ import { Empty } from '@/components/messages';
 import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
-import { withUser } from '@/lib/db';
+import { sql, withUser } from '@/lib/db';
+import { Icon } from '@/components/icon';
+import { companySettings } from '@/lib/settings-data';
+import { countDue, countDueText, hubActions } from '@/lib/stock-hub';
 import { ExpiryBanner } from '@/components/expiry-banner';
 import { ItemThumb } from '@/components/item-thumb';
 import { splitExpiry } from '@/lib/expiry';
@@ -25,26 +28,111 @@ export default async function StockPage({ searchParams }: { searchParams: Search
   const sp = await searchParams;
   const lowOnly = param(sp, 'low') === '1' || param(sp, 'below') === '1';
   const user = await requireUser();
-  const [rows, dated] = await withUser(
-    user.id,
-    async (tx) =>
-      [await stockList(tx, ctx.node!.id), splitExpiry(await expiryList(tx), ctx.node!.id)] as const,
-  );
+  const node = ctx.node;
+  const adjust = ctx.can('STOCK_ADJUSTMENTS', 'modify') && !node.derived;
+  const data = await withUser(user.id, async (tx) => {
+    const rows = await stockList(tx, node.id);
+    const dated = splitExpiry(await expiryList(tx), node.id);
+    // stock on its way here (sent, not yet received); RLS shows only transfers they may see
+    const transit = ctx.can('TRANSFERS')
+      ? Number(
+          (
+            await sql<{ n: string }>`
+              select count(*) as n from inv.transfer_summary
+               where to_node_id = ${node.id}::uuid and progress = 'in_transit'`.execute(tx)
+          ).rows[0]!.n,
+        )
+      : 0;
+    // the last submitted count here, for "count due" (count_due_days, ADR 035)
+    const last = adjust
+      ? ((
+          await sql<{ at: Date | null }>`
+            select max(submitted_at) as at from inv.stock_count
+             where delivery_node_id = ${node.id}::uuid and status = 'submitted'`.execute(tx)
+        ).rows[0]?.at ?? null)
+      : null;
+    return { rows, dated, transit, last, settings: await companySettings(tx) };
+  });
+  const { rows, dated } = data;
+  const due = adjust ? countDue(data.last, data.settings.count_due_days) : null;
   const photos = await itemPhotoUrls(rows);
   const low = rows.filter((r) => isLow(r));
   const shown = lowOnly ? low : rows;
-  const q = `node=${ctx.node.id}`;
+  const q = `node=${node.id}`;
+  const actions = hubActions(
+    {
+      adjust,
+      order: ctx.can('PURCHASE_ORDERS', 'modify') && !node.derived,
+      request: ctx.can('TRANSFERS', 'modify') && !node.derived && node.holds_stock,
+    },
+    q,
+  );
+  const attention = 'flex min-h-14 items-center gap-3 rounded-xl px-4 py-2 ring-1';
   const categories = [...new Set(shown.map((r) => r.category))];
   return (
     <div className="space-y-4">
       <PollRefresh />
       <SupplyHeader ctx={ctx} active="/stock" title="Stock" />
-      {/* INV-12: what to use first, and what has to go */}
-      {(['expiring', 'expired'] as const)
-        .filter((show) => dated[show].length > 0)
-        .map((show) => (
-          <ExpiryBanner key={show} show={show} n={dated[show].length} q={`${q}&`} />
-        ))}
+      {/* what needs doing first (UX-4): running low, expiry (INV-12), on its way, count due */}
+      <div className="space-y-2" data-testid="stock-attention">
+        {low.length > 0 && !lowOnly && (
+          <Link
+            href={`/stock?${q}&low=1`}
+            className={`${attention} bg-rose-50 text-rose-900 ring-rose-200`}
+            data-testid="attention-low"
+          >
+            <Icon name="down" />
+            <span className="flex-1 font-medium">Running low</span>
+            <span className="text-lg font-semibold tabular-nums">{low.length}</span>
+            <Icon name="chevron" className="size-5" />
+          </Link>
+        )}
+        {(['expiring', 'expired'] as const)
+          .filter((show) => dated[show].length > 0)
+          .map((show) => (
+            <ExpiryBanner key={show} show={show} n={dated[show].length} q={`${q}&`} />
+          ))}
+        {data.transit > 0 && (
+          <Link
+            href={`/stock/transfers?${q}`}
+            className={`${attention} bg-sky-50 text-sky-900 ring-sky-200`}
+            data-testid="attention-transit"
+          >
+            <Icon name="truck" />
+            <span className="flex-1 font-medium">On its way here</span>
+            <span className="text-lg font-semibold tabular-nums">{data.transit}</span>
+            <Icon name="chevron" className="size-5" />
+          </Link>
+        )}
+        {due?.due && (
+          <Link
+            href={`/stock/count?${q}`}
+            className={`${attention} bg-amber-50 text-amber-900 ring-amber-200`}
+            data-testid="attention-count"
+          >
+            <Icon name="clipboard" />
+            <span className="flex-1">
+              <span className="block font-medium">Count due</span>
+              <span className="block text-xs">{countDueText(due)}</span>
+            </span>
+            <Icon name="chevron" className="size-5" />
+          </Link>
+        )}
+      </div>
+      {actions.length > 0 && (
+        <nav aria-label="Stock jobs" className="grid grid-cols-2 gap-2">
+          {actions.map((a) => (
+            <Link
+              key={a.key}
+              href={a.href}
+              className="flex min-h-14 items-center gap-2 rounded-xl bg-white px-3 font-medium shadow-sm ring-1 ring-slate-200"
+            >
+              <Icon name={a.icon} className="size-5 text-brand-700" />
+              {a.label}
+            </Link>
+          ))}
+        </nav>
+      )}
       <div className="flex gap-2">
         <Link
           href={`/stock?${q}`}

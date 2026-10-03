@@ -192,8 +192,8 @@ Each step is its own branch and PR, with e2e coverage.
 | UX-3  | Roster split into Me / Team; day-strip roster                                                               | U-10, U-11                        | M    |
 | UX-3b | Modules on or off per customer; taps counted for each role's five most common jobs                          | U-26, U-27                        | S    |
 | AC-1  | Customer-specific access groups, built from the product's domains                                           | U-28                              | M    |
-| UX-4  | Stock store hub; sales entry search and copy-yesterday; grouped notifications                               | U-12, U-13, U-21                  | M    |
-| UX-5  | HR Team → People and Leave; owner read-only reports (with Reports R-1)                                      | U-18, U-19                        | M    |
+| UX-4  | _(Done, ADR 035)_ Stock store hub; sales entry search and copy-yesterday; grouped notifications             | U-12, U-13, U-21                  | M    |
+| UX-5  | _(Done, ADR 035)_ HR Team → People and Leave; owner read-only reports (with Reports R-1)                    | U-18, U-19                        | M    |
 | later | Web push                                                                                                    | U-22                              | M    |
 
 The variance redesign (U-14) and the owner's view (U-18) are part of the reporting plan.

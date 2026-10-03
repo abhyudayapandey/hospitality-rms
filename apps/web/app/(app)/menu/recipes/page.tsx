@@ -1,3 +1,4 @@
+import { BackLink } from '@/components/back-link';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { menuPlaces, myRecipes } from '@/lib/menu';
@@ -18,6 +19,7 @@ export default async function RecipesPage() {
   }));
   return (
     <div className="space-y-4">
+      <BackLink />
       <h1 className="text-xl font-semibold">Recipes</h1>
       <MenuTabs active="recipes" costs={places.length > 0} sales={sales.length > 0} />
       <RecipeList recipes={recipes} />

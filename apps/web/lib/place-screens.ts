@@ -20,6 +20,9 @@ export const PLACE_SCREENS = [
   'checklists',
   'maintenance',
   'report',
+  // Team -> People and Leave (ADR 035)
+  'team_people',
+  'team_leave',
   // reports (ADR 023, 028): rpt.report_places(), not core.screen_places()
   'league',
   'outlet_flash',

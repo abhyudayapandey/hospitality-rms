@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BackLink } from '@/components/back-link';
 import { Empty } from '@/components/messages';
 import { PlaceSwitcher } from '@/components/place-switcher';
 import { withUser } from '@/lib/db';
@@ -35,6 +36,7 @@ export default async function MenuPage({ searchParams }: { searchParams: SearchP
   if (!data.outlet) {
     return (
       <div className="space-y-4">
+        <BackLink />
         <h1 className="text-xl font-semibold">Recipes</h1>
         <RecipeList recipes={data.recipes} />
       </div>
@@ -47,6 +49,7 @@ export default async function MenuPage({ searchParams }: { searchParams: SearchP
   return (
     <div className="space-y-4">
       <PlaceSwitcher screen="menu" places={ctx.places} current={data.outlet.outlet_id} quiet />
+      <BackLink />
       <div className="flex items-baseline justify-between gap-2">
         <h1 className="text-xl font-semibold">Menu costs</h1>
         <p className="truncate text-sm text-slate-600" data-testid="menu-outlet">

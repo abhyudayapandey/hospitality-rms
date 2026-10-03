@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useTransition } from 'react';
+import { useTransition, type ReactNode } from 'react';
 import { markRead } from '../roster/actions';
 
 export function MarkAllRead() {
@@ -21,5 +21,48 @@ export function MarkAllRead() {
     >
       Mark all read
     </button>
+  );
+}
+
+/**
+ * One notification line. Opening it marks it (or every notification of its group) read
+ * first, then goes to its link; a line with no link is marked read where it stands.
+ */
+export function NotificationItem({
+  ids,
+  link,
+  unread,
+  className,
+  children,
+}: {
+  ids: string[];
+  link: string | null;
+  unread: boolean;
+  className: string;
+  children: ReactNode;
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const open = () =>
+    start(async () => {
+      if (unread) await markRead(ids);
+      if (link) router.push(link);
+      else router.refresh();
+    });
+  if (!link && !unread) return <div className={className}>{children}</div>;
+  return (
+    <a
+      href={link ?? '#'}
+      aria-busy={pending}
+      onClick={(e) => {
+        // a new tab or window keeps the browser's own behaviour
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        open();
+      }}
+      className={`${className} ${pending ? 'opacity-60' : ''}`}
+    >
+      {children}
+    </a>
   );
 }

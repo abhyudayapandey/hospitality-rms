@@ -78,7 +78,13 @@ export async function inboxEntries(tx: Tx): Promise<InboxEntry[]> {
   return r.rows.map((x) => ({
     requestId: x.request_id,
     processType: x.process_type,
-    processLabel: processLabel(x.process_type),
+    // a deactivation names the person and why (UX-5, ADR 035)
+    processLabel:
+      x.process_type === 'DEACTIVATION' && typeof x.payload.person === 'string'
+        ? `Deactivate ${x.payload.person}${
+            typeof x.payload.reason === 'string' ? `: ${x.payload.reason}` : ''
+          }`
+        : processLabel(x.process_type),
     step: x.step,
     amount: formatMoney(x.amount),
     waitingSince: formatWhen(x.activated_at),

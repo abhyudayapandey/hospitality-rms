@@ -24,6 +24,7 @@ import {
   myWorker,
   openPunch,
   peopleContext,
+  tabAccess,
   type MyShift,
   upcomingEvents,
   type UpcomingEvent,
@@ -37,6 +38,8 @@ import {
   type TimelineRow,
 } from '@/lib/timeline';
 import { jobTitles } from '@/lib/job-titles';
+import { companySettings } from '@/lib/settings-data';
+import { canOfferSwap } from '@/lib/roster-view';
 
 // My shifts (ADR 018): the past 14 days and every upcoming published shift (six weeks),
 // grouped by day, today first. Past rows show In/Out and a status; time worked outside a
@@ -66,6 +69,7 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
       shifts: await myShifts(tx, today, UPCOMING_DAYS),
       punch: await openPunch(tx),
       flags: await myExceptions(tx, addDays(today, -14)),
+      settings: await companySettings(tx),
       // the next 7 days' events where they work: Events itself is on the Team side
       events: ctx.can('EVENTS')
         ? await upcomingEvents(
@@ -76,6 +80,8 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
         : [],
     };
   });
+  // SW-4: with swaps for management only, staff see no Swap button (the database refuses too)
+  const canSwap = canOfferSwap(tabAccess(ctx), data.settings.swaps_managers_only);
   const swaps = new Map(data.shifts.map((s) => [s.shift_id, s]));
   const hours = data.shifts
     .filter((s) => s.local_date < addDays(today, 7))
@@ -174,7 +180,7 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
                                     ? swaps.get(r.shift_id)
                                     : undefined
                                 }
-                                canSwap={ctx.can('SHIFT_SWAPS', 'modify')}
+                                canSwap={canSwap}
                               />
                             ))}
                           </ul>

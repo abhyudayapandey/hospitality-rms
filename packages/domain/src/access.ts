@@ -206,7 +206,9 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       STOCK_ADJUSTMENTS: m,
       PURCHASE_ORDERS: m,
       TRANSFERS: m,
-      WORKERS: v,
+      // worker records: People, and asking for a deactivation where there is no HR
+      // executive (UX-5, ADR 035)
+      WORKERS: m,
       ROSTER: m,
       ATTENDANCE: m,
       LEAVE: v,
