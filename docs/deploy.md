@@ -1183,9 +1183,11 @@ approval-coverage warnings, and as new: **pay rates 112, attendance sessions 95,
 transfers 2, production batches 2** (6 unchanged), **prep tasks 2** (4 unchanged), plus
 any shifts for weeks that are new since the last import. Nothing else changes. Apply, then
 dry-run again: no changes (apart from new weeks of shifts, if the week turned).
-If the dry run reports "INVALID_DATE: overlaps another session" on file 35, someone
-clocked in on production during a test session (or is still clocked in from before it):
-send me the report.
+If someone clocked in on production during a test session (or is still clocked in from
+before it), the dry run skips that test session and lists it as a warning ("skipped …,
+which overlaps a session clocked in the app"); attendance sessions is then lower by the
+number skipped (ADR 036). Before ADR 036 this stopped the import with "INVALID_DATE:
+overlaps another session".
 
 **Re-import Test Solo Bar Co** (28 files): **pay rates 9** new, nothing else; the same 5
 warnings. Apply, then dry-run again: no changes.
