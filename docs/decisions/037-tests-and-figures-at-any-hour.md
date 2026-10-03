@@ -24,8 +24,16 @@ Three clocks were in play:
    the Stock banners and lists (`inv.expiry_list`), not from the business day. Before this,
    the two disagreed between midnight and 06:00. Migration
    `20261028100000_expiring_calendar_day`.
+4. **Cost of sales, Purchasing and the expired-stock lines use the business day too.** The
+   pages end a period at the business day, but these functions cut their days at midnight,
+   so between midnight and 06:00 a closing count, wastage or receipt just made fell after
+   the period and showed nowhere. Their days now run 06:00 to 06:00 (`rpt.day_start`), like
+   sales and labour in the report tables: a bar's count at 00:30 belongs to the night it
+   closes. Sales for a date are posted at 23:59:59 that day, so they stay on it. Migration
+   `20261029100000_cost_business_day`.
 
 ## Consequences
 
-CI and local runs pass at any hour. Production is unchanged except that Stock position's
-expiring value matches the banners at night.
+CI and local runs pass at any hour. In production, Stock position's expiring value matches
+the banners at night, and anything done between midnight and 06:00 shows in Cost of sales,
+Purchasing and the expired-stock lines under the night before, not the next day.

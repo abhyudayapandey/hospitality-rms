@@ -154,6 +154,38 @@ describe('cost of sales (replaces Variance)', () => {
       expect(stores.map((s) => s.store_name)).toEqual(['Test Central Kitchen – Store']);
     });
   });
+
+  it('a day runs 06:00 to 06:00, like the other reports: 02:00 belongs to the night before', async () => {
+    await inRolledBackTx(async (c) => {
+      const store = ids.node('TEST-HOTEL-1.0-BAR-STORE');
+      const { rows: item } = await c.query<{ id: string }>(
+        `select id from inv.item where tenant_id = $1 and sku = 'GIN-750ML'`,
+        [ids.tenant()],
+      );
+      for (const [time, qty] of [
+        ['02:00', -1],
+        ['07:00', -0.5],
+      ] as const) {
+        await c.query(
+          `insert into inv.stock_ledger (tenant_id, item_id, delivery_node_id, movement_type, qty,
+                                         unit_cost, ref_type, occurred_at)
+           values ($1, $2, $3, 'wastage', $4, 100, 'test', ('2026-09-10'::date + $5::time) at time zone 'Asia/Kolkata')`,
+          [ids.tenant(), item[0]!.id, store, qty, time],
+        );
+      }
+      const wastage = async (day: string) =>
+        (
+          await measures(
+            c,
+            'test.cost-controller.1.0',
+            'select * from rpt.cost_totals($1, $2, $3)',
+            [ids.node('TEST-HOTEL-1.0'), day, day],
+          )
+        ).wastage;
+      expect(await wastage('2026-09-09')).toBe(100);
+      expect(await wastage('2026-09-10')).toBe(50);
+    });
+  });
 });
 
 describe('menu engineering', () => {
