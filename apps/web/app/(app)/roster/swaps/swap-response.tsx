@@ -38,7 +38,7 @@ export function SwapResponse({
             type="button"
             disabled={pending}
             onClick={() => run(() => respondSwap(swap, true))}
-            className="min-h-11 rounded-lg bg-slate-900 text-sm font-medium text-white disabled:opacity-50"
+            className="min-h-11 rounded-lg bg-brand-700 text-sm font-medium text-white disabled:opacity-50"
           >
             Accept
           </button>

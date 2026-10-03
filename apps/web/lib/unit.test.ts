@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isDevAuthEnabled } from './dev-auth';
 import { ACCESS_GROUPS, DOMAINS } from '@outlet-ops/domain';
-import { MAX_NAV_ITEMS, moreItems, visibleNav, type NavFeatures } from './nav';
+import { approvalsInNav, MAX_NAV_ITEMS, visibleNav, type NavFeatures } from './nav';
 import { isScreen, withChoice } from './place-screens';
 import { startPoller } from './poller';
 
@@ -28,79 +28,86 @@ describe('bottom nav', () => {
       ...f,
     }).map((i) => i.label);
 
-  it('follows the approved table (ADR 020)', () => {
+  it('follows the UX-6 mock-ups (ADR 034)', () => {
+    // frontline: three tabs; their tiles on Home do the rest
     expect(nav(['STAFF', 'PRODUCTION_TEAM'], ['PRODUCTION_TEAM'], { production: true })).toEqual([
       'Home',
       'Tasks',
-      'Production',
-      'Roster',
-      'Inbox',
+      'Me',
     ]);
-    expect(nav(['STAFF'], [])).toEqual(['Home', 'Tasks', 'Roster', 'Inbox']);
+    expect(nav(['STAFF'], [])).toEqual(['Home', 'Tasks', 'Me']);
     expect(nav(['STAFF', 'STORE_KEEPER'], ['STOCK_LEVELS'])).toEqual([
       'Home',
-      'Inbox',
       'Stock',
       'Tasks',
-      'Roster',
+      'Me',
     ]);
-    expect(nav(['DEPARTMENT_HEAD', 'STORE_KEEPER'], ['STOCK_LEVELS'], { menu: true })).toEqual([
+    // department heads: approvals on Home; Roster, their stock (or tasks), reports
+    expect(
+      nav(['DEPARTMENT_HEAD', 'STORE_KEEPER'], ['STOCK_LEVELS'], {
+        menu: true,
+        reports: 'business',
+      }),
+    ).toEqual(['Home', 'Roster', 'Stock', 'Reports', 'Me']);
+    expect(nav(['DEPARTMENT_HEAD'], [], { reports: 'business' })).toEqual([
       'Home',
-      'Inbox',
-      'Tasks',
-      'Roster',
-      'Stock',
-    ]);
-    expect(nav(['DEPARTMENT_HEAD'], [])).toEqual(['Home', 'Inbox', 'Tasks', 'Roster', 'Requests']);
-    expect(nav(['OUTLET_MANAGER', 'USER_ADMIN'], ['STOCK_LEVELS', 'USER_ACCESS'])).toEqual([
-      'Home',
-      'Inbox',
-      'Stock',
       'Roster',
       'Tasks',
+      'Reports',
+      'Me',
     ]);
-    // Reports takes Menu's place for the cost controller (ADR 023)
+    expect(
+      nav(['OUTLET_MANAGER', 'USER_ADMIN'], ['STOCK_LEVELS', 'USER_ACCESS'], {
+        reports: 'business',
+      }),
+    ).toEqual(['Home', 'Approvals', 'Reports', 'Me']);
     expect(
       nav(['STAFF', 'COST_CONTROLLER'], ['STOCK_LEVELS', 'MENU'], {
         menu: true,
         reports: 'business',
       }),
-    ).toEqual(['Home', 'Inbox', 'Stock', 'Reports', 'Requests']);
+    ).toEqual(['Home', 'Stock', 'Reports', 'Approvals', 'Me']);
     expect(nav(['HR_ADMIN'], [], { reports: 'business' })).toEqual([
       'Home',
-      'Inbox',
+      'Approvals',
       'Reports',
       'Roster',
-      'Requests',
+      'Me',
     ]);
     expect(nav(['ACCOUNT_OWNER'], ['USER_ACCESS'], { reports: 'business' })).toEqual([
       'Home',
-      'Inbox',
+      'Approvals',
       'Reports',
       'Admin',
-      'Requests',
+      'Me',
     ]);
   });
 
-  it('only business reports take a nav slot; My week opens from Home', () => {
+  it('only business reports take a tab; My week is on Me', () => {
     expect(nav(['AUDITOR'], ['AUDIT', 'SECURITY_ROLES'])).toEqual([
       'Home',
-      'Inbox',
+      'Approvals',
       'Admin',
-      'Requests',
+      'Me',
     ]);
-    expect(nav(['STAFF'], [], { reports: 'business' })).toEqual([
-      'Home',
-      'Tasks',
-      'Roster',
-      'Inbox',
-    ]);
+    expect(nav(['STAFF'], [], { reports: 'business' })).toEqual(['Home', 'Tasks', 'Me']);
   });
 
-  it('frontline staff with stock access get Stock, which leads to Production', () => {
-    expect(
-      nav(['STAFF', 'PRODUCTION_TEAM', 'STOCK_USER'], ['STOCK_LEVELS'], { production: true }),
-    ).toEqual(['Home', 'Tasks', 'Stock', 'Roster', 'Inbox']);
+  it('a manager without reports gets Stock in that slot', () => {
+    expect(nav(['OUTLET_MANAGER'], ['STOCK_LEVELS'])).toEqual(['Home', 'Approvals', 'Stock', 'Me']);
+  });
+
+  it('Approvals is a tab for managers and in the header for everyone else', () => {
+    const input = (groups: string[]) => ({
+      groups: new Set(['SELF', ...groups]),
+      domains: new Set(SELF),
+      menu: false,
+      production: false,
+      reports: 'business' as const,
+    });
+    expect(approvalsInNav(input(['OUTLET_MANAGER']))).toBe(true);
+    expect(approvalsInNav(input(['STAFF']))).toBe(false);
+    expect(approvalsInNav(input(['DEPARTMENT_HEAD']))).toBe(false);
   });
 
   it('never shows more than five items, for any mix of groups', () => {
@@ -113,18 +120,6 @@ describe('bottom nav', () => {
         );
       }
     }
-  });
-
-  it('Home links to what the nav leaves out', () => {
-    const input = {
-      groups: new Set(['SELF', 'STAFF']),
-      domains: new Set([...SELF, 'USER_ACCESS']),
-      menu: true,
-      production: false,
-      reports: 'mine' as const,
-    };
-    expect(moreItems(input).map((i) => i.label)).toEqual(['Menu', 'Requests', 'Reports']);
-    expect(visibleNav(input).map((i) => i.label)).toContain('Admin');
   });
 });
 

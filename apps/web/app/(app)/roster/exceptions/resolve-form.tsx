@@ -40,7 +40,7 @@ export function ResolveForm({ id }: { id: string }) {
           type="button"
           disabled={pending}
           onClick={() => act('resolved')}
-          className="min-h-11 rounded-lg bg-slate-900 text-sm font-medium text-white disabled:opacity-50"
+          className="min-h-11 rounded-lg bg-brand-700 text-sm font-medium text-white disabled:opacity-50"
         >
           Resolve
         </button>

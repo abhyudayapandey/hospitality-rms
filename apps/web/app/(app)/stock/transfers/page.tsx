@@ -35,7 +35,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
       {ctx.can('TRANSFERS', 'modify') && !ctx.node.derived && ctx.node.holds_stock && (
         <Link
           href={`/stock/transfers/new${q}`}
-          className="flex min-h-12 items-center justify-center rounded-lg bg-slate-900 font-medium text-white"
+          className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
         >
           Request stock
         </Link>

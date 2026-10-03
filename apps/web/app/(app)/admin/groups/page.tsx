@@ -32,7 +32,7 @@ export default async function GroupsPage() {
         {owner && (
           <Link
             href="/admin/groups/new"
-            className="flex min-h-11 items-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white"
+            className="flex min-h-11 items-center rounded-lg bg-brand-700 px-4 text-sm font-medium text-white"
           >
             New group
           </Link>

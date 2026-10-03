@@ -1,1 +1,12 @@
 @import 'tailwindcss';
+
+/* One brand colour (UX-6, ADR 034): primary buttons, the active tab, chosen chips.
+   Status colours stay emerald (done), amber (due soon) and rose (needs you now). */
+@theme {
+  --color-brand-50: #eef6f4;
+  --color-brand-100: #e2efec;
+  --color-brand-200: #c3ddd7;
+  --color-brand-600: #2a7368;
+  --color-brand-700: #1f5f57;
+  --color-brand-800: #184a44;
+}

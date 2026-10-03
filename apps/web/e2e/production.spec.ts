@@ -10,7 +10,7 @@ test('a chef de partie records a batch where it is made; it shows with its expir
   await signInAs(page, 'Test Chef de Partie 1.0');
   await page.goto(`/stock/production?node=${kitchen}`);
   const main = page.locator('main');
-  await expect(main.getByRole('heading', { name: 'Production' })).toBeVisible();
+  await expect(main.getByRole('heading', { name: 'Make' })).toBeVisible();
   await main.getByRole('link', { name: 'Ginger Garlic Paste' }).click();
   await expect(main.getByRole('heading', { name: 'Ginger Garlic Paste' })).toBeVisible();
   await expect(main.getByTestId('shelf-life')).toHaveText(/^Use within \d+ (day|hour)s?$/);

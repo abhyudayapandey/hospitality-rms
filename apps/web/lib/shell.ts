@@ -6,6 +6,7 @@ import type { ModuleCode } from '@outlet-ops/domain';
 import { isProductCode } from './custom-groups';
 import { modulesOn, withModules } from './modules';
 import { navProfile, type NavInput } from './nav';
+import type { ScreenInput } from './screens';
 
 export interface NodeRow {
   id: string;
@@ -135,4 +136,9 @@ export function navInput(shell: Shell): NavInput {
     production: shell.production,
     reports: shell.reports,
   };
+}
+
+/** What the Me page and Home's tiles are chosen from (UX-6). */
+export function screenInput(shell: Shell): ScreenInput {
+  return { ...navInput(shell), access: shell.domains, atWork: shell.home?.at_workplace ?? false };
 }

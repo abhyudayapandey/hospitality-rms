@@ -3,7 +3,6 @@ import {
   attentionGroups,
   currentShift,
   shiftLine,
-  splitShortcuts,
   todaysTasks,
   type PlaceDepartment,
 } from './today-view';
@@ -61,21 +60,6 @@ describe('currentShift and shiftLine', () => {
   });
 });
 
-describe('splitShortcuts', () => {
-  it('four on the card, the rest under All screens, no duplicates', () => {
-    const r = splitShortcuts([
-      { href: '/a', label: 'A' },
-      { href: '/b', label: 'B' },
-      { href: '/a', label: 'A again' },
-      { href: '/c', label: 'C' },
-      { href: '/d', label: 'D' },
-      { href: '/e', label: 'E' },
-    ]);
-    expect(r.shortcuts.map((s) => s.label)).toEqual(['A', 'B', 'C', 'D']);
-    expect(r.rest.map((s) => s.label)).toEqual(['E']);
-  });
-});
-
 describe('attentionGroups (DB-2)', () => {
   const o = 'Test Hotel & Bar 1.0';
   const place = (
@@ -109,9 +93,9 @@ describe('attentionGroups (DB-2)', () => {
         { kind: 'flags', node: 'security', n: 1 },
         { kind: 'repairs', node: 'hk', n: 1 },
         { kind: 'flags', node: 'restaurant', n: 3 },
-        { kind: 'belowPar', node: 'bar-store', n: 4 },
+        { kind: 'lowStock', node: 'bar-store', n: 4 },
         { kind: 'flags', node: 'kitchen', n: 1 },
-        { kind: 'belowPar', node: 'kitchen-store', n: 5 },
+        { kind: 'lowStock', node: 'kitchen-store', n: 5 },
       ],
       places,
     );
@@ -125,8 +109,17 @@ describe('attentionGroups (DB-2)', () => {
     ]);
     // a store's counts go to the department it serves; lines in a fixed order
     expect(g[0]!.lines).toEqual([
-      { href: '/stock', n: 5, text: 'items below par' },
-      { href: '/roster/exceptions', n: 1, text: 'attendance flag' },
+      { kind: 'lowStock', href: '/stock?low=1', n: 5, text: 'items running low' },
+      { kind: 'flags', href: '/roster/exceptions', n: 1, text: 'attendance issue' },
+    ]);
+    // low stock is red; flags and repairs amber (UX-6)
+    expect(g.map((x) => [x.label, x.tone, x.total])).toEqual([
+      ['Kitchen', 'bad', 6],
+      ['Bar', 'bad', 4],
+      ['Restaurant', 'warn', 3],
+      ['Housekeeping', 'warn', 1],
+      ['Security', 'warn', 1],
+      ['Whole outlet', 'warn', 2],
     ]);
   });
 
@@ -144,7 +137,9 @@ describe('attentionGroups (DB-2)', () => {
       {
         key: 'd-Test Hotel & Bar 1.0-Kitchen',
         label: 'Kitchen',
-        lines: [{ href, n: 5, text: 'open slots this week' }],
+        lines: [{ kind: 'openSlots', href, n: 5, text: 'open shifts this week' }],
+        total: 5,
+        tone: 'warn',
       },
     ]);
     expect(attentionGroups([], places)).toEqual([]);

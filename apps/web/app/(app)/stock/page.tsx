@@ -4,7 +4,11 @@ import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
-import { EXPIRY_TITLE, splitExpiry, type ExpiryShow } from '@/lib/expiry';
+import { ExpiryBanner } from '@/components/expiry-banner';
+import { ItemThumb } from '@/components/item-thumb';
+import { splitExpiry } from '@/lib/expiry';
+import { isLow, lastsText } from '@/lib/low-stock';
+import { itemPhotoUrls } from '@/lib/photos';
 import {
   expiryList,
   formatQty,
@@ -17,14 +21,18 @@ import {
 export default async function StockPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await supplyContext(searchParams, 'stock');
   if (!ctx.can('STOCK_LEVELS') || !ctx.node) return <NoSupplyAccess />;
-  const belowOnly = param(await searchParams, 'below') === '1';
+  // "Running low" (UX-6): runs out within three days at the recent rate (lib/low-stock.ts)
+  const sp = await searchParams;
+  const lowOnly = param(sp, 'low') === '1' || param(sp, 'below') === '1';
   const user = await requireUser();
   const [rows, dated] = await withUser(
     user.id,
     async (tx) =>
       [await stockList(tx, ctx.node!.id), splitExpiry(await expiryList(tx), ctx.node!.id)] as const,
   );
-  const shown = belowOnly ? rows.filter((r) => r.below_par) : rows;
+  const photos = await itemPhotoUrls(rows);
+  const low = rows.filter((r) => isLow(r));
+  const shown = lowOnly ? low : rows;
   const q = `node=${ctx.node.id}`;
   const categories = [...new Set(shown.map((r) => r.category))];
   return (
@@ -35,26 +43,26 @@ export default async function StockPage({ searchParams }: { searchParams: Search
       {(['expiring', 'expired'] as const)
         .filter((show) => dated[show].length > 0)
         .map((show) => (
-          <ExpiryBanner key={show} show={show} n={dated[show].length} q={q} />
+          <ExpiryBanner key={show} show={show} n={dated[show].length} q={`${q}&`} />
         ))}
       <div className="flex gap-2">
         <Link
           href={`/stock?${q}`}
-          aria-current={!belowOnly ? 'true' : undefined}
-          className={`flex min-h-11 flex-1 items-center justify-center rounded-lg text-sm ${!belowOnly ? 'bg-slate-200 font-semibold' : 'ring-1 ring-slate-300'}`}
+          aria-current={!lowOnly ? 'true' : undefined}
+          className={`flex min-h-11 flex-1 items-center justify-center rounded-lg text-sm ${!lowOnly ? 'bg-slate-200 font-semibold' : 'ring-1 ring-slate-300'}`}
         >
           All ({rows.length})
         </Link>
         <Link
-          href={`/stock?${q}&below=1`}
-          aria-current={belowOnly ? 'true' : undefined}
-          className={`flex min-h-11 flex-1 items-center justify-center rounded-lg text-sm ${belowOnly ? 'bg-slate-200 font-semibold' : 'ring-1 ring-slate-300'}`}
+          href={`/stock?${q}&low=1`}
+          aria-current={lowOnly ? 'true' : undefined}
+          className={`flex min-h-11 flex-1 items-center justify-center rounded-lg text-sm ${lowOnly ? 'bg-slate-200 font-semibold' : 'ring-1 ring-slate-300'}`}
         >
-          Below par ({rows.filter((r) => r.below_par).length})
+          Running low ({low.length})
         </Link>
       </div>
       {shown.length === 0 ? (
-        <Empty>{belowOnly ? 'Nothing is below par.' : 'No items are set up here yet.'}</Empty>
+        <Empty>{lowOnly ? 'Nothing is running low.' : 'No items are set up here yet.'}</Empty>
       ) : (
         categories.map((cat) => (
           <section key={cat} className="space-y-2">
@@ -68,10 +76,13 @@ export default async function StockPage({ searchParams }: { searchParams: Search
                       href={`/stock/items/${r.item_id}?${q}`}
                       className="flex min-h-14 items-center justify-between gap-3 px-4 py-2"
                     >
-                      <span className="min-w-0">
+                      <ItemThumb category={r.category} src={photos.get(r.item_id)} />
+                      <span className="min-w-0 flex-1">
                         <span className="block truncate font-medium">{r.name}</span>
+                        {/* plain words (UX-6): what the store keeps, not "par" */}
                         <span className="text-xs text-slate-500">
-                          par {formatQty(r.par_level, r.base_uom)}
+                          keep {formatQty(r.par_level, r.base_uom)}
+                          {isLow(r) && lastsText(r) ? ` · ${lastsText(r)}` : ''}
                         </span>
                       </span>
                       <span className="text-right">
@@ -86,9 +97,12 @@ export default async function StockPage({ searchParams }: { searchParams: Search
                             below zero: count it
                           </span>
                         )}
-                        {r.below_par && Number(r.on_hand) >= 0 && (
-                          <span className="rounded-full bg-amber-100 px-2 text-xs font-semibold text-amber-900">
-                            below par
+                        {isLow(r) && Number(r.on_hand) >= 0 && (
+                          <span
+                            data-testid="running-low"
+                            className="rounded-full bg-rose-50 px-2 text-xs font-semibold text-rose-800"
+                          >
+                            running low
                           </span>
                         )}
                       </span>
@@ -100,25 +114,5 @@ export default async function StockPage({ searchParams }: { searchParams: Search
         ))
       )}
     </div>
-  );
-}
-
-function ExpiryBanner({ show, n, q }: { show: ExpiryShow; n: number; q: string }) {
-  const tone =
-    show === 'expired'
-      ? 'bg-rose-50 text-rose-900 ring-rose-200'
-      : 'bg-amber-50 text-amber-900 ring-amber-200';
-  return (
-    <Link
-      href={`/stock/expiry?${q}&show=${show}`}
-      className={`flex min-h-14 items-center justify-between gap-3 rounded-xl px-4 py-2 ring-1 ${tone}`}
-      data-testid={`banner-${show}`}
-    >
-      <span className="font-medium">{EXPIRY_TITLE[show]}</span>
-      <span className="flex items-center gap-2">
-        <span className="text-lg font-semibold tabular-nums">{n}</span>
-        <span aria-hidden="true">›</span>
-      </span>
-    </Link>
   );
 }

@@ -12,10 +12,8 @@ test('a server: only My week; the outlet and department reports refuse', async (
   await signInAs(page, 'Test Server 3.0');
   await expect(page.getByTestId('numbers-card')).toHaveCount(0);
   await expect(page.getByTestId('attention-card')).toHaveCount(0);
-  await page
-    .getByRole('navigation', { name: 'More' })
-    .getByRole('link', { name: 'My week' })
-    .click();
+  await page.goto('/me');
+  await page.getByTestId('me-myWeek').click();
   await expect(page.getByRole('heading', { name: 'My week' })).toBeVisible();
   await expect(page.getByTestId('report-week')).toHaveText('This week');
   await expect(page.getByTestId('measure-shifts')).toBeVisible();
@@ -92,12 +90,9 @@ test('the cost controller: Reports instead of Menu, Menu one tap away', async ({
   await expect(page.getByRole('heading', { name: 'Menu costs' })).toBeVisible();
 });
 
-test('Home for a commis: their tasks, at most four shortcuts, the rest under All screens', async ({
-  page,
-}) => {
+test('Home for a commis: the next job, four tiles, no figures', async ({ page }) => {
   await signInAs(page, 'Test Commis 1.0');
   await expect(page.getByTestId('tasks-card')).toBeVisible();
   await expect(page.getByTestId('numbers-card')).toHaveCount(0);
-  const shortcuts = page.getByRole('navigation', { name: 'More' }).getByRole('link');
-  expect(await shortcuts.count()).toBeLessThanOrEqual(4);
+  await expect(page.getByTestId('tiles').getByRole('link')).toHaveCount(4);
 });

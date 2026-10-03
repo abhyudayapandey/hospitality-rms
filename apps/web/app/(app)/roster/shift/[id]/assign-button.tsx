@@ -35,7 +35,7 @@ export function AssignButton({
         className={`min-h-11 rounded-lg px-4 text-sm font-medium disabled:opacity-50 ${
           accept.length > 0
             ? 'bg-amber-100 text-amber-900 ring-1 ring-amber-300'
-            : 'bg-slate-900 text-white'
+            : 'bg-brand-700 text-white'
         }`}
       >
         {accept.length > 0 ? 'Assign anyway' : 'Assign'}

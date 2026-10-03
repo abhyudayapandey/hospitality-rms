@@ -37,7 +37,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
   }));
   if (!customer) notFound();
   const link =
-    'flex min-h-12 items-center justify-center rounded-lg bg-slate-900 px-3 font-medium text-white';
+    'flex min-h-12 items-center justify-center rounded-lg bg-brand-700 px-3 font-medium text-white';
   return (
     <>
       <Link href="/platform" className="text-sm text-slate-600">
