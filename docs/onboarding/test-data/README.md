@@ -57,6 +57,7 @@ Each access row means: this person has this access group at this place. It cover
 | `25_shifts_TEST_DATA_ONLY.csv` – `28_counts_…`     | Test Company only: shifts, batches, sales and a closing count (below) — test only                                                                                                                                                                                                                                                                        |
 | `29_checklist_templates.csv`                       | Recurring checklists per department: schedule, who does them, and their steps (below)                                                                                                                                                                                                                                                                    |
 | `30_tasks_…` – `32_prep_tasks_…`                   | Test Company only: one-off tasks, a maintenance request and a prep list (below) — test only                                                                                                                                                                                                                                                              |
+| `33_purchases_TEST_DATA_ONLY.csv`                  | Test Company only: past orders at the Hotel 1.0 Kitchen Store, approved and received in full, short or not at all (below) — test only                                                                                                                                                                                                                    |
 | `99_access_preview_GENERATED.csv`                  | Every resulting access grant, with place name, what it covers, and where it came from                                                                                                                                                                                                                                                                    |
 
 ## Default access words (file 06)
@@ -207,3 +208,59 @@ files 25 to 28; file 30 also takes days after it (up to 14).
   1 kg for the load day is open for the Hotel 1.0 commis (the last batch has expired).
 - **Checklists.** After `pnpm db:seed` (it runs the tasks job once) each checklist has its
   tasks for the next 24 hours.
+
+## Purchases: file 33 (test only, ADR 028)
+
+Refused for a customer that isn't a test customer. One row per order line; the order's
+columns (`store_node_code`, `supplier_code`, `ordered_day`, `ordered_by`, `approved_by`,
+`received_day`, `received_by`) repeat on each of its lines. Days count from the load date.
+Blank `received_day`: not delivered yet.
+
+The loader handles each order once per customer, as the people named:
+
+1. `ordered_by` creates it (`inv.create_po`, which submits it for approval).
+2. `approved_by` approves it.
+3. It is released at 10:00 on its order day.
+4. `received_by` receives `received_quantity` of each line at 11:00 on the receipt day.
+
+Nobody approves their own order.
+
+| Order | Supplier        | Lines                                      | Ordered | Received                          |
+| ----- | --------------- | ------------------------------------------ | ------- | --------------------------------- |
+| PO-1  | Fresh Produce   | Tomatoes 15 kg at ₹40, onions 20 kg at ₹35 | day -6  | day -5, in full                   |
+| PO-2  | Fresh Produce   | Tomatoes 15 kg at ₹44, onions 20 kg at ₹35 | day -4  | day -2 (a day late), onions 16 kg |
+| PO-3  | Fresh Produce   | Tomatoes 15 kg at ₹48                      | day -2  | day -1, in full                   |
+| PO-4  | Dairy & Poultry | Paneer 5 kg at ₹380, milk 20 l at ₹60      | day -3  | not delivered                     |
+
+The Executive Chef 1.0 orders and receives (store keeper of the Kitchen Store); the GM 1.0
+approves.
+
+**Expected figures** (`packages/db/src/cost-reports.db.test.ts` pins them; the last four
+weeks to the load day):
+
+- **Purchasing** (Hotel 1.0 Kitchen Store):
+  - **Price changes.** Tomatoes cost ₹4 more twice (₹44 against ₹40, then ₹48 against
+    ₹44): **₹120 paid** over the previous price. The first tomatoes and both onion
+    receipts are on price.
+  - **Fresh Produce:** 3 orders, **95.9%** delivered (₹3,240 of ₹3,380), 2 on time and
+    **1 late**.
+  - **Dairy & Poultry:** 1 order, **0%** delivered (₹0 of ₹3,100), not delivered.
+  - **Delivered short or not at all:** paneer ₹1,900, milk ₹1,200, onions ₹140.
+- **Stock position** (Hotel 1.0 Kitchen Store):
+  - **Days on hand.** Averaged over **7 days**: the store's first use was 6 days before the
+    load day.
+  - **Dead stock.** Items with nothing but opening stock in 30 days, such as Mutton.
+    Paneer (used by sales) and Tomatoes (bought) are moving.
+- **Cost of sales** (Hotel 1.0, the 7 days to the load day):
+  - **Cost %.** The cost % table above: drinks 36.2% actual against 34.4% by recipe, food
+    21.5%.
+  - **Losses.** **₹1,940** lost at the count (gin ₹1,800, the one item beyond tolerance,
+    and vodka ₹140).
+- **Menu engineering** (Hotel 1.0, the same 7 days):
+
+  | Group     | Drinks (popular from 2.6% of drinks sold)                      | Food (from 7% of dishes sold)                |
+  | --------- | -------------------------------------------------------------- | -------------------------------------------- |
+  | Star      | Gin & Tonic, Whisky Sour, Mojito                               | Masala Fries, Surmai Fry                     |
+  | Plowhorse | Lager (330 ml), Vodka peg (30 ml), Red wine (glass)            | Butter Naan                                  |
+  | Puzzle    | high-margin drinks that didn't sell, such as Cosmopolitan      | Paneer Tikka and the dishes that didn't sell |
+  | Dog       | low-margin drinks that didn't sell, such as Whisky peg (30 ml) | none                                         |

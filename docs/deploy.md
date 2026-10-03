@@ -1124,6 +1124,34 @@ now leaves customer groups alone. No stack change, no new parameter.
 - **`test.sous-chef.1.1`.** A leave request from `test.commis.1.1` appears in Inbox and can
   be approved.
 
+#### Releasing the cost controller's reports (R-2)
+
+One migration, `20261022100000_cost_reports` (ADR 028). No stack change, no new parameter
+and no product sync change.
+
+- **What changes in the app.** Reports gains **Cost of sales** (it replaces the Variance
+  screen; old links redirect), **Menu engineering**, **Stock position** and **Purchasing**.
+  They open for cost controllers, outlet and hub managers, store keepers (their store) and
+  department heads (their store), and for the Account Owner read-only. Frontline staff see
+  none of them.
+- **Test data.** Test Company gains `33_purchases_TEST_DATA_ONLY.csv`: four orders at the
+  Hotel 1.0 Kitchen Store, loaded once. Re-import Test Company (37 files): the dry run shows
+  **4 purchase orders created** and nothing else changed; Apply; a second dry run shows the
+  4 purchase orders unchanged. The executor completes their approvals within a minute.
+
+**Deploy order.** Run the Deploy workflow, then re-import Test Company.
+
+**Check.**
+
+- **`test.cost-controller.1.0`.** Reports lists Cost of sales, Menu engineering, Stock
+  position and Purchasing. Cost of sales for Test Hotel & Bar 1.0 shows the gin first under
+  "Where the money went"; tapping it shows the formula. Menu engineering puts Gin & Tonic
+  among the Stars.
+- **`test.executive-chef.1.0`.** Reports → Purchasing at the Kitchen Store: Fresh Produce
+  95.9% delivered, 1 late; Dairy & Poultry 0%; price changes "paid ₹120". Stock position
+  lists Mutton under "Not moved in 30 days".
+- **`test.bartender.1.0`.** Reports shows only My week.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.
@@ -1192,7 +1220,7 @@ passwords file (`TEST_LOGINS_do_not_commit.csv`) and the README never are:
 (cd docs/onboarding/test-data/test-solo-bar-co && zip -q -FS ~/test-solo-bar-co.zip [0-9][0-9]_*.csv)
 ```
 
-`test-company.zip` holds 35 files, `test-solo-bar-co.zip` 27.
+`test-company.zip` holds 37 files, `test-solo-bar-co.zip` 27.
 
 **2. Create each customer**: `/platform` → **New customer**. Fill in exactly:
 

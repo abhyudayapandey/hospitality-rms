@@ -8,6 +8,12 @@ import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from
 // attendance, and everyone's own week. The Account Owner holds REPORTS (read-only, the
 // whole company). Frontline staff see only their own week: a server never sees the
 // outlet's sales, costs or P&L.
+//
+// The cost controller's reports (R-2, ADR 028): cost of sales and menu engineering open
+// where the person sees the menu costs (MENU view) at one of the place's stores; the stock
+// and purchasing reports open at a store for its cost people: MENU view or PURCHASE_ORDERS
+// modify there (store keepers, cost controllers, managers). STOCK_LEVELS and
+// PURCHASE_ORDERS view are not enough: commis and bartenders hold them to use the store.
 
 let ids: SeedIds;
 beforeAll(async () => {
@@ -67,6 +73,23 @@ async function placesOf(c: PoolClient, user: string, report: string): Promise<st
   return r.rows.map((x) => x.code).sort();
 }
 
+/** The store reports: a stock-holding store, for the people who answer for its cost. */
+const STORE_RULE = `n.type = 'delivery' and n.holds_stock
+  and (core.can('MENU', 'view', null, n.id)
+       or core.can('PURCHASE_ORDERS', 'modify', null, n.id)
+       or exists (select 1 from core.node_link l where l.delivery_node_id = n.id
+                     and core.can('REPORTS', 'view', l.org_node_id, null)))`;
+
+/** Every report with places, in the order rpt.my_reports() lists them. */
+const PLACED = [
+  'outlet_flash',
+  'department',
+  'cost_of_sales',
+  'menu_engineering',
+  'stock_position',
+  'purchasing',
+] as const;
+
 /** The rule each report applies, as an independent check (n = a hierarchy_node). */
 const RULES: Record<string, string> = {
   outlet_flash: `n.type = 'org' and n.kind = 'outlet'
@@ -76,6 +99,20 @@ const RULES: Record<string, string> = {
   department: `n.type = 'org' and core.is_team_place(n.id)
                and (core.can('REPORTS', 'view', n.id, null)
                     or core.can('ATTENDANCE', 'view', n.id, null))`,
+  cost_of_sales: `n.type = 'org' and n.kind in ('outlet', 'site')
+                  and exists (select 1 from core.node_link l
+                                join core.hierarchy_node o on o.id = l.org_node_id
+                                join core.hierarchy_node s on s.id = l.delivery_node_id
+                               where o.path operator(extensions.<@) n.path
+                                 and s.holds_stock and s.archived_at is null
+                                 and (core.can('REPORTS', 'view', n.id, null)
+                                      or core.can('MENU', 'view', null, s.id)))`,
+  menu_engineering: `n.type = 'org' and n.kind = 'outlet'
+                     and exists (select 1 from menu.menu_outlet mo where mo.org_node_id = n.id
+                                    and (core.can('REPORTS', 'view', n.id, null)
+                                         or core.can('MENU', 'view', null, mo.delivery_node_id)))`,
+  stock_position: STORE_RULE,
+  purchasing: STORE_RULE,
 };
 
 describe('reports: who opens what (every user)', () => {
@@ -126,11 +163,9 @@ describe('reports: who opens what (every user)', () => {
       const wrong: string[] = [];
       for (const p of await everyone(c)) {
         const listed = await reportsOf(c, p.id);
-        const want = [
-          ...((await placesOf(c, p.id, 'outlet_flash')).length ? ['outlet_flash'] : []),
-          ...((await placesOf(c, p.id, 'department')).length ? ['department'] : []),
-          ...(p.worker ? ['my_week'] : []),
-        ];
+        const want: string[] = [];
+        for (const r of PLACED) if ((await placesOf(c, p.id, r)).length) want.push(r);
+        if (p.worker) want.push('my_week');
         if (JSON.stringify(listed) !== JSON.stringify(want)) {
           wrong.push(`${p.username}: got [${listed.join(', ')}], want [${want.join(', ')}]`);
         }
@@ -152,6 +187,17 @@ describe('reports: who opens what (every user)', () => {
           where n.code in ('TEST-HOTEL-1.0-KITCHEN', 'TEST-BAR-3.0-FLOOR-SERVICE',
                            'TEST-GUEST-HOUSE-2.0', 'TEST-SOLO-BAR')`,
       );
+      const sites = await c.query<{ id: string; code: string }>(
+        `select n.id, n.code from core.hierarchy_node n
+          where n.code in ('TEST-CENTRAL-KITCHEN')`,
+      );
+      const stores = await c.query<{ id: string; code: string }>(
+        `select n.id, n.code from core.hierarchy_node n
+          where n.code in ('TEST-HOTEL-1.0-KITCHEN-STORE', 'TEST-HOTEL-1.0-BAR-STORE',
+                           'TEST-HOTEL-1.0-MAIN-STORE', 'TEST-BAR-3.0-BAR-STORE',
+                           'TEST-CENTRAL-KITCHEN-STORE', 'TEST-SOLO-BAR-BAR-STORE')`,
+      );
+      expect(stores.rows).toHaveLength(6);
       const leaks: string[] = [];
       for (const p of await everyone(c)) {
         const flash = new Set(await placesOf(c, p.id, 'outlet_flash'));
@@ -159,6 +205,48 @@ describe('reports: who opens what (every user)', () => {
           if (flash.has(o.code)) continue;
           const r = await as(c, p.id, 'select * from rpt.outlet_flash($1, current_date)', [o.id]);
           if (r.error !== 'NOT_AUTHORISED') leaks.push(`${p.username} outlet_flash ${o.code}`);
+        }
+        const cost = new Set(await placesOf(c, p.id, 'cost_of_sales'));
+        for (const o of [...outlets.rows, ...sites.rows]) {
+          if (cost.has(o.code)) continue;
+          for (const fn of [
+            'rpt.cost_items($1, current_date - 6, current_date)',
+            'rpt.cost_totals($1, current_date - 6, current_date)',
+          ]) {
+            const r = await as(c, p.id, `select * from ${fn}`, [o.id]);
+            if (r.error !== 'NOT_AUTHORISED') leaks.push(`${p.username} ${fn} ${o.code}`);
+          }
+        }
+        const menu = new Set(await placesOf(c, p.id, 'menu_engineering'));
+        for (const o of outlets.rows) {
+          if (menu.has(o.code)) continue;
+          const r = await as(
+            c,
+            p.id,
+            'select * from rpt.menu_engineering($1, current_date - 6, current_date)',
+            [o.id],
+          );
+          if (r.error !== 'NOT_AUTHORISED') leaks.push(`${p.username} menu_engineering ${o.code}`);
+        }
+        for (const [report, fns] of [
+          ['stock_position', ['rpt.stock_summary($1)', 'rpt.stock_items($1)']],
+          [
+            'purchasing',
+            [
+              'rpt.price_changes($1, current_date - 27, current_date)',
+              'rpt.supplier_fill($1, current_date - 27, current_date)',
+              'rpt.short_deliveries($1, current_date - 27, current_date)',
+            ],
+          ],
+        ] as const) {
+          const mine = new Set(await placesOf(c, p.id, report));
+          for (const st of stores.rows) {
+            if (mine.has(st.code)) continue;
+            for (const fn of fns) {
+              const r = await as(c, p.id, `select * from ${fn}`, [st.id]);
+              if (r.error !== 'NOT_AUTHORISED') leaks.push(`${p.username} ${fn} ${st.code}`);
+            }
+          }
         }
         const dept = new Set(await placesOf(c, p.id, 'department'));
         for (const d of depts.rows) {
@@ -177,14 +265,41 @@ describe('reports: who opens what (every user)', () => {
     await inRolledBackTx(async (c) => {
       const r = (u: string) => reportsOf(c, ids.user(u));
       const pl = (u: string, rep: string) => placesOf(c, ids.user(u), rep);
-      expect(await r('test.general-manager.1.0')).toEqual([
+      const all6 = [
         'outlet_flash',
         'department',
+        'cost_of_sales',
+        'menu_engineering',
+        'stock_position',
+        'purchasing',
+        'my_week',
+      ];
+      expect(await r('test.general-manager.1.0')).toEqual(all6);
+      expect(await pl('test.general-manager.1.0', 'outlet_flash')).toEqual(['TEST-HOTEL-1.0']);
+      expect(await pl('test.general-manager.1.0', 'cost_of_sales')).toEqual(['TEST-HOTEL-1.0']);
+      expect(await r('test.cost-controller.1.0')).toEqual([
+        'outlet_flash',
+        'cost_of_sales',
+        'menu_engineering',
+        'stock_position',
+        'purchasing',
         'my_week',
       ]);
-      expect(await pl('test.general-manager.1.0', 'outlet_flash')).toEqual(['TEST-HOTEL-1.0']);
-      expect(await r('test.cost-controller.1.0')).toEqual(['outlet_flash', 'my_week']);
-      expect(await r('test.executive-chef.1.0')).toEqual(['department', 'my_week']);
+      expect(await pl('test.cost-controller.1.0', 'stock_position')).toEqual(
+        expect.arrayContaining(['TEST-HOTEL-1.0-BAR-STORE', 'TEST-HOTEL-1.0-KITCHEN-STORE']),
+      );
+      // the executive chef answers for the kitchen store: its cost of sales, stock and orders
+      expect(await r('test.executive-chef.1.0')).toEqual([
+        'department',
+        'cost_of_sales',
+        'menu_engineering',
+        'stock_position',
+        'purchasing',
+        'my_week',
+      ]);
+      expect(await pl('test.executive-chef.1.0', 'stock_position')).toEqual([
+        'TEST-HOTEL-1.0-KITCHEN-STORE',
+      ]);
       expect(await pl('test.executive-chef.1.0', 'department')).toEqual(['TEST-HOTEL-1.0-KITCHEN']);
       expect(await r('test.sous-chef.1.0')).toEqual(['department', 'my_week']);
       expect(await r('test.hr-admin')).toContain('department');
@@ -193,6 +308,7 @@ describe('reports: who opens what (every user)', () => {
       expect(await r('test.steward.1.0')).toEqual(['my_week']);
       expect(await r('test.server.3.0')).toEqual(['my_week']);
       expect(await r('test.commis.1.0')).toEqual(['my_week']);
+      expect(await r('test.bartender.1.0')).toEqual(['my_week']);
 
       // the owner: every outlet and team place of their own company, nothing of another
       const owner = ids.user('test.account-owner');
@@ -209,6 +325,45 @@ describe('reports: who opens what (every user)', () => {
         ids.node('TEST-SOLO-BAR'),
       ]);
       expect(solo.error).toBe('NOT_AUTHORISED');
+      expect(await r('test.account-owner')).toEqual(
+        expect.arrayContaining([
+          'cost_of_sales',
+          'menu_engineering',
+          'stock_position',
+          'purchasing',
+        ]),
+      );
+      const soloStore = await as(c, owner, 'select * from rpt.stock_summary($1)', [
+        ids.node('TEST-SOLO-BAR-BAR-STORE'),
+      ]);
+      expect(soloStore.error).toBe('NOT_AUTHORISED');
+    });
+  });
+
+  it('with Menu and sales off, cost of sales and menu engineering are neither listed nor open', async () => {
+    await inRolledBackTx(async (c) => {
+      const cc = ids.user('test.cost-controller.1.0');
+      await c.query(
+        `update core.tenant
+            set settings = coalesce(settings, '{}') || jsonb_build_object('modules',
+                  coalesce(settings -> 'modules', '{}') || '{"menu_sales": false}')
+          where id = $1`,
+        [ids.tenant()],
+      );
+      expect(await reportsOf(c, cc)).toEqual([
+        'outlet_flash',
+        'stock_position',
+        'purchasing',
+        'my_week',
+      ]);
+      for (const fn of [
+        'rpt.cost_items($1, current_date - 6, current_date)',
+        'rpt.cost_totals($1, current_date - 6, current_date)',
+        'rpt.menu_engineering($1, current_date - 6, current_date)',
+      ]) {
+        const r = await as(c, cc, `select * from ${fn}`, [ids.node('TEST-HOTEL-1.0')]);
+        expect(r.error, fn).toBe('MODULE_OFF');
+      }
     });
   });
 

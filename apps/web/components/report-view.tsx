@@ -3,10 +3,12 @@ import { addDays, formatDay } from '@/lib/dates';
 import {
   compare,
   formatMeasure,
+  PERIODS,
   REPORTS,
   sectionRows,
   SECTIONS,
   type MeasureRow,
+  type Period,
   type ReportCode,
 } from '@/lib/reports';
 import { PlaceSwitcher, type SwitcherPlace } from './place-switcher';
@@ -114,3 +116,72 @@ export function NoReport({ children }: { children: React.ReactNode }) {
 }
 
 export type { SwitcherPlace };
+
+/**
+ * Yesterday / last 7 days / this month as links, and two dates for any other period
+ * (the cost controller's reports, ADR 028). Business days at the place.
+ */
+export function PeriodPicker({
+  action,
+  node,
+  period,
+  from,
+  to,
+}: {
+  action: string;
+  node: string;
+  period: Period;
+  from: string;
+  to: string;
+}) {
+  const chip = (on: boolean) =>
+    `flex min-h-11 items-center rounded-full px-4 text-sm whitespace-nowrap ${
+      on ? 'bg-slate-900 font-semibold text-white' : 'bg-white text-slate-700 ring-1 ring-slate-300'
+    }`;
+  return (
+    <div className="space-y-2" data-testid="period">
+      <nav aria-label="Period" className="-mx-4 flex gap-2 overflow-x-auto px-4">
+        {PERIODS.filter((p) => p.code !== 'custom').map((p) => (
+          <Link
+            key={p.code}
+            href={`${action}?node=${node}&period=${p.code}`}
+            aria-current={p.code === period ? 'page' : undefined}
+            className={chip(p.code === period)}
+          >
+            {p.label}
+          </Link>
+        ))}
+      </nav>
+      <details open={period === 'custom'}>
+        <summary className="min-h-11 cursor-pointer py-2 text-sm text-slate-700 underline">
+          {period === 'custom' ? `${formatDay(from)} to ${formatDay(to)}` : 'Pick dates'}
+        </summary>
+        <form action={action} className="grid grid-cols-2 gap-2">
+          <input type="hidden" name="node" value={node} />
+          <input type="hidden" name="period" value="custom" />
+          <label className="space-y-1">
+            <span className="text-sm">From</span>
+            <input
+              type="date"
+              name="from"
+              defaultValue={from}
+              className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-sm">To</span>
+            <input
+              type="date"
+              name="to"
+              defaultValue={to}
+              className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3"
+            />
+          </label>
+          <button className="col-span-2 min-h-12 rounded-lg border border-slate-300 bg-white">
+            Show
+          </button>
+        </form>
+      </details>
+    </div>
+  );
+}

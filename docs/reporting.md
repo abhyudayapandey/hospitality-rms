@@ -1,6 +1,7 @@
 # Reporting: what each role sees, and how it is built
 
-Status: **approved** (decisions in section 8) · **R-1 done** (ADR 023) · 2026-10-02
+Status: **approved** (decisions in section 8) · **R-1 done** (ADR 023) · **R-2 done** (ADR 028) ·
+2026-10-02
 
 Outlet Ops already records the facts a hospitality business needs to run on numbers: every
 stock movement, what was bought and at what price, what was made and thrown away, what was
@@ -143,15 +144,16 @@ place per business day, rebuilt by a nightly job.
 
 A report row is visible where its **source domain** is visible:
 
-| Report family                  | Domain checked at the row's place       |
-| ------------------------------ | --------------------------------------- |
-| Stock value, movements, counts | STOCK_LEVELS (and DERIVED_STOCK_LEVELS) |
-| Sales, cost %, variance, menu  | MENU                                    |
-| Purchasing                     | PURCHASE_ORDERS                         |
-| Hours, attendance, coverage    | ROSTER / ATTENDANCE                     |
-| **Labour cost**                | **LABOUR_COST** (new, see below)        |
-| Tasks and checklists           | TASKS                                   |
-| Maintenance                    | MAINTENANCE                             |
+| Report family                    | Domain checked at the row's place                              |
+| -------------------------------- | -------------------------------------------------------------- |
+| Stock value, movements, counts   | STOCK_LEVELS (and DERIVED_STOCK_LEVELS)                        |
+| Sales, cost %, variance, menu    | MENU                                                           |
+| Purchasing                       | PURCHASE_ORDERS                                                |
+| Stock position, purchasing (R-2) | MENU view or PURCHASE_ORDERS **modify** at the store (ADR 028) |
+| Hours, attendance, coverage      | ROSTER / ATTENDANCE                                            |
+| **Labour cost**                  | **LABOUR_COST** (new, see below)                               |
+| Tasks and checklists             | TASKS                                                          |
+| Maintenance                      | MAINTENANCE                                                    |
 
 - **The new LABOUR_COST domain.** It shows totals only, never one person's pay. Outlet
   managers today can't see pay (COMPENSATION is HR's), but a GM needs labour % to run the
@@ -163,36 +165,46 @@ A report row is visible where its **source domain** is visible:
 Every report function checks `core.can()` at the requested place, as the screens do now
 (rule 2). The RLS equivalence tests extend to the `rpt` tables.
 
+**Added in R-2 (ADR 028):**
+
+- **Store reports need more than view.** Commis and bartenders hold STOCK_LEVELS and
+  PURCHASE_ORDERS view to use the store. So the store reports (stock position, purchasing)
+  open for MENU view or PURCHASE_ORDERS modify there: store keepers, cost controllers, and
+  hub and outlet managers. Frontline staff still see no business numbers.
+- **A place's own stores** are those linked to it or to one of its departments. The central
+  kitchen's hub sits above the outlets it supplies in the supply tree, but their stores are
+  not the central kitchen's.
+
 ## 4. The measures
 
 Each measure has one definition, kept in one SQL function, so every screen agrees.
 
-| Measure                   | Definition                                                                                               |
-| ------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Sales                     | Σ quantity × price before tax                                                                            |
-| Actual cost of sales      | opening value + receipts + transfers in − transfers out − closing value (food / beverage stores)         |
-| Food %, beverage %        | actual cost of sales ÷ sales, per food / beverage                                                        |
-| Theoretical (recipe) cost | Σ sold × cost per serve at the time                                                                      |
-| Variance                  | actual − theoretical, in ₹ and points of sales; per item: actual usage − recipe usage − recorded wastage |
-| Wastage %                 | wastage value ÷ sales                                                                                    |
-| Expired %                 | expired wastage ÷ value produced                                                                         |
-| Stock value, days on hand | closing value; closing value ÷ average daily usage over 28 days                                          |
-| Dead stock                | items with stock and no movement for 30 days                                                             |
-| Count accuracy            | lines within tolerance ÷ lines counted; shrinkage ₹                                                      |
-| Purchase price variance   | (price paid − previous price) × quantity, per item and supplier                                          |
-| Supplier fill rate        | received ÷ ordered, per supplier                                                                         |
-| Transfer fill rate        | dispatched ÷ requested; transit loss ₹                                                                   |
-| Scheduled / worked hours  | Σ assigned shift hours; Σ attendance sessions (ADR 018 matching)                                         |
-| Overtime hours            | worked beyond the weekly cap (ROS-2 setting)                                                             |
-| Labour cost, labour %     | Σ worked hours × hourly rate; ÷ sales                                                                    |
-| Sales per labour hour     | sales ÷ worked hours (front and back of house)                                                           |
-| Prime cost %              | (actual cost of sales + labour cost) ÷ sales                                                             |
-| Attendance                | on time ÷ rostered shifts; no-shows; late                                                                |
-| Roster coverage           | filled ÷ required slots                                                                                  |
-| Task compliance           | done on time ÷ due; flagged readings                                                                     |
-| Maintenance               | open, older than 48 h, median hours to assign and to fix, repeat issues per place                        |
-| Approval turnaround       | median hours from submit to decision, per process                                                        |
-| Menu engineering          | contribution margin (price − cost per serve) against popularity (share of items sold) per category       |
+| Measure                   | Definition                                                                                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sales                     | Σ quantity × price before tax                                                                                                                                                   |
+| Actual cost of sales      | opening value + receipts + transfers in − transfers out − closing value (food / beverage stores)                                                                                |
+| Food %, beverage %        | actual cost of sales ÷ sales, per food / beverage                                                                                                                               |
+| Theoretical (recipe) cost | Σ sold × cost per serve at the time                                                                                                                                             |
+| Variance                  | actual − theoretical, in ₹ and points of sales; per item: actual usage − recipe usage − recorded wastage                                                                        |
+| Wastage %                 | wastage value ÷ sales                                                                                                                                                           |
+| Expired %                 | expired wastage ÷ value produced                                                                                                                                                |
+| Stock value, days on hand | closing value; closing value ÷ average daily usage over 28 days (fewer days for a new store, at least 7)                                                                        |
+| Dead stock                | items with stock and no movement for 30 days; opening stock is not a movement                                                                                                   |
+| Count accuracy            | lines within tolerance ÷ lines counted; shrinkage ₹                                                                                                                             |
+| Purchase price variance   | (price paid − the store's previous price, else the standard cost) × quantity, per item and supplier                                                                             |
+| Supplier fill rate        | received ÷ ordered by value, per supplier; on time = first delivery by release day + lead time                                                                                  |
+| Transfer fill rate        | dispatched ÷ requested; transit loss ₹                                                                                                                                          |
+| Scheduled / worked hours  | Σ assigned shift hours; Σ attendance sessions (ADR 018 matching)                                                                                                                |
+| Overtime hours            | worked beyond the weekly cap (ROS-2 setting)                                                                                                                                    |
+| Labour cost, labour %     | Σ worked hours × hourly rate; ÷ sales                                                                                                                                           |
+| Sales per labour hour     | sales ÷ worked hours (front and back of house)                                                                                                                                  |
+| Prime cost %              | (actual cost of sales + labour cost) ÷ sales                                                                                                                                    |
+| Attendance                | on time ÷ rostered shifts; no-shows; late                                                                                                                                       |
+| Roster coverage           | filled ÷ required slots                                                                                                                                                         |
+| Task compliance           | done on time ÷ due; flagged readings                                                                                                                                            |
+| Maintenance               | open, older than 48 h, median hours to assign and to fix, repeat issues per place                                                                                               |
+| Approval turnaround       | median hours from submit to decision, per process                                                                                                                               |
+| Menu engineering          | contribution margin (price − cost per serve) against popularity (share of items sold) per menu; popular from 70% of an equal share, high margin from the sales-weighted average |
 
 ## 5. Who sees what
 
@@ -236,13 +248,13 @@ place switcher (ADR 016) narrows or widens it within their access.
 
 ## 7. The plan
 
-| Step  | What                                                                                                                                                                                                                           |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| R-1   | `rpt` schema, the four daily tables and the nightly rebuild (security tests first). Home "Today's numbers" and Department today. Reports list. Daily flash for outlet and department (without labour cost). My week for staff. |
-| R-2   | Cost controller suite: actual vs theoretical by item, purchase price variance, supplier fill rate, stock valuation and days on hand, dead stock, menu engineering. Replaces today's Variance screen (UX U-14).                 |
-| R-3   | LABOUR_COST domain and labour %, SPLH, prime cost; HR reports; central kitchen reports.                                                                                                                                        |
-| R-4   | Area and company league tables; Account Owner view; CSV export; targets in company settings.                                                                                                                                   |
-| later | E-mail digest; occupancy for housekeeping; AI signals reading the same measures (ADR 020's trace is already one).                                                                                                              |
+| Step  | What                                                                                                                                                                                                                                         |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R-1   | `rpt` schema, the four daily tables and the nightly rebuild (security tests first). Home "Today's numbers" and Department today. Reports list. Daily flash for outlet and department (without labour cost). My week for staff.               |
+| R-2   | _(Done, ADR 028)_ Cost controller suite: actual vs theoretical by item (Cost of sales), purchase price variance, supplier fill rate, stock valuation and days on hand, dead stock, menu engineering. Replaces the Variance screen (UX U-14). |
+| R-3   | LABOUR_COST domain and labour %, SPLH, prime cost; HR reports; central kitchen reports, with transfer fill rate.                                                                                                                             |
+| R-4   | Area and company league tables; Account Owner view; CSV export; targets in company settings.                                                                                                                                                 |
+| later | E-mail digest; occupancy for housekeeping; AI signals reading the same measures (ADR 020's trace is already one).                                                                                                                            |
 
 Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
 
@@ -257,6 +269,18 @@ Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
   - REPORTS lets the Account Owner read every report.
 
   A security test signs in as every test user: frontline staff get only My week.
+
+- **R-2 done** (ADR 028):
+  - **Cost of sales**, replacing the Variance screen (U-14): rupees first, the five biggest
+    losses, each item's formula on a tap;
+  - **Menu engineering**: stars, plowhorses, puzzles and dogs per menu, with what to do;
+  - **Stock position**: value and its four-week trend, value by category, days on hand,
+    dead stock;
+  - **Purchasing**: price changes, supplier fill rate and timeliness, short deliveries;
+  - test data: a test-only purchases file (33) gives the purchasing reports something to
+    show.
+
+  Transfer fill rate (section 4) moves to R-3 with the central kitchen reports.
 
 - **Not yet:**
   - targets (R-4), so figures are compared only with the same day last week;
@@ -280,6 +304,15 @@ Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
    company settings with an outlet override, in R-4.
 7. **Order:** R-2 comes after UX-3, UX-3b and AC-1 (customer-specific access groups,
    `docs/ux-review.md`), so the cost controller suite can be granted per customer.
+8. **R-2 in one change** (asked 2 Oct), with these rules:
+   1. **Dead stock:** opening stock is not a movement, so an item that only ever had
+      opening stock is dead after 30 days.
+   2. **Days on hand for a new store:** average over the days since its first use when
+      that is under 28, at least 7, and "–" below that.
+   3. **Price change baseline:** the store's previous receipt of the item from any
+      supplier, else the item's standard cost.
+   4. **Menu engineering thresholds:** fixed at the standard 70% and weighted average for
+      now; they may become company settings with the targets in R-4.
 
 ## Sources
 

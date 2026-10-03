@@ -126,7 +126,7 @@ S is under a day, M is a few days, L is a week or more.
   - Add search and "copy yesterday's quantities".
   - Show the day's total as you type.
   - The real fix is the POS / CSV import (SAL-1, PRD 11), which this makes more urgent.
-- **U-14 · M.** The Variance report leads with formulas ("opening 0 bottle + in 2 bottle −
+- **U-14 · M.** _(Done in R-2, ADR 028: the Cost of sales report.)_ The Variance report leads with formulas ("opening 0 bottle + in 2 bottle −
   out 0 …") for every item.
   - Lead with the rupee loss, the five biggest items, and "not counted" as one line.
   - Hide the formula behind a tap.

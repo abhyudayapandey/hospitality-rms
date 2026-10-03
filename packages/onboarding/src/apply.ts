@@ -177,6 +177,7 @@ class Loader {
       await this.pastWeek();
       await this.tasks();
       await this.maintenance();
+      await this.purchases();
     }
     this.step('');
     this.report.access = await this.preview();
@@ -1703,6 +1704,88 @@ class Loader {
       ).rows[0]!.id;
       await this.as(first.approved_by, () =>
         this.c.query(`select wf.act($1, 'approve', 'Closing count (test data)')`, [request]),
+      );
+    }
+  }
+
+  /**
+   * File 33 (ADR 028), once per customer: each order is created by the person who orders
+   * (inv.create_po, which submits PURCHASE_ORDER) and approved by the approver (wf.act).
+   * It is released on its order day (inv.record_test_release: what the executor's handler
+   * does, at that time; the executor later finds it released) and received on its receipt
+   * day by the receiver (inv.record_test_receipt, the app's receipt code at that time).
+   * Orders at 10:00 and receipts at 11:00, store time.
+   */
+  private async purchases() {
+    if (this.b.purchases.length === 0) return;
+    const orders = new Map<string, Bundle['purchases']>();
+    for (const p of this.b.purchases) {
+      orders.set(p.order_ref, [...(orders.get(p.order_ref) ?? []), p]);
+    }
+    const loaded = await this.c.query(
+      `select 1 from inv.purchase_order
+        where tenant_id = $1 and idempotency_key like 'test-data po %' limit 1`,
+      [this.tenant],
+    );
+    for (const [ref, lines] of orders) {
+      const first = lines[0]!;
+      this.step(FILES.purchases.file, first.line);
+      this.count('purchase orders', !loaded.rowCount);
+      if (loaded.rowCount) continue;
+      const store = this.nodes.get(first.store_node_code)!;
+      const tz = this.timezoneOf(first.store_node_code);
+      const po = await this.as(
+        first.ordered_by,
+        async () =>
+          (
+            await this.c.query<{ id: string }>(`select inv.create_po($1, $2, $3, $4, $5) as id`, [
+              store,
+              this.suppliers.get(first.supplier_code),
+              JSON.stringify(
+                lines.map((l) => ({
+                  item_id: this.items.get(l.item_code),
+                  qty: l.quantity,
+                  unit_cost: l.unit_cost_inr,
+                })),
+              ),
+              `Test data ${ref}`,
+              `test-data po ${ref}`,
+            ])
+          ).rows[0]!.id,
+      );
+      const request = (
+        await this.c.query<{ id: string }>(
+          `select wf_request_id as id from inv.purchase_order where id = $1`,
+          [po],
+        )
+      ).rows[0]!.id;
+      await this.as(first.approved_by, async () => {
+        await this.c.query(`select wf.act($1, 'approve', 'Test data order')`, [request]);
+        await this.c.query(
+          `select inv.record_test_release($1, ($2::date + time '10:00') at time zone $3)`,
+          [po, this.day(first.ordered_day), tz],
+        );
+      });
+      const receivedDay = first.received_day;
+      if (receivedDay === undefined || first.received_by === undefined) continue;
+      await this.as(first.received_by, () =>
+        this.c.query(
+          `select inv.record_test_receipt($1, $2,
+                    ($3::date + time '11:00') at time zone $4, $5)`,
+          [
+            po,
+            JSON.stringify(
+              lines.map((l) => ({
+                item_id: this.items.get(l.item_code),
+                qty: l.received_quantity ?? 0,
+                unit_cost: l.unit_cost_inr,
+              })),
+            ),
+            this.day(receivedDay),
+            tz,
+            `test-data receipt ${ref}`,
+          ],
+        ),
       );
     }
   }

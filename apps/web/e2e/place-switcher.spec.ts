@@ -65,8 +65,8 @@ test('the choice is remembered per screen, and tabs carry the place where it fit
     .click();
   await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen Store');
   // another screen keeps its own default
-  await page.goto('/menu/variance');
-  await expect(page.getByTestId('variance-store')).toBeVisible();
+  await page.goto('/reports/stock');
+  await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Bar Store');
   // put Stock back for the other tests
   await page.goto('/stock');
   await page

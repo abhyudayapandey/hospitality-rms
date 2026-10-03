@@ -19,7 +19,8 @@ export function MenuTabs({
     ...(costs ? [{ href: '/menu', label: 'Menu costs', key: 'costs' }] : []),
     { href: '/menu/recipes', label: 'Recipes', key: 'recipes' },
     ...(sales ? [{ href: '/menu/sales', label: 'Sales', key: 'sales' }] : []),
-    ...(costs ? [{ href: '/menu/variance', label: 'Variance', key: 'variance' }] : []),
+    // the Variance screen became the Cost of sales report (R-2, ADR 028)
+    ...(costs ? [{ href: '/reports/cost', label: 'Cost of sales', key: 'variance' }] : []),
   ];
   // one tab is no choice (audit #8)
   if (tabs.length < 2) return null;
