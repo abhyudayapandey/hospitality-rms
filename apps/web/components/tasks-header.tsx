@@ -41,7 +41,7 @@ export function TasksHeader({
                   aria-current={t.href === active ? 'page' : undefined}
                   className={`flex min-h-11 items-center rounded-full px-4 text-sm whitespace-nowrap ${
                     t.href === active
-                      ? 'bg-slate-900 font-semibold text-white'
+                      ? 'bg-brand-700 font-semibold text-white'
                       : 'bg-white text-slate-700 ring-1 ring-slate-300'
                   }`}
                 >

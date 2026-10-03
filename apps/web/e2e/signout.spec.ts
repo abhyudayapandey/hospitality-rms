@@ -16,6 +16,8 @@ test('sign-out clears the session and refresh cookies and the service-worker cac
   // Pretend a Cognito refresh cookie exists too.
   await context.addCookies([{ name: 'oo_refresh', value: 'x', url: page.url() }]);
 
+  // Sign out is on Me (UX-6)
+  await page.goto('/me');
   await page.getByRole('button', { name: 'Sign out' }).click();
   await page.waitForURL(/\/login/);
 

@@ -31,7 +31,7 @@ export default async function MyTasksPage() {
         {data.tabs.create && (
           <Link
             href="/tasks/new"
-            className="flex min-h-12 items-center justify-center rounded-xl bg-slate-900 font-medium text-white"
+            className="flex min-h-12 items-center justify-center rounded-xl bg-brand-700 font-medium text-white"
           >
             New task
           </Link>

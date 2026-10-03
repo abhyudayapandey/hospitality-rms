@@ -50,7 +50,7 @@ export default async function ChecklistsPage({ searchParams }: { searchParams: S
           {data.canEdit && (
             <Link
               href={`/tasks/checklists/new?node=${place.id}`}
-              className="flex min-h-12 items-center justify-center rounded-xl bg-slate-900 font-medium text-white"
+              className="flex min-h-12 items-center justify-center rounded-xl bg-brand-700 font-medium text-white"
             >
               New checklist
             </Link>

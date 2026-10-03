@@ -27,7 +27,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
       {ctx.can('EVENTS', 'modify') && (
         <Link
           href={`/events/new?node=${node.id}`}
-          className="flex min-h-12 items-center justify-center rounded-lg bg-slate-900 font-medium text-white"
+          className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
         >
           New event
         </Link>

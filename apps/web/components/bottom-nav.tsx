@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { NavItem } from '@/lib/nav';
+import { Icon } from './icon';
 
 export function BottomNav({ items, inboxCount }: { items: NavItem[]; inboxCount: number }) {
   const path = usePathname();
@@ -20,12 +21,10 @@ export function BottomNav({ items, inboxCount }: { items: NavItem[]; inboxCount:
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs ${
-                  active ? 'font-semibold text-slate-900' : 'text-slate-500'
+                  active ? 'font-semibold text-brand-700' : 'text-slate-500'
                 }`}
               >
-                <span aria-hidden className="text-lg leading-none">
-                  {item.icon}
-                </span>
+                <Icon name={item.icon} className="size-6" />
                 <span data-testid="nav-label">{item.label}</span>
                 {item.href === '/inbox' && inboxCount > 0 && (
                   <span

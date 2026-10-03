@@ -1,18 +1,23 @@
 import 'server-only';
 import { addDays, localToday, weekStart } from './dates';
 import { sql, withUser } from './db';
-import { navProfile } from './nav';
+import { inboxEntries, type InboxEntry } from './inbox';
+import { expiryList } from './inventory';
+import { navProfile, type NavProfile } from './nav';
 import { myShifts, openPunch, type MyShift, type OpenPunch } from './people';
 import {
   departmentDay,
   departmentPeople,
+  league,
   outletFlash,
   reportPlaces,
   reportToday,
 } from './report-data';
-import type { MeasureRow } from './reports';
+import type { LeagueRow, MeasureRow } from './reports';
+import type { TargetKey } from './settings';
+import { companySettings } from './settings-data';
 import type { Shell } from './shell';
-import { myTasks, type MyTask } from './tasks';
+import { myTasks, toAssign, type MyTask } from './tasks';
 import {
   attentionGroups,
   currentShift,
@@ -20,6 +25,17 @@ import {
   type AttentionGroup,
   type PlaceDepartment,
 } from './today-view';
+
+// What went out of a store over the last 14 days, and whether an item is low (lib/low-stock.ts):
+// none left, or below its level and lasting three days or fewer at that rate.
+const LOW_USE = sql`
+  select -sum(l.qty) as used from inv.stock_ledger l
+   where l.item_id = n.item_id and l.delivery_node_id = n.delivery_node_id
+     and l.qty < 0 and l.movement_type <> 'count_adjust'
+     and l.occurred_at > now() - interval '14 days'`;
+const IS_LOW = sql`(coalesce(s.on_hand, 0) <= 0
+  or (coalesce(s.on_hand, 0) < n.par_level and u.used > 0
+      and coalesce(s.on_hand, 0) * 14 / u.used <= 3))`;
 
 // What Home's "Today" cards show (UX-2), read in one transaction. Each read is an existing
 // function or table under RLS; the cards are chosen by what the person can see, never by
@@ -33,16 +49,50 @@ export interface TodayNumbers {
   notIn?: number;
 }
 
+/** The store keeper's four jobs (UX-6): what waits at the stores they keep. */
+export interface StoreWork {
+  /** orders sent to suppliers, not yet received in full */
+  receive: number;
+  /** transfers waiting to be sent from their stores */
+  issue: number;
+  /** items that run out within three days (lib/low-stock.ts) */
+  low: number;
+}
+
+/** Expired and expiring batches at the stores they see, and the store with the most. */
+export interface ExpiryCounts {
+  expiring: { n: number; store: string | null };
+  expired: { n: number; store: string | null };
+}
+
+export interface TodayLeague {
+  place: { id: string; name: string };
+  from: string;
+  to: string;
+  rows: LeagueRow[];
+}
+
 export interface Today {
+  profile: NavProfile;
   shift: MyShift | null;
   punch: OpenPunch | null;
   tasks: MyTask[];
+  /** the first few requests waiting for them, and how many in all */
+  approvals: { shown: InboxEntry[]; total: number; toAssign: number };
   attention: AttentionGroup[] | null;
   numbers: TodayNumbers | null;
+  league: TodayLeague | null;
+  store: StoreWork | null;
+  expiry: ExpiryCounts | null;
+  targets: Record<TargetKey, number>;
 }
 
+/** Approvals shown on Home; the rest are one tap away. */
+export const HOME_APPROVALS = 3;
+
 export async function loadToday(shell: Shell, tz: string): Promise<Today> {
-  const lead = navProfile(shell.groups) !== 'frontline';
+  const profile = navProfile(shell.groups);
+  const lead = profile !== 'frontline';
   const atWork = shell.home?.at_workplace ?? false;
   return withUser(shell.user.id, async (tx) => {
     const now = new Date();
@@ -51,19 +101,21 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       atWork && shell.domains.has('ROSTER') ? await myShifts(tx, addDays(today, -1), 2) : [];
     const punch = atWork ? await openPunch(tx) : null;
     const tasks = shell.domains.has('TASKS') ? await myTasks(tx) : [];
+    const inbox = await inboxEntries(tx);
+    const assign = lead ? (await toAssign(tx)).length : 0;
 
     let attention: AttentionGroup[] | null = null;
     if (lead) {
       // each count at its place, under RLS; then the places' departments and order (DB-2)
       const counts = await sql<AttentionCount>`
-        select 'belowPar' as kind, n.delivery_node_id::text as node, count(*)::int as n,
+        select 'lowStock' as kind, n.delivery_node_id::text as node, count(*)::int as n,
                null as href
           from inv.item_node n
           join inv.item i on i.id = n.item_id and i.archived_at is null
           left join inv.stock_level s on s.item_id = n.item_id
                                      and s.delivery_node_id = n.delivery_node_id
-         where n.archived_at is null and n.par_level > 0
-           and coalesce(s.on_hand, 0) < n.par_level
+          left join lateral (${LOW_USE}) u on true
+         where n.archived_at is null and n.par_level > 0 and ${IS_LOW}
          group by n.delivery_node_id
         union all
         select 'flags', x.org_node_id::text, count(*)::int, null
@@ -118,8 +170,56 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       attention = attentionGroups(all, places);
     }
 
+    // the store keeper's tiles (UX-6): the stores they see, under RLS
+    let store: StoreWork | null = null;
+    if (profile === 'store' && shell.domains.has('STOCK_LEVELS')) {
+      const r = await sql<{ receive: number; low: number }>`
+        select (select count(*) from inv.purchase_order_summary
+                 where progress in ('released', 'partially_received'))::int as receive,
+               (select count(*)
+                  from inv.item_node n
+                  join inv.item i on i.id = n.item_id and i.archived_at is null
+                  left join inv.stock_level s on s.item_id = n.item_id
+                                             and s.delivery_node_id = n.delivery_node_id
+                  left join lateral (${LOW_USE}) u on true
+                 where n.archived_at is null and n.par_level > 0 and ${IS_LOW})::int as low`.execute(
+        tx,
+      );
+      store = {
+        receive: r.rows[0]?.receive ?? 0,
+        low: r.rows[0]?.low ?? 0,
+        issue: inbox.filter((e) => e.processType === 'TRANSFER' && e.step === 'dispatch').length,
+      };
+    }
+
+    // expired and expiring batches (INV-12) for leads who see stock
+    let expiry: ExpiryCounts | null = null;
+    if (lead && shell.domains.has('STOCK_LEVELS')) {
+      const rows = await expiryList(tx);
+      const most = (expired: boolean) => {
+        const by = new Map<string, number>();
+        for (const b of rows.filter((x) => x.expired === expired)) {
+          by.set(b.store_id, (by.get(b.store_id) ?? 0) + 1);
+        }
+        const top = [...by].sort((a, b) => b[1] - a[1])[0];
+        return { n: [...by.values()].reduce((a, b) => a + b, 0), store: top?.[0] ?? null };
+      };
+      expiry = { expiring: most(false), expired: most(true) };
+    }
+
     let numbers: TodayNumbers | null = null;
+    let leagueTable: TodayLeague | null = null;
     if (shell.reports === 'business') {
+      // outlets side by side for those over two or more (R-4): the area manager, the owner
+      const lp = (await reportPlaces(tx, 'league'))[0];
+      if (lp) {
+        const to = await reportToday(tx, lp.id);
+        const from = addDays(to, -6);
+        const rows = await league(tx, lp.id, from, to);
+        if (rows.length > 1) leagueTable = { place: lp, from, to, rows };
+      }
+    }
+    if (shell.reports === 'business' && !leagueTable) {
       const outlets = await reportPlaces(tx, 'outlet_flash');
       const o = outlets[0];
       if (o) {
@@ -139,6 +239,18 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
         }
       }
     }
-    return { shift: currentShift(shifts, now), punch, tasks, attention, numbers };
+    return {
+      profile,
+      shift: currentShift(shifts, now),
+      punch,
+      tasks,
+      approvals: { shown: inbox.slice(0, HOME_APPROVALS), total: inbox.length, toAssign: assign },
+      attention,
+      numbers,
+      league: leagueTable,
+      store,
+      expiry,
+      targets: (await companySettings(tx)).targets,
+    };
   });
 }

@@ -59,6 +59,10 @@ export interface StockRow {
   avg_cost: string | null;
   value: string | null;
   below_par: boolean;
+  /** what went out over the last 14 days (lib/low-stock.ts) */
+  used: string | null;
+  /** the item's photo in the photo bucket (ADR 034) */
+  photo_key: string | null;
 }
 
 /** Dated batches expired or expiring within 3 days, at the stores the person sees stock
@@ -73,12 +77,17 @@ export async function expiryList(tx: Tx): Promise<ExpiryBatch[]> {
 
 export async function stockList(tx: Tx, node: string): Promise<StockRow[]> {
   const r = await sql<StockRow>`
-    select i.id as item_id, i.sku, i.name, i.category, i.base_uom, n.par_level,
+    select i.id as item_id, i.sku, i.name, i.category, i.base_uom, n.par_level, i.photo_key,
            coalesce(s.on_hand, 0) as on_hand, s.avg_cost, s.value,
-           coalesce(s.on_hand, 0) < n.par_level as below_par
+           coalesce(s.on_hand, 0) < n.par_level as below_par, u.used
       from inv.item_node n
       join inv.item i on i.id = n.item_id
       left join inv.stock_level s on s.item_id = n.item_id and s.delivery_node_id = n.delivery_node_id
+      left join lateral (
+        select -sum(l.qty) as used from inv.stock_ledger l
+         where l.item_id = n.item_id and l.delivery_node_id = n.delivery_node_id
+           and l.qty < 0 and l.movement_type <> 'count_adjust'
+           and l.occurred_at > now() - interval '14 days') u on true
      where n.delivery_node_id = ${node}::uuid and n.archived_at is null and i.archived_at is null
      order by i.category, i.name`.execute(tx);
   return r.rows;

@@ -54,7 +54,7 @@ export default async function ExceptionsPage({ searchParams }: { searchParams: S
             aria-current={s === status ? 'page' : undefined}
             className={`flex min-h-11 items-center justify-center rounded-lg ${
               s === status
-                ? 'bg-slate-900 font-semibold text-white'
+                ? 'bg-brand-700 font-semibold text-white'
                 : 'bg-white ring-1 ring-slate-300'
             }`}
           >

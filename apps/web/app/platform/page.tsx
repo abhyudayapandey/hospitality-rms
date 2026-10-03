@@ -37,7 +37,7 @@ export default async function PlatformHome() {
       </div>
       <Link
         href="/platform/customers/new"
-        className="flex min-h-12 items-center justify-center rounded-lg bg-slate-900 font-medium text-white"
+        className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
       >
         New customer
       </Link>

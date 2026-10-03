@@ -1,6 +1,7 @@
 import { MODULE_CODES } from '@outlet-ops/domain';
 import { describe, expect, it } from 'vitest';
 import { canOpen, visibleNav, type NavInput } from './nav';
+import { screensFor } from './screens';
 import { MODULE_DOMAINS, modulesOn, withModules } from './modules';
 import { peopleTabs } from './roster-view';
 
@@ -61,7 +62,7 @@ describe('what disappears from the screens', () => {
     });
     expect(t.me.map((x) => x.label)).toEqual(['My shifts', 'Clock', 'Leave']);
   });
-  it('a cook without Production loses the Production nav item', () => {
+  it('a cook without Production loses Make', () => {
     const input: NavInput = {
       groups: new Set(['SELF', 'STAFF', 'PRODUCTION_TEAM']),
       domains: new Set(['ROSTER', 'TASKS']),
@@ -70,6 +71,9 @@ describe('what disappears from the screens', () => {
       reports: 'mine',
     };
     expect(canOpen('production', input)).toBe(false);
-    expect(visibleNav(input).map((n) => n.label)).toEqual(['Home', 'Tasks', 'Roster', 'Inbox']);
+    expect(visibleNav(input).map((n) => n.label)).toEqual(['Home', 'Tasks', 'Me']);
+    expect(
+      screensFor({ ...input, access: new Map(), atWork: true }).map((s) => s.key),
+    ).not.toContain('make');
   });
 });

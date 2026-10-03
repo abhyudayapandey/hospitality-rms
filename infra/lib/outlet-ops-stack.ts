@@ -138,7 +138,7 @@ export class OutletOpsStack extends Stack {
       'S3 Standard pg_dump every 6 h kept 30 days - cents per month',
     );
 
-    // Wastage and task photos: private, written and read only through presigned URLs that
+    // Wastage, task and item photos: private, written and read only through presigned URLs that
     // the web app issues with the instance role (POST: 5 MB, image types; GET: 5 minutes).
     const photoBucket = new s3.Bucket(this, 'PhotoBucket', {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
@@ -253,6 +253,15 @@ export class OutletOpsStack extends Stack {
         sid: 'TaskPhotos',
         actions: ['s3:PutObject', 's3:GetObject'],
         resources: [photoBucket.arnForObjects('tasks/*')],
+      }),
+    );
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        // item photos (ADR 034): kept as long as the item, so no lifecycle rule; a new photo
+        // takes a new key and the old one stays (no delete right)
+        sid: 'ItemPhotos',
+        actions: ['s3:PutObject', 's3:GetObject'],
+        resources: [photoBucket.arnForObjects('items/*')],
       }),
     );
     role.addToPolicy(

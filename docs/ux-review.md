@@ -230,6 +230,26 @@ one customer's roles or one person's rights differ from the rest?
 
 ## Progress
 
+- **UX-6 built** (ADR 034), from the approved mock-ups. The changes:
+  - Drawn line icons and one brand colour.
+  - Three tabs for frontline staff (Home, Tasks, Me), with four tiles on Home. Every other
+    screen is on **Me**, and Approvals is in the header for anyone without that tab.
+  - Home by role:
+    - the shift card with one big Clock in;
+    - the next job for frontline staff;
+    - the store keeper's four tiles;
+    - approvals with Approve and No right on Home;
+    - Needs attention as one red or amber line per department;
+    - figures against the targets;
+    - outlets side by side for the area manager and the owner.
+  - "Running low" (runs out within three days) instead of "below par".
+  - Checklists one step at a time.
+  - Plain words throughout.
+  - Item photos, taken with the phone camera.
+
+  Still to do: a first-run tour, recipe step photos, making a batch step by step, and the
+  try-out with real staff at the pilot.
+
 - **AC-1 done** (ADR 027): customer-specific access groups (U-28). The Account Owner builds
   groups in Admin → Access groups, or a platform admin in file 05, from the product's
   business rights; a group can carry the requests and approvals of product roles ("approves

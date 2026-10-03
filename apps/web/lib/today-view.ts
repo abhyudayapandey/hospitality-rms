@@ -53,24 +53,9 @@ export function shiftLine(s: ShiftLike, now: Date, tz: string): string {
   return `${day} ${formatSpan(s.start_at, s.end_at, tz)} · ${s.node_name}`;
 }
 
-export interface Shortcut {
-  href: string;
-  label: string;
-}
+export type AttentionKind = 'lowStock' | 'flags' | 'repairs' | 'openSlots';
 
-/** At most `max` shortcuts on the card; the rest under "All screens". Order is priority. */
-export function splitShortcuts(
-  all: readonly Shortcut[],
-  max = 4,
-): { shortcuts: Shortcut[]; rest: Shortcut[] } {
-  const seen = new Set<string>();
-  const unique = all.filter((s) => !seen.has(s.href) && seen.add(s.href));
-  return { shortcuts: unique.slice(0, max), rest: unique.slice(max) };
-}
-
-export type AttentionKind = 'belowPar' | 'flags' | 'repairs' | 'openSlots';
-
-/** One count at one place: a store (below par) or an org place (the rest). */
+/** One count at one place: a store (low stock) or an org place (the rest). */
 export interface AttentionCount {
   kind: AttentionKind;
   node: string;
@@ -91,24 +76,39 @@ export interface PlaceDepartment {
 }
 
 export interface AttentionLine {
+  kind: AttentionKind;
   href: string;
   text: string;
   n: number;
 }
 
+/** red: something runs out or is broken now; amber: needs doing soon (UX-6) */
+export type AttentionTone = 'bad' | 'warn';
+
 export interface AttentionGroup {
   key: string;
   label: string;
   lines: AttentionLine[];
+  /** everything in the group added up */
+  total: number;
+  tone: AttentionTone;
 }
 
-const KINDS: readonly AttentionKind[] = ['belowPar', 'flags', 'repairs', 'openSlots'];
+const KINDS: readonly AttentionKind[] = ['lowStock', 'flags', 'repairs', 'openSlots'];
+
+/** Low stock runs out within three days: red. The rest wait a little: amber. */
+const TONE: Record<AttentionKind, AttentionTone> = {
+  lowStock: 'bad',
+  repairs: 'warn',
+  flags: 'warn',
+  openSlots: 'warn',
+};
 
 const LINE: Record<AttentionKind, { href: string; one: string; many: string }> = {
-  belowPar: { href: '/stock', one: 'item below par', many: 'items below par' },
-  flags: { href: '/roster/exceptions', one: 'attendance flag', many: 'attendance flags' },
+  lowStock: { href: '/stock?low=1', one: 'item running low', many: 'items running low' },
+  flags: { href: '/roster/exceptions', one: 'attendance issue', many: 'attendance issues' },
   repairs: { href: '/tasks/maintenance', one: 'open repair', many: 'open repairs' },
-  openSlots: { href: '/roster', one: 'open slot this week', many: 'open slots this week' },
+  openSlots: { href: '/roster', one: 'open shift this week', many: 'open shifts this week' },
 };
 
 /**
@@ -152,6 +152,7 @@ export function attentionGroups(
       lines: KINDS.filter((k) => (g.n.get(k) ?? 0) > 0).map((k) => {
         const n = g.n.get(k)!;
         return {
+          kind: k,
           href: k === 'openSlots' ? (g.slot ?? LINE[k].href) : LINE[k].href,
           n,
           text: n === 1 ? LINE[k].one : LINE[k].many,
@@ -162,5 +163,11 @@ export function attentionGroups(
       (a, b) =>
         a.rank - b.rank || a.outlet.localeCompare(b.outlet) || a.label.localeCompare(b.label),
     )
-    .map(({ key, label: l, lines }) => ({ key, label: l, lines }));
+    .map(({ key, label: l, lines }) => ({
+      key,
+      label: l,
+      lines,
+      total: lines.reduce((t, x) => t + x.n, 0),
+      tone: lines.some((x) => TONE[x.kind] === 'bad') ? ('bad' as const) : ('warn' as const),
+    }));
 }

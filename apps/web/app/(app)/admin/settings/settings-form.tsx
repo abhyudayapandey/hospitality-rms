@@ -207,7 +207,7 @@ export function SettingsForm({
         <div className="space-y-2">
           <button
             disabled={pending}
-            className="min-h-12 w-full rounded-lg bg-slate-900 font-medium text-white disabled:opacity-50"
+            className="min-h-12 w-full rounded-lg bg-brand-700 font-medium text-white disabled:opacity-50"
           >
             {pending ? 'Saving…' : 'Save'}
           </button>

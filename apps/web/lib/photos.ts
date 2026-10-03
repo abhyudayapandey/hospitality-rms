@@ -67,3 +67,13 @@ export async function copyPhoto(from: string, to: string): Promise<void> {
 export function presignPhotoView(key: string): Promise<string> {
   return presignView(s3(), bucket(), key);
 }
+
+/** 5-minute GET URLs for item photos (ADR 034), by item; none when photos are off. */
+export async function itemPhotoUrls(
+  rows: readonly { item_id: string; photo_key: string | null }[],
+): Promise<Map<string, string>> {
+  if (!photosEnabled()) return new Map();
+  const withPhoto = rows.filter((r) => r.photo_key);
+  const urls = await Promise.all(withPhoto.map((r) => presignPhotoView(r.photo_key!)));
+  return new Map(withPhoto.map((r, i) => [r.item_id, urls[i]!]));
+}

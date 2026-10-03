@@ -34,7 +34,7 @@ export interface AccessRow {
 const small =
   'min-h-11 rounded-lg px-3 text-sm font-medium ring-1 ring-slate-300 disabled:opacity-50';
 const dark =
-  'min-h-11 rounded-lg bg-slate-900 px-3 text-sm font-medium text-white disabled:opacity-50';
+  'min-h-11 rounded-lg bg-brand-700 px-3 text-sm font-medium text-white disabled:opacity-50';
 const day = (d: string | Date | null) =>
   d === null ? null : typeof d === 'string' ? d.slice(0, 10) : d.toISOString().slice(0, 10);
 

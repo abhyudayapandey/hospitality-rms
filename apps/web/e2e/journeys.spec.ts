@@ -81,8 +81,8 @@ test('clock in (server)', async ({ page }) => {
   if (await card.isVisible()) {
     await j.go(card);
   } else {
-    await j.go(nav(page, 'Roster'));
-    await j.go(page.getByTestId('clock-card'));
+    await j.go(nav(page, 'Me'));
+    await j.go(page.getByTestId('me-clock'));
   }
   await j.last(page.getByRole('button', { name: /^Clock (in|out)$/ }));
   j.done('Clock in', 'Server', { there: 2, form: 1 });
@@ -146,7 +146,13 @@ test('approve leave (floor manager)', async ({ page }) => {
     [],
   );
   const j = await start(page, 'Test Floor Manager 3.0');
-  await j.go(page.getByRole('link', { name: /Waiting for you/ }));
+  // what needs their yes is on Home (UX-6); otherwise Approvals is one tap away
+  const onHome = page
+    .getByTestId('approvals-card')
+    .getByTestId('inbox-item')
+    .filter({ hasText: 'Test Server 3.0' })
+    .filter({ hasText: 'Leave' });
+  if ((await onHome.count()) === 0) await j.go(page.getByRole('link', { name: /^Approvals/ }));
   await j.go(
     page
       .getByTestId('inbox-item')
@@ -164,7 +170,7 @@ test('fill an open slot (executive chef)', async ({ page }) => {
   // took Roster → the day → Assign
   const j = await start(page, 'Test Executive Chef 1.0');
   await j.go(
-    page.getByTestId('attention-card').getByRole('link', { name: /open slots? this week/ }),
+    page.getByTestId('attention-card').getByRole('link', { name: /open shifts? this week/ }),
   );
   await j.go(
     page
@@ -184,7 +190,8 @@ test("today's sales (cost controller)", async ({ page }) => {
 
 test('my week (server)', async ({ page }) => {
   const j = await start(page, 'Test Server 3.0');
-  await j.go(page.getByRole('link', { name: 'My week', exact: true }).first());
+  await j.go(nav(page, 'Me'));
+  await j.go(page.getByTestId('me-myWeek'));
   await expect(page.getByTestId('report-week')).toBeVisible();
-  j.done('See my week', 'Server', { there: 1, form: 0 });
+  j.done('See my week', 'Server', { there: 2, form: 0 });
 });

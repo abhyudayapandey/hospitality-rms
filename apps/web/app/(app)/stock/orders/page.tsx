@@ -33,7 +33,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
       {ctx.can('PURCHASE_ORDERS', 'modify') && !ctx.node.derived && (
         <Link
           href={`/stock/orders/new${q}`}
-          className="flex min-h-12 items-center justify-center rounded-lg bg-slate-900 font-medium text-white"
+          className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
         >
           New order
         </Link>

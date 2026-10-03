@@ -29,7 +29,7 @@ export default async function MaintenancePage() {
       <TasksHeader tabs={data.tabs} active="/tasks/maintenance" title="Maintenance" />
       <Link
         href="/tasks/maintenance/new"
-        className="flex min-h-12 items-center justify-center rounded-xl bg-slate-900 font-medium text-white"
+        className="flex min-h-12 items-center justify-center rounded-xl bg-brand-700 font-medium text-white"
       >
         Report a problem
       </Link>

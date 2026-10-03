@@ -33,7 +33,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
 
   return (
     <div className="space-y-4">
-      <SupplyHeader ctx={ctx} active="/stock/production" title="Production" />
+      <SupplyHeader ctx={ctx} active="/stock/production" title="Make" />
       {expired.length > 0 && (
         <section
           className="space-y-2 rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200"

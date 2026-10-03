@@ -137,7 +137,7 @@ export default async function RecipePage({
                 data-testid="step"
                 className="flex gap-3 rounded-xl bg-white p-3 ring-1 ring-slate-200"
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-semibold text-white">
                   {s.step}
                 </span>
                 <span className="min-w-0">
