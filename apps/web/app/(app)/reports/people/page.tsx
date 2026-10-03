@@ -1,5 +1,11 @@
 import { Empty } from '@/components/messages';
-import { NoReport, PeriodPicker, ReportHeader, ReportSections } from '@/components/report-view';
+import {
+  CsvLink,
+  NoReport,
+  PeriodPicker,
+  ReportHeader,
+  ReportSections,
+} from '@/components/report-view';
 import { requireUser } from '@/lib/auth/server';
 import { formatDay } from '@/lib/dates';
 import { withUser } from '@/lib/db';
@@ -114,6 +120,14 @@ export default async function PeopleReport({ searchParams }: { searchParams: Sea
         </section>
       )}
 
+      {departments.length > 1 && (
+        <CsvLink
+          report="people_departments"
+          node={place.id}
+          period={range}
+          label="Departments as CSV"
+        />
+      )}
       <section aria-label="Leave by type" className="space-y-2">
         <h2 className="text-sm font-semibold text-slate-700">Leave by type</h2>
         {leave.length === 0 ? (

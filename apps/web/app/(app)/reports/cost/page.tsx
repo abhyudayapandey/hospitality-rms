@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Empty } from '@/components/messages';
 import {
   CostBreakdown,
+  CsvLink,
   NoReport,
   PeriodPicker,
   ReportHeader,
@@ -10,6 +11,7 @@ import {
 import { requireUser } from '@/lib/auth/server';
 import { formatDay } from '@/lib/dates';
 import { withUser } from '@/lib/db';
+import { companySettings } from '@/lib/settings-data';
 import { formatMoney } from '@/lib/format';
 import { formatQty } from '@/lib/inventory';
 import type { SearchParams } from '@/lib/params';
@@ -51,10 +53,11 @@ export default async function CostOfSales({ searchParams }: { searchParams: Sear
       parts.some((p) => p.part === 'labour') && capRange(range.from, range.to).from === range.from
         ? await labourCost(tx, place.id, range.from, range.to)
         : null;
-    return { places, place, range, totals, items, expired, parts, labour };
+    const { targets } = await companySettings(tx);
+    return { places, place, range, totals, items, expired, parts, labour, targets };
   });
   if (!data) return <NoReport>You don&apos;t have access to this report.</NoReport>;
-  const { places, place, range, totals, items, expired, parts, labour } = data;
+  const { places, place, range, totals, items, expired, parts, labour, targets } = data;
   const top = topLosses(items);
   const notCounted = items.filter((i) => !i.counted);
   const stores = new Set(items.map((i) => i.store_id));
@@ -71,7 +74,7 @@ export default async function CostOfSales({ searchParams }: { searchParams: Sear
         from={range.from}
         to={range.to}
       />
-      <ReportSections report="cost_of_sales" rows={totals} />
+      <ReportSections report="cost_of_sales" rows={totals} targets={targets} />
       <CostBreakdown rows={parts} />
       {labour && <LabourByDepartment rows={labour} />}
 
@@ -143,6 +146,14 @@ export default async function CostOfSales({ searchParams }: { searchParams: Sear
         </details>
       )}
 
+      {items.length > 0 && (
+        <CsvLink
+          report="cost_items"
+          node={place.id}
+          period={range}
+          label="Download the items as CSV"
+        />
+      )}
       <p className="text-xs text-slate-500">
         {formatDay(range.from)} to {formatDay(range.to)}, whole days. Cost % is cost over sales
         before tax; &ldquo;by recipe&rdquo; is what the recipes say the sales used, and the actual

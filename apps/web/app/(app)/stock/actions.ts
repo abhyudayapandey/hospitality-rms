@@ -211,3 +211,32 @@ export async function recordProduction(
     return { id: r.rows[0]!.id };
   });
 }
+
+// ---------------------------------------------------------------------------
+// Sending an order to the supplier (PO-4, ADR 032). inv.record_po_send checks PURCHASE_ORDERS
+// modify at the order's store and that the order is released; the page then opens WhatsApp,
+// the mail app or the printable order on the person's phone.
+
+export async function recordPoSend(
+  po: string,
+  channel: 'whatsapp' | 'email' | 'print',
+): Promise<ActionResult<{ id: string }>> {
+  return run('record_po_send', async (tx) => {
+    const r = await sql<{ id: string }>`
+      select inv.record_po_send(${po}::uuid, ${channel}) as id`.execute(tx);
+    return { id: r.rows[0]!.id };
+  });
+}
+
+/** The supplier's phone (for WhatsApp) and email; blank clears it. Audited. */
+export async function updateSupplierContact(
+  supplier: string,
+  phone: string,
+  email: string,
+): Promise<ActionResult<null>> {
+  return run('update_supplier_contact', async (tx) => {
+    await sql`select inv.update_supplier_contact(${supplier}::uuid, ${phone || null},
+                                                 ${email || null})`.execute(tx);
+    return null;
+  });
+}

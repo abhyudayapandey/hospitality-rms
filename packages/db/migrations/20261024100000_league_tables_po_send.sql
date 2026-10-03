@@ -386,12 +386,34 @@ begin
   return v_id;
 end $$;
 
+-- The sends of an order, with who sent them, for anyone who sees the store's orders.
+create function inv.po_sends(p_po uuid)
+returns table (channel text, sent_at timestamptz, sent_by uuid, sent_by_name text)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, inv
+as $$
+declare
+  v_po inv.purchase_order;
+begin
+  select * into v_po from inv.purchase_order po
+   where po.id = p_po and po.tenant_id = core.my_tenant();
+  if v_po.id is null or not core.can('PURCHASE_ORDERS', 'view', null, v_po.delivery_node_id) then
+    raise exception 'NOT_AUTHORISED' using detail = 'PURCHASE_ORDERS view at the store';
+  end if;
+  return query
+    select s.channel, s.sent_at, s.sent_by, u.display_name
+      from inv.po_send s join core.app_user u on u.id = s.sent_by
+     where s.po_id = v_po.id
+     order by s.sent_at desc, s.channel;
+end $$;
+
 revoke execute on function inv.update_supplier_contact(uuid, text, text),
-  inv.record_po_send(uuid, text) from public;
+  inv.record_po_send(uuid, text), inv.po_sends(uuid) from public;
 grant execute on function inv.update_supplier_contact(uuid, text, text),
-  inv.record_po_send(uuid, text) to app_rw;
+  inv.record_po_send(uuid, text), inv.po_sends(uuid) to app_rw;
 
 -- migrate:down
+drop function inv.po_sends(uuid);
 drop function inv.record_po_send(uuid, text);
 delete from core.domain_table where table_name = 'inv.po_send'::regclass;
 drop table inv.po_send;

@@ -103,6 +103,12 @@ export default async function AdminPage() {
           >
             Modules
           </Link>
+          <Link
+            href="/admin/settings"
+            className="flex min-h-12 items-center justify-center rounded-lg font-medium ring-1 ring-slate-300"
+          >
+            Targets and settings
+          </Link>
         </nav>
       )}
       {audit && audit.length > 0 && (

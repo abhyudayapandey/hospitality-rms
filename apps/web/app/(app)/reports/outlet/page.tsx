@@ -7,6 +7,7 @@ import {
 } from '@/components/report-view';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
+import { companySettings } from '@/lib/settings-data';
 import type { SearchParams } from '@/lib/params';
 import { outletFlash, reportDay, reportPlace, reportToday } from '@/lib/report-data';
 import { flashCostParts } from '@/lib/reports';
@@ -23,10 +24,17 @@ export default async function OutletReport({ searchParams }: { searchParams: Sea
     if (!place) return null;
     const today = await reportToday(tx, place.id);
     const day = await reportDay(searchParams, today);
-    return { places, place, today, day, rows: await outletFlash(tx, place.id, day) };
+    return {
+      places,
+      place,
+      today,
+      day,
+      rows: await outletFlash(tx, place.id, day),
+      targets: (await companySettings(tx)).targets,
+    };
   });
   if (!data) return <NoReport>You don&apos;t have access to this report.</NoReport>;
-  const { places, place, today, day, rows } = data;
+  const { places, place, today, day, rows, targets } = data;
   return (
     <div className="space-y-4">
       <ReportHeader
@@ -38,7 +46,7 @@ export default async function OutletReport({ searchParams }: { searchParams: Sea
         day={day}
         today={today}
       />
-      <ReportSections report="outlet_flash" rows={rows} />
+      <ReportSections report="outlet_flash" rows={rows} targets={targets} />
       <CostBreakdown rows={flashCostParts(rows)} />
       <p className="text-xs text-slate-500">
         Business day 06:00 to 06:00. Cost is the recipe cost of what sold; sales come from the daily

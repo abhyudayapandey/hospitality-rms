@@ -2,6 +2,7 @@ import { DayPicker, NoReport, ReportHeader, ReportSections } from '@/components/
 import { requireUser } from '@/lib/auth/server';
 import { formatSpan } from '@/lib/dates';
 import { withUser } from '@/lib/db';
+import { companySettings } from '@/lib/settings-data';
 import { jobTitles } from '@/lib/job-titles';
 import type { SearchParams } from '@/lib/params';
 import {
@@ -29,10 +30,11 @@ export default async function DepartmentReport({ searchParams }: { searchParams:
       rows: await departmentDay(tx, place.id, day),
       people: day === today ? await departmentPeople(tx, place.id) : [],
       title: await jobTitles(tx),
+      targets: (await companySettings(tx)).targets,
     };
   });
   if (!data) return <NoReport>You don&apos;t have access to this report.</NoReport>;
-  const { places, place, today, day, rows, people, title } = data;
+  const { places, place, today, day, rows, people, title, targets } = data;
   const now = new Date();
   return (
     <div className="space-y-4">
@@ -91,7 +93,7 @@ export default async function DepartmentReport({ searchParams }: { searchParams:
           )}
         </section>
       )}
-      <ReportSections report="department" rows={rows} />
+      <ReportSections report="department" rows={rows} targets={targets} />
     </div>
   );
 }

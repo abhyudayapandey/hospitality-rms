@@ -21,6 +21,7 @@ export const PLACE_SCREENS = [
   'maintenance',
   'report',
   // reports (ADR 023, 028): rpt.report_places(), not core.screen_places()
+  'league',
   'outlet_flash',
   'department',
   'cost_of_sales',
@@ -33,6 +34,7 @@ export const PLACE_SCREENS = [
 
 /** Report screens: their places come from rpt.report_places(). */
 export const REPORT_SCREENS = [
+  'league',
   'outlet_flash',
   'department',
   'cost_of_sales',

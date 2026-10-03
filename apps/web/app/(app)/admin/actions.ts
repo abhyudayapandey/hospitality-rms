@@ -283,6 +283,21 @@ export async function setModule(code: string, on: boolean): Promise<ActionResult
 }
 
 // ---------------------------------------------------------------------------
+// Company settings (R-4, ADR 031; PO-4, ADR 032): targets, the menu engineering threshold,
+// the overtime multiplier, prices on sent orders. core.set_company_settings checks
+// COMPANY_SETTINGS modify and every value; the tenant's audit trigger records the change.
+
+export async function saveCompanySettings(settings: unknown): Promise<ActionResult<null>> {
+  const r = await run('set_company_settings', async (tx) => {
+    await sql`select core.set_company_settings(${JSON.stringify(settings)}::jsonb)`.execute(tx);
+    return null;
+  });
+  // the reports compare against the targets
+  if (r.ok) revalidatePath('/reports', 'layout');
+  return r;
+}
+
+// ---------------------------------------------------------------------------
 // The company's own access groups (ADR 027): the Account Owner builds and edits them.
 // core.save_custom_group checks COMPANY_SETTINGS modify and every rule (business rights
 // only, business roles only, no product codes); the audit triggers record each change.

@@ -13,6 +13,7 @@ import {
   type Period,
   type ReportCode,
 } from '@/lib/reports';
+import { vsTarget, type TargetKey } from '@/lib/settings';
 import { PlaceSwitcher, type SwitcherPlace } from './place-switcher';
 import type { ReportScreen } from '@/lib/place-screens';
 
@@ -74,8 +75,19 @@ const TREND = {
   none: 'text-slate-500',
 } as const;
 
-/** A report's figures in its sections; each against the same day last week when there is one. */
-export function ReportSections({ report, rows }: { report: ReportCode; rows: MeasureRow[] }) {
+/**
+ * A report's figures in its sections; each against the same day last week when there is one,
+ * and against the company's target (R-4): red only when worse by more than 2 points.
+ */
+export function ReportSections({
+  report,
+  rows,
+  targets,
+}: {
+  report: ReportCode;
+  rows: MeasureRow[];
+  targets?: Record<TargetKey, number> | undefined;
+}) {
   return (
     <div className="space-y-4">
       {SECTIONS[report].map(([title, measures]) => {
@@ -87,17 +99,30 @@ export function ReportSections({ report, rows }: { report: ReportCode; rows: Mea
             <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
               {list.map((r) => {
                 const c = compare(r.def, r.value, r.last_week);
+                const t = targets ? vsTarget(r.measure, r.value, targets) : null;
                 return (
                   <li
                     key={r.measure}
                     className="flex items-baseline justify-between gap-3 p-3"
                     data-testid={`measure-${r.measure}`}
+                    data-target={t?.state ?? 'none'}
                   >
                     <span className="text-sm text-slate-700">{r.def.label}</span>
                     <span className="text-right">
-                      <span className="block font-semibold tabular-nums" data-testid="value">
+                      <span
+                        className={`block font-semibold tabular-nums ${t?.state === 'bad' ? 'text-rose-700' : ''}`}
+                        data-testid="value"
+                      >
                         {formatMeasure(r.def.unit, r.value)}
                       </span>
+                      {t?.target !== null && t?.target !== undefined && (
+                        <span
+                          className={`block text-xs ${t.state === 'bad' ? 'text-rose-700' : 'text-slate-500'}`}
+                          data-testid="target"
+                        >
+                          target {formatMeasure('pct', t.target)}
+                        </span>
+                      )}
                       {c.text && (
                         <span className={`block text-xs ${TREND[c.trend]}`}>{c.text}</span>
                       )}
@@ -222,5 +247,34 @@ export function CostBreakdown({ rows, note }: { rows: CostPartRow[]; note?: stri
       </ul>
       {note && <p className="text-xs text-slate-500">{note}</p>}
     </section>
+  );
+}
+
+/**
+ * Download one of the report's lists as a CSV file (R-4, ADR 031): the same figures, for the
+ * same place and period. A plain link, so it works on any phone.
+ */
+export function CsvLink({
+  report,
+  node,
+  period,
+  label = 'Download CSV',
+}: {
+  report: string;
+  node: string;
+  period?: { period: Period; from: string; to: string } | undefined;
+  label?: string;
+}) {
+  const q = period
+    ? `node=${node}&period=${period.period}&from=${period.from}&to=${period.to}`
+    : `node=${node}`;
+  return (
+    <a
+      href={`/reports/csv/${report}?${q}`}
+      className="inline-flex min-h-11 items-center text-sm text-slate-700 underline"
+      data-testid={`csv-${report}`}
+    >
+      {label}
+    </a>
   );
 }

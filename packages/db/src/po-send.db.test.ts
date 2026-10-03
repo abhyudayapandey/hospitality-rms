@@ -93,6 +93,20 @@ describe('recording a send', () => {
         { channel: 'print', sent_by: chef },
         { channel: 'whatsapp', sent_by: chef },
       ]);
+      const named = await attemptAs<{ channel: string; sent_by_name: string }>(
+        c,
+        ids.user('test.general-manager.1.0'),
+        'select channel, sent_by_name from inv.po_sends($1)',
+        [po],
+      );
+      expect(named.rows?.map((r) => r.sent_by_name)).toEqual([
+        'Test Executive Chef 1.0',
+        'Test Executive Chef 1.0',
+      ]);
+      expect(
+        (await attemptAs(c, ids.user('test.bartender.1.0'), 'select * from inv.po_sends($1)', [po]))
+          .error,
+      ).toBe('NOT_AUTHORISED');
       const bartender = await attemptAs(
         c,
         ids.user('test.bartender.1.0'),
