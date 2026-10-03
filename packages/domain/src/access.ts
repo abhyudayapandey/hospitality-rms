@@ -33,6 +33,9 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'SALES', tree: 'delivery' },
   { code: 'WORKERS', tree: 'org' },
   { code: 'COMPENSATION', tree: 'org' },
+  // labour cost totals per department and outlet, never one person's pay; groups of fewer
+  // than 3 paid people are folded together (ADR 030)
+  { code: 'LABOUR_COST', tree: 'org' },
   { code: 'ROSTER', tree: 'org' },
   { code: 'ATTENDANCE', tree: 'org' },
   { code: 'LEAVE', tree: 'org' },
@@ -220,6 +223,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       TASKS: m,
       CHECKLIST_TEMPLATES: m,
       MAINTENANCE: m,
+      LABOUR_COST: v,
     },
   },
   {
@@ -244,6 +248,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       TASKS: v,
       CHECKLIST_TEMPLATES: v,
       MAINTENANCE: v,
+      LABOUR_COST: v,
     },
   },
   {
@@ -265,7 +270,15 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     code: 'HR_ADMIN',
     name: 'HR Admin',
     kind: 'role',
-    grants: { WORKERS: m, COMPENSATION: m, LEAVE: m, ROSTER: v, ATTENDANCE: v, WF_CONFIG: v },
+    grants: {
+      WORKERS: m,
+      COMPENSATION: m,
+      LEAVE: m,
+      ROSTER: v,
+      ATTENDANCE: v,
+      WF_CONFIG: v,
+      LABOUR_COST: v,
+    },
   },
   {
     code: 'SECURITY_ADMIN',
