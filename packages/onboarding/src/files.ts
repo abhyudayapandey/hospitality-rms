@@ -51,6 +51,8 @@ const timezone = z.string().refine(isTimezone, 'is not a known time zone');
 const optTimezone = z.union([z.literal('').transform(() => undefined), timezone]);
 
 export const OUTLET_FORMATS = ['full_hotel', 'small_hotel', 'standalone_bar'] as const;
+/** What a department does, for the order of Home's "Needs attention" (DB-2, ADR 033). */
+export const DEPARTMENT_TYPES = ['kitchen', 'service', 'housekeeping', 'other'] as const;
 export const SCOPES = [
   'home_department',
   'whole_outlet',
@@ -263,7 +265,13 @@ export const FILES = {
       parent_code: optCode,
       timezone: optTimezone,
       outlet_format: z.union([z.literal('').transform(() => undefined), z.enum(OUTLET_FORMATS)]),
+      // DB-2 (ADR 033): optional column, departments only; blank means other
+      department_type: z
+        .enum(['', ...DEPARTMENT_TYPES], 'must be kitchen, service, housekeeping or other')
+        .transform((v) => (v === '' ? undefined : v))
+        .optional(),
     }),
+    optional: ['department_type'],
   },
   deliveryNodes: {
     file: '02_delivery_nodes.csv',

@@ -233,6 +233,35 @@ describe('menu engineering', () => {
       expect(Number(d[0]!.avg_margin)).toBeCloseTo(weighted, 1);
     });
   });
+
+  it('runs over up to a year (RPT-13: 3, 6, 9 and 12 months); never longer', async () => {
+    await inRolledBackTx(async (c) => {
+      const w = await window(c);
+      const week = await dishes(c);
+      // the test data's sales are all in the last week: a year gives the same figures
+      const year = await as<Dish>(
+        c,
+        'test.cost-controller.1.0',
+        `select * from rpt.menu_engineering($1, $2::date - 365, $2::date)`,
+        [ids.node('TEST-HOTEL-1.0'), w.to],
+      );
+      expect(year.length).toBe(week.size);
+      for (const r of year) {
+        expect([r.code, r.sold, r.class]).toEqual([
+          r.code,
+          week.get(r.code)!.sold,
+          week.get(r.code)!.class,
+        ]);
+      }
+      const tooLong = await attemptAs(
+        c,
+        ids.user('test.cost-controller.1.0'),
+        `select * from rpt.menu_engineering($1, $2::date - 366, $2::date)`,
+        [ids.node('TEST-HOTEL-1.0'), w.to],
+      );
+      expect(tooLong.error).toBe('INVALID_DATES');
+    });
+  });
 });
 
 describe('stock position', () => {

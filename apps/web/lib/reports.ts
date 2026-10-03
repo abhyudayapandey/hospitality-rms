@@ -122,6 +122,9 @@ export const MEASURES: Readonly<Record<string, MeasureDef>> = {
   days_on_hand: { label: 'Days on hand', unit: 'days' },
   dead_items: { label: 'Items not moved in 30 days', unit: 'count', better: 'down' },
   dead_value: { label: 'Their value', unit: 'money', better: 'down' },
+  // RPT-14 (ADR 033): dated batches, at the item's average cost at the store
+  expired_stock_value: { label: 'Expired', unit: 'money', better: 'down' },
+  expiring_stock_value: { label: 'Expiring within 3 days', unit: 'money', better: 'down' },
   // labour (R-3, ADR 030): only for people who see labour cost
   splh: { label: 'Sales per hour worked', unit: 'money', better: 'up' },
   labour_cost: { label: 'People cost', unit: 'money', better: 'down' },
@@ -193,6 +196,7 @@ export const SECTIONS: Readonly<Record<ReportCode, readonly [string, readonly st
   stock_position: [
     ['Value', ['stock_value', 'value_7', 'value_14', 'value_21', 'value_28']],
     ['Use', ['used_value', 'days_on_hand', 'basis_days']],
+    ['Expiry', ['expired_stock_value', 'expiring_stock_value']],
     ['Dead stock', ['dead_items', 'dead_value']],
   ],
   people: [
@@ -535,4 +539,49 @@ export function sortLeague<T extends LeagueRow>(
     if (x === y) return a.name.localeCompare(b.name);
     return better === 'up' ? y - x : x - y;
   });
+}
+
+// ---------------------------------------------------------------------------------------
+// Menu engineering periods and wording (RPT-13, ADR 033)
+// ---------------------------------------------------------------------------------------
+
+/** Menu engineering is for long periods: the last 3, 6, 9 or 12 months. */
+export const MENU_MONTHS = [3, 6, 9, 12] as const;
+export type MenuMonths = (typeof MENU_MONTHS)[number];
+
+export function menuMonths(s: string | undefined): MenuMonths {
+  const n = Number(s);
+  return (MENU_MONTHS as readonly number[]).includes(n) ? (n as MenuMonths) : 3;
+}
+
+/** The last `months` months ending today: from the day after the same date that many
+ * months back (the month's last day when it has no such date). A year is 365 or 366 days. */
+export function monthsRange(today: string, months: number): { from: string; to: string } {
+  const [y, m, d] = today.split('-').map(Number) as [number, number, number];
+  const back = new Date(Date.UTC(y, m - 1 - months, 1));
+  const last = new Date(Date.UTC(back.getUTCFullYear(), back.getUTCMonth() + 1, 0)).getUTCDate();
+  back.setUTCDate(Math.min(d, last));
+  return { from: shift(back.toISOString().slice(0, 10), 1), to: today };
+}
+
+/** A dish in plain words: "Price ₹525.00 · cost ₹207.50 · margin ₹317.50 a serve" and
+ * "12 sold · 20.4% of drinks sold". */
+export function dishWords(
+  d: {
+    price: string | null;
+    cost: string | null;
+    margin: string | null;
+    sold: string;
+    mix_pct: string | null;
+  },
+  menu: string,
+  money: (v: string | null) => string | null,
+): { money: string; share: string } {
+  const what = menu === 'Bar' ? 'drinks' : 'dishes';
+  return {
+    money: `Price ${money(d.price) ?? '–'} · cost ${money(d.cost) ?? '–'} · margin ${
+      money(d.margin) ?? '–'
+    } a serve`,
+    share: `${Number(d.sold)} sold · ${d.mix_pct ?? '0'}% of ${what} sold`,
+  };
 }

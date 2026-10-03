@@ -10,7 +10,9 @@ import { formatMeasure } from '@/lib/reports';
 
 // Stock position (R-2, ADR 028): a store's value now and over four weeks, days on hand
 // (value over average daily use) and stock that hasn't moved in 30 days. For the store's
-// cost people: its store keeper, cost controller and managers (rpt.can_open).
+// cost people: its store keeper, cost controller and managers (rpt.can_open). "All stores"
+// (an outlet's supply point) adds up every store of the outlet they open, and expired and
+// expiring stock is valued at average cost (RPT-14, ADR 033).
 export default async function StockPosition({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
@@ -25,7 +27,16 @@ export default async function StockPosition({ searchParams }: { searchParams: Se
   });
   if (!data) return <NoReport>You don&apos;t have access to this report.</NoReport>;
   const { places, place, summary, items } = data;
+  const all = new Set(items.map((i) => i.store)).size > 1;
   const dead = items.filter((i) => i.dead);
+  const dated = items
+    .filter((i) => Number(i.expired_value) > 0 || Number(i.expiring_value) > 0)
+    .sort(
+      (a, b) =>
+        Number(b.expired_value) +
+        Number(b.expiring_value) -
+        (Number(a.expired_value) + Number(a.expiring_value)),
+    );
   const held = items
     .filter((i) => !i.dead && i.days_on_hand !== null)
     .sort((a, b) => Number(b.days_on_hand) - Number(a.days_on_hand))
@@ -58,6 +69,29 @@ export default async function StockPosition({ searchParams }: { searchParams: Se
         )}
       </section>
 
+      {dated.length > 0 && (
+        <section aria-label="Expired and expiring" className="space-y-2">
+          <h2 className="text-sm font-semibold text-slate-700">Expired and expiring</h2>
+          <ul
+            className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
+            data-testid="expiry-items"
+          >
+            {dated.map((i) => (
+              <Item
+                key={`${i.store}:${i.sku}`}
+                i={i}
+                all={all}
+                right={
+                  Number(i.expired_value) > 0
+                    ? `${formatMoney(i.expired_value)} expired`
+                    : `${formatMoney(i.expiring_value)} expiring`
+                }
+              />
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section aria-label="Longest on hand" className="space-y-2">
         <h2 className="text-sm font-semibold text-slate-700">Longest on hand</h2>
         {held.length === 0 ? (
@@ -68,7 +102,12 @@ export default async function StockPosition({ searchParams }: { searchParams: Se
             data-testid="days-on-hand"
           >
             {held.map((i) => (
-              <Item key={i.sku} i={i} right={formatMeasure('days', i.days_on_hand)} />
+              <Item
+                key={`${i.store}:${i.sku}`}
+                i={i}
+                all={all}
+                right={formatMeasure('days', i.days_on_hand)}
+              />
             ))}
           </ul>
         )}
@@ -84,7 +123,12 @@ export default async function StockPosition({ searchParams }: { searchParams: Se
             data-testid="dead-stock"
           >
             {dead.map((i) => (
-              <Item key={i.sku} i={i} right={formatMoney(i.value) ?? ''} />
+              <Item
+                key={`${i.store}:${i.sku}`}
+                i={i}
+                all={all}
+                right={formatMoney(i.value) ?? ''}
+              />
             ))}
           </ul>
         )}
@@ -99,12 +143,13 @@ export default async function StockPosition({ searchParams }: { searchParams: Se
   );
 }
 
-function Item({ i, right }: { i: StockItemRow; right: string }) {
+function Item({ i, right, all }: { i: StockItemRow; right: string; all: boolean }) {
   return (
     <li className="flex justify-between gap-2 px-4 py-3 text-sm" data-sku={i.sku}>
       <span className="min-w-0">
         <span className="block font-medium">{i.name}</span>
         <span className="block text-xs text-slate-500">
+          {all && `${i.store} · `}
           {formatQty(i.on_hand, i.unit)} · {formatMoney(i.value)}
         </span>
       </span>

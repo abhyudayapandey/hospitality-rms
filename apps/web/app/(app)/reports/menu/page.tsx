@@ -1,37 +1,42 @@
+import Link from 'next/link';
 import { Empty } from '@/components/messages';
-import { NoReport, PeriodPicker, ReportHeader } from '@/components/report-view';
+import { NoReport, ReportHeader } from '@/components/report-view';
 import { requireUser } from '@/lib/auth/server';
 import { formatDay } from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import { formatMoney } from '@/lib/format';
-import type { SearchParams } from '@/lib/params';
+import { param, type SearchParams } from '@/lib/params';
+import { menuEngineering, reportPlace, reportToday, type DishRow } from '@/lib/report-data';
 import {
-  menuEngineering,
-  reportPeriod,
-  reportPlace,
-  reportToday,
-  type DishRow,
-} from '@/lib/report-data';
-import { dishClass, DISH_CLASSES } from '@/lib/reports';
+  dishClass,
+  dishWords,
+  DISH_CLASSES,
+  MENU_MONTHS,
+  menuMonths,
+  monthsRange,
+} from '@/lib/reports';
 
 // Menu engineering (R-2, ADR 028): each dish's margin against its popularity, per menu,
 // sorted into stars, plowhorses, puzzles and dogs, with what to do about each group. The
 // database works out the classes (rpt.menu_engineering); this page only lays them out.
+// It is meant for long periods: the last 3, 6, 9 or 12 months (RPT-13, ADR 033).
 export default async function MenuEngineering({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
     const { places, place } = await reportPlace(tx, 'menu_engineering', searchParams);
     if (!place) return null;
-    const range = await reportPeriod(searchParams, await reportToday(tx, place.id));
+    const months = menuMonths(param(await searchParams, 'months'));
+    const range = monthsRange(await reportToday(tx, place.id), months);
     return {
       places,
       place,
+      months,
       range,
       dishes: await menuEngineering(tx, place.id, range.from, range.to),
     };
   });
   if (!data) return <NoReport>You don&apos;t have access to this report.</NoReport>;
-  const { places, place, range, dishes } = data;
+  const { places, place, months, range, dishes } = data;
   const menus = [...new Set(dishes.map((d) => d.menu))];
   return (
     <div className="space-y-4">
@@ -39,13 +44,20 @@ export default async function MenuEngineering({ searchParams }: { searchParams: 
         report="menu_engineering"
         switcher={{ screen: 'menu_engineering', places, current: place.id }}
       />
-      <PeriodPicker
-        action="/reports/menu"
-        node={place.id}
-        period={range.period}
-        from={range.from}
-        to={range.to}
-      />
+      <nav aria-label="Period" className="grid grid-cols-4 gap-1 rounded-lg bg-slate-100 p-1">
+        {MENU_MONTHS.map((m) => (
+          <Link
+            key={m}
+            href={`/reports/menu?node=${place.id}&months=${m}`}
+            aria-current={m === months ? 'page' : undefined}
+            className={`flex min-h-11 items-center justify-center rounded-md text-sm ${
+              m === months ? 'bg-white font-semibold shadow-sm' : 'text-slate-600'
+            }`}
+          >
+            {m} months
+          </Link>
+        ))}
+      </nav>
       {menus.length === 0 && <Empty>No dishes on this menu.</Empty>}
       {menus.map((menu) => {
         const list = dishes.filter((d) => d.menu === menu);
@@ -70,7 +82,7 @@ export default async function MenuEngineering({ searchParams }: { searchParams: 
                   <p className="text-xs text-slate-500">{c.hint}</p>
                   <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
                     {group.map((d) => (
-                      <Dish key={d.code} d={d} />
+                      <Dish key={d.code} d={d} menu={menu} />
                     ))}
                   </ul>
                 </div>
@@ -97,24 +109,16 @@ export default async function MenuEngineering({ searchParams }: { searchParams: 
   );
 }
 
-function Dish({ d }: { d: DishRow }) {
+function Dish({ d, menu }: { d: DishRow; menu: string }) {
+  const words = dishWords(d, menu, formatMoney);
   return (
-    <li
-      className="flex justify-between gap-2 px-4 py-3 text-sm"
-      data-testid="dish"
-      data-code={d.code}
-    >
-      <span className="min-w-0">
-        <span className="block font-medium">{d.name}</span>
-        <span className="block text-xs text-slate-500">
-          {Number(d.sold)} sold · {d.mix_pct ?? '0'}% of the menu
-        </span>
+    <li className="px-4 py-3 text-sm" data-testid="dish" data-code={d.code}>
+      <span className="block font-medium">{d.name}</span>
+      <span className="block text-xs text-slate-600 tabular-nums" data-testid="dish-money">
+        {words.money}
       </span>
-      <span className="shrink-0 text-right tabular-nums">
-        {formatMoney(d.margin) ?? '–'}
-        <span className="block text-xs text-slate-500">
-          {formatMoney(d.price)} less {formatMoney(d.cost) ?? '–'}
-        </span>
+      <span className="block text-xs text-slate-500 tabular-nums" data-testid="dish-share">
+        {words.share}
       </span>
     </li>
   );

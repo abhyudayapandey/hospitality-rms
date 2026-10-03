@@ -1254,6 +1254,49 @@ no changes (apart from new weeks of shifts, if the week turned).
   Executive Chef 1.0". **Print** shows the order ready to print or save as PDF.
 - **`test.bartender.1.0`.** Reports shows only My week.
 
+#### Releasing the quick fixes from prospect feedback (DB-2, NT-2, INV-12, RPT-13, RPT-14)
+
+One migration, `20261025100000_prospect_quick_fixes` (ADR 033). No stack change, no new
+parameter and no product sync change. Stock position gains a new kind of place (an
+outlet's supply point, for all its stores), so run **Actions → RLS equivalence (all
+users) → Run workflow** on the commit before merging.
+
+- **What changes in the app.**
+  - **Home → Needs attention** is grouped by department: Kitchen first, then the service
+    departments, then Housekeeping, then the rest, then the whole outlet.
+  - **Any wastage** notifies the outlet's GM and Assistant GM (a standalone bar's Bar
+    Manager), never the person who recorded it.
+  - **Stock** shows "Items expiring within 3 days" and "Expired items" banners, each
+    opening its list.
+  - **Menu engineering** has 3, 6, 9 and 12 month tabs and plain wording.
+  - **Stock position** has "<outlet> – All stores" and the value expired and expiring
+    within 3 days. The CSV gains the store and both values.
+- **Test data.** File 01 of both customers gains `department_type` on department rows.
+
+**Deploy order.** Run the Deploy workflow, then re-import both test customers.
+
+**Re-import Test Company** (40 files). The dry run should report no problems, the same 2
+approval-coverage warnings, and **org places 25 changed** (the departments' types), plus
+any shifts for weeks that are new since the last import. Nothing else changes. Apply,
+then dry-run again: no changes (apart from new weeks of shifts, if the week turned).
+
+**Re-import Test Solo Bar Co** (28 files): **org places 3 changed**, nothing else; the
+same 5 warnings. Apply, then dry-run again: no changes.
+
+**Check.**
+
+- **`test.general-manager.1.0`.** Home → Needs attention starts with Kitchen. Reports →
+  Stock position opens on "Test Hotel & Bar 1.0 – All stores", with Expiry values and the
+  store named on each item.
+- **`test.executive-chef.1.0`.** Stock shows the banners when the Kitchen Store has
+  batches expiring or expired. On the test data's load day: Ginger Garlic Paste expiring,
+  Mint Chutney expired; later, as the batches age. Record a small wastage (e.g. 10 g of
+  Ginger Garlic Paste, Spoiled).
+- **`test.general-manager.1.0`** again: the bell (Notifications), "Wastage at Test Hotel &
+  Bar 1.0 – Kitchen Store".
+- **`test.cost-controller.1.0`.** Reports → Menu engineering: 3 months is selected; 12
+  months shows the same dishes with "Price … · cost … · margin … a serve".
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

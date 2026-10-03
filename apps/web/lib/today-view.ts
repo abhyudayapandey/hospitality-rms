@@ -68,39 +68,99 @@ export function splitShortcuts(
   return { shortcuts: unique.slice(0, max), rest: unique.slice(max) };
 }
 
-export interface Attention {
-  belowPar: number;
-  flags: number;
-  repairs: number;
-  /** future open slots in the next seven days, at places where they build the roster */
-  openSlots: number;
-  /** the roster day of the first of them (UX U-27: Home → that day → Assign) */
-  openSlotHref: string | null;
+export type AttentionKind = 'belowPar' | 'flags' | 'repairs' | 'openSlots';
+
+/** One count at one place: a store (below par) or an org place (the rest). */
+export interface AttentionCount {
+  kind: AttentionKind;
+  node: string;
+  n: number;
+  /** open slots: the roster day of the first of them there (UX U-27) */
+  href?: string | null;
 }
 
-/** The "Needs attention" lines that have something in them. */
-export function attentionLines(a: Attention): { href: string; text: string; n: number }[] {
-  const lines = [
-    {
-      href: '/stock',
-      n: a.belowPar,
-      text: a.belowPar === 1 ? 'item below par' : 'items below par',
-    },
-    {
-      href: '/roster/exceptions',
-      n: a.flags,
-      text: a.flags === 1 ? 'attendance flag' : 'attendance flags',
-    },
-    {
-      href: '/tasks/maintenance',
-      n: a.repairs,
-      text: a.repairs === 1 ? 'open repair' : 'open repairs',
-    },
-    {
-      href: a.openSlotHref ?? '/roster',
-      n: a.openSlots,
-      text: a.openSlots === 1 ? 'open slot this week' : 'open slots this week',
-    },
-  ];
-  return lines.filter((l) => l.n > 0);
+/** core.department_of: a place's department and its place in the order (DB-2, ADR 033). */
+export interface PlaceDepartment {
+  node_id: string;
+  department_id: string | null;
+  department: string | null;
+  /** 1 kitchen, 2 service, 3 housekeeping, 4 other, 5 no department (the outlet itself) */
+  rank: number;
+  outlet_id: string | null;
+  outlet: string | null;
+}
+
+export interface AttentionLine {
+  href: string;
+  text: string;
+  n: number;
+}
+
+export interface AttentionGroup {
+  key: string;
+  label: string;
+  lines: AttentionLine[];
+}
+
+const KINDS: readonly AttentionKind[] = ['belowPar', 'flags', 'repairs', 'openSlots'];
+
+const LINE: Record<AttentionKind, { href: string; one: string; many: string }> = {
+  belowPar: { href: '/stock', one: 'item below par', many: 'items below par' },
+  flags: { href: '/roster/exceptions', one: 'attendance flag', many: 'attendance flags' },
+  repairs: { href: '/tasks/maintenance', one: 'open repair', many: 'open repairs' },
+  openSlots: { href: '/roster', one: 'open slot this week', many: 'open slots this week' },
+};
+
+/**
+ * "Needs attention" by department (DB-2): Kitchen first, then Service, then Housekeeping,
+ * then the rest; what belongs to no department (the outlet itself) last. Within one outlet
+ * the outlet's name is left off the department ("Kitchen"); across outlets it stays.
+ */
+export function attentionGroups(
+  counts: readonly AttentionCount[],
+  places: readonly PlaceDepartment[],
+): AttentionGroup[] {
+  const of = new Map(places.map((p) => [p.node_id, p]));
+  const groups = new Map<
+    string,
+    { place: PlaceDepartment | undefined; n: Map<AttentionKind, number>; slot: string | null }
+  >();
+  for (const c of counts) {
+    if (c.n <= 0) continue;
+    const p = of.get(c.node);
+    const key = p?.department_id ?? `outlet:${p?.outlet_id ?? ''}`;
+    const g = groups.get(key) ?? { place: p, n: new Map<AttentionKind, number>(), slot: null };
+    g.n.set(c.kind, (g.n.get(c.kind) ?? 0) + c.n);
+    if (c.kind === 'openSlots' && !g.slot && c.href) g.slot = c.href;
+    groups.set(key, g);
+  }
+  const outlets = new Set([...groups.values()].map((g) => g.place?.outlet_id ?? ''));
+  const oneOutlet = outlets.size === 1;
+  const label = (p: PlaceDepartment | undefined) => {
+    if (!p?.department) return oneOutlet ? 'Whole outlet' : (p?.outlet ?? 'Other places');
+    const prefix = `${p.outlet} – `;
+    return oneOutlet && p.outlet && p.department.startsWith(prefix)
+      ? p.department.slice(prefix.length)
+      : p.department;
+  };
+  return [...groups.entries()]
+    .map(([key, g]) => ({
+      key,
+      rank: g.place?.rank ?? 5,
+      outlet: g.place?.outlet ?? '',
+      label: label(g.place),
+      lines: KINDS.filter((k) => (g.n.get(k) ?? 0) > 0).map((k) => {
+        const n = g.n.get(k)!;
+        return {
+          href: k === 'openSlots' ? (g.slot ?? LINE[k].href) : LINE[k].href,
+          n,
+          text: n === 1 ? LINE[k].one : LINE[k].many,
+        };
+      }),
+    }))
+    .sort(
+      (a, b) =>
+        a.rank - b.rank || a.outlet.localeCompare(b.outlet) || a.label.localeCompare(b.label),
+    )
+    .map(({ key, label: l, lines }) => ({ key, label: l, lines }));
 }

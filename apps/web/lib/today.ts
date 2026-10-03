@@ -13,7 +13,13 @@ import {
 import type { MeasureRow } from './reports';
 import type { Shell } from './shell';
 import { myTasks, type MyTask } from './tasks';
-import { currentShift, type Attention } from './today-view';
+import {
+  attentionGroups,
+  currentShift,
+  type AttentionCount,
+  type AttentionGroup,
+  type PlaceDepartment,
+} from './today-view';
 
 // What Home's "Today" cards show (UX-2), read in one transaction. Each read is an existing
 // function or table under RLS; the cards are chosen by what the person can see, never by
@@ -31,7 +37,7 @@ export interface Today {
   shift: MyShift | null;
   punch: OpenPunch | null;
   tasks: MyTask[];
-  attention: Attention | null;
+  attention: AttentionGroup[] | null;
   numbers: TodayNumbers | null;
 }
 
@@ -46,29 +52,38 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     const punch = atWork ? await openPunch(tx) : null;
     const tasks = shell.domains.has('TASKS') ? await myTasks(tx) : [];
 
-    let attention: Attention | null = null;
+    let attention: AttentionGroup[] | null = null;
     if (lead) {
-      const a = await sql<Omit<Attention, 'openSlots' | 'openSlotHref'>>`
-        select
-          (select count(*) from inv.item_node n
-             join inv.item i on i.id = n.item_id and i.archived_at is null
-             left join inv.stock_level s on s.item_id = n.item_id
-                                        and s.delivery_node_id = n.delivery_node_id
-            where n.archived_at is null and n.par_level > 0
-              and coalesce(s.on_hand, 0) < n.par_level)::int as "belowPar",
-          (select count(*) from hr.attendance_exception x
-            where x.status = 'open'
-              and x.org_node_id in (select id from core.screen_places('exceptions')))::int as flags,
-          (select count(*) from ops.maintenance_requests() m
-            where m.status in ('open', 'assigned', 'in_progress')
-              and (select "on" from core.my_modules() where code = 'maintenance')
-              and exists (select 1 from core.screen_places('maintenance') p
-                           where p.id = m.org_node_id))::int as repairs`.execute(tx);
+      // each count at its place, under RLS; then the places' departments and order (DB-2)
+      const counts = await sql<AttentionCount>`
+        select 'belowPar' as kind, n.delivery_node_id::text as node, count(*)::int as n,
+               null as href
+          from inv.item_node n
+          join inv.item i on i.id = n.item_id and i.archived_at is null
+          left join inv.stock_level s on s.item_id = n.item_id
+                                     and s.delivery_node_id = n.delivery_node_id
+         where n.archived_at is null and n.par_level > 0
+           and coalesce(s.on_hand, 0) < n.par_level
+         group by n.delivery_node_id
+        union all
+        select 'flags', x.org_node_id::text, count(*)::int, null
+          from hr.attendance_exception x
+         where x.status = 'open'
+           and x.org_node_id in (select id from core.screen_places('exceptions'))
+         group by x.org_node_id
+        union all
+        select 'repairs', m.org_node_id::text, count(*)::int, null
+          from ops.maintenance_requests() m
+         where m.status in ('open', 'assigned', 'in_progress')
+           and (select "on" from core.my_modules() where code = 'maintenance')
+           and exists (select 1 from core.screen_places('maintenance') p
+                        where p.id = m.org_node_id)
+         group by m.org_node_id`.execute(tx);
       // open slots in shifts that haven't started, the next seven days, where they build the
       // roster (ROSTER modify there, checked by core.can; RLS shows the shifts)
       const slots =
         shell.domains.get('ROSTER') === 'modify'
-          ? await sql<{ n: number; node: string | null; day: string | null }>`
+          ? await sql<{ node: string; n: number; day: string }>`
             with open as (
               select s.org_node_id, s.local_date,
                      s.headcount - (select count(*) from hr.shift_assignment x
@@ -77,24 +92,30 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
                where s.status <> 'cancelled' and s.start_at > now()
                  and s.start_at < now() + interval '7 days'
                  and core.can('ROSTER', 'modify', s.org_node_id, null))
-            select coalesce(sum(gap) filter (where gap > 0), 0)::int as n,
-                   (array_agg(org_node_id order by local_date, org_node_id)
-                      filter (where gap > 0))[1] as node,
-                   (array_agg(local_date::text order by local_date, org_node_id)
-                      filter (where gap > 0))[1] as day
-              from open`.execute(tx)
+            select org_node_id::text as node, sum(gap)::int as n, min(local_date)::text as day
+              from open where gap > 0
+             group by org_node_id`.execute(tx)
           : null;
-      const s = slots?.rows[0];
-      attention = a.rows[0]
-        ? {
-            ...a.rows[0],
-            openSlots: s?.n ?? 0,
-            openSlotHref:
-              s?.node && s.day
-                ? `/roster/week?node=${s.node}&week=${weekStart(s.day)}&day=${s.day}`
-                : null,
-          }
-        : null;
+      const all: AttentionCount[] = [
+        ...counts.rows,
+        ...(slots?.rows ?? []).map((s) => ({
+          kind: 'openSlots' as const,
+          node: s.node,
+          n: s.n,
+          href: `/roster/week?node=${s.node}&week=${weekStart(s.day)}&day=${s.day}`,
+        })),
+      ];
+      const nodes = [...new Set(all.map((c) => c.node))];
+      const places =
+        nodes.length > 0
+          ? (
+              await sql<PlaceDepartment>`
+                select node_id::text, department_id::text, department, rank, outlet_id::text,
+                       outlet
+                  from core.department_of(${nodes}::uuid[])`.execute(tx)
+            ).rows
+          : [];
+      attention = attentionGroups(all, places);
     }
 
     let numbers: TodayNumbers | null = null;

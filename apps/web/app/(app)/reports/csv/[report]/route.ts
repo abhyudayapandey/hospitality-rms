@@ -89,6 +89,7 @@ const EXPORTS: Record<string, { days: number; run: Export }> = {
     days: 1,
     run: async (tx, node) => ({
       header: [
+        'store',
         'sku',
         'item',
         'category',
@@ -98,8 +99,11 @@ const EXPORTS: Record<string, { days: number; run: Export }> = {
         'days_on_hand',
         'last_moved_at',
         'not_moved_30_days',
+        'expired_value',
+        'expiring_3_days_value',
       ],
       rows: (await stockItems(tx, node)).map((r) => [
+        r.store,
         r.sku,
         r.name,
         r.category,
@@ -109,6 +113,8 @@ const EXPORTS: Record<string, { days: number; run: Export }> = {
         r.days_on_hand,
         r.last_moved_at,
         r.dead ? 'yes' : 'no',
+        r.expired_value,
+        r.expiring_value,
       ]),
     }),
   },

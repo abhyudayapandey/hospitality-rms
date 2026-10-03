@@ -217,6 +217,47 @@ describe('loader errors', () => {
     });
   });
 
+  it('department types (DB-2): known values, departments only; blank is other', async () => {
+    await inRolledBackTx(async (c) => {
+      const bad = edit(
+        '01_org_nodes.csv',
+        'TEST-HOTEL-1.0-KITCHEN,Test Hotel & Bar 1.0 – Kitchen,department,TEST-HOTEL-1.0,Asia/Kolkata,,kitchen',
+        'TEST-HOTEL-1.0-KITCHEN,Test Hotel & Bar 1.0 – Kitchen,department,TEST-HOTEL-1.0,Asia/Kolkata,,pastry',
+      );
+      const r = await loadCustomer(c, bad, { nested: true });
+      expect(r.issues).toContainEqual({
+        file: '01_org_nodes.csv',
+        row: 9,
+        column: 'department_type',
+        message: 'must be kitchen, service, housekeeping or other',
+      });
+      const outlet = edit(
+        '01_org_nodes.csv',
+        'TEST-HOTEL-1.0,Test Hotel & Bar 1.0,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,full_hotel,',
+        'TEST-HOTEL-1.0,Test Hotel & Bar 1.0,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,full_hotel,service',
+      );
+      const r1 = await loadCustomer(c, outlet, { nested: true });
+      expect(r1.issues).toContainEqual({
+        file: '01_org_nodes.csv',
+        row: 5,
+        column: 'department_type',
+        message: 'is only for departments',
+      });
+      const blank = edit(
+        '01_org_nodes.csv',
+        'TEST-HOTEL-1.0-KITCHEN,Test Hotel & Bar 1.0 – Kitchen,department,TEST-HOTEL-1.0,Asia/Kolkata,,kitchen',
+        'TEST-HOTEL-1.0-KITCHEN,Test Hotel & Bar 1.0 – Kitchen,department,TEST-HOTEL-1.0,Asia/Kolkata,,',
+      );
+      const r2 = await loadCustomer(c, blank, { nested: true });
+      expect(r2.issues).toEqual([]);
+      expect(r2.counts['org places']!.updated).toBe(1);
+      const { rows } = await c.query<{ department_type: string | null }>(
+        `select department_type from core.hierarchy_node where code = 'TEST-HOTEL-1.0-KITCHEN'`,
+      );
+      expect(rows[0]!.department_type).toBeNull();
+    });
+  });
+
   it('reports bad cells and broken references by file, row and column', async () => {
     await inRolledBackTx(async (c) => {
       const files = {

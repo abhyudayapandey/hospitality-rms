@@ -173,7 +173,9 @@ past week of attendance and two central kitchen transfers; the labour, People an
 kitchen figures are pinned by `packages/db/src/labour-reports.db.test.ts`.
 Company settings (targets, menu engineering threshold, overtime multiplier, prices on sent
 orders) live in `core.tenant.settings` beside the modules (ADR 031); file 09 has an
-optional supplier `contact_phone` for sending orders (ADR 032).
+optional supplier `contact_phone` for sending orders (ADR 032); file 01 has an optional
+`department_type` (kitchen, service, housekeeping, other) that orders Home's Needs
+attention (ADR 033).
 `TEST_LOGINS_do_not_commit.csv` (passwords) is never committed.
 
 ## How to work in this repo

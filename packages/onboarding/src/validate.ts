@@ -95,6 +95,9 @@ export function validateBundle(b: Bundle): Issue[] {
     if (n.kind !== 'outlet' && n.outlet_format) {
       add(f('orgNodes'), n.line, 'outlet_format', 'is only for outlets');
     }
+    if (n.kind !== 'department' && n.department_type) {
+      add(f('orgNodes'), n.line, 'department_type', 'is only for departments');
+    }
   }
   const mains = new Map<string, number>();
   for (const n of b.deliveryNodes) {

@@ -41,7 +41,7 @@ Each access row means: this person has this access group at this place. It cover
 | File                                               | What it defines                                                                                                                                                                                                                                                                                                                                          |
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `00_customer.csv`                                  | Company name, country, currency, time zone; optional `leave_hr_approval` (yes/no, default yes), `is_test` (yes/no, only at creation) and one column per module (`events`, `swaps`, `leave`, `production`, `prep_lists`, `checklists`, `maintenance`, `menu_sales`: yes/no; blank keeps it as it is, ADR 026). Test Solo Bar Co. has Events and Swaps off |
-| `01_org_nodes.csv`                                 | People structure. `outlet_format` on outlet rows: full_hotel, small_hotel, standalone_bar                                                                                                                                                                                                                                                                |
+| `01_org_nodes.csv`                                 | People structure. `outlet_format` on outlet rows: full_hotel, small_hotel, standalone_bar. Optional `department_type` on department rows: kitchen, service, housekeeping or other (blank is other); it orders Home's Needs attention, Kitchen first (ADR 033)                                                                                            |
 | `02_delivery_nodes.csv`                            | Stock structure. `holds_stock` = yes where stock is counted (a store, or a supply point with no stores); `is_main_store` = yes on the outlet's Main Store                                                                                                                                                                                                |
 | `03_node_links.csv`                                | Which department uses which store; which outlet is which supply point                                                                                                                                                                                                                                                                                    |
 | `04_location_settings.csv`                         | GPS location and clock-in radius per site                                                                                                                                                                                                                                                                                                                |
@@ -153,6 +153,10 @@ variance):
   is still in date.
 - **Hotel 1.0 Bar Store.** Sugar Syrup (day -6) and Sour Mix (day -1).
 - **Bar 3.0.** Negroni (day -4, Bar Store) and Ginger Garlic Paste (day -2, Kitchen Store).
+- **Expiry (ADR 033).** On the load day the Hotel 1.0 Kitchen Store shows both banners:
+  Mint Chutney expired (₹25.13 on Stock position) and Ginger Garlic Paste expiring within
+  3 days (its use-by is three days after the load day; ₹101.33). Pinned by
+  `packages/db/src/expiry.db.test.ts`.
 
 Each batch's expiry runs from its batch time, so the other batches expire over the
 following days.

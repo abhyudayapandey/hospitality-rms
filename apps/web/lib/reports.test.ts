@@ -5,9 +5,12 @@ import {
   costParts,
   DISH_CLASSES,
   dishClass,
+  dishWords,
   flashCostParts,
   formatMeasure,
   MEASURES,
+  menuMonths,
+  monthsRange,
   periodRange,
   PERIODS,
   REPORTS,
@@ -16,6 +19,7 @@ import {
   SECTIONS,
   topLosses,
 } from './reports';
+import { daysInclusive } from './dates';
 
 describe('formatMeasure', () => {
   it('reads like the phone shows it', () => {
@@ -221,5 +225,43 @@ describe('the league table (R-4, ADR 031)', () => {
       'Bar 3.0',
       'Hotel 1.0',
     ]);
+  });
+});
+
+describe('menu engineering periods and wording (RPT-13)', () => {
+  it('3, 6, 9 or 12 months; anything else is 3', () => {
+    expect(menuMonths('6')).toBe(6);
+    expect(menuMonths('12')).toBe(12);
+    expect(menuMonths('5')).toBe(3);
+    expect(menuMonths(undefined)).toBe(3);
+  });
+
+  it('the last months, ending today; a year is never more than 366 days', () => {
+    expect(monthsRange('2026-10-03', 3)).toEqual({ from: '2026-07-04', to: '2026-10-03' });
+    expect(monthsRange('2026-10-03', 12)).toEqual({ from: '2025-10-04', to: '2026-10-03' });
+    // no 31 February: from the day after its last day
+    expect(monthsRange('2026-05-31', 3)).toEqual({ from: '2026-03-01', to: '2026-05-31' });
+    expect(monthsRange('2024-02-29', 12)).toEqual({ from: '2023-03-01', to: '2024-02-29' });
+    expect(
+      daysInclusive(...(Object.values(monthsRange('2028-02-29', 12)) as [string, string])),
+    ).toBe(366);
+  });
+
+  it('a dish in plain words', () => {
+    const money = (v: string | null) => (v === null ? null : `₹${v}`);
+    expect(
+      dishWords(
+        { price: '525', cost: '207.50', margin: '317.50', sold: '12.000', mix_pct: '20.4' },
+        'Bar',
+        money,
+      ),
+    ).toEqual({
+      money: 'Price ₹525 · cost ₹207.50 · margin ₹317.50 a serve',
+      share: '12 sold · 20.4% of drinks sold',
+    });
+    expect(
+      dishWords({ price: '90', cost: null, margin: null, sold: '0', mix_pct: null }, 'Food', money)
+        .money,
+    ).toBe('Price ₹90 · cost – · margin – a serve');
   });
 });

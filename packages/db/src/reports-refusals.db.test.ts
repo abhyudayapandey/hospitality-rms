@@ -30,9 +30,11 @@ describe('reports: every place not listed is refused (every user)', () => {
         `select n.id, n.code from core.hierarchy_node n
           where n.code in ('TEST-HOTEL-1.0-KITCHEN-STORE', 'TEST-HOTEL-1.0-BAR-STORE',
                            'TEST-HOTEL-1.0-MAIN-STORE', 'TEST-BAR-3.0-BAR-STORE',
-                           'TEST-CENTRAL-KITCHEN-STORE', 'TEST-SOLO-BAR-BAR-STORE')`,
+                           'TEST-CENTRAL-KITCHEN-STORE', 'TEST-SOLO-BAR-BAR-STORE',
+                           'TEST-HOTEL-1.0-SUPPLY', 'TEST-BAR-3.0-SUPPLY', 'TEST-SOLO-BAR-SUPPLY')`,
       );
-      expect(stores.rows).toHaveLength(6);
+      // stores, and supply points: "All stores" of an outlet (RPT-14, ADR 033)
+      expect(stores.rows).toHaveLength(9);
       // the People report also opens at a company or area (HR admin, the owner)
       const tops = await c.query<{ id: string; code: string }>(
         `select n.id, n.code from core.hierarchy_node n join core.tenant t on t.id = n.tenant_id
@@ -131,5 +133,5 @@ describe('reports: every place not listed is refused (every user)', () => {
       }
       expect(leaks).toEqual([]);
     });
-  }, 300_000);
+  }, 600_000);
 });
