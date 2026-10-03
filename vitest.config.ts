@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
+import TimedSequencer from './packages/db/test/sequencer';
 
 // Two projects:
 //   unit - *.test.ts, no external services
@@ -19,6 +20,8 @@ const exclude = ['**/node_modules/**', '**/.next/**', '**/dist/**', '**/cdk.out/
 
 export default defineConfig({
   test: {
+    // shards by expected time, slowest files first (ADR 029)
+    sequence: { sequencer: TimedSequencer },
     projects: [
       {
         test: {
