@@ -2,11 +2,13 @@ import Link from 'next/link';
 import { addDays, formatDay } from '@/lib/dates';
 import {
   compare,
+  costParts,
   formatMeasure,
   PERIODS,
   REPORTS,
   sectionRows,
   SECTIONS,
+  type CostPartRow,
   type MeasureRow,
   type Period,
   type ReportCode,
@@ -183,5 +185,42 @@ export function PeriodPicker({
         </form>
       </details>
     </div>
+  );
+}
+
+/**
+ * Where the money went (R-3, ADR 030): raw materials by part, people (only for those who
+ * see labour cost), and the total, each in ₹ and as a share of sales.
+ */
+export function CostBreakdown({ rows, note }: { rows: CostPartRow[]; note?: string }) {
+  const list = costParts(rows);
+  if (list.length === 0) return null;
+  return (
+    <section aria-label="Where the money went" className="space-y-2">
+      <h2 className="text-sm font-semibold text-slate-700">Where the money went</h2>
+      <ul
+        className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
+        data-testid="cost-breakdown"
+      >
+        {list.map((p) => (
+          <li
+            key={p.part}
+            data-testid={`part-${p.part}`}
+            className={`flex items-baseline justify-between gap-3 py-2 pr-3 text-sm ${
+              p.total ? 'bg-slate-50 pl-3 font-semibold' : 'pl-6 text-slate-700'
+            }`}
+          >
+            <span>{p.label}</span>
+            <span className="shrink-0 text-right tabular-nums">
+              <span data-testid="value">{formatMeasure('money', p.value)}</span>
+              <span className="ml-2 inline-block w-14 text-xs font-normal text-slate-500">
+                {formatMeasure('pct', p.pct)}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      {note && <p className="text-xs text-slate-500">{note}</p>}
+    </section>
   );
 }

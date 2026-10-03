@@ -5,7 +5,13 @@ import type { SearchParams } from './params';
 import { param } from './params';
 import type { ReportScreen } from './place-screens';
 import { isIsoDate } from './dates';
-import { periodRange, type CostItem, type MeasureRow, type ReportCode } from './reports';
+import {
+  periodRange,
+  type CostItem,
+  type CostPartRow,
+  type MeasureRow,
+  type ReportCode,
+} from './reports';
 import { SALES_MEASURES } from './modules';
 
 // Reads for the reports (ADR 023). Every rpt.* function checks core.can() at the place it
@@ -292,4 +298,225 @@ export async function shortDeliveries(
 export async function reportPeriod(sp: SearchParams, today: string) {
   const p = await sp;
   return periodRange(param(p, 'period'), today, param(p, 'from'), param(p, 'to'));
+}
+
+// ---------------------------------------------------------------------------------------
+// Labour, People and the central kitchen (R-3, ADR 030)
+// ---------------------------------------------------------------------------------------
+
+/** Where the money went; the people parts only come back for those who see labour cost. */
+export async function costBreakdown(
+  tx: Tx,
+  place: string,
+  from: string,
+  to: string,
+): Promise<CostPartRow[]> {
+  const r = await sql<CostPartRow>`
+    select part, value::text, pct::text
+      from rpt.cost_breakdown(${place}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+export interface LabourRow {
+  org_node_id: string;
+  name: string;
+  part: 'outlet' | 'department' | 'other';
+  days: number;
+  people: number;
+  hours: string;
+  overtime_hours: string;
+  hourly_cost: string;
+  salary_cost: string;
+  cost: string;
+}
+
+/** Labour cost by department (NOT_AUTHORISED without LABOUR_COST or REPORTS). */
+export async function labourCost(
+  tx: Tx,
+  place: string,
+  from: string,
+  to: string,
+): Promise<LabourRow[]> {
+  const r = await sql<LabourRow>`
+    select org_node_id, name, part, days, people, hours::text, overtime_hours::text,
+           hourly_cost::text, salary_cost::text, cost::text
+      from rpt.labour_cost(${place}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+export async function peopleSummary(
+  tx: Tx,
+  place: string,
+  from: string,
+  to: string,
+): Promise<MeasureRow[]> {
+  const r = await sql<MeasureRow>`
+    select measure, value::text
+      from rpt.people_summary(${place}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+export interface PeopleDepartmentRow {
+  org_node_id: string;
+  name: string;
+  headcount: number;
+  shifts: number;
+  late: number;
+  no_shows: number;
+  on_time_pct: string | null;
+  hours: string;
+  overtime_hours: string;
+  leave_days: string;
+}
+
+export async function peopleDepartments(
+  tx: Tx,
+  place: string,
+  from: string,
+  to: string,
+): Promise<PeopleDepartmentRow[]> {
+  const r = await sql<PeopleDepartmentRow>`
+    select org_node_id, name, headcount, shifts, late, no_shows, on_time_pct::text,
+           hours::text, overtime_hours::text, leave_days::text
+      from rpt.people_departments(${place}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+export interface PeopleFlagRow {
+  user_id: string;
+  name: string;
+  job_title: string;
+  place: string;
+  late: number;
+  no_shows: number;
+}
+
+/** By name: empty unless the person keeps the records (WORKERS modify). */
+export async function peopleFlags(
+  tx: Tx,
+  place: string,
+  from: string,
+  to: string,
+): Promise<PeopleFlagRow[]> {
+  const r = await sql<PeopleFlagRow>`
+    select user_id, name, job_title, place, late, no_shows
+      from rpt.people_flags(${place}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+export interface PeopleLeaveRow {
+  leave_type: string;
+  taken_days: string;
+  balance_days: string;
+  liability: string | null;
+}
+
+export async function peopleLeave(
+  tx: Tx,
+  place: string,
+  from: string,
+  to: string,
+): Promise<PeopleLeaveRow[]> {
+  const r = await sql<PeopleLeaveRow>`
+    select leave_type, taken_days::text, balance_days::text, liability::text
+      from rpt.people_leave(${place}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+export async function kitchenSummary(
+  tx: Tx,
+  store: string,
+  from: string,
+  to: string,
+): Promise<MeasureRow[]> {
+  const r = await sql<MeasureRow>`
+    select measure, value::text
+      from rpt.kitchen_summary(${store}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+export interface KitchenProductionRow {
+  sku: string;
+  name: string;
+  unit: string;
+  planned: string | null;
+  made: string;
+  batches: number;
+}
+
+export async function kitchenProduction(
+  tx: Tx,
+  store: string,
+  from: string,
+  to: string,
+): Promise<KitchenProductionRow[]> {
+  const r = await sql<KitchenProductionRow>`
+    select sku, name, unit, planned::text, made::text, batches
+      from rpt.kitchen_production(${store}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+export interface KitchenDispatchRow {
+  store_id: string;
+  store_name: string;
+  transfers: number;
+  requested_value: string;
+  dispatched_value: string;
+  received_value: string;
+  fill_pct: string | null;
+  transit_loss: string;
+  short_lines: number;
+}
+
+export async function kitchenDispatch(
+  tx: Tx,
+  store: string,
+  from: string,
+  to: string,
+): Promise<KitchenDispatchRow[]> {
+  const r = await sql<KitchenDispatchRow>`
+    select store_id, store_name, transfers, requested_value::text, dispatched_value::text,
+           received_value::text, fill_pct::text, transit_loss::text, short_lines
+      from rpt.kitchen_dispatch(${store}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+export interface InTransitRow {
+  transfer_id: string;
+  store_name: string;
+  dispatched_at: string;
+  lines: number;
+  value: string;
+}
+
+export async function kitchenInTransit(tx: Tx, store: string): Promise<InTransitRow[]> {
+  const r = await sql<InTransitRow>`
+    select transfer_id, store_name, dispatched_at::text, lines, value::text
+      from rpt.kitchen_in_transit(${store}::uuid)`.execute(tx);
+  return r.rows;
+}
+
+export interface TransferInRow {
+  from_id: string;
+  from_name: string;
+  transfers: number;
+  requested_value: string;
+  received_value: string;
+  fill_pct: string | null;
+  transit_loss: string;
+  short_lines: number;
+}
+
+/** What came in from the central kitchen (or another store) to a store (Purchasing). */
+export async function transfersIn(
+  tx: Tx,
+  store: string,
+  from: string,
+  to: string,
+): Promise<TransferInRow[]> {
+  const r = await sql<TransferInRow>`
+    select from_id, from_name, transfers, requested_value::text, received_value::text,
+           fill_pct::text, transit_loss::text, short_lines
+      from rpt.transfers_in(${store}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
 }

@@ -8,6 +8,8 @@ export type ReportCode =
   | 'menu_engineering'
   | 'stock_position'
   | 'purchasing'
+  | 'central_kitchen'
+  | 'people'
   | 'my_week';
 
 export const REPORTS: Readonly<Record<ReportCode, { title: string; href: string; blurb: string }>> =
@@ -42,6 +44,17 @@ export const REPORTS: Readonly<Record<ReportCode, { title: string; href: string;
       title: 'Purchasing',
       href: '/reports/purchasing',
       blurb: 'Price changes and how fully and on time suppliers deliver.',
+    },
+    // R-3 (ADR 030)
+    central_kitchen: {
+      title: 'Central kitchen',
+      href: '/reports/kitchen',
+      blurb: 'What was made, what went out to each outlet, and what was lost on the way.',
+    },
+    people: {
+      title: 'People',
+      href: '/reports/people',
+      blurb: 'Headcount, hours and overtime, lateness and no-shows, and leave.',
     },
     my_week: {
       title: 'My week',
@@ -102,6 +115,34 @@ export const MEASURES: Readonly<Record<string, MeasureDef>> = {
   days_on_hand: { label: 'Days on hand', unit: 'days' },
   dead_items: { label: 'Items not moved in 30 days', unit: 'count', better: 'down' },
   dead_value: { label: 'Their value', unit: 'money', better: 'down' },
+  // labour (R-3, ADR 030): only for people who see labour cost
+  splh: { label: 'Sales per hour worked', unit: 'money', better: 'up' },
+  labour_cost: { label: 'People cost', unit: 'money', better: 'down' },
+  labour_pct: { label: 'People cost of sales', unit: 'pct', better: 'down' },
+  prime_cost: { label: 'Prime cost', unit: 'money', better: 'down' },
+  prime_cost_pct: { label: 'Prime cost of sales', unit: 'pct', better: 'down' },
+  // People
+  headcount: { label: 'Headcount', unit: 'count' },
+  joiners: { label: 'Joined', unit: 'count' },
+  inactive: { label: 'Left or inactive', unit: 'count' },
+  on_time_pct: { label: 'Shifts on time', unit: 'pct', better: 'up' },
+  overtime_hours: { label: 'Overtime', unit: 'hours', better: 'down' },
+  leave_days: { label: 'Leave taken', unit: 'days' },
+  swaps: { label: 'Shift swaps', unit: 'count' },
+  leave_balance_days: { label: 'Leave not yet taken', unit: 'days' },
+  leave_liability: { label: 'Its value (leave liability)', unit: 'money' },
+  // central kitchen
+  batches: { label: 'Batches made', unit: 'count' },
+  made_value: { label: 'Value made', unit: 'money' },
+  ingredients_over: { label: 'Ingredients over the recipe', unit: 'money', better: 'down' },
+  expired_value: { label: 'Expired, thrown away', unit: 'money', better: 'down' },
+  expired_pct: { label: 'Expired of what was made', unit: 'pct', better: 'down' },
+  transfers: { label: 'Transfers sent', unit: 'count' },
+  requested_value: { label: 'Asked for', unit: 'money' },
+  dispatched_value: { label: 'Sent', unit: 'money' },
+  fill_pct: { label: 'Filled', unit: 'pct', better: 'up' },
+  transit_loss: { label: 'Lost in transit', unit: 'money', better: 'down' },
+  in_transit_value: { label: 'On the way now', unit: 'money' },
 };
 
 /** The sections of each report, in order (a measure missing from the data is skipped). */
@@ -109,12 +150,24 @@ export const SECTIONS: Readonly<Record<ReportCode, readonly [string, readonly st
   outlet_flash: [
     ['Sales', ['sales', 'food_sales', 'bar_sales']],
     ['Cost (recipe)', ['food_cost_pct', 'bar_cost_pct']],
+    ['Labour', ['labour_cost', 'labour_pct', 'prime_cost', 'prime_cost_pct', 'splh']],
     ['Stock', ['wastage', 'wastage_pct', 'stock_value']],
     ['People', ['scheduled_hours', 'worked_hours', 'open_slots', 'late', 'no_shows']],
     ['Tasks', ['task_pct', 'tasks_due', 'overdue', 'flagged']],
   ],
   department: [
-    ['People', ['shifts', 'scheduled_hours', 'worked_hours', 'open_slots', 'late', 'no_shows']],
+    [
+      'People',
+      [
+        'shifts',
+        'scheduled_hours',
+        'worked_hours',
+        'open_slots',
+        'late',
+        'no_shows',
+        'labour_cost',
+      ],
+    ],
     ['Tasks', ['task_pct', 'tasks_due', 'tasks_done', 'overdue', 'flagged']],
     ['Store', ['wastage', 'stock_value']],
   ],
@@ -134,6 +187,22 @@ export const SECTIONS: Readonly<Record<ReportCode, readonly [string, readonly st
     ['Value', ['stock_value', 'value_7', 'value_14', 'value_21', 'value_28']],
     ['Use', ['used_value', 'days_on_hand', 'basis_days']],
     ['Dead stock', ['dead_items', 'dead_value']],
+  ],
+  people: [
+    ['Team', ['headcount', 'joiners', 'inactive']],
+    [
+      'Shifts',
+      ['shifts', 'on_time_pct', 'late', 'no_shows', 'worked_hours', 'overtime_hours', 'swaps'],
+    ],
+    ['Leave', ['leave_days', 'leave_balance_days', 'leave_liability']],
+  ],
+  central_kitchen: [
+    ['Production', ['batches', 'made_value', 'ingredients_over', 'expired_value', 'expired_pct']],
+    [
+      'To the outlets',
+      ['transfers', 'requested_value', 'dispatched_value', 'fill_pct', 'transit_loss'],
+    ],
+    ['Now', ['in_transit_value']],
   ],
   // lists, not measures
   menu_engineering: [],
@@ -314,4 +383,89 @@ export const DISH_CLASSES: readonly {
 /** A dish class from the database, or null when there is none (nothing sold, no recipe). */
 export function dishClass(s: string | null): DishClass | null {
   return s === 'star' || s === 'plowhorse' || s === 'puzzle' || s === 'dog' ? s : null;
+}
+
+// ---------------------------------------------------------------------------------------
+// Where the money went (R-3, ADR 030): the parts of the cost, each in ₹ and % of sales
+// ---------------------------------------------------------------------------------------
+
+export type CostPart =
+  | 'food_recipe'
+  | 'bar_recipe'
+  | 'expired'
+  | 'transit_loss'
+  | 'wastage_other'
+  | 'other_use'
+  | 'count_loss'
+  | 'materials'
+  | 'labour_hourly'
+  | 'labour_salary'
+  | 'labour'
+  | 'prime';
+
+/** The parts in order; totals are shown in bold, the parts under them indented. */
+export const COST_PARTS: readonly { part: CostPart; label: string; total?: boolean }[] = [
+  { part: 'food_recipe', label: 'Food, by the recipes' },
+  { part: 'bar_recipe', label: 'Drinks, by the recipes' },
+  { part: 'expired', label: 'Expired, thrown away' },
+  { part: 'transit_loss', label: 'Lost in transit' },
+  { part: 'wastage_other', label: 'Other wastage' },
+  { part: 'other_use', label: 'Other use (staff meals, tastings)' },
+  { part: 'count_loss', label: 'Lost at the count' },
+  { part: 'materials', label: 'Raw materials', total: true },
+  { part: 'labour_hourly', label: 'Hourly staff' },
+  { part: 'labour_salary', label: 'Salaried staff' },
+  { part: 'labour', label: 'People', total: true },
+  { part: 'prime', label: 'Total (prime cost)', total: true },
+];
+
+export interface CostPartRow {
+  part: string;
+  value: string | null;
+  pct: string | null;
+}
+
+/** The parts the data has, with labels, in order. */
+export function costParts(rows: readonly CostPartRow[]) {
+  const by = new Map(rows.map((r) => [r.part, r]));
+  return COST_PARTS.flatMap((p) => {
+    const r = by.get(p.part);
+    return r ? [{ ...p, value: r.value, pct: r.pct }] : [];
+  });
+}
+
+const FLASH_PARTS: Readonly<Record<string, CostPart>> = {
+  cost_food_recipe: 'food_recipe',
+  cost_bar_recipe: 'bar_recipe',
+  cost_expired: 'expired',
+  cost_transit_loss: 'transit_loss',
+  cost_wastage_other: 'wastage_other',
+  cost_other_use: 'other_use',
+  cost_count_loss: 'count_loss',
+  cost_materials: 'materials',
+  labour_hourly: 'labour_hourly',
+  labour_salary: 'labour_salary',
+  labour_cost: 'labour',
+  prime_cost: 'prime',
+};
+
+/** The same parts from Outlet today's measures, as a share of the day's sales. */
+export function flashCostParts(rows: readonly MeasureRow[]): CostPartRow[] {
+  const sales = Number(rows.find((r) => r.measure === 'sales')?.value ?? NaN);
+  return rows.flatMap((r) => {
+    const part = FLASH_PARTS[r.measure];
+    if (!part) return [];
+    const v = r.value === null ? NaN : Number(r.value);
+    const pct =
+      Number.isFinite(v) && Number.isFinite(sales) && sales !== 0
+        ? ((v * 100) / sales).toFixed(1)
+        : null;
+    return [{ part, value: r.value, pct }];
+  });
+}
+
+/** A period of at most 93 days (the labour and People reports' limit), ending at `to`. */
+export function capRange(from: string, to: string, days = 93): { from: string; to: string } {
+  const earliest = shift(to, -(days - 1));
+  return { from: from < earliest ? earliest : from, to };
 }

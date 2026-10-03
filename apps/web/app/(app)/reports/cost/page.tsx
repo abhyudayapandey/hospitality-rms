@@ -1,6 +1,12 @@
 import Link from 'next/link';
 import { Empty } from '@/components/messages';
-import { NoReport, PeriodPicker, ReportHeader, ReportSections } from '@/components/report-view';
+import {
+  CostBreakdown,
+  NoReport,
+  PeriodPicker,
+  ReportHeader,
+  ReportSections,
+} from '@/components/report-view';
 import { requireUser } from '@/lib/auth/server';
 import { formatDay } from '@/lib/dates';
 import { withUser } from '@/lib/db';
@@ -8,35 +14,47 @@ import { formatMoney } from '@/lib/format';
 import { formatQty } from '@/lib/inventory';
 import type { SearchParams } from '@/lib/params';
 import {
+  costBreakdown,
   costExpired,
   costItems,
   costTotals,
+  labourCost,
   reportPeriod,
   reportPlace,
   reportToday,
   type CostItemRow,
 } from '@/lib/report-data';
-import { topLosses } from '@/lib/reports';
+import { capRange, topLosses } from '@/lib/reports';
+import { LabourByDepartment } from './labour';
 
 // Cost of sales (R-2, ADR 028; replaces the Variance screen, UX U-14): the rupees first.
 // Food and drink cost against the recipes, what was lost at the count, and the five items
 // that lost the most; the formula behind each item is one tap away. An outlet or site,
 // at the stores the person sees the menu costs of (or all of them with REPORTS).
+// Where the money went (R-3, ADR 030): each part of the cost, and people cost by
+// department for those who see labour cost.
 export default async function CostOfSales({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
     const { places, place } = await reportPlace(tx, 'cost_of_sales', searchParams);
     if (!place) return null;
     const range = await reportPeriod(searchParams, await reportToday(tx, place.id));
-    const [totals, items, expired] = await Promise.all([
+    const [totals, items, expired, parts] = await Promise.all([
       costTotals(tx, place.id, range.from, range.to),
       costItems(tx, place.id, range.from, range.to),
       costExpired(tx, place.id, range.from, range.to),
+      costBreakdown(tx, place.id, range.from, range.to),
     ]);
-    return { places, place, range, totals, items, expired };
+    // the people parts come back only for those who may open labour cost here; by
+    // department for up to 93 days
+    const labour =
+      parts.some((p) => p.part === 'labour') && capRange(range.from, range.to).from === range.from
+        ? await labourCost(tx, place.id, range.from, range.to)
+        : null;
+    return { places, place, range, totals, items, expired, parts, labour };
   });
   if (!data) return <NoReport>You don&apos;t have access to this report.</NoReport>;
-  const { places, place, range, totals, items, expired } = data;
+  const { places, place, range, totals, items, expired, parts, labour } = data;
   const top = topLosses(items);
   const notCounted = items.filter((i) => !i.counted);
   const stores = new Set(items.map((i) => i.store_id));
@@ -54,9 +72,11 @@ export default async function CostOfSales({ searchParams }: { searchParams: Sear
         to={range.to}
       />
       <ReportSections report="cost_of_sales" rows={totals} />
+      <CostBreakdown rows={parts} />
+      {labour && <LabourByDepartment rows={labour} />}
 
-      <section aria-label="Where the money went" className="space-y-2">
-        <h2 className="text-sm font-semibold text-slate-700">Where the money went</h2>
+      <section aria-label="Lost the most" className="space-y-2">
+        <h2 className="text-sm font-semibold text-slate-700">Lost the most at the count</h2>
         {top.length === 0 ? (
           <Empty>Nothing was lost at a count in this period.</Empty>
         ) : (
