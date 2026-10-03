@@ -673,6 +673,53 @@ export const FILES = {
       received_by: optional,
     }),
   },
+  // Pay (COMPENSATION, ADR 030): one rate per person, monthly or hourly, for labour cost.
+  // Any customer; HR's file, so it can be handed over on its own.
+  payRates: {
+    file: '34_pay_rates.csv',
+    required: false,
+    schema: z.object({
+      username: text,
+      pay_basis: z.enum(['monthly', 'hourly'], 'must be monthly or hourly'),
+      pay_rate_inr: num.refine((v) => v > 0, 'must be more than 0'),
+    }),
+  },
+  // Test-only attendance (ADR 030): past sessions, for labour cost and the People report.
+  attendance: {
+    file: '35_attendance_TEST_DATA_ONLY.csv',
+    required: false,
+    testOnly: true,
+    schema: z.object({
+      username: text,
+      day: dayOffset,
+      clock_in: time,
+      clock_out: time,
+    }),
+  },
+  // Test-only transfers (ADR 030): from the central kitchen, dispatched and received (or
+  // still on the road), one row per line.
+  transfers: {
+    file: '36_transfers_TEST_DATA_ONLY.csv',
+    required: false,
+    testOnly: true,
+    schema: z.object({
+      transfer_ref: code,
+      from_store_code: code,
+      to_store_code: code,
+      item_code: code,
+      requested_qty: num.refine((v) => v > 0, 'must be more than 0'),
+      requested_day: dayOffset,
+      requested_by: text,
+      // blank: not dispatched yet
+      dispatched_qty: optNum.refine((v) => v === undefined || v >= 0, 'must not be negative'),
+      dispatched_day: z.union([z.literal('').transform(() => undefined), dayOffset]),
+      dispatched_by: optional,
+      // blank: still on the road
+      received_qty: optNum.refine((v) => v === undefined || v >= 0, 'must not be negative'),
+      received_day: z.union([z.literal('').transform(() => undefined), dayOffset]),
+      received_by: optional,
+    }),
+  },
 } as const;
 
 export type FileKey = keyof typeof FILES;

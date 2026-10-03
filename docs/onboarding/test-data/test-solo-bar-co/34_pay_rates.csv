@@ -1,0 +1,10 @@
+username,pay_basis,pay_rate_inr
+test.solo.bar-manager,monthly,73000
+test.solo.floor-manager,monthly,73000
+test.solo.head-bartender,monthly,54750
+test.solo.bartender,hourly,150
+test.solo.bartender-b,hourly,150
+test.solo.server,hourly,125
+test.solo.server-b,hourly,125
+test.solo.head-cook,monthly,73000
+test.solo.cook,hourly,125

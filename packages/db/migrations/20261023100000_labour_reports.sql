@@ -838,7 +838,7 @@ as $$
            where x.worker_id = w.id and x.kind = 'no_show' and x.status <> 'dismissed'
              and x.local_date between p_from and p_to),
          coalesce(h.hours, 0), coalesce(h.overtime, 0),
-         coalesce((select sum(least(l.to_date, p_to) - greatest(l.from_date, p_from) + 1)
+         coalesce((select sum(least(l.to_date, p_to) - greatest(l.from_date, p_from) + 1)::numeric
                      from hr.leave_request l
                     where l.worker_id = w.id and l.status = 'approved'
                       and l.from_date <= p_to and l.to_date >= p_from), 0)
@@ -987,7 +987,7 @@ begin
   return query
     with taken as (
       select l.leave_type_id,
-             sum(least(l.to_date, p_to) - greatest(l.from_date, p_from) + 1) as days
+             sum(least(l.to_date, p_to) - greatest(l.from_date, p_from) + 1)::numeric as days
         from hr.leave_request l
        where l.worker_id = any (v_workers) and l.status = 'approved'
          and l.from_date <= p_to and l.to_date >= p_from
@@ -1046,13 +1046,13 @@ begin
   v_end := rpt.day_start(p_to + 1, ops.tz_of(p_store));
   return query
     with made as (
-      select p.id, p.qty_made * p.unit_cost as value from inv.production p
+      select p.id, p.qty_made * p.unit_cost as amount from inv.production p
        where p.delivery_node_id = p_store and p.made_at >= v_start and p.made_at < v_end
     ), over as (
-      select sum((pl.actual_qty - pl.planned_qty) * pl.unit_cost) as value
+      select sum((pl.actual_qty - pl.planned_qty) * pl.unit_cost) as amount
         from inv.production_line pl where pl.production_id in (select id from made)
     ), expired as (
-      select coalesce(sum(-l.qty * l.unit_cost), 0) as value from inv.stock_ledger l
+      select coalesce(sum(-l.qty * l.unit_cost), 0) as amount from inv.stock_ledger l
        where l.delivery_node_id = p_store and l.movement_type = 'wastage'
          and l.reason = 'expired' and l.occurred_at >= v_start and l.occurred_at < v_end
     ), d as (
@@ -1060,11 +1060,12 @@ begin
     )
     select m.measure, m.value from (values
       ('batches', (select count(*) from made)::numeric),
-      ('made_value', (select round(coalesce(sum(value), 0), 2) from made)),
-      ('ingredients_over', (select round(coalesce(value, 0), 2) from over)),
-      ('expired_value', (select round(value, 2) from expired)),
-      ('expired_pct', (select round(e.value * 100 / nullif(sum(m.value), 0), 1)
-                         from expired e, made m group by e.value)),
+      ('made_value', (select round(coalesce(sum(x.amount), 0), 2) from made x)),
+      ('ingredients_over', (select round(coalesce(x.amount, 0), 2) from over x)),
+      ('expired_value', (select round(x.amount, 2) from expired x)),
+      ('expired_pct', (select round(e.amount * 100
+                                    / nullif((select sum(m.amount) from made m), 0), 1)
+                         from expired e)),
       ('transfers', (select count(distinct transfer_id) from d)::numeric),
       ('requested_value', (select round(coalesce(sum(requested * unit_cost), 0), 2) from d)),
       ('dispatched_value', (select round(coalesce(sum(dispatched * unit_cost), 0), 2) from d)),

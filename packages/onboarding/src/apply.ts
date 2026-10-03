@@ -169,6 +169,7 @@ class Loader {
     await this.stock();
     await this.menu();
     await this.leave();
+    await this.payRates();
     await this.rostering();
     await this.events();
     await this.checklists();
@@ -178,6 +179,8 @@ class Loader {
       await this.tasks();
       await this.maintenance();
       await this.purchases();
+      await this.attendance();
+      await this.transfers();
     }
     this.step('');
     this.report.access = await this.preview();
@@ -1784,6 +1787,140 @@ class Loader {
             this.day(receivedDay),
             tz,
             `test-data receipt ${ref}`,
+          ],
+        ),
+      );
+    }
+  }
+
+  /**
+   * File 34: a pay rate per person (COMPENSATION, ADR 030), for labour cost. Only rows the
+   * file lists change; a rate set in the app for someone not in the file stays.
+   */
+  private async payRates() {
+    for (const r of this.b.payRates) {
+      this.step(FILES.payRates.file, r.line);
+      const worker = this.workers.get(r.username);
+      if (!worker) continue;
+      await this.upsert(
+        'pay rates',
+        `insert into hr.worker_sensitive (tenant_id, worker_id, owner_user_id, org_node_id,
+                                          pay_rate, pay_basis)
+         select w.tenant_id, w.id, w.owner_user_id, w.org_node_id, $2, $3
+           from hr.worker w where w.id = $1
+         on conflict (worker_id) do update
+            set pay_rate = excluded.pay_rate, pay_basis = excluded.pay_basis
+          where (hr.worker_sensitive.pay_rate, hr.worker_sensitive.pay_basis)
+                is distinct from (excluded.pay_rate, excluded.pay_basis)
+         returning id, (xmax = 0) as inserted`,
+        [worker, r.pay_rate_inr, r.pay_basis],
+      );
+    }
+  }
+
+  /**
+   * File 35 (test customers only): past sessions, recorded as the person with
+   * hr.record_test_attendance, once per customer like the purchases.
+   */
+  private async attendance() {
+    if (this.b.attendance.length === 0) return;
+    const loaded = await this.c.query(
+      `select 1 from hr.attendance where tenant_id = $1 and in_key like 'test-data att %' limit 1`,
+      [this.tenant],
+    );
+    const home = new Map(this.b.users.map((u) => [u.username, u.home_node_code]));
+    for (const a of this.b.attendance) {
+      this.step(FILES.attendance.file, a.line);
+      this.count('attendance sessions', !loaded.rowCount);
+      if (loaded.rowCount) continue;
+      const date = this.day(a.day);
+      const tz = this.timezoneOf(home.get(a.username)!);
+      await this.as(a.username, () =>
+        this.c.query(
+          `select hr.record_test_attendance(($1::date + $2::time) at time zone $4,
+                                            ($1::date + $3::time) at time zone $4, $5)`,
+          [date, a.clock_in, a.clock_out, tz, `test-data att ${date} ${a.clock_in}`],
+        ),
+      );
+    }
+  }
+
+  /**
+   * File 36 (test customers only): transfers from the central kitchen, requested, then
+   * dispatched and received through the app's own steps at their past times, as the people
+   * named (once per customer).
+   */
+  private async transfers() {
+    if (this.b.transfers.length === 0) return;
+    const groups = new Map<string, Bundle['transfers']>();
+    for (const t of this.b.transfers) {
+      groups.set(t.transfer_ref, [...(groups.get(t.transfer_ref) ?? []), t]);
+    }
+    const loaded = await this.c.query(
+      `select 1 from inv.transfer
+        where tenant_id = $1 and idempotency_key like 'test-data transfer %' limit 1`,
+      [this.tenant],
+    );
+    for (const [ref, lines] of groups) {
+      const first = lines[0]!;
+      this.step(FILES.transfers.file, first.line);
+      this.count('transfers', !loaded.rowCount);
+      if (loaded.rowCount) continue;
+      const tz = this.timezoneOf(first.to_store_code);
+      const id = await this.as(
+        first.requested_by,
+        async () =>
+          (
+            await this.c.query<{ id: string }>(
+              `select inv.request_transfer($1, $2, $3, $4) as id`,
+              [
+                this.nodes.get(first.from_store_code),
+                this.nodes.get(first.to_store_code),
+                JSON.stringify(
+                  lines.map((l) => ({
+                    item_id: this.items.get(l.item_code),
+                    qty: l.requested_qty,
+                  })),
+                ),
+                `test-data transfer ${ref}`,
+              ],
+            )
+          ).rows[0]!.id,
+      );
+      const sentDay = first.dispatched_day;
+      if (sentDay === undefined || first.dispatched_by === undefined) continue;
+      await this.as(first.dispatched_by, () =>
+        this.c.query(
+          `select inv.record_test_dispatch($1, $2, ($3::date + time '14:00') at time zone $4)`,
+          [
+            id,
+            JSON.stringify(
+              lines.map((l) => ({
+                item_id: this.items.get(l.item_code),
+                qty: l.dispatched_qty ?? l.requested_qty,
+              })),
+            ),
+            this.day(sentDay),
+            tz,
+          ],
+        ),
+      );
+      const gotDay = first.received_day;
+      if (gotDay === undefined || first.received_by === undefined) continue;
+      await this.as(first.received_by, () =>
+        this.c.query(
+          `select inv.record_test_transfer_receipt($1, $2,
+                    ($3::date + time '16:00') at time zone $4)`,
+          [
+            id,
+            JSON.stringify(
+              lines.map((l) => ({
+                item_id: this.items.get(l.item_code),
+                qty: l.received_qty ?? l.dispatched_qty ?? l.requested_qty,
+              })),
+            ),
+            this.day(gotDay),
+            tz,
           ],
         ),
       );

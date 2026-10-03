@@ -1,0 +1,4 @@
+transfer_ref,from_store_code,to_store_code,item_code,requested_qty,requested_day,requested_by,dispatched_qty,dispatched_day,dispatched_by,received_qty,received_day,received_by
+TR-1,TEST-CENTRAL-KITCHEN-STORE,TEST-HOTEL-1.0-KITCHEN-STORE,MAKHANI-GRAVY,4000,-2,test.sous-chef.1.0,4000,-2,test.central-kitchen-store-keeper,3800,-2,test.executive-chef.1.0
+TR-1,TEST-CENTRAL-KITCHEN-STORE,TEST-HOTEL-1.0-KITCHEN-STORE,ONION-TOMATO-MASALA,3000,-2,test.sous-chef.1.0,2400,-2,test.central-kitchen-store-keeper,2400,-2,test.executive-chef.1.0
+TR-2,TEST-CENTRAL-KITCHEN-STORE,TEST-BAR-3.0-KITCHEN-STORE,MAKHANI-GRAVY,2000,-1,test.cook.3.0,2000,-1,test.central-kitchen-store-keeper,,,
