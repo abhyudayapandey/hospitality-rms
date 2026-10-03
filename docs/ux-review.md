@@ -284,11 +284,11 @@ one customer's roles or one person's rights differ from the rest?
    role's requests and approvals. Edits apply at once, after a preview of who is affected.
    AC-1 and R-2 are separate PRs.
 
-## UX-6: a simple, visual app for each role (proposed 3 Oct 2026)
+## UX-6: a simple, visual app for each role (approved 3 Oct 2026)
 
 Prospect feedback: most people in the industry read little, so the app must be simpler and
 more visual than textual, and looked at by each role as if for the first time, not from
-the builders' side. Proposed approach, for approval before any build:
+the builders' side. Approach (approved 3 Oct; item photos from file 10 or the phone camera):
 
 1. **Walk the app as each role, first time.** Commis, cook, bartender, server, room
    attendant, front desk, store keeper, department head, cost controller, GM, area manager,
@@ -304,7 +304,7 @@ the builders' side. Proposed approach, for approval before any build:
    - item photos on stock, counts, prep and recipes; recipe steps with photos;
    - plain words: no "par", "variance", "ledger" or "SLA";
    - a first-run tour of three pictures per role;
-   - Hindi alongside English, and read-aloud for tasks and recipes (open question 8 in
-     the PRD).
+   - professional, not playful: a calm palette, real photos, no cartoons or emoji;
+   - English only for now (decided 3 Oct).
 4. **Prove it with real people.** Three staff of different roles at the pilot outlet do
    their main job without help; tap counts are pinned in the e2e journeys.
