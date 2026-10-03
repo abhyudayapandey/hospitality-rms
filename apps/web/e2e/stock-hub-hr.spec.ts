@@ -81,3 +81,29 @@ test('Team → People and Leave; deactivation goes to the security admin', async
   await item.getByRole('button', { name: 'Reject' }).click();
   await expect(item.getByRole('status')).toBeVisible();
 });
+
+test('Home expiry banners open a list with as many items as they count', async ({ page }) => {
+  await signInAs(page, 'Test General Manager 1.0');
+  for (const show of ['expiring', 'expired'] as const) {
+    await page.goto('/');
+    const banner = page.getByTestId(`banner-${show}`);
+    if ((await banner.count()) === 0) continue;
+    const n = Number((await banner.locator('.tabular-nums').innerText()).trim());
+    await banner.click();
+    await page.waitForURL(/\/stock\/expiry/);
+    await expect(page.getByTestId('expiry-row')).toHaveCount(n);
+  }
+});
+
+test('People report: a department opens the names of the people in it', async ({ page }) => {
+  await signInAs(page, 'Test General Manager 1.0');
+  await page.goto('/reports/people');
+  const kitchen = page.getByTestId('people-department').filter({ hasText: 'Kitchen' }).first();
+  const headcount = Number(
+    (await kitchen.locator('.tabular-nums').first().innerText()).split(' ')[0],
+  );
+  await kitchen.getByRole('link').click();
+  await page.waitForURL(/\/team\/people\?node=/);
+  await expect(page.getByTestId('person').first()).toBeVisible();
+  expect(await page.getByTestId('person').count()).toBeGreaterThanOrEqual(headcount);
+});
