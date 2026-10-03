@@ -189,6 +189,34 @@ describe('loader errors', () => {
     [file]: base[file]!.replace(from, to),
   });
 
+  it("suppliers' phones (PO-4): a bad one is reported; a blank one keeps what was set in the app", async () => {
+    await inRolledBackTx(async (c) => {
+      const bad = edit('09_suppliers.csv', '+91 98200 10002', 'call the office');
+      const r = await loadCustomer(c, bad, { nested: true });
+      expect(r.issues).toContainEqual({
+        file: '09_suppliers.csv',
+        row: 3,
+        column: 'contact_phone',
+        message: 'must be a phone number with 8 to 15 digits',
+      });
+      // set in the app, then a file with no phone for that supplier
+      await c.query(
+        `update inv.supplier set phone = '+91 99999 00000'
+          where name = 'Test Supplier – Dairy & Poultry'
+            and tenant_id = (select id from core.tenant where code = 'TEST-COMPANY')`,
+      );
+      const blank = edit('09_suppliers.csv', ',+91 98200 10002', ',');
+      const r2 = await loadCustomer(c, blank, { nested: true });
+      expect(r2.issues).toEqual([]);
+      expect(r2.counts['suppliers']!.updated).toBe(0);
+      const { rows } = await c.query<{ phone: string }>(
+        `select phone from inv.supplier where name = 'Test Supplier – Dairy & Poultry'
+            and tenant_id = (select id from core.tenant where code = 'TEST-COMPANY')`,
+      );
+      expect(rows[0]!.phone).toBe('+91 99999 00000');
+    });
+  });
+
   it('reports bad cells and broken references by file, row and column', async () => {
     await inRolledBackTx(async (c) => {
       const files = {

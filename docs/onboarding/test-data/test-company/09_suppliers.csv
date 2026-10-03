@@ -1,8 +1,8 @@
-supplier_code,name,lead_time_days,contact_email
-SUPPLIER-FRESH-PRODUCE,Test Supplier – Fresh Produce,1,fresh-produce@test-supplier.example
-SUPPLIER-DAIRY-POULTRY,Test Supplier – Dairy & Poultry,1,dairy-poultry@test-supplier.example
-SUPPLIER-MEAT-SEAFOOD,Test Supplier – Meat & Seafood,1,meat-seafood@test-supplier.example
-SUPPLIER-DRY-GROCERY,Test Supplier – Dry Grocery,3,dry-grocery@test-supplier.example
-SUPPLIER-BEVERAGES-LIQUOR,Test Supplier – Beverages & Liquor,2,beverages-liquor@test-supplier.example
-SUPPLIER-HOUSEKEEPING-LINEN,Test Supplier – Housekeeping & Linen,5,housekeeping-linen@test-supplier.example
-SUPPLIER-PACKAGING,Test Supplier – Packaging,4,packaging@test-supplier.example
+supplier_code,name,lead_time_days,contact_email,contact_phone
+SUPPLIER-FRESH-PRODUCE,Test Supplier – Fresh Produce,1,fresh-produce@test-supplier.example,+91 98200 10001
+SUPPLIER-DAIRY-POULTRY,Test Supplier – Dairy & Poultry,1,dairy-poultry@test-supplier.example,+91 98200 10002
+SUPPLIER-MEAT-SEAFOOD,Test Supplier – Meat & Seafood,1,meat-seafood@test-supplier.example,+91 98200 10003
+SUPPLIER-DRY-GROCERY,Test Supplier – Dry Grocery,3,dry-grocery@test-supplier.example,+91 98200 10004
+SUPPLIER-BEVERAGES-LIQUOR,Test Supplier – Beverages & Liquor,2,beverages-liquor@test-supplier.example,+91 98200 10005
+SUPPLIER-HOUSEKEEPING-LINEN,Test Supplier – Housekeeping & Linen,5,housekeeping-linen@test-supplier.example,+91 98200 10006
+SUPPLIER-PACKAGING,Test Supplier – Packaging,4,packaging@test-supplier.example,+91 98200 10007
