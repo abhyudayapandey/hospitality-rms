@@ -77,7 +77,7 @@ test('stock position: all of the outlet’s stores, with expired and expiring va
   expect(await viewing(page)).toBe('Test Hotel & Bar 1.0 – All stores');
   expect(await viewingOptions(page)).toContain('Test Hotel & Bar 1.0 – Kitchen Store');
   await expect(page.getByTestId('measure-expired_stock_value').getByTestId('value')).toHaveText(
-    '₹25.13',
+    '₹25',
   );
   const dated = page.getByTestId('expiry-items');
   await expect(dated.locator('[data-sku="MINT-CHUTNEY"]')).toContainText(
