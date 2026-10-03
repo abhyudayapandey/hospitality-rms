@@ -20,13 +20,16 @@ export function expiryShow(s: string | undefined): ExpiryShow {
   return s === 'expired' ? 'expired' : 'expiring';
 }
 
-/** A store's batches: expiring soonest first; expired most recently expired first. */
+/**
+ * A store's batches, or every store's when `store` is null: expiring soonest first; expired
+ * most recently expired first.
+ */
 export function splitExpiry(
   rows: readonly ExpiryBatch[],
-  store: string,
+  store: string | null,
 ): { expiring: ExpiryBatch[]; expired: ExpiryBatch[] } {
   const at = (b: ExpiryBatch) => new Date(b.expires_at).getTime();
-  const here = rows.filter((b) => b.store_id === store);
+  const here = store === null ? [...rows] : rows.filter((b) => b.store_id === store);
   return {
     expiring: here.filter((b) => !b.expired).sort((a, b) => at(a) - at(b)),
     expired: here.filter((b) => b.expired).sort((a, b) => at(b) - at(a)),

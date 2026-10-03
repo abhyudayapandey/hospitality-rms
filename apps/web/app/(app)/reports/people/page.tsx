@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Empty } from '@/components/messages';
 import {
   CsvLink,
@@ -8,13 +9,14 @@ import {
 } from '@/components/report-view';
 import { requireUser } from '@/lib/auth/server';
 import { formatDay } from '@/lib/dates';
-import { withUser } from '@/lib/db';
+import { sql, withUser } from '@/lib/db';
 import type { SearchParams } from '@/lib/params';
 import {
   peopleDepartments,
   peopleFlags,
   peopleLeave,
   peopleSummary,
+  type PeopleDepartmentRow,
   reportPeriod,
   reportPlace,
   reportToday,
@@ -38,10 +40,26 @@ export default async function PeopleReport({ searchParams }: { searchParams: Sea
       peopleFlags(tx, place.id, from, to),
       peopleLeave(tx, place.id, from, to),
     ]);
-    return { places, place, range: { ...range, from, to }, summary, departments, flags, leave };
+    // a department opens its people's names (Team → People) where the person may see them:
+    // core.screen_places decides, with WORKERS view at the place
+    const named = new Set(
+      (
+        await sql<{ id: string }>`select id from core.screen_places('team_people')`.execute(tx)
+      ).rows.map((r) => r.id),
+    );
+    return {
+      places,
+      place,
+      range: { ...range, from, to },
+      summary,
+      departments,
+      flags,
+      leave,
+      named,
+    };
   });
   if (!data) return <NoReport>You don&apos;t have access to this report.</NoReport>;
-  const { places, place, range, summary, departments, flags, leave } = data;
+  const { places, place, range, summary, departments, flags, leave, named } = data;
   const money =
     leave.some((l) => l.liability !== null) ||
     summary.some((m) => m.measure === 'leave_liability' && m.value !== null);
@@ -69,22 +87,19 @@ export default async function PeopleReport({ searchParams }: { searchParams: Sea
             data-testid="people-departments"
           >
             {departments.map((d) => (
-              <li key={d.org_node_id} className="space-y-1 px-4 py-3 text-sm">
-                <div className="flex justify-between gap-2">
-                  <span className="font-medium">{d.name.split(' – ').pop()}</span>
-                  <span className="tabular-nums">{d.headcount} people</span>
-                </div>
-                <p className="text-xs text-slate-500">
-                  {d.shifts} {d.shifts === 1 ? 'shift' : 'shifts'}
-                  {d.on_time_pct !== null && ` · ${formatMeasure('pct', d.on_time_pct)} on time`}
-                  {d.late > 0 && ` · ${d.late} late`}
-                  {d.no_shows > 0 &&
-                    ` · ${d.no_shows} no-show${d.no_shows === 1 ? '' : 's'}`} ·{' '}
-                  {formatMeasure('hours', d.hours)}
-                  {Number(d.overtime_hours) > 0 &&
-                    ` (${formatMeasure('hours', d.overtime_hours)} overtime)`}
-                  {Number(d.leave_days) > 0 && ` · ${formatMeasure('days', d.leave_days)} leave`}
-                </p>
+              <li key={d.org_node_id} data-testid="people-department">
+                {named.has(d.org_node_id) ? (
+                  <Link
+                    href={`/team/people?node=${d.org_node_id}`}
+                    className="block space-y-1 px-4 py-3 text-sm"
+                  >
+                    <DepartmentLine d={d} />
+                  </Link>
+                ) : (
+                  <div className="space-y-1 px-4 py-3 text-sm">
+                    <DepartmentLine d={d} />
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -166,5 +181,26 @@ export default async function PeopleReport({ searchParams }: { searchParams: Sea
         3 or more paid people.
       </p>
     </div>
+  );
+}
+
+/** One department's line in By department: headcount, shifts, lateness, hours, leave. */
+function DepartmentLine({ d }: { d: PeopleDepartmentRow }) {
+  return (
+    <>
+      <div className="flex justify-between gap-2">
+        <span className="font-medium">{d.name.split(' – ').pop()}</span>
+        <span className="tabular-nums">{d.headcount} people</span>
+      </div>
+      <p className="text-xs text-slate-500">
+        {d.shifts} {d.shifts === 1 ? 'shift' : 'shifts'}
+        {d.on_time_pct !== null && ` · ${formatMeasure('pct', d.on_time_pct)} on time`}
+        {d.late > 0 && ` · ${d.late} late`}
+        {d.no_shows > 0 && ` · ${d.no_shows} no-show${d.no_shows === 1 ? '' : 's'}`} ·{' '}
+        {formatMeasure('hours', d.hours)}
+        {Number(d.overtime_hours) > 0 && ` (${formatMeasure('hours', d.overtime_hours)} overtime)`}
+        {Number(d.leave_days) > 0 && ` · ${formatMeasure('days', d.leave_days)} leave`}
+      </p>
+    </>
   );
 }

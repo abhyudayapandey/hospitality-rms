@@ -13,17 +13,28 @@ import { expiryList, formatQty, param, supplyContext, type SearchParams } from '
 export default async function ExpiryPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await supplyContext(searchParams, 'stock');
   if (!ctx.can('STOCK_LEVELS') || !ctx.node) return <NoSupplyAccess />;
-  const show = expiryShow(param(await searchParams, 'show'));
+  const sp = await searchParams;
+  const show = expiryShow(param(sp, 'show'));
+  // all=1: every store the person sees, as Home counts them (one line per store)
+  const all = param(sp, 'all') === '1';
   const user = await requireUser();
   const lists = await withUser(user.id, async (tx) =>
-    splitExpiry(await expiryList(tx), ctx.node!.id),
+    splitExpiry(await expiryList(tx), all ? null : ctx.node!.id),
   );
   const rows = lists[show];
-  const q = `node=${ctx.node.id}`;
+  const q = all ? 'all=1' : `node=${ctx.node.id}`;
   const canDiscard = ctx.can('STOCK_ADJUSTMENTS', 'modify');
   return (
     <div className="space-y-4">
       <SupplyHeader ctx={ctx} active="/stock" title="Stock" />
+      {all && (
+        <p className="text-sm text-slate-600" data-testid="expiry-all">
+          All your stores ·{' '}
+          <Link href={`/stock/expiry?node=${ctx.node.id}&show=${show}`} className="underline">
+            only {ctx.node.name}
+          </Link>
+        </p>
+      )}
       <nav aria-label="Expiry" className="grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1">
         {(['expiring', 'expired'] as const).map((s) => (
           <Link
@@ -57,6 +68,11 @@ export default async function ExpiryPage({ searchParams }: { searchParams: Searc
             >
               <span className="min-w-0">
                 <span className="block font-medium">{b.name}</span>
+                {all && (
+                  <span className="block text-xs text-slate-500" data-testid="expiry-store">
+                    {b.store}
+                  </span>
+                )}
                 <span className="block text-xs text-slate-500">
                   {formatQty(b.remaining, b.unit)} left
                   {b.batch_no ? ` · batch ${b.batch_no}` : ''}
@@ -73,7 +89,7 @@ export default async function ExpiryPage({ searchParams }: { searchParams: Searc
                 </span>
                 {show === 'expired' && canDiscard && (
                   <Link
-                    href={`/stock/wastage?${q}&item=${b.item_id}&qty=${Number(b.remaining)}&reason=expired`}
+                    href={`/stock/wastage?node=${b.store_id}&item=${b.item_id}&qty=${Number(b.remaining)}&reason=expired`}
                     className="mt-1 inline-flex min-h-11 items-center text-sm font-medium underline"
                   >
                     Throw away
