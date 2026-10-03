@@ -183,9 +183,10 @@ describe('production', () => {
       const own = await attemptAs(
         c,
         ids.user('test.central-kitchen-chef'),
-        'select * from inv.batches($1)',
+        `select * from inv.batches($1) where sku = 'MAKHANI-GRAVY'`,
         [ids.node('TEST-CENTRAL-KITCHEN-STORE')],
       );
+      // the gravy batch just made (the test data's batches here are masala)
       expect(own.rows!.length).toBe(1);
       const other = await attemptAs(
         c,

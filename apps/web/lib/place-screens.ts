@@ -27,6 +27,8 @@ export const PLACE_SCREENS = [
   'menu_engineering',
   'stock_position',
   'purchasing',
+  'central_kitchen',
+  'people',
 ] as const;
 
 /** Report screens: their places come from rpt.report_places(). */
@@ -37,6 +39,8 @@ export const REPORT_SCREENS = [
   'menu_engineering',
   'stock_position',
   'purchasing',
+  'central_kitchen',
+  'people',
 ] as const;
 export type ReportScreen = (typeof REPORT_SCREENS)[number];
 

@@ -169,6 +169,7 @@ class Loader {
     await this.stock();
     await this.menu();
     await this.leave();
+    await this.payRates();
     await this.rostering();
     await this.events();
     await this.checklists();
@@ -178,6 +179,8 @@ class Loader {
       await this.tasks();
       await this.maintenance();
       await this.purchases();
+      await this.attendance();
+      await this.transfers();
     }
     this.step('');
     this.report.access = await this.preview();
@@ -1501,17 +1504,19 @@ class Loader {
       const same = (entity: string, n: number) => {
         for (let i = 0; i < n; i++) this.count(entity, false);
       };
-      same('production batches', this.b.production.length);
       same('sales days', new Set(this.b.sales.map((x) => `${x.outlet_code} ${x.day}`)).size);
       same('stock counts', new Set(this.b.counts.map((x) => x.store_node_code)).size);
-      // file 32 came after files 26 to 28: its tasks follow the day those were loaded
-      const loaded = await this.pastWeekDay();
-      if (loaded) {
-        await this.prepTasks(loaded);
-        await this.linkPastBatches(loaded);
-      } else {
-        same('prep tasks', this.b.prepTasks.length);
-      }
+      // Files 26 and 32 follow the day each store's batches were loaded; rows for a store
+      // new to them (the central kitchen, ADR 030) count from today, and stay on that day
+      // at later loads.
+      const bases = await this.storeBases();
+      const made = new Set(this.b.production.map((p) => p.store_node_code));
+      // a store in file 32 with no batches in file 26 follows the others
+      const loaded = bases.values().next().value ?? this.today;
+      const baseOf = (store: string) => bases.get(store) ?? (made.has(store) ? this.today : loaded);
+      await this.prepTasks(baseOf);
+      await this.production(baseOf);
+      await this.linkPastBatches(baseOf);
       return;
     }
     await this.backdateMenu();
@@ -1567,10 +1572,10 @@ class Loader {
   }
 
   /** File 26: batches made at a past time (inv.record_test_production, test customers only). */
-  private async production() {
+  private async production(baseOf: (store: string) => string = () => this.today) {
     for (const p of this.b.production) {
       this.step(FILES.production.file, p.line);
-      const date = this.day(p.day);
+      const date = this.day(p.day, baseOf(p.store_node_code));
       const key = `test-data ${date} ${p.time} ${p.store_node_code} ${p.prep_item_code}`;
       const store = this.nodes.get(p.store_node_code)!;
       const done = await this.c.query(
@@ -1790,6 +1795,140 @@ class Loader {
     }
   }
 
+  /**
+   * File 34: a pay rate per person (COMPENSATION, ADR 030), for labour cost. Only rows the
+   * file lists change; a rate set in the app for someone not in the file stays.
+   */
+  private async payRates() {
+    for (const r of this.b.payRates) {
+      this.step(FILES.payRates.file, r.line);
+      const worker = this.workers.get(r.username);
+      if (!worker) continue;
+      await this.upsert(
+        'pay rates',
+        `insert into hr.worker_sensitive (tenant_id, worker_id, owner_user_id, org_node_id,
+                                          pay_rate, pay_basis)
+         select w.tenant_id, w.id, w.owner_user_id, w.org_node_id, $2, $3
+           from hr.worker w where w.id = $1
+         on conflict (worker_id) do update
+            set pay_rate = excluded.pay_rate, pay_basis = excluded.pay_basis
+          where (hr.worker_sensitive.pay_rate, hr.worker_sensitive.pay_basis)
+                is distinct from (excluded.pay_rate, excluded.pay_basis)
+         returning id, (xmax = 0) as inserted`,
+        [worker, r.pay_rate_inr, r.pay_basis],
+      );
+    }
+  }
+
+  /**
+   * File 35 (test customers only): past sessions, recorded as the person with
+   * hr.record_test_attendance, once per customer like the purchases.
+   */
+  private async attendance() {
+    if (this.b.attendance.length === 0) return;
+    const loaded = await this.c.query(
+      `select 1 from hr.attendance where tenant_id = $1 and in_key like 'test-data att %' limit 1`,
+      [this.tenant],
+    );
+    const home = new Map(this.b.users.map((u) => [u.username, u.home_node_code]));
+    for (const a of this.b.attendance) {
+      this.step(FILES.attendance.file, a.line);
+      this.count('attendance sessions', !loaded.rowCount);
+      if (loaded.rowCount) continue;
+      const date = this.day(a.day);
+      const tz = this.timezoneOf(home.get(a.username)!);
+      await this.as(a.username, () =>
+        this.c.query(
+          `select hr.record_test_attendance(($1::date + $2::time) at time zone $4,
+                                            ($1::date + $3::time) at time zone $4, $5)`,
+          [date, a.clock_in, a.clock_out, tz, `test-data att ${date} ${a.clock_in}`],
+        ),
+      );
+    }
+  }
+
+  /**
+   * File 36 (test customers only): transfers from the central kitchen, requested, then
+   * dispatched and received through the app's own steps at their past times, as the people
+   * named (once per customer).
+   */
+  private async transfers() {
+    if (this.b.transfers.length === 0) return;
+    const groups = new Map<string, Bundle['transfers']>();
+    for (const t of this.b.transfers) {
+      groups.set(t.transfer_ref, [...(groups.get(t.transfer_ref) ?? []), t]);
+    }
+    const loaded = await this.c.query(
+      `select 1 from inv.transfer
+        where tenant_id = $1 and idempotency_key like 'test-data transfer %' limit 1`,
+      [this.tenant],
+    );
+    for (const [ref, lines] of groups) {
+      const first = lines[0]!;
+      this.step(FILES.transfers.file, first.line);
+      this.count('transfers', !loaded.rowCount);
+      if (loaded.rowCount) continue;
+      const tz = this.timezoneOf(first.to_store_code);
+      const id = await this.as(
+        first.requested_by,
+        async () =>
+          (
+            await this.c.query<{ id: string }>(
+              `select inv.request_transfer($1, $2, $3, $4) as id`,
+              [
+                this.nodes.get(first.from_store_code),
+                this.nodes.get(first.to_store_code),
+                JSON.stringify(
+                  lines.map((l) => ({
+                    item_id: this.items.get(l.item_code),
+                    qty: l.requested_qty,
+                  })),
+                ),
+                `test-data transfer ${ref}`,
+              ],
+            )
+          ).rows[0]!.id,
+      );
+      const sentDay = first.dispatched_day;
+      if (sentDay === undefined || first.dispatched_by === undefined) continue;
+      await this.as(first.dispatched_by, () =>
+        this.c.query(
+          `select inv.record_test_dispatch($1, $2, ($3::date + time '14:00') at time zone $4)`,
+          [
+            id,
+            JSON.stringify(
+              lines.map((l) => ({
+                item_id: this.items.get(l.item_code),
+                qty: l.dispatched_qty ?? l.requested_qty,
+              })),
+            ),
+            this.day(sentDay),
+            tz,
+          ],
+        ),
+      );
+      const gotDay = first.received_day;
+      if (gotDay === undefined || first.received_by === undefined) continue;
+      await this.as(first.received_by, () =>
+        this.c.query(
+          `select inv.record_test_transfer_receipt($1, $2,
+                    ($3::date + time '16:00') at time zone $4)`,
+          [
+            id,
+            JSON.stringify(
+              lines.map((l) => ({
+                item_id: this.items.get(l.item_code),
+                qty: l.received_qty ?? l.dispatched_qty ?? l.requested_qty,
+              })),
+            ),
+            this.day(gotDay),
+            tz,
+          ],
+        ),
+      );
+    }
+  }
+
   /** A task's assignee as the database takes it (ops.check_assign). */
   private assignJson(a: AssignTo): object {
     return a.mode === 'person' ? { mode: 'person', user_id: this.users.get(a.username) } : a;
@@ -1922,7 +2061,7 @@ class Loader {
    * File 32: prep tasks, days counted from `base` (the day files 26 to 28 were loaded),
    * each once: the task keeps a key naming its line.
    */
-  private async prepTasks(base: string = this.today) {
+  private async prepTasks(baseOf: (store: string) => string = () => this.today) {
     for (const p of this.b.prepTasks) {
       this.step(FILES.prepTasks.file, p.line);
       const key = `test-data prep ${p.store_node_code} ${p.prep_item_code} ${p.day}`;
@@ -1942,7 +2081,7 @@ class Loader {
           [
             this.nodes.get(p.store_node_code),
             JSON.stringify([{ item_id: this.items.get(p.prep_item_code), qty: p.quantity }]),
-            this.day(p.day, base),
+            this.day(p.day, baseOf(p.store_node_code)),
             p.due_time,
             this.timezoneOf(p.store_node_code),
             JSON.stringify(this.assignJson(p.assign_to)),
@@ -1956,36 +2095,47 @@ class Loader {
     }
   }
 
-  /** The day files 26 to 28 were loaded, from their batches' keys (null if none match). */
-  private async pastWeekDay(): Promise<string | null> {
-    const first = this.b.production[0];
-    if (!first) return null;
-    const { rows } = await this.c.query<{ k: string }>(
-      `select idempotency_key as k from inv.production
-        where tenant_id = $1 and idempotency_key like $2`,
-      [this.tenant, `test-data % ${first.time} ${first.store_node_code} ${first.prep_item_code}`],
-    );
-    for (const { k } of rows) {
-      const base = this.day(-first.day, k.split(' ')[1]);
-      const keys = this.b.production.map(
-        (p) =>
-          `test-data ${this.day(p.day, base)} ${p.time} ${p.store_node_code} ${p.prep_item_code}`,
+  /**
+   * Each store's day for files 26 and 32: the day its batches were loaded, from their
+   * keys. A store with none loaded yet has no entry.
+   */
+  private async storeBases(): Promise<Map<string, string>> {
+    const bases = new Map<string, string>();
+    const stores = [...new Set(this.b.production.map((p) => p.store_node_code))];
+    for (const store of stores) {
+      const rows = this.b.production.filter((p) => p.store_node_code === store);
+      const first = rows[0]!;
+      const { rows: found } = await this.c.query<{ k: string }>(
+        `select idempotency_key as k from inv.production
+          where tenant_id = $1 and idempotency_key like $2`,
+        [this.tenant, `test-data % ${first.time} ${store} ${first.prep_item_code}`],
       );
-      const found = await this.c.query(
-        `select 1 from inv.production where tenant_id = $1 and idempotency_key = any ($2)`,
-        [this.tenant, keys],
-      );
-      if (found.rowCount === keys.length) return base;
+      // the candidate day under which most of the store's rows are found
+      let best: { base: string; n: number } | null = null;
+      for (const { k } of found) {
+        const base = this.day(-first.day, k.split(' ')[1]);
+        const keys = rows.map(
+          (p) => `test-data ${this.day(p.day, base)} ${p.time} ${store} ${p.prep_item_code}`,
+        );
+        const n = (
+          await this.c.query(
+            `select 1 from inv.production where tenant_id = $1 and idempotency_key = any ($2)`,
+            [this.tenant, keys],
+          )
+        ).rowCount!;
+        if (!best || n > best.n) best = { base, n };
+      }
+      if (best) bases.set(store, best.base);
     }
-    return null;
+    return bases;
   }
 
   /** Links the batches loaded earlier (file 26) to the prep tasks they fulfil (file 32). */
-  private async linkPastBatches(base: string) {
+  private async linkPastBatches(baseOf: (store: string) => string) {
     for (const p of this.b.production) {
       const task = this.prepTaskIds.get(`${p.store_node_code} ${p.prep_item_code} ${p.day}`);
       if (!task) continue;
-      const key = `test-data ${this.day(p.day, base)} ${p.time} ${p.store_node_code} ${p.prep_item_code}`;
+      const key = `test-data ${this.day(p.day, baseOf(p.store_node_code))} ${p.time} ${p.store_node_code} ${p.prep_item_code}`;
       const made = await this.c.query<{ id: string }>(
         `select id from inv.production
           where tenant_id = $1 and idempotency_key = $2 and task_id is null`,

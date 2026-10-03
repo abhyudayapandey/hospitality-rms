@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  capRange,
   compare,
+  costParts,
   DISH_CLASSES,
   dishClass,
+  flashCostParts,
   formatMeasure,
   MEASURES,
   periodRange,
@@ -81,9 +84,13 @@ describe('the cost controller reports (ADR 028)', () => {
       'menu_engineering',
       'stock_position',
       'purchasing',
+      'central_kitchen',
+      'people',
       'my_week',
     ]);
     expect(REPORTS.cost_of_sales.href).toBe('/reports/cost');
+    expect(REPORTS.people.href).toBe('/reports/people');
+    expect(REPORTS.central_kitchen.href).toBe('/reports/kitchen');
   });
 
   it('periodRange: the days each period covers, never past today', () => {
@@ -135,5 +142,44 @@ describe('the cost controller reports (ADR 028)', () => {
     expect(dishClass('puzzle')).toBe('puzzle');
     expect(dishClass(null)).toBeNull();
     expect(dishClass('cat')).toBeNull();
+  });
+});
+
+describe('where the money went (R-3, ADR 030)', () => {
+  it('costParts: in order, labelled, only the parts the data has', () => {
+    const list = costParts([
+      { part: 'prime', value: '900', pct: '60.0' },
+      { part: 'food_recipe', value: '300', pct: '20.0' },
+      { part: 'materials', value: '400', pct: '26.7' },
+      { part: 'unknown', value: '1', pct: null },
+    ]);
+    expect(list.map((p) => p.part)).toEqual(['food_recipe', 'materials', 'prime']);
+    expect(list.map((p) => !!p.total)).toEqual([false, true, true]);
+  });
+
+  it('flashCostParts: Outlet today measures as parts, each a share of the sales', () => {
+    const parts = flashCostParts([
+      { measure: 'sales', value: '2000' },
+      { measure: 'cost_food_recipe', value: '500' },
+      { measure: 'cost_materials', value: '640' },
+      { measure: 'labour_cost', value: '700' },
+      { measure: 'prime_cost', value: '1340' },
+      { measure: 'late', value: '2' },
+    ]);
+    expect(parts).toEqual([
+      { part: 'food_recipe', value: '500', pct: '25.0' },
+      { part: 'materials', value: '640', pct: '32.0' },
+      { part: 'labour', value: '700', pct: '35.0' },
+      { part: 'prime', value: '1340', pct: '67.0' },
+    ]);
+    // no sales: no share
+    expect(flashCostParts([{ measure: 'cost_materials', value: '10' }])).toEqual([
+      { part: 'materials', value: '10', pct: null },
+    ]);
+  });
+
+  it('capRange: at most 93 days, ending where asked', () => {
+    expect(capRange('2026-01-01', '2026-10-02')).toEqual({ from: '2026-07-02', to: '2026-10-02' });
+    expect(capRange('2026-09-26', '2026-10-02')).toEqual({ from: '2026-09-26', to: '2026-10-02' });
   });
 });

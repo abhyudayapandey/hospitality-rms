@@ -76,14 +76,7 @@ select c.tenant_id, c.shift_id, c.worker_id, c.owner_user_id, c.org_node_id, c.s
                           and s.local_date between l.from_date and l.to_date)) c
  where c.rn <= c.open_slots;
 
-insert into hr.worker_sensitive (tenant_id, worker_id, owner_user_id, org_node_id, pay_rate, pay_basis)
-select w.tenant_id, w.id, w.owner_user_id, w.org_node_id,
-       case when w.role_code in ('BAR_MANAGER', 'HEAD_COOK', 'FLOOR_MANAGER') then 45000 else 180 end,
-       case when w.role_code in ('BAR_MANAGER', 'HEAD_COOK', 'FLOOR_MANAGER') then 'monthly' else 'hourly' end
-  from hr.worker w
-  join core.hierarchy_node n on n.id = w.org_node_id
- where n.code like 'TEST-BAR-3.0%'
-on conflict do nothing;
+-- Pay rates come from the test customers' file 34 (ADR 030).
 
 with u as (
   select w.id, a.username

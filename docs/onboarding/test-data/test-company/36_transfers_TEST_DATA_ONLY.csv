@@ -1,0 +1,3 @@
+transfer_ref,from_store_code,to_store_code,item_code,requested_qty,requested_day,requested_by,dispatched_qty,dispatched_day,dispatched_by,received_qty,received_day,received_by
+TR-1,TEST-CENTRAL-KITCHEN-STORE,TEST-HOTEL-1.1-KITCHEN-STORE,ONION-TOMATO-MASALA,4000,-2,test.sous-chef.1.1,3600,-2,test.central-kitchen-store-keeper,3400,-2,test.executive-chef.1.1
+TR-2,TEST-CENTRAL-KITCHEN-STORE,TEST-BAR-3.0-KITCHEN-STORE,ONION-TOMATO-MASALA,2000,-1,test.cook.3.0,2000,-1,test.central-kitchen-store-keeper,,,

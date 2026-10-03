@@ -161,8 +161,10 @@ describe('Test Company activity (files 25 to 28): the README figures', () => {
            join core.app_user u on u.id = p.created_by
           where p.tenant_id = $1 and p.idempotency_key like 'test-data %'
             and (p.made_at at time zone 'Asia/Kolkata')::date between $2::date and $3::date
+            -- the outlets' batches; the central kitchen's are pinned by labour-reports
+            and p.delivery_node_id <> $4
           order by p.made_at`,
-        [ids.tenant(), w.from, w.to],
+        [ids.tenant(), w.from, w.to, ids.node('TEST-CENTRAL-KITCHEN-STORE')],
       );
       expect(made.rows.map((r) => `${r.sku} ${r.username}`)).toEqual([
         'SUGAR-SYRUP test.bartender.1.0',
@@ -247,8 +249,11 @@ describe('Test Company tasks (files 29 to 32): the README figures', () => {
       const { rows } = await c.query<{ title: string; status: string; batches: number }>(
         `select t.title, t.status,
                 (select count(*)::int from inv.production p where p.task_id = t.id) as batches
-           from ops.task t where t.tenant_id = $1 and t.kind = 'prep' order by t.due_at`,
-        [ids.tenant()],
+           from ops.task t where t.tenant_id = $1 and t.kind = 'prep'
+            -- the outlets' prep lists; the central kitchen's are pinned by labour-reports
+            and t.delivery_node_id <> $2
+          order by t.due_at`,
+        [ids.tenant(), ids.node('TEST-CENTRAL-KITCHEN-STORE')],
       );
       expect(rows).toEqual([
         { title: 'Make Mint Chutney 500 g', status: 'done', batches: 1 },

@@ -29,7 +29,8 @@ describe('test customers', () => {
          from core.tenant t where t.code like 'TEST-%' order by t.code`,
     );
     expect(rows).toEqual([
-      { code: 'TEST-COMPANY', users: 113, places: 49, items: 81, stocked: 332 },
+      // stocked: file 36 sends onion tomato masala from the central kitchen to Hotel 1.1 (ADR 030)
+      { code: 'TEST-COMPANY', users: 113, places: 49, items: 81, stocked: 334 },
       { code: 'TEST-SOLO-COMPANY', users: 9, places: 9, items: 56, stocked: 52 },
     ]);
   });

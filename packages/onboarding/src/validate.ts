@@ -631,6 +631,115 @@ function validateActivity(
       add(file, p.line, 'received_quantity', 'needs a received_day');
     }
   }
+
+  // file 34: one rate per person in file 07
+  const paid = new Set<string>();
+  for (const r of b.payRates) {
+    person(f('payRates'), r.line, 'username', r.username);
+    if (paid.has(r.username)) add(f('payRates'), r.line, 'username', 'is listed twice');
+    paid.add(r.username);
+  }
+
+  // file 35: past sessions that end the same day, never overlapping one another
+  const sessions = new Map<string, { from: number; to: number; line: number }[]>();
+  for (const a of b.attendance) {
+    const file = f('attendance');
+    person(file, a.line, 'username', a.username);
+    if (a.day > -1) add(file, a.line, 'day', 'must be a past day, like -1');
+    if (a.clock_out <= a.clock_in) {
+      add(file, a.line, 'clock_out', 'must be after clock_in on the same day');
+      continue;
+    }
+    const mins = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+    const from = a.day * 1440 + mins(a.clock_in);
+    const to = a.day * 1440 + mins(a.clock_out);
+    const theirs = sessions.get(a.username) ?? [];
+    const clash = theirs.find((x) => from < x.to && x.from < to);
+    if (clash) add(file, a.line, 'clock_in', `overlaps line ${clash.line}`);
+    theirs.push({ from, to, line: a.line });
+    sessions.set(a.username, theirs);
+  }
+
+  // file 36: a transfer's columns agree on every line; requested, then dispatched, then
+  // received, each by someone else (rule 7: nobody approves their own request)
+  const prepAt = new Set(b.prepLocations.map((p) => `${p.prep_item_code} ${p.store_node_code}`));
+  const TRANSFER_COLUMNS = [
+    'from_store_code',
+    'to_store_code',
+    'requested_day',
+    'requested_by',
+    'dispatched_day',
+    'dispatched_by',
+    'received_day',
+    'received_by',
+  ] as const;
+  const transfers = new Map<string, Bundle['transfers'][number]>();
+  const onTransfer = new Set<string>();
+  for (const t of b.transfers) {
+    const file = f('transfers');
+    const first = transfers.get(t.transfer_ref);
+    if (first) {
+      for (const col of TRANSFER_COLUMNS) {
+        if (first[col] !== t[col]) add(file, t.line, col, `differs from line ${first.line}`);
+      }
+    } else {
+      transfers.set(t.transfer_ref, t);
+      for (const [col, code] of [
+        ['from_store_code', t.from_store_code],
+        ['to_store_code', t.to_store_code],
+      ] as const) {
+        const d = k.dlv.get(code);
+        if (!d) add(file, t.line, col, `${code} is not in ${f('deliveryNodes')}`);
+        else if (!d.holds_stock) add(file, t.line, col, `${code} does not hold stock`);
+      }
+      if (t.from_store_code === t.to_store_code) {
+        add(file, t.line, 'to_store_code', 'must differ from from_store_code');
+      }
+      person(file, t.line, 'requested_by', t.requested_by);
+      if (t.dispatched_day !== undefined) {
+        if (t.dispatched_by === undefined) add(file, t.line, 'dispatched_by', 'is required');
+        else {
+          person(file, t.line, 'dispatched_by', t.dispatched_by);
+          if (t.dispatched_by === t.requested_by) {
+            add(file, t.line, 'dispatched_by', 'nobody approves their own request');
+          }
+        }
+        if (t.dispatched_day < t.requested_day) {
+          add(file, t.line, 'dispatched_day', 'must not be before requested_day');
+        }
+      }
+      if (t.received_day !== undefined) {
+        if (t.dispatched_day === undefined) {
+          add(file, t.line, 'received_day', 'needs a dispatched_day');
+        } else if (t.received_day < t.dispatched_day) {
+          add(file, t.line, 'received_day', 'must not be before dispatched_day');
+        }
+        if (t.received_by === undefined) add(file, t.line, 'received_by', 'is required');
+        else {
+          person(file, t.line, 'received_by', t.received_by);
+          if (t.received_by === t.requested_by) {
+            add(file, t.line, 'received_by', 'nobody approves their own request');
+          }
+        }
+      }
+    }
+    const at = `${t.item_code} ${t.to_store_code}`;
+    if (!k.placed.has(at) && !prepAt.has(at)) {
+      add(file, t.line, 'item_code', `${t.item_code} is not set up at ${t.to_store_code}`);
+    }
+    const key = `${t.transfer_ref} ${t.item_code}`;
+    if (onTransfer.has(key)) add(file, t.line, 'item_code', 'listed twice on that transfer');
+    onTransfer.add(key);
+    if (t.dispatched_day === undefined && t.dispatched_qty !== undefined) {
+      add(file, t.line, 'dispatched_qty', 'needs a dispatched_day');
+    }
+    if (t.received_day === undefined && t.received_qty !== undefined) {
+      add(file, t.line, 'received_qty', 'needs a received_day');
+    }
+    if ((t.received_qty ?? 0) > (t.dispatched_qty ?? t.requested_qty)) {
+      add(file, t.line, 'received_qty', 'cannot be more than was dispatched');
+    }
+  }
 }
 
 type Add = (file: string, row: number, column: string, message: string) => void;

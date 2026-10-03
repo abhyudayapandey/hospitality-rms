@@ -58,6 +58,9 @@ Each access row means: this person has this access group at this place. It cover
 | `29_checklist_templates.csv`                       | Recurring checklists per department: schedule, who does them, and their steps (below)                                                                                                                                                                                                                                                                    |
 | `30_tasks_…` – `32_prep_tasks_…`                   | Test Company only: one-off tasks, a maintenance request and a prep list (below) — test only                                                                                                                                                                                                                                                              |
 | `33_purchases_TEST_DATA_ONLY.csv`                  | Test Company only: past orders at the Hotel 1.0 Kitchen Store, approved and received in full, short or not at all (below) — test only                                                                                                                                                                                                                    |
+| `34_pay_rates.csv`                                 | Optional, any customer: each person's pay, `hourly` or `monthly`, in rupees (ADR 030). Read only by people with COMPENSATION; reports show totals of 3 or more                                                                                                                                                                                           |
+| `35_attendance_TEST_DATA_ONLY.csv`                 | Test Company only: a past week of clock-ins and clock-outs (below) — test only                                                                                                                                                                                                                                                                           |
+| `36_transfers_TEST_DATA_ONLY.csv`                  | Test Company only: two transfers from the central kitchen, requested, sent and received by the people named (below) — test only                                                                                                                                                                                                                          |
 | `99_access_preview_GENERATED.csv`                  | Every resulting access grant, with place name, what it covers, and where it came from                                                                                                                                                                                                                                                                    |
 
 ## Default access words (file 06)
@@ -264,3 +267,44 @@ weeks to the load day):
   | Plowhorse | Lager (330 ml), Vodka peg (30 ml), Red wine (glass)            | Butter Naan                                  |
   | Puzzle    | high-margin drinks that didn't sell, such as Cosmopolitan      | Paneer Tikka and the dishes that didn't sell |
   | Dog       | low-margin drinks that didn't sell, such as Whisky peg (30 ml) | none                                         |
+
+## Pay, attendance and transfers: files 34 to 36 (ADR 030)
+
+- **`34_pay_rates.csv`** (any customer): `username`, `pay_basis` (`hourly` or `monthly`) and
+  `pay_rate_inr`. Test Company has 112 rates, Test Solo Bar Co 9; the Account Owner has
+  none. Monthly rates divide into round daily figures: a monthly rate × 12 ÷ 365 is a day's
+  cost, so ₹36,500 a month is ₹1,200 a day.
+- **`35_attendance_TEST_DATA_ONLY.csv`** (test only): `username`, `day`, `clock_in`,
+  `clock_out` (local times). 14 hourly people work 09:00 to 17:00 on days -7 to -2;
+  `test.commis.1.0` works 07:00 to 20:00 on days -7 to -1 (overtime); the technician works
+  days -3 and -2; a banquet server works 18:00 to 23:00 on days -4 and -3. Each is recorded
+  as the person who worked, once per customer.
+- **`36_transfers_TEST_DATA_ONLY.csv`** (test only): one row per transfer line. The requester
+  can't be the person who sends or receives it. Sent at 14:00, received at 16:00.
+
+| Transfer | To                      | Onion Tomato Masala                                                                          |
+| -------- | ----------------------- | -------------------------------------------------------------------------------------------- |
+| TR-1     | Hotel 1.1 Kitchen Store | 4,000 g asked for on day -2 by the Sous Chef 1.1; 3,600 g sent; 3,400 g received by its chef |
+| TR-2     | Bar 3.0 Kitchen Store   | 2,000 g asked for on day -1 by the Cook 3.0; 2,000 g sent; not received yet                  |
+
+The central kitchen's batches (file 26: 6,400 g on day -2, 3,200 g on day -1) and prep lists
+(file 32: 8,000 g and 3,200 g, for the kitchen manager) are the ones it sends from.
+
+**Expected figures** (`packages/db/src/labour-reports.db.test.ts` pins them):
+
+- **Labour, Hotel 1.0, days -7 to -1:** 42 people, 789 hours, **₹4,65,225** (hourly
+  ₹99,825, salaried ₹3,65,400: ₹52,200 a day).
+  - Kitchen ₹69,575, Restaurant ₹60,000, Front Office ₹48,000, Stores ₹33,600, Bar ₹45,600
+    (6 days), Housekeeping ₹45,600 (6 days), Banquets ₹8,450 (2 days, 3 people), Other
+    departments ₹1,54,400.
+  - Admin & Finance, Engineering and Security never show on their own (under 3 paid
+    people).
+- **Outlet today, day -2:** people cost **₹69,025** (salaried ₹52,200, hourly ₹16,825).
+  Kitchen today, day -2: ₹10,225.
+- **People, Hotel 1.0:** headcount 42, 789 hours, leave not yet taken 1,573 days; leave
+  liability ₹25,82,200 (HR Admin only; the HR Executive sees days).
+- **Central kitchen, the last 7 days:** 2 batches; ₹492.60 asked for, ₹459.76 sent,
+  **93.3%** filled; ₹16.42 lost on the way; ₹164.20 on the way to Bar 3.0. Onion Tomato
+  Masala: 11,200 g planned, 9,600 g made.
+- **Purchasing, Hotel 1.1 Kitchen Store:** from the central kitchen ₹328.40 asked for,
+  ₹279.14 received, **85.0%**, ₹16.42 lost on the way, 1 line short.

@@ -146,7 +146,8 @@ describe('batches and expiry', () => {
       const b = await attemptAs<{ batch_no: string; expired: boolean }>(
         c,
         ids.user(CK_CHEF),
-        'select batch_no, expired from inv.batches($1)',
+        // the gravy's batches (the central kitchen's test data has masala batches too)
+        `select batch_no, expired from inv.batches($1) where sku = 'MAKHANI-GRAVY'`,
         [ids.node(CK)],
       );
       expect(b.rows!.map((r) => r.expired)).toEqual([false]);

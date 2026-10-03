@@ -13,11 +13,14 @@ import {
   reportToday,
   shortDeliveries,
   supplierFill,
+  transfersIn,
 } from '@/lib/report-data';
+import { capRange, formatMeasure } from '@/lib/reports';
 
 // Purchasing (R-2, ADR 028), per store: price changes (each receipt against the store's
 // previous price for the item, else its standard cost) and each supplier's fill rate and
-// timeliness, with the lines delivered short or not at all.
+// timeliness, with the lines delivered short or not at all; and what came in from the
+// central kitchen or another store (R-3, ADR 030).
 export default async function Purchasing({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
@@ -36,10 +39,12 @@ export default async function Purchasing({ searchParams }: { searchParams: Searc
       prices: await priceChanges(tx, place.id, range.from, range.to),
       fill: await supplierFill(tx, place.id, range.from, range.to),
       short: await shortDeliveries(tx, place.id, range.from, range.to),
+      // at most 93 days
+      transfers: await transfersIn(tx, place.id, capRange(range.from, range.to).from, range.to),
     };
   });
   if (!data) return <NoReport>You don&apos;t have access to this report.</NoReport>;
-  const { places, place, range, prices, fill, short } = data;
+  const { places, place, range, prices, fill, short, transfers } = data;
   const changed = prices.filter((p) => Number(p.change_value ?? 0) !== 0);
   const total = changed.reduce((t, p) => t + Number(p.change_value), 0);
   return (
@@ -153,6 +158,35 @@ export default async function Purchasing({ searchParams }: { searchParams: Searc
           </details>
         )}
       </section>
+      {transfers.length > 0 && (
+        <section aria-label="From the central kitchen" className="space-y-2">
+          <h2 className="text-sm font-semibold text-slate-700">From the central kitchen</h2>
+          <ul
+            className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
+            data-testid="transfers-in"
+          >
+            {transfers.map((t) => (
+              <li key={t.from_id} className="space-y-1 px-4 py-3 text-sm">
+                <div className="flex justify-between gap-2">
+                  <span className="font-medium">{t.from_name}</span>
+                  <span className="font-semibold tabular-nums" data-testid="fill">
+                    {t.fill_pct === null ? '–' : `${formatMeasure('pct', t.fill_pct)} received`}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">
+                  {t.transfers} {t.transfers === 1 ? 'transfer' : 'transfers'} · asked{' '}
+                  {formatMeasure('money', t.requested_value)}, received{' '}
+                  {formatMeasure('money', t.received_value)}
+                  {Number(t.transit_loss) > 0 &&
+                    ` · ${formatMeasure('money', t.transit_loss)} lost on the way`}
+                  {t.short_lines > 0 &&
+                    ` · ${t.short_lines} ${t.short_lines === 1 ? 'line' : 'lines'} short`}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <p className="text-xs text-slate-500">
         Orders released {formatDay(range.from)} to {formatDay(range.to)}. Fill rate is what was
         received over what was ordered, at the ordered price; on time is a first delivery by the

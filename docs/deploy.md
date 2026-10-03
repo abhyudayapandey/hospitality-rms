@@ -1152,6 +1152,64 @@ and no product sync change.
   lists Mutton under "Not moved in 30 days".
 - **`test.bartender.1.0`.** Reports shows only My week.
 
+#### Releasing labour cost, People and the central kitchen (R-3)
+
+One migration, `20261023100000_labour_reports` (ADR 030). No stack change and no new
+parameter. The product sync (part of Deploy) adds the new LABOUR_COST domain to the outlet
+manager, area manager and HR admin groups. This changes access, so run **Actions → RLS
+equivalence (all users) → Run workflow** on the commit before merging.
+
+- **What changes in the app.**
+  - **Outlet today** gains people cost, people cost of sales, prime cost and sales per hour
+    worked (for those who see labour cost), and **Where the money went** (raw materials by
+    part, people, prime cost; each in ₹ and % of sales).
+  - **Cost of sales** gains Where the money went and, for those who see labour cost,
+    people cost by department.
+  - **Department today** gains people cost for those who see labour cost.
+  - Two new reports: **People** (HR and the Account Owner) and **Central kitchen** (its
+    managers and store keeper). **Purchasing** gains "From the central kitchen".
+  - No figure covers fewer than 3 paid people.
+- **Test data.**
+  - Both customers gain `34_pay_rates.csv`.
+  - Test Company gains `35_attendance_TEST_DATA_ONLY.csv` and
+    `36_transfers_TEST_DATA_ONLY.csv`, plus two central kitchen batches in file 26 and two
+    central kitchen prep lists in file 32. The kitchen's rows count from the day you
+    re-import: the outlets' batches keep the day they were loaded.
+
+**Deploy order.** Run the Deploy workflow, then re-import both test customers.
+
+**Re-import Test Company** (40 files). The dry run should report no problems, the same 2
+approval-coverage warnings, and as new: **pay rates 112, attendance sessions 95,
+transfers 2, production batches 2** (6 unchanged), **prep tasks 2** (4 unchanged), plus
+any shifts for weeks that are new since the last import. Nothing else changes. Apply, then
+dry-run again: no changes (apart from new weeks of shifts, if the week turned).
+If the dry run reports "INVALID_DATE: overlaps another session" on file 35, someone
+clocked in on production during a test session (or is still clocked in from before it):
+send me the report.
+
+**Re-import Test Solo Bar Co** (28 files): **pay rates 9** new, nothing else; the same 5
+warnings. Apply, then dry-run again: no changes.
+
+The report tables pick up the new labour the next night (the nightly job rebuilds 35 days);
+Outlet today and Department today work out today and yesterday live, so check the earlier
+days the morning after.
+
+**Check** (the figures are in `docs/onboarding/test-data/README.md`).
+
+- **`test.general-manager.1.0`.** Reports → Outlet today, two days back: people cost and
+  prime cost, and Where the money went with people at the bottom. Cost of sales lists people
+  cost by department, with Other departments and no Security.
+- **`test.cost-controller.1.0`.** Cost of sales shows Where the money went with no people
+  lines.
+- **`test.hr-executive.1.0`.** Reports → People: headcount 42, leave in days, no ₹.
+  **`test.hr-admin`**: the same with leave liability in ₹.
+- **`test.central-kitchen-manager`.** Reports → Central kitchen: Onion Tomato Masala made;
+  Hotel 1.1 Kitchen Store 90.0% filled with ₹16.42 lost on the way; Bar 3.0 on the way.
+  **`test.central-kitchen-chef`**: no Central kitchen report.
+- **`test.executive-chef.1.1`.** Reports → Purchasing at the Kitchen Store: From the
+  central kitchen, 85.0% received.
+- **`test.bartender.1.0`.** Reports shows only My week.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.
@@ -1220,7 +1278,7 @@ passwords file (`TEST_LOGINS_do_not_commit.csv`) and the README never are:
 (cd docs/onboarding/test-data/test-solo-bar-co && zip -q -FS ~/test-solo-bar-co.zip [0-9][0-9]_*.csv)
 ```
 
-`test-company.zip` holds 37 files, `test-solo-bar-co.zip` 27.
+`test-company.zip` holds 40 files, `test-solo-bar-co.zip` 28.
 
 **2. Create each customer**: `/platform` → **New customer**. Fill in exactly:
 
@@ -1249,37 +1307,46 @@ role and keeps them Account Owner through file 08.)
 **3. Import**: the customer's page → **Import setup files** → choose the zip →
 **Upload and dry run**. The dry run should report no problems and:
 
-- **Test Company**: "Dry run: applying would make 1915 changes." Per table (new / changed):
-  org places 32 / 1 (the company root gets the file's values), delivery places 16,
-  links 17, location settings 5, job roles 53, job role access 85, users 106 (the owner
-  exists already), workers 106 / 1 (the owner's), extra access 3, suppliers 7, items 71,
-  item locations 329, opening stock 328 (its zero-quantity Angostura Bitters
-  line at Bar 3.0 is reported unchanged), unit conversions 71, prep items 10, prep
-  locations 34, menu items 37, menu prices 111, recipes 47, prep procedures 24, leave types
-  5, leave balances 321, roster settings 1, shift templates 90, events 4. **2 approval-coverage warnings**, both
-  expected: `test.account-owner`'s own LEAVE and SHIFT_SWAP at TEST-COMPANY have no
-  approver but them and are approved at the top of the chain (ADR 010).
-- **Test Solo Bar Co**: "Dry run: applying would make 399 changes." Per table: org places
-  4 / 1, delivery places 4, links 3, location settings 1, job roles 7, job role access 12,
-  users 6, workers 6 / 1, extra access 1 (the owner's Account Owner), suppliers 2, items
+- **Test Company**: "Dry run: applying would make 2805 changes." Per table (new /
+  changed): access groups 1, org places 32 / 1 (the company root gets the file's values),
+  delivery places 16, links 17, location settings 5, job roles 53, job role access 92,
+  users 112 (the owner exists already), workers 112 / 1 (the owner's), extra access 4,
+  suppliers 7, items 71, item locations 329, opening stock 328 (its zero-quantity
+  Angostura Bitters line at Bar 3.0 is reported unchanged), unit conversions 71, prep
+  items 10, prep locations 34, menu items 37, menu prices 111, recipes 47, prep procedures
+  24, leave types 5, leave balances 339, pay rates 112, roster settings 1, shift templates
+  90, events 4, checklists 11, shifts 260, shift assignments 176, menu dates backdated 0 /
+  158, prep tasks 6, production batches 8, sales days 12, stock counts 1, tasks 5,
+  maintenance requests 1, purchase orders 4, attendance sessions 95, transfers 2. (Shifts
+  depend on the week: the files roster the weeks ahead.) **2 approval-coverage
+  warnings**, both expected: `test.account-owner`'s own LEAVE and SHIFT_SWAP at
+  TEST-COMPANY have no approver but them and are approved at the top of the chain (ADR
+  010).
+- **Test Solo Bar Co**: "Dry run: applying would make 424 changes." Per table: org places
+  4 / 1, delivery places 4, links 3, location settings 1, job roles 7, job role access 14,
+  users 8, workers 8 / 1, extra access 1 (the owner's Account Owner), suppliers 2, items
   49, item locations 53, opening stock 52 (its zero-quantity Angostura Bitters line is
-  reported unchanged), unit conversions 49, prep items 7, prep locations 7, menu items
-  27, menu prices 27, recipes 34, prep procedures 14, leave types 5, leave balances 21,
-  roster settings 1, shift templates 5. **5 approval-coverage warnings**, all expected, all for
-  `test.solo.bar-manager` (the only manager): their own LEAVE, PURCHASE_ORDER,
-  ROLE_CHANGE, SHIFT_SWAP and STOCK_ADJUSTMENT are approved at the top of the chain.
+  reported unchanged), unit conversions 49, prep items 7, prep locations 7, menu items 27,
+  menu prices 27, recipes 34, prep procedures 14, leave types 5, leave balances 27, pay
+  rates 9, roster settings 1, shift templates 5, checklists 4. **5 approval-coverage
+  warnings**, all expected, all for `test.solo.bar-manager` (the only manager): their own
+  LEAVE, PURCHASE_ORDER, ROLE_CHANGE, SHIFT_SWAP and STOCK_ADJUSTMENT are approved at the
+  top of the chain.
+
+Measured on an empty database on 3 Oct 2026 with the console's code path; a second load
+reported no changes.
 
 Anything else (a problem listed, different counts): stop, don't apply, and send me the
 report.
 
-**4. Apply**: **Apply** on the dry run. The apply job reports "Applied: 1915 changes."
-(Test Solo Bar Co: 399). Then **The dry run this applied** → **Apply** again: it must say
+**4. Apply**: **Apply** on the dry run. The apply job reports "Applied: 2805 changes."
+(Test Solo Bar Co: 424). Then **The dry run this applied** → **Apply** again: it must say
 "Applied. No changes: everything in these files was already loaded."
 
 **5. Logins**: the customer's page → **Logins**.
 
-- Username logins: "0 of 107 have a login; 107 waiting" (Test Solo Bar Co: 0 of 7). Tick
-  **Set passwords by the Test<Role>!12 rule** → **Create 107 username logins** (7). Test
+- Username logins: "0 of 113 have a login; 113 waiting" (Test Solo Bar Co: 0 of 9). Tick
+  **Set passwords by the Test<Role>!12 rule** → **Create 113 username logins** (9). Test
   Company takes about a minute. Every password is `Test` + the job title without spaces
   - `!12` (`TestAccountOwner!12`, `TestBarManager!12`) and is kept at sign-in; the list
     and the one-time CSV show them, and `TEST_LOGINS_do_not_commit.csv` has the same. If it
@@ -1291,7 +1358,7 @@ report.
 **6. Check**: sign out of the console, open `https://<domainName>`, sign in as
 `test.account-owner` / `TestAccountOwner!12` (and `test.solo.bar-manager` /
 `TestBarManager!12`); each sees only their own customer. In `/platform` both customers
-show as `active` and `test`, with 107 and 7 active people.
+show as `active` and `test`, with 113 and 9 active people.
 
 ### Fixing an extra account owner
 

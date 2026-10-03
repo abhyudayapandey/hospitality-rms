@@ -39,6 +39,8 @@ const PLACED = [
   'menu_engineering',
   'stock_position',
   'purchasing',
+  'central_kitchen',
+  'people',
 ] as const;
 
 /** The rule each report applies, as an independent check (n = a hierarchy_node). */
@@ -64,6 +66,17 @@ const RULES: Record<string, string> = {
                                          or core.can('MENU', 'view', null, mo.delivery_node_id)))`,
   stock_position: STORE_RULE,
   purchasing: STORE_RULE,
+  // R-3 (ADR 030): a central kitchen's store, for its cost people
+  central_kitchen: `${STORE_RULE}
+    and exists (select 1 from core.node_link l
+                  join core.hierarchy_node o on o.id = l.org_node_id
+                  join core.hierarchy_node site on site.type = 'org' and site.kind = 'site'
+                                               and o.path operator(extensions.<@) site.path
+                 where l.delivery_node_id = n.id)`,
+  // whoever keeps the worker records (HR), at any level above a department
+  people: `n.type = 'org' and n.kind in ('company', 'region', 'area', 'outlet', 'site')
+           and (core.can('REPORTS', 'view', n.id, null)
+                or core.can('WORKERS', 'modify', n.id, null))`,
 };
 
 describe('reports: who opens what (every user)', () => {
@@ -166,8 +179,23 @@ describe('reports: who opens what (every user)', () => {
       ]);
       expect(await pl('test.executive-chef.1.0', 'department')).toEqual(['TEST-HOTEL-1.0-KITCHEN']);
       expect(await r('test.sous-chef.1.0')).toEqual(['department', 'my_week']);
-      expect(await r('test.hr-admin')).toContain('department');
-      expect(await r('test.hr-admin')).not.toContain('outlet_flash');
+      expect(await r('test.hr-admin')).toEqual(['department', 'people', 'my_week']);
+      expect(await pl('test.hr-admin', 'people')).toContain('TEST-COMPANY');
+      // the HR executive keeps the outlet's records: the People report there, no costs
+      expect(await r('test.hr-executive.1.0')).toEqual(['department', 'people', 'my_week']);
+      expect(await pl('test.hr-executive.1.0', 'people')).toEqual(['TEST-HOTEL-1.0']);
+      // the central kitchen's people: its own store's report
+      expect(await pl('test.central-kitchen-manager', 'central_kitchen')).toEqual([
+        'TEST-CENTRAL-KITCHEN-STORE',
+      ]);
+      expect(await r('test.central-kitchen-store-keeper')).toEqual([
+        'stock_position',
+        'purchasing',
+        'central_kitchen',
+        'my_week',
+      ]);
+      expect(await r('test.central-kitchen-chef')).toEqual(['my_week']);
+      expect(await pl('test.general-manager.1.0', 'central_kitchen')).toEqual([]);
       expect((await pl('test.area-manager', 'outlet_flash')).length).toBeGreaterThan(1);
       expect(await r('test.steward.1.0')).toEqual(['my_week']);
       expect(await r('test.server.3.0')).toEqual(['my_week']);
@@ -195,6 +223,8 @@ describe('reports: who opens what (every user)', () => {
           'menu_engineering',
           'stock_position',
           'purchasing',
+          'central_kitchen',
+          'people',
         ]),
       );
       const soloStore = await as(c, owner, 'select * from rpt.stock_summary($1)', [
