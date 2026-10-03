@@ -94,7 +94,8 @@ describe('the prep list (file 32) after the past week was loaded on an earlier d
       const files = readCustomerDir(join(DATA, 'test-company'));
       const r = await loadCustomer(c, files, { nested: true });
       expect(r.issues).toEqual([]);
-      expect(r.counts['prep tasks']).toMatchObject({ created: 4, unchanged: 0 });
+      // four at the outlets and two at the central kitchen (ADR 030)
+      expect(r.counts['prep tasks']).toMatchObject({ created: 6, unchanged: 0 });
       const { rows } = await c.query<{
         title: string;
         status: string;
@@ -104,7 +105,11 @@ describe('the prep list (file 32) after the past week was loaded on an earlier d
         `select t.title, t.status,
                 (select count(*)::int from inv.production p where p.task_id = t.id) as batches,
                 (now()::date - (t.due_at at time zone 'Asia/Kolkata')::date) as days
-           from ops.task t where t.tenant_id = $1 and t.kind = 'prep' order by t.due_at`,
+           from ops.task t
+          where t.tenant_id = $1 and t.kind = 'prep'
+            and t.delivery_node_id <> (select id from core.hierarchy_node
+                                        where code = 'TEST-CENTRAL-KITCHEN-STORE')
+          order by t.due_at`,
         [tenant],
       );
       // the open one was for the load day: two days ago now
@@ -116,7 +121,7 @@ describe('the prep list (file 32) after the past week was loaded on an earlier d
       ]);
       expect(rows[3]!.days).toBe(2);
       const again = await loadCustomer(c, files, { nested: true });
-      expect(again.counts['prep tasks']).toMatchObject({ created: 0, unchanged: 4 });
+      expect(again.counts['prep tasks']).toMatchObject({ created: 0, unchanged: 6 });
     });
   });
 });

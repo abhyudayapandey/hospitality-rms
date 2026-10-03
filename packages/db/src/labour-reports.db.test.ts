@@ -6,7 +6,8 @@ import { as } from '../test/report-access';
 // The R-3 figures on the test data (ADR 030), as the test data README states them:
 //   file 34  pay rates (monthly rates are a whole number of rupees a day: ₹36,500 = ₹1,200)
 //   file 35  Hotel 1.0's past week of sessions
-//   file 36  two transfers from the central kitchen; files 26 and 32 its batches and plan
+//   file 36  two transfers of onion tomato masala from the central kitchen (to Hotel 1.1,
+//            received short; to Bar 3.0, on the road); files 26 and 32 its batches and plan
 // Days count back from the load date, so these hold whenever the data was loaded.
 // Overtime alone depends on the weekday (the week runs from Monday), so it is worked out
 // here from the sessions.
@@ -46,13 +47,13 @@ describe('labour cost on the test data', () => {
       }>(
         c,
         'test.general-manager.1.0',
-        `select n.code, l.part, l.days, l.people, l.hours::text, l.cost::text
-           from rpt.labour_cost($1, current_date - 7, current_date - 1) l
-           join core.hierarchy_node n on n.id = l.org_node_id`,
+        `select l.org_node_id as code, l.part, l.days, l.people, l.hours::text, l.cost::text
+           from rpt.labour_cost($1, current_date - 7, current_date - 1) l`,
         [ids.node('TEST-HOTEL-1.0')],
       );
+      // rows carry the place's id: match them by its code
       const by = (code: string, part = 'department') =>
-        r.find((x) => x.code === code && x.part === part);
+        r.find((x) => x.code === ids.node(code) && x.part === part);
       expect(by('TEST-HOTEL-1.0', 'outlet')).toMatchObject({
         days: 7,
         people: 42,
@@ -156,8 +157,8 @@ describe('labour cost on the test data', () => {
         'count_loss',
       ].reduce((s, p) => s + parts.get(p)!, 0);
       expect(parts.get('materials')).toBeCloseTo(materials, 1);
-      // the kitchen received 200 g of makhani gravy less than was sent
-      expect(parts.get('transit_loss')).toBe(23.52);
+      // nothing came short to Hotel 1.0 (the transfers go to Hotel 1.1 and Bar 3.0)
+      expect(parts.get('transit_loss')).toBe(0);
       const actual = await c.query<{ cost: string }>(
         `select sum(actual_cost)::text as cost
            from menu.cost_calc($1, rpt.cost_stores($1), current_date - 7, current_date - 1)`,
@@ -205,13 +206,13 @@ describe('the central kitchen on the test data', () => {
           )
         ).map((x) => [x.measure, x.value]),
       );
-      expect(m.get('batches')).toBe('3');
+      expect(m.get('batches')).toBe('2');
       expect(m.get('transfers')).toBe('2');
-      expect(m.get('requested_value')).toBe('951.90');
-      expect(m.get('dispatched_value')).toBe('902.64');
-      expect(m.get('fill_pct')).toBe('94.8');
-      expect(m.get('transit_loss')).toBe('23.52');
-      expect(m.get('in_transit_value')).toBe('235.20');
+      expect(m.get('requested_value')).toBe('492.60');
+      expect(m.get('dispatched_value')).toBe('459.76');
+      expect(m.get('fill_pct')).toBe('93.3');
+      expect(m.get('transit_loss')).toBe('16.42');
+      expect(m.get('in_transit_value')).toBe('164.20');
 
       const made = await rows<{ sku: string; planned: string; made: string; batches: number }>(
         c,
@@ -221,8 +222,7 @@ describe('the central kitchen on the test data', () => {
         [store],
       );
       expect(made).toEqual([
-        { sku: 'MAKHANI-GRAVY', planned: '12000', made: '12000', batches: 2 },
-        { sku: 'ONION-TOMATO-MASALA', planned: '8000', made: '6400', batches: 1 },
+        { sku: 'ONION-TOMATO-MASALA', planned: '11200', made: '9600', batches: 2 },
       ]);
 
       const sent = await rows<{
@@ -233,22 +233,22 @@ describe('the central kitchen on the test data', () => {
       }>(
         c,
         'test.central-kitchen-manager',
-        `select n.code, d.fill_pct::text, d.transit_loss::text, d.short_lines
+        `select d.store_id as code, d.fill_pct::text, d.transit_loss::text, d.short_lines
            from rpt.kitchen_dispatch($1, current_date - 6, current_date) d
-           join core.hierarchy_node n on n.id = d.store_id order by n.code`,
+          order by d.store_name`,
         [store],
       );
       expect(sent).toEqual([
         {
-          code: 'TEST-BAR-3.0-KITCHEN-STORE',
+          code: ids.node('TEST-BAR-3.0-KITCHEN-STORE'),
           fill_pct: '100.0',
           transit_loss: '0.00',
           short_lines: 0,
         },
         {
-          code: 'TEST-HOTEL-1.0-KITCHEN-STORE',
-          fill_pct: '93.1',
-          transit_loss: '23.52',
+          code: ids.node('TEST-HOTEL-1.1-KITCHEN-STORE'),
+          fill_pct: '90.0',
+          transit_loss: '16.42',
           short_lines: 1,
         },
       ]);
@@ -259,11 +259,11 @@ describe('the central kitchen on the test data', () => {
         'select store_name, value::text from rpt.kitchen_in_transit($1)',
         [store],
       );
-      expect(road).toEqual([{ store_name: 'Test Bar 3.0 – Kitchen Store', value: '235.20' }]);
+      expect(road).toEqual([{ store_name: 'Test Bar 3.0 – Kitchen Store', value: '164.20' }]);
     });
   });
 
-  it("the Hotel 1.0 kitchen's Purchasing: what came from the central kitchen", async () => {
+  it("the Hotel 1.1 kitchen's Purchasing: what came from the central kitchen", async () => {
     await inRolledBackTx(async (c) => {
       const r = await rows<{
         from_name: string;
@@ -274,20 +274,21 @@ describe('the central kitchen on the test data', () => {
         short_lines: number;
       }>(
         c,
-        'test.executive-chef.1.0',
+        'test.executive-chef.1.1',
         `select from_name, requested_value::text, received_value::text, fill_pct::text,
                 transit_loss::text, short_lines
            from rpt.transfers_in($1, current_date - 6, current_date)`,
-        [ids.node('TEST-HOTEL-1.0-KITCHEN-STORE')],
+        [ids.node('TEST-HOTEL-1.1-KITCHEN-STORE')],
       );
+      // 4,000 g asked for, 3,600 g sent, 3,400 g arrived
       expect(r).toEqual([
         {
           from_name: 'Test Central Kitchen – Store',
-          requested_value: '716.70',
-          received_value: '643.92',
-          fill_pct: '89.8',
-          transit_loss: '23.52',
-          short_lines: 2,
+          requested_value: '328.40',
+          received_value: '279.14',
+          fill_pct: '85.0',
+          transit_loss: '16.42',
+          short_lines: 1,
         },
       ]);
     });
