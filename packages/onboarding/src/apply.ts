@@ -1855,10 +1855,36 @@ class Loader {
     const home = new Map(this.b.users.map((u) => [u.username, u.home_node_code]));
     for (const a of this.b.attendance) {
       this.step(FILES.attendance.file, a.line);
-      this.count('attendance sessions', !loaded.rowCount);
-      if (loaded.rowCount) continue;
+      if (loaded.rowCount) {
+        this.count('attendance sessions', false);
+        continue;
+      }
       const date = this.day(a.day);
       const tz = this.timezoneOf(home.get(a.username)!);
+      // someone signed in as this test person and clocked in on the real system during this
+      // session (or is still clocked in): keep their session, skip the test one, and say so
+      const clash = await this.c.query<{ at: string }>(
+        `select to_char(a.clock_in_at at time zone $5, 'DD Mon HH24:MI') as at
+           from hr.attendance a
+          where a.worker_id = $1
+            and tstzrange(a.clock_in_at, coalesce(a.clock_out_at, 'infinity'))
+                && tstzrange(($2::date + $3::time) at time zone $5,
+                             ($2::date + $4::time) at time zone $5)
+          order by a.clock_in_at limit 1`,
+        [this.workers.get(a.username), date, a.clock_in, a.clock_out, tz],
+      );
+      if (clash.rows[0]) {
+        this.report.warnings.push({
+          file: FILES.attendance.file,
+          row: a.line,
+          column: 'username',
+          message:
+            `${a.username}: skipped ${date} ${a.clock_in}–${a.clock_out}, which overlaps a ` +
+            `session clocked in the app at ${clash.rows[0].at}`,
+        });
+        continue;
+      }
+      this.count('attendance sessions', true);
       await this.as(a.username, () =>
         this.c.query(
           `select hr.record_test_attendance(($1::date + $2::time) at time zone $4,

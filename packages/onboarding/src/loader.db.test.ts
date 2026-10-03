@@ -745,3 +745,50 @@ describe('a location set in the app (file 04, ADR 018)', () => {
     });
   });
 });
+
+describe('test attendance (file 35) next to sessions clocked in the app', () => {
+  const skipped = (w: { message: string }) => w.message.includes('overlaps a session clocked');
+
+  it('skips the test sessions that clash with a real one, warning per row; the rest load', async () => {
+    await inRolledBackTx(async (c) => {
+      const ids = await loadSeedIds();
+      const company = readCustomerDir(join(DATA, 'test-company'));
+      // as on production before the first load of file 35: no test sessions yet, and the
+      // test commis clocked in for real three days ago and never clocked out
+      await c.query(
+        `delete from hr.attendance_exception where attendance_id in
+           (select id from hr.attendance where in_key like 'test-data att %')`,
+      );
+      await c.query(`delete from hr.attendance where in_key like 'test-data att %'`);
+      await c.query(
+        `insert into hr.attendance (tenant_id, worker_id, owner_user_id, org_node_id, clock_in_at,
+                                    in_source, in_key)
+         select w.tenant_id, w.id, w.owner_user_id, w.org_node_id,
+                now() - interval '3 days', 'online', 'real clock-in'
+           from hr.worker w where w.owner_user_id = $1`,
+        [ids.user('test.commis.1.0')],
+      );
+      const rows = parseCsv(company['35_attendance_TEST_DATA_ONLY.csv']!).rows;
+      const commis = rows.filter((r) => r.values.username === 'test.commis.1.0');
+      const clash = commis.filter((r) => Number(r.values.day) >= -3);
+      expect(clash.length).toBeGreaterThan(0);
+
+      const dry = await loadCustomer(c, company, { nested: true, dryRun: true });
+      expect(dry).toMatchObject({ ok: true, issues: [] });
+      const warned = dry.warnings.filter(skipped);
+      expect(warned.map((w) => w.row).sort()).toEqual(
+        clash
+          .map((r) => r.line)
+          .filter((l) => warned.some((w) => w.row === l))
+          .sort(),
+      );
+      expect(warned.length).toBeGreaterThan(0);
+      expect(warned.every((w) => w.message.startsWith('test.commis.1.0: skipped '))).toBe(true);
+      expect(dry.counts['attendance sessions']).toEqual({
+        created: rows.length - warned.length,
+        updated: 0,
+        unchanged: 0,
+      });
+    });
+  });
+});

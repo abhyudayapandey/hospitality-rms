@@ -33,7 +33,7 @@ export function ImportReportView({ report }: { report: ImportReport }) {
       )}
       {report.warnings.length > 0 && (
         <div className="space-y-1 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-          <p className="font-medium">Approval coverage: {report.warnings.length} warning(s)</p>
+          <p className="font-medium">{report.warnings.length} warning(s)</p>
           <ul className="space-y-1">
             {report.warnings.map((w, n) => (
               <li key={n}>
