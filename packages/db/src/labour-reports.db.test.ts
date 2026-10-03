@@ -98,6 +98,30 @@ describe('labour cost on the test data', () => {
     });
   });
 
+  it('the overtime multiplier (R-4): hourly overtime costs more, salaries do not change', async () => {
+    await inRolledBackTx(async (c) => {
+      const owner = ids.user('test.account-owner');
+      const set = await as(
+        c,
+        owner,
+        `select core.set_company_settings('{"overtime_multiplier": 1.5}')`,
+      );
+      expect(set.error).toBeUndefined();
+      // the stored days follow at the next rebuild (the nightly job)
+      await c.query('select rpt.rebuild(current_date - 35, current_date - 2)');
+      const [t] = await rows<{ hourly: string; salary: string }>(
+        c,
+        'test.general-manager.1.0',
+        `select hourly_cost::text as hourly, salary_cost::text as salary
+           from rpt.labour_cost($1, current_date - 7, current_date - 1) where part = 'outlet'`,
+        [ids.node('TEST-HOTEL-1.0')],
+      );
+      // test.commis.1.0 is paid ₹125 an hour (file 34) and is the only one with overtime
+      expect(Number(t!.hourly)).toBeCloseTo(99825 + 0.5 * 125 * (await commisOvertime(c)), 2);
+      expect(t!.salary).toBe('365400.00');
+    });
+  });
+
   it('Outlet today, two days ago: ₹69,025 of labour, and prime cost on top of materials', async () => {
     await inRolledBackTx(async (c) => {
       const m = new Map(

@@ -210,6 +210,21 @@ describe('menu engineering', () => {
     });
   });
 
+  it('the popularity threshold is a company setting (R-4): at 100%, an equal share', async () => {
+    await inRolledBackTx(async (c) => {
+      await as(
+        c,
+        'test.account-owner',
+        `select core.set_company_settings('{"menu_popular_pct": 100}')`,
+        [],
+      );
+      const d = await dishes(c);
+      // 1 / 27 drinks = 3.7%; 1 / 10 dishes = 10%
+      expect(n(d.get('GIN-AND-TONIC')!.popular_from_pct)).toBe(3.7);
+      expect(n(d.get('BUTTER-NAAN')!.popular_from_pct)).toBe(10);
+    });
+  });
+
   it('the average margin is weighted by what sold', async () => {
     await inRolledBackTx(async (c) => {
       const d = [...(await dishes(c)).values()].filter((x) => x.menu === 'Food');

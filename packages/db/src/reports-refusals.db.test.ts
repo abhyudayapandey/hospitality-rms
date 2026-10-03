@@ -3,7 +3,7 @@ import { closePools, inRolledBackTx } from '../test/helpers';
 import { as, everyone, placesOf } from '../test/report-access';
 
 // Every report refuses, for every person of both test customers, each place it does not
-// list for them (R-1 to R-3: ADR 023, ADR 028, ADR 030). Split from reports-access.db.test.ts, which
+// list for them (R-1 to R-4: ADR 023, ADR 028, ADR 030, ADR 031). Split from reports-access.db.test.ts, which
 // checks the lists against the rules, so the two run side by side (ADR 029).
 
 afterAll(closePools);
@@ -119,6 +119,14 @@ describe('reports: every place not listed is refused (every user)', () => {
             const r = await as(c, p.id, `select * from ${fn}`, [o.id]);
             if (r.error !== 'NOT_AUTHORISED') leaks.push(`${p.username} ${fn} ${o.code}`);
           }
+        }
+        // the league table (R-4, ADR 031): companies, regions and areas only
+        const league = new Set(await placesOf(c, p.id, 'league'));
+        for (const o of [...tops.rows, ...outlets.rows]) {
+          if (league.has(o.code)) continue;
+          const fn = 'rpt.league($1, current_date - 6, current_date)';
+          const r = await as(c, p.id, `select * from ${fn}`, [o.id]);
+          if (r.error !== 'NOT_AUTHORISED') leaks.push(`${p.username} ${fn} ${o.code}`);
         }
       }
       expect(leaks).toEqual([]);
