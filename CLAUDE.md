@@ -171,6 +171,9 @@ not at all; the purchasing and stock figures are pinned by `packages/db/src/cost
 File 34 is pay rates (any customer); files 35 and 36 (test customers only, ADR 030) load a
 past week of attendance and two central kitchen transfers; the labour, People and central
 kitchen figures are pinned by `packages/db/src/labour-reports.db.test.ts`.
+Company settings (targets, menu engineering threshold, overtime multiplier, prices on sent
+orders) live in `core.tenant.settings` beside the modules (ADR 031); file 09 has an
+optional supplier `contact_phone` for sending orders (ADR 032).
 `TEST_LOGINS_do_not_commit.csv` (passwords) is never committed.
 
 ## How to work in this repo

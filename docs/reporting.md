@@ -253,7 +253,7 @@ place switcher (ADR 016) narrows or widens it within their access.
 | R-1   | `rpt` schema, the four daily tables and the nightly rebuild (security tests first). Home "Today's numbers" and Department today. Reports list. Daily flash for outlet and department (without labour cost). My week for staff.               |
 | R-2   | _(Done, ADR 028)_ Cost controller suite: actual vs theoretical by item (Cost of sales), purchase price variance, supplier fill rate, stock valuation and days on hand, dead stock, menu engineering. Replaces the Variance screen (UX U-14). |
 | R-3   | _(Done, ADR 030)_ LABOUR_COST domain and labour %, SPLH, prime cost, with the cost broken into its parts; People (HR) report; central kitchen report, with transfer fill rate.                                                               |
-| R-4   | Area and company league tables; Account Owner view; CSV export; targets in company settings.                                                                                                                                                 |
+| R-4   | _(Done, ADR 031)_ Area and company league tables; Account Owner view; CSV export; targets in company settings.                                                                                                                               |
 | later | E-mail digest; occupancy for housekeeping; AI signals reading the same measures (ADR 020's trace is already one).                                                                                                                            |
 
 Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
@@ -296,9 +296,16 @@ Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
   - test data: pay rates (file 34), a week of attendance (35) and two kitchen transfers
     (36).
 
-- **Not yet:**
-  - targets (R-4), so figures are compared only with the same day last week;
-  - area and company league tables and CSV export (R-4).
+- **R-4 done** (ADR 031):
+  - **Outlets side by side** (the league table) for an area, region or company: sales,
+    food, drinks, people and prime cost, wastage and tasks per outlet over up to 35 days,
+    sortable, each against its target;
+  - **targets** in Admin → Targets and settings (food 30, drinks 22, labour 25, prime 60,
+    wastage 2, tasks 90): red only when worse by more than 2 points;
+  - **CSV** downloads of every report list;
+  - the menu engineering threshold and the overtime multiplier are company settings.
+
+- **Later:** outlet-level target overrides; league periods longer than 35 days.
 
 ## 8. Decisions (2 Oct 2026)
 

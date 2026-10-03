@@ -1210,6 +1210,50 @@ days the morning after.
   central kitchen, 85.0% received.
 - **`test.bartender.1.0`.** Reports shows only My week.
 
+#### Releasing the league table, targets and sending orders (R-4, PO-4)
+
+One migration, `20261024100000_league_tables_po_send` (ADR 031, 032). No stack change, no
+new parameter and no product sync change. A new report (the league table) is added to the
+report access rules, so run **Actions → RLS equivalence (all users) → Run workflow** on the
+commit before merging.
+
+- **What changes in the app.**
+  - **Outlets side by side** (Reports, first for the Area Manager and the Account Owner):
+    every outlet of an area, region or company against the targets, sortable, with a CSV
+    download.
+  - **Targets** on Outlet today, Department today and Cost of sales, set in **Admin →
+    Targets and settings** by the Account Owner (food 30, drinks 22, labour 25, prime 60,
+    wastage 2, tasks 90 until changed). Red means more than 2 points worse.
+  - **CSV downloads** on Cost of sales, Stock position, Purchasing, People and Central
+    kitchen.
+  - **Send to supplier** on a released order: WhatsApp, Email or Print, recorded on the
+    order; the supplier's phone and email are editable there.
+- **Test data.** Both customers' file 09 gains `contact_phone` (example numbers).
+
+**Deploy order.** Run the Deploy workflow, then re-import both test customers.
+
+**Re-import Test Company** (40 files). The dry run should report no problems, the same 2
+approval-coverage warnings, and **suppliers 7 changed** (their phones), plus any shifts for
+weeks that are new since the last import. Nothing else changes. Apply, then dry-run again:
+no changes (apart from new weeks of shifts, if the week turned).
+
+**Re-import Test Solo Bar Co** (28 files): **suppliers 2 changed**, nothing else; the same
+5 warnings. Apply, then dry-run again: no changes.
+
+**Check.**
+
+- **`test.area-manager`.** Reports opens with Outlets side by side: four outlets of Test
+  Area Mumbai with sales, costs, people and prime cost, wastage and tasks. Tap a column to
+  sort; **Download CSV** saves the same table.
+- **`test.account-owner`.** Admin → Targets and settings: set Food cost to 20 and save.
+  Outlets side by side (company, region or area) shows food cost red where it is over 22%.
+  Set it back to 30.
+- **`test.executive-chef.1.0`.** Stock → Orders → the Test Supplier – Dairy & Poultry order
+  (released): **Send to supplier** → WhatsApp opens with the items and quantities (no
+  prices) to +91 98200 10002; back in the app the order lists "Sent on WhatsApp by Test
+  Executive Chef 1.0". **Print** shows the order ready to print or save as PDF.
+- **`test.bartender.1.0`.** Reports shows only My week.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.
