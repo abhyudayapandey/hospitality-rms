@@ -18,10 +18,28 @@ test suites ran serially because they share one seeded database and change its d
 - The copies are dropped at the end, and the seeded database is left as it was.
 - Unset or 1: one file at a time on the seeded database, as before (the RLS all-users
   workflow runs this way).
-- The per-test timeout is 120 s with workers (15 s alone). Workers share the CPU with
-  Postgres, and the longest tests (the loader, screen places) take 10–13 s on their own.
+- The per-test timeout is 120 s with workers and 30 s alone (it was 15 s). It guards
+  against hangs: the longest tests (the loader, screen places) take 10–13 s on their own,
+  and longer beside other workers or straight after the heaviest files.
 
 Locally, 3 workers on 4 cores run the DB tests in 394 s instead of 717 s.
+
+**Shards by expected time** (`packages/db/test/sequencer.ts`). Vitest's own `--shard` gives
+each shard the same number of files; one shard got 502 s of work and the other 98 s. The
+sequencer places each file, slowest first, on the shard with the least expected time, using
+the measured seconds of the slow files (any other file counts 3 s). Within a shard the
+slowest files start first. Stale weights only make shards less even.
+
+**The slow tests themselves.**
+
+- **`rpt.report_places` was slow in the app too.** It worked out `core.visible_nodes`
+  inside its row filter, once per node it tested: 0.3 s for one report and 0.8 s for
+  `rpt.my_reports()` (the Reports list) for a general manager. Migration
+  `20261022110000_report_places_once` works each set out once per call (about 0.2 s), with
+  the same rules; the report access tests check every user against them.
+- **The report refusal check** (every person, every report, every place not listed: about
+  6,000 calls, 2 minutes) moved from `reports-access.db.test.ts` to its own file,
+  `reports-refusals.db.test.ts`, so it runs beside the rest.
 
 **CI as parallel jobs** (`.github/workflows/ci.yml`):
 

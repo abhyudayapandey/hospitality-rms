@@ -47,8 +47,9 @@ export default defineConfig({
           setupFiles: ['./packages/db/test/worker-setup.ts'],
           fileParallelism: dbWorkers > 1,
           maxWorkers: dbWorkers,
-          // workers share the CPU with Postgres: the longest tests take 10 to 13 s on their own
-          testTimeout: dbWorkers > 1 ? 120_000 : 15_000,
+          // a hang guard: the longest tests (loading a whole customer) take 10 to 13 s on
+          // their own, and longer straight after the heaviest files or beside other workers
+          testTimeout: dbWorkers > 1 ? 120_000 : 30_000,
         },
       },
     ],
