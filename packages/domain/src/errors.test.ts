@@ -48,6 +48,7 @@ describe('error mapping', () => {
       'INVALID_PARENT',
       'INVALID_NODE_LINK',
       'HANDLER_NOT_FOUND', // executor-side; recorded on the outbox row
+      'INVALID_KEY', // the test-data loader's attendance (ADR 030); platform_loader only
     ]);
     const missing = [...raised].filter((c) => !internal.has(c) && !(c in ERROR_MESSAGES));
     expect(missing).toEqual([]);
