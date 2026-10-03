@@ -8,13 +8,19 @@ import { placeId, signInAs } from './helpers';
 test('Stock is a hub: on its way here, count due, then the store jobs', async ({ page }) => {
   await signInAs(page, 'Test Head Cook 3.0');
   await page.goto(`/stock?node=${await placeId('TEST-BAR-3.0-KITCHEN-STORE')}`);
-  // file 36's transfer is still in transit; this store has never been counted
+  // file 36's transfer is still in transit
   await expect(page.getByTestId('attention-transit')).toContainText('On its way here');
-  await expect(page.getByTestId('attention-count')).toContainText('Never counted here');
   const jobs = page.getByRole('navigation', { name: 'Stock jobs' }).getByRole('link');
   await expect(jobs.first()).toHaveText('Count');
   await jobs.filter({ hasText: 'Record wastage' }).click();
   await page.waitForURL(/\/stock\/wastage/);
+});
+
+test('a store never counted has a count due', async ({ page }) => {
+  // no spec counts this store (inventory.spec counts Bar 3.0's kitchen)
+  await signInAs(page, 'Test Executive Chef 1.0');
+  await page.goto(`/stock?node=${await placeId('TEST-HOTEL-1.0-KITCHEN-STORE')}`);
+  await expect(page.getByTestId('attention-count')).toContainText('Never counted here');
 });
 
 test('a store counted today has no count due', async ({ page }) => {
