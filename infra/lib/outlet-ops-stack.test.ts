@@ -526,7 +526,7 @@ describe('wastage photos (ADR 006)', () => {
     );
   });
 
-  it('keeps stock check photos 5 years and selfies at most 24 months (ADR 043, 044)', () => {
+  it('keeps stock check photos 5 years and selfies at most 24 months (ADR 043, 045)', () => {
     const { props } = photoBucket();
     const rules = (props.LifecycleConfiguration as { Rules: Record<string, unknown>[] }).Rules;
     expect(rules).toContainEqual(
