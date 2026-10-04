@@ -1443,7 +1443,7 @@ Until the re-import, Test Company's cashier has no Import sales tile and Bar 3.0
 are not matched.
 
 **Re-import Test Company** (40 files). The dry run should report no problems, the same 2
-approval-coverage warnings, and: REIMPORT_COUNTS. Apply, then dry-run again: no changes.
+approval-coverage warnings, and: job role access 1 new (the Cashier's CASHIER at the outlet stores) and POS codes 31 new (Test Bar 3.0's 3001 to 3031); everything else unchanged. Apply, then dry-run again: no changes.
 
 No re-import for Test Solo Bar Co.
 

@@ -15,6 +15,7 @@ export const DOMAIN_WORDS: Readonly<Record<string, string>> = {
   PRODUCTION: 'prep batches',
   PRODUCTION_TEAM: 'your team’s prep batches',
   SALES: 'daily sales',
+  POS_IMPORT: 'the POS sales import',
   WORKERS: 'people',
   COMPENSATION: 'pay',
   LABOUR_COST: 'labour cost totals',
