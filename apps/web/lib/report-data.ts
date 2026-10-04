@@ -542,7 +542,7 @@ export async function league(
 ): Promise<LeagueRow[]> {
   const r = await sql<LeagueRow>`
     select outlet_id, code, name, sales::text, food_pct::text, drink_pct::text,
-           labour_pct::text, prime_pct::text, wastage_pct::text, tasks_pct::text
+           labour_pct::text, materials_pct::text, wastage_pct::text, tasks_pct::text
       from rpt.league(${place}::uuid, ${from}::date, ${to}::date)`.execute(tx);
   return r.rows;
 }
@@ -632,5 +632,108 @@ export async function measureTrend(
     select period::text, value::text
       from rpt.measure_trend(${report}, ${node}::uuid, ${measure}, ${by}, ${from}::date,
                              ${to}::date, ${key}::uuid)`.execute(tx);
+  return r.rows;
+}
+
+// ---------------------------------------------------------------------------------------
+// What is behind a figure (ADR 042): rpt.bd_* check the report opens at the place, and
+// names of people only for those who see the team.
+// ---------------------------------------------------------------------------------------
+
+export interface DishLine {
+  menu: string;
+  dish: string;
+  qty: string;
+  sales: string;
+  cost: string;
+}
+
+export async function bdDishes(tx: Tx, report: string, node: string, from: string, to: string) {
+  const r = await sql<DishLine>`
+    select menu, dish, qty::text, sales::text, cost::text
+      from rpt.bd_dishes(${report}, ${node}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+export interface WastageLine {
+  item: string;
+  unit: string;
+  store: string;
+  reason: string;
+  qty: string;
+  value: string;
+  entries: number;
+  recorded_by: string;
+}
+
+export async function bdWastage(tx: Tx, report: string, node: string, from: string, to: string) {
+  const r = await sql<WastageLine>`
+    select item, unit, store, reason, qty::text, value::text, entries, recorded_by
+      from rpt.bd_wastage(${report}, ${node}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+export interface StockLine {
+  item: string;
+  category: string | null;
+  store: string;
+  qty: string;
+  unit: string;
+  value: string;
+}
+
+export async function bdStock(tx: Tx, report: string, node: string) {
+  const r = await sql<StockLine>`
+    select item, category, store, qty::text, unit, value::text
+      from rpt.bd_stock(${report}, ${node}::uuid)`.execute(tx);
+  return r.rows;
+}
+
+export interface PersonLine {
+  person: string;
+  job: string | null;
+  shifts: number;
+  rostered_hours: string;
+  worked_hours: string;
+  late: number;
+  no_shows: number;
+}
+
+export async function bdPeople(tx: Tx, report: string, node: string, from: string, to: string) {
+  const r = await sql<PersonLine>`
+    select person, job, shifts, rostered_hours::text, worked_hours::text, late, no_shows
+      from rpt.bd_people(${report}, ${node}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+export interface TaskLine {
+  person: string;
+  due: number;
+  done: number;
+  on_time: number;
+  overdue: number;
+  flagged: number;
+}
+
+export async function bdTasks(tx: Tx, report: string, node: string, from: string, to: string) {
+  const r = await sql<TaskLine>`
+    select person, due, done, on_time, overdue, flagged
+      from rpt.bd_tasks(${report}, ${node}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+export interface ReadingLine {
+  done_at: string | null;
+  task: string;
+  reading: string;
+  value: string;
+  allowed: string | null;
+  by_name: string;
+}
+
+export async function bdReadings(tx: Tx, report: string, node: string, from: string, to: string) {
+  const r = await sql<ReadingLine>`
+    select done_at::text, task, reading, value, allowed, by_name
+      from rpt.bd_readings(${report}, ${node}::uuid, ${from}::date, ${to}::date)`.execute(tx);
   return r.rows;
 }

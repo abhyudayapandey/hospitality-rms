@@ -8,7 +8,8 @@ describe('vsTarget', () => {
     expect(vsTarget('food_cost_pct', '32', t)).toEqual({ target: 30, state: 'ok' });
     expect(vsTarget('food_cost_pct', '32.1', t)).toEqual({ target: 30, state: 'bad' });
     expect(vsTarget('food_cost_pct', '12', t)).toEqual({ target: 30, state: 'ok' });
-    expect(vsTarget('labour_pct', 27.5, t)).toEqual({ target: 25, state: 'bad' });
+    expect(vsTarget('labour_pct', 52.5, t)).toEqual({ target: 50, state: 'bad' });
+    expect(vsTarget('labour_pct', 51, t)).toEqual({ target: 50, state: 'ok' });
   });
 
   it('tasks on time are bad only when under target by more than 2 points', () => {
@@ -19,7 +20,9 @@ describe('vsTarget', () => {
 
   it('no target for other measures; no state without a figure', () => {
     expect(vsTarget('sales', '1000', t)).toEqual({ target: null, state: 'none' });
-    expect(vsTarget('prime_pct', null, t)).toEqual({ target: 60, state: 'none' });
+    expect(vsTarget('labour_pct', null, t)).toEqual({ target: 50, state: 'none' });
+    // no prime cost target since ADR 042
+    expect(vsTarget('prime_cost_pct', '70', t)).toEqual({ target: null, state: 'none' });
     expect(vsTarget('drink_pct', 'x', t)).toEqual({ target: 22, state: 'none' });
   });
 

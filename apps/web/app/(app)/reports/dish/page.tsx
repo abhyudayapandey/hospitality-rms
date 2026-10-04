@@ -1,5 +1,6 @@
 import { failure } from '@outlet-ops/domain';
 import { BackLink } from '@/components/back-link';
+import { Accordion } from '@/components/breakdown-view';
 import { NoReport } from '@/components/report-view';
 import { TrendChart, TrendControls, TrendFigure, trendLink } from '@/components/trend-chart';
 import { requireUser } from '@/lib/auth/server';
@@ -92,30 +93,33 @@ export default async function DishTrend({ searchParams }: { searchParams: Search
               ]
         }
       />
-      <ul
-        className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
-        data-testid="trend-rows"
+      <Accordion
+        title={by === 'week' ? 'By week' : 'By month'}
+        summary={`${points.length} ${by === 'week' ? 'weeks' : 'months'}`}
+        testId="trend-periods"
       >
-        {[...points].reverse().map((p) => (
-          <li
-            key={p.period}
-            className="flex justify-between gap-2 px-4 py-3 text-sm"
-            data-period={p.period}
-          >
-            <span className="min-w-0">
-              <span className="block font-medium">{trendLabel(by, p.period)}</span>
-              <span className="block text-xs text-slate-500 tabular-nums">
-                {Number(p.sold)} sold · cost {formatMoney(p.cost)}
-                {Number(p.discount) > 0 ? ` · ${formatMoney(p.discount)} off` : ''}
+        <ul className="divide-y divide-slate-100" data-testid="trend-rows">
+          {[...points].reverse().map((p) => (
+            <li
+              key={p.period}
+              className="flex justify-between gap-2 px-4 py-3 text-sm"
+              data-period={p.period}
+            >
+              <span className="min-w-0">
+                <span className="block font-medium">{trendLabel(by, p.period)}</span>
+                <span className="block text-xs text-slate-500 tabular-nums">
+                  {Number(p.sold)} sold · cost {formatMoney(p.cost)}
+                  {Number(p.discount) > 0 ? ` · ${formatMoney(p.discount)} off` : ''}
+                </span>
               </span>
-            </span>
-            <span className="shrink-0 text-right tabular-nums">
-              {formatMoney(p.sales)}
-              <span className="block text-xs text-slate-500">margin {formatMoney(p.margin)}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
+              <span className="shrink-0 text-right tabular-nums">
+                {formatMoney(p.sales)}
+                <span className="block text-xs text-slate-500">margin {formatMoney(p.margin)}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Accordion>
       <p className="text-xs text-slate-500">
         Sales are what the POS took after discount (typed-in sales at the menu price). Cost is the
         recipe at each day&apos;s average cost, as in Menu engineering.

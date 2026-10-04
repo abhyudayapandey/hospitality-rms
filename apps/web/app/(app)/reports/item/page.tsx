@@ -1,5 +1,6 @@
 import { failure } from '@outlet-ops/domain';
 import { BackLink } from '@/components/back-link';
+import { Accordion } from '@/components/breakdown-view';
 import { NoReport } from '@/components/report-view';
 import {
   TrendChart,
@@ -105,32 +106,35 @@ export default async function ItemTrend({ searchParams }: { searchParams: Search
           , a {unit}
         </p>
       )}
-      <ul
-        className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
-        data-testid="trend-rows"
+      <Accordion
+        title={by === 'week' ? 'By week' : 'By month'}
+        summary={`${points.length} ${by === 'week' ? 'weeks' : 'months'}`}
+        testId="trend-periods"
       >
-        {[...points].reverse().map((p) => (
-          <li
-            key={p.period}
-            className="flex justify-between gap-2 px-4 py-3 text-sm"
-            data-period={p.period}
-          >
-            <span className="min-w-0">
-              <span className="block font-medium">{trendLabel(by, p.period)}</span>
-              <span className="block text-xs text-slate-500 tabular-nums">
-                in {formatQty(p.came_in, unit)} · used {formatQty(p.used, unit)}
-                {Number(p.wasted) > 0 ? ` · wasted ${formatQty(p.wasted, unit)}` : ''}
-                {Number(p.sent_out) > 0 ? ` · sent ${formatQty(p.sent_out, unit)}` : ''}
-                {Number(p.counted) !== 0 ? ` · count ${formatQty(p.counted, unit)}` : ''}
+        <ul className="divide-y divide-slate-100" data-testid="trend-rows">
+          {[...points].reverse().map((p) => (
+            <li
+              key={p.period}
+              className="flex justify-between gap-2 px-4 py-3 text-sm"
+              data-period={p.period}
+            >
+              <span className="min-w-0">
+                <span className="block font-medium">{trendLabel(by, p.period)}</span>
+                <span className="block text-xs text-slate-500 tabular-nums">
+                  in {formatQty(p.came_in, unit)} · used {formatQty(p.used, unit)}
+                  {Number(p.wasted) > 0 ? ` · wasted ${formatQty(p.wasted, unit)}` : ''}
+                  {Number(p.sent_out) > 0 ? ` · sent ${formatQty(p.sent_out, unit)}` : ''}
+                  {Number(p.counted) !== 0 ? ` · count ${formatQty(p.counted, unit)}` : ''}
+                </span>
               </span>
-            </span>
-            <span className="shrink-0 text-right tabular-nums">
-              {formatQty(p.closing, unit)}
-              <span className="block text-xs text-slate-500">left</span>
-            </span>
-          </li>
-        ))}
-      </ul>
+              <span className="shrink-0 text-right tabular-nums">
+                {formatQty(p.closing, unit)}
+                <span className="block text-xs text-slate-500">left</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Accordion>
       <p className="text-xs text-slate-500">
         In: received, transferred in and made here. Used: sold by recipe, made into prep and other
         use, valued at the store&apos;s average cost. Business days run 06:00 to 06:00.

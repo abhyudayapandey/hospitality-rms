@@ -130,9 +130,10 @@ export const MEASURES: Readonly<Record<string, MeasureDef>> = {
   // labour (R-3, ADR 030): only for people who see labour cost
   splh: { label: 'Sales per hour worked', unit: 'money', better: 'up' },
   labour_cost: { label: 'People cost', unit: 'money', better: 'down' },
-  labour_pct: { label: 'People cost of sales', unit: 'pct', better: 'down' },
-  prime_cost: { label: 'Prime cost', unit: 'money', better: 'down' },
-  prime_cost_pct: { label: 'Prime cost of sales', unit: 'pct', better: 'down' },
+  // ADR 042: shares of the total cost (materials + people), adding up to 100
+  labour_pct: { label: 'People cost %', unit: 'pct', better: 'down' },
+  materials_pct: { label: 'Materials %', unit: 'pct' },
+  prime_cost: { label: 'Total cost (prime cost)', unit: 'money', better: 'down' },
   // People
   headcount: { label: 'Headcount', unit: 'count' },
   joiners: { label: 'Joined', unit: 'count' },
@@ -167,7 +168,7 @@ export const SECTIONS: Readonly<Record<ReportCode, readonly [string, readonly st
   outlet_flash: [
     ['Sales', ['sales', 'food_sales', 'bar_sales']],
     ['Cost (recipe)', ['food_cost_pct', 'bar_cost_pct']],
-    ['Labour', ['labour_cost', 'labour_pct', 'prime_cost', 'prime_cost_pct', 'splh']],
+    ['Labour', ['labour_cost', 'prime_cost', 'labour_pct', 'materials_pct', 'splh']],
     ['Stock', ['wastage', 'wastage_pct', 'stock_value']],
     ['People', ['scheduled_hours', 'worked_hours', 'open_slots', 'late', 'no_shows']],
     ['Tasks', ['task_pct', 'tasks_due', 'overdue', 'flagged']],
@@ -405,7 +406,8 @@ export function dishClass(s: string | null): DishClass | null {
 }
 
 // ---------------------------------------------------------------------------------------
-// Where the money went (R-3, ADR 030): the parts of the cost, each in ₹ and % of sales
+// Where the money went (R-3, ADR 030): the parts of the cost, each in ₹ and % of the total
+// cost (ADR 042)
 // ---------------------------------------------------------------------------------------
 
 export type CostPart =
@@ -435,7 +437,7 @@ export const COST_PARTS: readonly { part: CostPart; label: string; total?: boole
   { part: 'labour_hourly', label: 'Hourly staff' },
   { part: 'labour_salary', label: 'Salaried staff' },
   { part: 'labour', label: 'People', total: true },
-  { part: 'prime', label: 'Total (prime cost)', total: true },
+  { part: 'prime', label: 'Total cost (prime cost)', total: true },
 ];
 
 export interface CostPartRow {
@@ -468,16 +470,25 @@ const FLASH_PARTS: Readonly<Record<string, CostPart>> = {
   prime_cost: 'prime',
 };
 
-/** The same parts from Outlet today's measures, as a share of the day's sales. */
+/**
+ * The same parts from Outlet today's measures, each as a share of the total cost: materials
+ * plus people where the person sees labour cost, materials alone otherwise (ADR 042).
+ */
 export function flashCostParts(rows: readonly MeasureRow[]): CostPartRow[] {
-  const sales = Number(rows.find((r) => r.measure === 'sales')?.value ?? NaN);
+  const num = (m: string) => {
+    const v = rows.find((r) => r.measure === m)?.value;
+    return v === null || v === undefined ? NaN : Number(v);
+  };
+  const materials = num('cost_materials');
+  const labour = num('labour_cost');
+  const total = Number.isFinite(labour) ? materials + labour : materials;
   return rows.flatMap((r) => {
     const part = FLASH_PARTS[r.measure];
     if (!part) return [];
     const v = r.value === null ? NaN : Number(r.value);
     const pct =
-      Number.isFinite(v) && Number.isFinite(sales) && sales !== 0
-        ? ((v * 100) / sales).toFixed(1)
+      Number.isFinite(v) && Number.isFinite(total) && total !== 0
+        ? ((v * 100) / total).toFixed(1)
         : null;
     return [{ part, value: r.value, pct }];
   });
@@ -501,7 +512,7 @@ export interface LeagueRow {
   food_pct: string | null;
   drink_pct: string | null;
   labour_pct: string | null;
-  prime_pct: string | null;
+  materials_pct: string | null;
   wastage_pct: string | null;
   tasks_pct: string | null;
 }
@@ -515,7 +526,7 @@ export const LEAGUE_MEASURE: Readonly<Record<LeagueColumn, string>> = {
   food_pct: 'food_cost_pct',
   drink_pct: 'bar_cost_pct',
   labour_pct: 'labour_pct',
-  prime_pct: 'prime_cost_pct',
+  materials_pct: 'materials_pct',
   wastage_pct: 'wastage_pct',
   tasks_pct: 'task_pct',
 };
@@ -528,8 +539,8 @@ export const LEAGUE_COLUMNS: readonly {
   { key: 'sales', label: 'Sales', better: 'up' },
   { key: 'food_pct', label: 'Food cost', better: 'down' },
   { key: 'drink_pct', label: 'Drinks cost', better: 'down' },
-  { key: 'labour_pct', label: 'People cost', better: 'down' },
-  { key: 'prime_pct', label: 'Prime cost', better: 'down' },
+  { key: 'labour_pct', label: 'People cost %', better: 'down' },
+  { key: 'materials_pct', label: 'Materials %', better: 'down' },
   { key: 'wastage_pct', label: 'Wastage', better: 'down' },
   { key: 'tasks_pct', label: 'Tasks on time', better: 'up' },
 ];
@@ -671,8 +682,8 @@ export const TREND_MEASURES: Readonly<Partial<Record<ReportCode, ReadonlySet<str
     'splh',
     'labour_cost',
     'labour_pct',
+    'materials_pct',
     'prime_cost',
-    'prime_cost_pct',
   ]),
   department: new Set([
     'shifts',
@@ -745,13 +756,16 @@ export function trendHref(
   return `/reports/trend?${q.toString()}`;
 }
 
-/** A period's label: "w/c 28 Sep" or "Sep 2026". */
+/** A period's label: "Week of 28 Sep" or "Sep 2026" (always "Sep", never "Sept"). */
 export function trendLabel(by: TrendGrain | 'day', period: string): string {
   const d = new Date(`${period}T00:00:00Z`);
+  const sep = (x: string) => x.replace('Sept', 'Sep');
   if (by === 'month') {
-    return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+    return sep(d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' }));
   }
-  const day = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-  if (by === 'week') return `w/c ${day}`;
+  const day = sep(
+    d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }),
+  );
+  if (by === 'week') return `Week of ${day}`;
   return `${d.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' })} ${day}`;
 }
