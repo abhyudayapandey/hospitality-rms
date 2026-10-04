@@ -12,7 +12,7 @@ import {
   type UploadTarget,
 } from '@/lib/photos';
 
-// The stock check (INV-10, ADR 042). Each action calls one inv.* SECURITY DEFINER function,
+// The stock check (INV-10, ADR 043). Each action calls one inv.* SECURITY DEFINER function,
 // which checks core.can(STOCK_CHECK) at the store (rule 2) and changes stock only through
 // ledger rows (rule 3). Counting is safe to repeat and to send late: record_check_line keeps
 // the count with the latest original time.

@@ -266,7 +266,7 @@ export const EXCEPTION_LABEL: Record<string, string> = {
   unscheduled: 'Not rostered',
   outside_geofence: 'Outside the outlet',
   no_location: 'No location',
-  // clock-in device and selfie (ATT-7, ADR 044)
+  // clock-in device and selfie (ATT-7, ADR 045)
   no_selfie: 'No selfie',
   new_device: 'New phone',
   shared_device: 'Shared phone',

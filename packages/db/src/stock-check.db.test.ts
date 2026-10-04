@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
 
-// Stock check (INV-10, INV-11, INV-7, INV-8; ADR 042): the verifier counts blind, sees the
+// Stock check (INV-10, INV-11, INV-7, INV-8; ADR 043): the verifier counts blind, sees the
 // differences, adds a photo to each, and the differences post to the ledger at once with
 // no approval. Run as the seeded users inside rolled-back transactions.
 

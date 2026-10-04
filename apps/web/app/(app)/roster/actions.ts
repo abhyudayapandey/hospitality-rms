@@ -100,7 +100,7 @@ export interface PunchInput {
   source: 'online' | 'offline';
   /** the device's key for this punch; replays return the recorded result */
   idempotencyKey: string;
-  /** this browser's random id and the phone model, for a clock-in (ATT-7, ADR 044) */
+  /** this browser's random id and the phone model, for a clock-in (ATT-7, ADR 045) */
   deviceId?: string | null;
   deviceModel?: string | null;
   /** the key of the uploaded selfie, for a clock-in; none is flagged, not blocked */

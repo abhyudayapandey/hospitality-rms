@@ -1,4 +1,4 @@
-// The device behind a clock-in (ATT-7, ADR 044). Browsers give no hardware id, so the id is a
+// The device behind a clock-in (ATT-7, ADR 045). Browsers give no hardware id, so the id is a
 // random one kept in the phone's browser storage; the model comes from the user agent. Both are
 // shown to managers only as flags (a new phone, one phone used by several people), never used to
 // block anyone.

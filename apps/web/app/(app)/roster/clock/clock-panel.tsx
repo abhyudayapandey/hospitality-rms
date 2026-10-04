@@ -65,7 +65,7 @@ export function ClockPanel({
     );
   };
 
-  // The clock-in selfie (ATT-7, ADR 044): the camera opens when "Clock in" is tapped, the
+  // The clock-in selfie (ATT-7, ADR 045): the camera opens when "Clock in" is tapped, the
   // punch follows the photo. A phone with no camera clocks in without one and is flagged.
   const camera = useRef<HTMLInputElement>(null);
 

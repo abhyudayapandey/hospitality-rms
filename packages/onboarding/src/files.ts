@@ -398,7 +398,7 @@ export const FILES = {
         'must be 0 to 100',
       ),
       preferred_supplier_code: optCode,
-      // INV-7 (ADR 042): where the item sits in the store, for shelf-ordered count sheets;
+      // INV-7 (ADR 043): where the item sits in the store, for shelf-ordered count sheets;
       // optional columns, blank keeps what was set
       shelf: optional.refine((v) => v === undefined || v.length <= 60, 'at most 60 characters'),
       shelf_order: z.union([

@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
 
 // Department heads are responsible for orders (PO-5) and for requests for material (TR-3),
-// ADR 043. No approval for menu ingredients in usual quantities; the department head (or the
+// ADR 044. No approval for menu ingredients in usual quantities; the department head (or the
 // GM, who is told of every order) approves anything off the menu or over 1.5x what the store
 // uses in a week; the area manager step above the value threshold stays. Run as the seeded
 // users inside rolled-back transactions.

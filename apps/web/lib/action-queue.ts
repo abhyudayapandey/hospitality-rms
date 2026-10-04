@@ -1,4 +1,4 @@
-// Offline queue for stock counts and wastage (INV-8, ADR 042), the same pattern as the
+// Offline queue for stock counts and wastage (INV-8, ADR 043), the same pattern as the
 // clock-in punch queue (lib/punch-queue.ts, ADR 008). A count line or wastage entry that
 // cannot reach the server is kept on the device with the time it happened and its
 // idempotency key, then replayed oldest first. The server keeps the original time of a

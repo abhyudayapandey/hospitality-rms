@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { checkUnusual, type Line, type UnusualCheck } from '@/app/(app)/stock/actions';
 
 /**
- * Says before sending whether the department head will have to approve (PO-5, TR-3, ADR 043):
+ * Says before sending whether the department head will have to approve (PO-5, TR-3, ADR 044):
  * an item that is off the menu, or more than usual (a company setting times the week's use).
  * Nothing is shown for an order that goes through on its own beyond a short reassurance.
  */

@@ -13,7 +13,7 @@ export interface CompanySettings {
   swaps_managers_only: boolean;
   /** UX-4 (ADR 035): a store's count is due this many days after its last one */
   count_due_days: number;
-  /** PO-5, TR-3 (ADR 043): more than this times the weekly use needs the department head */
+  /** PO-5, TR-3 (ADR 044): more than this times the weekly use needs the department head */
   usual_qty_factor: number;
 }
 

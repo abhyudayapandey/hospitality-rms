@@ -598,7 +598,7 @@ describe('two-leg transfer', () => {
       const req = await requestOf(c, 'transfer', t.id);
       // Onions and garlic are in no recipe here, so this request for material is off the menu
       // and the GM (Kim, the department head, asked) approves it before it goes to the store
-      // keeper (TR-3, ADR 043).
+      // keeper (TR-3, ADR 044).
       await call(c, OLIVIA, `select wf.act($1, 'approve')`, [req]);
       const progress = async () =>
         (

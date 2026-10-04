@@ -101,7 +101,7 @@ async function submit(c: PoolClient, who: string, a: SubmitArgs): Promise<Attemp
   );
 }
 
-// PO-5 (ADR 043): an unusual order (off the menu or more than usual) goes to the department
+// PO-5 (ADR 044): an unusual order (off the menu or more than usual) goes to the department
 // head or the GM; the usual ones are approved at once (po5-rfm.db.test.ts), so these tests
 // flag theirs unusual.
 const po = (amount: number, key?: string, unusual = true): SubmitArgs => ({

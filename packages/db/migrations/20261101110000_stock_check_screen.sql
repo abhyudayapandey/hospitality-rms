@@ -1,6 +1,6 @@
 -- migrate:up
 
--- The stock check screen's places (ADR 042): stores where the caller holds STOCK_CHECK
+-- The stock check screen's places (ADR 043): stores where the caller holds STOCK_CHECK
 -- (modify to count, view to see the Verified / Not verified tags).
 do $$
 declare

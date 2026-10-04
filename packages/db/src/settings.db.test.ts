@@ -22,7 +22,7 @@ const DEFAULTS = {
   // SW-4 and the count due (ADR 035)
   swaps_managers_only: true,
   count_due_days: 7,
-  // PO-5 and TR-3 (ADR 043): the factor over the weekly use above which the department head approves
+  // PO-5 and TR-3 (ADR 044): the factor over the weekly use above which the department head approves
   usual_qty_factor: 1.5,
 };
 

@@ -24,7 +24,7 @@ export const STOCK_ADJUSTMENT: ProcessDef = {
   slaHours: 24,
 };
 
-// PO-5 (ADR 043): department heads are responsible for orders. Menu ingredients in usual
+// PO-5 (ADR 044): department heads are responsible for orders. Menu ingredients in usual
 // quantities need no approval (every step is skipped and the order is approved at once); the
 // department head approves anything off the menu or more than usual, and the GM can approve
 // too. The area manager step above the value threshold stays.
@@ -68,7 +68,7 @@ export const TRANSFER: ProcessDef = {
   domain: 'TRANSFERS',
   hierarchy: 'delivery',
   steps: [
-    // TR-3 (ADR 043): a request for material that is off the menu or more than usual needs
+    // TR-3 (ADR 044): a request for material that is off the menu or more than usual needs
     // the department head (or the GM) first; others go straight to the store keeper
     {
       step: 'approval',

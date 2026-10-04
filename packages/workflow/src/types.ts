@@ -18,7 +18,7 @@ export const stepSchema = z.strictObject({
         .string()
         .regex(/^[a-z][a-z0-9_]*$/)
         .optional(),
-      // a flag in the request's payload that must be true (PO-5: "unusual", ADR 043)
+      // a flag in the request's payload that must be true (PO-5: "unusual", ADR 044)
       payload_true: z
         .string()
         .regex(/^[a-z][a-z0-9_]*$/)
@@ -30,7 +30,7 @@ export const stepSchema = z.strictObject({
     .regex(/^[A-Z][A-Z0-9_]*$/)
     .optional(),
   // the escalation group may act at once, not only after the SLA or when the first group
-  // has nobody (PO-5: the GM beside the department head, ADR 043)
+  // has nobody (PO-5: the GM beside the department head, ADR 044)
   alsoEscalateTo: z.literal(true).optional(),
   // groups tried after group / escalateTo / group above, nearest holder first; the engine
   // always ends every chain with FINAL_APPROVER (ADR 009)

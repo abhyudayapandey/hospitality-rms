@@ -1,6 +1,6 @@
 -- migrate:up
 
--- Offline wastage keeps the time it happened (INV-8, ADR 042). A phone with no signal in
+-- Offline wastage keeps the time it happened (INV-8, ADR 043). A phone with no signal in
 -- the cold room queues the entry; when it syncs, the ledger rows carry the original time
 -- (up to 24 hours old), so the day's figures and the business day stay right.
 --

@@ -1,6 +1,6 @@
 -- migrate:up
 
--- The stock check (INV-10, INV-11, INV-7, INV-8; ADR 042). The system already knows what
+-- The stock check (INV-10, INV-11, INV-7, INV-8; ADR 043). The system already knows what
 -- should be left of each item; the verifier counts what is there without being shown it
 -- (blind), then sees the differences, adds a photo to each, and finishes. A difference
 -- posts to the ledger at once as a count_adjust (no approval) and tells the heads of the

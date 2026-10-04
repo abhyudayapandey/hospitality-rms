@@ -18,7 +18,7 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'STOCK_LEVELS', tree: 'delivery' },
   { code: 'STOCK_ADJUSTMENTS', tree: 'delivery' },
   // the stock check: counting what is on the shelves against what should be there, and
-  // seeing who verified what (INV-10, ADR 042); modify is the verifier's right
+  // seeing who verified what (INV-10, ADR 043); modify is the verifier's right
   { code: 'STOCK_CHECK', tree: 'delivery' },
   { code: 'PURCHASE_ORDERS', tree: 'delivery' },
   { code: 'TRANSFERS', tree: 'delivery' },
@@ -44,7 +44,7 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'ROSTER', tree: 'org' },
   { code: 'ATTENDANCE', tree: 'org' },
   // clock-in selfies: HR, the head of the person's department and the person themselves; not the
-  // GM or the area manager (ATT-7, ADR 044)
+  // GM or the area manager (ATT-7, ADR 045)
   { code: 'ATTENDANCE_SELFIES', tree: 'org' },
   { code: 'LEAVE', tree: 'org' },
   { code: 'EVENTS', tree: 'org' },
@@ -212,7 +212,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     },
   },
   {
-    // verifies stock where the company has no Cost Controller (INV-11, ADR 042); given by
+    // verifies stock where the company has no Cost Controller (INV-11, ADR 043); given by
     // the Account Owner
     code: 'STOCK_VERIFIER',
     name: 'Stock Verifier',

@@ -17,7 +17,7 @@ interface Row {
   difference: string | null;
 }
 
-// The stock check (INV-10, ADR 042). Everyone with STOCK_CHECK at the store sees each item's
+// The stock check (INV-10, ADR 043). Everyone with STOCK_CHECK at the store sees each item's
 // Verified / Not verified tag, who verified it and when; the verifier also starts a check.
 export default async function StockCheckPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await supplyContext(searchParams, 'check');

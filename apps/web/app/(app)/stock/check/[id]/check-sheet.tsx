@@ -12,7 +12,6 @@ import {
   type QueuedCheckLine,
 } from '@/lib/action-queue';
 import { deviceId } from '@/lib/device';
-import { formatQty } from '@/lib/inventory';
 import {
   finishStockCheck,
   getCheckUploadUrl,
@@ -39,6 +38,12 @@ interface Entry {
   counted: string; // standard mode: the quantity
   full: string; // bar mode: whole bottles
   tenths: string; // bar mode: tenths of the open one, 0 to 9
+}
+
+/** A quantity with its unit; this file runs in the browser, so it cannot use lib/inventory. */
+function formatQty(qty: string | number, uom: string): string {
+  const text = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 3 }).format(Number(qty));
+  return `${text} ${uom}`;
 }
 
 const emptyEntry: Entry = { counted: '', full: '', tenths: '0' };

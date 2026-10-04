@@ -17,7 +17,7 @@ export interface InboxEntry {
   link?: { href: string; label: string };
   /** show Approve/Reject here (false when the decision belongs on the module screen) */
   inline: boolean;
-  /** why it needs approval, in plain words (an unusual order or request, ADR 043) */
+  /** why it needs approval, in plain words (an unusual order or request, ADR 044) */
   why?: string;
 }
 

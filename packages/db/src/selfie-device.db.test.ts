@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
 import { clearWorkforce, workerFor } from '../test/workforce';
 
-// Clock-in device and selfie (ATT-7, ADR 044). The device is a random id kept in the phone's
+// Clock-in device and selfie (ATT-7, ADR 045). The device is a random id kept in the phone's
 // browser, with the phone model; a new device (after a person's first week) or one device
 // used by several people in a day is flagged on the exceptions screen, never blocking. The
 // selfie is taken at clock-in only and a missing camera is flagged, not blocked. Selfies are

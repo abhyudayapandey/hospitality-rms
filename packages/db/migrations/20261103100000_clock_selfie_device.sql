@@ -1,6 +1,6 @@
 -- migrate:up
 
--- Clock-in records the device and a selfie (ATT-7, ADR 044).
+-- Clock-in records the device and a selfie (ATT-7, ADR 045).
 --
 --   * The device is a random id kept in the phone's browser (browsers give no hardware id)
 --     with the phone model. A device the person has not used before is flagged "new device"

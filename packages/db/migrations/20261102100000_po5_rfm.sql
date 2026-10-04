@@ -1,7 +1,7 @@
 -- migrate:up
 
 -- Department heads are responsible for orders (PO-5) and for requests for material
--- (TR-3), ADR 043.
+-- (TR-3), ADR 044.
 --
 --   * No approval for menu ingredients in usual quantities. The department head approves
 --     anything off the menu (an item in no recipe of the outlet) or more than a company

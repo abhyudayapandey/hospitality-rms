@@ -106,7 +106,7 @@ export interface UnusualCheck {
 
 /**
  * Before sending an order or a request for material: will it need the department head's
- * approval (PO-5, TR-3, ADR 043)? Asks inv.unusual_lines, which applies the same rule the
+ * approval (PO-5, TR-3, ADR 044)? Asks inv.unusual_lines, which applies the same rule the
  * workflow does. A transfer only needs approval when it goes to a department's store.
  */
 export async function checkUnusual(
