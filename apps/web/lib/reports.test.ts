@@ -167,7 +167,7 @@ describe('where the money went (R-3, ADR 030)', () => {
     expect(list.map((p) => !!p.total)).toEqual([false, true, true]);
   });
 
-  it('flashCostParts: Outlet today measures as parts, each a share of the sales', () => {
+  it('flashCostParts: Outlet today measures as parts, each a share of the total cost', () => {
     const parts = flashCostParts([
       { measure: 'sales', value: '2000' },
       { measure: 'cost_food_recipe', value: '500' },
@@ -177,14 +177,24 @@ describe('where the money went (R-3, ADR 030)', () => {
       { measure: 'late', value: '2' },
     ]);
     expect(parts).toEqual([
-      { part: 'food_recipe', value: '500', pct: '25.0' },
-      { part: 'materials', value: '640', pct: '32.0' },
-      { part: 'labour', value: '700', pct: '35.0' },
-      { part: 'prime', value: '1340', pct: '67.0' },
+      { part: 'food_recipe', value: '500', pct: '37.3' },
+      { part: 'materials', value: '640', pct: '47.8' },
+      { part: 'labour', value: '700', pct: '52.2' },
+      { part: 'prime', value: '1340', pct: '100.0' },
     ]);
-    // no sales: no share
-    expect(flashCostParts([{ measure: 'cost_materials', value: '10' }])).toEqual([
-      { part: 'materials', value: '10', pct: null },
+    // without labour cost: the share of the materials
+    expect(
+      flashCostParts([
+        { measure: 'cost_food_recipe', value: '5' },
+        { measure: 'cost_materials', value: '10' },
+      ]),
+    ).toEqual([
+      { part: 'food_recipe', value: '5', pct: '50.0' },
+      { part: 'materials', value: '10', pct: '100.0' },
+    ]);
+    // no cost: no share
+    expect(flashCostParts([{ measure: 'cost_materials', value: '0' }])).toEqual([
+      { part: 'materials', value: '0', pct: null },
     ]);
   });
 
@@ -203,7 +213,7 @@ describe('the league table (R-4, ADR 031)', () => {
     food_pct: food,
     drink_pct: null,
     labour_pct: null,
-    prime_pct: null,
+    materials_pct: null,
     wastage_pct: null,
     tasks_pct: tasks,
   });
@@ -280,8 +290,8 @@ describe('trends (RPT-12)', () => {
   });
 
   it('labels each period plainly', () => {
-    expect(trendLabel('week', '2026-09-28')).toBe('w/c 28 Sept');
-    expect(trendLabel('month', '2026-09-01')).toBe('Sept 2026');
+    expect(trendLabel('week', '2026-09-28')).toBe('Week of 28 Sep');
+    expect(trendLabel('month', '2026-09-01')).toBe('Sep 2026');
   });
 
   it('3 months by week as a line, unless the link asks otherwise', () => {

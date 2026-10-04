@@ -2,7 +2,7 @@
 // by the Account Owner with core.set_company_settings(), which checks every value. Pure: the
 // defaults, and how a figure reads against its target.
 
-export type TargetKey = 'food' | 'drink' | 'labour' | 'prime' | 'wastage' | 'tasks';
+export type TargetKey = 'food' | 'drink' | 'labour' | 'wastage' | 'tasks';
 
 export interface CompanySettings {
   targets: Record<TargetKey, number>;
@@ -18,7 +18,7 @@ export interface CompanySettings {
 }
 
 export const DEFAULT_SETTINGS: CompanySettings = {
-  targets: { food: 30, drink: 22, labour: 25, prime: 60, wastage: 2, tasks: 90 },
+  targets: { food: 30, drink: 22, labour: 50, wastage: 2, tasks: 90 },
   menu_popular_pct: 70,
   overtime_multiplier: 1,
   po_send_prices: false,
@@ -31,8 +31,8 @@ export const DEFAULT_SETTINGS: CompanySettings = {
 export const TARGETS: readonly { key: TargetKey; label: string; better: 'up' | 'down' }[] = [
   { key: 'food', label: 'Food cost', better: 'down' },
   { key: 'drink', label: 'Drinks cost', better: 'down' },
-  { key: 'labour', label: 'People cost', better: 'down' },
-  { key: 'prime', label: 'Prime cost', better: 'down' },
+  // ADR 042: people cost's share of the total cost (materials + people)
+  { key: 'labour', label: 'People cost, of total cost', better: 'down' },
   { key: 'wastage', label: 'Wastage', better: 'down' },
   { key: 'tasks', label: 'Tasks done on time', better: 'up' },
 ];
@@ -44,8 +44,6 @@ export const TARGET_OF: Readonly<Record<string, TargetKey>> = {
   bar_cost_pct: 'drink',
   drink_pct: 'drink',
   labour_pct: 'labour',
-  prime_cost_pct: 'prime',
-  prime_pct: 'prime',
   wastage_pct: 'wastage',
   task_pct: 'tasks',
   tasks_pct: 'tasks',

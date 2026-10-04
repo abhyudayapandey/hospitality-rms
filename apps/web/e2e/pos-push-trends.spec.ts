@@ -111,11 +111,15 @@ test('every report row opens its trend: a dish, a stock item', async ({ page }) 
     page.getByRole('navigation', { name: 'Period' }).getByRole('link', { name: '6 months' }),
   ).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('trend-chart')).toHaveAttribute('data-kind', 'line');
-  await expect(page.getByTestId('trend-rows').locator('li').first()).toContainText('w/c');
+  // the weeks are in a section, closed until tapped
+  await expect(page.getByTestId('trend-rows')).toBeHidden();
+  await page.getByTestId('trend-periods').locator('summary').click();
+  await expect(page.getByTestId('trend-rows').locator('li').first()).toContainText('Week of');
   await page.getByRole('link', { name: 'Bars', exact: true }).click();
   await expect(page.getByTestId('trend-chart')).toHaveAttribute('data-kind', 'bar');
   await page.getByRole('link', { name: 'Months', exact: true }).click();
-  await expect(page.getByTestId('trend-rows').locator('li').first()).not.toContainText('w/c');
+  await page.getByTestId('trend-periods').locator('summary').click();
+  await expect(page.getByTestId('trend-rows').locator('li').first()).not.toContainText('Week of');
   await expect(page.getByTestId('trend-chart')).toHaveAttribute('data-kind', 'bar');
   await page.getByRole('link', { name: '12 months' }).click();
   await expect(page.getByTestId('trend-rows').locator('li')).toHaveCount(13);

@@ -236,14 +236,23 @@ export function PeriodPicker({
 
 /**
  * Where the money went (R-3, ADR 030): raw materials by part, people (only for those who
- * see labour cost), and the total, each in ₹ and as a share of sales.
+ * see labour cost), and the total, each in ₹ and as a share of the total cost (ADR 042).
  */
-export function CostBreakdown({ rows, note }: { rows: CostPartRow[]; note?: string }) {
+export function CostBreakdown({
+  rows,
+  note,
+  titled = true,
+}: {
+  rows: CostPartRow[];
+  note?: string;
+  /** false inside a section that already says what it is */
+  titled?: boolean;
+}) {
   const list = costParts(rows);
   if (list.length === 0) return null;
   return (
     <section aria-label="Where the money went" className="space-y-2">
-      <h2 className="text-sm font-semibold text-slate-700">Where the money went</h2>
+      {titled && <h2 className="text-sm font-semibold text-slate-700">Where the money went</h2>}
       <ul
         className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
         data-testid="cost-breakdown"
@@ -266,6 +275,7 @@ export function CostBreakdown({ rows, note }: { rows: CostPartRow[]; note?: stri
           </li>
         ))}
       </ul>
+      <p className="text-xs text-slate-500">Each % is that part&apos;s share of the total cost.</p>
       {note && <p className="text-xs text-slate-500">{note}</p>}
     </section>
   );

@@ -21,7 +21,7 @@ import { companySettings } from '@/lib/settings-data';
 
 // Outlets side by side (the league table, R-4, ADR 031): the outlets of a company, region or
 // area over a period, each figure against the company's target, never one blended number.
-// rpt.league decides who sees which outlet, and labour and prime cost only where the person
+// rpt.league decides who sees which outlet, and people cost % and materials % only where the person
 // sees labour cost (never for fewer than 3 paid people).
 export default async function LeagueReport({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
@@ -149,10 +149,11 @@ export default async function LeagueReport({ searchParams }: { searchParams: Sea
         Download CSV
       </a>
       <p className="text-xs text-slate-500">
-        {formatDay(range.from)} to {formatDay(range.to)}, at most 35 days. Costs are a share of
-        sales: food and drinks by the recipes, prime cost is all raw materials plus people. Red is
-        more than 2 points worse than the target. People and prime cost show only where you see
-        labour cost, and not for an outlet with fewer than 3 paid people.
+        {formatDay(range.from)} to {formatDay(range.to)}, at most 35 days. Food, drinks and wastage
+        are a share of sales. People cost % and Materials % are each a share of the total cost (raw
+        materials plus people), so they add up to 100. Red is more than 2 points worse than the
+        target. They show only where you see labour cost, and not for an outlet with fewer than 3
+        paid people.
       </p>
     </div>
   );
