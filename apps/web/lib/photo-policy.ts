@@ -31,6 +31,8 @@ export const PHOTO_PREFIXES = [
   'items',
   // stock check proof photos (INV-10, ADR 042): kept 5 years
   'stockcheck',
+  // clock-in selfies (ATT-7, ADR 044): personnel data, kept under the retention rule
+  'selfies',
 ] as const;
 export type PhotoPrefix = (typeof PHOTO_PREFIXES)[number];
 

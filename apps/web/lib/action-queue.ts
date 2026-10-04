@@ -133,18 +133,3 @@ export const indexedDbActions: ActionStore = {
 
 /** Fired on window after the queue changes, so screens can re-read it. */
 export const ACTION_QUEUE_EVENT = 'oo-action-queue';
-
-/** A random id for this browser, kept in localStorage (browsers give no hardware id). */
-export function deviceId(): string {
-  try {
-    const k = 'oo-device-id';
-    let id = localStorage.getItem(k);
-    if (!id) {
-      id = crypto.randomUUID();
-      localStorage.setItem(k, id);
-    }
-    return id;
-  } catch {
-    return 'unknown';
-  }
-}

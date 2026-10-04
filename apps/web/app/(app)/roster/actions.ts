@@ -5,6 +5,13 @@ import { failure, type ActionResult } from '@outlet-ops/domain';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser, type Tx } from '@/lib/db';
 import { requireModule } from '@/lib/modules-server';
+import {
+  isPhotoType,
+  MAX_PHOTO_BYTES,
+  photosEnabled,
+  presignPhotoUpload,
+  type UploadTarget,
+} from '@/lib/photos';
 
 // People writes: rostering, attendance, leave, swaps, events and notifications. Each calls
 // one hr.* / ops.* SECURITY DEFINER function that checks core.can() (CLAUDE.md rule 2);
@@ -93,6 +100,11 @@ export interface PunchInput {
   source: 'online' | 'offline';
   /** the device's key for this punch; replays return the recorded result */
   idempotencyKey: string;
+  /** this browser's random id and the phone model, for a clock-in (ATT-7, ADR 044) */
+  deviceId?: string | null;
+  deviceModel?: string | null;
+  /** the key of the uploaded selfie, for a clock-in; none is flagged, not blocked */
+  selfieKey?: string | null;
 }
 
 export interface PunchResult {
@@ -110,9 +122,46 @@ export async function clock(input: PunchInput): Promise<ActionResult<PunchResult
       select attendance_id, clock_in_at, clock_out_at, inside, distance_m, flags
         from hr.clock(${input.action}, ${input.lat}::numeric, ${input.lng}::numeric,
                       ${input.accuracy}::numeric, ${input.clientTs}::timestamptz,
-                      ${input.source}, ${input.idempotencyKey})`.execute(tx);
+                      ${input.source}, ${input.idempotencyKey},
+                      ${input.action === 'in' ? (input.deviceId ?? null) : null},
+                      ${input.action === 'in' ? (input.deviceModel ?? null) : null},
+                      ${input.action === 'in' ? (input.selfieKey ?? null) : null})`.execute(tx);
     return r.rows[0]!;
   });
+}
+
+/**
+ * A presigned POST for the person's own clock-in selfie. The place is the person's own (the
+ * database says which, from their worker record), never a parameter: the key embeds the
+ * company and that place, and hr.clock accepts only keys under that prefix.
+ */
+export async function getSelfieUploadUrl(
+  contentType: string,
+  size: number,
+): Promise<ActionResult<UploadTarget>> {
+  if (!photosEnabled()) return { ok: false, code: 'INVALID_PHOTO', message: 'Photos are off.' };
+  if (!isPhotoType(contentType) || size < 1 || size > MAX_PHOTO_BYTES) {
+    return failure(new Error('INVALID_PHOTO'));
+  }
+  const user = await requireUser();
+  try {
+    const where = await withUser(user.id, async (tx) => {
+      const r = await sql<{ node: string; tenant: string; ok: boolean }>`
+        select w.org_node_id as node, w.tenant_id as tenant,
+               core.can('ATTENDANCE', 'modify', w.org_node_id, null, w.owner_user_id) as ok
+          from hr.worker w where w.owner_user_id = core.current_user_id()`.execute(tx);
+      if (!r.rows[0]?.ok) throw new Error('NOT_AUTHORISED');
+      return r.rows[0];
+    });
+    return {
+      ok: true,
+      data: await presignPhotoUpload('selfies', where.tenant, where.node, contentType),
+    };
+  } catch (err) {
+    const f = failure(err);
+    if (f.code === 'UNEXPECTED') console.error('presign selfie failed', err);
+    return f;
+  }
 }
 
 export async function resolveException(

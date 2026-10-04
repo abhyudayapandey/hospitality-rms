@@ -1,10 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { ErrorBox, primaryButton, StatusBox } from '@/components/messages';
 import { formatTime } from '@/lib/dates';
+import { thisDevice } from '@/lib/device';
 import { currentPosition } from '@/lib/geo';
+import { shrinkSelfie, uploadSelfie } from '@/lib/selfie-upload';
 import { formatDuration } from '@/lib/timeline';
 import {
   indexedDbStore,
@@ -63,24 +65,58 @@ export function ClockPanel({
     );
   };
 
-  const punch = () =>
+  // The clock-in selfie (ATT-7, ADR 044): the camera opens when "Clock in" is tapped, the
+  // punch follows the photo. A phone with no camera clocks in without one and is flagged.
+  const camera = useRef<HTMLInputElement>(null);
+
+  const punch = (photo: File | null) =>
     start(async () => {
       setError(null);
       const clientTs = new Date().toISOString(); // the moment of the tap
       setStatus('Getting your location…');
       const pos = await currentPosition();
+      const device = thisDevice();
+      let selfie: Blob | null = null;
+      if (action === 'in' && photo) {
+        try {
+          selfie = await shrinkSelfie(photo);
+        } catch {
+          selfie = null; // the photo could not be read: clock in, flagged
+        }
+      }
       const p: QueuedPunch = {
         idempotencyKey: crypto.randomUUID(),
         userId,
         action,
         ...pos,
         clientTs,
+        ...(action === 'in' ? { ...device, selfie } : {}),
       };
       // keep order: while older punches wait, queue this one behind them
       if (!navigator.onLine || waiting.length > 0) return save(p);
+      let selfieKey: string | null = null;
+      if (selfie) {
+        try {
+          selfieKey = await uploadSelfie(selfie);
+        } catch {
+          return save(p); // no connection to upload: keep the selfie on the phone
+        }
+        // selfies are off here: clock in without one, flagged
+      }
       let r;
       try {
-        r = await clock({ ...p, source: 'online' });
+        r = await clock({
+          action: p.action,
+          lat: p.lat,
+          lng: p.lng,
+          accuracy: p.accuracy,
+          clientTs: p.clientTs,
+          idempotencyKey: p.idempotencyKey,
+          source: 'online',
+          deviceId: p.deviceId ?? null,
+          deviceModel: p.deviceModel ?? null,
+          selfieKey,
+        });
       } catch {
         return save(p); // the request did not get through
       }
@@ -95,7 +131,8 @@ export function ClockPanel({
         : r.data.flags.includes('no_location')
           ? ' Your location was not available, so your manager will check it.'
           : '';
-      setStatus(`Clocked ${action} at ${when}.${note}`);
+      const noSelfie = r.data.flags.includes('no_selfie') ? ' No selfie was taken.' : '';
+      setStatus(`Clocked ${action} at ${when}.${note}${noSelfie}`);
       router.refresh();
     });
 
@@ -115,14 +152,40 @@ export function ClockPanel({
           </p>
         )}
       </div>
+      <input
+        ref={camera}
+        type="file"
+        accept="image/*"
+        capture="user"
+        className="sr-only"
+        tabIndex={-1}
+        aria-label="Selfie"
+        data-testid="selfie-input"
+        onChange={(e) => {
+          const f = e.target.files?.[0] ?? null;
+          e.target.value = ''; // the same photo can be chosen again
+          if (f) punch(f);
+        }}
+      />
       <button
         type="button"
         disabled={pending}
-        onClick={punch}
+        onClick={() => (action === 'in' ? camera.current?.click() : punch(null))}
         className={`${primaryButton} min-h-16 text-lg`}
       >
-        {pending ? 'Working…' : inSince ? 'Clock out' : 'Clock in'}
+        {pending ? 'Working…' : inSince ? 'Clock out' : 'Clock in with a selfie'}
       </button>
+      {action === 'in' && (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => punch(null)}
+          data-testid="clock-no-selfie"
+          className="min-h-11 w-full text-sm text-slate-600 underline"
+        >
+          No camera? Clock in without a selfie
+        </button>
+      )}
       <ErrorBox message={error} />
       <StatusBox message={status} />
       <p className="text-xs text-slate-500">

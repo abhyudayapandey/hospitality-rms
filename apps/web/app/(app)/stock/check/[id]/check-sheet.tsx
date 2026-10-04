@@ -6,12 +6,12 @@ import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/mes
 import { PhotoField } from '@/components/photo-field';
 import {
   ACTION_QUEUE_EVENT,
-  deviceId,
   indexedDbActions,
   pending as queued,
   waitingLines,
   type QueuedCheckLine,
 } from '@/lib/action-queue';
+import { deviceId } from '@/lib/device';
 import { formatQty } from '@/lib/inventory';
 import {
   finishStockCheck,

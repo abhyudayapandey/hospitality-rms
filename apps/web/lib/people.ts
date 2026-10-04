@@ -247,6 +247,17 @@ export async function exceptions(
   return r.rows;
 }
 
+/**
+ * The selfies of these exceptions, for those who may see them (HR and the head of the
+ * person's department; the database decides, others get none). Exception id to selfie key.
+ */
+export async function exceptionSelfies(tx: Tx, ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+  const r = await sql<{ exception_id: string; selfie_key: string }>`
+    select exception_id, selfie_key from hr.exception_selfies(${ids}::uuid[])`.execute(tx);
+  return new Map(r.rows.map((x) => [x.exception_id, x.selfie_key]));
+}
+
 export const EXCEPTION_LABEL: Record<string, string> = {
   late: 'Late',
   left_early: 'Left early',
@@ -255,6 +266,10 @@ export const EXCEPTION_LABEL: Record<string, string> = {
   unscheduled: 'Not rostered',
   outside_geofence: 'Outside the outlet',
   no_location: 'No location',
+  // clock-in device and selfie (ATT-7, ADR 044)
+  no_selfie: 'No selfie',
+  new_device: 'New phone',
+  shared_device: 'Shared phone',
 };
 
 export interface MyException {
