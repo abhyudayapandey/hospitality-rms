@@ -1,5 +1,6 @@
 import { DayPicker, NoReport, ReportHeader, ReportSections } from '@/components/report-view';
 import { requireUser } from '@/lib/auth/server';
+import { trendHref } from '@/lib/reports';
 import { formatSpan } from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import { companySettings } from '@/lib/settings-data';
@@ -93,7 +94,12 @@ export default async function DepartmentReport({ searchParams }: { searchParams:
           )}
         </section>
       )}
-      <ReportSections report="department" rows={rows} targets={targets} />
+      <ReportSections
+        report="department"
+        rows={rows}
+        targets={targets}
+        trend={(m) => trendHref('department', place.id, m)}
+      />
     </div>
   );
 }

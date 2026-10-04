@@ -13,8 +13,8 @@ interface Unmatched {
   value: number;
 }
 
-// For the people who post the outlet's sales: match each POS code to a dish on the
-// outlet's menu (remembered for every later import), then post the day again.
+// Match each POS code to a dish on the outlet's menu (remembered for every later import),
+// then post the day again: the cashier's job, at the end of the import.
 export function MatchForm({
   outlet,
   importId,

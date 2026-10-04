@@ -10,7 +10,7 @@ import { withUser } from '@/lib/db';
 import { companySettings } from '@/lib/settings-data';
 import type { SearchParams } from '@/lib/params';
 import { outletFlash, reportDay, reportPlace, reportToday } from '@/lib/report-data';
-import { flashCostParts } from '@/lib/reports';
+import { flashCostParts, trendHref } from '@/lib/reports';
 
 // The outlet's day (the daily flash, docs/reporting.md): sales, recipe cost %, wastage,
 // stock, hours and tasks, each against the same day last week. Opens where the person
@@ -46,7 +46,12 @@ export default async function OutletReport({ searchParams }: { searchParams: Sea
         day={day}
         today={today}
       />
-      <ReportSections report="outlet_flash" rows={rows} targets={targets} />
+      <ReportSections
+        report="outlet_flash"
+        rows={rows}
+        targets={targets}
+        trend={(m) => trendHref('outlet_flash', place.id, m)}
+      />
       <CostBreakdown rows={flashCostParts(rows)} />
       <p className="text-xs text-slate-500">
         Business day 06:00 to 06:00. Cost is the recipe cost of what sold; sales come from the daily

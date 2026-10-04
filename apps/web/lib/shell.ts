@@ -6,6 +6,7 @@ import type { ModuleCode } from '@outlet-ops/domain';
 import { isProductCode } from './custom-groups';
 import { modulesOn, withModules } from './modules';
 import { navProfile, type NavInput } from './nav';
+import { unreadLines, type NotificationRow } from './notifications-view';
 import type { ScreenInput } from './screens';
 
 export interface NodeRow {
@@ -81,9 +82,12 @@ export const loadShell = cache(async (): Promise<Shell> => {
                where (select "on" from core.my_modules()
                        where code = case a.kind when 'expiry' then 'production'
                                                 else 'maintenance' end))::int as n`.execute(tx);
-    const unread = await sql<{ n: number }>`
-      select count(*)::int as n from ops.notification
-       where owner_user_id = core.current_user_id() and read_at is null`.execute(tx);
+    // counted as Notifications shows them: one line per kind a day (ADR 035)
+    const recent = await sql<NotificationRow>`
+      select id, kind, title, null as body, null as link, read_at, created_at from ops.notification
+       where owner_user_id = core.current_user_id()
+       order by created_at desc, id desc limit 50`.execute(tx);
+    const tz = nodes.rows.find((n) => n.id === home.rows[0]?.id)?.timezone ?? 'Asia/Kolkata';
     // RLS shows only the recipes they may read; menu places are where they see costs
     const menu = MENU_DOMAINS.some(has)
       ? await sql<{ v: boolean }>`
@@ -119,7 +123,7 @@ export const loadShell = cache(async (): Promise<Shell> => {
       nodes: nodes.rows,
       home: home.rows[0] ?? null,
       inboxCount: inbox.rows[0]?.n ?? 0,
-      unreadCount: unread.rows[0]?.n ?? 0,
+      unreadCount: unreadLines(recent.rows, tz),
       menu: menu?.rows[0]?.v ?? false,
       production: production?.rows[0]?.v ?? false,
       reports,

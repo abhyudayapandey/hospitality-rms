@@ -1,7 +1,7 @@
+import { DEFAULT_TZ, formatDay, localDate } from './dates';
+
 // Shelf life wording (Prompt 10): "Use within N days", or hours under a day. Whole days
 // and hours round down, so the label never promises longer than the item keeps.
-
-const HOUR_MS = 3_600_000;
 
 /** A prep item's shelf life: 72 -> "Use within 3 days", 36 -> "1 day", 8 -> "8 hours". */
 export function shelfLifeText(hours: number | null): string {
@@ -12,9 +12,13 @@ export function shelfLifeText(hours: number | null): string {
   return `Use within ${d} day${d === 1 ? '' : 's'}`;
 }
 
-/** What is left of a batch's life: the same wording, or "Expired". */
-export function timeLeftText(expiresAt: Date | string, now: Date = new Date()): string {
-  const ms = new Date(expiresAt).getTime() - now.getTime();
-  if (ms <= 0) return 'Expired';
-  return shelfLifeText(Math.max(1, Math.floor(ms / HOUR_MS)));
+/** A batch's use-by, as a date only (the time of day doesn't matter on the floor):
+ * "Use by Mon, 5 Oct", or "Expired". */
+export function useByText(
+  expiresAt: Date | string,
+  tz: string = DEFAULT_TZ,
+  now: Date = new Date(),
+): string {
+  if (new Date(expiresAt).getTime() <= now.getTime()) return 'Expired';
+  return `Use by ${formatDay(localDate(expiresAt, tz))}`;
 }

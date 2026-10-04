@@ -82,7 +82,7 @@ export default async function MenuEngineering({ searchParams }: { searchParams: 
                   <p className="text-xs text-slate-500">{c.hint}</p>
                   <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
                     {group.map((d) => (
-                      <Dish key={d.code} d={d} menu={menu} outlet={place.id} />
+                      <Dish key={d.code} d={d} menu={menu} outlet={place.id} months={months} />
                     ))}
                   </ul>
                 </div>
@@ -109,12 +109,22 @@ export default async function MenuEngineering({ searchParams }: { searchParams: 
   );
 }
 
-function Dish({ d, menu, outlet }: { d: DishRow; menu: string; outlet: string }) {
+function Dish({
+  d,
+  menu,
+  outlet,
+  months,
+}: {
+  d: DishRow;
+  menu: string;
+  outlet: string;
+  months: number;
+}) {
   const words = dishWords(d, menu, formatMoney);
   return (
     <li className="text-sm" data-testid="dish" data-code={d.code}>
       <Link
-        href={`/reports/dish?node=${outlet}&item=${d.menu_item_id}`}
+        href={`/reports/dish?node=${outlet}&item=${d.menu_item_id}&months=${months}`}
         className="block px-4 py-3"
       >
         <span className="block font-medium">{d.name}</span>

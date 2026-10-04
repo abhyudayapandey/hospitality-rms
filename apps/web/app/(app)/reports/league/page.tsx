@@ -11,7 +11,9 @@ import {
   formatMeasure,
   isLeagueColumn,
   LEAGUE_COLUMNS,
+  LEAGUE_MEASURE,
   sortLeague,
+  trendHref,
   type LeagueColumn,
 } from '@/lib/reports';
 import { TARGET_OF, vsTarget } from '@/lib/settings';
@@ -118,7 +120,18 @@ export default async function LeagueReport({ searchParams }: { searchParams: Sea
                           t.state === 'bad' ? 'font-semibold text-rose-700' : ''
                         }`}
                       >
-                        {formatMeasure(c.key === 'sales' ? 'money' : 'pct', v)}
+                        {v === null ? (
+                          formatMeasure('pct', v)
+                        ) : (
+                          <Link
+                            href={
+                              trendHref('outlet_flash', r.outlet_id, LEAGUE_MEASURE[c.key]) ?? ''
+                            }
+                            className="inline-flex min-h-11 items-center justify-end underline decoration-slate-300"
+                          >
+                            {formatMeasure(c.key === 'sales' ? 'money' : 'pct', v)}
+                          </Link>
+                        )}
                       </td>
                     );
                   })}

@@ -85,3 +85,8 @@ export function groupNotifications(
     })
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
+
+/** The bell's number: the unread lines Notifications shows, not the rows behind them. */
+export function unreadLines(rows: readonly NotificationRow[], tz: string): number {
+  return groupNotifications(rows, tz).filter((g) => g.unread).length;
+}

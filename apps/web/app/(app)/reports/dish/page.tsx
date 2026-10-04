@@ -1,27 +1,33 @@
 import { failure } from '@outlet-ops/domain';
 import { BackLink } from '@/components/back-link';
 import { NoReport } from '@/components/report-view';
-import { TrendChart, TrendFigure, TrendGrains } from '@/components/trend-chart';
+import { TrendChart, TrendControls, TrendFigure, trendLink } from '@/components/trend-chart';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatMoney } from '@/lib/format';
 import { param, type SearchParams } from '@/lib/params';
 import { dishTrend, reportPlace, reportToday } from '@/lib/report-data';
-import { trendGrain, trendLabel, trendRange } from '@/lib/reports';
+import { trendLabel, trendRange, trendSettings } from '@/lib/reports';
 
 // A dish's trend at an outlet (RPT-12, ADR 041), opened from its row in Menu engineering:
-// sold, sales (what the POS took, after discount), recipe cost and margin per day, week or
-// month. rpt.dish_trend opens exactly where menu engineering does.
+// sold, sales (what the POS took, after discount), recipe cost and margin over the last 3,
+// 6, 9 or 12 months, by week or month, as a line or bars. rpt.dish_trend opens exactly
+// where menu engineering does.
 export default async function DishTrend({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
   const sp = await searchParams;
   const item = param(sp, 'item');
-  const by = trendGrain(param(sp, 'by'));
+  const view = trendSettings({
+    months: param(sp, 'months'),
+    by: param(sp, 'by'),
+    chart: param(sp, 'chart'),
+  });
+  const { by } = view;
   const data = await withUser(user.id, async (tx) => {
     const { place } = await reportPlace(tx, 'menu_engineering', searchParams);
     // the outlet asked for, not the remembered one: a row opens its own outlet's dish
     if (!place || place.id !== param(sp, 'node') || !/^[0-9a-f-]{36}$/.test(item)) return null;
-    const range = trendRange(by, await reportToday(tx, place.id));
+    const range = trendRange(view.months, by, await reportToday(tx, place.id));
     try {
       await sql`savepoint trend`.execute(tx);
       const points = await dishTrend(tx, place.id, item, by, range.from, range.to);
@@ -41,17 +47,17 @@ export default async function DishTrend({ searchParams }: { searchParams: Search
     points.reduce((s, p) => s + Number(p[k]), 0);
   const sales = sum('sales');
   const costPct = sales > 0 ? (sum('cost') / sales) * 100 : null;
-  const link = (g: string) => `/reports/dish?node=${place.id}&item=${item}&by=${g}`;
+  const base = `/reports/dish?node=${place.id}&item=${item}`;
   return (
     <div className="space-y-4">
-      <BackLink fallback={`/reports/menu?node=${place.id}`} />
+      <BackLink fallback={`/reports/menu?node=${place.id}&months=${view.months}`} />
       <div>
         <h1 className="text-xl font-semibold" data-testid="trend-title">
           {dish}
         </h1>
         <p className="text-sm text-slate-600">{place.name}</p>
       </div>
-      <TrendGrains link={link} by={by} />
+      <TrendControls view={view} href={(c) => trendLink(base, view, c)} />
       <dl className="grid grid-cols-2 gap-2 text-sm" data-testid="trend-totals">
         <TrendFigure label="Sold" value={String(sum('sold'))} />
         <TrendFigure label="Sales" value={formatMoney(sales) ?? '–'} />
@@ -65,18 +71,26 @@ export default async function DishTrend({ searchParams }: { searchParams: Search
         )}
       </dl>
       <TrendChart
-        title={`Sales of ${dish} by ${by}`}
-        bars={points.map((p) => ({
-          label: trendLabel(by, p.period),
-          parts: [
-            { value: Number(p.cost), tone: 'light' },
-            { value: Math.max(0, Number(p.margin)), tone: 'brand' },
-          ],
-        }))}
-        legend={[
-          { label: 'cost', tone: 'light' },
-          { label: 'margin', tone: 'brand' },
-        ]}
+        kind={view.chart}
+        title={`Sales and recipe cost of ${dish} by ${by}`}
+        labels={points.map((p) => trendLabel(by, p.period))}
+        format={(v) => formatMoney(v) ?? ''}
+        stacked={view.chart === 'bar'}
+        series={
+          view.chart === 'bar'
+            ? [
+                { label: 'cost', tone: 'warn', values: points.map((p) => Number(p.cost)) },
+                {
+                  label: 'margin',
+                  tone: 'brand',
+                  values: points.map((p) => Math.max(0, Number(p.margin))),
+                },
+              ]
+            : [
+                { label: 'sales', tone: 'brand', values: points.map((p) => Number(p.sales)) },
+                { label: 'recipe cost', tone: 'warn', values: points.map((p) => Number(p.cost)) },
+              ]
+        }
       />
       <ul
         className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
