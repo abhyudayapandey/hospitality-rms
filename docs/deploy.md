@@ -1410,7 +1410,7 @@ batches show; Expired keeps Kitchen Store; choose All stores again and every sto
 
 #### Releasing the POS import, expiry alerts and report trends (SAL-1, SAL-2, INV-12, RPT-12)
 
-One migration, `20261030100000_pos_import_expiry_trends` (ADR 039 to 041). No stack change
+Two migrations, `20261030100000_pos_import_expiry_trends` and `20261031100000_measure_trends` (ADR 039 to 041). No stack change
 and no new parameter. The product sync (part of Deploy) adds the POS_IMPORT domain and the
 CASHIER group to every tenant. The tasks job (the 5-minute timer) now also sends the morning
 expiry alert; it ships in the release bundle. This changes access, so run **Actions → RLS
@@ -1430,9 +1430,12 @@ CASHIER@outlet_stores`) has an "End of day" card and an **Import sales** tile on
     managers: the dishes that use prep expiring by the end of tomorrow.
   - **The morning alert**: from 06:00, once a day, the department head of the team that uses
     a store (else the outlet manager) gets "Use first today: …" with the items and dishes.
-  - **Report rows open**: a dish in Menu engineering, an item in Cost of sales (under its
-    formula: Trend), Stock position and Purchasing open a trend by 14 days, 13 weeks or 12
-    months.
+  - **Every report row and figure opens its trend**: a dish in Menu engineering, an item in
+    Cost of sales (under its formula: Trend), Stock position, Purchasing and the central
+    kitchen, and every figure (the small chart icon) on Outlet today, Department, Cost of
+    sales, People and the central kitchen, the stock value, each cell of Outlets side by
+    side, a supplier and an outlet on the kitchen's dispatch. The last 3, 6, 9 or 12
+    months, by week or month, as a line or bars.
 - **Test data.** Test Company: file 06 gives the Cashier `CASHIER@outlet_stores`; file 23
   gains `pos_code` (Test Bar 3.0's 31 dishes, 3001 to 3031). Nothing for Test Solo Bar Co.
 
@@ -1461,9 +1464,13 @@ No re-import for Test Solo Bar Co.
   for 14 days). To see it: as `test.bartender.3.0`, make a House Sangria (pre-batched)
   batch today (48 hours); from 06:00 tomorrow the server's Home shows Push today with House
   Sangria (glass) and (pitcher). The bell's number is the unread lines on Notifications.
-- **`test.general-manager.1.0`.** Reports → Menu engineering → tap Butter Naan: its trend
-  (14 days, then 13 weeks). Cost of sales → open an item → Trend. Stock position → tap an
-  item.
+- **`test.general-manager.1.0`.** Reports → Menu engineering (6 months) → tap Butter Naan:
+  its trend over the same 6 months, by week, as a line; **Bars** and **Months** switch it.
+  Outlet today → tap Food cost: its trend by week; tap People cost: the same in ₹. Cost of
+  sales → open an item → Trend. Stock position → tap an item.
+- **`test.cost-controller.1.0`.** Outlet today shows no people cost, and its trend link
+  (`/reports/trend?report=outlet_flash&…&measure=labour_cost`) says no access.
+- **`test.account-owner`.** Outlets side by side → tap an outlet's Sales: its trend.
 
 ### 6. Onboard the customer and users
 

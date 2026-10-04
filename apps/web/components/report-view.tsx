@@ -14,6 +14,7 @@ import {
   type ReportCode,
 } from '@/lib/reports';
 import { vsTarget, type TargetKey } from '@/lib/settings';
+import { Icon } from './icon';
 import { PlaceSwitcher, type SwitcherPlace } from './place-switcher';
 import type { ReportScreen } from '@/lib/place-screens';
 
@@ -83,10 +84,13 @@ export function ReportSections({
   report,
   rows,
   targets,
+  trend,
 }: {
   report: ReportCode;
   rows: MeasureRow[];
   targets?: Record<TargetKey, number> | undefined;
+  /** where each figure opens its trend (RPT-12), or null for a figure of the moment */
+  trend?: (measure: string) => string | null;
 }) {
   return (
     <div className="space-y-4">
@@ -100,14 +104,16 @@ export function ReportSections({
               {list.map((r) => {
                 const c = compare(r.def, r.value, r.last_week);
                 const t = targets ? vsTarget(r.measure, r.value, targets) : null;
-                return (
-                  <li
-                    key={r.measure}
-                    className="flex items-baseline justify-between gap-3 p-3"
-                    data-testid={`measure-${r.measure}`}
-                    data-target={t?.state ?? 'none'}
-                  >
-                    <span className="text-sm text-slate-700">{r.def.label}</span>
+                const href = trend?.(r.measure) ?? null;
+                const row = 'flex items-baseline justify-between gap-3 p-3';
+                const content = (
+                  <>
+                    <span className="text-sm text-slate-700">
+                      {r.def.label}
+                      {href && (
+                        <Icon name="chart" className="ml-1 inline size-3.5 text-slate-400" />
+                      )}
+                    </span>
                     <span className="text-right">
                       <span
                         className={`block font-semibold tabular-nums ${t?.state === 'bad' ? 'text-rose-700' : ''}`}
@@ -127,6 +133,21 @@ export function ReportSections({
                         <span className={`block text-xs ${TREND[c.trend]}`}>{c.text}</span>
                       )}
                     </span>
+                  </>
+                );
+                return (
+                  <li
+                    key={r.measure}
+                    data-testid={`measure-${r.measure}`}
+                    data-target={t?.state ?? 'none'}
+                  >
+                    {href ? (
+                      <Link href={href} className={row} data-testid="measure-trend-link">
+                        {content}
+                      </Link>
+                    ) : (
+                      <div className={row}>{content}</div>
+                    )}
                   </li>
                 );
               })}

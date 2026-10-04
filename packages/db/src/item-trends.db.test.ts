@@ -179,7 +179,7 @@ describe("a dish's trend", () => {
             'TEST-HOTEL-1.0',
             'BUTTER-NAAN',
             'day',
-            daysBefore(400),
+            daysBefore(420),
           )
         ).error,
       ).toMatch(/INVALID_DATES/);

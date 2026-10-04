@@ -16,7 +16,7 @@ import {
   supplierFill,
   transfersIn,
 } from '@/lib/report-data';
-import { capRange, formatMeasure } from '@/lib/reports';
+import { capRange, formatMeasure, trendHref } from '@/lib/reports';
 
 // Purchasing (R-2, ADR 028), per store: price changes (each receipt against the store's
 // previous price for the item, else its standard cost) and each supplier's fill rate and
@@ -116,24 +116,31 @@ export default async function Purchasing({ searchParams }: { searchParams: Searc
             data-testid="supplier-fill"
           >
             {fill.map((f) => (
-              <li
-                key={f.supplier}
-                className="space-y-1 px-4 py-3 text-sm"
-                data-supplier={f.supplier}
-              >
-                <div className="flex justify-between gap-2">
-                  <span className="font-medium">{f.supplier}</span>
-                  <span className="tabular-nums font-semibold" data-testid="fill">
-                    {f.fill_pct === null ? '–' : `${Number(f.fill_pct)}% delivered`}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500">
-                  {f.orders} {f.orders === 1 ? 'order' : 'orders'} · {f.on_time} on time
-                  {f.late > 0 && ` · ${f.late} late`}
-                  {f.not_delivered > 0 && ` · ${f.not_delivered} not delivered`}
-                  {f.not_due > 0 && ` · ${f.not_due} not due yet`} · {formatMoney(f.received_value)}{' '}
-                  of {formatMoney(f.ordered_value)}
-                </p>
+              <li key={f.supplier_id} className="text-sm" data-supplier={f.supplier}>
+                <Link
+                  href={
+                    trendHref('purchasing', place.id, 'fill_pct', {
+                      key: f.supplier_id,
+                      name: f.supplier,
+                    }) ?? ''
+                  }
+                  className="block space-y-1 px-4 py-3"
+                  data-testid="supplier-trend-link"
+                >
+                  <div className="flex justify-between gap-2">
+                    <span className="font-medium">{f.supplier}</span>
+                    <span className="tabular-nums font-semibold" data-testid="fill">
+                      {f.fill_pct === null ? '–' : `${Number(f.fill_pct)}% delivered`}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    {f.orders} {f.orders === 1 ? 'order' : 'orders'} · {f.on_time} on time
+                    {f.late > 0 && ` · ${f.late} late`}
+                    {f.not_delivered > 0 && ` · ${f.not_delivered} not delivered`}
+                    {f.not_due > 0 && ` · ${f.not_due} not due yet`} ·{' '}
+                    {formatMoney(f.received_value)} of {formatMoney(f.ordered_value)}
+                  </p>
+                </Link>
               </li>
             ))}
           </ul>

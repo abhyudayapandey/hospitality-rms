@@ -18,9 +18,10 @@ import {
   sortLeague,
   SECTIONS,
   topLosses,
-  trendGrain,
+  trendHref,
   trendLabel,
   trendRange,
+  trendSettings,
 } from './reports';
 import { daysInclusive } from './dates';
 
@@ -270,23 +271,46 @@ describe('menu engineering periods and wording (RPT-13)', () => {
 });
 
 describe('trends (RPT-12)', () => {
-  it('14 days, 13 weeks from a Monday, 12 months from the 1st', () => {
-    expect(trendRange('day', '2026-10-04')).toEqual({ from: '2026-09-21', to: '2026-10-04' });
-    // Sunday 4 Oct: its week began Monday 28 Sep; twelve weeks before that
-    expect(trendRange('week', '2026-10-04')).toEqual({ from: '2026-07-06', to: '2026-10-04' });
-    expect(trendRange('month', '2026-10-04')).toEqual({ from: '2025-11-01', to: '2026-10-04' });
-    expect(trendRange('month', '2026-01-31').from).toBe('2025-02-01');
+  it('3, 6, 9 or 12 months, from the Monday or the 1st the period starts in', () => {
+    // Sunday 4 Oct: 3 months back starts Sunday 5 Jul, in the week of Monday 29 Jun
+    expect(trendRange(3, 'week', '2026-10-04')).toEqual({ from: '2026-06-29', to: '2026-10-04' });
+    expect(trendRange(3, 'month', '2026-10-04')).toEqual({ from: '2026-07-01', to: '2026-10-04' });
+    expect(trendRange(12, 'month', '2026-10-04').from).toBe('2025-10-01');
+    expect(trendRange(12, 'week', '2026-10-04').from).toBe('2025-09-29');
   });
 
   it('labels each period plainly', () => {
-    expect(trendLabel('day', '2026-09-28')).toBe('Mon 28 Sept');
     expect(trendLabel('week', '2026-09-28')).toBe('w/c 28 Sept');
     expect(trendLabel('month', '2026-09-01')).toBe('Sept 2026');
   });
 
-  it('by day unless asked for week or month', () => {
-    expect(trendGrain('week')).toBe('week');
-    expect(trendGrain('year')).toBe('day');
-    expect(trendGrain(undefined)).toBe('day');
+  it('3 months by week as a line, unless the link asks otherwise', () => {
+    expect(trendSettings({})).toEqual({ months: 3, by: 'week', chart: 'line' });
+    expect(trendSettings({ months: '12', by: 'month', chart: 'bar' })).toEqual({
+      months: 12,
+      by: 'month',
+      chart: 'bar',
+    });
+    expect(trendSettings({ months: '5', by: 'day', chart: 'pie' })).toEqual({
+      months: 3,
+      by: 'week',
+      chart: 'line',
+    });
+  });
+
+  it('opens a trend for the figures that have one', () => {
+    expect(trendHref('outlet_flash', 'n1', 'food_cost_pct')).toBe(
+      '/reports/trend?report=outlet_flash&node=n1&measure=food_cost_pct',
+    );
+    // a figure of the moment has none
+    expect(trendHref('stock_position', 'n1', 'days_on_hand')).toBeNull();
+    expect(trendHref('people', 'n1', 'leave_balance_days')).toBeNull();
+    // a row of a list, by its key
+    expect(trendHref('purchasing', 's1', 'fill_pct', { key: 'sup', name: 'Fresh & Co' })).toBe(
+      '/reports/trend?report=purchasing&node=s1&measure=fill_pct&key=sup&name=Fresh+%26+Co',
+    );
+    expect(trendHref('cost_of_sales', 'n1', 'food_cost_pct', { months: 6 })).toBe(
+      '/reports/trend?report=cost_of_sales&node=n1&measure=food_cost_pct&months=6',
+    );
   });
 });

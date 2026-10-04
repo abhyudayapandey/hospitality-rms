@@ -1,25 +1,36 @@
 import { failure } from '@outlet-ops/domain';
 import { BackLink } from '@/components/back-link';
 import { NoReport } from '@/components/report-view';
-import { TrendChart, TrendFigure, TrendGrains } from '@/components/trend-chart';
+import {
+  TrendChart,
+  TrendControls,
+  TrendFigure,
+  trendLink,
+  type TrendSeries,
+} from '@/components/trend-chart';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatMoney } from '@/lib/format';
 import { formatQty } from '@/lib/inventory';
 import { param, type SearchParams } from '@/lib/params';
 import { itemTrend, reportToday } from '@/lib/report-data';
-import { trendGrain, trendLabel, trendRange } from '@/lib/reports';
+import { trendLabel, trendRange, trendSettings } from '@/lib/reports';
 
 // A stock item's trend at one store (RPT-12, ADR 041), opened from its row in Cost of
 // sales, Stock position or Purchasing: what came in and the price paid, what was used and
-// wasted, and the stock left, per day, week or month. rpt.item_trend opens exactly where
+// wasted, and the stock left, over the last 3, 6, 9 or 12 months by week or month. rpt.item_trend opens exactly where
 // the stock position opens for that store.
 export default async function ItemTrend({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
   const sp = await searchParams;
   const store = param(sp, 'node');
   const item = param(sp, 'item');
-  const by = trendGrain(param(sp, 'by'));
+  const view = trendSettings({
+    months: param(sp, 'months'),
+    by: param(sp, 'by'),
+    chart: param(sp, 'chart'),
+  });
+  const { by } = view;
   const uuid = /^[0-9a-f-]{36}$/;
   if (!uuid.test(store) || !uuid.test(item)) {
     return <NoReport>You don&apos;t have access to this report.</NoReport>;
@@ -27,7 +38,7 @@ export default async function ItemTrend({ searchParams }: { searchParams: Search
   const data = await withUser(user.id, async (tx) => {
     try {
       await sql`savepoint trend`.execute(tx);
-      const range = trendRange(by, await reportToday(tx, store));
+      const range = trendRange(view.months, by, await reportToday(tx, store));
       const points = await itemTrend(tx, store, item, by, range.from, range.to);
       const name = await sql<{ name: string }>`
         select name from rpt.report_places('stock_position') where id = ${store}::uuid`.execute(tx);
@@ -48,7 +59,7 @@ export default async function ItemTrend({ searchParams }: { searchParams: Search
     k: 'came_in' | 'received_value' | 'used' | 'used_value' | 'wasted' | 'wasted_value',
   ) => points.reduce((s, p) => s + Number(p[k]), 0);
   const bought = points.filter((p) => p.avg_price !== null);
-  const link = (g: string) => `/reports/item?node=${store}&item=${item}&by=${g}`;
+  const base = `/reports/item?node=${store}&item=${item}`;
   return (
     <div className="space-y-4">
       <BackLink fallback={`/reports/stock?node=${store}`} />
@@ -58,7 +69,7 @@ export default async function ItemTrend({ searchParams }: { searchParams: Search
         </h1>
         <p className="text-sm text-slate-600">{storeName}</p>
       </div>
-      <TrendGrains link={link} by={by} />
+      <TrendControls view={view} href={(c) => trendLink(base, view, c)} />
       <dl className="grid grid-cols-2 gap-2 text-sm" data-testid="trend-totals">
         <TrendFigure
           label="Used"
@@ -72,18 +83,18 @@ export default async function ItemTrend({ searchParams }: { searchParams: Search
         <TrendFigure label="In stock now" value={formatQty(points.at(-1)?.closing ?? 0, unit)} />
       </dl>
       <TrendChart
+        kind={view.chart}
         title={`Use of ${first?.item ?? 'the item'} by ${by}`}
-        bars={points.map((p) => ({
-          label: trendLabel(by, p.period),
-          parts: [
-            { value: Number(p.used_value), tone: 'brand' },
-            { value: Number(p.wasted_value), tone: 'bad' },
-          ],
-        }))}
-        legend={[
-          { label: 'used', tone: 'brand' },
-          { label: 'wasted', tone: 'bad' },
-        ]}
+        labels={points.map((p) => trendLabel(by, p.period))}
+        format={(v) => formatMoney(v) ?? ''}
+        stacked={view.chart === 'bar'}
+        series={(
+          [
+            { label: 'used', tone: 'brand', values: points.map((p) => Number(p.used_value)) },
+            { label: 'wasted', tone: 'bad', values: points.map((p) => Number(p.wasted_value)) },
+            { label: 'bought', tone: 'warn', values: points.map((p) => Number(p.received_value)) },
+          ] satisfies TrendSeries[]
+        ).filter((s) => view.chart === 'line' || s.label !== 'bought')}
       />
       {bought.length > 0 && (
         <p className="text-sm text-slate-600" data-testid="trend-price">

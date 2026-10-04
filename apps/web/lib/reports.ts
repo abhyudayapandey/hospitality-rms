@@ -1,7 +1,7 @@
 // Reports (ADR 023): names, the measures each report shows, and how a figure reads. Pure:
 // the figures come from rpt.* functions, which decide who may see what (rule 2).
 
-import { addDays, weekStart } from './dates';
+import { weekStart } from './dates';
 
 export type ReportCode =
   | 'league'
@@ -155,6 +155,11 @@ export const MEASURES: Readonly<Record<string, MeasureDef>> = {
   fill_pct: { label: 'Filled', unit: 'pct', better: 'up' },
   transit_loss: { label: 'Lost in transit', unit: 'money', better: 'down' },
   in_transit_value: { label: 'On the way now', unit: 'money' },
+  // a supplier's orders and a store's transfers, opened as trends (RPT-12)
+  orders: { label: 'Orders', unit: 'count' },
+  ordered_value: { label: 'Ordered', unit: 'money' },
+  received_value: { label: 'Received', unit: 'money' },
+  not_delivered: { label: 'Not delivered', unit: 'count', better: 'down' },
 };
 
 /** The sections of each report, in order (a measure missing from the data is skipped). */
@@ -504,6 +509,17 @@ export interface LeagueRow {
 export type LeagueColumn = Exclude<keyof LeagueRow, 'outlet_id' | 'code' | 'name'>;
 
 /** The columns, in order; a cost is better low, tasks and sales better high. */
+/** Each league column is a figure of the outlet's own report, which opens its trend. */
+export const LEAGUE_MEASURE: Readonly<Record<LeagueColumn, string>> = {
+  sales: 'sales',
+  food_pct: 'food_cost_pct',
+  drink_pct: 'bar_cost_pct',
+  labour_pct: 'labour_pct',
+  prime_pct: 'prime_cost_pct',
+  wastage_pct: 'wastage_pct',
+  tasks_pct: 'task_pct',
+};
+
 export const LEAGUE_COLUMNS: readonly {
   key: LeagueColumn;
   label: string;
@@ -591,24 +607,146 @@ export function dishWords(
 // ---------------------------------------------------------------------------------------
 // Trends (RPT-12, ADR 041)
 
-export const TREND_GRAINS = ['day', 'week', 'month'] as const;
+/** A trend covers the same periods as Menu engineering: the last 3, 6, 9 or 12 months. */
+export const TREND_MONTHS = MENU_MONTHS;
+export const trendMonths = menuMonths;
+
+/** By week (the default: a narrow screen holds 13 to 53 of them) or by month. */
+export const TREND_GRAINS = ['week', 'month'] as const;
 export type TrendGrain = (typeof TREND_GRAINS)[number];
 
 export function trendGrain(s: string | undefined): TrendGrain {
-  return (TREND_GRAINS as readonly string[]).includes(s ?? '') ? (s as TrendGrain) : 'day';
+  return s === 'month' ? 'month' : 'week';
 }
 
-/** The last 14 days, 13 weeks (from a Monday) or 12 months (from the 1st), to today. */
-export function trendRange(by: TrendGrain, today: string): { from: string; to: string } {
-  if (by === 'day') return { from: addDays(today, -13), to: today };
-  if (by === 'week') return { from: addDays(weekStart(today), -7 * 12), to: today };
-  const [y, m] = today.split('-').map(Number) as [number, number];
-  const first = new Date(Date.UTC(y, m - 1 - 11, 1));
-  return { from: first.toISOString().slice(0, 10), to: today };
+/** A line shows a cost going up and down best; bars show the parts of a total. */
+export const TREND_CHARTS = ['line', 'bar'] as const;
+export type TrendChartKind = (typeof TREND_CHARTS)[number];
+
+export function trendChart(s: string | undefined): TrendChartKind {
+  return s === 'bar' ? 'bar' : 'line';
 }
 
-/** A period's label: "Mon 28 Sep", "w/c 28 Sep" or "Sep 2026". */
-export function trendLabel(by: TrendGrain, period: string): string {
+/** The last `months` months to today, from the Monday (by week) or the 1st (by month) the
+ * period starts in, so the first point is a whole week or month. */
+export function trendRange(
+  months: number,
+  by: TrendGrain,
+  today: string,
+): { from: string; to: string } {
+  const start = monthsRange(today, months).from;
+  return { from: by === 'week' ? weekStart(start) : `${start.slice(0, 8)}01`, to: today };
+}
+
+/** The settings of a trend page, read from its link. */
+export function trendSettings(sp: { months?: string; by?: string; chart?: string }): {
+  months: MenuMonths;
+  by: TrendGrain;
+  chart: TrendChartKind;
+} {
+  return { months: trendMonths(sp.months), by: trendGrain(sp.by), chart: trendChart(sp.chart) };
+}
+
+/** The figures of each report that open a trend (rpt.measure_trend says the same). */
+export const TREND_MEASURES: Readonly<Partial<Record<ReportCode, ReadonlySet<string>>>> = {
+  outlet_flash: new Set([
+    'sales',
+    'food_sales',
+    'bar_sales',
+    'food_cost_pct',
+    'bar_cost_pct',
+    'wastage',
+    'wastage_pct',
+    'stock_value',
+    'scheduled_hours',
+    'worked_hours',
+    'open_slots',
+    'late',
+    'no_shows',
+    'task_pct',
+    'tasks_due',
+    'tasks_done',
+    'overdue',
+    'flagged',
+    'splh',
+    'labour_cost',
+    'labour_pct',
+    'prime_cost',
+    'prime_cost_pct',
+  ]),
+  department: new Set([
+    'shifts',
+    'scheduled_hours',
+    'worked_hours',
+    'open_slots',
+    'late',
+    'no_shows',
+    'labour_cost',
+    'task_pct',
+    'tasks_due',
+    'tasks_done',
+    'tasks_on_time',
+    'overdue',
+    'flagged',
+    'wastage',
+    'stock_value',
+  ]),
+  cost_of_sales: new Set([
+    'food_sales',
+    'bar_sales',
+    'food_cost_pct',
+    'food_recipe_pct',
+    'bar_cost_pct',
+    'bar_recipe_pct',
+    'count_loss',
+    'beyond_tolerance',
+    'wastage',
+    'expired',
+  ]),
+  people: new Set([
+    'joiners',
+    'shifts',
+    'late',
+    'no_shows',
+    'on_time_pct',
+    'worked_hours',
+    'overtime_hours',
+    'leave_days',
+    'swaps',
+  ]),
+  central_kitchen: new Set([
+    'batches',
+    'made_value',
+    'ingredients_over',
+    'expired_value',
+    'expired_pct',
+    'transfers',
+    'requested_value',
+    'dispatched_value',
+    'fill_pct',
+    'transit_loss',
+  ]),
+  stock_position: new Set(['stock_value']),
+};
+
+/** Where a report's figure opens its trend, or null when it has none. */
+export function trendHref(
+  report: ReportCode,
+  node: string,
+  measure: string,
+  extra?: { key?: string; name?: string; months?: number },
+): string | null {
+  const set = TREND_MEASURES[report];
+  if (!extra?.key && !set?.has(measure)) return null;
+  const q = new URLSearchParams({ report, node, measure });
+  if (extra?.key) q.set('key', extra.key);
+  if (extra?.name) q.set('name', extra.name);
+  if (extra?.months) q.set('months', String(extra.months));
+  return `/reports/trend?${q.toString()}`;
+}
+
+/** A period's label: "w/c 28 Sep" or "Sep 2026". */
+export function trendLabel(by: TrendGrain | 'day', period: string): string {
   const d = new Date(`${period}T00:00:00Z`);
   if (by === 'month') {
     return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });

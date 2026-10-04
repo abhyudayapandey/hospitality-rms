@@ -134,7 +134,8 @@ export const ERROR_MESSAGES = {
   INVALID_AMOUNT: 'Amounts are zero or more.',
   INVALID_CODE: 'Enter the POS item code, up to 40 characters, no spaces.',
   // trends (RPT-12, ADR 041)
-  INVALID_GRAIN: 'Show the trend by day, week or month.',
+  INVALID_GRAIN: 'Show the trend by week or month.',
+  INVALID_MEASURE: 'That figure has no trend on this report.',
   UNEXPECTED: 'Something went wrong. Please try again.',
 } as const;
 
