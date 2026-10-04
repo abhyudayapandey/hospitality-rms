@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Empty } from '@/components/messages';
 import { CsvLink, NoReport, PeriodPicker, ReportHeader } from '@/components/report-view';
 import { requireUser } from '@/lib/auth/server';
@@ -79,21 +80,26 @@ export default async function Purchasing({ searchParams }: { searchParams: Searc
             data-testid="price-changes"
           >
             {changed.map((p, i) => (
-              <li key={i} className="flex justify-between gap-2 px-4 py-3 text-sm" data-sku={p.sku}>
-                <span className="min-w-0">
-                  <span className="block font-medium">{p.name}</span>
-                  <span className="block text-xs text-slate-500">
-                    {formatMoney(p.unit_cost)} a {p.unit}, was {formatMoney(p.previous_cost)}
-                    {p.basis === 'standard' && ' (standard cost)'} · {formatQty(p.qty, p.unit)} from{' '}
-                    {p.supplier} · {formatDay(p.received_at.slice(0, 10))}
-                  </span>
-                </span>
-                <span
-                  className={`shrink-0 tabular-nums ${Number(p.change_value) > 0 ? 'text-rose-800' : 'text-emerald-700'}`}
+              <li key={i} className="text-sm" data-sku={p.sku}>
+                <Link
+                  href={`/reports/item?node=${place.id}&item=${p.item_id}`}
+                  className="flex justify-between gap-2 px-4 py-3"
                 >
-                  {Number(p.change_value) > 0 ? '+' : '−'}
-                  {formatMoney(Math.abs(Number(p.change_value)))}
-                </span>
+                  <span className="min-w-0">
+                    <span className="block font-medium">{p.name}</span>
+                    <span className="block text-xs text-slate-500">
+                      {formatMoney(p.unit_cost)} a {p.unit}, was {formatMoney(p.previous_cost)}
+                      {p.basis === 'standard' && ' (standard cost)'} · {formatQty(p.qty, p.unit)}{' '}
+                      from {p.supplier} · {formatDay(p.received_at.slice(0, 10))}
+                    </span>
+                  </span>
+                  <span
+                    className={`shrink-0 tabular-nums ${Number(p.change_value) > 0 ? 'text-rose-800' : 'text-emerald-700'}`}
+                  >
+                    {Number(p.change_value) > 0 ? '+' : '−'}
+                    {formatMoney(Math.abs(Number(p.change_value)))}
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>

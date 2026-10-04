@@ -1176,6 +1176,43 @@ class Loader {
       else counts.created++;
     }
 
+    // POS item codes per outlet (ADR 039): added or moved to the item named; codes not in
+    // the file are kept (a manager may have matched them on the import screen)
+    for (const o of this.b.menuOutlets) {
+      if (o.pos_code === undefined) continue;
+      this.step(FILES.menuOutlets.file, o.line);
+      const counts = (this.report.counts['POS codes'] ??= { created: 0, updated: 0, unchanged: 0 });
+      const item = menuItems.get(o.menu_item_code)!;
+      const outlet = this.nodes.get(o.outlet_code)!;
+      const store = this.nodes.get(o.sold_from_store_code)!;
+      const { rows } = await this.c.query<{
+        id: string;
+        menu_item_id: string;
+        delivery_node_id: string;
+      }>(
+        `select id, menu_item_id, delivery_node_id from menu.pos_item
+          where tenant_id = $1 and org_node_id = $2 and pos_code = $3`,
+        [this.tenant, outlet, o.pos_code],
+      );
+      const was = rows[0];
+      if (was && was.menu_item_id === item && was.delivery_node_id === store) {
+        counts.unchanged++;
+      } else if (was) {
+        await this.c.query(
+          `update menu.pos_item set menu_item_id = $2, delivery_node_id = $3 where id = $1`,
+          [was.id, item, store],
+        );
+        counts.updated++;
+      } else {
+        await this.c.query(
+          `insert into menu.pos_item (tenant_id, org_node_id, delivery_node_id, pos_code, menu_item_id)
+           values ($1, $2, $3, $4, $5)`,
+          [this.tenant, outlet, store, o.pos_code, item],
+        );
+        counts.created++;
+      }
+    }
+
     // recipes, grouped by what they are for; compared with the version in force
     const groups = new Map<string, Bundle['recipes']>();
     for (const r of this.b.recipes) {

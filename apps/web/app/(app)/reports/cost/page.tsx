@@ -194,7 +194,14 @@ function ItemRow({ r, store }: { r: CostItemRow; store: boolean }) {
           {formatQty(r.expected_closing, r.unit)}
           {Number(r.pending_qty) !== 0 && (
             <> · {formatQty(r.pending_qty, r.unit)} awaiting approval</>
-          )}
+          )}{' '}
+          <Link
+            className="font-medium text-brand-700 underline"
+            href={`/reports/item?node=${r.store_id}&item=${r.item_id}`}
+            data-testid="item-trend-link"
+          >
+            Trend
+          </Link>
         </p>
       </details>
     </li>

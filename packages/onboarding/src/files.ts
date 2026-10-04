@@ -539,7 +539,15 @@ export const FILES = {
       outlet_code: code,
       sold_from_store_code: code,
       price_inr_before_tax: num.refine((v) => v >= 0, 'must not be negative'),
+      // the item's code on the outlet's POS, for the POS import (ADR 039)
+      pos_code: z.union([
+        z.literal('').transform(() => undefined),
+        z
+          .string()
+          .regex(/^[^\s]{1,40}$/, 'must be the POS item code, up to 40 characters, no spaces'),
+      ]),
     }),
+    optional: ['pos_code'],
   },
   prepProcedures: {
     file: '24_prep_procedures.csv',

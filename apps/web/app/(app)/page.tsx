@@ -77,6 +77,10 @@ export default async function Home() {
         </section>
       )}
 
+      {today.pos && <PosCard pos={today.pos} tz={tz} />}
+
+      {today.push.length > 0 && <PushToday push={today.push} tz={tz} />}
+
       {(frontline || tasks.total > 0) && shell.domains.has('TASKS') && (
         <NextTask tasks={tasks} tz={tz} frontline={frontline} />
       )}
@@ -150,6 +154,63 @@ function Banners({ today }: { today: Today }) {
           <ExpiryBanner key={k} show={k} n={e[k].n} q="all=1&" />
         ))}
     </>
+  );
+}
+
+// The cashier's end-of-day job (SAL-2, ADR 039): import the POS's Sale by item file.
+function PosCard({ pos, tz }: { pos: NonNullable<Today['pos']>; tz: string }) {
+  const href = `/menu/sales/import?node=${pos.outlet.id}&date=${pos.day}`;
+  return (
+    <section aria-label="Today's sales" className={card} data-testid="pos-card">
+      <h2 className={cardTitle}>End of day</h2>
+      {pos.last ? (
+        <p className="mt-2 flex items-center gap-2 text-slate-700">
+          <Icon name="check" className="size-5 text-emerald-700" />
+          Sales imported at {formatTime(pos.last.at, tz)}: {pos.last.posted} items
+          {pos.last.unmatched > 0 ? `, ${pos.last.unmatched} not matched yet` : ''}
+        </p>
+      ) : (
+        <p className="mt-2 text-slate-700">Today&apos;s sales are not imported yet.</p>
+      )}
+      <Link
+        href={href}
+        className={`mt-3 flex min-h-13 items-center justify-center gap-2 rounded-xl text-lg font-semibold ${
+          pos.last ? 'border border-brand-700 text-brand-700' : 'bg-brand-700 text-white'
+        }`}
+      >
+        <Icon name="upload" />
+        {pos.last ? 'Import again' : 'Import sales'}
+      </Link>
+    </section>
+  );
+}
+
+// Dishes to sell first (INV-12, ADR 040): they use prep that expires by tomorrow.
+function PushToday({ push, tz }: { push: Today['push']; tz: string }) {
+  const dishes = [...new Map(push.map((p) => [p.menu_item_id, p])).values()];
+  const uses = (id: string) => [
+    ...new Set(push.filter((p) => p.menu_item_id === id).map((p) => p.item)),
+  ];
+  return (
+    <section aria-label="Push today" className={card} data-testid="push-today">
+      <h2 className={`${cardTitle} flex items-center gap-1.5`}>
+        <Icon name="fire" className="size-4 text-amber-600" />
+        Push today
+      </h2>
+      <ul className="mt-2 divide-y divide-slate-100">
+        {dishes.slice(0, 8).map((d) => (
+          <li key={d.menu_item_id} className="py-2" data-testid="push-dish">
+            <span className="block font-semibold">{d.dish}</span>
+            <span className="block text-sm text-slate-500">
+              uses {uses(d.menu_item_id).join(', ')}, use by{' '}
+              {formatDay(new Date(d.expires_at).toLocaleDateString('en-CA', { timeZone: tz }))}{' '}
+              {formatTime(d.expires_at, tz)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {dishes.length > 8 && <p className="text-sm text-slate-500">and {dishes.length - 8} more</p>}
+    </section>
   );
 }
 

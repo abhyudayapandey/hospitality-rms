@@ -121,7 +121,8 @@ pnpm --filter @outlet-ops/workflow attendance-nightly  nightly attendance except
                                                       then the report tables (35 days, ADR 023)
 pnpm --filter @outlet-ops/workflow reports-rebuild     the report tables only
 pnpm --filter @outlet-ops/workflow tasks-tick          checklist rounds 24 h ahead, reminders and
-                                                      escalation (the 5-minute timer, ADR 020)
+                                                      escalation (the 5-minute timer, ADR 020);
+                                                      the morning expiry alert (ADR 040)
 pnpm --filter @outlet-ops/web e2e                     build, then Playwright vs the standalone server
                                                       (+ dev-only pages vs next dev; seeded DB)
 pnpm --filter @outlet-ops/web check:prod-dev-auth     prod build: dev login must be 404
@@ -180,7 +181,9 @@ optional supplier `contact_phone` for sending orders (ADR 032); file 01 has an o
 `department_type` (kitchen, service, housekeeping, other) that orders Home's Needs
 attention (ADR 033). File 00 has an optional `swaps_managers_only` (on by default; Test
 Company sets it to no so its swap flows work) and the settings hold `count_due_days`
-(ADR 035).
+(ADR 035). File 23 has an optional `pos_code`, each dish's code on the outlet's
+POS, for the POS import (ADR 039; Test Bar 3.0's dishes are 3001 to 3031), and the Cashier job
+role holds CASHIER at the outlet's stores (import only, no sales or reports).
 `TEST_LOGINS_do_not_commit.csv` (passwords) is never committed.
 
 ## How to work in this repo

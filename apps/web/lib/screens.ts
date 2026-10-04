@@ -35,6 +35,7 @@ export type ScreenKey =
   | 'orders'
   | 'transfers'
   | 'sales'
+  | 'posImport'
   | 'roster'
   | 'events'
   | 'reports'
@@ -204,6 +205,15 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     show: (i) => can(i, 'SALES') || can(i, 'DERIVED_SALES'),
   },
   {
+    // the cashier's end-of-day job (SAL-2, ADR 039); managers reach it from Sales too
+    key: 'posImport',
+    href: '/menu/sales/import',
+    label: 'Import sales',
+    icon: 'upload',
+    section: 'work',
+    show: (i) => can(i, 'POS_IMPORT', 'modify'),
+  },
+  {
     key: 'problem',
     href: '/tasks/maintenance/new',
     label: 'Report a problem',
@@ -255,10 +265,11 @@ export function screensFor(i: ScreenInput): Screen[] {
 }
 
 /**
- * Frontline Home's four tiles (UX-6): their tasks, what they make, the store they keep,
- * their shifts and leave, then reporting a problem. Clocking in is the card above them.
+ * Frontline Home's four tiles (UX-6): the cashier's import first (SAL-2), their tasks, what
+ * they make, the store they keep, their shifts and leave, then reporting a problem. Clocking in is the card above them.
  */
 const TILE_ORDER: readonly ScreenKey[] = [
+  'posImport',
   'tasks',
   'make',
   'stock',

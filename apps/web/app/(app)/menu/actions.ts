@@ -75,3 +75,77 @@ export async function postSales(
     return { id: r.rows[0]!.id };
   });
 }
+
+export interface PosLineInput {
+  code: string;
+  description: string;
+  qty: number;
+  value: number;
+  discount: number;
+}
+
+export interface PosResult {
+  import_id: string;
+  posted: number;
+  unmatched: { code: string; description: string; qty: number; value: number }[];
+  net: number;
+  discount: number;
+}
+
+/**
+ * A day's POS file (SAL-2, ADR 039), read in the browser with the same reader the tests
+ * use; the database checks it all again (dates, totals, quantities, who may import).
+ */
+export async function importPos(
+  outletId: string,
+  date: string,
+  file: {
+    fileName: string;
+    posOutlets: string[];
+    periodFrom: string | null;
+    periodTo: string | null;
+    totalValue: number;
+    lines: PosLineInput[];
+  },
+  idempotencyKey: string,
+): Promise<ActionResult<PosResult>> {
+  return run('import_pos', async (tx) => {
+    await requireModule(tx, 'menu_sales');
+    const body = {
+      file_name: file.fileName.slice(0, 200),
+      pos_outlets: file.posOutlets,
+      period_from: file.periodFrom,
+      period_to: file.periodTo,
+      total_value: file.totalValue,
+      lines: file.lines,
+    };
+    const r = await sql<{ r: PosResult }>`
+      select menu.import_pos(${outletId}::uuid, ${date}::date, ${JSON.stringify(body)}::jsonb,
+                             ${idempotencyKey}) as r`.execute(tx);
+    return r.rows[0]!.r;
+  });
+}
+
+/** Matches a POS code to a menu item on the outlet's menu (people who post its sales). */
+export async function mapPosItem(
+  outletId: string,
+  code: string,
+  menuItemId: string,
+): Promise<ActionResult<null>> {
+  return run('map_pos_item', async (tx) => {
+    await sql`select menu.map_pos_item(${outletId}::uuid, ${code}, ${menuItemId}::uuid)`.execute(
+      tx,
+    );
+    return null;
+  });
+}
+
+/** Posts an import again, once its codes are matched. */
+export async function repostPos(importId: string): Promise<ActionResult<PosResult>> {
+  return run('repost_pos', async (tx) => {
+    const r = await sql<{ r: PosResult }>`select menu.repost_pos(${importId}::uuid) as r`.execute(
+      tx,
+    );
+    return r.rows[0]!.r;
+  });
+}

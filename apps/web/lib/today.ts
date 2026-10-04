@@ -5,6 +5,7 @@ import { inboxEntries, type InboxEntry } from './inbox';
 import { expiryList } from './inventory';
 import { navProfile, type NavProfile } from './nav';
 import { myShifts, openPunch, type MyShift, type OpenPunch } from './people';
+import { myPushToday, posImportOf, posPlaces, type PushDish } from './pos-import';
 import {
   departmentDay,
   departmentPeople,
@@ -66,6 +67,13 @@ export interface ExpiryCounts {
   expired: { n: number };
 }
 
+/** The cashier's end-of-day job (SAL-2, ADR 039): has today's POS file been imported? */
+export interface PosToday {
+  outlet: { id: string; name: string };
+  day: string;
+  last: { at: string; posted: number; unmatched: number } | null;
+}
+
 export interface TodayLeague {
   place: { id: string; name: string };
   from: string;
@@ -85,6 +93,9 @@ export interface Today {
   league: TodayLeague | null;
   store: StoreWork | null;
   expiry: ExpiryCounts | null;
+  pos: PosToday | null;
+  /** dishes to sell first today at their outlet (INV-12, ADR 040) */
+  push: PushDish[];
   targets: Record<TargetKey, number>;
 }
 
@@ -201,6 +212,25 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       expiry = { expiring: { n: n(false) }, expired: { n: n(true) } };
     }
 
+    // the cashier's import (frontline people who import; managers import from Sales)
+    let pos: PosToday | null = null;
+    if (!lead && shell.domains.get('POS_IMPORT') === 'modify') {
+      const o = (await posPlaces(tx))[0];
+      if (o) {
+        const day = await reportToday(tx, o.outlet_id);
+        const last = await posImportOf(tx, o.outlet_id, day);
+        pos = {
+          outlet: { id: o.outlet_id, name: o.outlet_name },
+          day,
+          last: last
+            ? { at: last.imported_at, posted: last.posted, unmatched: last.unmatched.length }
+            : null,
+        };
+      }
+    }
+    // Push today: the function decides who sees it (service teams and the outlet's managers)
+    const push = atWork ? await myPushToday(tx) : [];
+
     let numbers: TodayNumbers | null = null;
     let leagueTable: TodayLeague | null = null;
     if (shell.reports === 'business') {
@@ -244,6 +274,8 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       league: leagueTable,
       store,
       expiry,
+      pos,
+      push,
       targets: (await companySettings(tx)).targets,
     };
   });

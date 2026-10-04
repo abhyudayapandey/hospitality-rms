@@ -15,7 +15,7 @@ export const MODULE_DOMAINS: Readonly<Record<ModuleCode, readonly string[]>> = {
   prep_lists: [],
   checklists: ['CHECKLIST_TEMPLATES'],
   maintenance: ['MAINTENANCE'],
-  menu_sales: ['MENU', 'DERIVED_MENU', 'SALES', 'DERIVED_SALES'],
+  menu_sales: ['MENU', 'DERIVED_MENU', 'SALES', 'DERIVED_SALES', 'POS_IMPORT'],
 };
 
 /** Report figures that come from sales: hidden when Menu and sales is off. */

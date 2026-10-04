@@ -1005,6 +1005,7 @@ function validateMenu(b: Bundle, add: Add, k: Known): void {
 
   // menu outlets: the item exists, the outlet is an outlet, the store sells for it
   const listed = new Set<string>();
+  const posCodes = new Set<string>();
   for (const o of b.menuOutlets) {
     if (!menu.has(o.menu_item_code)) {
       add(
@@ -1043,6 +1044,17 @@ function validateMenu(b: Bundle, add: Add, k: Known): void {
     if (listed.has(key))
       add(f('menuOutlets'), o.line, 'menu_item_code', 'this menu item and outlet are listed twice');
     listed.add(key);
+    if (o.pos_code !== undefined) {
+      const pos = `${o.outlet_code} ${o.pos_code}`;
+      if (posCodes.has(pos))
+        add(
+          f('menuOutlets'),
+          o.line,
+          'pos_code',
+          `POS code ${o.pos_code} is used twice at ${o.outlet_code}`,
+        );
+      posCodes.add(pos);
+    }
   }
 
   const procs = new Set<string>();

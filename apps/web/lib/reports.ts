@@ -1,6 +1,8 @@
 // Reports (ADR 023): names, the measures each report shows, and how a figure reads. Pure:
 // the figures come from rpt.* functions, which decide who may see what (rule 2).
 
+import { addDays, weekStart } from './dates';
+
 export type ReportCode =
   | 'league'
   | 'outlet_flash'
@@ -584,4 +586,34 @@ export function dishWords(
     } a serve`,
     share: `${Number(d.sold)} sold · ${d.mix_pct ?? '0'}% of ${what} sold`,
   };
+}
+
+// ---------------------------------------------------------------------------------------
+// Trends (RPT-12, ADR 041)
+
+export const TREND_GRAINS = ['day', 'week', 'month'] as const;
+export type TrendGrain = (typeof TREND_GRAINS)[number];
+
+export function trendGrain(s: string | undefined): TrendGrain {
+  return (TREND_GRAINS as readonly string[]).includes(s ?? '') ? (s as TrendGrain) : 'day';
+}
+
+/** The last 14 days, 13 weeks (from a Monday) or 12 months (from the 1st), to today. */
+export function trendRange(by: TrendGrain, today: string): { from: string; to: string } {
+  if (by === 'day') return { from: addDays(today, -13), to: today };
+  if (by === 'week') return { from: addDays(weekStart(today), -7 * 12), to: today };
+  const [y, m] = today.split('-').map(Number) as [number, number];
+  const first = new Date(Date.UTC(y, m - 1 - 11, 1));
+  return { from: first.toISOString().slice(0, 10), to: today };
+}
+
+/** A period's label: "Mon 28 Sep", "w/c 28 Sep" or "Sep 2026". */
+export function trendLabel(by: TrendGrain, period: string): string {
+  const d = new Date(`${period}T00:00:00Z`);
+  if (by === 'month') {
+    return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+  }
+  const day = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  if (by === 'week') return `w/c ${day}`;
+  return `${d.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' })} ${day}`;
 }
