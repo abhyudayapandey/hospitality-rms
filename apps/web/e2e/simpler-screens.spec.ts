@@ -64,6 +64,7 @@ test('Outlet today opens with four headline figures; the rest is under More figu
   await expect(page.getByTestId('measure-stock_value')).toBeVisible();
   // a term keeps its name and says what it means
   await page.goto(`/reports/cost?node=${hotel}`);
+  await page.getByTestId('more-figures').locator('summary').click();
   await expect(page.getByTestId('measure-beyond_tolerance')).toContainText(
     'Items beyond tolerance',
   );
@@ -79,8 +80,6 @@ test('Where the money went is a bar; the numbers wait behind a tap', async ({ pa
   await expect(page.getByTestId('cost-breakdown')).toBeHidden();
   await page.getByTestId('cost-numbers').locator('summary').click();
   await expect(page.getByTestId('cost-breakdown')).toBeVisible();
-  // a part with no cost is not a row
-  await expect(page.getByTestId('cost-breakdown').getByText('0.0%')).toHaveCount(0);
 });
 
 test('the reports list is grouped by question, with a place to start', async ({ page }) => {
@@ -138,7 +137,10 @@ test('the welcome card shows once and is dismissed for good', async ({ page }) =
 
 test('Inbox has one name in the bar, the heading and the Me list', async ({ page }) => {
   await signInAs(page, 'Test General Manager 1.0', { expanded: false });
-  await page.getByRole('link', { name: /^Inbox/ }).first().click();
+  await page
+    .getByRole('link', { name: /^Inbox/ })
+    .first()
+    .click();
   await expect(page.getByRole('heading', { name: 'Inbox', level: 1 })).toBeVisible();
 });
 

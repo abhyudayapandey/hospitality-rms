@@ -282,6 +282,44 @@ export function CostBreakdown({
 }) {
   const list = costParts(rows);
   if (list.length === 0) return null;
+  // inside a section that already says what it is (a trend's breakdown): just the table
+  const table = (
+    <ul
+      className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
+      data-testid="cost-breakdown"
+    >
+      {list
+        .filter((p) => p.total || Number(p.value ?? 0) !== 0)
+        .map((p) => (
+          <li
+            key={p.part}
+            data-testid={`part-${p.part}`}
+            className={`flex items-baseline justify-between gap-3 py-2 pr-3 text-sm ${
+              p.total ? 'bg-slate-50 pl-3 font-semibold' : 'pl-6 text-slate-700'
+            }`}
+          >
+            <span>{p.label}</span>
+            <span className="shrink-0 text-right tabular-nums">
+              <span data-testid="value">{formatMeasure('money', p.value)}</span>
+              <span className="ml-2 inline-block w-14 text-xs font-normal text-slate-500">
+                {formatMeasure('pct', p.pct)}
+              </span>
+            </span>
+          </li>
+        ))}
+    </ul>
+  );
+  if (!titled) {
+    return (
+      <section aria-label="Where the money went" className="space-y-2">
+        {table}
+        <p className="text-xs text-slate-500">
+          Each % is that part&apos;s share of the total cost.
+        </p>
+        {note && <p className="text-xs text-slate-500">{note}</p>}
+      </section>
+    );
+  }
   const shares = costShares(rows);
   const SHADE: Record<string, string> = {
     food: 'bg-brand-700',
@@ -317,30 +355,7 @@ export function CostBreakdown({
         <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-slate-700 underline">
           Show the numbers
         </summary>
-        <ul
-          className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
-          data-testid="cost-breakdown"
-        >
-          {list
-            .filter((p) => p.total || Number(p.value ?? 0) !== 0)
-            .map((p) => (
-              <li
-                key={p.part}
-                data-testid={`part-${p.part}`}
-                className={`flex items-baseline justify-between gap-3 py-2 pr-3 text-sm ${
-                  p.total ? 'bg-slate-50 pl-3 font-semibold' : 'pl-6 text-slate-700'
-                }`}
-              >
-                <span>{p.label}</span>
-                <span className="shrink-0 text-right tabular-nums">
-                  <span data-testid="value">{formatMeasure('money', p.value)}</span>
-                  <span className="ml-2 inline-block w-14 text-xs font-normal text-slate-500">
-                    {formatMeasure('pct', p.pct)}
-                  </span>
-                </span>
-              </li>
-            ))}
-        </ul>
+        {table}
         <p className="pt-2 text-xs text-slate-500">
           Each % is that part&apos;s share of the total cost.
         </p>

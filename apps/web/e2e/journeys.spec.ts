@@ -116,7 +116,7 @@ test('record wastage (store keeper)', async ({ page }) => {
   await j.go(
     page.getByRole('navigation', { name: 'Supply' }).getByRole('link', { name: 'Wastage' }),
   );
-  await j.choose(page.getByLabel('Item', { exact: true }), { index: 1 });
+  await j.choose(page.getByRole('combobox', { name: /^Item/ }), { index: 1 });
   await j.type(page.getByLabel(/^Quantity/), '1');
   await j.last(page.getByRole('button', { name: 'Record wastage' }));
   j.done('Record wastage', 'Store keeper', { there: 2, form: 2 });
