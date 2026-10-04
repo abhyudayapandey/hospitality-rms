@@ -117,8 +117,9 @@ pnpm db:new <name>     new dbmate migration
 pnpm db:rollback       roll back the last migration
 pnpm db:down           stop local Postgres
 pnpm --filter @outlet-ops/workflow execute [--once]   run the workflow executor locally
-pnpm --filter @outlet-ops/workflow attendance-nightly  nightly attendance exceptions + location purge,
-                                                      then the report tables (35 days, ADR 023)
+pnpm --filter @outlet-ops/workflow attendance-nightly  nightly attendance exceptions + location purge +
+                                                      selfie and device purge (ADR 045), then the
+                                                      report tables (35 days, ADR 023)
 pnpm --filter @outlet-ops/workflow reports-rebuild     the report tables only
 pnpm --filter @outlet-ops/workflow tasks-tick          checklist rounds 24 h ahead, reminders and
                                                       escalation (the 5-minute timer, ADR 020);
@@ -184,6 +185,10 @@ Company sets it to no so its swap flows work) and the settings hold `count_due_d
 (ADR 035). File 23 has an optional `pos_code`, each dish's code on the outlet's
 POS, for the POS import (ADR 039; Test Bar 3.0's dishes are 3001 to 3031), and the Cashier job
 role holds CASHIER at the outlet's stores (import only, no sales or reports).
+File 11 has optional `shelf` and `shelf_order` (shelf-ordered stock check sheets, ADR 043; Test
+Bar 3.0's bar store has them), and Test Solo Bar Co. has `test.solo.stock-verifier` because it
+has no Cost Controller. Test Company's orders in file 33 follow PO-5 (ADR 044): PO-1 to PO-3
+are approved at once, PO-4 is unusual and the GM approves it.
 `TEST_LOGINS_do_not_commit.csv` (passwords) is never committed.
 
 ## How to work in this repo

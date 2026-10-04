@@ -1549,6 +1549,96 @@ parameter, no access change, no test data change: no re-import.
   range).
 - **`test.cost-controller.1.0`.** Outlet today → Late → People: "Names not shown".
 
+#### Releasing the stock check, requests for material, order approvals and the clock-in selfie (INV-7, INV-8, INV-10, INV-11, TR-3, PO-5, ATT-7)
+
+Five migrations (`20261102090000_stock_check`, `20261102091000_stock_check_screen`,
+`20261102092000_offline_wastage`, `20261102100000_po5_rfm`, `20261103100000_clock_selfie_device`;
+ADR 043 to 045) and **a stack change**: the photo bucket gets two lifecycle rules
+(`stockcheck/` 1,830 days, `selfies/` 731 days) and the instance role two statements
+(`StockCheckPhotos`, `ClockSelfies`, put and get). No new parameter. The product sync (part
+of Deploy) adds the `STOCK_CHECK` and `ATTENDANCE_SELFIES` domains and the Stock Verifier
+group to every tenant and writes the new `PURCHASE_ORDER` and `TRANSFER` definitions. The
+nightly job now also removes selfies and devices past the retention rule. This changes
+access, so run **Actions → RLS equivalence (all users) → Run workflow** on the commit before
+merging.
+
+- **What changes in the app.**
+  - **Stock → Check** (INV-10, INV-11): the Cost Controller, or whoever holds the Stock
+    Verifier group (the Account Owner gives it in Admin → People), counts blind, sees the
+    differences, adds a photo to each and finishes; a difference changes stock at once and
+    tells the department head and the GM. Everyone with stock check access sees each item's
+    Verified tag. A **bar check** counts bottles and tenths. Counts and small wastage made
+    with no signal are saved on the phone and sent when it is back (INV-8). The old Count
+    stays.
+  - **Orders and requests for material** (PO-5, TR-3): menu ingredients in usual quantities
+    (up to 1.5× the week's use, Admin → Settings) need no approval and are approved at once;
+    anything off the menu or more than usual waits for the department head (or the GM). The
+    GM is told of every order. The Inbox says why, and the order form says so before
+    sending. A request into a department's store shows as a request for material.
+  - **Clock in** takes a selfie (the camera opens), and records the phone. No camera: "Clock
+    in without a selfie". The exceptions screen shows **No selfie**, **New phone** and
+    **Shared phone**; HR and the department head see the selfies (not the GM or the area
+    manager).
+- **Before the release: no order waiting for approval.** The old `outlet_approval` step goes
+  away, so an order waiting at it would be stuck. On the instance:
+  `docker exec -u postgres -e PGOPTIONS='-c default_transaction_read_only=on' outlet-ops-pg psql -d outlet_ops -X -P pager=off -c "select count(*) from wf.request where process_type = 'PURCHASE_ORDER' and state = 'in_approval'"`
+  should say 0. If not, approve or reject those orders first.
+- **Test data.** Test Company: file 11 gains `shelf` and `shelf_order` (Test Bar 3.0's bar
+  store). Test Solo Bar Co.: a Stock Verifier job role and `test.solo.stock-verifier` (files
+  06, 07, 14 and the access preview). Loading the past purchase orders (file 33) skips the
+  approval of orders approved at once.
+
+**Deploy order.** Preview the stack, apply it, run the Deploy workflow, then re-import both
+test customers.
+
+**Preview the stack change** (`aws login --profile outlet-ops`, `export AWS_PROFILE=outlet-ops
+AWS_REGION=ap-south-1`, `cd infra && pnpm cdk diff`). It should show only:
+
+- the photo bucket's lifecycle configuration: two rules added (`stockcheck/` expiring after
+  1830 days, `selfies/` after 731 days), the others unchanged;
+- the instance role's default policy: two statements added, `StockCheckPhotos` (`s3:PutObject`,
+  `s3:GetObject` on `stockcheck/*` of the photo bucket) and `ClockSelfies` (the same on
+  `selfies/*`).
+
+Stop and paste it here if anything says **replace**, or any other resource changes. Then
+`pnpm cdk deploy` (type `y`) and `cd ..`.
+
+**Re-import Test Company** (40 files). The dry run should report no problems, the same 2
+approval-coverage warnings, and: item locations RELOAD_COMPANY_ITEM_LOCATIONS updated (the 28 rows of
+Test Bar 3.0's bar store, which gain a shelf); everything else unchanged. Apply, then dry-run
+again: no changes.
+
+**Re-import Test Solo Bar Co.** The dry run should report no problems and: job roles 1 new,
+job role access 1 new, users 1 new, workers 1 new, leave balances 3 new; everything else
+unchanged. Apply, then dry-run again: no changes. The new user's password follows the usual
+rule (`TestStockVerifier!12`), or take it from the new logins file.
+
+**Check.**
+
+- **`test.cost-controller.1.0`.** Stock → Check (Hotel 1.0 Kitchen Store) → Start a stock
+  check. No quantity on record is shown. Count one item as it should be, another with one
+  unit less; Show the differences: the second needs a photo (take one); Finish. Stock for
+  the second drops by one.
+- **`test.general-manager.1.0`.** Stock → Check: Verified with the Cost Controller's name
+  and the time on the counted items, Not verified on the rest, no start button. The bell has
+  "Stock check at Hotel 1.0 – Kitchen Store". Notifications for an order: "Order for …".
+- **`test.solo.stock-verifier`.** Stock → Check → Start a bar check: bottles and tenths for
+  a bar item; the sheet follows the shelves.
+- **`test.head-cook.3.0`.** New order: paper napkins show "The department head will be asked
+  to approve this"; a pinch of onions shows "no approval needed". Submit the napkins: it
+  waits for `test.bar-manager.3.0`, whose Inbox says why and who approves. Submit onions in a
+  usual quantity: approved at once, nothing in the Inbox, released within a minute.
+- **`test.cook.3.0`.** Transfers → Request stock (from the central kitchen) for something off
+  the menu: shows as a request for material, waiting for approval; `test.head-cook.3.0`
+  approves it from the Inbox; then the central kitchen's store keeper has it to send.
+- **`test.server.3.0`.** Clock → Clock in with a selfie: the camera opens and the photo goes
+  up with the punch. Clock in again with no signal: the punch and selfie wait on the phone and
+  sync.
+- **`test.hr-admin`.** Roster → Exceptions (Bar 3.0): the selfie beside the clock-in; **No
+  selfie** for a punch without one. **`test.bar-manager.3.0`** sees the same exceptions with
+  no selfie.
+- **`test.account-owner`.** Admin → Settings: "A usual quantity is up to 1.5 ×".
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

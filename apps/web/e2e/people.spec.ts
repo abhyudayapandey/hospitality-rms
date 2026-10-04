@@ -359,10 +359,11 @@ test('clock in outside the fence is recorded and flagged for the manager', async
   if (await page.getByRole('button', { name: 'Clock out' }).isVisible()) {
     await context.setGeolocation(AT_BAR);
     await page.getByRole('button', { name: 'Clock out' }).click();
-    await expect(page.getByRole('button', { name: 'Clock in' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Clock in with a selfie' })).toBeVisible();
   }
   await context.setGeolocation(AWAY);
-  await page.getByRole('button', { name: 'Clock in' }).click();
+  // no camera in this test: clock in without a selfie (flagged, never blocked; ATT-7)
+  await page.getByTestId('clock-no-selfie').click();
   await expect(page.getByRole('status')).toContainText('m from the outlet');
   await expect(page.getByTestId('clock-state')).toContainText('Clocked in since');
 
@@ -520,10 +521,11 @@ test('offline clock-in is saved on the phone and synced with its time when back 
   await page.goto('/roster/clock');
   if (await page.getByRole('button', { name: 'Clock out' }).isVisible()) {
     await page.getByRole('button', { name: 'Clock out' }).click();
-    await expect(page.getByRole('button', { name: 'Clock in' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Clock in with a selfie' })).toBeVisible();
   }
   await context.setOffline(true);
-  await page.getByRole('button', { name: 'Clock in' }).click();
+  // no camera in this test: clock in without a selfie (flagged, never blocked; ATT-7)
+  await page.getByTestId('clock-no-selfie').click();
   await expect(page.getByRole('status')).toContainText('saved on this phone');
   await expect(page.getByTestId('clock-waiting')).toHaveText('1 punch waiting to sync');
   await expect(page.getByRole('button', { name: 'Clock out' })).toBeVisible();
