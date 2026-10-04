@@ -21,9 +21,13 @@ it every night, so the import is their end-of-day job (SAL-2).
    day than the one picked is refused (`POS_FILE_OTHER_DAY`).
 2. **POS codes map to menu items per outlet, never by guessing.** `menu.pos_item` holds
    each outlet's codes. File 23 has an optional `pos_code` column; anything else is
-   matched on the import screen by someone who posts the outlet's sales (SALES modify:
-   cost controller, outlet manager), with "Match and post the day again". A code not in
-   the list is listed with its description, quantity and value, and left out of the sales.
+   matched on the import screen by the cashier, as part of the import (or by anyone who
+   imports or posts the outlet's sales), with "Match and post the day again". The dishes
+   offered come from `menu.pos_dishes`: names and menu only, no prices or costs. Changing
+   a code already matched to another dish moves its sales and stock use, so only people
+   who post the outlet's sales (SALES modify) may; the cashier gets `POS_CODE_MATCHED`.
+   A code not in the list is listed with its description, quantity and value, and left
+   out of the sales until it is matched.
    Two codes for one dish (dine-in and take-away) add up.
 3. **One file is the whole day at one outlet.** Every POS outlet group in the file (for
    example `LE CAFE` and `LE CAFE TAKE AWAY & DELIVERY`) is imported into the outlet
@@ -39,8 +43,8 @@ it every night, so the import is their end-of-day job (SAL-2).
    in the outlet flash is for later (`rpt.sales_day.discount` is still 0).
 6. **A new `POS_IMPORT` domain and `CASHIER` group** (`POS_IMPORT` modify at the outlet's
    stores). The cashier imports and sees the import's own totals, but reads none of the
-   outlet's sales lines, costs or reports, and cannot type sales in or match codes
-   (decision 3 of `docs/reporting.md` section 8). The job role default is
+   outlet's sales lines, costs or reports, and cannot type sales in or change a code
+   already matched (decision 3 of `docs/reporting.md` section 8). The job role default is
    `STAFF@home_department; CASHIER@outlet_stores`. People who post SALES import too.
 7. **The cashier's Home** has an "End of day" card (imported or not, and when) and
    "Import sales" as the first tile. The cashier counts as frontline (bottom nav Home,

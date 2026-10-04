@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupNotifications, type NotificationRow } from './notifications-view';
+import { groupNotifications, type NotificationRow, unreadLines } from './notifications-view';
 
 const n = (
   id: string,
@@ -60,5 +60,17 @@ describe('grouped notifications (U-21)', () => {
     const [g] = groupNotifications(rows, 'Asia/Kolkata');
     expect(g!.title).toBe('5 × Thing: E');
     expect(g!.body).toBe('Thing: E · Thing: D · Thing: C · 2 more');
+  });
+
+  it('the bell counts the unread lines shown, not the notifications behind them', () => {
+    const rows = [
+      // the server's Home: two weeks of roster are one line
+      n('1', 'roster_published', 'Your roster is published', '2026-10-02T00:00:00Z'),
+      n('2', 'roster_published', 'Your roster is published', '2026-10-02T00:00:00Z'),
+      n('3', 'task_assigned', 'New task: Wipe down the menu cards', '2026-10-02T09:34:00Z'),
+      n('4', 'task_due_soon', 'Due soon: Wipe down the menu cards', '2026-10-03T11:30:00Z'),
+      n('5', 'task_overdue', 'Overdue: Old', '2026-10-01T11:30:00Z', true),
+    ];
+    expect(unreadLines(rows, 'Asia/Kolkata')).toBe(3);
   });
 });

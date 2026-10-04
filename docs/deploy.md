@@ -1420,11 +1420,10 @@ equivalence (all users) → Run workflow** on the commit before merging.
   - **The cashier** (Cashier job role, default `STAFF@home_department;
 CASHIER@outlet_stores`) has an "End of day" card and an **Import sales** tile on Home.
     They upload the POS's Sale by item file (Excel or CSV) for the day; the lines post as
-    the day's sales, codes not matched yet are listed. They see none of the outlet's sales,
-    costs or reports.
+    the day's sales; codes not matched yet are listed, and the cashier matches each to a
+    dish and posts the day again. They see none of the outlet's sales, costs or reports.
   - **Menu → Sales** has **Import from the POS**. A day the POS import posted can't be typed
-    in. On the import screen, people who post sales match the codes not matched yet and
-    post the day again.
+    in. Only people who post sales can change a code already matched.
   - Revenue in the reports is what the POS took after discount; typed-in sales still count
     at the menu price.
   - **Push today** on Home for servers, bartenders, cashiers, hosts and the outlet's
@@ -1452,14 +1451,16 @@ No re-import for Test Solo Bar Co.
 - **`test.cashier.3.0`.** Home: "End of day · Today's sales are not imported yet" and the
   Import sales tile. Import sales: choose `docs/onboarding/test-data/pos/sale.csv` (a
   sample Sale by item file for today's business day); "3 items · ₹2,340 taken" shows;
-  Import; "2 items, 1 not matched yet" and the code `9001` listed. Reports and Menu → Sales
-  are not there.
-
-- **`test.bar-manager.3.0`.** Menu → Sales → Import from the POS: match `9001` to a dish,
-  then **Match and post the day again**: 3 items. Menu → Sales for today says the sales came
-  from the POS import.
-- **`test.server.3.0`.** Home shows Push today only while some prep at Bar 3.0 expires by
-  tomorrow (after a batch is made with a short shelf life); otherwise nothing changes.
+  Import; "2 items, 1 not matched yet" and the code `9001` listed. Pick a dish for `9001`
+  (House Sangria (glass)), then **Match and post the day again**: 3 items. Reports and
+  Menu → Sales are not there.
+- **`test.bar-manager.3.0`.** Menu → Sales for today says the sales came from the POS import,
+  and links to it.
+- **`test.server.3.0`.** Push today shows on Home only while some prep at Bar 3.0 expires
+  by the end of tomorrow's business day; the test data has none (the Negroni batch keeps
+  for 14 days). To see it: as `test.bartender.3.0`, make a House Sangria (pre-batched)
+  batch today (48 hours); from 06:00 tomorrow the server's Home shows Push today with House
+  Sangria (glass) and (pitcher). The bell's number is the unread lines on Notifications.
 - **`test.general-manager.1.0`.** Reports → Menu engineering → tap Butter Naan: its trend
   (14 days, then 13 weeks). Cost of sales → open an item → Trend. Stock position → tap an
   item.

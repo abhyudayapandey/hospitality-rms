@@ -32,9 +32,7 @@ const POS_FILE = [
   'Grand Total,,6.000,,2340.00,60.00',
 ].join('\r\n');
 
-test('the cashier imports the day; codes not on the menu yet are listed, not guessed', async ({
-  page,
-}) => {
+test('the cashier imports the day and matches the codes not on the menu yet', async ({ page }) => {
   await signInAs(page, 'Test Cashier 3.0');
   // their end-of-day job is on Home, first
   await expect(page.getByTestId('pos-card')).toBeVisible();
@@ -55,7 +53,12 @@ test('the cashier imports the day; codes not on the menu yet are listed, not gue
   const unmatched = page.getByTestId('pos-unmatched-row');
   await expect(unmatched).toHaveCount(1);
   await expect(unmatched).toContainText('CHEF SANGRIA SPECIAL');
-  await expect(page.getByTestId('pos-unmatched')).toContainText('Ask your manager');
+
+  // matching the codes is part of the cashier's job: pick the dish, post the day again
+  await page.getByLabel(`Menu item for ${CODE}`).selectOption({ label: 'House Sangria (glass)' });
+  await page.getByTestId('pos-match').click();
+  await expect(page.getByText('Matched and posted again: 3 items')).toBeVisible();
+  await expect(page.getByTestId('pos-unmatched')).toHaveCount(0);
 
   // the cashier sees none of the outlet's sales, costs or reports
   await page.goto(`/reports/outlet?node=${await placeId('TEST-BAR-3.0')}`);
@@ -64,17 +67,11 @@ test('the cashier imports the day; codes not on the menu yet are listed, not gue
   await expect(page.getByText("You don't post sales anywhere.")).toBeVisible();
 });
 
-test('the bar manager matches the code and posts the day again; typing in is closed', async ({
-  page,
-}) => {
+test('the bar manager sees the day came from the POS; typing in is closed', async ({ page }) => {
   const bar = await placeId('TEST-BAR-3.0');
   await signInAs(page, 'Test Bar Manager 3.0');
   await page.goto(`/menu/sales/import?node=${bar}&date=${DAY}`);
-  await page.getByLabel(`Menu item for ${CODE}`).selectOption({ label: 'House Sangria (glass)' });
-  await page.getByTestId('pos-match').click();
-  await expect(page.getByRole('status')).toContainText('Matched and posted again: 3 items');
-  await expect(page.getByTestId('pos-unmatched')).toHaveCount(0);
-
+  await expect(page.getByTestId('pos-summary')).toContainText('3 items');
   await page.goto(`/menu/sales?node=${bar}&date=${DAY}`);
   await expect(page.getByTestId('sales-from-pos')).toContainText('POS import');
   await expect(page.getByTestId('sales-import-link')).toBeVisible();

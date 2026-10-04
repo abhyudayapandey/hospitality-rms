@@ -6,8 +6,8 @@ import { withUser } from '@/lib/db';
 import { formatMoney } from '@/lib/format';
 import { param, type SearchParams } from '@/lib/params';
 import { placesFor } from '@/lib/places';
-import { posImportOf } from '@/lib/pos-import';
-import { isoDate, salesSheet, todayIn } from '@/lib/production';
+import { posDishes, posImportOf } from '@/lib/pos-import';
+import { isoDate, todayIn } from '@/lib/production';
 import { reportToday } from '@/lib/report-data';
 import { ImportForm } from './import-form';
 import { MatchForm } from './match-form';
@@ -15,7 +15,8 @@ import { MatchForm } from './match-form';
 // The POS import (SAL-2, ADR 039): the cashier's end-of-day job. They export the day's
 // "Sale by item" report from the POS and upload it here; each POS code is matched to a menu
 // item through the outlet's own list, never guessed. Codes nobody has matched yet are
-// listed; the people who post the outlet's sales match them here and post the day again.
+// listed; the cashier matches them to a dish here and posts the day again. Changing a code
+// already matched is for the people who post the outlet's sales.
 export default async function PosImportPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const { shell, places, place } = await placesFor('pos_import', searchParams);
@@ -28,13 +29,10 @@ export default async function PosImportPage({ searchParams }: { searchParams: Se
     const asked = isoDate(param(sp, 'date'), day);
     const date = asked > max ? day : asked;
     const last = await posImportOf(tx, place.id, date);
-    // only those who post the outlet's sales match codes (the database checks it again)
-    const canMatch = shell.domains.get('SALES') === 'modify';
-    const menu =
-      canMatch && last && last.unmatched.length > 0 ? await salesSheet(tx, place.id, date) : [];
-    return { date, last, canMatch, menu };
+    const menu = last && last.unmatched.length > 0 ? await posDishes(tx, place.id) : [];
+    return { date, last, menu };
   });
-  const { date, last, canMatch, menu } = data;
+  const { date, last, menu } = data;
   return (
     <div className="space-y-4">
       <BackLink />
@@ -82,34 +80,12 @@ export default async function PosImportPage({ searchParams }: { searchParams: Se
                 not matched to the menu yet, so{' '}
                 {last.unmatched.length === 1 ? 'it was' : 'they were'} not counted:
               </p>
-              {canMatch ? (
-                <MatchForm
-                  outlet={place.id}
-                  importId={last.id}
-                  unmatched={last.unmatched}
-                  menu={menu.map((m) => ({ id: m.menu_item_id, name: m.name, group: m.menu }))}
-                />
-              ) : (
-                <>
-                  <ul className="divide-y divide-slate-100 rounded-lg ring-1 ring-slate-200">
-                    {last.unmatched.map((u) => (
-                      <li
-                        key={u.code}
-                        className="px-3 py-2 text-sm"
-                        data-testid="pos-unmatched-row"
-                      >
-                        <span className="font-medium">{u.description || u.code}</span>{' '}
-                        <span className="text-slate-500">
-                          (code {u.code}) · {u.qty} sold · {formatMoney(u.value)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="text-sm text-slate-600">
-                    Ask your manager to match them; they post the day again from here.
-                  </p>
-                </>
-              )}
+              <MatchForm
+                outlet={place.id}
+                importId={last.id}
+                unmatched={last.unmatched}
+                menu={menu}
+              />
             </div>
           )}
         </section>

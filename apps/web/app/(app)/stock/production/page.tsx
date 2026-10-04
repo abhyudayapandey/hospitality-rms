@@ -5,7 +5,7 @@ import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatQty, param, supplyContext, type SearchParams } from '@/lib/inventory';
 import { batches, madeHere, productionPlan } from '@/lib/production';
-import { shelfLifeText, timeLeftText } from '@/lib/shelf-life';
+import { shelfLifeText, useByText } from '@/lib/shelf-life';
 import { ProductionForm } from './production-form';
 import { ReportExpired } from './report-expired';
 
@@ -119,7 +119,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
                 <span>
                   <span className="block font-medium">{b.name}</span>
                   <span className="text-xs text-slate-500">
-                    batch {b.batch_no ?? '–'} · {timeLeftText(b.expires_at)}
+                    batch {b.batch_no ?? '–'} · {useByText(b.expires_at)}
                   </span>
                 </span>
                 <span

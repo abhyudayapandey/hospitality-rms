@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ExpiryBanner } from '@/components/expiry-banner';
 import { Icon, type IconName } from '@/components/icon';
-import { formatDay, formatLongDay, formatTime } from '@/lib/dates';
+import { formatDay, formatLongDay, formatTime, localDate } from '@/lib/dates';
 import { compare, formatMeasure, MEASURES, type MeasureRow } from '@/lib/reports';
 import { homeTiles } from '@/lib/screens';
 import { vsTarget, type TargetKey } from '@/lib/settings';
@@ -203,8 +203,7 @@ function PushToday({ push, tz }: { push: Today['push']; tz: string }) {
             <span className="block font-semibold">{d.dish}</span>
             <span className="block text-sm text-slate-500">
               uses {uses(d.menu_item_id).join(', ')}, use by{' '}
-              {formatDay(new Date(d.expires_at).toLocaleDateString('en-CA', { timeZone: tz }))}{' '}
-              {formatTime(d.expires_at, tz)}
+              {formatDay(localDate(d.expires_at, tz))}
             </span>
           </li>
         ))}

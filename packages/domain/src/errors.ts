@@ -119,6 +119,7 @@ export const ERROR_MESSAGES = {
   NOT_EXPIRED: 'Only a batch past its expiry with something left can be reported.',
   // the POS import (SAL-2, ADR 039)
   SALES_FROM_POS: "This day's sales came from the POS import, so they can't be typed in.",
+  POS_CODE_MATCHED: 'This POS code is already matched to a dish. Ask your manager to change it.',
   POS_FILE_SPANS_DAYS: 'The file covers more than one day. Export one day at a time from the POS.',
   POS_FILE_OTHER_DAY: 'The file is for another day. Pick that day, or export this one.',
   POS_TOTALS_MISMATCH: "The file's lines don't add up to its Grand Total. Export it again.",

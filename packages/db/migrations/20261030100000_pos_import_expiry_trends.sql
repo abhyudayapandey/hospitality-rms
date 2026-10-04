@@ -493,20 +493,18 @@ begin
   return menu.pos_post(v_imp.id);
 end $$;
 
--- Matches a POS code to a menu item on the outlet's menu, for people who post the outlet's
--- sales (store keepers of the sales, cost controllers, outlet managers): never the cashier.
+-- Matches a POS code to a menu item on the outlet's menu. The cashier who imports matches the
+-- codes nobody has matched yet; changing a code already matched moves its sales and stock use
+-- to another dish, so that stays with people who post the outlet's sales.
 create function menu.map_pos_item(p_outlet uuid, p_code text, p_menu_item uuid) returns void
 language plpgsql security definer
 set search_path = pg_catalog, core, menu
 as $$
 declare
   v_mo menu.menu_outlet;
+  v_was menu.pos_item;
 begin
-  if not exists (select 1 from menu.menu_outlet mo join core.hierarchy_node o on o.id = mo.org_node_id
-                  where mo.org_node_id = p_outlet and o.tenant_id = core.my_tenant()
-                    and core.can('SALES', 'modify', null, mo.delivery_node_id)) then
-    raise exception 'NOT_AUTHORISED' using detail = format('modify SALES at %s', p_outlet);
-  end if;
+  perform menu.require_import(p_outlet);
   if p_code is null or p_code !~ '^[^[:space:][:cntrl:]]{1,40}$' then
     raise exception 'INVALID_CODE' using detail = 'a POS item code, up to 40 characters';
   end if;
@@ -517,13 +515,39 @@ begin
   if v_mo.id is null then
     raise exception 'INVALID_ITEM' using detail = 'the menu item is not on this outlet''s menu';
   end if;
-  if not core.can('SALES', 'modify', null, v_mo.delivery_node_id) then
-    raise exception 'NOT_AUTHORISED' using detail = format('modify SALES at %s', v_mo.delivery_node_id);
+  if not menu.can_import(v_mo.delivery_node_id) then
+    raise exception 'NOT_AUTHORISED' using detail = format('import POS sales at %s', v_mo.delivery_node_id);
+  end if;
+  select * into v_was from menu.pos_item
+   where tenant_id = v_mo.tenant_id and org_node_id = p_outlet and pos_code = p_code;
+  if v_was.id is not null and v_was.menu_item_id <> p_menu_item
+     and not core.can('SALES', 'modify', null, v_was.delivery_node_id) then
+    raise exception 'POS_CODE_MATCHED' using detail = format('code %s is already matched', p_code);
   end if;
   insert into menu.pos_item (tenant_id, org_node_id, delivery_node_id, pos_code, menu_item_id)
   values (v_mo.tenant_id, p_outlet, v_mo.delivery_node_id, p_code, p_menu_item)
   on conflict (tenant_id, org_node_id, pos_code) do update
      set menu_item_id = excluded.menu_item_id, delivery_node_id = excluded.delivery_node_id;
+end $$;
+
+-- The dishes on an outlet's menu that a code can be matched to, for whoever imports there:
+-- names and menu only, no prices, costs or sales.
+create function menu.pos_dishes(p_outlet uuid)
+returns table (menu_item_id uuid, name text, menu text)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, menu
+as $$
+begin
+  perform menu.require_import(p_outlet);
+  return query
+    select mi.id, mi.name, mi.menu
+      from menu.menu_outlet mo
+      join menu.menu_item mi on mi.id = mo.menu_item_id and mi.archived_at is null
+     where mo.org_node_id = p_outlet
+       and mo.effective_from <= current_date
+       and (mo.effective_to is null or mo.effective_to >= current_date)
+       and menu.can_import(mo.delivery_node_id)
+     order by mi.menu, mi.category, mi.name;
 end $$;
 
 -- The latest import of a day at an outlet, for the import screen and the cashier's Home.
@@ -711,7 +735,7 @@ begin
     v_tz := coalesce(ops.tz_of(v_store.id), 'UTC');
     select count(*), min(x.name),
            string_agg(format('%s: %s %s, use by %s%s', x.name, trim_scale(round(x.left_qty, 3)),
-                             x.unit, to_char(x.first_expiry at time zone v_tz, 'Dy HH24:MI'),
+                             x.unit, to_char(x.first_expiry at time zone v_tz, 'Dy FMDD Mon'),
                              coalesce(' (' || x.dishes || ')', '')),
                       '. ' order by x.first_expiry, x.name)
       into v_count, v_first, v_items
@@ -900,14 +924,14 @@ select audit.enable('menu.pos_import');
 revoke execute on function menu.sales_apply(uuid, date, jsonb, text, text),
   menu.can_import(uuid), menu.require_import(uuid), menu.pos_result(menu.pos_import),
   menu.pos_post(uuid), menu.import_pos(uuid, date, jsonb, text), menu.repost_pos(uuid),
-  menu.map_pos_item(uuid, text, uuid), menu.pos_import_of(uuid, date), menu.pos_places(),
+  menu.map_pos_item(uuid, text, uuid), menu.pos_dishes(uuid), menu.pos_import_of(uuid, date), menu.pos_places(),
   inv.expiring_soon(uuid, timestamptz), menu.dishes_using(uuid, uuid, date),
   menu.push_today(uuid), menu.my_push_today(), ops.expiry_alerts(timestamptz),
   rpt.periods(text, date, date),
   rpt.dish_trend(uuid, uuid, text, date, date), rpt.item_trend(uuid, uuid, text, date, date)
   from public, platform_loader;
 grant execute on function menu.import_pos(uuid, date, jsonb, text), menu.repost_pos(uuid),
-  menu.map_pos_item(uuid, text, uuid), menu.pos_import_of(uuid, date), menu.pos_places(),
+  menu.map_pos_item(uuid, text, uuid), menu.pos_dishes(uuid), menu.pos_import_of(uuid, date), menu.pos_places(),
   menu.push_today(uuid), menu.my_push_today(), rpt.dish_trend(uuid, uuid, text, date, date),
   rpt.item_trend(uuid, uuid, text, date, date) to app_rw;
 grant execute on function ops.expiry_alerts(timestamptz) to wf_executor;
@@ -934,6 +958,7 @@ begin
 end $$;
 drop function menu.pos_places();
 drop function menu.pos_import_of(uuid, date);
+drop function menu.pos_dishes(uuid);
 drop function menu.map_pos_item(uuid, text, uuid);
 drop function menu.repost_pos(uuid);
 drop function menu.import_pos(uuid, date, jsonb, text);

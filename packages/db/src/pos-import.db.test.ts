@@ -199,28 +199,26 @@ describe('who imports', () => {
 });
 
 describe('matching POS codes', () => {
-  it('the cashier cannot match a code; the bar manager can, and the day posts again', async () => {
+  it('the cashier matches a code nobody has matched, and posts the day again', async () => {
     await inRolledBackTx(async (c) => {
       const first = await importAs(c, 'test.cashier.3.0', 'TEST-BAR-3.0', file(LINES));
       const importId = first.rows![0]!.r.import_id;
       const sangria = await menuItem(c, 'SANGRIA-GLASS');
-      const map = (who: string) =>
+      const map = (who: string, code = '9999', item = sangria) =>
         attemptAs(c, ids.user(who), 'select menu.map_pos_item($1, $2, $3)', [
           ids.node('TEST-BAR-3.0'),
-          '9999',
-          sangria,
+          code,
+          item,
         ]);
-      expect((await map('test.cashier.3.0')).error).toMatch(/NOT_AUTHORISED/);
-      expect((await map('test.general-manager.1.0')).error).toMatch(/NOT_AUTHORISED/);
-      expect((await map('test.bar-manager.3.0')).error).toBeUndefined();
+      // not someone who neither imports nor posts sales there, nor another outlet's cashier
+      for (const who of ['test.general-manager.1.0', 'test.server.3.0', 'test.solo.bar-manager']) {
+        expect((await map(who)).error, who).toMatch(/NOT_AUTHORISED/);
+      }
+      expect((await map('test.cashier.3.0')).error).toBeUndefined();
       // a dish not on this outlet's menu is refused
-      const other = await attemptAs(
-        c,
-        ids.user('test.bar-manager.3.0'),
-        'select menu.map_pos_item($1, $2, $3)',
-        [ids.node('TEST-BAR-3.0'), '9998', await menuItem(c, 'DAL-TADKA')],
+      expect((await map('test.cashier.3.0', '9998', await menuItem(c, 'DAL-TADKA'))).error).toMatch(
+        /INVALID_ITEM/,
       );
-      expect(other.error).toMatch(/INVALID_ITEM/);
 
       const again = await attemptAs<{ r: ImportResult }>(
         c,
@@ -236,6 +234,45 @@ describe('matching POS codes', () => {
         net: '400.00',
         discount: 0,
       });
+    });
+  });
+
+  it('a code already matched is changed only by people who post sales', async () => {
+    await inRolledBackTx(async (c) => {
+      const map = (who: string, code: string, dish: string) =>
+        menuItem(c, dish).then((item) =>
+          attemptAs(c, ids.user(who), 'select menu.map_pos_item($1, $2, $3)', [
+            ids.node('TEST-BAR-3.0'),
+            code,
+            item,
+          ]),
+        );
+      // 3022 is Mojito (file 23): the cashier can't move it to another dish
+      expect((await map('test.cashier.3.0', '3022', 'SANGRIA-GLASS')).error).toMatch(
+        /POS_CODE_MATCHED/,
+      );
+      // matching it to the dish it already has is no change
+      expect((await map('test.cashier.3.0', '3022', 'MOJITO')).error).toBeUndefined();
+      expect((await map('test.bar-manager.3.0', '3022', 'SANGRIA-GLASS')).error).toBeUndefined();
+    });
+  });
+
+  it("the dishes to match to: names on the outlet's menu, for whoever imports there", async () => {
+    await inRolledBackTx(async (c) => {
+      const dishes = (who: string, outlet = 'TEST-BAR-3.0') =>
+        attemptAs<{ menu_item_id: string; name: string; menu: string }>(
+          c,
+          ids.user(who),
+          'select * from menu.pos_dishes($1)',
+          [ids.node(outlet)],
+        );
+      const r = await dishes('test.cashier.3.0');
+      expect(r.error).toBeUndefined();
+      expect(r.rows!.length).toBe(31);
+      expect(Object.keys(r.rows![0]!).sort()).toEqual(['menu', 'menu_item_id', 'name']);
+      expect(r.rows!.map((d) => d.name)).toContain('House Sangria (glass)');
+      expect((await dishes('test.cashier.3.0', 'TEST-HOTEL-1.0')).error).toMatch(/NOT_AUTHORISED/);
+      expect((await dishes('test.server.3.0')).error).toMatch(/NOT_AUTHORISED/);
     });
   });
 
