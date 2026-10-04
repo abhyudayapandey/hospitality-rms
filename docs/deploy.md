@@ -1518,6 +1518,14 @@ new file for the checks, `docs/onboarding/test-data/pos/sale.csv`.
 One migration, `20261101100000_report_breakdowns` (ADR 042). No stack change, no new
 parameter, no access change, no test data change: no re-import.
 
+The first Deploy of this release failed with `permission denied to create temporary tables`:
+the migration defines a `pg_temp` helper, and the instance's `migrator` had no TEMP right
+(`bootstrap-db.sh` revokes everything from public). dbmate rolled the migration back (its
+"Applied" line prints even on failure), so nothing changed and the previous release kept
+running. `bootstrap-db.sh` now grants `migrator` TEMP before migrations run, and local and
+CI revoke public's rights the same way, so this shows up in CI first. Deploy again from
+`master` once that fix is merged.
+
 - **What changes in the app.**
   - **People cost % and Materials %** are each a share of the total cost (raw materials
     plus people) and add up to 100, on Outlet today, the trend, Outlets side by side, its

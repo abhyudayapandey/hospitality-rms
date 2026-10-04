@@ -11,7 +11,11 @@ create role wf_executor login password 'wf_executor_local' nobypassrls;
 -- platform migration.
 create role platform_loader login password 'platform_loader_local' bypassrls;
 
-grant create, connect on database outlet_ops to migrator;
+-- As on the instance (infra/instance/deploy/bootstrap-db.sh): nothing for public, so a
+-- migration that needs a right the instance lacks fails here first.
+revoke all on database outlet_ops from public;
+-- temporary: migrations may define pg_temp helpers that go when the session ends
+grant create, connect, temporary on database outlet_ops to migrator;
 -- Lets DB tests build fixtures as migrator and then SET LOCAL ROLE app_rw / wf_executor
 -- inside a rolled-back transaction (ADR 002). Grants no extra privileges to app_rw.
 grant app_rw, wf_executor, platform_loader to migrator;
