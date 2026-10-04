@@ -15,7 +15,7 @@ beforeAll(async () => {
 afterAll(closePools);
 
 const DEFAULTS = {
-  targets: { food: 30, drink: 22, labour: 25, prime: 60, wastage: 2, tasks: 90 },
+  targets: { food: 30, drink: 22, labour: 50, wastage: 2, tasks: 90 },
   menu_popular_pct: 70,
   overtime_multiplier: 1,
   po_send_prices: false,

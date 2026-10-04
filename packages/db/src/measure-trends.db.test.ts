@@ -90,9 +90,9 @@ const OUTLET_MEASURES = [
   'labour_pct',
   'splh',
   'prime_cost',
-  'prime_cost_pct',
+  'materials_pct',
 ];
-const LABOUR = ['labour_cost', 'labour_pct', 'prime_cost', 'prime_cost_pct'];
+const LABOUR = ['labour_cost', 'labour_pct', 'prime_cost', 'materials_pct'];
 const num = (v: string | null | undefined) => (v === null || v === undefined ? null : Number(v));
 
 describe("the outlet's figures", () => {

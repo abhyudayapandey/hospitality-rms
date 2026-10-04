@@ -139,7 +139,10 @@ describe('labour cost on the test data', () => {
       expect(m.get('labour_cost')).toBe('69025.00');
       expect(Number(m.get('prime_cost'))).toBeCloseTo(Number(m.get('cost_materials')) + 69025, 2);
       const sales = Number(m.get('sales'));
-      expect(Number(m.get('labour_pct'))).toBeCloseTo((69025 * 100) / sales, 1);
+      // People cost % is people cost's share of the total cost (materials + people)
+      const total = Number(m.get('cost_materials')) + 69025;
+      expect(Number(m.get('labour_pct'))).toBeCloseTo((69025 * 100) / total, 1);
+      expect(Number(m.get('labour_pct')) + Number(m.get('materials_pct'))).toBeCloseTo(100, 0);
       expect(Number(m.get('splh'))).toBe(Math.round(sales / Number(m.get('worked_hours'))));
     });
   });

@@ -284,7 +284,7 @@ describe('labour cost: who sees it (every user)', () => {
         if (r.error !== undefined) throw new Error(`${u}: ${r.error}`);
         return r.rows.map((x) => x.measure);
       };
-      const labour = ['labour_cost', 'labour_pct', 'prime_cost', 'prime_cost_pct'];
+      const labour = ['labour_cost', 'labour_pct', 'prime_cost', 'materials_pct'];
       for (const u of ['test.general-manager.1.0', 'test.account-owner', 'test.area-manager']) {
         const m = await measures(u);
         for (const x of [...labour, 'splh', 'cost_materials']) expect(m, `${u} ${x}`).toContain(x);
