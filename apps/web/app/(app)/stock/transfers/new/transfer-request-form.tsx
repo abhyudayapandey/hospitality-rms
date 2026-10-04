@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import type { ItemOption } from '@/lib/inventory';
+import { UnusualNote } from '@/components/unusual-note';
 import { requestTransfer } from '../../actions';
 
 export function TransferRequestForm({
@@ -75,6 +76,7 @@ export function TransferRequestForm({
           </li>
         ))}
       </ul>
+      <UnusualNote node={to} kind="transfer" lines={lines} />
       <ErrorBox message={error} />
       <button
         type="submit"

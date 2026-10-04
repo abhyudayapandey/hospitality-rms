@@ -185,6 +185,22 @@ begin
 end $$;
 revoke execute on function inv.unusual_calc(uuid, jsonb) from public;
 
+-- The reasons in plain words, for the approver's Inbox: "Prawns: off the menu. Oil: 16 kg,
+-- usual 10 kg a week." Internal.
+create function inv.unusual_why(p_node uuid, p_lines jsonb) returns text
+language sql stable security definer
+set search_path = pg_catalog, core, inv
+as $$
+  select string_agg(
+           case u.reason
+             when 'off_menu' then format('%s: not on the menu', i.name)
+             else format('%s: %s %s, usual %s %s a week', i.name, trim_scale(u.qty), i.base_uom,
+                         trim_scale(u.weekly_avg), i.base_uom)
+           end, '. ' order by i.name)
+    from inv.unusual_calc(p_node, p_lines) u join inv.item i on i.id = u.item_id;
+$$;
+revoke execute on function inv.unusual_why(uuid, jsonb) from public;
+
 -- The same for the order and request screens, to say before sending whether the department
 -- head will have to approve. Needs access to the store's stock, orders or transfers.
 create function inv.unusual_lines(p_node uuid, p_lines jsonb)
@@ -248,7 +264,7 @@ do $$
 declare
   v_src text := pg_get_functiondef('inv.create_po(uuid, uuid, jsonb, text, text)'::regprocedure);
   v_old text := E'  v_request := wf.submit(''PURCHASE_ORDER'', ''inv.purchase_order'', v_po.id);\n  update inv.purchase_order set status = ''submitted'', wf_request_id = v_request\n   where id = v_po.id;\n';
-  v_new text := E'  -- PO-5: off the menu or more than usual goes to the department head\n  v_request := wf.submit(''PURCHASE_ORDER'', ''inv.purchase_order'', v_po.id,\n                         jsonb_build_object(''unusual'',\n                           exists (select 1 from inv.unusual_calc(p_node, p_lines))));\n  update inv.purchase_order set status = ''submitted'', wf_request_id = v_request\n   where id = v_po.id;\n  perform inv.notify_order(v_po.id, v_me.id);\n';
+  v_new text := E'  -- PO-5: off the menu or more than usual goes to the department head\n  v_request := wf.submit(''PURCHASE_ORDER'', ''inv.purchase_order'', v_po.id,\n                         jsonb_build_object(''unusual'',\n                           exists (select 1 from inv.unusual_calc(p_node, p_lines)),\n                           ''why'', inv.unusual_why(p_node, p_lines)));\n  update inv.purchase_order set status = ''submitted'', wf_request_id = v_request\n   where id = v_po.id;\n  perform inv.notify_order(v_po.id, v_me.id);\n';
 begin
   if position(v_old in v_src) = 0 then
     raise exception 'inv.create_po changed; update this migration';
@@ -266,7 +282,7 @@ declare
   v_old1 text := E'  insert into inv.transfer (tenant_id, from_node_id, to_node_id, idempotency_key)\n  values (v_me.tenant_id, p_from, p_to, p_idempotency_key) returning * into v_t;';
   v_new1 text := E'  -- TR-3: a request into a department''s store is a request for material (RFM)\n  v_rfm := exists (select 1 from core.node_link nl\n                     join core.hierarchy_node o on o.id = nl.org_node_id and o.kind = ''department''\n                    where nl.delivery_node_id = p_to);\n  insert into inv.transfer (tenant_id, from_node_id, to_node_id, idempotency_key, kind)\n  values (v_me.tenant_id, p_from, p_to, p_idempotency_key,\n          case when v_rfm then ''rfm'' else ''transfer'' end) returning * into v_t;';
   v_old2 text := E'  v_request := wf.submit(''TRANSFER'', ''inv.transfer'', v_t.id);';
-  v_new2 text := E'  v_request := wf.submit(''TRANSFER'', ''inv.transfer'', v_t.id,\n                         jsonb_build_object(''unusual'',\n                           v_rfm and exists (select 1 from inv.unusual_calc(p_to, p_lines))));';
+  v_new2 text := E'  v_request := wf.submit(''TRANSFER'', ''inv.transfer'', v_t.id,\n                         jsonb_build_object(''unusual'',\n                           v_rfm and exists (select 1 from inv.unusual_calc(p_to, p_lines)),\n                           ''why'', case when v_rfm then inv.unusual_why(p_to, p_lines) end,\n                           ''rfm'', v_rfm));';
 begin
   if position(v_old1 in v_src) = 0 or position(v_old2 in v_src) = 0 then
     raise exception 'inv.request_transfer changed; update this migration';
@@ -275,6 +291,36 @@ begin
   v_src := replace(v_src, E'  v_request uuid;\nbegin', E'  v_request uuid;\n  v_rfm boolean;\nbegin');
   execute v_src;
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- The transfer list shows requests for material, and the ones waiting for approval
+-- ---------------------------------------------------------------------------
+
+-- Is the request waiting at its approval step (the department head or the GM)? A yes or no,
+-- so a store keeper who cannot read the request itself can still be told why nothing is
+-- there to issue yet.
+create function inv.transfer_awaits_approval(p_request uuid) returns boolean
+language sql stable security definer
+set search_path = pg_catalog, wf
+as $$
+  select exists (select 1 from wf.step_instance
+                  where request_id = p_request and step = 'approval' and state = 'pending');
+$$;
+revoke execute on function inv.transfer_awaits_approval(uuid) from public;
+grant execute on function inv.transfer_awaits_approval(uuid) to app_rw;
+
+create or replace view inv.transfer_summary as
+ select id, tenant_id, from_node_id, to_node_id, core.node_name(from_node_id) as from_name,
+        core.node_name(to_node_id) as to_name, status, wf_request_id, created_at, created_by,
+        dispatched_at, dispatched_by, received_at, received_by,
+        case when status <> 'submitted' then status
+             when dispatched_at is null and inv.transfer_awaits_approval(wf_request_id)
+               then 'awaiting_approval'
+             when dispatched_at is null then 'awaiting_dispatch'
+             when received_at is null then 'in_transit'
+             else 'received' end as progress,
+        kind
+   from inv.transfer t;
 
 revoke execute on function wf.when_matches(jsonb, numeric, uuid, jsonb) from public;
 revoke execute on function inv.unusual_lines(uuid, jsonb) from public;
@@ -289,7 +335,7 @@ begin
   v_src := regexp_replace(v_src, E'  -- TR-3:.*?returning \\* into v_t;',
     E'  insert into inv.transfer (tenant_id, from_node_id, to_node_id, idempotency_key)\n  values (v_me.tenant_id, p_from, p_to, p_idempotency_key) returning * into v_t;', 's');
   v_src := regexp_replace(v_src,
-    E'wf\\.submit\\(''TRANSFER'', ''inv\\.transfer'', v_t\\.id,.*?\\(p_to, p_lines\\)\\)\\)\\);',
+    E'wf\\.submit\\(''TRANSFER'', ''inv\\.transfer'', v_t\\.id,.*?''rfm'', v_rfm\\)\\);',
     E'wf.submit(''TRANSFER'', ''inv.transfer'', v_t.id);', 's');
   v_src := replace(v_src, E'  v_rfm boolean;\n', '');
   execute v_src;
@@ -299,12 +345,24 @@ declare
   v_src text := pg_get_functiondef('inv.create_po(uuid, uuid, jsonb, text, text)'::regprocedure);
 begin
   v_src := regexp_replace(v_src,
-    E'  -- PO-5:.*?\\(p_node, p_lines\\)\\)\\);',
-    E'  v_request := wf.submit(''PURCHASE_ORDER'', ''inv.purchase_order'', v_po.id);', 's');
-  v_src := replace(v_src, E'  perform inv.notify_order(v_po.id, v_me.id);\n', '');
+    E'  -- PO-5:.*?perform inv\\.notify_order\\(v_po\\.id, v_me\\.id\\);\n',
+    E'  v_request := wf.submit(''PURCHASE_ORDER'', ''inv.purchase_order'', v_po.id);\n  update inv.purchase_order set status = ''submitted'', wf_request_id = v_request\n   where id = v_po.id;\n', 's');
   execute v_src;
 end $$;
+drop view inv.transfer_summary;
+create view inv.transfer_summary as
+ select id, tenant_id, from_node_id, to_node_id, core.node_name(from_node_id) as from_name,
+        core.node_name(to_node_id) as to_name, status, wf_request_id, created_at, created_by,
+        dispatched_at, dispatched_by, received_at, received_by,
+        case when status <> 'submitted' then status
+             when dispatched_at is null then 'awaiting_dispatch'
+             when received_at is null then 'in_transit'
+             else 'received' end as progress
+   from inv.transfer t;
+grant select on inv.transfer_summary to app_rw;
+drop function inv.transfer_awaits_approval(uuid);
 drop function inv.notify_order(uuid, uuid);
+drop function inv.unusual_why(uuid, jsonb);
 drop function inv.unusual_lines(uuid, jsonb);
 drop function inv.unusual_calc(uuid, jsonb);
 drop function inv.on_menu_items(uuid);

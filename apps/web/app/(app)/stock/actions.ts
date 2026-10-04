@@ -97,6 +97,61 @@ export async function recordWastage(
   });
 }
 
+export interface UnusualCheck {
+  /** the department head (or the GM) will have to approve */
+  needs: boolean;
+  /** in plain words: "Prawns: not on the menu", "Oil: 16 kg, usual 10 kg a week" */
+  why: string[];
+}
+
+/**
+ * Before sending an order or a request for material: will it need the department head's
+ * approval (PO-5, TR-3, ADR 043)? Asks inv.unusual_lines, which applies the same rule the
+ * workflow does. A transfer only needs approval when it goes to a department's store.
+ */
+export async function checkUnusual(
+  node: string,
+  lines: Line[],
+  kind: 'order' | 'transfer',
+): Promise<ActionResult<UnusualCheck>> {
+  const user = await requireUser();
+  try {
+    const data = await withUser(user.id, async (tx) => {
+      if (kind === 'transfer') {
+        const d = await sql<{ rfm: boolean }>`
+          select exists (select 1 from core.node_link nl
+                           join core.hierarchy_node o on o.id = nl.org_node_id
+                                                     and o.kind = 'department'
+                          where nl.delivery_node_id = ${node}::uuid) as rfm`.execute(tx);
+        if (!d.rows[0]?.rfm) return { needs: false, why: [] };
+      }
+      const r = await sql<{
+        name: string;
+        reason: string;
+        qty: string;
+        weekly_avg: string;
+        uom: string;
+      }>`
+        select i.name, u.reason, u.qty, u.weekly_avg, i.base_uom as uom
+          from inv.unusual_lines(${node}::uuid, ${json(cleanLines(lines))}::jsonb) u
+          join inv.item i on i.id = u.item_id order by i.name`.execute(tx);
+      return {
+        needs: r.rows.length > 0,
+        why: r.rows.map((x) =>
+          x.reason === 'off_menu'
+            ? `${x.name}: not on the menu`
+            : `${x.name}: ${Number(x.qty)} ${x.uom}, usual ${Number(x.weekly_avg)} ${x.uom} a week`,
+        ),
+      };
+    });
+    return { ok: true, data };
+  } catch (err) {
+    const f = failure(err);
+    if (f.code === 'UNEXPECTED') console.error('check_unusual failed', err);
+    return f;
+  }
+}
+
 export async function createPo(
   node: string,
   supplier: string,

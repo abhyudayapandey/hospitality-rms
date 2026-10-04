@@ -37,7 +37,7 @@ export function TransferStepForm({
 }: {
   transfer: string;
   requestId: string;
-  mode: 'dispatch' | 'receive' | null;
+  mode: 'dispatch' | 'receive' | 'approve' | null;
   lines: TransferLine[];
 }) {
   const router = useRouter();
@@ -69,6 +69,15 @@ export function TransferStepForm({
       setDone(mode === 'dispatch' ? 'Sent. It is now in transit.' : 'Received.');
       router.refresh();
     });
+  const approve = () =>
+    start(async () => {
+      setError(null);
+      const r = await actOnRequest(requestId, 'approve', crypto.randomUUID());
+      if (r.ok) {
+        setDone('Approved. It goes to the store keeper now.');
+        router.refresh();
+      } else setError(r.message);
+    });
   const reject = () =>
     start(async () => {
       setError(null);
@@ -87,6 +96,12 @@ export function TransferStepForm({
         confirm();
       }}
     >
+      {mode === 'approve' && (
+        <p className="rounded-lg bg-violet-50 p-3 text-sm text-violet-900">
+          This request is off the menu or more than usual, so it needs your approval before the
+          store keeper issues it.
+        </p>
+      )}
       <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
         {lines.map((l) => (
           <li key={l.item_id} className="flex items-center justify-between gap-3 px-4 py-2">
@@ -98,7 +113,7 @@ export function TransferStepForm({
                 {l.received_qty !== null && ` · received ${n(l.received_qty)}`} {l.base_uom}
               </span>
             </label>
-            {mode && (
+            {(mode === 'dispatch' || mode === 'receive') && (
               <input
                 id={`q-${l.item_id}`}
                 aria-label={`${mode === 'dispatch' ? 'Send' : 'Received'} ${l.name}`}
@@ -113,7 +128,22 @@ export function TransferStepForm({
       </ul>
       <ErrorBox message={error} />
       <StatusBox message={done} />
-      {mode && !done && (
+      {mode === 'approve' && !done && (
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" disabled={pending} onClick={reject} className={secondaryButton}>
+            Reject
+          </button>
+          <button
+            type="button"
+            disabled={!hydrated || pending}
+            onClick={approve}
+            className={primaryButton}
+          >
+            Approve
+          </button>
+        </div>
+      )}
+      {(mode === 'dispatch' || mode === 'receive') && !done && (
         <div className={mode === 'dispatch' ? 'grid grid-cols-2 gap-2' : ''}>
           {mode === 'dispatch' && (
             <button type="button" disabled={pending} onClick={reject} className={secondaryButton}>

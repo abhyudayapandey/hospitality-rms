@@ -43,6 +43,11 @@ export function InboxItem({ entry, compact = false }: { entry: InboxEntry; compa
           ? `${entry.from} · ${entry.waitingSince}`
           : `${entry.from} · ${entry.step.replace(/_/g, ' ')} · waiting since ${entry.waitingSince}`}
       </p>
+      {entry.why && (
+        <p className="mt-1 text-sm text-slate-700" data-testid="inbox-why">
+          Needs your approval: {entry.why}.
+        </p>
+      )}
       {entry.link && (
         <Link
           href={entry.link.href}

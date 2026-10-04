@@ -460,3 +460,57 @@ describe('usual quantities', () => {
     });
   });
 });
+
+describe('what the approver and the lists are told', () => {
+  it('puts the reasons in plain words on the request, for the approver’s Inbox', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c, 10);
+      const po = await createPo(c, f, OLIVIA, { 'P5-OFF': 1, 'P5-ON': 16 });
+      const { rows } = await c.query<{ why: string; unusual: boolean }>(
+        `select payload ->> 'why' as why, (payload ->> 'unusual')::boolean as unusual
+           from wf.request where id = $1`,
+        [po.request],
+      );
+      expect(rows[0]!.unusual).toBe(true);
+      expect(rows[0]!.why).toBe(
+        'Item P5-OFF: not on the menu. Item P5-ON: 16 kg, usual 10 kg a week',
+      );
+    });
+  });
+
+  it('shows a request for material as one, waiting for approval until the head decides', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c, 10);
+      await c.query(
+        `insert into inv.item_node (tenant_id, item_id, delivery_node_id) values ($1, $2, $3)`,
+        [f.tenant, f.item('P5-OFF'), hubStore()],
+      );
+      await c.query(
+        `insert into inv.stock_ledger (tenant_id, item_id, delivery_node_id, movement_type, qty,
+                                       unit_cost, ref_type)
+         values ($1, $2, $3, 'receipt', 100, 10, 'opening')`,
+        [f.tenant, f.item('P5-OFF'), hubStore()],
+      );
+      const { id } = await call<{ id: string }>(
+        c,
+        CASEY,
+        `select inv.request_transfer($1, $2, $3::jsonb) as id`,
+        [hubStore(), kitchen(), lines([{ item_id: f.item('P5-OFF'), qty: 1 }])],
+      );
+      const summary = async () =>
+        (
+          await c.query<{ progress: string; kind: string }>(
+            'select progress, kind from inv.transfer_summary where id = $1',
+            [id],
+          )
+        ).rows[0]!;
+      expect(await summary()).toEqual({ progress: 'awaiting_approval', kind: 'rfm' });
+      const { rows } = await c.query<{ r: string }>(
+        'select wf_request_id as r from inv.transfer where id = $1',
+        [id],
+      );
+      await call(c, KIM, `select wf.act($1, 'approve', null)`, [rows[0]!.r]);
+      expect(await summary()).toEqual({ progress: 'awaiting_dispatch', kind: 'rfm' });
+    });
+  });
+});
