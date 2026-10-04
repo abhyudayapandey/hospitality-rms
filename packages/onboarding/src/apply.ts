@@ -1830,8 +1830,17 @@ class Loader {
           [po],
         )
       ).rows[0]!.id;
+      // PO-5 (ADR 044): an order of menu items in usual quantities is approved by the
+      // workflow at once; only the others wait for the approver in the file
+      const waiting = (
+        await this.c.query<{ state: string }>(`select state from wf.request where id = $1`, [
+          request,
+        ])
+      ).rows[0]!.state;
       await this.as(first.approved_by, async () => {
-        await this.c.query(`select wf.act($1, 'approve', 'Test data order')`, [request]);
+        if (waiting === 'in_approval') {
+          await this.c.query(`select wf.act($1, 'approve', 'Test data order')`, [request]);
+        }
         await this.c.query(
           `select inv.record_test_release($1, ($2::date + time '10:00') at time zone $3)`,
           [po, this.day(first.ordered_day), tz],

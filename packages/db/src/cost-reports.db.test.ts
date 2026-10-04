@@ -417,25 +417,40 @@ describe('purchasing (file 33)', () => {
     });
   });
 
-  it('the orders went through approval: ordered by the chef, approved by the GM, completed', async () => {
+  it('the orders went through the workflow: ordered by the chef, completed; only the unusual one was approved, by the GM (PO-5)', async () => {
     await inRolledBackTx(async (c) => {
-      const { rows } = await c.query<{ state: string; initiator: string; approver: string }>(
-        `select r.state, i.username as initiator, a.username as approver
+      const { rows } = await c.query<{
+        key: string;
+        state: string;
+        initiator: string;
+        unusual: string;
+        approver: string | null;
+      }>(
+        `select po.idempotency_key as key, r.state, i.username as initiator,
+                r.payload ->> 'unusual' as unusual,
+                (select a.username from wf.step_instance s join core.app_user a on a.id = s.actor_id
+                  where s.request_id = r.id and s.state = 'approved') as approver
            from inv.purchase_order po
            join wf.request r on r.id = po.wf_request_id
            join core.app_user i on i.id = r.initiator_id
-           join wf.step_instance s on s.request_id = r.id
-           join core.app_user a on a.id = s.actor_id
           where po.idempotency_key like 'test-data po %' order by po.idempotency_key`,
       );
       expect(rows).toHaveLength(4);
-      for (const r of rows) {
-        expect(r).toEqual({
-          state: 'completed',
-          initiator: 'test.executive-chef.1.0',
-          approver: 'test.general-manager.1.0',
-        });
-      }
+      // menu items in usual quantities (PO-1 to PO-3): no approval, completed at once;
+      // PO-4's 20 litres of milk against a week's use under 1 litre goes to the GM, since the
+      // chef is the department head and made it
+      expect(rows.map((r) => [r.key, r.state, r.initiator, r.unusual, r.approver])).toEqual([
+        ['test-data po PO-1', 'completed', 'test.executive-chef.1.0', 'false', null],
+        ['test-data po PO-2', 'completed', 'test.executive-chef.1.0', 'false', null],
+        ['test-data po PO-3', 'completed', 'test.executive-chef.1.0', 'false', null],
+        [
+          'test-data po PO-4',
+          'completed',
+          'test.executive-chef.1.0',
+          'true',
+          'test.general-manager.1.0',
+        ],
+      ]);
     });
   });
 });

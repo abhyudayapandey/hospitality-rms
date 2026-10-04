@@ -20,19 +20,18 @@
 -- The company setting
 -- ---------------------------------------------------------------------------
 
-create or replace function core.settings_defaults() returns jsonb
-language sql immutable
-as $$
-  select jsonb_build_object(
-    'targets', jsonb_build_object('food', 30, 'drink', 22, 'labour', 25, 'prime', 60,
-                                  'wastage', 2, 'tasks', 90),
-    'menu_popular_pct', 70,
-    'overtime_multiplier', 1,
-    'po_send_prices', false,
-    'swaps_managers_only', true,
-    'count_due_days', 7,
-    'usual_qty_factor', 1.5);
-$$;
+do $$
+declare
+  v_src text := pg_get_functiondef('core.settings_defaults()'::regprocedure);
+  v_old text := '''count_due_days'', 7)';
+  v_new text := '''count_due_days'', 7,
+    ''usual_qty_factor'', 1.5)';
+begin
+  if position(v_old in v_src) = 0 then
+    raise exception 'core.settings_defaults changed; update this migration';
+  end if;
+  execute replace(v_src, v_old, v_new);
+end $$;
 
 do $$
 declare
@@ -398,15 +397,10 @@ begin
     E'    elsif v_key = ''usual_qty_factor'' then.*?    elsif v_key = ''count_due_days'' then',
     E'    elsif v_key = ''count_due_days'' then', 's');
 end $$;
-create or replace function core.settings_defaults() returns jsonb
-language sql immutable
-as $$
-  select jsonb_build_object(
-    'targets', jsonb_build_object('food', 30, 'drink', 22, 'labour', 25, 'prime', 60,
-                                  'wastage', 2, 'tasks', 90),
-    'menu_popular_pct', 70,
-    'overtime_multiplier', 1,
-    'po_send_prices', false,
-    'swaps_managers_only', true,
-    'count_due_days', 7);
-$$;
+do $$
+declare
+  v_src text := pg_get_functiondef('core.settings_defaults()'::regprocedure);
+begin
+  execute replace(v_src, E'''count_due_days'', 7,\n    ''usual_qty_factor'', 1.5)', '''count_due_days'', 7)');
+end $$;
+
