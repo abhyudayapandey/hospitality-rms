@@ -61,7 +61,12 @@ describe('People cost % and Materials % are shares of the total cost', () => {
       expect(n(m.get('prime_cost'))).toBeCloseTo(materials + people, 2);
       expect(m.has('prime_cost_pct')).toBe(false);
       // the cost controller sees no labour, so no shares of it either
-      const cc = await flash(c, 'test.cost-controller.1.0', ids.node('TEST-HOTEL-1.0'), daysBefore(2));
+      const cc = await flash(
+        c,
+        'test.cost-controller.1.0',
+        ids.node('TEST-HOTEL-1.0'),
+        daysBefore(2),
+      );
       expect(cc.has('labour_pct')).toBe(false);
       expect(cc.has('materials_pct')).toBe(false);
     });
@@ -127,7 +132,13 @@ describe('what is behind each figure', () => {
   it('sales and recipe cost by dish add up to the outlet figures', async () => {
     await inRolledBackTx(async (c) => {
       const hotel = ids.node('TEST-HOTEL-1.0');
-      const r = await attemptAs<{ menu: string; dish: string; qty: string; sales: string; cost: string }>(
+      const r = await attemptAs<{
+        menu: string;
+        dish: string;
+        qty: string;
+        sales: string;
+        cost: string;
+      }>(
         c,
         ids.user(GM),
         `select menu, dish, qty::text, sales::text, cost::text
@@ -143,11 +154,12 @@ describe('what is behind each figure', () => {
       expect(n(r.rows![0]!.sales)).toBeGreaterThanOrEqual(n(r.rows!.at(-1)!.sales));
       expect(
         (
-          await attemptAs(c, ids.user('test.steward.1.0'), `select * from rpt.bd_dishes('outlet_flash', $1, $2::date, $3::date)`, [
-            hotel,
-            FROM,
-            BUSINESS_DAY,
-          ])
+          await attemptAs(
+            c,
+            ids.user('test.steward.1.0'),
+            `select * from rpt.bd_dishes('outlet_flash', $1, $2::date, $3::date)`,
+            [hotel, FROM, BUSINESS_DAY],
+          )
         ).error,
       ).toMatch(/NOT_AUTHORISED/);
     });
@@ -157,7 +169,14 @@ describe('what is behind each figure', () => {
     await inRolledBackTx(async (c) => {
       // the seeded wastage is at Hotel 1.1 (a transit loss in its kitchen store)
       const hotel = ids.node('TEST-HOTEL-1.1');
-      const r = await attemptAs<{ item: string; qty: string; unit: string; value: string; reason: string; recorded_by: string }>(
+      const r = await attemptAs<{
+        item: string;
+        qty: string;
+        unit: string;
+        value: string;
+        reason: string;
+        recorded_by: string;
+      }>(
         c,
         ids.user(OWNER),
         `select item, qty::text, unit, value::text, reason, recorded_by
@@ -212,17 +231,21 @@ describe('what is behind each figure', () => {
         await flashSum(c, GM, hotel, 'scheduled_hours'),
         0,
       );
-      expect(sum(r.rows!, 'worked_hours')).toBeCloseTo(await flashSum(c, GM, hotel, 'worked_hours'), 0);
+      expect(sum(r.rows!, 'worked_hours')).toBeCloseTo(
+        await flashSum(c, GM, hotel, 'worked_hours'),
+        0,
+      );
       expect(sum(r.rows!, 'late')).toBe(await flashSum(c, GM, hotel, 'late'));
       expect(sum(r.rows!, 'no_shows')).toBe(await flashSum(c, GM, hotel, 'no_shows'));
       // the cost controller opens the outlet's day, but not its people
       expect(
         (
-          await attemptAs(c, ids.user('test.cost-controller.1.0'), `select * from rpt.bd_people('outlet_flash', $1, $2::date, $3::date)`, [
-            hotel,
-            FROM,
-            BUSINESS_DAY,
-          ])
+          await attemptAs(
+            c,
+            ids.user('test.cost-controller.1.0'),
+            `select * from rpt.bd_people('outlet_flash', $1, $2::date, $3::date)`,
+            [hotel, FROM, BUSINESS_DAY],
+          )
         ).error,
       ).toMatch(/NOT_AUTHORISED/);
       // the executive chef sees the kitchen's people on the department report
@@ -240,7 +263,13 @@ describe('what is behind each figure', () => {
   it("tasks: each person's due, done on time, overdue and flagged readings", async () => {
     await inRolledBackTx(async (c) => {
       const hotel = ids.node('TEST-HOTEL-1.0');
-      const r = await attemptAs<{ person: string; due: string; on_time: string; overdue: string; flagged: string }>(
+      const r = await attemptAs<{
+        person: string;
+        due: string;
+        on_time: string;
+        overdue: string;
+        flagged: string;
+      }>(
         c,
         ids.user(GM),
         `select person, due::text, on_time::text, overdue::text, flagged::text
@@ -266,41 +295,54 @@ describe('what is behind each figure', () => {
     await inRolledBackTx(async (c) => {
       const hotel = ids.node('TEST-HOTEL-1.0');
       for (const fn of ['bd_wastage', 'bd_tasks', 'bd_readings']) {
-        for (const who of ['test.steward.1.0', 'test.general-manager.1.1', 'test.solo.bar-manager']) {
+        for (const who of [
+          'test.steward.1.0',
+          'test.general-manager.1.1',
+          'test.solo.bar-manager',
+        ]) {
           expect(
             (
-              await attemptAs(c, ids.user(who), `select * from rpt.${fn}('outlet_flash', $1, $2::date, $3::date)`, [
-                hotel,
-                FROM,
-                BUSINESS_DAY,
-              ])
+              await attemptAs(
+                c,
+                ids.user(who),
+                `select * from rpt.${fn}('outlet_flash', $1, $2::date, $3::date)`,
+                [hotel, FROM, BUSINESS_DAY],
+              )
             ).error,
             `${fn} ${who}`,
           ).toMatch(/NOT_AUTHORISED/);
         }
       }
       expect(
-        (await attemptAs(c, ids.user('test.steward.1.0'), `select * from rpt.bd_stock('outlet_flash', $1)`, [hotel]))
-          .error,
+        (
+          await attemptAs(
+            c,
+            ids.user('test.steward.1.0'),
+            `select * from rpt.bd_stock('outlet_flash', $1)`,
+            [hotel],
+          )
+        ).error,
       ).toMatch(/NOT_AUTHORISED/);
       // a report the breakdown does not belong to
       expect(
         (
-          await attemptAs(c, ids.user(GM), `select * from rpt.bd_dishes('people', $1, $2::date, $3::date)`, [
-            hotel,
-            FROM,
-            BUSINESS_DAY,
-          ])
+          await attemptAs(
+            c,
+            ids.user(GM),
+            `select * from rpt.bd_dishes('people', $1, $2::date, $3::date)`,
+            [hotel, FROM, BUSINESS_DAY],
+          )
         ).error,
       ).toMatch(/INVALID_REPORT/);
       // at most a month at a time
       expect(
         (
-          await attemptAs(c, ids.user(GM), `select * from rpt.bd_wastage('outlet_flash', $1, $2::date, $3::date)`, [
-            hotel,
-            daysBefore(120),
-            BUSINESS_DAY,
-          ])
+          await attemptAs(
+            c,
+            ids.user(GM),
+            `select * from rpt.bd_wastage('outlet_flash', $1, $2::date, $3::date)`,
+            [hotel, daysBefore(120), BUSINESS_DAY],
+          )
         ).error,
       ).toMatch(/INVALID_DATE/);
     });

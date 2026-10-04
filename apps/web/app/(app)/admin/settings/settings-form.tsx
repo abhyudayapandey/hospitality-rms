@@ -65,7 +65,11 @@ export function SettingsForm({
               <label htmlFor={`target-${t.key}`} className="min-w-0">
                 <span className="block font-medium">{t.label}</span>
                 <span className="block text-xs text-slate-500">
-                  {t.key === 'labour' ? 'at most' : t.better === 'down' ? 'of sales, at most' : 'at least'}
+                  {t.key === 'labour'
+                    ? 'at most'
+                    : t.better === 'down'
+                      ? 'of sales, at most'
+                      : 'at least'}
                 </span>
               </label>
               <span className="flex items-center gap-1">
