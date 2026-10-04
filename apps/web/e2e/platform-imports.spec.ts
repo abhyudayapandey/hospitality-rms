@@ -112,7 +112,7 @@ test('logins for a test customer with the Test<Role>!12 rule', async ({ page }) 
     await form.getByRole('button', { name: 'Create 10 username logins' }).click();
 
     const created = page.getByTestId('created-logins');
-    await expect(created).toContainText('9 logins created');
+    await expect(created).toContainText('10 logins created');
     await expect(
       created.locator('[data-username="test.solo.bar-manager"]').getByTestId('password'),
     ).toHaveText('TestBarManager!12');
