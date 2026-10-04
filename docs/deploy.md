@@ -1513,6 +1513,42 @@ new file for the checks, `docs/onboarding/test-data/pos/sale.csv`.
   `/reports/trend?report=outlet_flash&node=…&measure=labour_cost` says no access.
 - **`test.account-owner`.** Outlets side by side → tap an outlet's Sales: its trend.
 
+#### Releasing cost shares of the total cost and the lists behind each figure (RPT-4, RPT-11, RPT-12)
+
+One migration, `20261101100000_report_breakdowns` (ADR 042). No stack change, no new
+parameter, no access change, no test data change: no re-import.
+
+- **What changes in the app.**
+  - **People cost % and Materials %** are each a share of the total cost (raw materials
+    plus people) and add up to 100, on Outlet today, the trend, Outlets side by side, its
+    CSV and Home. "Prime cost of sales" goes; prime cost stays in ₹ as "Total cost (prime
+    cost)". Where the money went gives each part as a share of the total cost.
+  - **Targets reset:** the migration sets every company's People cost target to **50%**
+    (now of the total cost) and removes the prime cost target. Tell Account Owners to check
+    Admin → Settings → Targets after the release.
+  - **"Week of 28 Sep"** replaces "w/c 28 Sept" everywhere.
+  - **The lists behind a figure:** a figure's trend has its weeks or months in a closed
+    section (tap one to pick it), then, for the picked week, the dishes, wastage by item,
+    stock by item, people, tasks by person and flagged readings behind it, each in its own
+    closed section. Names only for people who see the team there.
+
+**Deploy order.** Run the Deploy workflow. Nothing to re-import.
+
+**Check.**
+
+- **`test.account-owner`.** Admin → Settings: People cost, of total cost, at most 50%; no
+  Prime cost row. Outlets side by side: columns People cost % and Materials %, adding up to
+  100 for Hotel 1.0.
+- **`test.general-manager.1.0`.** Outlet today: People cost % and Materials % add up to
+  100; Where the money went ends at Total cost (prime cost) 100.0%. Tap Tasks due: "By week"
+  is closed; below, "What is behind it · Week of …" with Tasks by person ("… due · …% on
+  time · … overdue"). Open By week, tap an earlier week: the lists move to it. Tap Stock
+  value: Stock held now, by item, biggest first. Tap Hours worked: each person's hours.
+- **`test.account-owner`, Hotel 1.1.** Outlet today → Wastage → Wastage by item: the
+  transit loss, with quantity, value and who recorded it (when the test data's week is in
+  range).
+- **`test.cost-controller.1.0`.** Outlet today → Late → People: "Names not shown".
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

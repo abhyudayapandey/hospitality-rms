@@ -497,7 +497,7 @@ function League({
   const cols = [
     { key: 'sales', label: 'Sales', unit: 'money' as const },
     { key: 'food_pct', label: 'Food', unit: 'pct' as const },
-    { key: 'labour_pct', label: 'People', unit: 'pct' as const },
+    { key: 'labour_pct', label: 'People %', unit: 'pct' as const },
   ] as const;
   return (
     <section aria-label="Outlets" className={card} data-testid="league-card">

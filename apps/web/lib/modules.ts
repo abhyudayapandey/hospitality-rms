@@ -26,11 +26,11 @@ export const SALES_MEASURES: ReadonlySet<string> = new Set([
   'food_cost_pct',
   'bar_cost_pct',
   'wastage_pct',
-  // from the sales too (R-3): the cost parts, labour against sales and prime cost
+  // from the sales too (R-3): the cost parts, the shares of the total cost and prime cost
   'splh',
   'labour_pct',
+  'materials_pct',
   'prime_cost',
-  'prime_cost_pct',
   'cost_food_recipe',
   'cost_bar_recipe',
   'cost_expired',

@@ -14,8 +14,9 @@ import { flashCostParts, trendHref } from '@/lib/reports';
 
 // The outlet's day (the daily flash, docs/reporting.md): sales, recipe cost %, wastage,
 // stock, hours and tasks, each against the same day last week. Opens where the person
-// sees the outlet's sales, or with REPORTS (the Account Owner). Labour cost, labour % and
-// prime cost only for people who see labour cost (R-3, ADR 030); rpt.outlet_flash leaves
+// sees the outlet's sales, or with REPORTS (the Account Owner). People cost, People cost %
+// and Materials % (shares of the total cost, ADR 042) and prime cost only for people who
+// see labour cost (R-3, ADR 030); rpt.outlet_flash leaves
 // them out for everyone else.
 export default async function OutletReport({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();

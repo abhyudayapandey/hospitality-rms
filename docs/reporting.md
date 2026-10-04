@@ -305,6 +305,16 @@ Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
   - **CSV** downloads of every report list;
   - the menu engineering threshold and the overtime multiplier are company settings.
 
+- **Owner's review, 4 Oct** (ADR 042):
+  - **People cost % and Materials %** are shares of the total cost (raw materials plus
+    people), adding up to 100; prime cost stays in ₹ as the total cost; prime cost % of
+    sales and its target go; the People cost target is 50% of the total cost. Where the
+    money went gives each part as a share of the total cost;
+  - **the lists behind each figure**, on its trend, for a picked week or month, each in a
+    closed section: dishes, wastage by item, stock by item, people, tasks by person and
+    flagged readings (names only with the team);
+  - "Week of 28 Sep", never "w/c".
+
 - **Later:** outlet-level target overrides; league periods longer than 35 days.
 
 ## 8. Decisions (2 Oct 2026)
@@ -322,7 +332,8 @@ Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
 5. **Business day: 06:00 local time**, for every outlet.
 6. **Targets** (food %, beverage %, labour %, task compliance): company settings with an
    outlet override, in R-4 (decided 3 Oct: food 30, drink 22, labour 25, prime 60,
-   wastage 2, tasks 90; red only when worse by more than 2 points).
+   wastage 2, tasks 90; red only when worse by more than 2 points; on 4 Oct people cost
+   became a share of the total cost, target 50, and the prime target went, ADR 042).
 7. **Order:** R-2 comes after UX-3, UX-3b and AC-1 (customer-specific access groups,
    `docs/ux-review.md`), so the cost controller suite can be granted per customer.
 8. **R-2 in one change** (asked 2 Oct), with these rules:

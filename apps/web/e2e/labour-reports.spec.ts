@@ -7,7 +7,7 @@ import { asMigrator, placeId, signInAs } from './helpers';
 
 const NO_ACCESS = "You don't have access to this report.";
 
-test('the GM: people cost and prime cost on Outlet today, by department on Cost of sales', async ({
+test('the GM: people cost and its share of the total cost on Outlet today, by department on Cost of sales', async ({
   page,
 }) => {
   const hotel = await placeId('TEST-HOTEL-1.0');
@@ -26,6 +26,15 @@ test('the GM: people cost and prime cost on Outlet today, by department on Cost 
   await expect(parts.getByTestId('part-materials')).toBeVisible();
   await expect(parts.getByTestId('part-labour').getByTestId('value')).toHaveText('₹69,025');
   await expect(parts.getByTestId('part-prime')).toBeVisible();
+  // ADR 042: People cost % and Materials % are shares of the total cost, adding up to 100
+  await expect(parts.getByTestId('part-prime')).toContainText('100.0%');
+  await expect(page.getByTestId('measure-labour_pct')).toContainText('People cost %');
+  const pctOf = async (m: string) =>
+    Number(
+      (await page.getByTestId(`measure-${m}`).getByTestId('value').innerText()).replace('%', ''),
+    );
+  expect((await pctOf('labour_pct')) + (await pctOf('materials_pct'))).toBeCloseTo(100, 0);
+  await expect(page.getByTestId('measure-prime_cost_pct')).toHaveCount(0);
 
   await page.goto('/reports/cost');
   await expect(page.getByTestId('cost-breakdown').getByTestId('part-labour')).toBeVisible();

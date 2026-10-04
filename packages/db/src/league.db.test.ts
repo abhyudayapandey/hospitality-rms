@@ -22,13 +22,13 @@ interface LeagueRow {
   food_pct: string | null;
   drink_pct: string | null;
   labour_pct: string | null;
-  prime_pct: string | null;
+  materials_pct: string | null;
   wastage_pct: string | null;
   tasks_pct: string | null;
 }
 
 const LEAGUE = `select l.code, l.sales::text, l.food_pct::text, l.drink_pct::text,
-                       l.labour_pct::text, l.prime_pct::text, l.wastage_pct::text,
+                       l.labour_pct::text, l.materials_pct::text, l.wastage_pct::text,
                        l.tasks_pct::text
                   from rpt.league($1, current_date - $2::int, current_date - $3::int) l
                  order by l.code`;
@@ -143,15 +143,16 @@ describe('the league table: what each row shows', () => {
     });
   });
 
-  it('labour and prime cost: the area manager sees them (LABOUR_COST); without it, they are empty', async () => {
+  it('people cost % and materials %: the area manager sees them (LABOUR_COST); without it, they are empty', async () => {
     await inRolledBackTx(async (c) => {
       const am = ids.user('test.area-manager');
       const hotel = (await leagueRows(c, am, 'TEST-AREA-MUMBAI')).find(
         (x) => x.code === 'TEST-HOTEL-1.0',
       )!;
       // people cost over days -7..-1 at Hotel 1.0 is ₹4,65,225 (labour-reports.db.test.ts)
-      expect(Number(hotel.labour_pct)).toBeCloseTo((465225 * 100) / Number(hotel.sales), 1);
-      expect(Number(hotel.prime_pct)).toBeGreaterThan(Number(hotel.labour_pct));
+      // as a share of the total cost: people + materials = 100
+      expect(Number(hotel.labour_pct)).toBeGreaterThan(0);
+      expect(Number(hotel.labour_pct) + Number(hotel.materials_pct)).toBeCloseTo(100, 0);
 
       // the same person without labour cost: the Area Manager group loses LABOUR_COST
       await c.query(
@@ -163,7 +164,7 @@ describe('the league table: what each row shows', () => {
       );
       const without = await leagueRows(c, am, 'TEST-AREA-MUMBAI');
       expect(without.length).toBe(4);
-      expect(without.every((x) => x.labour_pct === null && x.prime_pct === null)).toBe(true);
+      expect(without.every((x) => x.labour_pct === null && x.materials_pct === null)).toBe(true);
       expect(without.find((x) => x.code === 'TEST-HOTEL-1.0')!.food_pct).toBe(hotel.food_pct);
     });
   });
