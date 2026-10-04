@@ -17,6 +17,9 @@ export interface DomainDef {
 export const DOMAINS: readonly DomainDef[] = [
   { code: 'STOCK_LEVELS', tree: 'delivery' },
   { code: 'STOCK_ADJUSTMENTS', tree: 'delivery' },
+  // the stock check: counting what is on the shelves against what should be there, and
+  // seeing who verified what (INV-10, ADR 042); modify is the verifier's right
+  { code: 'STOCK_CHECK', tree: 'delivery' },
   { code: 'PURCHASE_ORDERS', tree: 'delivery' },
   { code: 'TRANSFERS', tree: 'delivery' },
   // recipes and prep procedures where they are made or sold (no costs, ADR 014)
@@ -179,6 +182,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: {
       STOCK_LEVELS: v,
       STOCK_ADJUSTMENTS: m,
+      STOCK_CHECK: v,
       TRANSFERS: m,
       PURCHASE_ORDERS: m,
       AI_RECOMMENDATIONS: v,
@@ -193,6 +197,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: {
       STOCK_LEVELS: v,
       STOCK_ADJUSTMENTS: v,
+      STOCK_CHECK: m,
       PURCHASE_ORDERS: v,
       TRANSFERS: v,
       RECIPES: v,
@@ -200,6 +205,14 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       PRODUCTION: v,
       SALES: m,
     },
+  },
+  {
+    // verifies stock where the company has no Cost Controller (INV-11, ADR 042); given by
+    // the Account Owner
+    code: 'STOCK_VERIFIER',
+    name: 'Stock Verifier',
+    kind: 'role',
+    grants: { STOCK_LEVELS: v, STOCK_CHECK: m },
   },
   {
     code: 'OUTLET_HR',
@@ -214,6 +227,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: {
       STOCK_LEVELS: v,
       STOCK_ADJUSTMENTS: m,
+      STOCK_CHECK: v,
       PURCHASE_ORDERS: m,
       TRANSFERS: m,
       // worker records: People, and asking for a deactivation where there is no HR
@@ -270,6 +284,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: {
       STOCK_LEVELS: v,
       STOCK_ADJUSTMENTS: m,
+      STOCK_CHECK: v,
       PURCHASE_ORDERS: v,
       TRANSFERS: m,
       RECIPES: v,
