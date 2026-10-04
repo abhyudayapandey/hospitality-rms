@@ -21,6 +21,7 @@ export const DOMAIN_WORDS: Readonly<Record<string, string>> = {
   COMPENSATION: 'pay',
   LABOUR_COST: 'labour cost totals',
   ROSTER: 'rosters',
+  ATTENDANCE_SELFIES: 'clock-in selfies',
   ATTENDANCE: 'attendance',
   LEAVE: 'leave',
   EVENTS: 'events',

@@ -171,7 +171,7 @@ describe('effective immediately, and audited', () => {
         `select inside, flags from hr.clock('in', $1, $2, 10, null, 'online', 'loc-test')`,
         [there.lat, there.lng],
       );
-      expect(r.rows).toEqual([{ inside: true, flags: [] }]);
+      expect(r.rows).toEqual([{ inside: true, flags: ['no_selfie'] }]);
       const audit = await c.query<{ actor_id: string; changed: string[] }>(
         `select actor_id, changed_fields as changed from audit.log
           where table_name = 'hr.node_setting' and (after ->> 'org_node_id')::uuid = $1

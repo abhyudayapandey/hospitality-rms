@@ -27,7 +27,7 @@ describe('walking up the tree', () => {
         );
       const far = await clock(19.1, 72.8367, 'in-1');
       expect(far.error).toBeUndefined();
-      expect(far.rows![0]).toEqual({ inside: false, flags: ['outside_geofence'] });
+      expect(far.rows![0]).toEqual({ inside: false, flags: ['no_selfie', 'outside_geofence'] });
       const near = await clock(19.066, 72.8367, 'out-1');
       expect(near.rows![0]).toMatchObject({ inside: true });
     });

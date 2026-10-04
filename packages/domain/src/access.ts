@@ -43,6 +43,9 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'LABOUR_COST', tree: 'org' },
   { code: 'ROSTER', tree: 'org' },
   { code: 'ATTENDANCE', tree: 'org' },
+  // clock-in selfies: HR, the head of the person's department and the person themselves; not the
+  // GM or the area manager (ATT-7, ADR 044)
+  { code: 'ATTENDANCE_SELFIES', tree: 'org' },
   { code: 'LEAVE', tree: 'org' },
   { code: 'EVENTS', tree: 'org' },
   { code: 'SHIFT_SWAPS', tree: 'org' },
@@ -94,6 +97,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       ATTENDANCE: m,
       LEAVE: m,
       SHIFT_SWAPS: m,
+      ATTENDANCE_SELFIES: v,
       NOTIFICATIONS: v,
       TASKS: m,
       MAINTENANCE: m,
@@ -125,6 +129,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: {
       ROSTER: m,
       ATTENDANCE: m,
+      ATTENDANCE_SELFIES: v,
       LEAVE: v,
       SHIFT_SWAPS: v,
       WORKERS: v,
@@ -218,7 +223,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     code: 'OUTLET_HR',
     name: 'Outlet HR',
     kind: 'role',
-    grants: { WORKERS: m, LEAVE: m, ROSTER: v, ATTENDANCE: v },
+    grants: { WORKERS: m, LEAVE: m, ROSTER: v, ATTENDANCE: v, ATTENDANCE_SELFIES: v },
   },
   {
     code: 'OUTLET_MANAGER',
@@ -303,6 +308,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       LEAVE: m,
       ROSTER: v,
       ATTENDANCE: v,
+      ATTENDANCE_SELFIES: v,
       WF_CONFIG: v,
       LABOUR_COST: v,
     },
