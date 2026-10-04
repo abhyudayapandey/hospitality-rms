@@ -44,6 +44,14 @@ describe('screens', () => {
     ]);
   });
 
+  it("a cashier: importing the day's sales comes first (SAL-2)", () => {
+    const t = homeTiles(input([['POS_IMPORT', 'modify']]));
+    expect(t.map((x) => x.label)).toEqual(['Import sales', 'My tasks', 'My shifts', 'Leave']);
+    expect(t[0]!.href).toBe('/menu/sales/import');
+    // a server never sees it
+    expect(screensFor(input()).map((s) => s.key)).not.toContain('posImport');
+  });
+
   it('shifts, clock and swaps only for people who work at an outlet', () => {
     const away = screensFor(input([['SHIFT_SWAPS', 'modify']], { atWork: false })).map(
       (s) => s.key,

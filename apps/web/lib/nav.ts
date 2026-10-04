@@ -87,7 +87,14 @@ export function canOpen(key: NavKey, i: NavInput): boolean {
 }
 
 /** Frontline groups: no approvals, no one else's work to manage. */
-const FRONTLINE = new Set(['SELF', 'STAFF', 'PRODUCTION_TEAM', 'STOCK_USER', 'EVENT_PLANNER']);
+const FRONTLINE = new Set([
+  'SELF',
+  'STAFF',
+  'PRODUCTION_TEAM',
+  'STOCK_USER',
+  'EVENT_PLANNER',
+  'CASHIER',
+]);
 
 export type NavProfile = 'outlet' | 'department' | 'store' | 'cost' | 'frontline' | 'office';
 

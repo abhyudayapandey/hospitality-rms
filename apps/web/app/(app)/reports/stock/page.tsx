@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Empty } from '@/components/messages';
 import { CsvLink, NoReport, ReportHeader, ReportSections } from '@/components/report-view';
 import { requireUser } from '@/lib/auth/server';
@@ -145,15 +146,20 @@ export default async function StockPosition({ searchParams }: { searchParams: Se
 
 function Item({ i, right, all }: { i: StockItemRow; right: string; all: boolean }) {
   return (
-    <li className="flex justify-between gap-2 px-4 py-3 text-sm" data-sku={i.sku}>
-      <span className="min-w-0">
-        <span className="block font-medium">{i.name}</span>
-        <span className="block text-xs text-slate-500">
-          {all && `${i.store} · `}
-          {formatQty(i.on_hand, i.unit)} · {formatMoney(i.value)}
+    <li className="text-sm" data-sku={i.sku}>
+      <Link
+        href={`/reports/item?node=${i.store_id}&item=${i.item_id}`}
+        className="flex justify-between gap-2 px-4 py-3"
+      >
+        <span className="min-w-0">
+          <span className="block font-medium">{i.name}</span>
+          <span className="block text-xs text-slate-500">
+            {all && `${i.store} · `}
+            {formatQty(i.on_hand, i.unit)} · {formatMoney(i.value)}
+          </span>
         </span>
-      </span>
-      <span className="shrink-0 text-right tabular-nums">{right}</span>
+        <span className="shrink-0 text-right tabular-nums">{right}</span>
+      </Link>
     </li>
   );
 }

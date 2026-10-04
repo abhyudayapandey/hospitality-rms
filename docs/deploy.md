@@ -1408,6 +1408,71 @@ Deploy workflow; no re-import.
 with Place: **All stores**, each line naming its store; choose Kitchen Store and only its
 batches show; Expired keeps Kitchen Store; choose All stores again and every store's show.
 
+#### Releasing the POS import, expiry alerts and report trends (SAL-1, SAL-2, INV-12, RPT-12)
+
+One migration, `20261030100000_pos_import_expiry_trends` (ADR 039 to 041). No stack change
+and no new parameter. The product sync (part of Deploy) adds the POS_IMPORT domain and the
+CASHIER group to every tenant. The tasks job (the 5-minute timer) now also sends the morning
+expiry alert; it ships in the release bundle. This changes access, so run **Actions → RLS
+equivalence (all users) → Run workflow** on the commit before merging.
+
+- **What changes in the app.**
+  - **The cashier** (Cashier job role, default `STAFF@home_department;
+CASHIER@outlet_stores`) has an "End of day" card and an **Import sales** tile on Home.
+    They upload the POS's Sale by item file (Excel or CSV) for the day; the lines post as
+    the day's sales, codes not matched yet are listed. They see none of the outlet's sales,
+    costs or reports.
+  - **Menu → Sales** has **Import from the POS**. A day the POS import posted can't be typed
+    in. On the import screen, people who post sales match the codes not matched yet and
+    post the day again.
+  - Revenue in the reports is what the POS took after discount; typed-in sales still count
+    at the menu price.
+  - **Push today** on Home for servers, bartenders, cashiers, hosts and the outlet's
+    managers: the dishes that use prep expiring by the end of tomorrow.
+  - **The morning alert**: from 06:00, once a day, the department head of the team that uses
+    a store (else the outlet manager) gets "Use first today: …" with the items and dishes.
+  - **Report rows open**: a dish in Menu engineering, an item in Cost of sales (under its
+    formula: Trend), Stock position and Purchasing open a trend by 14 days, 13 weeks or 12
+    months.
+- **Test data.** Test Company: file 06 gives the Cashier `CASHIER@outlet_stores`; file 23
+  gains `pos_code` (Test Bar 3.0's 31 dishes, 3001 to 3031). Nothing for Test Solo Bar Co.
+
+**Deploy order.** Run the Deploy workflow, then re-import Test Company.
+
+Until the re-import, Test Company's cashier has no Import sales tile and Bar 3.0's POS codes
+are not matched.
+
+**Re-import Test Company** (40 files). The dry run should report no problems, the same 2
+approval-coverage warnings, and: job role access 1 new (the Cashier's CASHIER at the outlet stores) and POS codes 31 new (Test Bar 3.0's 3001 to 3031); everything else unchanged. Apply, then dry-run again: no changes.
+
+No re-import for Test Solo Bar Co.
+
+**Check.**
+
+- **`test.cashier.3.0`.** Home: "End of day · Today's sales are not imported yet" and the
+  Import sales tile. Import sales: choose a Sale by item file (the sample below, saved as
+  `sale.csv`); "3 items · ₹2,340 taken" shows; Import; "2 items, 1 not matched yet" and
+  the code `9001` listed. Reports and Menu → Sales are not there.
+
+  ```
+  Sale by item,,,,,
+  Item,Description,Quantity,Rate,Value,Discount
+  TEST BAR 3.0,,,,,
+  3001,PANEER TIKKA,2,355,650,60
+  3022,MOJITO,3,430,1290,0
+  9001,CHEF SPECIAL,1,400,400,0
+  Grand Total,,6,,2340,60
+  ```
+
+- **`test.bar-manager.3.0`.** Menu → Sales → Import from the POS: match `9001` to a dish,
+  then **Match and post the day again**: 3 items. Menu → Sales for today says the sales came
+  from the POS import.
+- **`test.server.3.0`.** Home shows Push today only while some prep at Bar 3.0 expires by
+  tomorrow (after a batch is made with a short shelf life); otherwise nothing changes.
+- **`test.general-manager.1.0`.** Reports → Menu engineering → tap Butter Naan: its trend
+  (14 days, then 13 weeks). Cost of sales → open an item → Trend. Stock position → tap an
+  item.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

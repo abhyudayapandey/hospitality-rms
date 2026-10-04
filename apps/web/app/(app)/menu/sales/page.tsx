@@ -1,8 +1,11 @@
+import Link from 'next/link';
 import { Empty } from '@/components/messages';
 import { PlaceSwitcher } from '@/components/place-switcher';
 import { withUser } from '@/lib/db';
 import { param, type SearchParams } from '@/lib/inventory';
 import { menuPlaces } from '@/lib/menu';
+import { posImportOf } from '@/lib/pos-import';
+import { formatTime } from '@/lib/dates';
 import { placesFor } from '@/lib/places';
 import { addDays } from '@/lib/dates';
 import { isoDate, salesSheet, todayIn } from '@/lib/production';
@@ -29,6 +32,8 @@ export default async function SalesPage({ searchParams }: { searchParams: Search
     sheet: await salesSheet(tx, place.id, date),
     yesterday: await salesSheet(tx, place.id, yesterday),
     lastWeek: await salesSheet(tx, place.id, lastWeek),
+    // a day the POS import posted is closed to typing in (ADR 039)
+    pos: await posImportOf(tx, place.id, date),
   }));
   const posted = (rows: typeof data.sheet) =>
     Object.fromEntries(
@@ -58,7 +63,24 @@ export default async function SalesPage({ searchParams }: { searchParams: Search
         </label>
         <button className="min-h-12 rounded-lg border border-slate-300 bg-white px-4">Show</button>
       </form>
-      {data.sheet.length === 0 ? (
+      <Link
+        href={`/menu/sales/import?node=${data.outlet.outlet_id}&date=${date}`}
+        className="flex min-h-12 items-center justify-center rounded-lg border border-brand-700 font-medium text-brand-700"
+        data-testid="sales-import-link"
+      >
+        Import from the POS
+      </Link>
+      {data.pos ? (
+        <p
+          className="rounded-xl bg-white p-4 text-sm ring-1 ring-slate-200"
+          data-testid="sales-from-pos"
+        >
+          This day&apos;s sales came from the POS import at{' '}
+          {formatTime(data.pos.imported_at, place.timezone ?? 'Asia/Kolkata')}
+          {data.pos.imported_by ? ` by ${data.pos.imported_by}` : ''} ({data.pos.posted} items).
+          They can&apos;t be typed in; import the day again to change them.
+        </p>
+      ) : data.sheet.length === 0 ? (
         <Empty>Nothing is on this outlet&apos;s menu that day.</Empty>
       ) : (
         <SalesForm

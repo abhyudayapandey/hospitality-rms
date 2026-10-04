@@ -118,6 +118,7 @@ export async function costTotals(
 
 export interface CostItemRow extends CostItem {
   store_id: string;
+  item_id: string;
   opening: string;
   came_in: string;
   went_out: string;
@@ -133,7 +134,7 @@ export async function costItems(
   to: string,
 ): Promise<CostItemRow[]> {
   const r = await sql<CostItemRow>`
-    select store_id, store_name, sku, name, unit, opening::text, came_in::text,
+    select store_id, item_id, store_name, sku, name, unit, opening::text, came_in::text,
            went_out::text, used::text, expected_closing::text, variance_qty::text,
            variance_value::text, counted, pending_qty::text, unexplained
       from rpt.cost_items(${place}::uuid, ${from}::date, ${to}::date)`.execute(tx);
@@ -169,6 +170,7 @@ export async function costExpired(
 
 export interface DishRow {
   menu: string;
+  menu_item_id: string;
   code: string;
   name: string;
   sold: string;
@@ -188,7 +190,7 @@ export async function menuEngineering(
   to: string,
 ): Promise<DishRow[]> {
   const r = await sql<DishRow>`
-    select menu, code, name, sold::text, price::text, cost::text, margin::text, mix_pct::text,
+    select menu, menu_item_id, code, name, sold::text, price::text, cost::text, margin::text, mix_pct::text,
            avg_margin::text, popular_from_pct::text, class
       from rpt.menu_engineering(${outlet}::uuid, ${from}::date, ${to}::date)`.execute(tx);
   return r.rows;
@@ -201,7 +203,9 @@ export async function stockSummary(tx: Tx, store: string): Promise<MeasureRow[]>
 }
 
 export interface StockItemRow {
+  store_id: string;
   store: string;
+  item_id: string;
   sku: string;
   name: string;
   category: string;
@@ -218,13 +222,14 @@ export interface StockItemRow {
 /** A store's items, or (RPT-14) every item of all the stores of an outlet's supply point. */
 export async function stockItems(tx: Tx, place: string): Promise<StockItemRow[]> {
   const r = await sql<StockItemRow>`
-    select store, sku, name, category, unit, on_hand::text, value::text, days_on_hand::text,
+    select store_id, store, item_id, sku, name, category, unit, on_hand::text, value::text, days_on_hand::text,
            last_moved_at::text, dead, expired_value::text, expiring_value::text
       from rpt.stock_items(${place}::uuid)`.execute(tx);
   return r.rows;
 }
 
 export interface PriceChangeRow {
+  item_id: string;
   sku: string;
   name: string;
   unit: string;
@@ -244,7 +249,7 @@ export async function priceChanges(
   to: string,
 ): Promise<PriceChangeRow[]> {
   const r = await sql<PriceChangeRow>`
-    select sku, name, unit, supplier, received_at::text, qty::text, unit_cost::text,
+    select item_id, sku, name, unit, supplier, received_at::text, qty::text, unit_cost::text,
            previous_cost::text, basis, change_value::text
       from rpt.price_changes(${store}::uuid, ${from}::date, ${to}::date)`.execute(tx);
   return r.rows;
@@ -537,5 +542,70 @@ export async function league(
     select outlet_id, code, name, sales::text, food_pct::text, drink_pct::text,
            labour_pct::text, prime_pct::text, wastage_pct::text, tasks_pct::text
       from rpt.league(${place}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}
+
+// ---------------------------------------------------------------------------------------
+// Every row opens (RPT-12, ADR 041): a dish's or a stock item's trend
+
+export interface DishPoint {
+  period: string;
+  sold: string;
+  sales: string;
+  discount: string;
+  cost: string;
+  margin: string;
+  dish: string;
+}
+
+/** A dish at an outlet per day, week or month (opens where menu engineering opens). */
+export async function dishTrend(
+  tx: Tx,
+  outlet: string,
+  item: string,
+  by: string,
+  from: string,
+  to: string,
+): Promise<DishPoint[]> {
+  const r = await sql<DishPoint>`
+    select period::text, sold::text, sales::text, discount::text, cost::text, margin::text, dish
+      from rpt.dish_trend(${outlet}::uuid, ${item}::uuid, ${by}, ${from}::date, ${to}::date)`.execute(
+    tx,
+  );
+  return r.rows;
+}
+
+export interface ItemPoint {
+  period: string;
+  came_in: string;
+  received_value: string;
+  avg_price: string | null;
+  used: string;
+  used_value: string;
+  wasted: string;
+  wasted_value: string;
+  sent_out: string;
+  counted: string;
+  closing: string;
+  item: string;
+  unit: string;
+}
+
+/** A stock item at one store per day, week or month (opens where the stock position opens). */
+export async function itemTrend(
+  tx: Tx,
+  store: string,
+  item: string,
+  by: string,
+  from: string,
+  to: string,
+): Promise<ItemPoint[]> {
+  const r = await sql<ItemPoint>`
+    select period::text, came_in::text, received_value::text, avg_price::text, used::text,
+           used_value::text, wasted::text, wasted_value::text, sent_out::text, counted::text,
+           closing::text, item, unit
+      from rpt.item_trend(${store}::uuid, ${item}::uuid, ${by}, ${from}::date, ${to}::date)`.execute(
+    tx,
+  );
   return r.rows;
 }

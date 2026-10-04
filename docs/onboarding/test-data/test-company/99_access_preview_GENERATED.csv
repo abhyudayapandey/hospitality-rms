@@ -164,6 +164,7 @@ test.bar-back.3.0,Test Bar Back 3.0,STAFF,TEST-BAR-3.0-BAR,Test Bar 3.0 – Bar,
 test.server.3.0,Test Server 3.0,STAFF,TEST-BAR-3.0-FLOOR-SERVICE,Test Bar 3.0 – Floor Service,this place and everything below,job role default (any)
 test.server-b.3.0,Test Server B 3.0,STAFF,TEST-BAR-3.0-FLOOR-SERVICE,Test Bar 3.0 – Floor Service,this place and everything below,job role default (any)
 test.host.3.0,Test Host 3.0,STAFF,TEST-BAR-3.0-FLOOR-SERVICE,Test Bar 3.0 – Floor Service,this place and everything below,job role default (any)
+test.cashier.3.0,Test Cashier 3.0,CASHIER,TEST-BAR-3.0-SUPPLY,Test Bar 3.0 – Supply Point,this place and everything below,job role default (any)
 test.cashier.3.0,Test Cashier 3.0,STAFF,TEST-BAR-3.0-FLOOR-SERVICE,Test Bar 3.0 – Floor Service,this place and everything below,job role default (any)
 test.security-guard.3.0,Test Security Guard 3.0,STAFF,TEST-BAR-3.0,Test Bar 3.0,this place and everything below,job role default (any)
 test.head-cook.3.0,Test Head Cook 3.0,DEPARTMENT_HEAD,TEST-BAR-3.0-KITCHEN,Test Bar 3.0 – Kitchen,this place and everything below,job role default (any)

@@ -82,7 +82,7 @@ export default async function MenuEngineering({ searchParams }: { searchParams: 
                   <p className="text-xs text-slate-500">{c.hint}</p>
                   <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
                     {group.map((d) => (
-                      <Dish key={d.code} d={d} menu={menu} />
+                      <Dish key={d.code} d={d} menu={menu} outlet={place.id} />
                     ))}
                   </ul>
                 </div>
@@ -109,17 +109,22 @@ export default async function MenuEngineering({ searchParams }: { searchParams: 
   );
 }
 
-function Dish({ d, menu }: { d: DishRow; menu: string }) {
+function Dish({ d, menu, outlet }: { d: DishRow; menu: string; outlet: string }) {
   const words = dishWords(d, menu, formatMoney);
   return (
-    <li className="px-4 py-3 text-sm" data-testid="dish" data-code={d.code}>
-      <span className="block font-medium">{d.name}</span>
-      <span className="block text-xs text-slate-600 tabular-nums" data-testid="dish-money">
-        {words.money}
-      </span>
-      <span className="block text-xs text-slate-500 tabular-nums" data-testid="dish-share">
-        {words.share}
-      </span>
+    <li className="text-sm" data-testid="dish" data-code={d.code}>
+      <Link
+        href={`/reports/dish?node=${outlet}&item=${d.menu_item_id}`}
+        className="block px-4 py-3"
+      >
+        <span className="block font-medium">{d.name}</span>
+        <span className="block text-xs text-slate-600 tabular-nums" data-testid="dish-money">
+          {words.money}
+        </span>
+        <span className="block text-xs text-slate-500 tabular-nums" data-testid="dish-share">
+          {words.share}
+        </span>
+      </Link>
     </li>
   );
 }

@@ -31,6 +31,8 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'PRODUCTION_TEAM', tree: 'org' },
   // a day's sales per outlet (manual entry, later the POS import)
   { code: 'SALES', tree: 'delivery' },
+  // importing the POS's end-of-day file, without reading the outlet's sales (ADR 039)
+  { code: 'POS_IMPORT', tree: 'delivery' },
   { code: 'WORKERS', tree: 'org' },
   { code: 'COMPENSATION', tree: 'org' },
   // labour cost totals per department and outlet, never one person's pay; groups of fewer
@@ -140,6 +142,14 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     name: 'Production Team',
     kind: 'role',
     grants: { PRODUCTION_TEAM: m },
+  },
+  {
+    // imports the POS's end-of-day file at the outlet's stores; reads no sales, costs or
+    // reports (ADR 039)
+    code: 'CASHIER',
+    name: 'Cashier',
+    kind: 'role',
+    grants: { POS_IMPORT: m },
   },
   {
     // plans events (with their item and staff needs) for the whole outlet (ADR 016)

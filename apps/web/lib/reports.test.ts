@@ -18,6 +18,9 @@ import {
   sortLeague,
   SECTIONS,
   topLosses,
+  trendGrain,
+  trendLabel,
+  trendRange,
 } from './reports';
 import { daysInclusive } from './dates';
 
@@ -263,5 +266,27 @@ describe('menu engineering periods and wording (RPT-13)', () => {
       dishWords({ price: '90', cost: null, margin: null, sold: '0', mix_pct: null }, 'Food', money)
         .money,
     ).toBe('Price ₹90 · cost – · margin – a serve');
+  });
+});
+
+describe('trends (RPT-12)', () => {
+  it('14 days, 13 weeks from a Monday, 12 months from the 1st', () => {
+    expect(trendRange('day', '2026-10-04')).toEqual({ from: '2026-09-21', to: '2026-10-04' });
+    // Sunday 4 Oct: its week began Monday 28 Sep; twelve weeks before that
+    expect(trendRange('week', '2026-10-04')).toEqual({ from: '2026-07-06', to: '2026-10-04' });
+    expect(trendRange('month', '2026-10-04')).toEqual({ from: '2025-11-01', to: '2026-10-04' });
+    expect(trendRange('month', '2026-01-31').from).toBe('2025-02-01');
+  });
+
+  it('labels each period plainly', () => {
+    expect(trendLabel('day', '2026-09-28')).toBe('Mon 28 Sept');
+    expect(trendLabel('week', '2026-09-28')).toBe('w/c 28 Sept');
+    expect(trendLabel('month', '2026-09-01')).toBe('Sept 2026');
+  });
+
+  it('by day unless asked for week or month', () => {
+    expect(trendGrain('week')).toBe('week');
+    expect(trendGrain('year')).toBe('day');
+    expect(trendGrain(undefined)).toBe('day');
   });
 });

@@ -36,6 +36,8 @@ describe('bottom nav', () => {
       'Me',
     ]);
     expect(nav(['STAFF'], [])).toEqual(['Home', 'Tasks', 'Me']);
+    // the cashier is frontline too: the import is a tile on Home (SAL-2)
+    expect(nav(['STAFF', 'CASHIER'], ['POS_IMPORT'])).toEqual(['Home', 'Tasks', 'Me']);
     expect(nav(['STAFF', 'STORE_KEEPER'], ['STOCK_LEVELS'])).toEqual([
       'Home',
       'Stock',

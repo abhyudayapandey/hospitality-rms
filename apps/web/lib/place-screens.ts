@@ -10,6 +10,8 @@ export const PLACE_SCREENS = [
   'variance',
   'production',
   'sales',
+  // the POS import (ADR 039): outlets where they import
+  'pos_import',
   'menu',
   'roster',
   'exceptions',

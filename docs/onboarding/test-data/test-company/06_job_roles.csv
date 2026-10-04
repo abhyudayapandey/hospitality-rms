@@ -33,7 +33,7 @@ BARTENDER,Bartender,any,BAR,STAFF@home_department; PRODUCTION_TEAM@home_departme
 BAR_BACK,Bar Back,any,BAR,STAFF@home_department
 FLOOR_MANAGER,Floor Manager,any,FLOOR-SERVICE,DEPARTMENT_HEAD@home_department
 SERVER,Server,any,FLOOR-SERVICE,STAFF@home_department
-CASHIER,Cashier,any,FLOOR-SERVICE,STAFF@home_department
+CASHIER,Cashier,any,FLOOR-SERVICE,STAFF@home_department; CASHIER@outlet_stores
 BANQUET_MANAGER,Banquet Manager,any,BANQUETS,DEPARTMENT_HEAD@home_department; EVENT_PLANNER@whole_outlet
 BANQUET_CAPTAIN,Banquet Captain,any,BANQUETS,SUPERVISOR@home_department; STAFF@home_department
 BANQUET_SERVER,Banquet Server,any,BANQUETS,STAFF@home_department

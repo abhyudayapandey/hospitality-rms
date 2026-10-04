@@ -117,6 +117,23 @@ export const ERROR_MESSAGES = {
   INVALID_VALUE: 'Fill in this step before saving it.',
   STEPS_INCOMPLETE: 'Finish every step first.',
   NOT_EXPIRED: 'Only a batch past its expiry with something left can be reported.',
+  // the POS import (SAL-2, ADR 039)
+  SALES_FROM_POS: "This day's sales came from the POS import, so they can't be typed in.",
+  POS_FILE_SPANS_DAYS: 'The file covers more than one day. Export one day at a time from the POS.',
+  POS_FILE_OTHER_DAY: 'The file is for another day. Pick that day, or export this one.',
+  POS_TOTALS_MISMATCH: "The file's lines don't add up to its Grand Total. Export it again.",
+  POS_FILE_EMPTY: 'Choose the POS file to upload.',
+  POS_FILE_TOO_LARGE: 'That file is too large (5 MB at most).',
+  POS_FILE_TYPE: "Upload the POS's Sale by item report as Excel (.xlsx) or CSV.",
+  POS_NO_HEADER:
+    'The file has no Item, Description, Quantity, Rate, Value and Discount columns. Export the Sale by item report.',
+  POS_BAD_NUMBER: 'A quantity or amount in the file is not a number. Export it again.',
+  POS_NO_GRAND_TOTAL: 'The file has no Grand Total row. Export the whole report.',
+  POS_NO_LINES: 'The file has no sales lines.',
+  INVALID_AMOUNT: 'Amounts are zero or more.',
+  INVALID_CODE: 'Enter the POS item code, up to 40 characters, no spaces.',
+  // trends (RPT-12, ADR 041)
+  INVALID_GRAIN: 'Show the trend by day, week or month.',
   UNEXPECTED: 'Something went wrong. Please try again.',
 } as const;
 
