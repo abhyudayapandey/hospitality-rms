@@ -26,3 +26,6 @@ test.solo.head-cook,EARNED_LEAVE,2026,18,0
 test.solo.cook,CASUAL_LEAVE,2026,12,0
 test.solo.cook,SICK_LEAVE,2026,12,0
 test.solo.cook,EARNED_LEAVE,2026,18,0
+test.solo.stock-verifier,CASUAL_LEAVE,2026,12,0
+test.solo.stock-verifier,SICK_LEAVE,2026,12,0
+test.solo.stock-verifier,EARNED_LEAVE,2026,18,0

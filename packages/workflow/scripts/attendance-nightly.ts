@@ -2,7 +2,8 @@ import { join } from 'node:path';
 import pg from 'pg';
 
 // Nightly attendance job (ADR 008): late / no_show / missing_clock_out / unscheduled
-// exceptions for recent local days, and the 90-day purge of raw clock-in coordinates;
+// exceptions for recent local days, the 90-day purge of raw clock-in coordinates, and the
+// removal of selfies and devices older than the personnel retention rule (ADR 045);
 // then the report tables (ADR 023).
 // Runs as wf_executor (systemd timer on the instance; locally on demand):
 //   pnpm --filter @outlet-ops/workflow attendance-nightly
@@ -40,6 +41,9 @@ try {
       'select * from hr.nightly_attendance()',
     );
     console.log(`[attendance-nightly] exceptions=${r?.exceptions ?? 0} purged=${r?.purged ?? 0}`);
+    // personnel data kept under the retention rule (ATT-7, ADR 045): old selfies and devices go
+    const p = await job<{ n: number }>('select hr.purge_personnel() as n');
+    console.log(`[attendance-nightly] selfies and devices removed=${p?.n ?? 0}`);
   }
   // the report tables (ADR 023): the last 35 business days, after the day's exceptions
   const rep = await job<{ n: number }>('select rpt.nightly() as n');

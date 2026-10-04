@@ -31,6 +31,7 @@ export type ScreenKey =
   | 'menu'
   | 'stock'
   | 'count'
+  | 'check'
   | 'wastage'
   | 'orders'
   | 'transfers'
@@ -171,6 +172,14 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     icon: 'clipboard',
     section: 'work',
     show: (i) => can(i, 'STOCK_ADJUSTMENTS', 'modify'),
+  },
+  {
+    key: 'check',
+    href: '/stock/check',
+    label: 'Stock check',
+    icon: 'clipboard',
+    section: 'work',
+    show: (i) => can(i, 'STOCK_CHECK'),
   },
   {
     key: 'wastage',

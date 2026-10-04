@@ -17,6 +17,8 @@ export interface InboxEntry {
   link?: { href: string; label: string };
   /** show Approve/Reject here (false when the decision belongs on the module screen) */
   inline: boolean;
+  /** why it needs approval, in plain words (an unusual order or request, ADR 044) */
+  why?: string;
 }
 
 interface InboxRow {
@@ -50,6 +52,16 @@ function moduleLink(r: InboxRow): Pick<InboxEntry, 'link' | 'inline'> {
         inline: false,
       };
     case 'TRANSFER': {
+      // the department head's or GM's approval of a request for material (TR-3): decided here
+      if (r.step === 'approval') {
+        return {
+          link: {
+            href: `/stock/transfers/${r.subject_id}?node=${r.delivery_node_id}`,
+            label: 'View request',
+          },
+          inline: true,
+        };
+      }
       const node = r.step === 'dispatch' ? String(r.payload.from_node_id) : r.delivery_node_id;
       return {
         link: {
@@ -84,8 +96,13 @@ export async function inboxEntries(tx: Tx): Promise<InboxEntry[]> {
         ? `Deactivate ${x.payload.person}${
             typeof x.payload.reason === 'string' ? `: ${x.payload.reason}` : ''
           }`
-        : processLabel(x.process_type),
+        : x.process_type === 'TRANSFER' && x.payload.rfm === true
+          ? 'Request for material'
+          : processLabel(x.process_type),
     step: x.step,
+    ...(typeof x.payload.why === 'string' && x.payload.why !== '' && x.step.endsWith('approval')
+      ? { why: x.payload.why }
+      : {}),
     amount: formatMoney(x.amount),
     waitingSince: formatWhen(x.activated_at),
     // a discard sent in the lead's name for whoever threw the batch away (ADR 021)

@@ -78,17 +78,75 @@ export async function recordWastage(
   node: string,
   lines: WastageLine[],
   idempotencyKey: string,
+  /** when it happened, for an entry saved on the phone while offline (INV-8) */
+  occurredAt?: string | null,
 ): Promise<ActionResult<{ id: string; approval: boolean }>> {
   return run('record_wastage', async (tx) => {
-    const r = await sql<{ id: string }>`
-      select inv.record_wastage(${node}::uuid, ${json(lines)}::jsonb, ${idempotencyKey}) as id`.execute(
-      tx,
-    );
+    const r = occurredAt
+      ? await sql<{ id: string }>`
+          select inv.record_wastage_at(${node}::uuid, ${json(lines)}::jsonb, ${idempotencyKey},
+                                       ${occurredAt}::timestamptz) as id`.execute(tx)
+      : await sql<{ id: string }>`
+          select inv.record_wastage(${node}::uuid, ${json(lines)}::jsonb, ${idempotencyKey}) as id`.execute(
+          tx,
+        );
     const id = r.rows[0]!.id;
     const a = await sql<{ adjustment_id: string | null }>`
       select adjustment_id from inv.wastage where id = ${id}::uuid`.execute(tx);
     return { id, approval: a.rows[0]?.adjustment_id != null };
   });
+}
+
+export interface UnusualCheck {
+  /** the department head (or the GM) will have to approve */
+  needs: boolean;
+  /** in plain words: "Prawns: not on the menu", "Oil: 16 kg, usual 10 kg a week" */
+  why: string[];
+}
+
+/**
+ * Before sending an order or a request for material: will it need the department head's
+ * approval (PO-5, TR-3, ADR 044)? Asks inv.unusual_lines, which applies the same rule the
+ * workflow does. A transfer only needs approval when it goes to a department's store.
+ */
+export async function checkUnusual(
+  node: string,
+  lines: Line[],
+  kind: 'order' | 'transfer',
+): Promise<ActionResult<UnusualCheck>> {
+  const user = await requireUser();
+  try {
+    const data = await withUser(user.id, async (tx) => {
+      if (kind === 'transfer') {
+        const d = await sql<{ rfm: boolean }>`
+          select inv.is_rfm_store(${node}::uuid) as rfm`.execute(tx);
+        if (!d.rows[0]?.rfm) return { needs: false, why: [] };
+      }
+      const r = await sql<{
+        name: string;
+        reason: string;
+        qty: string;
+        weekly_avg: string;
+        uom: string;
+      }>`
+        select i.name, u.reason, u.qty, u.weekly_avg, i.base_uom as uom
+          from inv.unusual_lines(${node}::uuid, ${json(cleanLines(lines))}::jsonb) u
+          join inv.item i on i.id = u.item_id order by i.name`.execute(tx);
+      return {
+        needs: r.rows.length > 0,
+        why: r.rows.map((x) =>
+          x.reason === 'off_menu'
+            ? `${x.name}: not on the menu`
+            : `${x.name}: ${Number(x.qty)} ${x.uom}, usual ${Number(x.weekly_avg)} ${x.uom} a week`,
+        ),
+      };
+    });
+    return { ok: true, data };
+  } catch (err) {
+    const f = failure(err);
+    if (f.code === 'UNEXPECTED') console.error('check_unusual failed', err);
+    return f;
+  }
 }
 
 export async function createPo(

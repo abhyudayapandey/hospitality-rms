@@ -7,6 +7,7 @@ import { DOMAINS, type Access } from './access';
 export const DOMAIN_WORDS: Readonly<Record<string, string>> = {
   STOCK_LEVELS: 'stock levels',
   STOCK_ADJUSTMENTS: 'stock counts and wastage',
+  STOCK_CHECK: 'the stock check',
   PURCHASE_ORDERS: 'purchase orders',
   TRANSFERS: 'transfers',
   RECIPES: 'recipes',
@@ -20,6 +21,7 @@ export const DOMAIN_WORDS: Readonly<Record<string, string>> = {
   COMPENSATION: 'pay',
   LABOUR_COST: 'labour cost totals',
   ROSTER: 'rosters',
+  ATTENDANCE_SELFIES: 'clock-in selfies',
   ATTENDANCE: 'attendance',
   LEAVE: 'leave',
   EVENTS: 'events',

@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { formatMoney } from '@/lib/format';
+import { UnusualNote } from '@/components/unusual-note';
 import { createPo } from '../../actions';
 
 export interface OrderLine {
@@ -140,6 +141,11 @@ export function NewOrderForm({
         <span className="text-sm font-medium">Notes (optional)</span>
         <input value={notes} onChange={(e) => setNotes(e.target.value)} className={inputClass} />
       </label>
+      <UnusualNote
+        node={node}
+        kind="order"
+        lines={chosen.map((l) => ({ item_id: l.item_id, qty: l.qty }))}
+      />
       <ErrorBox message={error} />
       <button
         type="submit"

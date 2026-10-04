@@ -31,7 +31,7 @@ describe('test customers', () => {
     expect(rows).toEqual([
       // stocked: file 36 sends onion tomato masala from the central kitchen to Hotel 1.1 (ADR 030)
       { code: 'TEST-COMPANY', users: 113, places: 49, items: 81, stocked: 334 },
-      { code: 'TEST-SOLO-COMPANY', users: 9, places: 9, items: 56, stocked: 52 },
+      { code: 'TEST-SOLO-COMPANY', users: 10, places: 9, items: 56, stocked: 52 },
     ]);
   });
 

@@ -25,12 +25,13 @@ export default async function TransferPage({
       from_name: string;
       to_name: string;
       progress: string;
+      kind: string;
       wf_request_id: string;
       created_at: Date;
       dispatched_at: Date | null;
       received_at: Date | null;
       my_step: string | null;
-    }>`select id, from_node_id, to_node_id, from_name, to_name, progress, wf_request_id,
+    }>`select id, from_node_id, to_node_id, from_name, to_name, progress, kind, wf_request_id,
               created_at, dispatched_at, received_at, inv.my_transfer_step(id) as my_step
          from inv.transfer_summary where id = ${id}::uuid`.execute(tx);
     // lines the user may act on come through the step (a fallback approver may hold no
@@ -51,7 +52,14 @@ export default async function TransferPage({
   const [label, style] = TRANSFER_PROGRESS[t.progress] ?? [t.progress, ''];
   // Which side the user can act for is decided in SQL (the step they may act on), never here:
   // whoever runs the sending or the receiving location, through the approval chain.
-  const mode = t.my_step === 'dispatch' ? 'dispatch' : t.my_step === 'receipt' ? 'receive' : null;
+  const mode =
+    t.my_step === 'dispatch'
+      ? 'dispatch'
+      : t.my_step === 'receipt'
+        ? 'receive'
+        : t.my_step === 'approval'
+          ? 'approve'
+          : null;
   return (
     <div className="space-y-4">
       {ctx.node && (
@@ -62,6 +70,7 @@ export default async function TransferPage({
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <div className="flex items-baseline justify-between gap-2">
           <h1 className="text-lg font-semibold">
+            {t.kind === 'rfm' ? 'Request for material: ' : ''}
             {t.from_name} → {t.to_name}
           </h1>
           <span

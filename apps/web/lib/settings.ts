@@ -13,6 +13,8 @@ export interface CompanySettings {
   swaps_managers_only: boolean;
   /** UX-4 (ADR 035): a store's count is due this many days after its last one */
   count_due_days: number;
+  /** PO-5, TR-3 (ADR 044): more than this times the weekly use needs the department head */
+  usual_qty_factor: number;
 }
 
 export const DEFAULT_SETTINGS: CompanySettings = {
@@ -22,6 +24,7 @@ export const DEFAULT_SETTINGS: CompanySettings = {
   po_send_prices: false,
   swaps_managers_only: true,
   count_due_days: 7,
+  usual_qty_factor: 1.5,
 };
 
 /** The targets in the order Admin → Settings shows them, and which way is good. */
@@ -78,5 +81,6 @@ export function readSettings(raw: unknown): CompanySettings {
     po_send_prices: r.po_send_prices ?? DEFAULT_SETTINGS.po_send_prices,
     swaps_managers_only: r.swaps_managers_only ?? DEFAULT_SETTINGS.swaps_managers_only,
     count_due_days: r.count_due_days ?? DEFAULT_SETTINGS.count_due_days,
+    usual_qty_factor: r.usual_qty_factor ?? DEFAULT_SETTINGS.usual_qty_factor,
   };
 }

@@ -6,7 +6,14 @@ import { requireUser } from '@/lib/auth/server';
 import { formatDay, formatSpan } from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import { param, type SearchParams } from '@/lib/inventory';
-import { EXCEPTION_LABEL, exceptions, peopleContext, type ExceptionRow } from '@/lib/people';
+import {
+  EXCEPTION_LABEL,
+  exceptionSelfies,
+  exceptions,
+  peopleContext,
+  type ExceptionRow,
+} from '@/lib/people';
+import { photosEnabled, presignPhotoView } from '@/lib/photos';
 import { ResolveForm } from './resolve-form';
 
 function detail(e: ExceptionRow): string {
@@ -18,6 +25,14 @@ function detail(e: ExceptionRow): string {
     return `${Math.round(e.detail.distance_m)} m away at clock-${e.phase ?? 'in'}`;
   }
   if (e.kind === 'no_location') return `No location at clock-${e.phase ?? 'in'}`;
+  if (e.kind === 'no_selfie')
+    return 'Clocked in without a selfie (no camera, or it did not upload)';
+  if (e.kind === 'new_device') {
+    return `Clocked in on a phone not used before${e.detail.device_model ? ` (${e.detail.device_model})` : ''}`;
+  }
+  if (e.kind === 'shared_device') {
+    return `The same phone was used to clock in for more than one person today${e.detail.device_model ? ` (${e.detail.device_model})` : ''}`;
+  }
   return '';
 }
 
@@ -33,7 +48,23 @@ export default async function ExceptionsPage({ searchParams }: { searchParams: S
   const node = ctx.node;
   const status = param(await searchParams, 'status') === 'closed' ? 'closed' : 'open';
   const user = await requireUser();
-  const rows = await withUser(user.id, (tx) => exceptions(tx, node.id, status));
+  const { rows, selfies } = await withUser(user.id, async (tx) => {
+    const rows = await exceptions(tx, node.id, status);
+    return {
+      rows,
+      selfies: await exceptionSelfies(
+        tx,
+        rows.map((r) => r.id),
+      ),
+    };
+  });
+  // selfies are shown only to those the database lets see them (HR, the department head)
+  const selfieUrls = new Map<string, string>();
+  if (photosEnabled()) {
+    await Promise.all(
+      [...selfies].map(async ([id, key]) => selfieUrls.set(id, await presignPhotoView(key))),
+    );
+  }
   const canResolve = ctx.can('ATTENDANCE', 'modify');
   // one group per department (or the place itself), in tree order
   const groups: { id: string; name: string; rows: ExceptionRow[] }[] = [];
@@ -89,6 +120,17 @@ export default async function ExceptionsPage({ searchParams }: { searchParams: S
                       </span>
                     </div>
                     {detail(e) && <p className="mt-1 text-sm text-slate-600">{detail(e)}</p>}
+                    {selfieUrls.get(e.id) && (
+                      // eslint-disable-next-line @next/next/no-img-element -- a 5-minute signed URL
+                      <img
+                        src={selfieUrls.get(e.id)}
+                        alt={`Selfie of ${e.worker_name} at clock-in`}
+                        width={96}
+                        height={96}
+                        data-testid="selfie"
+                        className="mt-2 h-24 w-24 rounded-lg object-cover"
+                      />
+                    )}
                     {e.status !== 'open' ? (
                       <p className="mt-1 text-sm text-slate-600">
                         {e.status === 'resolved' ? 'Resolved' : 'Dismissed'}

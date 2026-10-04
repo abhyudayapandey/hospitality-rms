@@ -18,9 +18,10 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
       from_name: string;
       to_name: string;
       progress: string;
+      kind: string;
       created_at: Date;
     }>`
-      select id, from_node_id, from_name, to_name, progress, created_at
+      select id, from_node_id, from_name, to_name, progress, kind, created_at
         from inv.transfer_summary
        where from_node_id = ${ctx.node!.id}::uuid or to_node_id = ${ctx.node!.id}::uuid
        order by created_at desc limit 30`.execute(tx);
@@ -55,6 +56,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
                 >
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="font-medium">
+                      {r.kind === 'rfm' ? 'Request for material · ' : ''}
                       {outgoing ? `To ${r.to_name}` : `From ${r.from_name}`}
                     </span>
                     <span

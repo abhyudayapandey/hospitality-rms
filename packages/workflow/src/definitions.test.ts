@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HANDLERS, INVENTORY_HANDLERS } from './handlers';
-import { LEAVE, PROCESS_DEFS, TRANSFER } from './processes';
+import { LEAVE, PROCESS_DEFS, PURCHASE_ORDER, TRANSFER } from './processes';
 import { chainGroups, FINAL_APPROVER, processDefSchema } from './types';
 
 describe('process definitions', () => {
@@ -42,8 +42,27 @@ describe('process definitions', () => {
     }
   });
 
+  it('has orders approved by the department head (or the GM) only when unusual, then the area manager above the threshold (PO-5)', () => {
+    expect(PURCHASE_ORDER.steps.map((s) => [s.step, s.group, s.when])).toEqual([
+      ['department_approval', 'DEPARTMENT_HEAD', { payload_true: 'unusual' }],
+      ['area_approval', 'AREA_MANAGER', { amount_gt: 50000 }],
+    ]);
+    expect(PURCHASE_ORDER.steps[0]).toMatchObject({
+      escalateTo: 'OUTLET_MANAGER',
+      alsoEscalateTo: true,
+    });
+  });
+
+  it('puts the department head in front of a request for material when unusual (TR-3)', () => {
+    expect(TRANSFER.steps[0]).toMatchObject({
+      step: 'approval',
+      group: 'DEPARTMENT_HEAD',
+      when: { payload_true: 'unusual' },
+    });
+  });
+
   it('scopes TRANSFER dispatch to the from node and receipt to the to node', () => {
-    expect(TRANSFER.steps.map((s) => [s.step, s.scope])).toEqual([
+    expect(TRANSFER.steps.slice(1).map((s) => [s.step, s.scope])).toEqual([
       ['dispatch', 'from_node'],
       ['receipt', 'to_node'],
     ]);

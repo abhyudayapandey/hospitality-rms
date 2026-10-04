@@ -4,15 +4,17 @@ import { createOrder, PLACE, placeId, runExecutor, signInAs } from './helpers';
 // The acceptance flow on the production build, through the real screens: the store keeper
 // (Test Bar 3.0's head cook) orders, cannot approve their own order, the outlet manager
 // (the Bar Manager) approves it, the executor releases it, the store keeper receives it and
-// stock on hand goes up.
+// stock on hand goes up. Paper napkins are in no recipe, so the order is off the menu and
+// needs the department head or the GM (PO-5, ADR 044); the head cook is the department head
+// and made it, so it goes to the Bar Manager, the GM.
 test('store keeper orders, outlet manager approves, store keeper receives', async ({ page }) => {
   const store = await placeId(PLACE.store);
   await signInAs(page, 'Test Head Cook 3.0');
-  const onions = page.locator('[data-sku="ONIONS"] [data-testid="on-hand"]');
+  const napkins = page.locator('[data-sku="PAPER-NAPKINS-PACK-OF-100"] [data-testid="on-hand"]');
   await page.goto(`/stock?node=${store}`);
-  const before = parseFloat((await onions.textContent())!.replace(/,/g, ''));
+  const before = parseFloat((await napkins.textContent())!.replace(/,/g, ''));
 
-  const po = await createOrder(page, 'Test Onions', '5');
+  const po = await createOrder(page, 'Test Paper Napkins (Pack of 100)', '5');
   await expect(page.getByTestId('po-progress')).toHaveText('awaiting approval');
 
   // The head cook cannot approve their own order: it is not in their inbox.
@@ -34,18 +36,20 @@ test('store keeper orders, outlet manager approves, store keeper receives', asyn
   await signInAs(page, 'Test Head Cook 3.0');
   await page.goto(`/stock/orders/${po}?node=${store}`);
   await expect(page.getByTestId('po-progress')).toHaveText('ordered');
-  await expect(page.getByRole('textbox', { name: 'Received Test Onions' })).toHaveValue('5');
+  await expect(
+    page.getByRole('textbox', { name: 'Received Test Paper Napkins (Pack of 100)' }),
+  ).toHaveValue('5');
   await page.getByRole('button', { name: 'Receive goods' }).click();
   await expect(page.getByRole('status')).toHaveText('Received.');
   await expect(page.getByTestId('po-progress')).toHaveText('received');
 
   await page.goto(`/stock?node=${store}`);
-  await expect(onions).toHaveText(`${before + 5} kg`);
+  expect(parseFloat((await napkins.textContent())!.replace(/,/g, ''))).toBe(before + 5);
 });
 
 test('a stale screen gets a friendly message, not a SQL error', async ({ page, context }) => {
   await signInAs(page, 'Test Head Cook 3.0');
-  const po = await createOrder(page, 'Test Tomatoes', '2');
+  const po = await createOrder(page, 'Test Aluminium Foil Roll', '2');
 
   await signInAs(page, 'Test Bar Manager 3.0');
   const stale = await context.newPage();

@@ -116,7 +116,13 @@ describe('hr.clock', () => {
       const first = await clock(c, SAM(), 'in', HERE, 'k-in-1');
       expect(first.error).toBeUndefined();
       const p = first.rows![0]!;
-      expect(p).toMatchObject({ shift_id: shift, inside: true, distance_m: '0.0', flags: [] });
+      // no selfie was sent: flagged, not blocked (ATT-7)
+      expect(p).toMatchObject({
+        shift_id: shift,
+        inside: true,
+        distance_m: '0.0',
+        flags: ['no_selfie'],
+      });
 
       const replay = await clock(c, SAM(), 'in', HERE, 'k-in-1');
       expect(replay.rows![0]!.attendance_id).toBe(p.attendance_id);
@@ -135,10 +141,13 @@ describe('hr.clock', () => {
         'outside_geofence',
       ]);
       const ex = await c.query<{ kind: string; phase: string }>(
-        'select kind, phase from hr.attendance_exception where attendance_id = $1',
+        'select kind, phase from hr.attendance_exception where attendance_id = $1 order by kind',
         [p.attendance_id],
       );
-      expect(ex.rows).toEqual([{ kind: 'outside_geofence', phase: 'out' }]);
+      expect(ex.rows).toEqual([
+        { kind: 'no_selfie', phase: 'in' },
+        { kind: 'outside_geofence', phase: 'out' },
+      ]);
       expect((await clock(c, SAM(), 'out', HERE, 'k-out-2')).error).toBe('NOT_CLOCKED_IN');
     });
   });
@@ -147,13 +156,17 @@ describe('hr.clock', () => {
     await inRolledBackTx(async (c) => {
       await fixture(c);
       const r = await clock(c, SAM(), 'in', null, 'k1');
-      expect(r.rows![0]).toMatchObject({ inside: null, flags: ['no_location'], shift_id: null });
+      expect(r.rows![0]).toMatchObject({
+        inside: null,
+        flags: ['no_location', 'no_selfie'],
+        shift_id: null,
+      });
       await c.query('delete from hr.node_setting where org_node_id = $1', [
         ids.node('TEST-GUEST-HOUSE-2.0'),
       ]);
       const bea = await newWorker(c, ids, 'Bea Outlet B', 'TEST-GUEST-HOUSE-2.0', 'SERVER');
       const b = await clock(c, bea.userId, 'in', FAR, 'k2');
-      expect(b.rows![0]).toMatchObject({ inside: null, distance_m: null, flags: [] });
+      expect(b.rows![0]).toMatchObject({ inside: null, distance_m: null, flags: ['no_selfie'] });
     });
   });
 
@@ -422,10 +435,11 @@ describe('exceptions queue and self-service RLS', () => {
       const count = async (user: string, table: string) =>
         (await attemptAs<{ n: string }>(c, user, `select count(*) n from ${table}`)).rows![0]!.n;
       expect(await count(SAM(), 'hr.attendance')).toBe('1');
-      expect(await count(SAM(), 'hr.attendance_exception')).toBe('1');
+      // outside the fence, and no selfie (ATT-7): two exceptions on the punch
+      expect(await count(SAM(), 'hr.attendance_exception')).toBe('2');
       expect(await count(f.pat.userId, 'hr.attendance')).toBe('1');
       expect(await count(OLIVIA(), 'hr.attendance')).toBe('3');
-      expect(await count(ids.user('test.area-manager'), 'hr.attendance_exception')).toBe('3');
+      expect(await count(ids.user('test.area-manager'), 'hr.attendance_exception')).toBe('6');
       const omar = await newWorker(c, ids, 'Omar B Manager', 'TEST-GUEST-HOUSE-2.0', 'MANAGER', [
         ['OUTLET_MANAGER', 'TEST-GUEST-HOUSE-2.0'],
       ]);
@@ -441,7 +455,8 @@ describe('exceptions queue and self-service RLS', () => {
       const exOf = async (worker: string) =>
         (
           await c.query<{ id: string }>(
-            'select id from hr.attendance_exception where worker_id = $1',
+            `select id from hr.attendance_exception where worker_id = $1
+              order by kind desc limit 1`, // outside_geofence, not the missing selfie
             [worker],
           )
         ).rows[0]!.id;

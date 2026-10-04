@@ -84,7 +84,7 @@ test('clock in (server)', async ({ page }) => {
     await j.go(nav(page, 'Me'));
     await j.go(page.getByTestId('me-clock'));
   }
-  await j.last(page.getByRole('button', { name: /^Clock (in|out)$/ }));
+  await j.last(page.getByRole('button', { name: /^Clock (in with a selfie|out)$/ }));
   j.done('Clock in', 'Server', { there: 2, form: 1 });
 });
 

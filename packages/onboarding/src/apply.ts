@@ -942,17 +942,22 @@ class Loader {
       await this.upsert(
         'item locations',
         `insert into inv.item_node (tenant_id, item_id, delivery_node_id, par_level, reorder_qty,
-                                    count_tolerance_pct, preferred_supplier_id)
-         values ($1, $2, $3, $4, $5, $6, $7)
+                                    count_tolerance_pct, preferred_supplier_id, shelf, shelf_order)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          on conflict (tenant_id, item_id, delivery_node_id) do update
             set par_level = excluded.par_level, reorder_qty = excluded.reorder_qty,
                 count_tolerance_pct = excluded.count_tolerance_pct,
-                preferred_supplier_id = excluded.preferred_supplier_id, archived_at = null
+                preferred_supplier_id = excluded.preferred_supplier_id,
+                shelf = coalesce(excluded.shelf, inv.item_node.shelf),
+                shelf_order = coalesce(excluded.shelf_order, inv.item_node.shelf_order),
+                archived_at = null
           where (inv.item_node.par_level, inv.item_node.reorder_qty,
                  inv.item_node.count_tolerance_pct, inv.item_node.preferred_supplier_id,
-                 inv.item_node.archived_at)
+                 inv.item_node.shelf, inv.item_node.shelf_order, inv.item_node.archived_at)
                 is distinct from (excluded.par_level, excluded.reorder_qty,
                                   excluded.count_tolerance_pct, excluded.preferred_supplier_id,
+                                  coalesce(excluded.shelf, inv.item_node.shelf),
+                                  coalesce(excluded.shelf_order, inv.item_node.shelf_order),
                                   null)
          returning id, xmax = 0 as inserted`,
         [
@@ -963,6 +968,8 @@ class Loader {
           l.reorder_qty,
           l.count_tolerance_pct ?? null,
           supplier(l.preferred_supplier_code),
+          l.shelf ?? null,
+          l.shelf_order ?? null,
         ],
       );
     }
@@ -1823,8 +1830,17 @@ class Loader {
           [po],
         )
       ).rows[0]!.id;
+      // PO-5 (ADR 044): an order of menu items in usual quantities is approved by the
+      // workflow at once; only the others wait for the approver in the file
+      const waiting = (
+        await this.c.query<{ state: string }>(`select state from wf.request where id = $1`, [
+          request,
+        ])
+      ).rows[0]!.state;
       await this.as(first.approved_by, async () => {
-        await this.c.query(`select wf.act($1, 'approve', 'Test data order')`, [request]);
+        if (waiting === 'in_approval') {
+          await this.c.query(`select wf.act($1, 'approve', 'Test data order')`, [request]);
+        }
         await this.c.query(
           `select inv.record_test_release($1, ($2::date + time '10:00') at time zone $3)`,
           [po, this.day(first.ordered_day), tz],

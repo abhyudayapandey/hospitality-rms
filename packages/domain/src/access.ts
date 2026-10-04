@@ -17,6 +17,9 @@ export interface DomainDef {
 export const DOMAINS: readonly DomainDef[] = [
   { code: 'STOCK_LEVELS', tree: 'delivery' },
   { code: 'STOCK_ADJUSTMENTS', tree: 'delivery' },
+  // the stock check: counting what is on the shelves against what should be there, and
+  // seeing who verified what (INV-10, ADR 043); modify is the verifier's right
+  { code: 'STOCK_CHECK', tree: 'delivery' },
   { code: 'PURCHASE_ORDERS', tree: 'delivery' },
   { code: 'TRANSFERS', tree: 'delivery' },
   // recipes and prep procedures where they are made or sold (no costs, ADR 014)
@@ -40,6 +43,9 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'LABOUR_COST', tree: 'org' },
   { code: 'ROSTER', tree: 'org' },
   { code: 'ATTENDANCE', tree: 'org' },
+  // clock-in selfies: HR, the head of the person's department and the person themselves; not the
+  // GM or the area manager (ATT-7, ADR 045)
+  { code: 'ATTENDANCE_SELFIES', tree: 'org' },
   { code: 'LEAVE', tree: 'org' },
   { code: 'EVENTS', tree: 'org' },
   { code: 'SHIFT_SWAPS', tree: 'org' },
@@ -91,6 +97,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       ATTENDANCE: m,
       LEAVE: m,
       SHIFT_SWAPS: m,
+      ATTENDANCE_SELFIES: v,
       NOTIFICATIONS: v,
       TASKS: m,
       MAINTENANCE: m,
@@ -122,6 +129,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: {
       ROSTER: m,
       ATTENDANCE: m,
+      ATTENDANCE_SELFIES: v,
       LEAVE: v,
       SHIFT_SWAPS: v,
       WORKERS: v,
@@ -179,6 +187,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: {
       STOCK_LEVELS: v,
       STOCK_ADJUSTMENTS: m,
+      STOCK_CHECK: v,
       TRANSFERS: m,
       PURCHASE_ORDERS: m,
       AI_RECOMMENDATIONS: v,
@@ -193,6 +202,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: {
       STOCK_LEVELS: v,
       STOCK_ADJUSTMENTS: v,
+      STOCK_CHECK: m,
       PURCHASE_ORDERS: v,
       TRANSFERS: v,
       RECIPES: v,
@@ -202,10 +212,18 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     },
   },
   {
+    // verifies stock where the company has no Cost Controller (INV-11, ADR 043); given by
+    // the Account Owner
+    code: 'STOCK_VERIFIER',
+    name: 'Stock Verifier',
+    kind: 'role',
+    grants: { STOCK_LEVELS: v, STOCK_CHECK: m },
+  },
+  {
     code: 'OUTLET_HR',
     name: 'Outlet HR',
     kind: 'role',
-    grants: { WORKERS: m, LEAVE: m, ROSTER: v, ATTENDANCE: v },
+    grants: { WORKERS: m, LEAVE: m, ROSTER: v, ATTENDANCE: v, ATTENDANCE_SELFIES: v },
   },
   {
     code: 'OUTLET_MANAGER',
@@ -214,6 +232,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: {
       STOCK_LEVELS: v,
       STOCK_ADJUSTMENTS: m,
+      STOCK_CHECK: v,
       PURCHASE_ORDERS: m,
       TRANSFERS: m,
       // worker records: People, and asking for a deactivation where there is no HR
@@ -270,6 +289,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: {
       STOCK_LEVELS: v,
       STOCK_ADJUSTMENTS: m,
+      STOCK_CHECK: v,
       PURCHASE_ORDERS: v,
       TRANSFERS: m,
       RECIPES: v,
@@ -288,6 +308,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       LEAVE: m,
       ROSTER: v,
       ATTENDANCE: v,
+      ATTENDANCE_SELFIES: v,
       WF_CONFIG: v,
       LABOUR_COST: v,
     },

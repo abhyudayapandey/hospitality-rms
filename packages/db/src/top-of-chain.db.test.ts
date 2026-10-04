@@ -153,6 +153,8 @@ describe('the sole owner’s own requests', () => {
         await c.query<{ r: string }>('select wf_request_id r from inv.transfer where id = $1', [t])
       ).rows[0]!.r;
       expect((await steps(c, req)).map((s) => [s.step, s.state, s.top_of_chain])).toEqual([
+        // lemons are a menu ingredient here in a usual quantity: no approval (TR-3, ADR 044)
+        ['approval', 'skipped', false],
         ['dispatch', 'pending', true],
         ['receipt', 'waiting', true],
       ]);

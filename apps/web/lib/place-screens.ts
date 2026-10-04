@@ -4,6 +4,8 @@
 export const PLACE_SCREENS = [
   'stock',
   'count',
+  // the stock check (ADR 043): stores where the caller holds STOCK_CHECK
+  'check',
   'wastage',
   'orders',
   'transfers',

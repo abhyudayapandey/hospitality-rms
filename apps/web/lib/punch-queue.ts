@@ -12,6 +12,13 @@ export interface QueuedPunch {
   lng: number | null;
   accuracy: number | null;
   clientTs: string;
+  /** this browser's id and the phone model, for a clock-in (ATT-7, ADR 045) */
+  deviceId?: string | null;
+  deviceModel?: string | null;
+  /** the selfie taken at clock-in, kept on the phone until the punch syncs (IndexedDB holds blobs) */
+  selfie?: Blob | null;
+  /** how many times uploading the selfie failed while online; after 3 the punch goes without it */
+  selfieTries?: number;
 }
 
 export interface PunchStore {

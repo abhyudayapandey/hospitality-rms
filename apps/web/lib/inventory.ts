@@ -22,7 +22,7 @@ export interface SupplyContext {
 
 export type SupplyScreen = Extract<
   Screen,
-  'stock' | 'count' | 'wastage' | 'orders' | 'transfers' | 'production' | 'variance'
+  'stock' | 'count' | 'check' | 'wastage' | 'orders' | 'transfers' | 'production' | 'variance'
 >;
 
 /**
@@ -182,6 +182,7 @@ export const PO_PROGRESS: Record<string, [string, string]> = {
 
 /** Transfer progress (inv.transfer_summary.progress): label and badge style. */
 export const TRANSFER_PROGRESS: Record<string, [string, string]> = {
+  awaiting_approval: ['waiting for approval', 'bg-violet-100 text-violet-900'],
   awaiting_dispatch: ['awaiting dispatch', 'bg-amber-100 text-amber-900'],
   in_transit: ['in transit', 'bg-sky-100 text-sky-900'],
   received: ['received', 'bg-emerald-100 text-emerald-900'],

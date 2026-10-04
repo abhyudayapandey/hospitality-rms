@@ -18,12 +18,20 @@ export const stepSchema = z.strictObject({
         .string()
         .regex(/^[a-z][a-z0-9_]*$/)
         .optional(),
+      // a flag in the request's payload that must be true (PO-5: "unusual", ADR 044)
+      payload_true: z
+        .string()
+        .regex(/^[a-z][a-z0-9_]*$/)
+        .optional(),
     })
     .optional(),
   escalateTo: z
     .string()
     .regex(/^[A-Z][A-Z0-9_]*$/)
     .optional(),
+  // the escalation group may act at once, not only after the SLA or when the first group
+  // has nobody (PO-5: the GM beside the department head, ADR 044)
+  alsoEscalateTo: z.literal(true).optional(),
   // groups tried after group / escalateTo / group above, nearest holder first; the engine
   // always ends every chain with FINAL_APPROVER (ADR 009)
   fallback: z
@@ -54,7 +62,7 @@ export const processDefSchema = z
   .refine(
     (d) =>
       d.steps.every(
-        (s) => (s.scope === 'from_node' || s.scope === 'to_node') === (d.type === 'TRANSFER'),
+        (s) => (s.scope !== 'from_node' && s.scope !== 'to_node') || d.type === 'TRANSFER',
       ),
     { message: 'from_node/to_node scopes are only for two-sided processes (TRANSFER)' },
   );

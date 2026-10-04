@@ -101,11 +101,15 @@ async function submit(c: PoolClient, who: string, a: SubmitArgs): Promise<Attemp
   );
 }
 
-const po = (amount: number, key?: string): SubmitArgs => ({
+// PO-5 (ADR 044): an unusual order (off the menu or more than usual) goes to the department
+// head or the GM; the usual ones are approved at once (po5-rfm.db.test.ts), so these tests
+// flag theirs unusual.
+const po = (amount: number, key?: string, unusual = true): SubmitArgs => ({
   process: 'PURCHASE_ORDER',
   subject: 'inv.purchase_order',
   amount,
   delivery: 'TEST-BAR-3.0-KITCHEN-STORE',
+  payload: { unusual },
   ...(key ? { key } : {}),
 });
 
@@ -187,6 +191,16 @@ async function inbox(c: PoolClient, who: string): Promise<string[]> {
   return r.rows.map((x) => x.request_id);
 }
 
+/** Ends `who`'s assignments of one group inside the rolled-back transaction. */
+async function endGroup(c: PoolClient, who: string, group: string) {
+  await c.query(
+    `update core.role_assignment ra set effective_from = date '2020-01-01',
+            effective_to = date '2020-12-31'
+       from core.security_group g where ra.group_id = g.id and g.code = $2 and ra.user_id = $1`,
+    [ids.user(who), group],
+  );
+}
+
 /** Gives `who` an extra assignment inside the rolled-back transaction. */
 async function assign(c: PoolClient, who: string, group: string, node: string) {
   await c.query(
@@ -198,19 +212,19 @@ async function assign(c: PoolClient, who: string, group: string, node: string) {
 }
 
 describe('purchase order routing', () => {
-  it('happy path: outlet approval only, area step recorded as skipped', async () => {
+  it('happy path: one approval only, area step recorded as skipped', async () => {
     await inRolledBackTx(async (c) => {
       const id = await submitOk(c, KIM, po(10_000));
       expect(await request(c, id)).toEqual({
         state: 'in_approval',
-        current_step: 'outlet_approval',
+        current_step: 'department_approval',
         domain_code: 'PURCHASE_ORDERS', // from wf.process_def, never from input
       });
       expect(await steps(c, id)).toEqual([
         {
-          step: 'outlet_approval',
+          step: 'department_approval',
           state: 'pending',
-          scope: 'TEST-BAR-3.0-KITCHEN-STORE',
+          scope: 'TEST-BAR-3.0-SUPPLY', // Kim is the department head and asked: the GM
           grp: 'OUTLET_MANAGER',
         },
         { step: 'area_approval', state: 'skipped', scope: null, grp: 'AREA_MANAGER' },
@@ -226,9 +240,9 @@ describe('purchase order routing', () => {
       const id = await submitOk(c, KIM, po(60_000));
       expect(await steps(c, id)).toEqual([
         {
-          step: 'outlet_approval',
+          step: 'department_approval',
           state: 'pending',
-          scope: 'TEST-BAR-3.0-KITCHEN-STORE',
+          scope: 'TEST-BAR-3.0-SUPPLY', // Kim is the department head and asked: the GM
           grp: 'OUTLET_MANAGER',
         },
         { step: 'area_approval', state: 'waiting', scope: 'TEST-AREA-MUMBAI', grp: 'AREA_MANAGER' },
@@ -267,20 +281,30 @@ describe('purchase order routing', () => {
 
   it('blocks self-approval (rule 7)', async () => {
     await inRolledBackTx(async (c) => {
-      await assign(c, CASEY, 'OUTLET_MANAGER', 'TEST-BAR-3.0-KITCHEN-STORE'); // a second eligible approver
       const id = await submitOk(c, OLIVIA, po(10_000));
       expect((await act(c, OLIVIA, id, 'approve')).error).toBe('SEGREGATION_OF_DUTIES');
       expect((await act(c, OLIVIA, id, 'reject')).error).toBe('SEGREGATION_OF_DUTIES');
-      expect(await actOk(c, CASEY, id, 'approve')).toBe('approved');
+      expect(await actOk(c, KIM, id, 'approve')).toBe('approved'); // the head of Kitchen
     });
   });
 
-  it("routes a sole outlet manager's PO to the Area manager (SoD fallback)", async () => {
+  it("routes the GM's PO to the head of the department that uses the store", async () => {
     await inRolledBackTx(async (c) => {
+      const id = await submitOk(c, OLIVIA, po(10_000));
+      expect((await steps(c, id))[0]).toMatchObject({
+        grp: 'DEPARTMENT_HEAD',
+        scope: 'TEST-BAR-3.0-KITCHEN',
+      });
+    });
+  });
+
+  it("routes a sole outlet manager's PO to the Area manager when nobody heads the department (SoD fallback)", async () => {
+    await inRolledBackTx(async (c) => {
+      await endGroup(c, KIM, 'DEPARTMENT_HEAD');
       const id = await submitOk(c, OLIVIA, po(10_000));
       expect(await steps(c, id)).toEqual([
         {
-          step: 'outlet_approval',
+          step: 'department_approval',
           state: 'pending',
           scope: 'TEST-AREA-MUMBAI',
           grp: 'AREA_MANAGER',
@@ -295,12 +319,13 @@ describe('purchase order routing', () => {
 
   it('skips a step whose approver already approved the previous step (same_approver)', async () => {
     await inRolledBackTx(async (c) => {
-      // Sole outlet manager, PO over 50,000: step 1 falls back to the Area manager, who
-      // is also the area_approval approver.
+      // Sole outlet manager and nobody heading the department, PO over 50,000: step 1 falls
+      // back to the Area manager, who is also the area_approval approver.
+      await endGroup(c, KIM, 'DEPARTMENT_HEAD');
       const id = await submitOk(c, OLIVIA, po(60_000));
       expect(await steps(c, id)).toEqual([
         {
-          step: 'outlet_approval',
+          step: 'department_approval',
           state: 'pending',
           scope: 'TEST-AREA-MUMBAI',
           grp: 'AREA_MANAGER',
@@ -321,12 +346,12 @@ describe('purchase order routing', () => {
         [id],
       );
       expect(rows).toEqual([
-        { step: 'outlet_approval', state: 'approved', skip_reason: null, covered_by: null },
+        { step: 'department_approval', state: 'approved', skip_reason: null, covered_by: null },
         {
           step: 'area_approval',
           state: 'skipped',
           skip_reason: 'same_approver',
-          covered_by: 'outlet_approval',
+          covered_by: 'department_approval',
         },
       ]);
 
@@ -398,7 +423,9 @@ describe('purchase order routing', () => {
           [ids.user(who)],
         );
       await end(ARIA);
-      // no area manager: the account owner is the last approver of every step
+      await endGroup(c, KIM, 'DEPARTMENT_HEAD');
+      // no area manager and nobody heading the department: the account owner is the last
+      // approver of every step
       const owned = await submitOk(c, OLIVIA, po(10_000));
       expect((await steps(c, owned))[0]).toMatchObject({ state: 'pending', grp: 'ACCOUNT_OWNER' });
       expect(await inbox(c, OWNER)).toContain(owned);
@@ -523,7 +550,11 @@ describe('subject-derived nodes and amount', () => {
     await inRolledBackTx(async (c) => {
       const id = await submitOk(c, KIM, {
         ...po(60_000),
-        payload: { amount: 1, delivery_node_id: ids.node('TEST-GUEST-HOUSE-2.0-SUPPLY') },
+        payload: {
+          unusual: true,
+          amount: 1,
+          delivery_node_id: ids.node('TEST-GUEST-HOUSE-2.0-SUPPLY'),
+        },
       });
       const { rows } = await c.query<{ amount: string; node: string }>(
         `select r.amount, n.code as node from wf.request r
@@ -608,6 +639,8 @@ describe('two-sided transfer', () => {
       expect((await submit(c, OLIVIA, transfer())).error).toBe('NOT_AUTHORISED'); // not an initiator
       const id = await submitOk(c, KIM, transfer());
       expect(await steps(c, id)).toEqual([
+        // TR-3: only a request for material that is unusual needs the department head first
+        { step: 'approval', state: 'skipped', scope: null, grp: 'DEPARTMENT_HEAD' },
         {
           step: 'dispatch',
           state: 'pending',
@@ -770,7 +803,7 @@ describe('escalation', () => {
       expect(un.rows).toEqual([{ request_id: id, step: 'dispatch' }]);
       const escalated = await c.query<{ n: number }>('select wf.escalate_overdue() as n');
       expect(escalated.rows[0]!.n).toBe(0);
-      expect((await steps(c, id))[0]).toMatchObject({
+      expect((await steps(c, id))[1]).toMatchObject({
         state: 'pending',
         scope: 'TEST-CENTRAL-KITCHEN-STORE',
       });

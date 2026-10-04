@@ -32,6 +32,7 @@ export function SettingsForm({
   const [prices, setPrices] = useState(settings.po_send_prices);
   const [swaps, setSwaps] = useState(settings.swaps_managers_only);
   const [countDays, setCountDays] = useState(String(settings.count_due_days));
+  const [usual, setUsual] = useState(String(settings.usual_qty_factor));
 
   const save = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +44,7 @@ export function SettingsForm({
         po_send_prices: prices,
         swaps_managers_only: swaps,
         count_due_days: Number(countDays),
+        usual_qty_factor: Number(usual),
       });
       if (!r.ok) {
         setError(r.message);
@@ -162,6 +164,31 @@ export function SettingsForm({
             onChange={(e) => setPrices(e.target.checked)}
           />
         </label>
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+          <label htmlFor="usual-qty" className="min-w-0">
+            <span className="block font-medium">A usual quantity is up to</span>
+            <span className="block text-xs text-slate-500">
+              times what the store uses in a week (the last 4 weeks). Orders and requests for menu
+              items up to this need no approval; anything more, or off the menu, goes to the
+              department head.
+            </span>
+          </label>
+          <span className="flex items-center gap-1">
+            <input
+              id="usual-qty"
+              type="number"
+              inputMode="decimal"
+              min={1}
+              max={10}
+              step="0.25"
+              required
+              className={field}
+              value={usual}
+              onChange={(e) => setUsual(e.target.value)}
+            />
+            <span className="text-sm text-slate-600">×</span>
+          </span>
+        </div>
       </fieldset>
 
       <fieldset className="space-y-2" disabled={!canEdit}>

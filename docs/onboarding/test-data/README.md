@@ -26,6 +26,8 @@ Admins: `test.account-owner` (Account Owner, whole company); the GM of Hotel 1.0
 
 Company → Test Solo Bar → Bar, Floor Service, Kitchen. No region, area or central kitchen.
 The owner `test.solo.bar-manager` is both Bar Manager (outlet head) and Account Owner.
+There is no Cost Controller, so `test.solo.stock-verifier` (job role Stock Verifier, access
+group STOCK_VERIFIER at the outlet's stores, ADR 043) does the stock check there.
 Policy difference from Test Company: here the Head Bartender is a STORE_KEEPER (can order stock), not a STOCK_USER — job-role access is set per customer.
 
 ## How codes work
@@ -49,7 +51,7 @@ Each access row means: this person has this access group at this place. It cover
 | `06_job_roles.csv`                                 | This customer's job titles and default access. `outlet_format` = any, or a format whose default overrides it (e.g. Bar Manager in a standalone bar)                                                                                                                                                                                                                                                                                                                                                                       |
 | `07_users.csv`                                     | One row per person, with home place (department, or the outlet itself if there are no departments)                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `08_role_assignments_extra.csv`                    | Exceptions: admins, cover arrangements                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `09_suppliers.csv` – `12_opening_stock.csv`        | Suppliers (with an optional `contact_email` and `contact_phone` for sending orders, ADR 032; blank keeps what was set in the app), items, which store holds which item, opening stock                                                                                                                                                                                                                                                                                                                                     |
+| `09_suppliers.csv` – `12_opening_stock.csv`        | Suppliers (with an optional `contact_email` and `contact_phone` for sending orders, ADR 032; blank keeps what was set in the app), items, which store holds which item (file 11 has optional `shelf` and `shelf_order`: where the item sits in the store, for shelf-ordered count sheets in the stock check, ADR 043; blank keeps what was set; Test Bar 3.0's bar store has shelves), opening stock                                                                                                                      |
 | `13_leave_types.csv`, `14_leave_balances.csv`      | Leave types and balances                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `15_roster_settings.csv`, `16_shift_templates.csv` | Rest/cap/late rules; standard shifts per department (or per outlet)                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `17_events_TEST_DATA_ONLY.csv`                     | Sample events — test only                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -226,7 +228,9 @@ Blank `received_day`: not delivered yet.
 The loader handles each order once per customer, as the people named:
 
 1. `ordered_by` creates it (`inv.create_po`, which submits it for approval).
-2. `approved_by` approves it.
+2. `approved_by` approves it, if it needs approval: an order of menu items in usual
+   quantities is approved by the workflow at once (PO-5, ADR 044), and the loader skips this
+   step for it.
 3. It is released at 10:00 on its order day.
 4. `received_by` receives `received_quantity` of each line at 11:00 on the receipt day.
 
@@ -239,8 +243,10 @@ Nobody approves their own order.
 | PO-3  | Fresh Produce   | Tomatoes 15 kg at ₹48                      | day -2  | day -1, in full                   |
 | PO-4  | Dairy & Poultry | Paneer 5 kg at ₹380, milk 20 l at ₹60      | day -3  | not delivered                     |
 
-The Executive Chef 1.0 orders and receives (store keeper of the Kitchen Store); the GM 1.0
-approves.
+The Executive Chef 1.0 orders and receives (store keeper of the Kitchen Store; also head of
+Kitchen). PO-1 to PO-3 are menu ingredients in usual quantities and need no approval. PO-4
+(20 litres of milk against under a litre used a week) is unusual, so it needs approval, and
+the Executive Chef made it: the GM 1.0 approves (`cost-reports.db.test.ts` pins it).
 
 **Expected figures** (`packages/db/src/cost-reports.db.test.ts` pins them; the last four
 weeks to the load day):
