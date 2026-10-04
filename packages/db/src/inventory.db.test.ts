@@ -596,6 +596,10 @@ describe('two-leg transfer', () => {
         want,
       ]);
       const req = await requestOf(c, 'transfer', t.id);
+      // Onions and garlic are in no recipe here, so this request for material is off the menu
+      // and the GM (Kim, the department head, asked) approves it before it goes to the store
+      // keeper (TR-3, ADR 043).
+      await call(c, OLIVIA, `select wf.act($1, 'approve')`, [req]);
       const progress = async () =>
         (
           await c.query<{ p: string }>(
@@ -692,6 +696,7 @@ describe('two-leg transfer', () => {
         [node('centralKitchen'), node('kitchen'), lines([{ item_id: f.item('T-LEMON'), qty: 5 }])],
       );
       const req = await requestOf(c, 'transfer', t.id);
+      await call(c, OLIVIA, `select wf.act($1, 'approve')`, [req]); // off the menu: TR-3
       await call(c, CK_KEEPER, `select wf.act($1, 'reject')`, [req]);
       expect(await execute(c, req)).toEqual(['inv.transfer.reject']);
       expect(await statusOf(c, 'transfer', t.id)).toBe('rejected');

@@ -24,6 +24,10 @@ export const STOCK_ADJUSTMENT: ProcessDef = {
   slaHours: 24,
 };
 
+// PO-5 (ADR 043): department heads are responsible for orders. Menu ingredients in usual
+// quantities need no approval (every step is skipped and the order is approved at once); the
+// department head approves anything off the menu or more than usual, and the GM can approve
+// too. The area manager step above the value threshold stays.
 export const PURCHASE_ORDER: ProcessDef = {
   type: 'PURCHASE_ORDER',
   subject: 'inv.purchase_order',
@@ -31,10 +35,13 @@ export const PURCHASE_ORDER: ProcessDef = {
   hierarchy: 'delivery',
   steps: [
     {
-      step: 'outlet_approval',
-      group: 'OUTLET_MANAGER',
-      scope: 'subject_node',
-      escalateTo: 'AREA_MANAGER', // SLA escalation and SoD fallback
+      step: 'department_approval',
+      group: 'DEPARTMENT_HEAD',
+      scope: 'nearest_ancestor', // the department that uses the store, via core.node_link
+      escalateTo: 'OUTLET_MANAGER', // the GM: SLA escalation, SoD fallback and "also approves"
+      alsoEscalateTo: true,
+      fallback: ['AREA_MANAGER'], // a sole GM who is also the department head: the area manager
+      when: { payload_true: 'unusual' },
     },
     {
       step: 'area_approval',
@@ -61,6 +68,17 @@ export const TRANSFER: ProcessDef = {
   domain: 'TRANSFERS',
   hierarchy: 'delivery',
   steps: [
+    // TR-3 (ADR 043): a request for material that is off the menu or more than usual needs
+    // the department head (or the GM) first; others go straight to the store keeper
+    {
+      step: 'approval',
+      group: 'DEPARTMENT_HEAD',
+      scope: 'nearest_ancestor', // from the requesting store: the department that uses it
+      escalateTo: 'OUTLET_MANAGER',
+      alsoEscalateTo: true,
+      fallback: ['AREA_MANAGER'],
+      when: { payload_true: 'unusual' },
+    },
     {
       step: 'dispatch',
       group: 'STORE_KEEPER',

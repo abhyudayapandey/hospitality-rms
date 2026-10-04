@@ -484,8 +484,11 @@ describe('test-only purchase functions', () => {
           `select inv.create_po($1, (select id from inv.supplier where tenant_id = $2
                                        order by name limit 1),
                                 jsonb_build_array(jsonb_build_object(
-                                  'item_id', (select id from inv.item where sku = 'TOMATOES'
-                                                 and tenant_id = $2),
+                                  'item_id', (select n.item_id from inv.item_node n
+                                                 where n.delivery_node_id = $1
+                                                   and n.item_id <> all (array(
+                                                     select inv.on_menu_items($1)))
+                                                 order by n.item_id limit 1),
                                   'qty', 1, 'unit_cost', 40))) as id`,
           [ids.node('TEST-HOTEL-1.0-KITCHEN-STORE'), ids.tenant()],
         )

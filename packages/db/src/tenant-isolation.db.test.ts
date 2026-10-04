@@ -129,7 +129,7 @@ describe('tenant isolation', () => {
     await inRolledBackTx(async (c) => {
       const b = await setUpTenantB(c);
 
-      // Tenant A data: a PO request pending Olivia's approval, and a fixture business table.
+      // Tenant A data: an unusual PO request pending approval (Olivia, the GM, may approve it too), and a fixture business table.
       const subject = await installSubjectFixture(c, [
         'inv.purchase_order',
         'inv.stock_adjustment',
@@ -139,7 +139,8 @@ describe('tenant isolation', () => {
       const req = await attemptAs<{ id: string }>(
         c,
         ids.user('test.head-cook.3.0'),
-        `select wf.submit('PURCHASE_ORDER', 'inv.purchase_order', $1) as id`,
+        // unusual (PO-5): it waits for an approver instead of being approved at once
+        `select wf.submit('PURCHASE_ORDER', 'inv.purchase_order', $1, '{"unusual": true}') as id`,
         [poA],
       );
       if (req.error !== undefined) throw new Error(req.error);
