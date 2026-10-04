@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { FilterList } from '@/components/filter-list';
 import { Empty } from '@/components/messages';
 import { PeopleHeader } from '@/components/people-header';
 import { PollRefresh } from '@/components/use-polling';
@@ -102,59 +103,68 @@ export default async function ExceptionsPage({ searchParams }: { searchParams: S
               <h2 className="text-sm font-semibold text-slate-700">
                 {g.name} <span className="font-normal text-slate-500">({g.rows.length})</span>
               </h2>
-              <ul className="space-y-2">
-                {g.rows.map((e) => (
-                  <li key={e.id} className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-                    <div className="flex items-start justify-between gap-2">
-                      <span>
-                        <span className="block font-medium">{e.worker_name}</span>
-                        <span className="text-sm text-slate-600">
-                          {formatDay(e.local_date)}
-                          {e.shift_start && e.shift_end
-                            ? ` · ${formatSpan(e.shift_start, e.shift_end, ctx.tz)}`
-                            : ''}
+              <FilterList
+                limit={10}
+                searchFrom={10}
+                noun="exceptions"
+                listClass="space-y-2"
+                rows={g.rows.map((e) => ({
+                  key: e.id,
+                  text: `${e.worker_name} ${EXCEPTION_LABEL[e.kind] ?? e.kind}`,
+                  attrs: { className: 'rounded-xl bg-white p-4 ring-1 ring-slate-200' },
+                  node: (
+                    <>
+                      <div className="flex items-start justify-between gap-2">
+                        <span>
+                          <span className="block font-medium">{e.worker_name}</span>
+                          <span className="text-sm text-slate-600">
+                            {formatDay(e.local_date)}
+                            {e.shift_start && e.shift_end
+                              ? ` · ${formatSpan(e.shift_start, e.shift_end, ctx.tz)}`
+                              : ''}
+                          </span>
                         </span>
-                      </span>
-                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
-                        {EXCEPTION_LABEL[e.kind] ?? e.kind}
-                      </span>
-                    </div>
-                    {detail(e) && <p className="mt-1 text-sm text-slate-600">{detail(e)}</p>}
-                    {selfieUrls.get(e.id) && (
-                      // eslint-disable-next-line @next/next/no-img-element -- a 5-minute signed URL
-                      <img
-                        src={selfieUrls.get(e.id)}
-                        alt={`Selfie of ${e.worker_name} at clock-in`}
-                        width={96}
-                        height={96}
-                        data-testid="selfie"
-                        className="mt-2 h-24 w-24 rounded-lg object-cover"
-                      />
-                    )}
-                    {e.status !== 'open' ? (
-                      <p className="mt-1 text-sm text-slate-600">
-                        {e.status === 'resolved' ? 'Resolved' : 'Dismissed'}
-                        {e.resolution_note ? `: ${e.resolution_note}` : ''}
-                      </p>
-                    ) : (
-                      <>
-                        <p className="mt-1 text-xs text-slate-500" data-testid="assignee">
-                          {e.assigned_to_me
-                            ? 'Waiting for you'
-                            : `Waiting for ${e.assignee_names?.join(', ') || 'nobody (no one to review)'}`}
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
+                          {EXCEPTION_LABEL[e.kind] ?? e.kind}
+                        </span>
+                      </div>
+                      {detail(e) && <p className="mt-1 text-sm text-slate-600">{detail(e)}</p>}
+                      {selfieUrls.get(e.id) && (
+                        // eslint-disable-next-line @next/next/no-img-element -- a 5-minute signed URL
+                        <img
+                          src={selfieUrls.get(e.id)}
+                          alt={`Selfie of ${e.worker_name} at clock-in`}
+                          width={96}
+                          height={96}
+                          data-testid="selfie"
+                          className="mt-2 h-24 w-24 rounded-lg object-cover"
+                        />
+                      )}
+                      {e.status !== 'open' ? (
+                        <p className="mt-1 text-sm text-slate-600">
+                          {e.status === 'resolved' ? 'Resolved' : 'Dismissed'}
+                          {e.resolution_note ? `: ${e.resolution_note}` : ''}
                         </p>
-                        {e.owner_user_id === ctx.shell.user.id ? (
-                          <p className="mt-2 text-xs text-slate-500">
-                            Your own exception: someone else reviews it.
+                      ) : (
+                        <>
+                          <p className="mt-1 text-xs text-slate-500" data-testid="assignee">
+                            {e.assigned_to_me
+                              ? 'Waiting for you'
+                              : `Waiting for ${e.assignee_names?.join(', ') || 'nobody (no one to review)'}`}
                           </p>
-                        ) : (
-                          (canResolve || e.assigned_to_me) && <ResolveForm id={e.id} />
-                        )}
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
+                          {e.owner_user_id === ctx.shell.user.id ? (
+                            <p className="mt-2 text-xs text-slate-500">
+                              Your own exception: someone else reviews it.
+                            </p>
+                          ) : (
+                            (canResolve || e.assigned_to_me) && <ResolveForm id={e.id} />
+                          )}
+                        </>
+                      )}
+                    </>
+                  ),
+                }))}
+              />
             </section>
           ))}
         </div>

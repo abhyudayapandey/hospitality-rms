@@ -1,3 +1,4 @@
+import { FilterList } from '@/components/filter-list';
 import { Empty } from '@/components/messages';
 import { PeopleHeader } from '@/components/people-header';
 import { requireUser } from '@/lib/auth/server';
@@ -27,39 +28,44 @@ export default async function TeamPeoplePage({ searchParams }: { searchParams: S
       {people.length === 0 ? (
         <Empty>Nobody works here yet.</Empty>
       ) : (
-        <ul
-          className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
-          data-testid="people"
-        >
-          {people.map((p) => (
-            <li
-              key={p.worker_id}
-              className="space-y-2 px-4 py-3"
-              data-testid="person"
-              data-username={p.username ?? ''}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <span className="min-w-0">
-                  <span className="block font-medium">{p.name}</span>
-                  <span className="block text-xs text-slate-500">
-                    {p.job_role} · {p.place}
-                    {p.joined_on ? ` · since ${formatDay(p.joined_on)}` : ''}
+        <FilterList
+          testid="people"
+          limit={15}
+          searchFrom={10}
+          noun="people"
+          rows={people.map((p) => ({
+            key: p.worker_id,
+            text: `${p.name} ${p.job_role} ${p.place}`,
+            attrs: {
+              className: 'space-y-2 px-4 py-3',
+              'data-testid': 'person',
+              'data-username': p.username ?? '',
+            },
+            node: (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="block font-medium">{p.name}</span>
+                    <span className="block text-xs text-slate-500">
+                      {p.job_role} · {p.place}
+                      {p.joined_on ? ` · since ${formatDay(p.joined_on)}` : ''}
+                    </span>
                   </span>
-                </span>
-                {p.status !== 'active' ? (
-                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
-                    Inactive
-                  </span>
-                ) : p.waiting ? (
-                  <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
-                    Deactivation waiting
-                  </span>
-                ) : null}
-              </div>
-              {p.can_deactivate && <DeactivateForm user={p.user_id} name={p.name} />}
-            </li>
-          ))}
-        </ul>
+                  {p.status !== 'active' ? (
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+                      Inactive
+                    </span>
+                  ) : p.waiting ? (
+                    <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
+                      Deactivation waiting
+                    </span>
+                  ) : null}
+                </div>
+                {p.can_deactivate && <DeactivateForm user={p.user_id} name={p.name} />}
+              </>
+            ),
+          }))}
+        />
       )}
     </div>
   );

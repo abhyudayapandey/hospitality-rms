@@ -152,7 +152,7 @@ test('approve leave (floor manager)', async ({ page }) => {
     .getByTestId('inbox-item')
     .filter({ hasText: 'Test Server 3.0' })
     .filter({ hasText: 'Leave' });
-  if ((await onHome.count()) === 0) await j.go(page.getByRole('link', { name: /^Approvals/ }));
+  if ((await onHome.count()) === 0) await j.go(page.getByRole('link', { name: /^Inbox/ }));
   await j.go(
     page
       .getByTestId('inbox-item')

@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { FilterList } from '@/components/filter-list';
+import { groupLabel } from '@/lib/labels';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser, type Tx } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
@@ -114,57 +116,88 @@ export default async function AdminPage() {
       {audit && audit.length > 0 && (
         <section>
           <h2 className="mb-2 font-semibold">Recent access events</h2>
-          <ul
-            className="divide-y divide-slate-200 rounded-xl bg-white ring-1 ring-slate-200"
-            data-testid="access-audit"
-          >
-            {audit.map((e, i) => (
-              <li key={i} className="p-3 text-sm">
-                <span className="font-medium">{e.action}</span>
-                {e.person ? ` · ${e.person}` : ''}
-                {e.access_group ? ` · ${e.access_group}` : ''}
-                {e.place ? ` at ${e.place}` : ''}
-                <span className="block text-xs text-slate-500">
-                  {e.actor} · {formatWhen(e.occurred_at)}
-                  {e.note ? ` · ${e.note}` : ''}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <FilterList
+            testid="access-audit"
+            limit={10}
+            searchFrom={10}
+            noun="access events"
+            listClass="divide-y divide-slate-200 rounded-xl bg-white ring-1 ring-slate-200"
+            rows={audit.map((e, i) => ({
+              key: String(i),
+              text: [e.action, e.person, e.access_group, e.place, e.actor, e.note].join(' '),
+              node: (
+                <div className="p-3 text-sm">
+                  <span className="font-medium">{e.action}</span>
+                  {e.person ? ` · ${e.person}` : ''}
+                  {e.access_group ? ` · ${groupLabel(e.access_group)}` : ''}
+                  {e.place ? ` at ${e.place}` : ''}
+                  <span className="block text-xs text-slate-500">
+                    {e.actor} · {formatWhen(e.occurred_at)}
+                    {e.note ? ` · ${e.note}` : ''}
+                  </span>
+                </div>
+              ),
+            }))}
+          />
+          <Link href="/admin/audit" className="mt-2 block text-sm font-medium text-brand-700">
+            Open the full audit
+          </Link>
         </section>
       )}
       {roles && (
         <>
-          <section>
-            <h2 className="mb-2 font-semibold">Role assignments</h2>
-            <p className="mb-2 text-sm text-slate-600">
-              Read-only. Change someone&apos;s access from People.
-            </p>
-            <ul
-              className="divide-y divide-slate-200 rounded-xl bg-white ring-1 ring-slate-200"
-              data-testid="assignments"
-            >
-              {roles.assignments.map((a, i) => (
-                <li key={i} className="p-3 text-sm">
-                  <span className="font-medium">{a.user_name}</span> · {a.group_code} at{' '}
-                  {a.node_name} ({a.node_type}){a.include_descendants ? '' : ', this node only'}
-                </li>
-              ))}
-            </ul>
-          </section>
-          <section>
-            <h2 className="mb-2 font-semibold">Domain policies</h2>
-            <ul className="divide-y divide-slate-200 rounded-xl bg-white ring-1 ring-slate-200">
-              {roles.policies.map((p, i) => (
-                <li key={i} className="flex justify-between p-3 text-sm">
-                  <span>
-                    {p.group_code} → {p.domain_code}
-                  </span>
-                  <span className="font-medium">{p.access}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
+          <details data-testid="role-details">
+            <summary className="min-h-11 cursor-pointer py-2 font-semibold">
+              Role assignments and domain policies
+            </summary>
+            <div className="space-y-4 pt-2">
+              <section>
+                <h2 className="mb-2 font-semibold">Role assignments</h2>
+                <p className="mb-2 text-sm text-slate-600">
+                  Read-only. Change someone&apos;s access from People.
+                </p>
+                <FilterList
+                  testid="assignments"
+                  limit={10}
+                  searchFrom={10}
+                  noun="assignments"
+                  listClass="divide-y divide-slate-200 rounded-xl bg-white ring-1 ring-slate-200"
+                  rows={roles.assignments.map((a, i) => ({
+                    key: String(i),
+                    text: `${a.user_name} ${a.group_code} ${a.node_name}`,
+                    node: (
+                      <div className="p-3 text-sm">
+                        <span className="font-medium">{a.user_name}</span> ·{' '}
+                        {groupLabel(a.group_code)} at {a.node_name} ({a.node_type})
+                        {a.include_descendants ? '' : ', this node only'}
+                      </div>
+                    ),
+                  }))}
+                />
+              </section>
+              <section>
+                <h2 className="mb-2 font-semibold">Domain policies</h2>
+                <FilterList
+                  limit={10}
+                  searchFrom={10}
+                  noun="policies"
+                  listClass="divide-y divide-slate-200 rounded-xl bg-white ring-1 ring-slate-200"
+                  rows={roles.policies.map((p, i) => ({
+                    key: String(i),
+                    text: `${p.group_code} ${p.domain_code} ${p.access}`,
+                    node: (
+                      <div className="flex justify-between p-3 text-sm">
+                        <span>
+                          {groupLabel(p.group_code)} → {p.domain_code}
+                        </span>
+                        <span className="font-medium">{p.access}</span>
+                      </div>
+                    ),
+                  }))}
+                />
+              </section>
+            </div>
+          </details>
         </>
       )}
     </div>

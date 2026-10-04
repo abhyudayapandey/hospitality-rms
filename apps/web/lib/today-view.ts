@@ -171,3 +171,107 @@ export function attentionGroups(
       tone: lines.some((x) => TONE[x.kind] === 'bad') ? ('bad' as const) : ('warn' as const),
     }));
 }
+
+/** Clock in is offered from this long before a shift starts (UX-9). */
+export const CLOCK_IN_AHEAD_MS = 2 * 3_600_000;
+
+/** A shift that is on now or starts within two hours: the only time Home offers Clock in. */
+export function clockable(s: ShiftLike, now: Date): boolean {
+  const t = now.getTime();
+  return (
+    new Date(s.end_at).getTime() > t && new Date(s.start_at).getTime() <= t + CLOCK_IN_AHEAD_MS
+  );
+}
+
+export interface DoFirstItem {
+  key: string;
+  tone: AttentionTone;
+  n: number;
+  /** "5 items running low" */
+  text: string;
+  /** one action, one tap */
+  action: string;
+  href: string;
+}
+
+/** Most things Home puts first: more is a wall, and a wall is not read (UX-8). */
+export const DO_FIRST_MAX = 5;
+
+/**
+ * "Do these first": one ranked list for a manager, in place of every department's counts.
+ * Counts are added up over the departments; each line opens the screen that fixes it. What is
+ * waiting for the person's yes is its own card below, with Approve and No on it, and expired
+ * stock is the banner above, so neither is repeated here. Red before amber, then the order
+ * the jobs matter in.
+ */
+export function doFirst(
+  input: { attention: readonly AttentionGroup[] | null; overdueTasks: number; toAssign: number },
+  max = DO_FIRST_MAX,
+): DoFirstItem[] {
+  const sum = (kind: AttentionKind) =>
+    (input.attention ?? []).reduce(
+      (t, g) => t + g.lines.filter((l) => l.kind === kind).reduce((a, l) => a + l.n, 0),
+      0,
+    );
+  const slotHref =
+    (input.attention ?? []).flatMap((g) => g.lines).find((l) => l.kind === 'openSlots')?.href ??
+    LINE.openSlots.href;
+  const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
+  const all: DoFirstItem[] = [
+    {
+      key: 'lowStock',
+      tone: 'bad',
+      n: sum('lowStock'),
+      text: '',
+      action: 'Order',
+      href: LINE.lowStock.href,
+    },
+    {
+      key: 'overdue',
+      tone: 'bad',
+      n: input.overdueTasks,
+      text: plural(input.overdueTasks, 'task is late', 'tasks are late'),
+      action: 'Open tasks',
+      href: '/tasks',
+    },
+    {
+      key: 'openSlots',
+      tone: 'warn',
+      n: sum('openSlots'),
+      text: '',
+      action: 'Fill',
+      href: slotHref,
+    },
+    {
+      key: 'flags',
+      tone: 'warn',
+      n: sum('flags'),
+      text: '',
+      action: 'Review',
+      href: LINE.flags.href,
+    },
+    {
+      key: 'repairs',
+      tone: 'warn',
+      n: sum('repairs'),
+      text: '',
+      action: 'Open',
+      href: LINE.repairs.href,
+    },
+    {
+      key: 'toAssign',
+      tone: 'warn',
+      n: input.toAssign,
+      text: plural(input.toAssign, 'job to give to someone', 'jobs to give to someone'),
+      action: 'Assign',
+      href: '/inbox',
+    },
+  ];
+  return all
+    .filter((x) => x.n > 0)
+    .map((x) => {
+      const line = LINE[x.key as AttentionKind];
+      return { ...x, text: x.text || (x.n === 1 ? line.one : line.many) };
+    })
+    .slice(0, max);
+}

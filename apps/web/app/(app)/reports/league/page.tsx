@@ -86,6 +86,9 @@ export default async function LeagueReport({ searchParams }: { searchParams: Sea
                         className={`inline-flex min-h-11 flex-col items-end justify-end ${sort === c.key ? 'underline' : ''}`}
                       >
                         {c.label}
+                        {c.basis && (
+                          <span className="text-xs font-normal text-slate-500">{c.basis}</span>
+                        )}
                         {key && (
                           <span className="text-xs font-normal text-slate-500">
                             target {formatMeasure('pct', targets[key])}

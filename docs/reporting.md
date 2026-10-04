@@ -286,7 +286,8 @@ Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
     cost and sales per hour worked, for LABOUR_COST holders and the Account Owner, never
     for a group of fewer than 3 paid people;
   - **"Where the money went"** wherever a total cost shows (Outlet today, Cost of sales):
-    raw materials by part, people, and prime cost, each in ₹ and % of sales; and people
+    raw materials by part, people, and prime cost, each in ₹ and as a share of the total cost
+    (ADR 042); drawn as a bar since ADR 047; and people
     cost by department on Cost of sales;
   - **People**: headcount, shifts, lateness, hours, overtime and leave, with leave
     liability in ₹ only with LABOUR_COST;
@@ -369,3 +370,9 @@ Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
 4. **Leave liability:** days for the HR Executive; ₹ only with LABOUR_COST.
 5. **Central kitchen report:** the R-2 store rule.
 6. **One change** for labour, People and the central kitchen.
+
+- **UX-7 to UX-12, 4 Oct** (ADR 047, `docs/ux-audit-2.md`): every report opens with its
+  headline figures and keeps the rest under "More figures"; terms keep their names with a
+  one-line explanation; "Where the money went" is a bar; the reports list is grouped by
+  question with a "Start here"; Home's outlet table shows food, drinks, losses and people as
+  shares of total cost (adding up to 100); Stock position shows the top five and a search.

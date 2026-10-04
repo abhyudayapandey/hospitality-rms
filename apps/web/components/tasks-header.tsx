@@ -32,8 +32,8 @@ export function TasksHeader({
       {switcher && <PlaceSwitcher {...switcher} />}
       <h1 className="text-xl font-semibold">{title}</h1>
       {shown.length > 1 && (
-        <nav aria-label="Tasks" className="-mx-4 overflow-x-auto px-4">
-          <ul className="flex gap-2">
+        <nav aria-label="Tasks" className="px-0">
+          <ul className="flex flex-wrap gap-2">
             {shown.map((t) => (
               <li key={t.href}>
                 <Link

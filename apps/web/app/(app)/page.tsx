@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { FirstRun } from '@/components/first-run';
 import { ExpiryBanner } from '@/components/expiry-banner';
 import { Icon, type IconName } from '@/components/icon';
 import { businessDate, formatDay, formatLongDay, formatTime } from '@/lib/dates';
@@ -8,7 +9,7 @@ import { vsTarget, type TargetKey } from '@/lib/settings';
 import { loadShell, screenInput } from '@/lib/shell';
 import { HOME_APPROVALS, loadToday, type Today, type TodayNumbers } from '@/lib/today';
 import type { MyTask } from '@/lib/tasks';
-import { shiftLine, todaysTasks } from '@/lib/today-view';
+import { clockable, doFirst, shiftLine, todaysTasks } from '@/lib/today-view';
 import { InboxItem } from './inbox/inbox-item';
 
 // Home is "Today" (UX-2), simplified for each role (UX-6, ADR 034): what the person must
@@ -51,31 +52,45 @@ export default async function Home() {
         {formatLongDay(now, tz)}
       </h1>
 
+      <FirstRun profile={today.profile} />
+
       <Banners today={today} />
 
-      {(today.shift || today.punch) && (
-        <section
-          aria-label="Your shift"
-          className="space-y-3 rounded-2xl bg-brand-700 p-4 text-white"
-          data-testid="shift-card"
-        >
-          <p className="text-sm text-brand-100">
-            {today.punch
-              ? `On shift since ${formatTime(today.punch.clock_in_at, tz)}`
-              : today.shift
-                ? shiftLine(today.shift, now, tz)
-                : ''}
-          </p>
-          <p className="text-2xl font-bold">{today.punch ? 'Clocked in' : 'Not clocked in'}</p>
-          <Link
-            href="/roster/clock"
-            className="flex min-h-13 items-center justify-center gap-2 rounded-xl bg-white text-lg font-semibold text-brand-700"
+      {(today.shift || today.punch) &&
+        (today.punch || (today.shift && clockable(today.shift, now)) ? (
+          <section
+            aria-label="Your shift"
+            className="space-y-3 rounded-2xl bg-brand-700 p-4 text-white"
+            data-testid="shift-card"
           >
-            <Icon name="clock" />
-            {today.punch ? 'Clock out' : 'Clock in'}
-          </Link>
-        </section>
-      )}
+            <p className="text-sm text-brand-100">
+              {today.punch
+                ? `On shift since ${formatTime(today.punch.clock_in_at, tz)}`
+                : today.shift
+                  ? shiftLine(today.shift, now, tz)
+                  : ''}
+            </p>
+            <p className="text-2xl font-bold">{today.punch ? 'Clocked in' : 'Not clocked in'}</p>
+            <Link
+              href="/roster/clock"
+              className="flex min-h-13 items-center justify-center gap-2 rounded-xl bg-white text-lg font-semibold text-brand-700"
+            >
+              <Icon name="clock" />
+              {today.punch ? 'Clock out' : 'Clock in'}
+            </Link>
+          </section>
+        ) : (
+          // a shift later today or tomorrow: say when, offer no Clock in yet (UX-9)
+          <section aria-label="Your next shift" className={card} data-testid="shift-card">
+            <h2 className={cardTitle}>Your next shift</h2>
+            <p className="mt-2 text-lg font-semibold">
+              {today.shift ? shiftLine(today.shift, now, tz) : ''}
+            </p>
+            <Link href="/roster/my" className="mt-2 block text-sm font-medium text-brand-700">
+              See my shifts
+            </Link>
+          </section>
+        ))}
 
       {today.pos && <PosCard pos={today.pos} tz={tz} />}
 
@@ -130,15 +145,27 @@ export default async function Home() {
         </nav>
       )}
 
-      <Approvals today={today} />
+      <DoFirst
+        items={
+          today.attention
+            ? doFirst({
+                attention: today.attention,
+                overdueTasks: today.tasks.filter((x) => x.overdue).length,
+                toAssign: today.approvals.toAssign,
+              })
+            : []
+        }
+      />
 
-      <Attention today={today} />
+      <Approvals today={today} />
 
       {today.league ? (
         <League league={today.league} targets={today.targets} />
       ) : (
         today.numbers && <Numbers numbers={today.numbers} targets={today.targets} />
       )}
+
+      <Attention today={today} />
     </div>
   );
 }
@@ -240,7 +267,7 @@ function NextTask({
               />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate font-semibold">{next.title}</span>
+              <span className="block font-semibold">{next.title}</span>
               <span className="block text-sm text-slate-500">by {formatTime(next.due_at, tz)}</span>
             </span>
             <span
@@ -317,14 +344,14 @@ function Tile({
 
 /** What waits for the person's yes (UX-6): the first few, decided right here. */
 function Approvals({ today }: { today: Today }) {
-  const { shown, total, toAssign } = today.approvals;
-  if (total === 0 && toAssign === 0) return null;
+  const { shown, total } = today.approvals;
+  if (total === 0) return null;
   return (
-    <section aria-label="Needs your yes" className={card} data-testid="approvals-card">
+    <section aria-label="Waiting for you" className={card} data-testid="approvals-card">
       <div className="flex items-center justify-between">
-        <h2 className={cardTitle}>Needs your yes</h2>
+        <h2 className={cardTitle}>Waiting for you</h2>
         <span className="rounded-full bg-rose-50 px-2 text-sm font-bold text-rose-700 tabular-nums">
-          {total + toAssign}
+          {total}
         </span>
       </div>
       {shown.length > 0 && (
@@ -333,12 +360,6 @@ function Approvals({ today }: { today: Today }) {
             <InboxItem key={e.requestId} entry={e} compact />
           ))}
         </ul>
-      )}
-      {toAssign > 0 && (
-        <Link href="/inbox" className="mt-3 flex min-h-11 items-center gap-2 font-medium">
-          <Icon name="tasks" className="size-5 text-brand-700" />
-          {toAssign} to give to someone
-        </Link>
       )}
       {total > HOME_APPROVALS && (
         <Link href="/inbox" className="mt-2 block text-sm font-medium text-brand-700">
@@ -349,48 +370,79 @@ function Approvals({ today }: { today: Today }) {
   );
 }
 
-const TONE_BAR = { bad: 'border-rose-500', warn: 'border-amber-400' } as const;
 const TONE_CHIP = { bad: 'bg-rose-50 text-rose-700', warn: 'bg-amber-50 text-amber-800' } as const;
+const TONE_DOT = { bad: 'bg-rose-600', warn: 'bg-amber-500' } as const;
 
-/** By department, Kitchen first (DB-2), each red or amber (UX-6). */
+/** Do these first (UX-8): at most five lines, each with the one thing to do about it. */
+function DoFirst({ items }: { items: ReturnType<typeof doFirst> }) {
+  if (items.length === 0) return null;
+  return (
+    <section aria-label="Do these first" className={card} data-testid="dofirst-card">
+      <h2 className={cardTitle}>Do these first</h2>
+      <ul className="mt-2 divide-y divide-slate-100">
+        {items.map((x) => (
+          <li key={x.key} data-tone={x.tone} data-testid="dofirst-item">
+            <Link href={x.href} className="flex min-h-13 items-center gap-3 py-2">
+              <span aria-hidden className={`size-2.5 shrink-0 rounded-full ${TONE_DOT[x.tone]}`} />
+              <span className="min-w-0 flex-1">
+                <span className="font-bold tabular-nums">{x.n}</span> {x.text}
+              </span>
+              <span
+                className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${TONE_CHIP[x.tone]}`}
+              >
+                {x.action}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Every department, one line each, behind a tap (DB-2 order; UX-8). */
 function Attention({ today }: { today: Today }) {
   const groups = today.attention ?? [];
   if (groups.length === 0) return null;
   return (
     <section aria-label="Needs attention" className={card} data-testid="attention-card">
-      <h2 className={cardTitle}>Needs attention</h2>
-      <div className="mt-3 space-y-3">
-        {groups.map((g) => (
-          <section
-            key={g.key}
-            aria-label={g.label}
-            className={`space-y-1 border-l-4 pl-3 ${TONE_BAR[g.tone]}`}
-            data-testid="attention-group"
-            data-tone={g.tone}
-          >
-            {/* one department needs no heading */}
-            {groups.length > 1 && (
-              <h3 className="flex items-center justify-between text-sm font-semibold">
+      <details>
+        <summary className="flex min-h-11 cursor-pointer items-center justify-between text-sm font-medium text-slate-700">
+          <span className={cardTitle}>All departments ({groups.length})</span>
+          <span className="underline">Show</span>
+        </summary>
+        <div className="mt-3 space-y-3">
+          {groups.map((g) => (
+            <section
+              key={g.key}
+              aria-label={g.label}
+              className="space-y-1"
+              data-testid="attention-group"
+              data-tone={g.tone}
+            >
+              {/* one line per department: its name, a dot for the worst, then what is open */}
+              <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <span aria-hidden className={`size-2.5 rounded-full ${TONE_DOT[g.tone]}`} />
                 {g.label}
-                <span className={`rounded-full px-2 text-xs font-bold ${TONE_CHIP[g.tone]}`}>
-                  {g.total}
-                </span>
               </h3>
-            )}
-            {/* one line per department: a few words each, every part opens its screen */}
-            <p className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
-              {g.lines.map((a) => (
-                <Link key={a.text} href={a.href} className="inline-flex min-h-8 items-center gap-1">
-                  <span className="font-semibold tabular-nums">{a.n}</span>
-                  <span className="text-slate-600 underline decoration-slate-300 underline-offset-2">
-                    {a.text}
-                  </span>
-                </Link>
-              ))}
-            </p>
-          </section>
-        ))}
-      </div>
+              <p className="flex flex-wrap gap-x-3 gap-y-1 pl-4 text-sm">
+                {g.lines.map((a) => (
+                  <Link
+                    key={a.text}
+                    href={a.href}
+                    className="inline-flex min-h-8 items-center gap-1"
+                  >
+                    <span className="font-semibold tabular-nums">{a.n}</span>
+                    <span className="text-slate-600 underline decoration-slate-300 underline-offset-2">
+                      {a.text}
+                    </span>
+                  </Link>
+                ))}
+              </p>
+            </section>
+          ))}
+        </div>
+      </details>
     </section>
   );
 }
@@ -486,7 +538,11 @@ function Numbers({
   );
 }
 
-/** Outlets side by side for the last 7 days (R-4), red against target (UX-6). */
+/**
+ * Outlets side by side for the last 7 days (R-4). Food, drinks, losses and people are each a
+ * share of the outlet's total cost, so they add up to 100 (ADR 047); a dot per outlet is red
+ * when food or people is worse than target (UX-6, UX-8), and the name opens its report.
+ */
 function League({
   league,
   targets,
@@ -495,9 +551,10 @@ function League({
   targets: Record<TargetKey, number>;
 }) {
   const cols = [
-    { key: 'sales', label: 'Sales', unit: 'money' as const },
-    { key: 'food_pct', label: 'Food', unit: 'pct' as const },
-    { key: 'labour_pct', label: 'People %', unit: 'pct' as const },
+    { key: 'food_share', label: 'Food' },
+    { key: 'drink_share', label: 'Drinks' },
+    { key: 'losses_share', label: 'Losses' },
+    { key: 'labour_pct', label: 'People' },
   ] as const;
   return (
     <section aria-label="Outlets" className={card} data-testid="league-card">
@@ -510,35 +567,61 @@ function League({
             <th scope="col" className="py-1 text-left font-medium">
               Outlet
             </th>
+            <th scope="col" className="py-1 text-right font-medium">
+              Sales
+            </th>
             {cols.map((c) => (
-              <th key={c.key} scope="col" className="py-1 text-right font-medium">
+              <th key={c.key} scope="col" className="py-1 pl-2 text-right font-medium">
                 {c.label}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {league.rows.map((r) => (
-            <tr key={r.outlet_id} className="border-t border-slate-100">
-              <th scope="row" className="max-w-32 truncate py-2 text-left font-medium">
-                {r.name}
-              </th>
-              {cols.map((c) => {
-                const v = r[c.key];
-                const bad = vsTarget(c.key, v, targets).state === 'bad';
-                return (
-                  <td
-                    key={c.key}
-                    className={`py-2 text-right ${bad ? 'font-bold text-rose-700' : ''}`}
+          {league.rows.map((r) => {
+            const bad =
+              vsTarget('food_pct', r.food_pct, targets).state === 'bad' ||
+              vsTarget('labour_pct', r.labour_pct, targets).state === 'bad';
+            return (
+              <tr
+                key={r.outlet_id}
+                className="border-t border-slate-100"
+                data-tone={bad ? 'bad' : 'ok'}
+              >
+                <th scope="row" className="max-w-28 py-2 text-left font-medium">
+                  <Link
+                    href={`/reports/outlet?node=${r.outlet_id}`}
+                    className="flex min-h-11 items-center gap-1.5"
                   >
-                    {v === null ? '—' : formatMeasure(c.unit, v)}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
+                    <span
+                      aria-label={bad ? 'Over target' : 'On target'}
+                      className={`inline-block size-2.5 shrink-0 rounded-full ${bad ? 'bg-rose-600' : 'bg-emerald-600'}`}
+                    />
+                    <span className="truncate">{r.name}</span>
+                  </Link>
+                </th>
+                <td className="py-2 text-right">{formatMeasure('money', r.sales)}</td>
+                {cols.map((c) => {
+                  const v = r[c.key];
+                  const worse =
+                    c.key === 'labour_pct' && vsTarget(c.key, v, targets).state === 'bad';
+                  return (
+                    <td
+                      key={c.key}
+                      className={`py-2 pl-2 text-right ${worse ? 'font-bold text-rose-700' : ''}`}
+                    >
+                      {v === null ? '—' : formatMeasure('pct', v)}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
+      <p className="mt-2 text-xs text-slate-500">
+        Food, drinks, losses and people are shares of each outlet&apos;s total cost.
+      </p>
       <Link
         href={`/reports/league?node=${league.place.id}&period=custom&from=${league.from}&to=${league.to}`}
         className="mt-3 flex items-center gap-1 text-sm font-medium text-brand-700"

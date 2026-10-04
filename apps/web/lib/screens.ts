@@ -103,7 +103,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
   {
     key: 'requests',
     href: '/requests',
-    label: 'My requests',
+    label: 'Things I asked for',
     icon: 'list',
     section: 'mine',
     show: () => true,
@@ -111,7 +111,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
   {
     key: 'inbox',
     href: '/inbox',
-    label: 'Approvals',
+    label: 'Inbox',
     icon: 'inbox',
     section: 'mine',
     show: () => true,

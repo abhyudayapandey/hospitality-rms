@@ -59,7 +59,7 @@ export default async function RequestsPage() {
   return (
     <div className="space-y-4">
       <PollRefresh />
-      <h1 className="text-xl font-semibold">My requests</h1>
+      <h1 className="text-xl font-semibold">Things I asked for</h1>
       {rows.length === 0 ? (
         <p className="rounded-xl bg-white p-6 text-center text-slate-600 ring-1 ring-slate-200">
           No requests yet.

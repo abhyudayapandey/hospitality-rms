@@ -32,7 +32,7 @@ test('add a person: preview the access, save, get a temporary password once', as
   await expect(page.getByTestId('created')).toContainText(`test-company.e2e.${stamp}`);
   await expect(page.getByTestId('temporary-password')).toHaveText(/^[A-Za-z2-9]{14}$/);
   await page.getByRole('link', { name: `Open E2E Commis ${stamp}` }).click();
-  await expect(page.getByTestId('person-access')).toContainText('STAFF');
+  await expect(page.getByTestId('person-access')).toContainText(/staff/i);
 });
 
 test('a sensitive grant says it needs approval before saving', async ({ page }) => {

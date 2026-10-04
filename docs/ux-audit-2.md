@@ -1,6 +1,6 @@
 # UX audit 2: what each role sees, and a plan to simplify it
 
-Status: **proposal, for approval** · 4 Oct 2026 · follows `docs/ux-review.md` (U-1 to U-28, UX-1 to UX-6)
+Status: **approved 4 Oct 2026, built as UX-7 to UX-12 in one PR (ADR 047)**; changes to the plan: V-2 dropped (empty comparisons stay), menu names kept, tabs wrap instead of "More" · follows `docs/ux-review.md` (U-1 to U-28, UX-1 to UX-6)
 
 The first audit fixed words, places, Home and navigation. This one asks a different question:
 **can each person tell, within five seconds of opening a screen, what it says and what to do?**

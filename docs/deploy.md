@@ -1980,3 +1980,15 @@ re-import, nothing stored is rewritten.
    it belongs to the day before. Days older than 35 days keep their old figures.
 4. Check expiry: a batch whose use-by is today is under "Within 3 days", not "Expired", until
    04:00 tomorrow; one whose use-by was yesterday is under "Expired".
+
+## Releasing the simpler screens (UX-7 to UX-12)
+
+One migration (`rpt.league` gains `food_share`, `drink_share`, `losses_share`, ADR 047), the rest
+is the app. No stack change, no parameter, nothing to re-import.
+
+1. Merge, then **Deploy** as usual (the migration runs with it). `cdk diff` shows nothing.
+2. Check, as the General Manager: Home opens with "Do these first" (at most five lines), then
+   "Waiting for you", today's figures, and "All departments" closed. As the Area Manager or
+   Account Owner: the outlet table shows Food, Drinks, Losses and People adding up to 100.
+3. Check, as any Commis: no "Clock in" button on a day without a shift near; My shifts leads with
+   the next shift and a week strip. Each report opens with four large figures and "More figures".

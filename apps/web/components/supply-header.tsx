@@ -48,8 +48,8 @@ export function SupplyHeader({
       />
       <h1 className="text-xl font-semibold">{title}</h1>
       {tabs.length > 1 && (
-        <nav aria-label="Supply" className="-mx-4 overflow-x-auto px-4">
-          <ul className="flex gap-2">
+        <nav aria-label="Supply" className="px-0">
+          <ul className="flex flex-wrap gap-2">
             {tabs.map((t) => (
               <li key={t.href}>
                 <Link

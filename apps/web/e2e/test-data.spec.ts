@@ -28,5 +28,5 @@ test('a second commis sees their two published weeks of dinner shifts', async ({
     .getByTestId('my-shifts-upcoming')
     .locator('[data-testid="shift-row"][data-kind="shift"]');
   await expect(shifts).toHaveCount(10); // Wed to Sun, two weeks (file 25)
-  await expect(shifts.first()).toContainText('commis');
+  await expect(shifts.first()).toContainText(/commis/i);
 });

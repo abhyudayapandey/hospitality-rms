@@ -70,7 +70,7 @@ test('a problem goes to Engineering, who assigns the technician', async ({ page 
 
   await signInAs(page, 'Test Chief Engineer 1.0');
   // approvals are in the header for a department head (UX-6)
-  await page.getByRole('link', { name: /^Approvals/ }).click();
+  await page.getByRole('link', { name: /^Inbox/ }).click();
   const toAssign = page.getByTestId('to-assign');
   // the seeded dishwasher request (file 31) waits too
   await expect(toAssign).toContainText('Dishwasher leaking at the door');

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
+import { ListSearch } from '@/components/list-search';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
 import { submitCount } from '../../actions';
 
@@ -62,24 +63,32 @@ export function CountForm({
         submit();
       }}
     >
-      <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-        {lines.map((l) => (
-          <li key={l.item_id} className="flex items-center justify-between gap-3 px-4 py-2">
-            <label htmlFor={`c-${l.item_id}`} className="min-w-0 flex-1">
-              <span className="block truncate font-medium">{l.name}</span>
-              <span className="text-xs text-slate-500">{l.base_uom}</span>
-            </label>
-            <input
-              id={`c-${l.item_id}`}
-              aria-label={`Counted ${l.name}`}
-              inputMode="decimal"
-              value={values[l.item_id] ?? ''}
-              onChange={(e) => setValues((v) => ({ ...v, [l.item_id]: e.target.value }))}
-              className={`${inputClass} max-w-28 text-right`}
-            />
-          </li>
-        ))}
-      </ul>
+      <div id="count-lines" className="space-y-2">
+        <ListSearch scope="count-lines" count={lines.length} noun="items" />
+        <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
+          {lines.map((l) => (
+            <li
+              key={l.item_id}
+              className="flex items-center justify-between gap-3 px-4 py-2"
+              data-filter-row
+              data-filter-text={l.name}
+            >
+              <label htmlFor={`c-${l.item_id}`} className="min-w-0 flex-1">
+                <span className="block truncate font-medium">{l.name}</span>
+                <span className="text-xs text-slate-500">{l.base_uom}</span>
+              </label>
+              <input
+                id={`c-${l.item_id}`}
+                aria-label={`Counted ${l.name}`}
+                inputMode="decimal"
+                value={values[l.item_id] ?? ''}
+                onChange={(e) => setValues((v) => ({ ...v, [l.item_id]: e.target.value }))}
+                className={`${inputClass} max-w-28 text-right`}
+              />
+            </li>
+          ))}
+        </ul>
+      </div>
       <ErrorBox message={error} />
       <StatusBox message={done} />
       <button

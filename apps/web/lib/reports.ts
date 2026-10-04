@@ -72,6 +72,25 @@ export const REPORTS: Readonly<Record<ReportCode, { title: string; href: string;
     },
   };
 
+/** The list's groups, by the question each report answers (UX-7). */
+export const REPORT_GROUPS: readonly { title: string; reports: readonly ReportCode[] }[] = [
+  { title: 'How are we doing?', reports: ['league', 'outlet_flash', 'department', 'my_week'] },
+  {
+    title: 'What does it cost?',
+    reports: ['cost_of_sales', 'purchasing', 'stock_position', 'central_kitchen'],
+  },
+  { title: 'What do we sell?', reports: ['menu_engineering'] },
+  { title: 'Our people', reports: ['people'] },
+];
+
+/** The reports a person has, grouped; a group with none is left out, order within it kept. */
+export function groupReports(codes: readonly ReportCode[]) {
+  return REPORT_GROUPS.map((g) => ({
+    title: g.title,
+    reports: g.reports.filter((r) => codes.includes(r)),
+  })).filter((g) => g.reports.length > 0);
+}
+
 export function isReportCode(s: string): s is ReportCode {
   return s in REPORTS;
 }
@@ -83,14 +102,26 @@ export interface MeasureDef {
   unit: Unit;
   /** which way is good: shown green or red against last week; none = neutral */
   better?: 'up' | 'down';
+  /** one line under the label for a term a GM or owner may not know (UX-7); the label stays */
+  hint?: string;
 }
 
 export const MEASURES: Readonly<Record<string, MeasureDef>> = {
   sales: { label: 'Sales', unit: 'money', better: 'up' },
   food_sales: { label: 'Food sales', unit: 'money', better: 'up' },
   bar_sales: { label: 'Drinks sales', unit: 'money', better: 'up' },
-  food_cost_pct: { label: 'Food cost', unit: 'pct', better: 'down' },
-  bar_cost_pct: { label: 'Drinks cost', unit: 'pct', better: 'down' },
+  food_cost_pct: {
+    label: 'Food cost',
+    unit: 'pct',
+    better: 'down',
+    hint: 'Cost of the food sold, as a share of food sales.',
+  },
+  bar_cost_pct: {
+    label: 'Drinks cost',
+    unit: 'pct',
+    better: 'down',
+    hint: 'Cost of the drinks sold, as a share of drinks sales.',
+  },
   wastage: { label: 'Wastage', unit: 'money', better: 'down' },
   wastage_pct: { label: 'Wastage of sales', unit: 'pct', better: 'down' },
   stock_value: { label: 'Stock value', unit: 'money' },
@@ -111,8 +142,17 @@ export const MEASURES: Readonly<Record<string, MeasureDef>> = {
   food_recipe_pct: { label: 'Food cost by recipe', unit: 'pct' },
   bar_recipe_pct: { label: 'Drinks cost by recipe', unit: 'pct' },
   count_loss: { label: 'Lost at the count', unit: 'money', better: 'down' },
-  beyond_tolerance: { label: 'Items beyond tolerance', unit: 'count', better: 'down' },
-  not_counted: { label: 'Items not counted', unit: 'count' },
+  beyond_tolerance: {
+    label: 'Items beyond tolerance',
+    unit: 'count',
+    better: 'down',
+    hint: 'Counted stock that differs from the book by more than the allowed margin.',
+  },
+  not_counted: {
+    label: 'Items not counted',
+    unit: 'count',
+    hint: 'Items nobody counted in this period, so any loss on them is not known.',
+  },
   expired: { label: 'Expired, thrown away', unit: 'money', better: 'down' },
   // stock position
   value_7: { label: 'A week ago', unit: 'money' },
@@ -121,29 +161,71 @@ export const MEASURES: Readonly<Record<string, MeasureDef>> = {
   value_28: { label: '4 weeks ago', unit: 'money' },
   used_value: { label: 'Used in the last 28 days', unit: 'money' },
   basis_days: { label: 'Days of use averaged', unit: 'days' },
-  days_on_hand: { label: 'Days on hand', unit: 'days' },
-  dead_items: { label: 'Items not moved in 30 days', unit: 'count', better: 'down' },
-  dead_value: { label: 'Their value', unit: 'money', better: 'down' },
+  days_on_hand: {
+    label: 'Days on hand',
+    unit: 'days',
+    hint: 'How many days the stock lasts at the recent rate of use.',
+  },
+  dead_items: {
+    label: 'Items not moved in 30 days',
+    unit: 'count',
+    better: 'down',
+    hint: 'Items with no movement (no use, sale or transfer) for 30 days.',
+  },
+  dead_value: {
+    label: 'Their value',
+    unit: 'money',
+    better: 'down',
+    hint: 'Money tied up in stock that is not moving.',
+  },
   // RPT-14 (ADR 033): dated batches, at the item's average cost at the store
   expired_stock_value: { label: 'Expired', unit: 'money', better: 'down' },
   expiring_stock_value: { label: 'Expiring within 3 days', unit: 'money', better: 'down' },
   // labour (R-3, ADR 030): only for people who see labour cost
-  splh: { label: 'Sales per hour worked', unit: 'money', better: 'up' },
+  splh: {
+    label: 'Sales per hour worked',
+    unit: 'money',
+    better: 'up',
+    hint: 'Sales divided by hours worked: how much each hour of labour brings in.',
+  },
   labour_cost: { label: 'People cost', unit: 'money', better: 'down' },
   // ADR 042: shares of the total cost (materials + people), adding up to 100
-  labour_pct: { label: 'People cost %', unit: 'pct', better: 'down' },
-  materials_pct: { label: 'Materials %', unit: 'pct' },
-  prime_cost: { label: 'Total cost (prime cost)', unit: 'money', better: 'down' },
+  labour_pct: {
+    label: 'People cost %',
+    unit: 'pct',
+    better: 'down',
+    hint: "People's share of the total cost (materials plus people).",
+  },
+  materials_pct: {
+    label: 'Materials %',
+    unit: 'pct',
+    hint: 'Food, drinks and losses together, as a share of the total cost.',
+  },
+  prime_cost: {
+    label: 'Total cost (prime cost)',
+    unit: 'money',
+    better: 'down',
+    hint: 'Materials plus people: the two big costs added together.',
+  },
   // People
   headcount: { label: 'Headcount', unit: 'count' },
   joiners: { label: 'Joined', unit: 'count' },
   inactive: { label: 'Left or inactive', unit: 'count' },
   on_time_pct: { label: 'Shifts on time', unit: 'pct', better: 'up' },
-  overtime_hours: { label: 'Overtime', unit: 'hours', better: 'down' },
+  overtime_hours: {
+    label: 'Overtime',
+    unit: 'hours',
+    better: 'down',
+    hint: 'Hours worked beyond the contracted hours.',
+  },
   leave_days: { label: 'Leave taken', unit: 'days' },
   swaps: { label: 'Shift swaps', unit: 'count' },
   leave_balance_days: { label: 'Leave not yet taken', unit: 'days' },
-  leave_liability: { label: 'Its value (leave liability)', unit: 'money' },
+  leave_liability: {
+    label: 'Its value (leave liability)',
+    unit: 'money',
+    hint: 'What the unused leave would cost if paid out.',
+  },
   // central kitchen
   batches: { label: 'Batches made', unit: 'count' },
   made_value: { label: 'Value made', unit: 'money' },
@@ -164,6 +246,31 @@ export const MEASURES: Readonly<Record<string, MeasureDef>> = {
 };
 
 /** The sections of each report, in order (a measure missing from the data is skipped). */
+/**
+ * The three or four figures a report opens with (UX-7): drawn large, with the target.
+ * Everything else sits under "More figures". A report with none shows all, as before.
+ */
+export const HEADLINE: Readonly<Partial<Record<ReportCode, readonly string[]>>> = {
+  outlet_flash: ['sales', 'food_cost_pct', 'labour_pct', 'task_pct'],
+  department: ['worked_hours', 'open_slots', 'task_pct', 'overdue'],
+  my_week: ['shifts', 'worked_hours', 'late', 'tasks_done'],
+  cost_of_sales: ['food_cost_pct', 'bar_cost_pct', 'count_loss', 'not_counted'],
+  stock_position: ['stock_value', 'expired_stock_value', 'expiring_stock_value', 'days_on_hand'],
+  people: ['headcount', 'on_time_pct', 'late', 'overtime_hours'],
+  central_kitchen: ['made_value', 'expired_pct', 'fill_pct', 'transit_loss'],
+};
+
+/** The headline rows that the data has, and the rest, each in its section order. */
+export function splitHeadline(report: ReportCode, rows: readonly MeasureRow[]) {
+  const head = HEADLINE[report];
+  const all = SECTIONS[report].flatMap(([title, measures]) =>
+    sectionRows(rows, measures).map((r) => ({ ...r, section: title })),
+  );
+  if (!head) return { headline: [], rest: all };
+  const first = head.flatMap((m) => all.filter((r) => r.measure === m));
+  return { headline: first, rest: all.filter((r) => !head.includes(r.measure)) };
+}
+
 export const SECTIONS: Readonly<Record<ReportCode, readonly [string, readonly string[]][]>> = {
   outlet_flash: [
     ['Sales', ['sales', 'food_sales', 'bar_sales']],
@@ -455,6 +562,34 @@ export function costParts(rows: readonly CostPartRow[]) {
   });
 }
 
+export interface CostShare {
+  key: 'food' | 'drinks' | 'losses' | 'people';
+  label: string;
+  pct: number;
+}
+
+const LOSS_PARTS = ['expired', 'transit_loss', 'wastage_other', 'other_use', 'count_loss'];
+
+/**
+ * The drawn bar of Where the money went (UX-7): food, drinks, losses and people, each a
+ * share of the total cost, so they add up to 100. Nothing for a part with no cost, and
+ * People only where the data has it (the person sees labour cost).
+ */
+export function costShares(rows: readonly CostPartRow[]): CostShare[] {
+  const pct = (part: string) => {
+    const r = rows.find((x) => x.part === part);
+    return r && r.pct !== null && Number.isFinite(Number(r.pct)) ? Number(r.pct) : null;
+  };
+  const losses = LOSS_PARTS.reduce((a, p) => a + (pct(p) ?? 0), 0);
+  const out: CostShare[] = [
+    { key: 'food', label: 'Food', pct: pct('food_recipe') ?? 0 },
+    { key: 'drinks', label: 'Drinks', pct: pct('bar_recipe') ?? 0 },
+    { key: 'losses', label: 'Wastage and losses', pct: losses },
+    { key: 'people', label: 'People', pct: pct('labour') ?? 0 },
+  ];
+  return out.filter((x) => x.pct > 0);
+}
+
 const FLASH_PARTS: Readonly<Record<string, CostPart>> = {
   cost_food_recipe: 'food_recipe',
   cost_bar_recipe: 'bar_recipe',
@@ -513,11 +648,17 @@ export interface LeagueRow {
   drink_pct: string | null;
   labour_pct: string | null;
   materials_pct: string | null;
+  food_share: string | null;
+  drink_share: string | null;
+  losses_share: string | null;
   wastage_pct: string | null;
   tasks_pct: string | null;
 }
 
-export type LeagueColumn = Exclude<keyof LeagueRow, 'outlet_id' | 'code' | 'name'>;
+export type LeagueColumn = Exclude<
+  keyof LeagueRow,
+  'outlet_id' | 'code' | 'name' | 'food_share' | 'drink_share' | 'losses_share'
+>;
 
 /** The columns, in order; a cost is better low, tasks and sales better high. */
 /** Each league column is a figure of the outlet's own report, which opens its trend. */
@@ -535,14 +676,16 @@ export const LEAGUE_COLUMNS: readonly {
   key: LeagueColumn;
   label: string;
   better: 'up' | 'down';
+  /** what the % is a share of, in small type under the label: one base per column (UX-7) */
+  basis?: string;
 }[] = [
   { key: 'sales', label: 'Sales', better: 'up' },
-  { key: 'food_pct', label: 'Food cost', better: 'down' },
-  { key: 'drink_pct', label: 'Drinks cost', better: 'down' },
-  { key: 'labour_pct', label: 'People cost %', better: 'down' },
-  { key: 'materials_pct', label: 'Materials %', better: 'down' },
-  { key: 'wastage_pct', label: 'Wastage', better: 'down' },
-  { key: 'tasks_pct', label: 'Tasks on time', better: 'up' },
+  { key: 'food_pct', label: 'Food cost', better: 'down', basis: 'of food sales' },
+  { key: 'drink_pct', label: 'Drinks cost', better: 'down', basis: 'of drinks sales' },
+  { key: 'labour_pct', label: 'People cost %', better: 'down', basis: 'of total cost' },
+  { key: 'materials_pct', label: 'Materials %', better: 'down', basis: 'of total cost' },
+  { key: 'wastage_pct', label: 'Wastage', better: 'down', basis: 'of sales' },
+  { key: 'tasks_pct', label: 'Tasks on time', better: 'up', basis: 'of tasks due' },
 ];
 
 export function isLeagueColumn(s: string | undefined): s is LeagueColumn {
