@@ -68,7 +68,7 @@ test('the Cost Controller counts blind and finishes; the GM then sees Verified, 
   await expect(page.getByRole('button', { name: /^Start a/ })).toHaveCount(0);
 
   // a stock user may not even open it
-  await signInAs(page, 'Test Chef De Partie 1.0');
+  await signInAs(page, 'Test Chef de Partie 1.0');
   await page.goto(`/stock/check?node=${store}`);
   await expect(page.getByRole('button', { name: /^Start a/ })).toHaveCount(0);
   await expect(page.getByTestId('tag-verified')).toHaveCount(0);
@@ -113,6 +113,7 @@ test('a bar check counts bottles and tenths (the Stock Verifier of the solo bar)
   await expect(page.getByRole('heading', { name: /^Bar check at/ })).toBeVisible();
   const full = page.getByRole('textbox', { name: `Full ${item.name}` });
   await full.fill(String(item.onHand));
+  await full.blur();
   await page
     .getByRole('combobox', { name: `Tenths of the open bottle of ${item.name}` })
     .selectOption('0');

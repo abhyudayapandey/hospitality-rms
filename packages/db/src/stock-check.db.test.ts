@@ -290,7 +290,7 @@ describe('finishing', () => {
       const told = async (who: string) =>
         (
           await c.query(
-            `select 1 from ops.notification where owner_user_id = $1 and kind = 'stock_check'`,
+            `select 1 from ops.notification where owner_user_id = $1 and kind = 'stock_check' and created_at = now()`,
             [ids.user(who)],
           )
         ).rowCount;

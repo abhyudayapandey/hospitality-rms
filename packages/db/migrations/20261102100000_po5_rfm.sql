@@ -221,6 +221,27 @@ begin
   return query select * from inv.unusual_calc(p_node, p_lines);
 end $$;
 
+-- Is p_node a department's store, so that a request into it is a request for material?
+-- For the request form, to say whether the department head will be asked.
+create function inv.is_rfm_store(p_node uuid) returns boolean
+language plpgsql stable security definer
+set search_path = pg_catalog, core, inv, wf
+as $$
+begin
+  perform wf.me();
+  if p_node is null
+     or not exists (select 1 from core.hierarchy_node where id = p_node and type = 'delivery'
+                       and tenant_id = core.my_tenant())
+     or not core.can('TRANSFERS', 'view', null, p_node) then
+    perform inv.fail('NOT_AUTHORISED', 'view transfers at ' || coalesce(p_node::text, 'nowhere'));
+  end if;
+  return exists (select 1 from core.node_link nl
+                   join core.hierarchy_node o on o.id = nl.org_node_id and o.kind = 'department'
+                  where nl.delivery_node_id = p_node);
+end $$;
+revoke execute on function inv.is_rfm_store(uuid) from public;
+grant execute on function inv.is_rfm_store(uuid) to app_rw;
+
 -- ---------------------------------------------------------------------------
 -- Orders: unusual ones go to the department head; the GM is told of every one
 -- ---------------------------------------------------------------------------
@@ -360,6 +381,7 @@ create view inv.transfer_summary as
    from inv.transfer t;
 grant select on inv.transfer_summary to app_rw;
 drop function inv.transfer_awaits_approval(uuid);
+drop function inv.is_rfm_store(uuid);
 drop function inv.notify_order(uuid, uuid);
 drop function inv.unusual_why(uuid, jsonb);
 drop function inv.unusual_lines(uuid, jsonb);

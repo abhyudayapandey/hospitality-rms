@@ -119,10 +119,7 @@ export async function checkUnusual(
     const data = await withUser(user.id, async (tx) => {
       if (kind === 'transfer') {
         const d = await sql<{ rfm: boolean }>`
-          select exists (select 1 from core.node_link nl
-                           join core.hierarchy_node o on o.id = nl.org_node_id
-                                                     and o.kind = 'department'
-                          where nl.delivery_node_id = ${node}::uuid) as rfm`.execute(tx);
+          select inv.is_rfm_store(${node}::uuid) as rfm`.execute(tx);
         if (!d.rows[0]?.rfm) return { needs: false, why: [] };
       }
       const r = await sql<{

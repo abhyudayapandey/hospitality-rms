@@ -1604,7 +1604,7 @@ Stop and paste it here if anything says **replace**, or any other resource chang
 `pnpm cdk deploy` (type `y`) and `cd ..`.
 
 **Re-import Test Company** (40 files). The dry run should report no problems, the same 2
-approval-coverage warnings, and: item locations RELOAD_COMPANY_ITEM_LOCATIONS updated (the 28 rows of
+approval-coverage warnings, and: item locations 28 changed (the rows of
 Test Bar 3.0's bar store, which gain a shelf); everything else unchanged. Apply, then dry-run
 again: no changes.
 

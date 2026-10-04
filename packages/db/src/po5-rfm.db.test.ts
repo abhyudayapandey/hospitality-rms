@@ -203,12 +203,12 @@ describe('PO-5: which orders need an approval', () => {
       const f = await fixture(c, 10);
       await createPo(c, f, KIM, { 'P5-ON': 12 });
       const gm = await c.query(
-        `select 1 from ops.notification where owner_user_id = $1 and kind = 'order'`,
+        `select 1 from ops.notification where owner_user_id = $1 and kind = 'order' and created_at = now()`,
         [ids.user(OLIVIA)],
       );
       expect(gm.rowCount).toBe(1);
       const self = await c.query(
-        `select 1 from ops.notification where owner_user_id = $1 and kind = 'order'`,
+        `select 1 from ops.notification where owner_user_id = $1 and kind = 'order' and created_at = now()`,
         [ids.user(KIM)],
       );
       expect(self.rowCount).toBe(0);
