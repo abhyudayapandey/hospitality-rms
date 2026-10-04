@@ -1450,19 +1450,10 @@ No re-import for Test Solo Bar Co.
 **Check.**
 
 - **`test.cashier.3.0`.** Home: "End of day · Today's sales are not imported yet" and the
-  Import sales tile. Import sales: choose a Sale by item file (the sample below, saved as
-  `sale.csv`); "3 items · ₹2,340 taken" shows; Import; "2 items, 1 not matched yet" and
-  the code `9001` listed. Reports and Menu → Sales are not there.
-
-  ```
-  Sale by item,,,,,
-  Item,Description,Quantity,Rate,Value,Discount
-  TEST BAR 3.0,,,,,
-  3001,PANEER TIKKA,2,355,650,60
-  3022,MOJITO,3,430,1290,0
-  9001,CHEF SPECIAL,1,400,400,0
-  Grand Total,,6,,2340,60
-  ```
+  Import sales tile. Import sales: choose `docs/onboarding/test-data/pos/sale.csv` (a
+  sample Sale by item file for today's business day); "3 items · ₹2,340 taken" shows;
+  Import; "2 items, 1 not matched yet" and the code `9001` listed. Reports and Menu → Sales
+  are not there.
 
 - **`test.bar-manager.3.0`.** Menu → Sales → Import from the POS: match `9001` to a dish,
   then **Match and post the day again**: 3 items. Menu → Sales for today says the sales came
