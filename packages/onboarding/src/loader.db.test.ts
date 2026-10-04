@@ -2,7 +2,7 @@ import { MODULE_CODES } from '@outlet-ops/domain';
 import { join } from 'node:path';
 import { attemptAs, closePools, inRolledBackTx, loadSeedIds } from '@outlet-ops/db/test-helpers';
 import type { PoolClient } from 'pg';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { loadCustomer, type AccessRow } from './apply';
 import { parseCsv } from './csv';
 import { readCustomerDir } from './dir';
@@ -13,6 +13,12 @@ import { readCustomerDir } from './dir';
 // reported by file, row and column.
 
 afterAll(closePools);
+
+// Every test here loads a whole customer, up to three times. That is 7 s on a laptop, but
+// 60 to 130 s on a CI worker that shares its database with another, so the 120 s default
+// (a hang guard) is too tight: the loads of Test Company timed out on one run and passed on
+// the next. A longer limit here, a hang is still caught.
+vi.setConfig({ testTimeout: 300_000 });
 
 const DATA = join(import.meta.dirname, '..', '..', '..', 'docs', 'onboarding', 'test-data');
 const CUSTOMERS = ['test-company', 'test-solo-bar-co'] as const;
