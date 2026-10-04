@@ -78,12 +78,18 @@ export async function recordWastage(
   node: string,
   lines: WastageLine[],
   idempotencyKey: string,
+  /** when it happened, for an entry saved on the phone while offline (INV-8) */
+  occurredAt?: string | null,
 ): Promise<ActionResult<{ id: string; approval: boolean }>> {
   return run('record_wastage', async (tx) => {
-    const r = await sql<{ id: string }>`
-      select inv.record_wastage(${node}::uuid, ${json(lines)}::jsonb, ${idempotencyKey}) as id`.execute(
-      tx,
-    );
+    const r = occurredAt
+      ? await sql<{ id: string }>`
+          select inv.record_wastage_at(${node}::uuid, ${json(lines)}::jsonb, ${idempotencyKey},
+                                       ${occurredAt}::timestamptz) as id`.execute(tx)
+      : await sql<{ id: string }>`
+          select inv.record_wastage(${node}::uuid, ${json(lines)}::jsonb, ${idempotencyKey}) as id`.execute(
+          tx,
+        );
     const id = r.rows[0]!.id;
     const a = await sql<{ adjustment_id: string | null }>`
       select adjustment_id from inv.wastage where id = ${id}::uuid`.execute(tx);

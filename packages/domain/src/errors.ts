@@ -20,7 +20,8 @@ export const ERROR_MESSAGES = {
   INVALID_SUPPLIER: "That supplier isn't available.",
   PHOTO_REQUIRED: 'This needs a photo. Add one and submit again.',
   INVALID_PHOTO: "The photo didn't upload for this location. Take it again.",
-  CHECK_LOCKED: 'The counts are locked now that the differences are showing. Add photos, then finish.',
+  CHECK_LOCKED:
+    'The counts are locked now that the differences are showing. Add photos, then finish.',
   CHECK_FINISHED: 'This stock check is already finished.',
   CHECK_NOT_REVIEWED: 'Look over the differences before finishing the stock check.',
   INVALID_TIME: "That time isn't right. Check the phone's clock and try again.",

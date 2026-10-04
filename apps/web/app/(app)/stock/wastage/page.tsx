@@ -39,6 +39,7 @@ export default async function WastagePage({ searchParams }: { searchParams: Sear
       <SupplyHeader ctx={ctx} active="/stock/wastage" title="Wastage" />
       <WastageForm
         node={ctx.node.id}
+        userId={ctx.shell.user.id}
         items={data.items}
         threshold={data.threshold}
         photos={photosEnabled()}

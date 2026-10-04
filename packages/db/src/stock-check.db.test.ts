@@ -1,12 +1,6 @@
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import {
-  attemptAs,
-  closePools,
-  inRolledBackTx,
-  loadSeedIds,
-  type SeedIds,
-} from '../test/helpers';
+import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
 
 // Stock check (INV-10, INV-11, INV-7, INV-8; ADR 042): the verifier counts blind, sees the
 // differences, adds a photo to each, and the differences post to the ledger at once with
@@ -67,7 +61,7 @@ async function ok<T = Record<string, unknown>>(
 ): Promise<T[]> {
   const r = await attemptAs<T & object>(c, ids.user(who), text, params);
   if (r.error !== undefined) throw new Error(`${who}: ${r.error}`);
-  return r.rows as T[];
+  return r.rows;
 }
 
 const fail = async (c: PoolClient, who: string, text: string, params: unknown[] = []) =>
@@ -127,9 +121,9 @@ describe('who may verify', () => {
       expect(await fail(c, STOCK_USER, 'select * from inv.stock_check_view($1)', [node()])).toMatch(
         /NOT_AUTHORISED/,
       );
-      expect(await fail(c, OTHER_COMPANY, 'select * from inv.stock_check_view($1)', [node()])).toMatch(
-        /NOT_AUTHORISED/,
-      );
+      expect(
+        await fail(c, OTHER_COMPANY, 'select * from inv.stock_check_view($1)', [node()]),
+      ).toMatch(/NOT_AUTHORISED/);
     });
   });
 
@@ -196,9 +190,9 @@ describe('a blind check', () => {
       expect(Number(b.difference)).toBe(-1);
       expect(b.needs_photo).toBe(true);
       expect(review.find((r) => r.item_id === f.item('SC-A'))!.needs_photo).toBe(false);
-      expect(await fail(c, VERIFIER, 'select inv.record_check_line($1, $2, 5)', [check, f.item('SC-B')])).toMatch(
-        /CHECK_LOCKED/,
-      );
+      expect(
+        await fail(c, VERIFIER, 'select inv.record_check_line($1, $2, 5)', [check, f.item('SC-B')]),
+      ).toMatch(/CHECK_LOCKED/);
     });
   });
 });
@@ -219,12 +213,11 @@ describe('finishing', () => {
       );
       const key = `stockcheck/${f.tenant}/${node()}/0123456789abcdef0123456789abcdef0123.jpg`;
       expect(photo(f.tenant)).toBeTruthy();
-      await ok(
-        c,
-        VERIFIER,
-        'select inv.record_check_line($1, $2, null, $3)',
-        [check, f.item('SC-B'), key],
-      );
+      await ok(c, VERIFIER, 'select inv.record_check_line($1, $2, null, $3)', [
+        check,
+        f.item('SC-B'),
+        key,
+      ]);
       const [done] = await ok<{ r: { adjusted: number; matched: number } }>(
         c,
         VERIFIER,
@@ -342,9 +335,14 @@ describe('bar mode and several devices (INV-7)', () => {
         [check],
       );
       expect(Number(review[0]!.difference)).toBe(0);
-      expect(await fail(c, VERIFIER, 'select inv.record_check_line($1, $2, null, null, null, null, null, 1, 10)', [check, f.item('SC-GIN')])).toMatch(
-        /INVALID_QUANTITY/,
-      );
+      expect(
+        await fail(
+          c,
+          VERIFIER,
+          'select inv.record_check_line($1, $2, null, null, null, null, null, 1, 10)',
+          [check, f.item('SC-GIN')],
+        ),
+      ).toMatch(/INVALID_QUANTITY/);
     });
   });
 
@@ -413,6 +411,52 @@ describe('offline counts (INV-8)', () => {
           new Date(Date.now() + 3_600_000).toISOString(),
         ]),
       ).toMatch(/INVALID_TIME/);
+    });
+  });
+});
+
+describe('offline wastage (INV-8)', () => {
+  it('posts with the original time, and a repeat of the same key posts once', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c, { 'SC-A': 10 });
+      const at = new Date(Date.now() - 3 * 3_600_000).toISOString();
+      const lines = JSON.stringify([{ item_id: f.item('SC-A'), qty: 1, reason: 'spoiled' }]);
+      const first = await ok<{ id: string }>(
+        c,
+        KEEPER,
+        'select inv.record_wastage_at($1, $2::jsonb, $3, $4) as id',
+        [node(), lines, 'w-key-1', at],
+      );
+      const again = await ok<{ id: string }>(
+        c,
+        KEEPER,
+        'select inv.record_wastage_at($1, $2::jsonb, $3, $4) as id',
+        [node(), lines, 'w-key-1', at],
+      );
+      expect(again[0]!.id).toBe(first[0]!.id);
+      const { rows } = await c.query<{ n: string; secs: string }>(
+        `select count(*) as n, max(extract(epoch from (occurred_at - $2::timestamptz))) as secs
+           from inv.stock_ledger where ref_id = $1`,
+        [first[0]!.id, at],
+      );
+      expect(Number(rows[0]!.n)).toBe(1);
+      expect(Math.abs(Number(rows[0]!.secs))).toBeLessThan(1);
+      expect(await onHand(c, f.item('SC-A'))).toBe(9);
+    });
+  });
+
+  it('refuses wastage older than 24 hours or from the future, and a stock user without access', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c, { 'SC-A': 10 });
+      const lines = JSON.stringify([{ item_id: f.item('SC-A'), qty: 1, reason: 'spoiled' }]);
+      const q = 'select inv.record_wastage_at($1, $2::jsonb, $3, $4) as id';
+      const old = new Date(Date.now() - 30 * 3_600_000).toISOString();
+      const future = new Date(Date.now() + 3_600_000).toISOString();
+      expect(await fail(c, KEEPER, q, [node(), lines, 'k1', old])).toMatch(/INVALID_TIME/);
+      expect(await fail(c, KEEPER, q, [node(), lines, 'k2', future])).toMatch(/INVALID_TIME/);
+      expect(
+        await fail(c, OTHER_COMPANY, q, [node(), lines, 'k3', new Date().toISOString()]),
+      ).toMatch(/NOT_AUTHORISED/);
     });
   });
 });

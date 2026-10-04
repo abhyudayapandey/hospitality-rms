@@ -5,6 +5,7 @@ import { PlaceSwitcher } from './place-switcher';
 const TABS = [
   { href: '/stock', label: 'Stock', domain: 'STOCK_LEVELS', access: 'view' },
   { href: '/stock/count', label: 'Count', domain: 'STOCK_ADJUSTMENTS', access: 'modify' },
+  { href: '/stock/check', label: 'Check', domain: 'STOCK_CHECK', access: 'view' },
   { href: '/stock/wastage', label: 'Wastage', domain: 'STOCK_ADJUSTMENTS', access: 'modify' },
   { href: '/stock/production', label: 'Make', domain: null, access: 'modify' },
   { href: '/stock/orders', label: 'Orders', domain: 'PURCHASE_ORDERS', access: 'view' },

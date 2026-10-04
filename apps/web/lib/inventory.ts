@@ -22,7 +22,7 @@ export interface SupplyContext {
 
 export type SupplyScreen = Extract<
   Screen,
-  'stock' | 'count' | 'wastage' | 'orders' | 'transfers' | 'production' | 'variance'
+  'stock' | 'count' | 'check' | 'wastage' | 'orders' | 'transfers' | 'production' | 'variance'
 >;
 
 /**

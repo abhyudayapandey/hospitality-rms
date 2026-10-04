@@ -7,6 +7,7 @@ import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/mes
 import { formatMoney } from '@/lib/format';
 import type { ItemOption } from '@/lib/inventory';
 import { PhotoField } from '@/components/photo-field';
+import { ACTION_QUEUE_EVENT, indexedDbActions, type QueuedWastage } from '@/lib/action-queue';
 import { getWastageUploadUrl, recordWastage } from '../actions';
 
 const REASONS = [
@@ -23,8 +24,10 @@ export function WastageForm({
   threshold,
   photos,
   initial,
+  userId,
 }: {
   node: string;
+  userId: string;
   items: ItemOption[];
   threshold: number;
   photos: boolean;
@@ -59,11 +62,34 @@ export function WastageForm({
         setError('Enter how much was wasted.');
         return;
       }
-      const r = await recordWastage(
-        node,
-        [{ item_id: itemId, qty: n, reason, photo_key: photoKey }],
-        key,
-      );
+      const lines = [{ item_id: itemId, qty: n, reason, photo_key: photoKey }];
+      const clientTs = new Date().toISOString(); // when it happened, kept if it syncs later
+      // Small wastage (no photo, no approval) is saved on the phone when there is no signal
+      // and sent later with its original time (INV-8).
+      const saveOffline = async () => {
+        const q: QueuedWastage = {
+          kind: 'wastage',
+          idempotencyKey: key,
+          userId,
+          clientTs,
+          node,
+          lines: lines.map(({ item_id, qty, reason }) => ({ item_id, qty, reason })),
+        };
+        await indexedDbActions.put(q);
+        window.dispatchEvent(new Event(ACTION_QUEUE_EVENT));
+        setDone('No connection. Saved on this phone; it will be sent when you are back online.');
+        setQty('');
+        setKey(crypto.randomUUID());
+      };
+      if (!needsApproval && !navigator.onLine) return saveOffline();
+      let r;
+      try {
+        r = await recordWastage(node, lines, key);
+      } catch {
+        if (!needsApproval) return saveOffline(); // the request did not get through
+        setError('No connection. A photo and approval need a connection; try again.');
+        return;
+      }
       if (!r.ok) {
         setError(r.message);
         return;
