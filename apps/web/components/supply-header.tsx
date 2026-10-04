@@ -21,10 +21,13 @@ export function SupplyHeader({
   ctx,
   active,
   title,
+  all,
 }: {
   ctx: SupplyContext;
   active: (typeof TABS)[number]['href'];
   title: string;
+  /** an "All stores" option in the switcher, for lists across the stores (ADR 038) */
+  all?: { label: string; on: boolean } | undefined;
 }) {
   const node = ctx.node!;
   const q = `?node=${node.id}`;
@@ -40,6 +43,7 @@ export function SupplyHeader({
           name: `${n.name}${n.derived ? ' (view only)' : ''}`,
         }))}
         current={node.id}
+        all={all}
       />
       <h1 className="text-xl font-semibold">{title}</h1>
       {tabs.length > 1 && (

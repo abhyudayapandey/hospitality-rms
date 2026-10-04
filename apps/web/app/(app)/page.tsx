@@ -147,12 +147,7 @@ function Banners({ today }: { today: Today }) {
       {(['expiring', 'expired'] as const)
         .filter((k) => e[k].n > 0)
         .map((k) => (
-          <ExpiryBanner
-            key={k}
-            show={k}
-            n={e[k].n}
-            q={e[k].store ? `node=${e[k].store}&` : 'all=1&'}
-          />
+          <ExpiryBanner key={k} show={k} n={e[k].n} q="all=1&" />
         ))}
     </>
   );

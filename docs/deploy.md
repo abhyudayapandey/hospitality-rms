@@ -1399,6 +1399,15 @@ shows the same expiring value as the Stock banner's items, at any hour; Reports 
 sales → Hotel 1.0 shows the closing count's loss (₹1,940 on the test data) in the last 7
 days, also between midnight and 06:00.
 
+#### Releasing "All stores" in the Place picker (ADR 038)
+
+App only: no migration, no stack change, no access change, no test data change. Run the
+Deploy workflow; no re-import.
+
+**Check.** `test.general-manager.1.0`: Home → "Items expiring within 3 days" opens the list
+with Place: **All stores**, each line naming its store; choose Kitchen Store and only its
+batches show; Expired keeps Kitchen Store; choose All stores again and every store's show.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.
