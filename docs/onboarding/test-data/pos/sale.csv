@@ -1,0 +1,7 @@
+Sale by item,,,,,
+Item,Description,Quantity,Rate,Value,Discount
+TEST BAR 3.0,,,,,
+3001,PANEER TIKKA,2,355,650,60
+3022,MOJITO,3,430,1290,0
+9001,CHEF SPECIAL,1,400,400,0
+Grand Total,,6,,2340,60

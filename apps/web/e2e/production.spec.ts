@@ -20,7 +20,7 @@ test('a chef de partie records a batch where it is made; it shows with its expir
   await expect(main.getByRole('status')).toHaveText('Batch of Ginger Garlic Paste recorded.');
   await expect(
     page.getByTestId('batch').filter({ hasText: 'Ginger Garlic Paste' }).first(),
-  ).toContainText('Use within');
+  ).toContainText('Use by');
 });
 
 test('a bartender posts no sales', async ({ page }) => {

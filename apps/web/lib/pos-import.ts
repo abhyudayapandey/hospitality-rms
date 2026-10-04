@@ -31,6 +31,18 @@ export async function posImportOf(tx: Tx, outlet: string, date: string): Promise
   return r.rows[0] ?? null;
 }
 
+/** The dishes on the outlet's menu a POS code can be matched to (names only). */
+export async function posDishes(
+  tx: Tx,
+  outlet: string,
+): Promise<{ id: string; name: string; group: string }[]> {
+  const r = await sql<{ id: string; name: string; group: string }>`
+    select menu_item_id as id, name, menu as "group" from menu.pos_dishes(${outlet}::uuid)`.execute(
+    tx,
+  );
+  return r.rows;
+}
+
 /** Outlets where the caller imports POS sales. */
 export async function posPlaces(tx: Tx): Promise<{ outlet_id: string; outlet_name: string }[]> {
   const r = await sql<{ outlet_id: string; outlet_name: string }>`

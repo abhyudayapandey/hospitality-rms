@@ -7,7 +7,7 @@ import { formatMoney } from '@/lib/format';
 import { formatQty } from '@/lib/inventory';
 import type { SearchParams } from '@/lib/params';
 import { reportPlace, stockItems, stockSummary, type StockItemRow } from '@/lib/report-data';
-import { formatMeasure } from '@/lib/reports';
+import { formatMeasure, trendHref } from '@/lib/reports';
 
 // Stock position (R-2, ADR 028): a store's value now and over four weeks, days on hand
 // (value over average daily use) and stock that hasn't moved in 30 days. For the store's
@@ -52,7 +52,11 @@ export default async function StockPosition({ searchParams }: { searchParams: Se
         report="stock_position"
         switcher={{ screen: 'stock_position', places, current: place.id }}
       />
-      <ReportSections report="stock_position" rows={summary} />
+      <ReportSections
+        report="stock_position"
+        rows={summary}
+        trend={(m) => trendHref('stock_position', place.id, m)}
+      />
 
       <section aria-label="Value by category" className="space-y-2">
         <h2 className="text-sm font-semibold text-slate-700">Value by category</h2>

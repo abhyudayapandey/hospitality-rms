@@ -256,6 +256,7 @@ export async function priceChanges(
 }
 
 export interface SupplierFillRow {
+  supplier_id: string;
   supplier: string;
   orders: number;
   ordered_value: string;
@@ -274,8 +275,8 @@ export async function supplierFill(
   to: string,
 ): Promise<SupplierFillRow[]> {
   const r = await sql<SupplierFillRow>`
-    select supplier, orders, ordered_value::text, received_value::text, fill_pct::text,
-           on_time, late, not_delivered, not_due
+    select supplier_id, supplier, orders, ordered_value::text, received_value::text,
+           fill_pct::text, on_time, late, not_delivered, not_due
       from rpt.supplier_fill(${store}::uuid, ${from}::date, ${to}::date)`.execute(tx);
   return r.rows;
 }
@@ -446,6 +447,7 @@ export async function kitchenSummary(
 }
 
 export interface KitchenProductionRow {
+  item_id: string;
   sku: string;
   name: string;
   unit: string;
@@ -461,7 +463,7 @@ export async function kitchenProduction(
   to: string,
 ): Promise<KitchenProductionRow[]> {
   const r = await sql<KitchenProductionRow>`
-    select sku, name, unit, planned::text, made::text, batches
+    select item_id, sku, name, unit, planned::text, made::text, batches
       from rpt.kitchen_production(${store}::uuid, ${from}::date, ${to}::date)`.execute(tx);
   return r.rows;
 }
@@ -607,5 +609,28 @@ export async function itemTrend(
       from rpt.item_trend(${store}::uuid, ${item}::uuid, ${by}, ${from}::date, ${to}::date)`.execute(
     tx,
   );
+  return r.rows;
+}
+
+export interface MeasurePoint {
+  period: string;
+  value: string | null;
+}
+
+/** One figure of a report over time (RPT-12, ADR 041); rpt.measure_trend checks access. */
+export async function measureTrend(
+  tx: Tx,
+  report: string,
+  node: string,
+  measure: string,
+  by: string,
+  from: string,
+  to: string,
+  key: string | null,
+): Promise<MeasurePoint[]> {
+  const r = await sql<MeasurePoint>`
+    select period::text, value::text
+      from rpt.measure_trend(${report}, ${node}::uuid, ${measure}, ${by}, ${from}::date,
+                             ${to}::date, ${key}::uuid)`.execute(tx);
   return r.rows;
 }

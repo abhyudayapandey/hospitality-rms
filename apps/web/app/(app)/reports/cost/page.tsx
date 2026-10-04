@@ -26,7 +26,7 @@ import {
   reportToday,
   type CostItemRow,
 } from '@/lib/report-data';
-import { capRange, topLosses } from '@/lib/reports';
+import { capRange, topLosses, trendHref } from '@/lib/reports';
 import { LabourByDepartment } from './labour';
 
 // Cost of sales (R-2, ADR 028; replaces the Variance screen, UX U-14): the rupees first.
@@ -74,7 +74,12 @@ export default async function CostOfSales({ searchParams }: { searchParams: Sear
         from={range.from}
         to={range.to}
       />
-      <ReportSections report="cost_of_sales" rows={totals} targets={targets} />
+      <ReportSections
+        report="cost_of_sales"
+        rows={totals}
+        targets={targets}
+        trend={(m) => trendHref('cost_of_sales', place.id, m)}
+      />
       <CostBreakdown rows={parts} />
       {labour && <LabourByDepartment rows={labour} />}
 

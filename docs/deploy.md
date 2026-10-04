@@ -1473,6 +1473,46 @@ No re-import for Test Solo Bar Co.
   (14 days, then 13 weeks). Cost of sales → open an item → Trend. Stock position → tap an
   item.
 
+#### Releasing the cashier's code matching, dates-only expiry and trends on every figure (SAL-2, INV-12, RPT-12)
+
+Two migrations, `20261031090000_cashier_matches_pos_codes` and
+`20261031100000_measure_trends` (ADR 039, 041). No stack change, no new parameter, no access
+change (the CASHIER group already holds POS_IMPORT), no test data change: no re-import. One
+new file for the checks, `docs/onboarding/test-data/pos/sale.csv`.
+
+- **What changes in the app.**
+  - **The cashier matches the POS codes** not matched yet on the import screen (dish names
+    only), then posts the day again. Changing a code already matched stays with people who
+    post sales.
+  - **Expiry shows the date only**: Push today, the expiry lists, the batches list ("Use by
+    Sun, 4 Oct") and the morning alert.
+  - **The bell's number** is the unread lines Notifications shows (two weeks of roster are
+    one line), not the notifications behind them.
+  - **Every report figure opens its trend** (the small chart icon): Outlet today,
+    Department, Cost of sales, People, the central kitchen, the stock value, each cell of
+    Outlets side by side, a supplier on Purchasing and an outlet on the kitchen's
+    dispatch. Dish and item trends too. The last 3, 6, 9 or 12 months (as Menu
+    engineering), by week (default) or month, as a line (default) or bars.
+
+**Deploy order.** Run the Deploy workflow. Nothing to re-import.
+
+**Check.**
+
+- **`test.cashier.3.0`.** Import sales → choose `docs/onboarding/test-data/pos/sale.csv`;
+  "3 items · ₹2,340 taken"; Import; "2 items, 1 not matched yet" and `9001` listed. Pick
+  House Sangria (glass) for `9001`, then **Match and post the day again**: 3 items.
+- **`test.server.3.0`.** The bell's number matches the unread lines on Notifications. Push
+  today shows only while prep at Bar 3.0 expires by the end of tomorrow's business day; the
+  test data has none. To see it, as `test.bartender.3.0` make a House Sangria (pre-batched)
+  batch today (48 hours): from 06:00 tomorrow the server's Home shows Push today with House
+  Sangria (glass) and (pitcher), use by a date.
+- **`test.general-manager.1.0`.** Menu engineering (6 months) → Butter Naan: 6 months by
+  week, as a line; **Bars** and **Months** switch it. Outlet today → Food cost, then People
+  cost: each opens its trend. Cost of sales → open an item → Trend.
+- **`test.cost-controller.1.0`.** Outlet today has no people cost, and
+  `/reports/trend?report=outlet_flash&node=…&measure=labour_cost` says no access.
+- **`test.account-owner`.** Outlets side by side → tap an outlet's Sales: its trend.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.

@@ -21,7 +21,7 @@ import {
   reportPlace,
   reportToday,
 } from '@/lib/report-data';
-import { capRange, formatMeasure } from '@/lib/reports';
+import { capRange, formatMeasure, trendHref } from '@/lib/reports';
 
 // People (R-3, ADR 030): headcount, shifts, lateness, hours, overtime and leave for a
 // company, region, area, outlet or site. Opens with REPORTS or WORKERS modify. Names of
@@ -77,6 +77,7 @@ export default async function PeopleReport({ searchParams }: { searchParams: Sea
       <ReportSections
         report="people"
         rows={summary.filter((m) => m.measure !== 'leave_liability' || m.value !== null)}
+        trend={(m) => trendHref('people', place.id, m)}
       />
 
       {departments.length > 1 && (
