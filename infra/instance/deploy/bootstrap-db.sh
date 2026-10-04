@@ -24,7 +24,9 @@ alter role wf_executor with login nosuperuser nocreaterole nocreatedb nobypassrl
 alter role platform_loader with login nosuperuser nocreaterole nocreatedb bypassrls password :'pl';
 revoke app_rw, wf_executor, platform_loader from migrator;
 revoke all on database outlet_ops from public;
-grant create, connect on database outlet_ops to migrator;
+-- temporary: migrations may define pg_temp helpers that go when the session ends
+-- (20261101100000_report_breakdowns patches functions with one)
+grant create, connect, temporary on database outlet_ops to migrator;
 grant connect on database outlet_ops to app_rw, wf_executor, platform_loader;
 revoke create on schema public from public;
 grant create on schema public to migrator;
