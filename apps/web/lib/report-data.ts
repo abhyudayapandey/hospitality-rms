@@ -37,7 +37,7 @@ export async function reportPlaces(tx: Tx, report: ReportScreen): Promise<Report
   return r.rows;
 }
 
-/** Today's business day at a place (06:00 to 06:00 local). */
+/** Today's business day at a place (04:00 to 04:00 local). */
 export async function reportToday(tx: Tx, node: string): Promise<string> {
   const r = await sql<{ d: string }>`select rpt.today(${node}::uuid)::text as d`.execute(tx);
   return r.rows[0]!.d;

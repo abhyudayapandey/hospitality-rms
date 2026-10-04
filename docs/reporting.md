@@ -105,9 +105,8 @@ DELIVERY`), then **menu type** (`Food`, `Liquor`, `Soft Drink`, `Others`).
 ### Dimensions
 
 - **Date.** The business day in the outlet's time zone. A bar's day ends at its closing
-  time, not at midnight. Decided: the business day starts at **06:00 local time** and is
-  used
-  everywhere.
+  time, not at midnight. Decided: the business day starts at **04:00 local time** (06:00 until
+  ADR 046) and is used everywhere.
 - **Place.** Two trees, as now:
   - org: company → region → area → outlet or site → department;
   - supply: network → hub → supply point → store.
@@ -261,7 +260,7 @@ Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
 ## Progress
 
 - **R-1 done** (ADR 023):
-  - the `rpt` schema, with four daily tables on a 06:00 business day, rebuilt nightly over
+  - the `rpt` schema, with four daily tables on a 04:00 business day, rebuilt nightly over
     35 days (today and yesterday are worked out live);
   - **Outlet today** (the daily flash, without labour cost), **Department today** and **My
     week**;
@@ -329,7 +328,7 @@ Each step gets an ADR, the PRD section 6.11 below, and its e2e tests.
 4. **No typed-in covers.** The **POS import** comes soon (SAL-1): one Excel export per
    outlet per day (IDSNEXT first, others alike), with item, description, quantity, rate,
    value and discount per line.
-5. **Business day: 06:00 local time**, for every outlet.
+5. **Business day: 04:00 local time** (06:00 until ADR 046), for every outlet.
 6. **Targets** (food %, beverage %, labour %, task compliance): company settings with an
    outlet override, in R-4 (decided 3 Oct: food 30, drink 22, labour 25, prime 60,
    wastage 2, tasks 90; red only when worse by more than 2 points; on 4 Oct people cost

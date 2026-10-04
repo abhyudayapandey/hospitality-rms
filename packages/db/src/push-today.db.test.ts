@@ -77,7 +77,8 @@ describe('Push today', () => {
 
   it('leaves out expired batches, empty ones and those expiring later', async () => {
     await inRolledBackTx(async (c) => {
-      await batch(c, -1, 500, 'GONE-1');
+      // a use-by is a date: gone only once its business day has ended, so a day and an hour ago
+      await batch(c, -25, 500, 'GONE-1');
       await batch(c, 24 * 4, 500, 'LATER-1');
       const r = await push(c, 'test.server.3.0', 'TEST-BAR-3.0');
       expect(r.rows!.filter((x) => x.item === 'Ginger Garlic Paste')).toEqual([]);

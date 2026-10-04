@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
+  businessDate,
   daysInclusive,
   formatDay,
   formatSpan,
@@ -38,5 +39,17 @@ describe('people dates', () => {
     expect(isIsoDate('2026-02-29')).toBe(false);
     expect(isIsoDate('2026-02-28')).toBe(true);
     expect(isIsoDate('28/02/2026')).toBe(false);
+  });
+});
+
+describe('businessDate', () => {
+  it('counts the day from 04:00: 02:00 is still the day before', () => {
+    expect(businessDate('2026-10-04T10:00:00Z', 'Asia/Kolkata')).toBe('2026-10-04');
+    // 02:00 IST on the 5th
+    expect(businessDate('2026-10-04T20:30:00Z', 'Asia/Kolkata')).toBe('2026-10-04');
+    // 04:00 IST on the 5th
+    expect(businessDate('2026-10-04T22:30:00Z', 'Asia/Kolkata')).toBe('2026-10-05');
+    // a stored use-by, the last instant before 04:00
+    expect(businessDate('2026-10-04T22:29:59.999Z', 'Asia/Kolkata')).toBe('2026-10-04');
   });
 });

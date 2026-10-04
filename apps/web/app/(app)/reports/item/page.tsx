@@ -137,7 +137,7 @@ export default async function ItemTrend({ searchParams }: { searchParams: Search
       </Accordion>
       <p className="text-xs text-slate-500">
         In: received, transferred in and made here. Used: sold by recipe, made into prep and other
-        use, valued at the store&apos;s average cost. Business days run 06:00 to 06:00.
+        use, valued at the store&apos;s average cost. Business days run 04:00 to 04:00.
       </p>
     </div>
   );

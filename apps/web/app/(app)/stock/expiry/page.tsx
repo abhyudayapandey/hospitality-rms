@@ -4,7 +4,7 @@ import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { EXPIRY_TITLE, expiryShow, splitExpiry } from '@/lib/expiry';
-import { formatDay, localDate } from '@/lib/dates';
+import { businessDate, formatDay } from '@/lib/dates';
 import { expiryList, formatQty, param, supplyContext, type SearchParams } from '@/lib/inventory';
 
 // The lists the Stock screen's banners open (INV-12, ADR 033): batches expiring within 3
@@ -83,7 +83,7 @@ export default async function ExpiryPage({ searchParams }: { searchParams: Searc
                   {show === 'expired' ? 'Expired' : 'Use by'}
                 </span>
                 <span className="block font-medium tabular-nums" data-testid="use-by">
-                  {formatDay(localDate(b.expires_at))}
+                  {formatDay(businessDate(b.expires_at))}
                 </span>
                 {show === 'expired' && canDiscard && (
                   <Link

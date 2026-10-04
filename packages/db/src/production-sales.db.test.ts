@@ -12,9 +12,9 @@ import {
 // today's date in India (IST), not the database's UTC date: the loader dates prices and
 // recipes from it
 const TODAY = `(now() at time zone 'Asia/Kolkata')::date`;
-// the business day, which starts at 06:00 (ADR 023), so before 06:00 is still yesterday: a
+// the business day, which starts at 04:00 (ADR 023), so before 04:00 is still yesterday: a
 // period from it to TODAY holds everything done today at any hour (ADR 037)
-const BUSINESS_DAY = `((now() at time zone 'Asia/Kolkata') - interval '6 hours')::date`;
+const BUSINESS_DAY = `((now() at time zone 'Asia/Kolkata') - interval '4 hours')::date`;
 
 // Production, sales and variance behaviour (ADR 015).
 
@@ -174,10 +174,11 @@ describe('batches and expiry', () => {
         );
       }
       const { rows } = await c.query<{ same: boolean }>(
-        `select (select expires_at from inv.production where delivery_node_id = $1 order by made_at desc limit 1)
+        `select inv.expiry_at((select expires_at from inv.production where delivery_node_id = $1 order by made_at desc limit 1), 'Asia/Kolkata')
                 = (select expires_at from inv.stock_ledger where ref_id = $2 and movement_type = 'transfer_in') as same`,
         [ids.node(CK), ref],
       );
+      // the batch's expiry is its use-by day's end (ADR 046), which the transfer carries
       expect(rows[0]!.same).toBe(true);
     });
   });

@@ -217,7 +217,7 @@ export default async function MeasureTrend({ searchParams }: { searchParams: Sea
       )}
       <p className="text-xs text-slate-500">
         {by === 'week' ? 'Weeks start on Monday' : 'Months start on the 1st'}; business days run
-        06:00 to 06:00.{' '}
+        04:00 to 04:00.{' '}
         {def.unit === 'pct'
           ? `Each ${by}'s share is worked out from its own totals, not an average of days.`
           : measure === 'stock_value'

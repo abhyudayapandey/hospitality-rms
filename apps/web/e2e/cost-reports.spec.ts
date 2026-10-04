@@ -52,7 +52,7 @@ test('stock position and purchasing: the executive chef at the Kitchen Store', a
   await signInAs(page, 'Test Executive Chef 1.0');
   await page.goto('/reports/stock');
   await expect(page.getByTestId('viewing')).toHaveText('Test Hotel & Bar 1.0 – Kitchen Store');
-  // days on hand need 7 days of use; before 06:00 the business day is still yesterday, one
+  // days on hand need 7 days of use; before 04:00 the business day is still yesterday, one
   // day fewer (ADR 037), and it shows none yet
   const lag = (
     await asMigrator<{ lag: number }>(

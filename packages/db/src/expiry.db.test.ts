@@ -74,7 +74,7 @@ describe('the expiry list (INV-12)', () => {
         }
         if (r.rows.length > 0) some++;
         // independently: batches with stock left at the stores they may view, expired or with
-        // a use-by date (store time) no later than three days from today there
+        // a use-by date (business day, store time) no later than three days from today there
         await c.query(`select set_config('app.user_id', $1, true)`, [p.id]);
         const want = await c.query<{ k: string }>(
           `select n.id || ' ' || b.batch_no || ' ' || x.item_id as k
@@ -86,8 +86,8 @@ describe('the expiry list (INV-12)', () => {
               and core.can('STOCK_LEVELS', 'view', null, n.id)
               and b.remaining > 0
               and (b.expires_at <= now()
-                   or (b.expires_at at time zone coalesce(ops.tz_of(n.id), 'UTC'))::date
-                        <= (now() at time zone coalesce(ops.tz_of(n.id), 'UTC'))::date + 3)
+                   or rpt.business_date(b.expires_at, coalesce(ops.tz_of(n.id), 'UTC'))
+                        <= rpt.business_date(now(), coalesce(ops.tz_of(n.id), 'UTC')) + 3)
             order by 1`,
         );
         const gotKeys = await c.query<{ k: string }>(
@@ -208,6 +208,47 @@ describe('stock position for all of an outlet’s stores (RPT-14)', () => {
           expect(r.error, `${user} ${fn}`).toBe('NOT_AUTHORISED');
         }
       }
+    });
+  });
+});
+
+// An item expires on a date, not at a time of day (ADR 046): good until its business day
+// (04:00 to 04:00) ends.
+describe('a use-by is a date (ADR 046)', () => {
+  const at = async (c: PoolClient, instant: string) =>
+    (
+      await c.query<{ t: string }>(
+        `select to_char(inv.expiry_at($1::timestamptz, 'Asia/Kolkata') at time zone 'Asia/Kolkata',
+                        'YYYY-MM-DD HH24:MI:SS') as t`,
+        [instant],
+      )
+    ).rows[0]!.t;
+
+  it('every time on a day gives the same expiry: the last second before 04:00 the next day', async () => {
+    await inRolledBackTx(async (c) => {
+      const end = '2026-10-05 03:59:59';
+      expect(await at(c, '2026-10-04 04:00:00+05:30')).toBe(end);
+      expect(await at(c, '2026-10-04 10:00:00+05:30')).toBe(end);
+      expect(await at(c, '2026-10-04 23:59:00+05:30')).toBe(end);
+      // 02:00 on the 5th is still the 4th's business day
+      expect(await at(c, '2026-10-05 02:00:00+05:30')).toBe(end);
+      expect(await at(c, '2026-10-05 04:00:00+05:30')).toBe('2026-10-06 03:59:59');
+      // already a use-by: no change
+      expect(await at(c, '2026-10-05 03:59:59.999999+05:30')).toBe(end);
+    });
+  });
+
+  it('a batch whose use-by is today is not expired until the business day ends', async () => {
+    await inRolledBackTx(async (c) => {
+      const [r] = (
+        await c.query<{ today_ok: boolean; yesterday_gone: boolean }>(
+          `select inv.expiry_at(rpt.day_start(rpt.business_date(now(), 'Asia/Kolkata'), 'Asia/Kolkata'),
+                                'Asia/Kolkata') > now() as today_ok,
+                  inv.expiry_at(rpt.day_start(rpt.business_date(now(), 'Asia/Kolkata') - 1,
+                                              'Asia/Kolkata'), 'Asia/Kolkata') <= now() as yesterday_gone`,
+        )
+      ).rows;
+      expect(r).toEqual({ today_ok: true, yesterday_gone: true });
     });
   });
 });

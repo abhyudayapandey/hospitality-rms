@@ -1965,3 +1965,18 @@ and keep costing until you delete them by hand:
 - the SSM SecureString parameters (free)
 
 Also delete the DLM snapshots.
+
+## Releasing the 04:00 business day and expiry by date
+
+The business day (every report, Home's "today", the expiry alert) now runs 04:00 to 04:00
+local time instead of 06:00 to 06:00, and a batch expires on its use-by date, not at its
+use-by minute (ADR 046). Two migrations. No stack change, no parameter, no data to
+re-import, nothing stored is rewritten.
+
+1. Merge, then **Deploy** as usual (the migration runs with it). `cdk diff` shows nothing.
+2. The nightly job rebuilds the report tables for the last 35 days with the new day. To
+   see it at once, on the instance: `pnpm --filter @outlet-ops/workflow reports-rebuild`.
+3. Check: an item received or wasted at 05:00 now belongs to that day's report; at 03:00
+   it belongs to the day before. Days older than 35 days keep their old figures.
+4. Check expiry: a batch whose use-by is today is under "Within 3 days", not "Expired", until
+   04:00 tomorrow; one whose use-by was yesterday is under "Expired".
