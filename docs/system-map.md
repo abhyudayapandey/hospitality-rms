@@ -1,6 +1,6 @@
 # System map: people, places and who uses what
 
-Status: current as of 2026-10-04 (after ADR 045). This page describes what exists today.
+Status: current as of 2026-10-04 (after ADR 046). This page describes what exists today.
 `docs/ux-review.md` and `docs/reporting.md` describe what is proposed. The test customers
 in `docs/onboarding/test-data` are the worked example.
 

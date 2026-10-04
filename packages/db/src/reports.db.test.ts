@@ -4,8 +4,8 @@ import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from
 import { newUser } from '../test/workforce';
 
 // The report figures (ADR 023): one definition per measure (rpt.calc_*), stored nightly by
-// rpt.rebuild and read live for today and yesterday. The business day runs 06:00 to
-// 06:00 local time. The test data's week of sales (file 27) gives figures to check against
+// rpt.rebuild and read live for today and yesterday. The business day runs 04:00 to
+// 04:00 local time. The test data's week of sales (file 27) gives figures to check against
 // the existing cost report.
 
 let ids: SeedIds;
@@ -86,7 +86,7 @@ describe('rpt figures', () => {
     });
   });
 
-  it('a stock movement at 02:00 belongs to the business day before (06:00 cut-off)', async () => {
+  it('a stock movement at 02:00 belongs to the business day before (04:00 cut-off)', async () => {
     await inRolledBackTx(async (c) => {
       const store = ids.node('TEST-HOTEL-1.0-KITCHEN-STORE');
       const item = (

@@ -200,9 +200,9 @@ describe("a stock item's trend", () => {
       expect(r.rows).toHaveLength(14);
       const { rows } = await c.query<{ rec_q: string; rec_v: string; on_hand: string }>(
         `select sum(l.qty) filter (where l.movement_type = 'receipt'
-                                     and ((l.occurred_at at time zone 'Asia/Kolkata') - interval '6 hours')::date >= $3::date) as rec_q,
+                                     and ((l.occurred_at at time zone 'Asia/Kolkata') - interval '4 hours')::date >= $3::date) as rec_q,
                 sum(l.qty * l.unit_cost) filter (where l.movement_type = 'receipt'
-                                     and ((l.occurred_at at time zone 'Asia/Kolkata') - interval '6 hours')::date >= $3::date) as rec_v,
+                                     and ((l.occurred_at at time zone 'Asia/Kolkata') - interval '4 hours')::date >= $3::date) as rec_v,
                 sum(l.qty) as on_hand
            from inv.stock_ledger l where l.item_id = $1 and l.delivery_node_id = $2`,
         [await item(c, 'TOMATOES'), ids.node('TEST-HOTEL-1.0-KITCHEN-STORE'), FROM],

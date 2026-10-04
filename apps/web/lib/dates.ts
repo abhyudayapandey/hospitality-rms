@@ -66,6 +66,17 @@ export function formatSpan(start: Date | string, end: Date | string, tz: string 
   return `${formatTime(start, tz)}–${formatTime(end, tz)}${nextDay ? ' +1' : ''}`;
 }
 
+/** The business day starts at 04:00 local time (ADR 046; rpt.business_date does the same). */
+export const BUSINESS_DAY_START_HOUR = 4;
+
+/**
+ * The business day an instant falls in, as a date: 02:00 on the 5th is still the 4th. A
+ * batch's use-by is this date, whatever the time of day (ADR 046).
+ */
+export function businessDate(at: Date | string, tz: string = DEFAULT_TZ): string {
+  return localDate(new Date(new Date(at).getTime() - BUSINESS_DAY_START_HOUR * 3_600_000), tz);
+}
+
 /** The date an instant falls on in `tz`. */
 export function localDate(at: Date | string, tz: string = DEFAULT_TZ): string {
   return localToday(tz, new Date(at));
