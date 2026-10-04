@@ -152,6 +152,12 @@ export class OutletOpsStack extends Stack {
         // maintenance requests 400 days (the app copies a flagged photo to keep/)
         { prefix: 'tasks/routine/', expiration: Duration.days(90) },
         { prefix: 'tasks/keep/', expiration: Duration.days(400) },
+        // stock check proof photos (ADR 042): money data, kept 5 years
+        { prefix: 'stockcheck/', expiration: Duration.days(1830) },
+        // clock-in selfies (ATT-7, ADR 044): personnel data, never kept longer than the
+        // data-retention rule allows (at most 24 months); the nightly job deletes the
+        // rows by the exact rule, this removes the files
+        { prefix: 'selfies/', expiration: Duration.days(731) },
       ],
       // browsers upload straight to S3 from the app's origin only
       cors: [
@@ -253,6 +259,23 @@ export class OutletOpsStack extends Stack {
         sid: 'TaskPhotos',
         actions: ['s3:PutObject', 's3:GetObject'],
         resources: [photoBucket.arnForObjects('tasks/*')],
+      }),
+    );
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        // stock check proof photos (INV-10, ADR 042)
+        sid: 'StockCheckPhotos',
+        actions: ['s3:PutObject', 's3:GetObject'],
+        resources: [photoBucket.arnForObjects('stockcheck/*')],
+      }),
+    );
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        // clock-in selfies (ATT-7, ADR 044): written with a presigned POST, read only for HR
+        // and the department head through a short-lived GET URL
+        sid: 'ClockSelfies',
+        actions: ['s3:PutObject', 's3:GetObject'],
+        resources: [photoBucket.arnForObjects('selfies/*')],
       }),
     );
     role.addToPolicy(

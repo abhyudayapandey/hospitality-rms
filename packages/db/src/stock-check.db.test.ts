@@ -460,3 +460,44 @@ describe('offline wastage (INV-8)', () => {
     });
   });
 });
+
+describe('test data for the stock check', () => {
+  it('has shelves in Bar 3.0’s bar store, so the bar sheet is shelf-ordered (INV-7)', async () => {
+    await inRolledBackTx(async (c) => {
+      const bar = ids.node('TEST-BAR-3.0-BAR-STORE');
+      const tenantNode = await c.query<{ shelf: string; n: string }>(
+        `select shelf, count(*) as n from inv.item_node
+          where delivery_node_id = $1 and shelf is not null group by shelf order by min(shelf_order)`,
+        [bar],
+      );
+      expect(tenantNode.rows.map((r) => r.shelf).sort()).toEqual([
+        'Back bar',
+        'Bar fridge',
+        'Dry store',
+        'Wine rack',
+      ]);
+      expect(tenantNode.rows.reduce((a, r) => a + Number(r.n), 0)).toBe(28);
+    });
+  });
+
+  it('has a Stock Verifier in Test Solo Bar Co., which has no Cost Controller (INV-11)', async () => {
+    await inRolledBackTx(async (c) => {
+      const solo = ids.node('TEST-SOLO-BAR-KITCHEN-STORE');
+      const r = await attemptAs(
+        c,
+        ids.user('test.solo.stock-verifier'),
+        'select inv.start_stock_check($1) as id',
+        [solo],
+      );
+      expect(r.error).toBeUndefined();
+      // the bar manager there only sees the tags
+      const bm = await attemptAs(
+        c,
+        ids.user('test.solo.bar-manager'),
+        'select inv.start_stock_check($1)',
+        [solo],
+      );
+      expect(bm.error).toMatch(/NOT_AUTHORISED/);
+    });
+  });
+});

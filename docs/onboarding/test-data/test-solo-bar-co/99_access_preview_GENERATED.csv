@@ -16,4 +16,5 @@ test.solo.head-cook,Test Head Cook,STORE_KEEPER,TEST-SOLO-BAR-KITCHEN-STORE,Test
 test.solo.cook,Test Cook,STOCK_USER,TEST-SOLO-BAR-KITCHEN-STORE,Test Solo Bar – Kitchen Store,this place and everything below,job role default (any)
 test.solo.cook,Test Cook,STAFF,TEST-SOLO-BAR-KITCHEN,Test Solo Bar – Kitchen,this place and everything below,job role default (any)
 test.solo.cook,Test Cook,PRODUCTION_TEAM,TEST-SOLO-BAR-KITCHEN,Test Solo Bar – Kitchen,this place and everything below,job role default (any)
+test.solo.stock-verifier,Test Stock Verifier,STOCK_VERIFIER,TEST-SOLO-BAR-SUPPLY,Test Solo Bar – Supply Point,this place and everything below,job role default (standalone_bar)
 test.solo.bar-manager,Test Bar Manager,ACCOUNT_OWNER,TEST-SOLO-COMPANY,Test Solo Bar Co.,this place and everything below,extra (file 08)
