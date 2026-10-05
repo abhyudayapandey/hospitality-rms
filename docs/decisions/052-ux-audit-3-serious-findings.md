@@ -98,6 +98,11 @@ The user also asked for a dark/light switch, with dark as the default.
         shard.
       - A unit test (`sequencer.test.ts`) fails when a weight names a missing file, or one
         file takes more than a third of the total.
+      - Each DB shard in CI ends with a **DB test times** step. It prints every file's
+        seconds on CI's own machines as lines ready to paste into the weights table
+        (`packages/db/test/print-times.mjs`). Local timings differ too much to use: on the
+        first push, the weights measured locally sent shard 1 to 412 s and shard 2 to 155 s.
+        The weights now come from CI's numbers.
 
 ## Not done here
 

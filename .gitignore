@@ -52,3 +52,4 @@ Thumbs.db
 apps/web/AGENTS.md
 apps/web/CLAUDE.md
 TEST_LOGINS*
+db-times.json
