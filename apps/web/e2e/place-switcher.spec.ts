@@ -12,6 +12,7 @@ test('the general manager sees only stores on Stock and only departments on Rost
   await page.goto('/stock');
   await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Main Store');
   expect(await viewingOptions(page)).toEqual([
+    'All stores', // first, for every list that spans stores (ADR 038)
     'Test Hotel & Bar 1.0 – Main Store',
     'Test Hotel & Bar 1.0 – Bar Store',
     'Test Hotel & Bar 1.0 – Housekeeping Store',
@@ -19,7 +20,9 @@ test('the general manager sees only stores on Stock and only departments on Rost
   ]);
 
   await page.goto('/roster/week');
-  const departments = await viewingOptions(page);
+  const options = await viewingOptions(page);
+  expect(options[0]).toBe('All departments');
+  const departments = options.slice(1);
   expect(departments.length).toBe(10);
   for (const d of departments) {
     expect(d).toMatch(/^Test Hotel & Bar 1\.0 – /);
