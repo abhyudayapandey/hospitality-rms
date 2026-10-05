@@ -7,7 +7,7 @@ import type { Schedule, StepInput } from './tasks-view';
 
 export interface MyTask {
   id: string;
-  kind: 'one_off' | 'checklist' | 'prep' | 'expiry';
+  kind: 'one_off' | 'checklist' | 'prep' | 'expiry' | 'receive';
   title: string;
   org_node_id: string;
   place_name: string;
@@ -29,7 +29,7 @@ export interface TaskStep {
   id: string;
   position: number;
   label: string;
-  kind: 'tick' | 'number' | 'text' | 'photo' | 'discard' | 'batch';
+  kind: 'tick' | 'number' | 'text' | 'photo' | 'discard' | 'batch' | 'receive';
   min: number | null;
   max: number | null;
   unit: string | null;

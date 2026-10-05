@@ -185,16 +185,57 @@ export async function placeOrder(
   });
 }
 
-export async function receivePo(
+export interface ReceivedLine {
+  item_id: string;
+  qty: number;
+  amount: number;
+}
+
+/**
+ * Receives an order at what it actually cost (ADR 051): an amount per line, required for
+ * anything received. The bill's files, when given, are attached in the same transaction
+ * (ADR 050), for the total received.
+ */
+export async function receiveGoods(
   po: string,
+  lines: ReceivedLine[],
+  bill: { files: string[]; bill_no: string | null } | null,
+  idempotencyKey: string,
+): Promise<ActionResult<{ id: string }>> {
+  return run('receive_goods', async (tx) => {
+    const clean = lines
+      .filter((l) => Number.isFinite(l.qty) && Number.isFinite(l.amount))
+      .map((l) => ({ item_id: l.item_id, qty: l.qty, amount: l.amount }));
+    const r = await sql<{ id: string }>`
+      select inv.receive_goods(${po}::uuid, ${json(clean)}::jsonb, ${idempotencyKey}) as id`.execute(
+      tx,
+    );
+    if (bill && bill.files.length > 0) {
+      const total = clean.reduce((t, l) => t + l.amount, 0);
+      await sql`
+        select inv.add_bill(null, ${po}::uuid, null, null, ${bill.bill_no}, current_date,
+                            ${total}, null, ${bill.files}::text[], ${`${idempotencyKey}:bill`})`.execute(
+        tx,
+      );
+    }
+    return { id: r.rows[0]!.id };
+  });
+}
+
+/**
+ * The Main Store sends stock to a department's store (ADR 051). It leaves the Main Store at
+ * once; whoever is on shift there (else the head) gets a task to confirm what arrived.
+ */
+export async function sendStock(
+  from: string,
+  to: string,
   lines: Line[],
   idempotencyKey: string,
 ): Promise<ActionResult<{ id: string }>> {
-  return run('receive', async (tx) => {
+  return run('send_stock', async (tx) => {
     const r = await sql<{ id: string }>`
-      select inv.receive(${po}::uuid, ${json(cleanLines(lines))}::jsonb, ${idempotencyKey}) as id`.execute(
-      tx,
-    );
+      select inv.send_stock(${from}::uuid, ${to}::uuid, ${json(cleanLines(lines))}::jsonb,
+                            ${idempotencyKey}) as id`.execute(tx);
     return { id: r.rows[0]!.id };
   });
 }

@@ -198,8 +198,13 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     let store: StoreWork | null = null;
     if (profile === 'store' && shell.domains.has('STOCK_LEVELS')) {
       const r = await sql<{ receive: number; low: number }>`
-        select (select count(*) from inv.purchase_order_summary
-                 where progress in ('released', 'partially_received'))::int as receive,
+        select (select count(*) from (
+                  select id from inv.purchase_order_summary
+                   where progress in ('released', 'partially_received')
+                  union
+                  -- the departments' requests the order desk receives (ADR 049, 051)
+                  select po_id from inv.desk_order_list()
+                   where progress in ('released', 'partially_received')) x)::int as receive,
                (select count(*)
                   from inv.item_node n
                   join inv.item i on i.id = n.item_id and i.archived_at is null

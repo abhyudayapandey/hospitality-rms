@@ -136,6 +136,26 @@ export async function reportExpired(
   });
 }
 
+/** Confirms what arrived from the Main Store (ADR 051): it goes into the department's store. */
+export async function receiveSent(
+  task: string,
+  lines: { item_id: string; qty: number }[],
+): Promise<ActionResult<null>> {
+  return run('receive_sent', async (tx) => {
+    await sql`select ops.receive_sent(${task}::uuid, ${JSON.stringify(lines)}::jsonb)`.execute(tx);
+    revalidatePath('/stock', 'layout');
+    return null;
+  });
+}
+
+/** The department head passes a delivery to receive to someone in the team (ADR 051). */
+export async function reassignTask(task: string, user: string): Promise<ActionResult<null>> {
+  return run('reassign_task', async (tx) => {
+    await sql`select ops.reassign_task(${task}::uuid, ${user}::uuid)`.execute(tx);
+    return null;
+  });
+}
+
 export async function assignExpiry(
   task: string,
   user: string,

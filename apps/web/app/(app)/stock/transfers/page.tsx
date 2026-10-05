@@ -19,7 +19,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
   const user = await requireUser();
   const node = ctx.node;
   const ids = ctx.nodes.map((n) => n.id);
-  const rows = await withUser(user.id, async (tx) => {
+  const { rows, mainStore } = await withUser(user.id, async (tx) => {
     const r = await sql<{
       id: string;
       from_node_id: string;
@@ -41,10 +41,14 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
               or (progress = 'awaiting_dispatch'
                   and ${all ? sql`from_node_id = any(${ids}::uuid[])` : sql`from_node_id = ${node.id}::uuid`}))
        order by created_at desc limit 30`.execute(tx);
-    return r.rows;
+    const main = await sql<{ m: boolean }>`select inv.is_main_store(${node.id}::uuid) as m`.execute(
+      tx,
+    );
+    return { rows: r.rows, mainStore: main.rows[0]?.m ?? false };
   });
   const toSend = rows.filter((r) => r.progress === 'awaiting_dispatch').length;
   const q = `?node=${node.id}`;
+  const canMove = !all && ctx.can('TRANSFERS', 'modify') && !node.derived && node.holds_stock;
   return (
     <div className="space-y-4">
       <PollRefresh />
@@ -71,15 +75,6 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
           },
         ]}
       />
-      {/* any stock location they move stock at, a store or an outlet's own (audit #5) */}
-      {!all && ctx.can('TRANSFERS', 'modify') && !node.derived && node.holds_stock && (
-        <Link
-          href={`/stock/transfers/new${q}`}
-          className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
-        >
-          Request stock
-        </Link>
-      )}
       {rows.length === 0 ? (
         <Empty>
           {tab === 'send' ? 'Nothing is waiting to be sent.' : 'No transfers here yet.'}
@@ -98,6 +93,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="font-medium">
                       {r.kind === 'rfm' ? 'Request for material · ' : ''}
+                      {r.kind === 'send' && outgoing ? 'Sent · ' : ''}
                       {outgoing ? `To ${r.to_name}` : `From ${r.from_name}`}
                     </span>
                     <span
@@ -113,6 +109,28 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
             );
           })}
         </ul>
+      )}
+      {/* the list first, then what to do (ADR 051); any stock location they move stock at
+          (audit #5). The Main Store gives stock out: Send stock leads, asking is the exception */}
+      {canMove && mainStore && (
+        <Link
+          href={`/stock/transfers/send${q}`}
+          className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
+        >
+          Send stock
+        </Link>
+      )}
+      {canMove && (
+        <Link
+          href={`/stock/transfers/new${q}`}
+          className={
+            mainStore
+              ? 'flex min-h-11 items-center justify-center text-sm font-medium text-brand-700 underline'
+              : 'flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white'
+          }
+        >
+          Request stock
+        </Link>
       )}
     </div>
   );

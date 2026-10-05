@@ -144,6 +144,8 @@ allows. Each customer's `99_access_preview_GENERATED.csv` lists every person's a
 | Stock: view (All, Running low, Expiring, Expired tabs), count, wastage                    | stock users                 | stock users         | ✔ (their store)                                                          | ✔                                                   | view                               | ✔                                                   | area: view                                                       |
 | Stock check (ADR 043): count blind, add a photo to each difference, finish; Verified tags |                             |                     | sees tags (their store)                                                  | sees tags                                           | **verifies** (or a Stock Verifier) | sees tags; told of differences                      | area: —                                                          |
 | Supply requests (ADR 049): ask → approve if unusual → order → receive                     |                             |                     | ask (store keeper of store), no supplier or price; approves unusual ones | ask; Main Store keeper: order, receive              | view                               | told of every request; approves too (not their own) | area: view                                                       |
+| Send stock (ADR 051): Main Store → a department's store; the person on shift confirms     | receive task (if on shift)  |                     | gets it if nobody is on shift; Assign; told of shortfalls                | Main Store keeper: send                             |                                    |                                                     |                                                                  |
+| Receiving (ADR 051): amount per item required; Bill missing flag                          |                             |                     | sees Bill missing                                                        | receive at amounts paid                             |                                    | sees Bill missing                                   |                                                                  |
 | Vendor bills (ADR 050): add to an order, add for a service; Bills screen                  |                             |                     | with a store: their store's (add)                                        | add to orders they receive; services at their store | view (all stores)                  | **add and view** (all stores)                       | hub manager: view; owner: totals later                           |
 | Transfers: request / dispatch / receive                                                   | stock users request         |                     | ✔                                                                        | ✔                                                   | view                               | ✔                                                   | hub manager dispatches                                           |
 | Request for material, RFM (ADR 044): a request into a department's store                  | stock users request         |                     | approves if off the menu or more than usual                              | issues (sends)                                      | view                               | approves too; told of orders                        | hub manager dispatch                                             |
@@ -170,6 +172,16 @@ it), the keeper of the outlet's Main Store, or of the store itself where there i
 under **To order** on the To do list: a supplier (optional, kept for the record) and a delivery
 date, one order per supplier when items come from several. Then it is under **To receive**
 until it is received. The department is told when it is ordered and when it is received.
+
+**The Main Store keeper** (ADR 051). Orders is one list: the Main Store's own orders and the
+departments' requests the keeper orders and receives, with tabs To order, To receive and
+Received whose counts match their lists. Receiving fills nothing in: what arrived and the amount
+paid for each item (required), and optionally the bill; without a bill the order says **Bill
+missing** to the GM, the department head and the keeper. **Send stock** gives stock to a
+department's store: it leaves the Main Store at once, the person on shift there (else the head,
+who can assign it on) gets a task to confirm what arrived, and a shortfall is posted as transit
+loss. On every list screen the information comes first and the buttons after it; on the Main
+Store, asking for stock or supplies is a small link.
 
 **Vendor bills** (ADR 050). A supplier's bill (photos or PDFs, number, date, amount) is added
 to its order once received, by whoever receives it; a bill for a service with no stock (linen

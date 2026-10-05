@@ -39,12 +39,21 @@ test('store keeper orders, outlet manager approves, store keeper receives', asyn
   await expect(page.getByTestId('po-progress')).toHaveText('to be ordered');
   await page.getByRole('button', { name: 'Ordered' }).click();
   await expect(page.getByTestId('po-progress')).toHaveText('ordered');
-  await expect(
-    page.getByRole('textbox', { name: 'Received Test Paper Napkins (Pack of 100)' }),
-  ).toHaveValue('5');
-  await page.getByRole('button', { name: 'Receive goods' }).click();
-  await expect(page.getByRole('status')).toHaveText('Received.');
+  // nothing filled in (ADR 051): what arrived and what it cost, the amount required
+  const napkinsIn = page.getByRole('textbox', {
+    name: 'Received Test Paper Napkins (Pack of 100)',
+  });
+  await expect(napkinsIn).toHaveValue('');
+  await page.getByRole('button', { name: 'Everything arrived as ordered' }).click();
+  await expect(napkinsIn).toHaveValue('5');
+  await page.getByRole('button', { name: 'Receive', exact: true }).click();
+  await expect(page.getByTestId('receive-form').getByRole('alert')).toContainText(
+    'Enter the amount for Test Paper Napkins',
+  );
+  await page.getByRole('textbox', { name: 'Amount Test Paper Napkins (Pack of 100)' }).fill('250');
+  await page.getByRole('button', { name: 'Receive', exact: true }).click();
   await expect(page.getByTestId('po-progress')).toHaveText('received');
+  await expect(page.getByTestId('po-paid')).toContainText('₹250.00');
 
   await page.goto(`/stock?node=${store}`);
   expect(parseFloat((await napkins.textContent())!.replace(/,/g, ''))).toBe(before + 5);

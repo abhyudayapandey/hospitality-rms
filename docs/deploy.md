@@ -2039,3 +2039,18 @@ and get `bills/*`. Nothing to re-import.
    goods bill is gone from **Waiting for a bill**; open one, the photo or PDF opens. "This bill is
    wrong" archives it with a reason.
 5. Check, as the Cost Controller 1.0: the same bills, read-only (no "Add a bill").
+
+## Releasing the Main Store keeper's fixes (ADR 051)
+
+One migration (receiving at amounts, the order desk's list, Send stock and its receive task).
+No stack change, nothing to re-import.
+
+1. Merge, then **Deploy** as usual (the migration runs with it). `cdk diff` shows nothing.
+2. Check, as the Store Keeper 1.0: Orders → **To receive** shows the kitchen's requests and its
+   count matches the list; **Received** lists what came. Open one to receive: nothing is filled
+   in, each item needs its amount; without a bill the order says **Bill missing**.
+3. Check, as the Store Keeper 1.0: Transfers leads with **Send stock** (Request stock is a small
+   link below the list). Send an item to the Kitchen Store: it shows **in transit**.
+4. Check, as whoever got the task (the person on shift in the kitchen, else the Executive Chef
+   1.0, who can **Assign** it): the task lists what was sent; **Everything arrived**, **Confirm
+   what arrived**; the Kitchen Store's stock goes up.

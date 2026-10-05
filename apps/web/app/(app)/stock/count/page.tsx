@@ -29,16 +29,6 @@ export default async function CountPage({ searchParams }: { searchParams: Search
   return (
     <div className="space-y-4">
       <SupplyHeader ctx={ctx} active="/stock/count" title="Stock count" />
-      {open ? (
-        <Link
-          href={`/stock/count/${open.id}${q}`}
-          className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
-        >
-          Continue the count started {formatWhen(open.started_at)}
-        </Link>
-      ) : (
-        <StartCountButton node={ctx.node.id} />
-      )}
       <p className="text-sm text-slate-600">
         Count what is on the shelf. Differences within each item&apos;s tolerance are posted
         straight away; bigger ones go to the outlet manager for approval.
@@ -61,6 +51,16 @@ export default async function CountPage({ searchParams }: { searchParams: Search
               ))}
           </ul>
         </section>
+      )}
+      {open ? (
+        <Link
+          href={`/stock/count/${open.id}${q}`}
+          className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
+        >
+          Continue the count started {formatWhen(open.started_at)}
+        </Link>
+      ) : (
+        <StartCountButton node={ctx.node.id} />
       )}
     </div>
   );
