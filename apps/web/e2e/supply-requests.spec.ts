@@ -26,7 +26,7 @@ test('the chef asks for supplies with no supplier or price; the Main Store keepe
   // more than usual still waits for the department head or GM
   await runExecutor();
   await page.reload();
-  if ((await page.getByTestId('po-progress').textContent()) === 'awaiting approval') {
+  if ((await page.getByTestId('po-progress').textContent()) === 'waiting for approval') {
     await signInAs(page, 'Test General Manager 1.0');
     await page.goto('/inbox');
     const item = page.getByTestId('inbox-item').filter({
@@ -50,7 +50,7 @@ test('the chef asks for supplies with no supplier or price; the Main Store keepe
   await task.getByRole('link').click();
   await page.waitForURL(`**/stock/orders/${po}**`);
   await page.getByRole('combobox', { name: 'Supplier' }).selectOption({ index: 1 });
-  await page.getByRole('button', { name: 'Ordered' }).click();
+  await page.getByRole('button', { name: 'Mark as ordered' }).click();
   await expect(page.getByTestId('po-progress')).toHaveText('ordered');
 
   // the task closed itself and the receive task took its place

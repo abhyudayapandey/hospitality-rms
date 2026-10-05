@@ -21,7 +21,7 @@ export const FIRST_RUN: Readonly<Record<NavProfile, readonly string[]>> = {
   ],
   outlet: [
     '"Do these first" is what needs you now, most urgent first.',
-    '"Waiting for you" needs your yes: approve or say no right there.',
+    '"Waiting for you" needs your yes: approve or reject right there.',
     "Today's figures follow; every department is one tap away.",
   ],
   cost: [

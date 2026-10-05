@@ -75,8 +75,8 @@ export default async function AdminPage() {
           className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-200"
         >
           You are the only account owner. Sensitive access you grant applies at once, and your own
-          requests that nobody else could approve are approved automatically (top of chain). Adding
-          a second account owner turns approvals on.
+          requests are approved at once, since nobody else can approve them. Adding a second account
+          owner turns approvals on.
         </p>
       )}
       {people !== null && (

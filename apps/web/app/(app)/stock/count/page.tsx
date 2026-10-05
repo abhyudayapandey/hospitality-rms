@@ -33,6 +33,15 @@ export default async function CountPage({ searchParams }: { searchParams: Search
         Count what is on the shelf. Differences within each item&apos;s tolerance are posted
         straight away; bigger ones go to the outlet manager for approval.
       </p>
+      {/* a count already started comes first: it is what to do now (ADR 053) */}
+      {open && (
+        <Link
+          href={`/stock/count/${open.id}${q}`}
+          className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
+        >
+          Continue the count started {formatWhen(open.started_at)}
+        </Link>
+      )}
       {counts.some((c) => c.status === 'submitted') && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-500">Recent counts</h2>
@@ -52,16 +61,8 @@ export default async function CountPage({ searchParams }: { searchParams: Search
           </ul>
         </section>
       )}
-      {open ? (
-        <Link
-          href={`/stock/count/${open.id}${q}`}
-          className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
-        >
-          Continue the count started {formatWhen(open.started_at)}
-        </Link>
-      ) : (
-        <StartCountButton node={ctx.node.id} />
-      )}
+      {/* the list first, then the action (ADR 051) */}
+      {!open && <StartCountButton node={ctx.node.id} />}
     </div>
   );
 }

@@ -15,8 +15,14 @@ export interface PlaceLine {
 }
 
 const NONE = '';
-const day = (offset: number) =>
-  new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+/** A day from today on this phone's calendar (the outlet's), not UTC's (ADR 053): before
+ * 05:30 in India, UTC's "tomorrow" is still today. */
+const day = (offset: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
 
 /**
  * The order desk places a supply request (ADR 049). Most requests go to one supplier, so that
@@ -134,7 +140,7 @@ export function PlaceOrderForm({
             <input
               aria-label={`Price ${l.name}`}
               inputMode="decimal"
-              placeholder="price per unit (optional)"
+              placeholder={`expected price per ${l.base_uom} (optional)`}
               value={price[l.item_id] ?? ''}
               onChange={(e) => setPrice((p) => ({ ...p, [l.item_id]: e.target.value }))}
               className={inputClass}
@@ -178,7 +184,7 @@ export function PlaceOrderForm({
       </div>
       <ErrorBox message={error} />
       <button type="submit" disabled={!hydrated || pending} className={primaryButton}>
-        {groups.length > 1 ? `Place ${groups.length} orders` : 'Ordered'}
+        {groups.length > 1 ? `Mark ${groups.length} orders as ordered` : 'Mark as ordered'}
       </button>
     </form>
   );

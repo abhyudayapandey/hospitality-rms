@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Fragment } from 'react';
 import { FirstRun } from '@/components/first-run';
 import { ExpiryBanner } from '@/components/expiry-banner';
 import { Icon, type IconName } from '@/components/icon';
@@ -17,6 +18,7 @@ import {
 import type { MyTask } from '@/lib/tasks';
 import { clockable, doFirst, shiftLine, todaysTasks } from '@/lib/today-view';
 import { listHref, stockHref } from '@/lib/stock-view';
+import { countDueText } from '@/lib/stock-hub';
 import { InboxItem } from './inbox/inbox-item';
 
 // Home is "Today" (UX-2), simplified for each role (UX-6, ADR 034): what the person must
@@ -163,7 +165,14 @@ export default async function Home() {
             testId="tile-low"
             badge={today.store.low > 0 ? { n: today.store.low, tone: 'bad' } : null}
           />
-          <Tile href="/stock/count" icon="clipboard" label="Count" testId="tile-count" />
+          <Tile
+            href="/stock/count"
+            icon="clipboard"
+            label="Count"
+            note={today.store.count ? countDueText(today.store.count) : undefined}
+            testId="tile-count"
+            badge={today.store.count?.due ? { n: 1, tone: 'warn', text: 'due' } : null}
+          />
         </nav>
       )}
 
@@ -371,9 +380,10 @@ function Tile({
   href: string;
   icon: IconName;
   label: string;
-  note?: string;
+  note?: string | undefined;
   testId: string;
-  badge?: { n: number; tone: string } | null;
+  /** a number, or a word in its place ("due") */
+  badge?: { n: number; tone: string; text?: string } | null;
 }) {
   return (
     <Link
@@ -391,7 +401,7 @@ function Tile({
           data-testid="tile-badge"
           className={`absolute top-3 right-3 min-w-7 rounded-full px-2 py-0.5 text-center text-sm font-bold tabular-nums ${BADGE[badge.tone as Tone] ?? BADGE.brand}`}
         >
-          {badge.n}
+          {badge.text ?? badge.n}
         </span>
       )}
     </Link>
@@ -617,64 +627,86 @@ function League({
       <h2 className={cardTitle}>
         Last 7 days · {formatDay(league.from)} to {formatDay(league.to)}
       </h2>
-      <table className="mt-2 w-full text-sm tabular-nums">
-        <thead>
-          <tr className="text-xs text-slate-500">
-            <th scope="col" className="py-1 text-left font-medium">
-              Outlet
-            </th>
-            <th scope="col" className="py-1 text-right font-medium">
-              Sales
-            </th>
-            {cols.map((c) => (
-              <th key={c.key} scope="col" className="py-1 pl-2 text-right font-medium">
-                {c.label}
+      {/* at 380 px the table scrolls inside its card, never the page (ADR 053) */}
+      <div className="-mx-1 mt-2 overflow-x-auto px-1">
+        <table className="w-full text-xs tabular-nums sm:text-sm">
+          <thead>
+            <tr className="text-xs text-slate-500">
+              <th scope="col" className="py-1 text-left font-medium">
+                Outlet
               </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {league.rows.map((r) => {
-            const bad =
-              vsTarget('food_pct', r.food_pct, targets).state === 'bad' ||
-              vsTarget('labour_pct', r.labour_pct, targets).state === 'bad';
-            return (
-              <tr
-                key={r.outlet_id}
-                className="border-t border-slate-100"
-                data-tone={bad ? 'bad' : 'ok'}
-              >
-                <th scope="row" className="max-w-28 py-2 text-left font-medium">
-                  <Link
-                    href={`/reports/outlet?node=${r.outlet_id}`}
-                    className="flex min-h-11 items-center gap-1.5"
-                  >
-                    <span
-                      aria-label={bad ? 'Over target' : 'On target'}
-                      className={`inline-block size-2.5 shrink-0 rounded-full ${bad ? 'bg-rose-600' : 'bg-emerald-600'}`}
-                    />
-                    <span className="truncate">{r.name}</span>
-                  </Link>
+              <th scope="col" className="py-1 text-right font-medium">
+                Sales
+              </th>
+              {cols.map((c) => (
+                <th key={c.key} scope="col" className="py-1 pl-1.5 text-right font-medium">
+                  {c.label}
                 </th>
-                <td className="py-2 text-right">{formatMeasure('money', r.sales)}</td>
-                {cols.map((c) => {
-                  const v = r[c.key];
-                  const worse =
-                    c.key === 'labour_pct' && vsTarget(c.key, v, targets).state === 'bad';
-                  return (
-                    <td
-                      key={c.key}
-                      className={`py-2 pl-2 text-right ${worse ? 'font-bold text-rose-700' : ''}`}
-                    >
-                      {v === null ? '—' : formatMeasure('pct', v)}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {league.rows.map((r) => {
+              // the dot says why in words (ADR 053): food cost is not one of the columns
+              const food = vsTarget('food_pct', r.food_pct, targets);
+              const labour = vsTarget('labour_pct', r.labour_pct, targets);
+              const why = [
+                food.state === 'bad' && r.food_pct !== null
+                  ? `food cost ${formatMeasure('pct', r.food_pct)}, target ${food.target}%`
+                  : null,
+                labour.state === 'bad' && r.labour_pct !== null
+                  ? `people ${formatMeasure('pct', r.labour_pct)}, target ${labour.target}%`
+                  : null,
+              ].filter((x): x is string => x !== null);
+              const bad = why.length > 0;
+              return (
+                <Fragment key={r.outlet_id}>
+                  <tr className="border-t border-slate-100" data-tone={bad ? 'bad' : 'ok'}>
+                    <th scope="row" className="max-w-28 py-2 text-left font-medium">
+                      <Link
+                        href={`/reports/outlet?node=${r.outlet_id}`}
+                        className="flex min-h-11 items-center gap-1.5"
+                      >
+                        <span
+                          aria-label={bad ? 'Over target' : 'On target'}
+                          className={`inline-block size-2.5 shrink-0 rounded-full ${bad ? 'bg-rose-600' : 'bg-emerald-600'}`}
+                        />
+                        <span className="truncate">{r.name}</span>
+                      </Link>
+                    </th>
+                    <td className="py-2 text-right">{formatMeasure('money', r.sales)}</td>
+                    {cols.map((c) => {
+                      const v = r[c.key];
+                      const worse =
+                        c.key === 'labour_pct' && vsTarget(c.key, v, targets).state === 'bad';
+                      return (
+                        <td
+                          key={c.key}
+                          className={`py-2 pl-1.5 text-right ${worse ? 'font-bold text-rose-700' : ''}`}
+                        >
+                          {v === null ? '—' : formatMeasure('pct', v)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                  {bad && (
+                    // why the dot is red, on its own line so the table keeps its width (ADR 053)
+                    <tr>
+                      <td
+                        colSpan={cols.length + 2}
+                        className="pb-2 pl-4 text-xs text-rose-700"
+                        data-testid="league-why"
+                      >
+                        {why.join(' · ')}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
       <p className="mt-2 text-xs text-slate-500">
         Food, drinks, losses and people are shares of each outlet&apos;s total cost.
       </p>

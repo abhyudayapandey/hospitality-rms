@@ -38,7 +38,10 @@ export default async function StockCheckPage({ searchParams }: { searchParams: S
   return (
     <div className="space-y-4">
       <SupplyHeader ctx={ctx} active="/stock/check" title="Stock check" />
-      {canCount && !node.derived ? <StartCheckButtons node={node.id} resume={data.open} /> : null}
+      {/* a check under way is what to do now; otherwise the list comes first (ADR 051, 053) */}
+      {canCount && !node.derived && data.open ? (
+        <StartCheckButtons node={node.id} resume={data.open} />
+      ) : null}
       <p className="text-sm text-slate-600">
         The verifier counts what is on the shelves without seeing what should be there, then sees
         the differences, adds a photo to each, and finishes. A difference changes stock at once and
@@ -82,6 +85,9 @@ export default async function StockCheckPage({ searchParams }: { searchParams: S
           </ul>
         </section>
       )}
+      {canCount && !node.derived && !data.open ? (
+        <StartCheckButtons node={node.id} resume={null} />
+      ) : null}
     </div>
   );
 }

@@ -4,8 +4,8 @@
 export const LIST_PAGE = 30;
 const MAX = 500;
 
-/** The ?n= of a list: LIST_PAGE by default, at most MAX. */
-export function listLimit(n: string | null | undefined): number {
+/** The ?n= of a list: `page` (LIST_PAGE) by default, at most MAX. */
+export function listLimit(n: string | null | undefined, page = LIST_PAGE): number {
   const v = Math.trunc(Number(n));
-  return Number.isFinite(v) && v > 0 ? Math.min(v, MAX) : LIST_PAGE;
+  return Number.isFinite(v) && v > 0 ? Math.min(v, MAX) : page;
 }

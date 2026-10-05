@@ -1,15 +1,17 @@
 import Link from 'next/link';
 import type { SupplyContext } from '@/lib/inventory';
 import { PlaceSwitcher } from './place-switcher';
+import { splitTabs } from '@/lib/supply-tabs';
 
+// in the order a store works: the first 4 a person has are shown, the rest under More (ADR 053)
 const TABS = [
   { href: '/stock', label: 'Stock', domain: 'STOCK_LEVELS', access: 'view' },
-  { href: '/stock/count', label: 'Count', domain: 'STOCK_ADJUSTMENTS', access: 'modify' },
-  { href: '/stock/check', label: 'Check', domain: 'STOCK_CHECK', access: 'view' },
-  { href: '/stock/wastage', label: 'Wastage', domain: 'STOCK_ADJUSTMENTS', access: 'modify' },
-  { href: '/stock/production', label: 'Make', domain: null, access: 'modify' },
   { href: '/stock/orders', label: 'Orders', domain: 'PURCHASE_ORDERS', access: 'view' },
   { href: '/stock/transfers', label: 'Transfers', domain: 'TRANSFERS', access: 'view' },
+  { href: '/stock/count', label: 'Count', domain: 'STOCK_ADJUSTMENTS', access: 'modify' },
+  { href: '/stock/wastage', label: 'Wastage', domain: 'STOCK_ADJUSTMENTS', access: 'modify' },
+  { href: '/stock/production', label: 'Make', domain: null, access: 'modify' },
+  { href: '/stock/check', label: 'Stock check', domain: 'STOCK_CHECK', access: 'view' },
   { href: '/stock/bills', label: 'Bills', domain: 'BILLS', access: 'view' },
 ] as const;
 
@@ -36,6 +38,20 @@ export function SupplyHeader({
   const tabs = TABS.filter((t) =>
     t.domain === null ? ctx.shell.production : ctx.can(t.domain, t.access),
   );
+  const { shown, more } = splitTabs(tabs, active);
+  const pill = (t: (typeof TABS)[number]) => (
+    <Link
+      href={`${t.href}${q}`}
+      aria-current={t.href === active ? 'page' : undefined}
+      className={`flex min-h-11 items-center rounded-full px-4 text-sm whitespace-nowrap ${
+        t.href === active
+          ? 'bg-brand-700 font-semibold text-white'
+          : 'bg-white text-slate-700 ring-1 ring-slate-300'
+      }`}
+    >
+      {t.label}
+    </Link>
+  );
   return (
     <div className="space-y-3">
       <PlaceSwitcher
@@ -51,21 +67,23 @@ export function SupplyHeader({
       {tabs.length > 1 && (
         <nav aria-label="Supply" className="px-0">
           <ul className="flex flex-wrap gap-2">
-            {tabs.map((t) => (
-              <li key={t.href}>
-                <Link
-                  href={`${t.href}${q}`}
-                  aria-current={t.href === active ? 'page' : undefined}
-                  className={`flex min-h-11 items-center rounded-full px-4 text-sm whitespace-nowrap ${
-                    t.href === active
-                      ? 'bg-brand-700 font-semibold text-white'
-                      : 'bg-white text-slate-700 ring-1 ring-slate-300'
-                  }`}
-                >
-                  {t.label}
-                </Link>
-              </li>
+            {shown.map((t) => (
+              <li key={t.href}>{pill(t)}</li>
             ))}
+            {more.length > 0 && (
+              <li>
+                <details className="group" data-testid="supply-more">
+                  <summary className="inline-flex min-h-11 w-fit cursor-pointer list-none items-center rounded-full bg-white px-4 text-sm text-slate-700 ring-1 ring-slate-300">
+                    More
+                  </summary>
+                  <ul className="mt-2 flex flex-wrap gap-2">
+                    {more.map((t) => (
+                      <li key={t.href}>{pill(t)}</li>
+                    ))}
+                  </ul>
+                </details>
+              </li>
+            )}
           </ul>
         </nav>
       )}
@@ -74,5 +92,13 @@ export function SupplyHeader({
 }
 
 export function NoSupplyAccess() {
-  return <p className="text-slate-600">You don&apos;t have access to stock.</p>;
+  // a way back, not a dead end (ADR 053)
+  return (
+    <div className="space-y-3">
+      <p className="text-slate-600">You don&apos;t have access to stock.</p>
+      <Link href="/" className="flex min-h-11 items-center text-sm font-medium text-brand-700">
+        ← Home
+      </Link>
+    </div>
+  );
 }

@@ -13,4 +13,8 @@ describe('listLimit', () => {
     expect(listLimit('60')).toBe(60);
     expect(listLimit('99999')).toBe(500);
   });
+  it('takes a smaller first page where one is set (the Main Store transfers, ADR 053)', () => {
+    expect(listLimit(undefined, 10)).toBe(10);
+    expect(listLimit('20', 10)).toBe(20);
+  });
 });

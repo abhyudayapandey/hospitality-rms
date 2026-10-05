@@ -34,6 +34,11 @@ export default async function NewTransferPage({ searchParams }: { searchParams: 
         ← Transfers
       </Link>
       <h1 className="text-xl font-semibold">Request stock for {ctx.node.name}</h1>
+      {/* where it comes from (ADR 053): another store's shelves, not a supplier */}
+      <p className="text-sm text-slate-600">
+        For stock another store already has: it is sent from their shelves. For things bought from a
+        supplier, use Ask for supplies.
+      </p>
       <TransferRequestForm
         to={ctx.node.id}
         from={data.from}

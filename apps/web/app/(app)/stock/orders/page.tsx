@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { withBack } from '@/lib/back';
 import { Empty } from '@/components/messages';
 import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
 import { PollRefresh } from '@/components/use-polling';
@@ -166,7 +167,10 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
             return (
               <li key={r.id} data-testid="po-item" data-po-id={r.id}>
                 <Link
-                  href={`/stock/orders/${r.id}?node=${r.desk ? node.id : r.store_id}`}
+                  href={withBack(
+                    `/stock/orders/${r.id}?node=${r.desk ? node.id : r.store_id}`,
+                    listHref('/stock/orders', { all, node: node.id, tab }),
+                  )}
                   className="block rounded-xl bg-white p-4 ring-1 ring-slate-200"
                 >
                   <span className="flex items-baseline justify-between gap-2">

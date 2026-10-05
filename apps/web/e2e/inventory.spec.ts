@@ -27,7 +27,7 @@ test('two-leg transfer: requested, sent by the central kitchen store keeper, rec
   await page.getByRole('button', { name: 'Request 1 item' }).click();
   await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
-  await expect(page.getByTestId('transfer-progress')).toHaveText('awaiting dispatch');
+  await expect(page.getByTestId('transfer-progress')).toHaveText('waiting to be sent');
 
   await signInAs(page, 'Test Central Kitchen Store Keeper');
   await page.goto('/inbox');
@@ -128,7 +128,7 @@ test('the area manager sees outlet stock read-only (derived view)', async ({ pag
   await expect.poll(() => viewing(page)).toBe('Test Bar 3.0 – Kitchen Store (view only)');
   await expect(page.getByTestId('stock-row').first()).toBeVisible();
   const tabs = page.getByRole('navigation', { name: 'Supply' });
-  await expect(tabs.getByRole('link', { name: 'Stock' })).toBeVisible();
+  await expect(tabs.getByRole('link', { name: 'Stock', exact: true })).toBeVisible();
   await expect(tabs.getByRole('link', { name: 'Count' })).toHaveCount(0);
   await expect(tabs.getByRole('link', { name: 'Wastage' })).toHaveCount(0);
   await page.goto(`/stock/orders?node=${store}`);

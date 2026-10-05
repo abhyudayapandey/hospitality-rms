@@ -320,7 +320,7 @@ function Row({
         )}
         {swap?.open_swap ? (
           <span className="rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-800">
-            Swap {swap.open_swap === 'proposed' ? 'offered' : 'awaiting approval'}
+            Swap {swap.open_swap === 'proposed' ? 'offered' : 'waiting for approval'}
           </span>
         ) : swap && canSwap ? (
           <Link

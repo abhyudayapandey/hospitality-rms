@@ -111,6 +111,11 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   keeper closes an order whose rest is not coming ("closed"), whoever asked withdraws one not
   yet ordered. A request to the Main Store is a "Supply request". Dark is the default theme
   (`html[data-theme]`, `lib/theme.ts`); colours come from the palette, never hard-coded.
+- Forms that ask for or send stock fill nothing in and say what the store has and keeps, with
+  "Fill to keep level" (ADR 053). Back links return to the list as it was (`withBack`,
+  `backHref`, `lib/back.ts`). One name per thing: Supply request (buy), Stock request (from a
+  store), Stock check, Reject, "waiting for approval". A step or status is never shown as its
+  code. Supply tabs show 4, the rest under More.
 
 ## Commands
 ```

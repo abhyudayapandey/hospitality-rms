@@ -82,10 +82,17 @@ export function TransferStepForm({
         router.refresh();
       } else setError(r.message);
     });
+  // rejecting asks why and is confirmed (ADR 053): it is not a slip of the thumb next to Send
+  const [rejecting, setRejecting] = useState(false);
+  const [why, setWhy] = useState('');
   const reject = () =>
     start(async () => {
       setError(null);
-      const r = await actOnRequest(requestId, 'reject', crypto.randomUUID());
+      if (!why.trim()) {
+        setError('Say why it is rejected.');
+        return;
+      }
+      const r = await actOnRequest(requestId, 'reject', crypto.randomUUID(), why);
       if (r.ok) {
         setDone('Rejected.');
         router.refresh();
@@ -149,9 +156,40 @@ export function TransferStepForm({
       </ul>
       <ErrorBox message={error} />
       <StatusBox message={done} />
-      {mode === 'approve' && !done && (
+      {rejecting && !done && (
+        <div className="space-y-2 rounded-xl bg-rose-50 p-3" data-testid="reject-why">
+          <label className="block space-y-1">
+            <span className="text-sm font-medium text-rose-900">Why is it rejected?</span>
+            <input
+              value={why}
+              onChange={(e) => setWhy(e.target.value)}
+              className={inputClass}
+              placeholder="Not in stock"
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setRejecting(false)} className={secondaryButton}>
+              Keep it
+            </button>
+            <button
+              type="button"
+              disabled={!hydrated || pending}
+              onClick={reject}
+              className="min-h-12 rounded-lg bg-rose-700 font-medium text-white disabled:opacity-50"
+            >
+              Reject
+            </button>
+          </div>
+        </div>
+      )}
+      {mode === 'approve' && !done && !rejecting && (
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" disabled={pending} onClick={reject} className={secondaryButton}>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => setRejecting(true)}
+            className={secondaryButton}
+          >
             Reject
           </button>
           <button
@@ -164,10 +202,15 @@ export function TransferStepForm({
           </button>
         </div>
       )}
-      {(mode === 'dispatch' || mode === 'receive') && !done && (
+      {(mode === 'dispatch' || mode === 'receive') && !done && !rejecting && (
         <div className={mode === 'dispatch' ? 'grid grid-cols-2 gap-2' : ''}>
           {mode === 'dispatch' && (
-            <button type="button" disabled={pending} onClick={reject} className={secondaryButton}>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => setRejecting(true)}
+              className={secondaryButton}
+            >
               Reject
             </button>
           )}
