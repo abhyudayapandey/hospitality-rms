@@ -84,6 +84,10 @@ test('a problem goes to Engineering, who assigns the technician', async ({ page 
   );
 
   await signInAs(page, 'Test Technician 1.0');
+  // a technician's day is their repairs: on Home, counted on the Tasks tile (ADR 052)
+  await page.goto('/');
+  await expect(page.getByTestId('home-repairs')).toContainText(title);
+  await expect(page.getByTestId('tasks-card')).not.toContainText('Nothing due today');
   await page.goto('/tasks');
   await page
     .getByTestId('my-repairs')

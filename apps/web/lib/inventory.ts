@@ -222,6 +222,20 @@ export const PO_PROGRESS: Record<string, [string, string]> = {
   received: ['received', 'bg-emerald-100 text-emerald-900'],
   rejected: ['rejected', 'bg-rose-100 text-rose-900'],
   cancelled: ['cancelled', 'bg-slate-200 text-slate-700'],
+  // the rest is not coming, or the request was withdrawn (ADR 052)
+  closed: ['closed', 'bg-slate-200 text-slate-700'],
+  withdrawn: ['withdrawn', 'bg-slate-200 text-slate-700'],
+};
+
+/**
+ * A department's view of an order its Main Store places and receives (ADR 052): where it is,
+ * in the department's words, never what it costs.
+ */
+export const SUPPLY_PROGRESS: Record<string, [string, string]> = {
+  ...PO_PROGRESS,
+  released: ['on the way', 'bg-sky-100 text-sky-900'],
+  partially_received: ['part arrived', 'bg-sky-100 text-sky-900'],
+  received: ['arrived', 'bg-emerald-100 text-emerald-900'],
 };
 
 /** Transfer progress (inv.transfer_summary.progress): label and badge style. */

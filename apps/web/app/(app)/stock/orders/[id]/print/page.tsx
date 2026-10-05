@@ -29,12 +29,33 @@ export default async function PrintOrder({ params }: { params: Promise<{ id: str
         from inv.purchase_order po join inv.supplier s on s.id = po.supplier_id
        where po.id = ${id}::uuid and po.status = 'released'
          and core.can('PURCHASE_ORDERS', 'modify', null, po.delivery_node_id)`.execute(tx);
-    const lines = await sql<{ name: string; unit: string; qty: string; unit_cost: string }>`
-      select i.name, i.base_uom as unit, pl.qty, pl.unit_cost
-        from inv.purchase_order_line pl join inv.item i on i.id = pl.item_id
-       where pl.po_id = ${id}::uuid order by i.name`.execute(tx);
+    // the Main Store's keeper sends what they ordered for a department, whose rows RLS hides
+    // from them: read through the order desk (ADR 049, 052)
+    const desk = po.rows[0]
+      ? null
+      : await sql<{
+          id: string;
+          store: string;
+          supplier: string;
+          phone: string | null;
+          email: string | null;
+          created_at: Date;
+          total: string;
+        }>`
+          select d.id, d.store, s.name as supplier, s.phone, s.contact as email, d.created_at,
+                 d.total
+            from inv.order_for_desk(${id}::uuid) d join inv.supplier s on s.id = d.supplier_id
+           where d.status = 'released'`.execute(tx);
+    const lines = desk
+      ? await sql<{ name: string; unit: string; qty: string; unit_cost: string }>`
+          select name, base_uom as unit, qty, unit_cost
+            from inv.order_lines_for_desk(${id}::uuid) order by name`.execute(tx)
+      : await sql<{ name: string; unit: string; qty: string; unit_cost: string }>`
+          select i.name, i.base_uom as unit, pl.qty, pl.unit_cost
+            from inv.purchase_order_line pl join inv.item i on i.id = pl.item_id
+           where pl.po_id = ${id}::uuid order by i.name`.execute(tx);
     return {
-      po: po.rows[0],
+      po: po.rows[0] ?? desk?.rows[0],
       lines: lines.rows,
       prices: (await companySettings(tx)).po_send_prices,
     };

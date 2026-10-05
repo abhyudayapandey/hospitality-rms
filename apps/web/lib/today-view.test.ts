@@ -259,6 +259,16 @@ describe('doFirst: the ranked list (UX-8)', () => {
     expect(one).toEqual([expect.objectContaining({ key: 'repairs', text: 'open repair' })]);
   });
 
+  it('running low: Order for whoever may ask for supplies, See for view-only roles (ADR 052)', () => {
+    const low = [group('x', [['lowStock', 2]])];
+    expect(
+      doFirst({ attention: low, overdueTasks: 0, toAssign: 0, canOrder: true })[0]!.action,
+    ).toBe('Order');
+    expect(
+      doFirst({ attention: low, overdueTasks: 0, toAssign: 0, canOrder: false })[0]!.action,
+    ).toBe('See');
+  });
+
   it('nothing to do: an empty list', () => {
     expect(doFirst({ attention: null, overdueTasks: 0, toAssign: 0 })).toEqual([]);
   });

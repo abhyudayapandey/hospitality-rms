@@ -4,6 +4,7 @@ import { BottomNav } from '@/components/bottom-nav';
 import { Icon } from '@/components/icon';
 import { ActionSync } from '@/components/action-sync';
 import { PunchSync } from '@/components/punch-sync';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { approvalsInNav, visibleNav } from '@/lib/nav';
 import { loadShell, navInput } from '@/lib/shell';
 
@@ -74,6 +75,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               </span>
             )}
           </Link>
+          <ThemeToggle />
         </div>
       </header>
       <PunchSync userId={shell.user.id} />

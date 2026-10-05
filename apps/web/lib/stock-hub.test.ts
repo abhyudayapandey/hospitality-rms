@@ -16,11 +16,27 @@ describe('countDue', () => {
 });
 
 describe('hubActions', () => {
-  it('shows only what the person may do, in store order', () => {
-    const all = hubActions({ adjust: true, order: true, request: true }, 'node=n1');
-    expect(all.map((a) => a.label)).toEqual(['Count', 'Record wastage', 'Order', 'Request stock']);
-    expect(all[0]!.href).toBe('/stock/count?node=n1');
-    expect(hubActions({ adjust: false, order: false, request: true }, 'node=n1')).toHaveLength(1);
-    expect(hubActions({ adjust: false, order: false, request: false }, 'node=n1')).toEqual([]);
+  const every = { adjust: true, order: true, request: true };
+  it('a department store counts, records wastage and asks', () => {
+    const { main, more } = hubActions({ ...every, mainStore: false }, 'node=n1');
+    expect(main.map((a) => a.label)).toEqual([
+      'Count',
+      'Record wastage',
+      'Ask for supplies',
+      'Request stock',
+    ]);
+    expect(main[0]!.href).toBe('/stock/count?node=n1');
+    expect(more).toEqual([]);
+  });
+  it('the Main Store sends; asking is a small link there (ADR 051, 052)', () => {
+    const { main, more } = hubActions({ ...every, mainStore: true }, 'node=m');
+    expect(main.map((a) => a.label)).toEqual(['Send stock', 'Count', 'Record wastage']);
+    expect(main[0]!.href).toBe('/stock/transfers/send?node=m');
+    expect(more.map((a) => a.label)).toEqual(['Ask for supplies', 'Request stock']);
+  });
+  it('shows only what the person may do', () => {
+    const none = { adjust: false, order: false, request: false };
+    expect(hubActions({ ...none, request: true, mainStore: false }, 'q').main).toHaveLength(1);
+    expect(hubActions({ ...none, mainStore: true }, 'q')).toEqual({ main: [], more: [] });
   });
 });

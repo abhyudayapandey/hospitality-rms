@@ -31,7 +31,7 @@ export function DeskOrders({ rows }: { rows: DeskOrder[] }) {
                     <span className="min-w-0">
                       <span className="block truncate font-medium">
                         {stage === 'to_order'
-                          ? `Supplies for ${r.store}`
+                          ? `Supply request for ${r.store}`
                           : `${r.supplier ?? 'Supplies'} for ${r.store}`}
                       </span>
                       <span className="block truncate text-xs text-slate-500">

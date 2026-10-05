@@ -8,6 +8,8 @@ import { formatWhen } from '@/lib/format';
 import { param, supplyContext, TRANSFER_PROGRESS, type SearchParams } from '@/lib/inventory';
 import { ViewTabs } from '@/components/view-tabs';
 import { listHref } from '@/lib/stock-view';
+import { LIST_PAGE, listLimit } from '@/lib/list-page';
+import { ShowMore } from '@/components/show-more';
 
 export default async function TransfersPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await supplyContext(searchParams, 'transfers');
@@ -19,7 +21,20 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
   const user = await requireUser();
   const node = ctx.node;
   const ids = ctx.nodes.map((n) => n.id);
-  const { rows, mainStore } = await withUser(user.id, async (tx) => {
+  // the latest LIST_PAGE, then "Show more"; the counts have no limit (ADR 052)
+  const limit = listLimit(param(sp, 'n'));
+  const scope = all
+    ? sql`(from_node_id = any(${ids}::uuid[]) or to_node_id = any(${ids}::uuid[]))`
+    : sql`(from_node_id = ${node.id}::uuid or to_node_id = ${node.id}::uuid)`;
+  // waiting to be sent from these stores: what the To send tab lists
+  const sending = sql`(progress = 'awaiting_dispatch' and ${
+    all ? sql`from_node_id = any(${ids}::uuid[])` : sql`from_node_id = ${node.id}::uuid`
+  })`;
+  const {
+    rows: fetched,
+    toSend,
+    mainStore,
+  } = await withUser(user.id, async (tx) => {
     const r = await sql<{
       id: string;
       from_node_id: string;
@@ -32,21 +47,23 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
     }>`
       select id, from_node_id, to_node_id, from_name, to_name, progress, kind, created_at
         from inv.transfer_summary
-       where ${
-         all
-           ? sql`(from_node_id = any(${ids}::uuid[]) or to_node_id = any(${ids}::uuid[]))`
-           : sql`(from_node_id = ${node.id}::uuid or to_node_id = ${node.id}::uuid)`
-       }
-         and (${tab === 'send'} = false
-              or (progress = 'awaiting_dispatch'
-                  and ${all ? sql`from_node_id = any(${ids}::uuid[])` : sql`from_node_id = ${node.id}::uuid`}))
-       order by created_at desc limit 30`.execute(tx);
+       where ${scope} and (${tab === 'send'} = false or ${sending})
+       order by created_at desc limit ${limit + 1}`.execute(tx);
+    // counted in SQL with no limit, with the To send tab's own filter (ADR 052)
+    const toSend = await sql<{ n: number }>`
+      select count(*)::int as n from inv.transfer_summary where ${scope} and ${sending}`.execute(
+      tx,
+    );
     const main = await sql<{ m: boolean }>`select inv.is_main_store(${node.id}::uuid) as m`.execute(
       tx,
     );
-    return { rows: r.rows, mainStore: main.rows[0]?.m ?? false };
+    return {
+      rows: r.rows,
+      toSend: toSend.rows[0]?.n ?? 0,
+      mainStore: main.rows[0]?.m ?? false,
+    };
   });
-  const toSend = rows.filter((r) => r.progress === 'awaiting_dispatch').length;
+  const rows = fetched.slice(0, limit);
   const q = `?node=${node.id}`;
   const canMove = !all && ctx.can('TRANSFERS', 'modify') && !node.derived && node.holds_stock;
   return (
@@ -70,7 +87,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
           {
             key: 'send',
             label: 'To send',
-            count: tab === 'send' ? rows.length : toSend,
+            count: toSend,
             href: listHref('/stock/transfers', { all, node: node.id, tab: 'send' }),
           },
         ]}
@@ -109,6 +126,16 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
             );
           })}
         </ul>
+      )}
+      {fetched.length > limit && (
+        <ShowMore
+          href={listHref('/stock/transfers', {
+            all,
+            node: node.id,
+            tab,
+            n: limit + LIST_PAGE,
+          })}
+        />
       )}
       {/* the list first, then what to do (ADR 051); any stock location they move stock at
           (audit #5). The Main Store gives stock out: Send stock leads, asking is the exception */}

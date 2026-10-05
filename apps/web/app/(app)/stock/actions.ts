@@ -222,6 +222,22 @@ export async function receiveGoods(
   });
 }
 
+/** "Rest is not coming" (ADR 052): the keeper closes an order with a reason; the GM is told. */
+export async function closeOrder(po: string, reason: string): Promise<ActionResult<null>> {
+  return run('close_order', async (tx) => {
+    await sql`select inv.close_order(${po}::uuid, ${reason})`.execute(tx);
+    return null;
+  });
+}
+
+/** Whoever asked withdraws a supply request nobody has ordered yet (ADR 052). */
+export async function withdrawRequest(po: string, reason: string): Promise<ActionResult<null>> {
+  return run('withdraw_request', async (tx) => {
+    await sql`select inv.withdraw_request(${po}::uuid, ${reason || null})`.execute(tx);
+    return null;
+  });
+}
+
 /**
  * The Main Store sends stock to a department's store (ADR 051). It leaves the Main Store at
  * once; whoever is on shift there (else the head) gets a task to confirm what arrived.

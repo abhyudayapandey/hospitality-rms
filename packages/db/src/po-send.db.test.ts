@@ -6,7 +6,8 @@ import { everyone } from '../test/report-access';
 // Sending an order to the supplier (PO-4, ADR 032). The app opens WhatsApp, the mail app or a
 // printable page on the person's phone; there is no server email. Each send is recorded on
 // the order: by whom, when, by which channel. Only people who run the store's orders
-// (PURCHASE_ORDERS modify there) send, and only a released order. They also keep the
+// (PURCHASE_ORDERS modify there, or its Main Store's order desk, ADR 052) send, and only a
+// released order. They also keep the
 // supplier's phone and email up to date; every change is audited.
 
 let ids: SeedIds;
@@ -47,7 +48,7 @@ const setContact = (
 ) => attemptAs(c, user, 'select inv.update_supplier_contact($1, $2, $3)', [s, phone, email]);
 
 describe('recording a send', () => {
-  it('only people who run the store’s orders send it (every user)', async () => {
+  it('only people who run the store’s orders, or its order desk, send it (every user)', async () => {
     await inRolledBackTx(async (c) => {
       const po = await dairyOrder(c);
       const store = ids.node('TEST-HOTEL-1.0-KITCHEN-STORE');
@@ -57,8 +58,9 @@ describe('recording a send', () => {
         await c.query(`select set_config('app.user_id', $1, true)`, [p.id]);
         const may = (
           await c.query<{ ok: boolean }>(
-            `select core.my_tenant() = $2 and core.can('PURCHASE_ORDERS', 'modify', null, $1) as ok`,
-            [store, ids.tenant()],
+            `select core.my_tenant() = $2
+                    and (core.can('PURCHASE_ORDERS', 'modify', null, $1) or inv.can_place($3)) as ok`,
+            [store, ids.tenant(), po],
           )
         ).rows[0]!.ok;
         await c.query(`select set_config('app.user_id', '', true)`);

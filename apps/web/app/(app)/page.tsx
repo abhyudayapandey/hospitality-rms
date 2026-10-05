@@ -7,7 +7,13 @@ import { compare, formatMeasure, MEASURES, type MeasureRow } from '@/lib/reports
 import { homeTiles } from '@/lib/screens';
 import { vsTarget, type TargetKey } from '@/lib/settings';
 import { loadShell, screenInput } from '@/lib/shell';
-import { HOME_APPROVALS, loadToday, type Today, type TodayNumbers } from '@/lib/today';
+import {
+  HOME_APPROVALS,
+  loadToday,
+  type MyRepair,
+  type Today,
+  type TodayNumbers,
+} from '@/lib/today';
 import type { MyTask } from '@/lib/tasks';
 import { clockable, doFirst, shiftLine, todaysTasks } from '@/lib/today-view';
 import { listHref, stockHref } from '@/lib/stock-view';
@@ -40,7 +46,10 @@ export default async function Home() {
         ...t,
         badge:
           t.key === 'tasks'
-            ? { n: tasks.total, tone: tasks.shown.some((x) => x.overdue) ? 'bad' : 'brand' }
+            ? {
+                n: tasks.total + today.repairs.length,
+                tone: tasks.shown.some((x) => x.overdue) ? 'bad' : 'brand',
+              }
             : t.key === 'make'
               ? { n: today.tasks.filter((x) => x.kind === 'prep').length, tone: 'brand' }
               : null,
@@ -97,8 +106,9 @@ export default async function Home() {
 
       {today.push.length > 0 && <PushToday push={today.push} tz={tz} />}
 
-      {(frontline || tasks.total > 0) && shell.domains.has('TASKS') && (
-        <NextTask tasks={tasks} tz={tz} frontline={frontline} />
+      {(((frontline || tasks.total > 0) && shell.domains.has('TASKS')) ||
+        today.repairs.length > 0) && (
+        <NextTask tasks={tasks} repairs={today.repairs} tz={tz} frontline={frontline} />
       )}
 
       {tiles.length > 0 && (
@@ -118,6 +128,17 @@ export default async function Home() {
 
       {today.store && (
         <nav aria-label="Store jobs" className="grid grid-cols-2 gap-3" data-testid="tiles">
+          {today.store.toOrder > 0 && (
+            // the departments' requests come first: nothing moves until they are ordered
+            <Tile
+              href={listHref('/stock/orders', { all: true, tab: 'to_order' })}
+              icon="cart"
+              label="To order"
+              note={`${today.store.toOrder} ${today.store.toOrder === 1 ? 'request' : 'requests'}`}
+              testId="tile-to-order"
+              badge={{ n: today.store.toOrder, tone: 'bad' }}
+            />
+          )}
           <Tile
             href={listHref('/stock/orders', { all: true, tab: 'receive' })}
             icon="truck"
@@ -154,6 +175,7 @@ export default async function Home() {
                 overdueTasks: today.tasks.filter((x) => x.overdue).length,
                 toAssign: today.approvals.toAssign,
                 openSlotsHref: today.openSlotsHref,
+                canOrder: shell.domains.get('PURCHASE_ORDERS') === 'modify',
               })
             : []
         }
@@ -244,10 +266,12 @@ function PushToday({ push, tz }: { push: Today['push']; tz: string }) {
 
 function NextTask({
   tasks,
+  repairs,
   tz,
   frontline,
 }: {
   tasks: { shown: MyTask[]; total: number };
+  repairs: MyRepair[];
   tz: string;
   frontline: boolean;
 }) {
@@ -255,7 +279,37 @@ function NextTask({
   return (
     <section aria-label="Next" className={card} data-testid="tasks-card">
       <h2 className={cardTitle}>{frontline ? 'Next' : 'Your tasks'}</h2>
-      {!next ? (
+      {repairs.length > 0 && (
+        // repairs given to them (ADR 052): a technician's day is these
+        <ul className="mt-2 divide-y divide-slate-100" data-testid="home-repairs">
+          {repairs.slice(0, 3).map((r) => (
+            <li key={r.id}>
+              <Link href={`/tasks/maintenance/${r.id}`} className="flex items-center gap-3 py-2">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-800">
+                  <Icon name="wrench" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold">{r.title}</span>
+                  <span className="block truncate text-sm text-slate-500">
+                    Repair · {r.place_name}
+                  </span>
+                </span>
+                <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                  {r.status === 'in_progress' ? 'Started' : 'To do'}
+                </span>
+              </Link>
+            </li>
+          ))}
+          {repairs.length > 3 && (
+            <li>
+              <Link href="/tasks" className="block py-2 text-sm font-medium text-brand-700">
+                {repairs.length - 3} more repairs
+              </Link>
+            </li>
+          )}
+        </ul>
+      )}
+      {!next && repairs.length > 0 ? null : !next ? (
         <p className="mt-2 flex items-center gap-2 text-slate-600">
           <Icon name="check" className="size-5 text-emerald-700" />
           Nothing due today

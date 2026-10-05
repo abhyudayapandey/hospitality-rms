@@ -75,9 +75,11 @@ export const loadShell = cache(async (): Promise<Shell> => {
       tx,
     );
     const home = await sql<HomePlace>`select * from core.my_home()`.execute(tx);
-    // approvals, plus expired batches and maintenance requests to assign (ADR 020)
+    // approvals, plus expired batches and maintenance requests to assign (ADR 020), plus the
+    // order desk's requests to order and orders to receive (ADR 049, 052): all of it is listed
     const inbox = await sql<{ n: number }>`
       select (select count(*) from wf.my_inbox())::int
+           + (select count(*) from inv.desk_orders())::int
            + (select count(*) from ops.my_to_assign() a
                where (select "on" from core.my_modules()
                        where code = case a.kind when 'expiry' then 'production'

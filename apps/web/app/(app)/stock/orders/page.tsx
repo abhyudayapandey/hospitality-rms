@@ -5,14 +5,23 @@ import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatMoney, formatWhen } from '@/lib/format';
-import { PO_PROGRESS as PROGRESS, param, supplyContext, type SearchParams } from '@/lib/inventory';
+import {
+  PO_PROGRESS as PROGRESS,
+  param,
+  SUPPLY_PROGRESS,
+  supplyContext,
+  type SearchParams,
+} from '@/lib/inventory';
+import { LIST_PAGE, listLimit } from '@/lib/list-page';
+import { ShowMore } from '@/components/show-more';
 import { ViewTabs } from '@/components/view-tabs';
 import { listHref } from '@/lib/stock-view';
 
-// Orders (ADR 048, 049, 051): one list with the store's own orders and, for the Main Store's
-// keeper, the departments' requests they order and receive (the order desk). Tabs: All, To
-// order (the desk), To receive, Received. The list comes first; asking for supplies is below
-// it, a secondary link for the Main Store, which is asked rather than asking.
+// Orders (ADR 048, 049, 051, 052): one list with the store's own orders and, for the Main
+// Store's keeper, the departments' requests they order and receive (the order desk). Tabs:
+// All, To order (the desk), To receive (a department: On the way), Received. Each tab's count
+// is the whole list, counted in SQL; the list shows a page at a time. The list comes first;
+// asking for supplies is below it, a secondary link for the Main Store.
 
 const TABS = ['all', 'to_order', 'receive', 'received'] as const;
 type Tab = (typeof TABS)[number];
@@ -28,13 +37,17 @@ interface Row {
   value: string | null;
   bill_missing: boolean;
   desk: boolean;
+  /** a department's order its Main Store places and receives: no ₹, "on the way" (ADR 052) */
+  follow: boolean;
 }
 
-const inTab = (r: Row, t: Tab) =>
-  t === 'all' ||
-  (t === 'to_order' && r.progress === 'to_order') ||
-  (t === 'receive' && (r.progress === 'released' || r.progress === 'partially_received')) ||
-  (t === 'received' && r.progress === 'received');
+// which tab a progress belongs to; closed orders (the rest is not coming) are done
+const BUCKET = sql`case progress when 'to_order' then 'to_order'
+                                 when 'released' then 'receive'
+                                 when 'partially_received' then 'receive'
+                                 when 'received' then 'received'
+                                 when 'closed' then 'received'
+                                 else 'other' end`;
 
 export default async function OrdersPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await supplyContext(searchParams, 'orders');
@@ -43,71 +56,55 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
   // "All stores" and the "To receive" tab: what Home's Receive count opens (ADR 048)
   const all = param(sp, 'all') === '1' && ctx.nodes.length > 1;
   const raw = param(sp, 'tab');
+  const limit = listLimit(param(sp, 'n'));
   const user = await requireUser();
   const node = ctx.node;
   const nodes = all ? ctx.nodes.map((n) => n.id) : [node.id];
-  const names = new Map(ctx.nodes.map((n) => [n.id, n.name]));
-  const { rows, mainStore } = await withUser(user.id, async (tx) => {
-    const own = await sql<Omit<Row, 'store' | 'desk'>>`
-      select po.id, s.name as supplier, po.delivery_node_id::text as store_id, po.progress,
-             po.created_at,
-             (select string_agg(i.name, ', ' order by i.name)
-                from inv.purchase_order_line pl join inv.item i on i.id = pl.item_id
-               where pl.po_id = po.id) as items,
-             inv.po_received_value(po.id) as value,
-             coalesce(inv.po_bill_missing(po.id), false) as bill_missing
-        from inv.purchase_order_summary po
-        left join inv.supplier s on s.id = po.supplier_id
-       where po.delivery_node_id = any(${nodes}::uuid[])
-       order by po.created_at desc limit 60`.execute(tx);
-    // the departments' requests this person orders and receives for (ADR 049)
-    const desk = await sql<{
-      po_id: string;
-      store_id: string;
-      store: string;
-      supplier: string | null;
-      progress: string;
-      created_at: Date;
-      items: string | null;
-      bill_missing: boolean;
-    }>`select po_id, store_id::text, store, supplier, progress, created_at, items,
-              coalesce(bill_missing, false) as bill_missing
-         from inv.desk_order_list()`.execute(tx);
-    const main = await sql<{ m: boolean }>`select inv.is_main_store(${node.id}::uuid) as m`.execute(
-      tx,
-    );
-    const seen = new Set(own.rows.map((r) => r.id));
-    const deskRows: Row[] = [];
-    for (const d of desk.rows) {
-      if (seen.has(d.po_id)) continue;
-      const value = await sql<{ v: string | null }>`
-        select inv.po_received_value(${d.po_id}::uuid) as v`.execute(tx);
-      deskRows.push({
-        id: d.po_id,
-        supplier: d.supplier,
-        store_id: d.store_id,
-        store: d.store,
-        progress: d.progress,
-        created_at: d.created_at,
-        items: d.items,
-        value: value.rows[0]?.v ?? null,
-        bill_missing: d.bill_missing,
-        desk: true,
-      });
-    }
-    const merged: Row[] = [
-      ...own.rows.map((r) => ({ ...r, store: names.get(r.store_id) ?? '', desk: false })),
-      ...deskRows,
-    ].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
-    return { rows: merged, mainStore: main.rows[0]?.m ?? false };
+  const asked = (TABS as readonly string[]).includes(raw ?? '') ? (raw as Tab) : 'all';
+  const { rows, counts, mainStore, follows } = await withUser(user.id, async (tx) => {
+    // the store's own orders and the departments' requests this person orders and receives
+    // for (ADR 049); counted with no limit, listed a page at a time (ADR 052)
+    const scope = sql`
+      with o as (
+        select po.id, s.name as supplier, po.delivery_node_id as store_id,
+               core.node_name(po.delivery_node_id) as store, po.progress, po.created_at,
+               (select string_agg(i.name, ', ' order by i.name)
+                  from inv.purchase_order_line pl join inv.item i on i.id = pl.item_id
+                 where pl.po_id = po.id) as items,
+               false as desk
+          from inv.purchase_order_summary po
+          left join inv.supplier s on s.id = po.supplier_id
+         where po.delivery_node_id = any(${nodes}::uuid[])
+        union all
+        select d.po_id, d.supplier, d.store_id, d.store, d.progress, d.created_at, d.items, true
+          from inv.desk_order_list() d
+         where not (d.store_id = any(${nodes}::uuid[])))
+      select *, ${BUCKET} as bucket from o`;
+    const c = await sql<{ bucket: string; n: number }>`
+      select bucket, count(*)::int as n from (${scope}) x group by bucket`.execute(tx);
+    const r = await sql<Row>`
+      select id, supplier, store_id::text, store, progress, created_at, items, desk,
+             inv.po_received_value(id) as value,
+             coalesce(inv.po_bill_missing(id), false) as bill_missing,
+             inv.follows_order(id) as follow
+        from (${scope}) x
+       where ${asked} = 'all' or bucket = ${asked}
+       order by created_at desc, id
+       limit ${limit + 1}`.execute(tx);
+    const facts = await sql<{ m: boolean; follows: boolean }>`
+      select inv.is_main_store(${node.id}::uuid) as m,
+             inv.follows_store(${node.id}::uuid) as follows`.execute(tx);
+    return {
+      rows: r.rows,
+      counts: new Map(c.rows.map((x) => [x.bucket, x.n])),
+      mainStore: facts.rows[0]?.m ?? false,
+      follows: !all && (facts.rows[0]?.follows ?? false),
+    };
   });
-  const count = (t: Tab) => rows.filter((r) => inTab(r, t)).length;
+  const count = (t: Exclude<Tab, 'all'>) => counts.get(t) ?? 0;
   const showToOrder = count('to_order') > 0;
-  const tab: Tab =
-    (TABS as readonly string[]).includes(raw ?? '') && (raw !== 'to_order' || showToOrder)
-      ? (raw as Tab)
-      : 'all';
-  const list = rows.filter((r) => inTab(r, tab));
+  const tab: Tab = asked !== 'to_order' || showToOrder ? asked : 'all';
+  const list = tab === asked ? rows.slice(0, limit) : [];
   const href = (t: Tab) => listHref('/stock/orders', { all, node: node.id, tab: t });
   const canAsk = !all && ctx.can('PURCHASE_ORDERS', 'modify') && !node.derived;
   const ask = `/stock/orders/new?node=${node.id}`;
@@ -135,14 +132,22 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
                 },
               ]
             : []),
-          { key: 'receive', label: 'To receive', count: count('receive'), href: href('receive') },
+          {
+            key: 'receive',
+            // a department whose Main Store receives for it follows its orders (ADR 052)
+            label: follows ? 'On the way' : 'To receive',
+            count: count('receive'),
+            href: href('receive'),
+          },
           { key: 'received', label: 'Received', count: count('received'), href: href('received') },
         ]}
       />
       {list.length === 0 ? (
         <Empty>
           {tab === 'receive'
-            ? 'Nothing is waiting to be received.'
+            ? follows
+              ? 'Nothing is on the way.'
+              : 'Nothing is waiting to be received.'
             : tab === 'received'
               ? 'Nothing received yet.'
               : 'No orders here yet.'}
@@ -150,8 +155,14 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
       ) : (
         <ul className="space-y-2">
           {list.map((r) => {
-            const [label, style] = PROGRESS[r.progress] ?? [r.progress, ''];
-            const received = r.progress === 'received' || r.progress === 'partially_received';
+            const [label, style] = (r.follow ? SUPPLY_PROGRESS : PROGRESS)[r.progress] ?? [
+              r.progress,
+              '',
+            ];
+            const received =
+              r.progress === 'received' ||
+              r.progress === 'partially_received' ||
+              r.progress === 'closed';
             return (
               <li key={r.id} data-testid="po-item" data-po-id={r.id}>
                 <Link
@@ -160,7 +171,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
                 >
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="min-w-0 font-medium">
-                      {r.supplier ?? 'Supplies request'}
+                      {r.supplier ?? 'Supply request'}
                       {(all || r.desk) && (
                         <span
                           className="block text-xs font-normal text-slate-500"
@@ -170,7 +181,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
                         </span>
                       )}
                     </span>
-                    {received && r.value && (
+                    {received && r.value && !r.follow && (
                       <span className="font-semibold tabular-nums">{formatMoney(r.value)}</span>
                     )}
                   </span>
@@ -201,6 +212,11 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
             );
           })}
         </ul>
+      )}
+      {tab === asked && rows.length > limit && (
+        <ShowMore
+          href={listHref('/stock/orders', { all, node: node.id, tab, n: limit + LIST_PAGE })}
+        />
       )}
       {canAsk &&
         (mainStore ? (

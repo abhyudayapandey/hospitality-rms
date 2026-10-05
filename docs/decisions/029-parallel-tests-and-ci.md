@@ -39,7 +39,8 @@ slowest files start first. Stale weights only make shards less even.
   the same rules; the report access tests check every user against them.
 - **The report refusal check** (every person, every report, every place not listed: about
   6,000 calls, 2 minutes) moved from `reports-access.db.test.ts` to its own file,
-  `reports-refusals.db.test.ts`, so it runs beside the rest.
+  `reports-refusals.db.test.ts`, so it runs beside the rest. ADR 052 split it in two by
+  person (`reports-refusals-1` and `-2`) and re-measured the shard weights.
 
 **CI as parallel jobs** (`.github/workflows/ci.yml`):
 
