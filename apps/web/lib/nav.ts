@@ -46,7 +46,7 @@ export type NavKey =
 export const NAV_ITEMS: Readonly<Record<NavKey, NavItem>> = {
   home: { href: '/', label: 'Home', icon: 'home' },
   // approvals and other requests waiting for the person (wf.my_inbox)
-  inbox: { href: '/inbox', label: 'Inbox', icon: 'inbox' },
+  inbox: { href: '/inbox', label: 'To do list', icon: 'inbox' },
   tasks: { href: '/tasks', label: 'Tasks', icon: 'tasks' },
   // plain words (UX-6): "Make", not "Production"
   production: { href: '/stock/production', label: 'Make', icon: 'pot' },
@@ -140,7 +140,7 @@ export function visibleNav(i: NavInput): NavItem[] {
   return keys.slice(0, MAX_NAV_ITEMS).map((k) => NAV_ITEMS[k]);
 }
 
-/** Whether Inbox is a tab; if not, the header carries it (UX-6). */
+/** Whether To do list is a tab; if not, the header carries it (UX-6). */
 export function approvalsInNav(i: NavInput): boolean {
   return visibleNav(i).some((n) => n.href === NAV_ITEMS.inbox.href);
 }

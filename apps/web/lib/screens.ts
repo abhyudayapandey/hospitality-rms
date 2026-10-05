@@ -111,7 +111,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
   {
     key: 'inbox',
     href: '/inbox',
-    label: 'Inbox',
+    label: 'To do list',
     icon: 'inbox',
     section: 'mine',
     show: () => true,

@@ -16,12 +16,12 @@ const cases: [string, string[]][] = [
   ['Test Head Cook 3.0', ['Home', 'Roster', 'Stock', 'Reports', 'Me']],
   ['Test Executive Chef 1.0', ['Home', 'Roster', 'Stock', 'Reports', 'Me']],
   ['Test Chief Engineer 1.0', ['Home', 'Roster', 'Tasks', 'Reports', 'Me']],
-  ['Test General Manager 1.0', ['Home', 'Inbox', 'Reports', 'Me']],
-  ['Test Bar Manager 3.0', ['Home', 'Inbox', 'Reports', 'Me']],
-  ['Test Area Manager', ['Home', 'Inbox', 'Reports', 'Me']],
-  ['Test Cost Controller 1.0', ['Home', 'Stock', 'Reports', 'Inbox', 'Me']],
-  ['Test HR Admin', ['Home', 'Inbox', 'Reports', 'Roster', 'Me']],
-  ['Test Account Owner', ['Home', 'Inbox', 'Reports', 'Admin', 'Me']],
+  ['Test General Manager 1.0', ['Home', 'To do list', 'Reports', 'Me']],
+  ['Test Bar Manager 3.0', ['Home', 'To do list', 'Reports', 'Me']],
+  ['Test Area Manager', ['Home', 'To do list', 'Reports', 'Me']],
+  ['Test Cost Controller 1.0', ['Home', 'Stock', 'Reports', 'To do list', 'Me']],
+  ['Test HR Admin', ['Home', 'To do list', 'Reports', 'Roster', 'Me']],
+  ['Test Account Owner', ['Home', 'To do list', 'Reports', 'Admin', 'Me']],
 ];
 
 for (const [who, items] of cases) {
@@ -48,7 +48,7 @@ test('Me has every screen the tabs leave out', async ({ page }) => {
   await expect(page.getByTestId('me-reports')).toHaveCount(0);
   // approvals are in the header for people without the tab
   await signInAs(page, 'Test Commis 1.0');
-  await expect(page.getByRole('link', { name: /^Inbox/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /^To do list/ })).toBeVisible();
 });
 
 test('everyone in both test customers gets three to five tabs', async ({ page }) => {

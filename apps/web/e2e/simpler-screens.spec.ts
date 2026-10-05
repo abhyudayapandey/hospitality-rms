@@ -135,13 +135,13 @@ test('the welcome card shows once and is dismissed for good', async ({ page }) =
   await expect(page.getByTestId('first-run')).toHaveCount(0);
 });
 
-test('Inbox has one name in the bar, the heading and the Me list', async ({ page }) => {
+test('the to-do list has one name in the bar and the heading', async ({ page }) => {
   await signInAs(page, 'Test General Manager 1.0', { expanded: false });
   await page
-    .getByRole('link', { name: /^Inbox/ })
+    .getByRole('link', { name: /^To do list/ })
     .first()
     .click();
-  await expect(page.getByRole('heading', { name: 'Inbox', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'To do list', level: 1 })).toBeVisible();
 });
 
 test('tabs wrap instead of running off the screen', async ({ page }) => {

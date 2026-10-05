@@ -16,7 +16,7 @@ export default async function InboxPage() {
   return (
     <div className="space-y-4">
       <PollRefresh />
-      <h1 className="text-xl font-semibold">Inbox</h1>
+      <h1 className="text-xl font-semibold">To do list</h1>
       {assign.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-500">To assign</h2>

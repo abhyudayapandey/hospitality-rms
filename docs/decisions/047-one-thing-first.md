@@ -33,8 +33,10 @@ screen went by five names.
   when the next shift is.
 - **Long lists:** search and "Show more" (`FilterList`, `ListSearch`). Rows not shown are
   hidden, not removed, so a form still sends what was typed in a row out of sight.
-- **One name:** the to-do list is Inbox (it was Approvals, Requests, Needs your yes). My
-  requests is "Things I asked for". Access group codes read as words.
+- **One name:** the to-do list is **To do list** (it was Approvals, Inbox, Requests, Needs
+  your yes). Many of the people who use it are not well educated, so a thing is named for what
+  it is, not for the software word. My requests is
+  "Things I asked for". Access group codes read as words.
 - **Tabs wrap** instead of scrolling sideways, so none is hidden. We did not hide tabs
   behind "More": that adds a tap to jobs whose tap budgets are pinned (ADR 026).
 - **No change** to hiding comparisons against an empty prior week (a test-data effect, not a

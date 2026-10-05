@@ -62,23 +62,23 @@ describe('bottom nav', () => {
       nav(['OUTLET_MANAGER', 'USER_ADMIN'], ['STOCK_LEVELS', 'USER_ACCESS'], {
         reports: 'business',
       }),
-    ).toEqual(['Home', 'Inbox', 'Reports', 'Me']);
+    ).toEqual(['Home', 'To do list', 'Reports', 'Me']);
     expect(
       nav(['STAFF', 'COST_CONTROLLER'], ['STOCK_LEVELS', 'MENU'], {
         menu: true,
         reports: 'business',
       }),
-    ).toEqual(['Home', 'Stock', 'Reports', 'Inbox', 'Me']);
+    ).toEqual(['Home', 'Stock', 'Reports', 'To do list', 'Me']);
     expect(nav(['HR_ADMIN'], [], { reports: 'business' })).toEqual([
       'Home',
-      'Inbox',
+      'To do list',
       'Reports',
       'Roster',
       'Me',
     ]);
     expect(nav(['ACCOUNT_OWNER'], ['USER_ACCESS'], { reports: 'business' })).toEqual([
       'Home',
-      'Inbox',
+      'To do list',
       'Reports',
       'Admin',
       'Me',
@@ -86,15 +86,25 @@ describe('bottom nav', () => {
   });
 
   it('only business reports take a tab; My week is on Me', () => {
-    expect(nav(['AUDITOR'], ['AUDIT', 'SECURITY_ROLES'])).toEqual(['Home', 'Inbox', 'Admin', 'Me']);
+    expect(nav(['AUDITOR'], ['AUDIT', 'SECURITY_ROLES'])).toEqual([
+      'Home',
+      'To do list',
+      'Admin',
+      'Me',
+    ]);
     expect(nav(['STAFF'], [], { reports: 'business' })).toEqual(['Home', 'Tasks', 'Me']);
   });
 
   it('a manager without reports gets Stock in that slot', () => {
-    expect(nav(['OUTLET_MANAGER'], ['STOCK_LEVELS'])).toEqual(['Home', 'Inbox', 'Stock', 'Me']);
+    expect(nav(['OUTLET_MANAGER'], ['STOCK_LEVELS'])).toEqual([
+      'Home',
+      'To do list',
+      'Stock',
+      'Me',
+    ]);
   });
 
-  it('Inbox is a tab for managers and in the header for everyone else', () => {
+  it('To do list is a tab for managers and in the header for everyone else', () => {
     const input = (groups: string[]) => ({
       groups: new Set(['SELF', ...groups]),
       domains: new Set(SELF),
