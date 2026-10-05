@@ -100,7 +100,7 @@ export default async function OrderPage({
                             where gl.po_line_id = pl.id), 0) as received
             from inv.purchase_order_line pl join inv.item i on i.id = pl.item_id
            where pl.po_id = ${id}::uuid order by i.name`.execute(tx);
-    const sends = row
+    const sends = po.rows[0]
       ? await sql<{ channel: 'whatsapp' | 'email' | 'print'; sent_at: Date; sent_by_name: string }>`
           select channel, sent_at, sent_by_name from inv.po_sends(${id}::uuid)`.execute(tx)
       : { rows: [] };
