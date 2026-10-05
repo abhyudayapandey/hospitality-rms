@@ -47,10 +47,7 @@ export default async function StockPage({ searchParams }: { searchParams: Search
   const adjust = ctx.can('STOCK_ADJUSTMENTS', 'modify') && !node.derived;
   const data = await withUser(user.id, async (tx) => {
     const rows: StockRowAll[] | StockRow[] = all
-      ? await stockListAll(
-          tx,
-          ctx.nodes.map((n) => n.id),
-        )
+      ? await stockListAll(tx, ctx.nodes)
       : await stockList(tx, node.id);
     const dated = splitExpiry(await expiryList(tx), all ? null : node.id);
     // stock on its way here (sent, not yet received); RLS shows only transfers they may see

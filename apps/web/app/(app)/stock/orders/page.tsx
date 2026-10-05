@@ -23,15 +23,13 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
       id: string;
       supplier: string;
       store_id: string;
-      store: string;
       total: string;
       progress: string;
       created_at: Date;
     }>`
-      select po.id, s.name as supplier, st.id::text as store_id, st.name as store, po.total, po.progress, po.created_at
+      select po.id, s.name as supplier, po.delivery_node_id::text as store_id, po.total, po.progress, po.created_at
         from inv.purchase_order_summary po
         join inv.supplier s on s.id = po.supplier_id
-        join core.hierarchy_node st on st.id = po.delivery_node_id
        where ${
          all
            ? sql`po.delivery_node_id = any(${ctx.nodes.map((n) => n.id)}::uuid[])`
@@ -39,7 +37,8 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
        }
          and (${tab === 'receive'} = false or po.progress in ('released', 'partially_received'))
        order by po.created_at desc limit 30`.execute(tx);
-    return r.rows;
+    const names = new Map(ctx.nodes.map((n) => [n.id, n.name]));
+    return r.rows.map((x) => ({ ...x, store: names.get(x.store_id) ?? '' }));
   });
   const toReceive = rows.filter(
     (r) => r.progress === 'released' || r.progress === 'partially_received',
