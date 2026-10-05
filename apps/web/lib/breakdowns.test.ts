@@ -25,6 +25,18 @@ describe('what is behind a figure (ADR 042)', () => {
     expect(periodEnd('month', '2026-02-01')).toBe('2026-02-28');
   });
 
+  it('selectedPeriod: a week so far with a figure of 0 does not beat the last week with something', () => {
+    const points = [
+      { period: '2026-09-28', value: '16' },
+      { period: '2026-10-05', value: '0' },
+    ];
+    expect(selectedPeriod(points, '', 'week', '2026-10-05')?.from).toBe('2026-09-28');
+    // all zero: the latest is still shown
+    expect(
+      selectedPeriod([{ period: '2026-10-05', value: '0' }], '', 'week', '2026-10-05')?.from,
+    ).toBe('2026-10-05');
+  });
+
   it('selectedPeriod: the one asked for, else the latest with a figure; cut at today', () => {
     const points = [
       { period: '2026-09-14', value: '10' },

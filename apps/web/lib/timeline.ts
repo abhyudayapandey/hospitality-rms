@@ -1,4 +1,5 @@
-import { formatSpan, formatTime } from './dates';
+import { addDays, formatTime, localDate } from './dates';
+import { humanizeCode, type TitleOf } from './job-roles';
 
 // My shifts and Clock (ADR 018): rows of hr.my_timeline, where punches are matched to
 // shifts and extra time is split out by the database (one rule for staff, managers and the
@@ -41,7 +42,10 @@ export function formatDuration(minutes: number): string {
   return m === 0 ? `${h} h` : `${h} h ${m} m`;
 }
 
-export function rowTitle(r: TimelineRow, tz: string): string {
+const jobName: TitleOf = (code) => (code ? humanizeCode(code) : '');
+
+/** "07:00–15:00 · Server": the job by its title, never its code (UX-9). */
+export function rowTitle(r: TimelineRow, tz: string, titleOf: TitleOf = jobName): string {
   switch (r.kind) {
     case 'extra_before':
       return 'Extra before shift';
@@ -50,8 +54,57 @@ export function rowTitle(r: TimelineRow, tz: string): string {
     case 'unrostered':
       return 'Unrostered';
     default:
-      return `${formatSpan(r.shift_start!, r.shift_end!, tz)}${r.role_code ? ` · ${r.role_code.toLowerCase()}` : ''}`;
+      return `${formatTime(r.shift_start!, tz)}–${formatTime(r.shift_end!, tz)}${
+        r.role_code ? ` · ${titleOf(r.role_code)}` : ''
+      }`;
   }
+}
+
+/** "ends 01:00 next day" for a shift that runs past midnight; null otherwise (replaces "+1"). */
+export function endsNextDay(r: TimelineRow, tz: string): string | null {
+  if (r.kind !== 'shift' || !r.shift_start || !r.shift_end) return null;
+  return localDate(r.shift_end, tz) !== localDate(r.shift_start, tz)
+    ? `ends ${formatTime(r.shift_end, tz)} next day`
+    : null;
+}
+
+export interface WeekCell {
+  date: string;
+  /** "Mon" */
+  day: string;
+  /** when the first shift starts ("17:00"), or null for a day off */
+  start: string | null;
+  today: boolean;
+}
+
+/** The next seven days, one cell each: the shift's start time, or off (UX-9). */
+export function weekStrip(rows: readonly TimelineRow[], today: string, tz: string): WeekCell[] {
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(today, i);
+    const first = rows
+      .filter((r) => r.kind === 'shift' && r.local_date === date && r.shift_start)
+      .sort((a, b) => a.shift_start!.localeCompare(b.shift_start!))[0];
+    return {
+      date,
+      day: new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'UTC' }).format(
+        new Date(`${date}T12:00:00Z`),
+      ),
+      start: first ? formatTime(first.shift_start!, tz) : null,
+      today: i === 0,
+    };
+  });
+}
+
+/** The first shift still to come (not yet worked): what a server opens My shifts to see. */
+export function nextShift(rows: readonly TimelineRow[], today: string): TimelineRow | null {
+  return (
+    rows.find(
+      (r) =>
+        r.kind === 'shift' &&
+        r.local_date >= today &&
+        (r.status === 'upcoming' || r.status === 'due'),
+    ) ?? null
+  );
 }
 
 /** "In 07:45 · Out 20:10", "In 07:58 · still in", or null when nothing was worked. */

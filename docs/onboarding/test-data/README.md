@@ -211,7 +211,7 @@ files 25 to 28; file 30 also takes days after it (up to 14).
   bartenders) and Wipe down the menu cards (Bar 3.0 servers) are upcoming, for everyone in
   that role.
 - **Maintenance.** One open request, handled by Hotel 1.0 Engineering: the Chief Engineer
-  sees it in their Inbox to assign to the technician.
+  sees it in their To do list to assign to the technician.
 - **Prep.** Mint Chutney (day -5, 500 g), Ginger Garlic Paste (day -4, 1 kg) and the Negroni
   (Bar 3.0, day -4, 2 l) are done, each linked to its batch from file 26. Mint Chutney
   1 kg for the load day is open for the Hotel 1.0 commis (the last batch has expired).

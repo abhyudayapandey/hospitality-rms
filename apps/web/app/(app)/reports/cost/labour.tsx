@@ -47,7 +47,7 @@ export function LabourByDepartment({ rows }: { rows: LabourRow[] }) {
           data-testid="labour-total"
         >
           <span>
-            Whole place
+            Total
             <span className="block text-xs font-normal text-slate-500">
               {formatMeasure('hours', whole.hours)} · {formatMeasure('money', whole.hourly_cost)}{' '}
               hourly, {formatMeasure('money', whole.salary_cost)} salaried

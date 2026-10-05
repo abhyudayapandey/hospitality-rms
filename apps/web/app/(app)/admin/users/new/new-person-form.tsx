@@ -1,5 +1,6 @@
 'use client';
 
+import { groupLabel } from '@/lib/labels';
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, primaryButton, secondaryButton } from '@/components/messages';
@@ -178,7 +179,8 @@ export function NewPersonForm({
             {preview.map((r, i) => (
               <li key={i} className="flex items-start justify-between gap-2 p-3 text-sm">
                 <span>
-                  <span className="font-medium">{r.access_group}</span> at {r.place_name}
+                  <span className="font-medium">{groupLabel(r.access_group)}</span> at{' '}
+                  {r.place_name}
                   <span className="block text-xs text-slate-500">{r.covers}</span>
                 </span>
                 <AppliesBadge applies={r.applies} />

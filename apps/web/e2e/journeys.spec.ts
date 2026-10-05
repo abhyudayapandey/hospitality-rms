@@ -116,7 +116,7 @@ test('record wastage (store keeper)', async ({ page }) => {
   await j.go(
     page.getByRole('navigation', { name: 'Supply' }).getByRole('link', { name: 'Wastage' }),
   );
-  await j.choose(page.getByLabel('Item'), { index: 1 });
+  await j.choose(page.getByRole('combobox', { name: /^Item/ }), { index: 1 });
   await j.type(page.getByLabel(/^Quantity/), '1');
   await j.last(page.getByRole('button', { name: 'Record wastage' }));
   j.done('Record wastage', 'Store keeper', { there: 2, form: 2 });
@@ -152,7 +152,7 @@ test('approve leave (floor manager)', async ({ page }) => {
     .getByTestId('inbox-item')
     .filter({ hasText: 'Test Server 3.0' })
     .filter({ hasText: 'Leave' });
-  if ((await onHome.count()) === 0) await j.go(page.getByRole('link', { name: /^Approvals/ }));
+  if ((await onHome.count()) === 0) await j.go(page.getByRole('link', { name: /^To do list/ }));
   await j.go(
     page
       .getByTestId('inbox-item')
@@ -166,11 +166,11 @@ test('approve leave (floor manager)', async ({ page }) => {
 });
 
 test('fill an open slot (executive chef)', async ({ page }) => {
-  // Home's "Needs attention" links to the first day with an open slot (U-27): before, this
+  // Home's "Do these first" links to the first day with an open slot (U-27): before, this
   // took Roster → the day → Assign
   const j = await start(page, 'Test Executive Chef 1.0');
   await j.go(
-    page.getByTestId('attention-card').getByRole('link', { name: /open shifts? this week/ }),
+    page.getByTestId('dofirst-card').getByRole('link', { name: /open shifts? this week/ }),
   );
   await j.go(
     page

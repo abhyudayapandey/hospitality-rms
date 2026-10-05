@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { formatMoney } from '@/lib/format';
+import { ListSearch } from '@/components/list-search';
 import { UnusualNote } from '@/components/unusual-note';
 import { createPo } from '../../actions';
 
@@ -55,6 +56,7 @@ export function NewOrderForm({
     Object.fromEntries(lines.map((l) => [l.item_id, trim(l.unit_cost)])),
   );
   const [notes, setNotes] = useState('');
+  const [usual, setUsual] = useState(false);
   const [key] = useState(() => crypto.randomUUID());
   const [pending, start] = useTransition();
   const hydrated = useHydrated();
@@ -107,36 +109,64 @@ export function NewOrderForm({
           ))}
         </select>
       </label>
-      <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-        {lines.map((l) => (
-          <li key={l.item_id} className="space-y-1 px-4 py-2" data-testid="order-line">
-            <p className="flex justify-between gap-2 text-sm">
-              <span className="font-medium">{l.name}</span>
-              <span className="text-slate-500 tabular-nums">
-                {trim(l.on_hand)} / {trim(l.par_level)} {l.base_uom}
-              </span>
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                aria-label={`Quantity ${l.name}`}
-                inputMode="decimal"
-                placeholder={`qty (${l.base_uom})`}
-                value={qty[l.item_id] ?? ''}
-                onChange={(e) => setQty((v) => ({ ...v, [l.item_id]: e.target.value }))}
-                className={inputClass}
-              />
-              <input
-                aria-label={`Price ${l.name}`}
-                inputMode="decimal"
-                placeholder="price"
-                value={cost[l.item_id] ?? ''}
-                onChange={(e) => setCost((v) => ({ ...v, [l.item_id]: e.target.value }))}
-                className={inputClass}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
+      <div id="order-lines" className="space-y-2">
+        <ListSearch scope="order-lines" count={lines.length} noun="items" />
+        {lines.some((l) => Number(l.suggested_qty) > 0) && lines.length > 8 && (
+          <label className="flex min-h-11 items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={usual}
+              onChange={(e) => {
+                setUsual(e.target.checked);
+                for (const el of document.querySelectorAll<HTMLElement>(
+                  '#order-lines [data-usual="no"]',
+                )) {
+                  el.hidden = e.target.checked;
+                }
+              }}
+              className="size-5"
+            />
+            Only items that need ordering
+          </label>
+        )}
+        <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
+          {lines.map((l) => (
+            <li
+              key={l.item_id}
+              className="space-y-1 px-4 py-2"
+              data-testid="order-line"
+              data-filter-row
+              data-filter-text={l.name}
+              data-usual={Number(l.suggested_qty) > 0 ? 'yes' : 'no'}
+            >
+              <p className="flex justify-between gap-2 text-sm">
+                <span className="font-medium">{l.name}</span>
+                <span className="text-slate-500 tabular-nums">
+                  {trim(l.on_hand)} / {trim(l.par_level)} {l.base_uom}
+                </span>
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  aria-label={`Quantity ${l.name}`}
+                  inputMode="decimal"
+                  placeholder={`qty (${l.base_uom})`}
+                  value={qty[l.item_id] ?? ''}
+                  onChange={(e) => setQty((v) => ({ ...v, [l.item_id]: e.target.value }))}
+                  className={inputClass}
+                />
+                <input
+                  aria-label={`Price ${l.name}`}
+                  inputMode="decimal"
+                  placeholder="price"
+                  value={cost[l.item_id] ?? ''}
+                  onChange={(e) => setCost((v) => ({ ...v, [l.item_id]: e.target.value }))}
+                  className={inputClass}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
       <label className="block space-y-1">
         <span className="text-sm font-medium">Notes (optional)</span>
         <input value={notes} onChange={(e) => setNotes(e.target.value)} className={inputClass} />

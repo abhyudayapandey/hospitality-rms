@@ -47,11 +47,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </span>
         </Link>
         <div className="flex items-center gap-1">
-          {/* Approvals is a tab for managers; for everyone else it is here (UX-6) */}
+          {/* To do list is a tab for managers; for everyone else it is here (UX-6) */}
           {!approvalsInNav(input) && (
             <Link
               href="/inbox"
-              aria-label={`Approvals${shell.inboxCount ? `, ${shell.inboxCount} waiting` : ''}`}
+              aria-label={`To do list${shell.inboxCount ? `, ${shell.inboxCount} waiting` : ''}`}
               className="relative flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-700"
             >
               <Icon name="inbox" />

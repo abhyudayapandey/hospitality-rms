@@ -3,11 +3,12 @@ import { addDays, formatDay } from '@/lib/dates';
 import {
   compare,
   costParts,
+  costShares,
   formatMeasure,
   PERIODS,
   REPORTS,
-  sectionRows,
   SECTIONS,
+  splitHeadline,
   type CostPartRow,
   type MeasureRow,
   type Period,
@@ -77,8 +78,9 @@ const TREND = {
 } as const;
 
 /**
- * A report's figures in its sections; each against the same day last week when there is one,
- * and against the company's target (R-4): red only when worse by more than 2 points.
+ * A report opens with its three or four headline figures, large, each against the company's
+ * target (R-4: red only when worse by more than 2 points) and last week when there is one.
+ * Everything else is one tap away under "More figures", in its sections (UX-7).
  */
 export function ReportSections({
   report,
@@ -92,69 +94,96 @@ export function ReportSections({
   /** where each figure opens its trend (RPT-12), or null for a figure of the moment */
   trend?: (measure: string) => string | null;
 }) {
+  const { headline, rest } = splitHeadline(report, rows);
+  const figure = (r: (typeof rest)[number], big: boolean) => {
+    const c = compare(r.def, r.value, r.last_week);
+    const t = targets ? vsTarget(r.measure, r.value, targets) : null;
+    const href = trend?.(r.measure) ?? null;
+    const empty = r.value === null || r.value === '';
+    const content = (
+      <>
+        <span className={big ? 'block text-sm text-slate-700' : 'text-sm text-slate-700'}>
+          {r.def.label}
+          {href && <Icon name="chart" className="ml-1 inline size-3.5 text-slate-400" />}
+          {r.def.hint && (
+            <span className="block text-xs font-normal text-slate-500" data-testid="hint">
+              {r.def.hint}
+            </span>
+          )}
+        </span>
+        <span className={big ? 'block' : 'text-right'}>
+          <span
+            className={`block font-semibold tabular-nums ${big ? 'text-2xl' : ''} ${
+              t?.state === 'bad' ? 'text-rose-700' : ''
+            }`}
+            data-testid="value"
+          >
+            {formatMeasure(r.def.unit, r.value)}
+          </span>
+          {empty && (
+            <span className="block text-xs text-slate-500" data-testid="why-empty">
+              none recorded for this period
+            </span>
+          )}
+          {t?.target !== null && t?.target !== undefined && (
+            <span
+              className={`block text-xs ${t.state === 'bad' ? 'text-rose-700' : 'text-slate-500'}`}
+              data-testid="target"
+            >
+              target {formatMeasure('pct', t.target)}
+            </span>
+          )}
+          {c.text && <span className={`block text-xs ${TREND[c.trend]}`}>{c.text}</span>}
+        </span>
+      </>
+    );
+    const box = big ? 'block h-full p-3' : 'flex items-baseline justify-between gap-3 p-3';
+    return (
+      <li
+        key={r.measure}
+        data-testid={`measure-${r.measure}`}
+        data-target={t?.state ?? 'none'}
+        className={big ? 'rounded-xl bg-white ring-1 ring-slate-200' : ''}
+      >
+        {href ? (
+          <Link href={href} className={box} data-testid="measure-trend-link">
+            {content}
+          </Link>
+        ) : (
+          <div className={box}>{content}</div>
+        )}
+      </li>
+    );
+  };
+  const sections = SECTIONS[report]
+    .map(([title]) => [title, rest.filter((r) => r.section === title)] as const)
+    .filter(([, list]) => list.length > 0);
+  const sectioned = (
+    <div className="space-y-4">
+      {sections.map(([title, list]) => (
+        <section key={title} aria-label={title} className="space-y-2">
+          <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
+          <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
+            {list.map((r) => figure(r, false))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+  if (headline.length === 0) return sectioned;
   return (
     <div className="space-y-4">
-      {SECTIONS[report].map(([title, measures]) => {
-        const list = sectionRows(rows, measures);
-        if (list.length === 0) return null;
-        return (
-          <section key={title} aria-label={title} className="space-y-2">
-            <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
-            <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-              {list.map((r) => {
-                const c = compare(r.def, r.value, r.last_week);
-                const t = targets ? vsTarget(r.measure, r.value, targets) : null;
-                const href = trend?.(r.measure) ?? null;
-                const row = 'flex items-baseline justify-between gap-3 p-3';
-                const content = (
-                  <>
-                    <span className="text-sm text-slate-700">
-                      {r.def.label}
-                      {href && (
-                        <Icon name="chart" className="ml-1 inline size-3.5 text-slate-400" />
-                      )}
-                    </span>
-                    <span className="text-right">
-                      <span
-                        className={`block font-semibold tabular-nums ${t?.state === 'bad' ? 'text-rose-700' : ''}`}
-                        data-testid="value"
-                      >
-                        {formatMeasure(r.def.unit, r.value)}
-                      </span>
-                      {t?.target !== null && t?.target !== undefined && (
-                        <span
-                          className={`block text-xs ${t.state === 'bad' ? 'text-rose-700' : 'text-slate-500'}`}
-                          data-testid="target"
-                        >
-                          target {formatMeasure('pct', t.target)}
-                        </span>
-                      )}
-                      {c.text && (
-                        <span className={`block text-xs ${TREND[c.trend]}`}>{c.text}</span>
-                      )}
-                    </span>
-                  </>
-                );
-                return (
-                  <li
-                    key={r.measure}
-                    data-testid={`measure-${r.measure}`}
-                    data-target={t?.state ?? 'none'}
-                  >
-                    {href ? (
-                      <Link href={href} className={row} data-testid="measure-trend-link">
-                        {content}
-                      </Link>
-                    ) : (
-                      <div className={row}>{content}</div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        );
-      })}
+      <ul className="grid grid-cols-2 gap-2" data-testid="headline" aria-label="Headline figures">
+        {headline.map((r) => figure(r, true))}
+      </ul>
+      {sections.length > 0 && (
+        <details data-testid="more-figures">
+          <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-slate-700 underline">
+            More figures
+          </summary>
+          <div className="pt-2">{sectioned}</div>
+        </details>
+      )}
     </div>
   );
 }
@@ -188,7 +217,10 @@ export function PeriodPicker({
     }`;
   return (
     <div className="space-y-2" data-testid="period">
-      <nav aria-label="Period" className="-mx-4 flex gap-2 overflow-x-auto px-4">
+      <nav
+        aria-label="Period"
+        className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pr-10 [mask-image:linear-gradient(to_right,black_90%,transparent)]"
+      >
         {PERIODS.filter((p) => p.code !== 'custom').map((p) => (
           <Link
             key={p.code}
@@ -250,14 +282,15 @@ export function CostBreakdown({
 }) {
   const list = costParts(rows);
   if (list.length === 0) return null;
-  return (
-    <section aria-label="Where the money went" className="space-y-2">
-      {titled && <h2 className="text-sm font-semibold text-slate-700">Where the money went</h2>}
-      <ul
-        className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
-        data-testid="cost-breakdown"
-      >
-        {list.map((p) => (
+  // inside a section that already says what it is (a trend's breakdown): just the table
+  const table = (
+    <ul
+      className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
+      data-testid="cost-breakdown"
+    >
+      {list
+        .filter((p) => p.total || Number(p.value ?? 0) !== 0)
+        .map((p) => (
           <li
             key={p.part}
             data-testid={`part-${p.part}`}
@@ -274,8 +307,59 @@ export function CostBreakdown({
             </span>
           </li>
         ))}
-      </ul>
-      <p className="text-xs text-slate-500">Each % is that part&apos;s share of the total cost.</p>
+    </ul>
+  );
+  if (!titled) {
+    return (
+      <section aria-label="Where the money went" className="space-y-2">
+        {table}
+        <p className="text-xs text-slate-500">
+          Each % is that part&apos;s share of the total cost.
+        </p>
+        {note && <p className="text-xs text-slate-500">{note}</p>}
+      </section>
+    );
+  }
+  const shares = costShares(rows);
+  const SHADE: Record<string, string> = {
+    food: 'bg-brand-700',
+    drinks: 'bg-sky-600',
+    losses: 'bg-rose-500',
+    people: 'bg-amber-500',
+  };
+  return (
+    <section aria-label="Where the money went" className="space-y-2">
+      {titled && <h2 className="text-sm font-semibold text-slate-700">Where the money went</h2>}
+      {shares.length > 0 && (
+        <div className="space-y-2" data-testid="cost-bar">
+          <div
+            className="flex h-4 overflow-hidden rounded-full bg-slate-100"
+            role="img"
+            aria-label={shares.map((x) => `${x.label} ${x.pct.toFixed(0)}%`).join(', ')}
+          >
+            {shares.map((x) => (
+              <span key={x.key} className={SHADE[x.key]} style={{ width: `${x.pct}%` }} />
+            ))}
+          </div>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+            {shares.map((x) => (
+              <li key={x.key} className="flex items-center gap-1.5" data-testid={`share-${x.key}`}>
+                <span className={`inline-block size-3 rounded-sm ${SHADE[x.key]}`} />
+                {x.label} <span className="font-semibold tabular-nums">{x.pct.toFixed(0)}%</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <details data-testid="cost-numbers">
+        <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-slate-700 underline">
+          Show the numbers
+        </summary>
+        {table}
+        <p className="pt-2 text-xs text-slate-500">
+          Each % is that part&apos;s share of the total cost.
+        </p>
+      </details>
       {note && <p className="text-xs text-slate-500">{note}</p>}
     </section>
   );

@@ -64,7 +64,27 @@ function env(name: string): string {
 }
 
 /** Signs in as a seeded user (replacing any current session) and opens the home page. */
-export async function signInAs(page: Page, name: string): Promise<void> {
+// The simpler screens keep detail behind a tap: "More figures", "Show the numbers", "Show N
+// more" (ADR 047). Most specs are about what is in the detail, so by default a page opens it as
+// soon as it appears; the specs about the closed state pass { expanded: false }.
+const EXPAND_SCRIPT = `(() => {
+  const SEL = [
+    'details[data-testid="more-figures"]', 'details[data-testid="cost-numbers"]',
+    'details[data-testid="stock-more"]', 'details[data-testid="shifts-later"]',
+    'details[data-testid="role-details"]', '[data-testid="attention-card"] details',
+  ].join(',');
+  setInterval(() => {
+    document.querySelectorAll(SEL).forEach((d) => { if (!d.open) d.open = true; });
+    document.querySelectorAll('[data-testid="show-more"]').forEach((b) => b.click());
+  }, 150);
+})();`;
+
+export async function signInAs(
+  page: Page,
+  name: string,
+  options: { expanded?: boolean } = {},
+): Promise<void> {
+  if (options.expanded ?? true) await page.context().addInitScript(EXPAND_SCRIPT);
   const token = await signSession(newSession(await userId(name), 'cognito'), env('SESSION_SECRET'));
   const context = page.context();
   // Leave the current page first: an in-flight prefetch or poll from it could otherwise

@@ -149,12 +149,18 @@ test('every figure on a report opens its trend', async ({ page }) => {
   await page.waitForURL(/\/reports\/trend/);
   await expect(page.getByTestId('trend-title')).toHaveText('Food cost');
   await expect(page.getByTestId('trend-chart')).toHaveAttribute('data-kind', 'line');
-  await expect(page.getByTestId('trend-rows').locator('li').first()).toContainText('%');
+  // the current week can be empty (a Monday), so look for any week with a figure
+  await expect(
+    page.getByTestId('trend-rows').locator('li').filter({ hasText: '%' }),
+  ).not.toHaveCount(0);
   // people cost too, for the GM who sees it
   await page.goto(`/reports/outlet?node=${hotel}`);
   await page.getByTestId('measure-labour_cost').getByTestId('measure-trend-link').click();
   await expect(page.getByTestId('trend-title')).toHaveText('People cost');
-  await expect(page.getByTestId('trend-rows').locator('li').first()).toContainText('₹');
+  // the current week can be empty (a Monday), so look for any week with a figure
+  await expect(
+    page.getByTestId('trend-rows').locator('li').filter({ hasText: '₹' }),
+  ).not.toHaveCount(0);
 
   // Cost of sales, People and Outlets side by side open theirs
   await page.goto(`/reports/cost?node=${hotel}`);
@@ -163,7 +169,10 @@ test('every figure on a report opens its trend', async ({ page }) => {
   await page.goto(`/reports/people?node=${hotel}`);
   await page.getByTestId('measure-worked_hours').getByTestId('measure-trend-link').click();
   await expect(page.getByTestId('trend-title')).toHaveText('Hours worked');
-  await expect(page.getByTestId('trend-rows').locator('li').first()).toContainText(' h');
+  // the current week can be empty (a Monday), so look for any week with a figure
+  await expect(
+    page.getByTestId('trend-rows').locator('li').filter({ hasText: ' h' }),
+  ).not.toHaveCount(0);
   // a figure of the moment has no trend
   await page.goto(`/reports/people?node=${hotel}`);
   await expect(

@@ -1,5 +1,6 @@
 'use client';
 
+import { groupLabel } from '@/lib/labels';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, StatusBox } from '@/components/messages';
@@ -165,7 +166,7 @@ export function AccessList({ access }: { access: AccessRow[] }) {
           <li key={a.assignment_id ?? a.role_change_id ?? i} className="p-3 text-sm">
             <div className="flex items-start justify-between gap-2">
               <span>
-                <span className="font-medium">{a.access_group}</span> at {a.node_name}
+                <span className="font-medium">{groupLabel(a.access_group)}</span> at {a.node_name}
                 <span className="block text-xs text-slate-500">
                   {a.include_descendants ? 'and everything below' : 'this place only'} · from{' '}
                   {day(a.effective_from)}

@@ -961,12 +961,12 @@ checklist rounds.
 
 - **The timer.** `systemctl list-timers 'outlet-ops-*'` lists `outlet-ops-tasks-tick`;
   `journalctl -u outlet-ops-tasks-tick` shows `created=… reminded=… escalated=…`.
-- **`test.commis.1.0`.** The bottom nav reads Home, Tasks, Production, Roster, Inbox.
+- **`test.commis.1.0`.** The bottom nav reads Home, Tasks, Production, Roster, To do list.
   **Tasks** shows **Deep clean the walk-in chiller** under Overdue, and the kitchen
   opening round for the job role.
-- **`test.server.3.0`.** The bottom nav reads Home, Tasks, Roster, Inbox; **My requests**
+- **`test.server.3.0`.** The bottom nav reads Home, Tasks, Roster, To do list; **My requests**
   is on Home.
-- **`test.chief-engineer.1.0`.** **Inbox → To assign** lists **Dishwasher leaking at the
+- **`test.chief-engineer.1.0`.** **To do list → To assign** lists **Dishwasher leaking at the
   door**.
 - **`test.executive-chef.1.0`.** **Tasks → Prep list** at the Kitchen Store suggests
   amounts; **Tasks → Team** shows completion per department.
@@ -1121,7 +1121,7 @@ now leaves customer groups alone. No stack change, no new parameter.
 
 - **`test.account-owner`.** Admin → Access groups lists Kitchen Lead (1 person, approves
   like a Department Head). **New group** builds one; remove it again while nobody holds it.
-- **`test.sous-chef.1.1`.** A leave request from `test.commis.1.1` appears in Inbox and can
+- **`test.sous-chef.1.1`.** A leave request from `test.commis.1.1` appears in To do list and can
   be approved.
 
 #### Releasing the cost controller's reports (R-2)
@@ -1581,7 +1581,7 @@ merging.
   - **Orders and requests for material** (PO-5, TR-3): menu ingredients in usual quantities
     (up to 1.5× the week's use, Admin → Settings) need no approval and are approved at once;
     anything off the menu or more than usual waits for the department head (or the GM). The
-    GM is told of every order. The Inbox says why, and the order form says so before
+    GM is told of every order. The To do list says why, and the order form says so before
     sending. A request into a department's store shows as a request for material.
   - **Clock in** takes a selfie (the camera opens), and records the phone. No camera: "Clock
     in without a selfie". The exceptions screen shows **No selfie**, **New phone** and
@@ -1634,11 +1634,11 @@ rule (`TestStockVerifier!12`), or take it from the new logins file.
   a bar item; the sheet follows the shelves.
 - **`test.head-cook.3.0`.** New order: paper napkins show "The department head will be asked
   to approve this"; a pinch of onions shows "no approval needed". Submit the napkins: it
-  waits for `test.bar-manager.3.0`, whose Inbox says why and who approves. Submit onions in a
-  usual quantity: approved at once, nothing in the Inbox, released within a minute.
+  waits for `test.bar-manager.3.0`, whose To do list says why and who approves. Submit onions in a
+  usual quantity: approved at once, nothing in the To do list, released within a minute.
 - **`test.cook.3.0`.** Transfers → Request stock (from the central kitchen) for something off
   the menu: shows as a request for material, waiting for approval; `test.head-cook.3.0`
-  approves it from the Inbox; then the central kitchen's store keeper has it to send.
+  approves it from the To do list; then the central kitchen's store keeper has it to send.
 - **`test.server.3.0`.** Clock → Clock in with a selfie: the camera opens and the photo goes
   up with the punch. Clock in again with no signal: the punch and selfie wait on the phone and
   sync.
@@ -1980,3 +1980,15 @@ re-import, nothing stored is rewritten.
    it belongs to the day before. Days older than 35 days keep their old figures.
 4. Check expiry: a batch whose use-by is today is under "Within 3 days", not "Expired", until
    04:00 tomorrow; one whose use-by was yesterday is under "Expired".
+
+## Releasing the simpler screens (UX-7 to UX-12)
+
+One migration (`rpt.league` gains `food_share`, `drink_share`, `losses_share`, ADR 047), the rest
+is the app. No stack change, no parameter, nothing to re-import.
+
+1. Merge, then **Deploy** as usual (the migration runs with it). `cdk diff` shows nothing.
+2. Check, as the General Manager: Home opens with "Do these first" (at most five lines), then
+   "Waiting for you", today's figures, and "All departments" closed. As the Area Manager or
+   Account Owner: the outlet table shows Food, Drinks, Losses and People adding up to 100.
+3. Check, as any Commis: no "Clock in" button on a day without a shift near; My shifts leads with
+   the next shift and a week strip. Each report opens with four large figures and "More figures".

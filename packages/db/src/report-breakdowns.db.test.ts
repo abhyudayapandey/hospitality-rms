@@ -111,6 +111,28 @@ describe('People cost % and Materials % are shares of the total cost', () => {
     });
   });
 
+  it('Outlets side by side: food, drinks and losses split materials; with people they make 100', async () => {
+    await inRolledBackTx(async (c) => {
+      const r = await attemptAs<Record<string, string | null>>(
+        c,
+        ids.user('test.account-owner'),
+        `select code, labour_pct::text, materials_pct::text, food_share::text,
+                drink_share::text, losses_share::text
+           from rpt.league($1, $2::date, $3::date)`,
+        [ids.node('TEST-AREA-MUMBAI'), FROM, BUSINESS_DAY],
+      );
+      expect(r.error).toBeUndefined();
+      const hotel = r.rows!.find((x) => x.code === 'TEST-HOTEL-1.0')!;
+      const sum = (['labour_pct', 'food_share', 'drink_share', 'losses_share'] as const)
+        .map((k) => n(hotel[k] ?? '0'))
+        .reduce((a, b) => a + b, 0);
+      expect(sum).toBeCloseTo(100, 0);
+      expect(
+        n(hotel.food_share ?? '0') + n(hotel.drink_share ?? '0') + n(hotel.losses_share ?? '0'),
+      ).toBeCloseTo(n(hotel.materials_pct!), 0);
+    });
+  });
+
   it('targets: People cost % is a share of cost; there is no prime cost target', async () => {
     await inRolledBackTx(async (c) => {
       const set = (targets: Record<string, number>) =>

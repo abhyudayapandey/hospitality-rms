@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { FilterList } from '@/components/filter-list';
 import { Empty } from '@/components/messages';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
@@ -71,12 +72,16 @@ export default async function UsersPage({
       {shown.length === 0 ? (
         <Empty>Nobody matches.</Empty>
       ) : (
-        <ul
-          className="divide-y divide-slate-200 rounded-xl bg-white ring-1 ring-slate-200"
-          data-testid="people"
-        >
-          {shown.map((r) => (
-            <li key={r.user_id}>
+        <FilterList
+          testid="people"
+          limit={25}
+          searchFrom={1_000_000} // the search above does the finding; this only pages
+          noun="people"
+          listClass="divide-y divide-slate-200 rounded-xl bg-white ring-1 ring-slate-200"
+          rows={shown.map((r) => ({
+            key: r.user_id,
+            text: r.display_name,
+            node: (
               <Link href={`/admin/users/${r.user_id}`} className="block min-h-12 p-3">
                 <span className="flex items-baseline justify-between gap-2">
                   <span className="font-medium">{r.display_name}</span>
@@ -94,9 +99,9 @@ export default async function UsersPage({
                     : 'Never signed in'}
                 </span>
               </Link>
-            </li>
-          ))}
-        </ul>
+            ),
+          }))}
+        />
       )}
     </div>
   );

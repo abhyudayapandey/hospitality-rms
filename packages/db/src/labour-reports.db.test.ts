@@ -345,7 +345,20 @@ describe('the People report on the test data', () => {
       expect(hr.get('leave_liability')).toBeNull();
       const admin = await summary('test.hr-admin');
       expect(admin.get('leave_liability')).toBe('2582200.00');
-      // names: for the people who keep the records, never through REPORTS alone
+      // names: for the people who keep the records, never through REPORTS alone. The test
+      // data's lates come from this week's shifts, and there are none on a Monday (the week
+      // has only just begun), so the test makes the one late it needs.
+      await c.query(
+        `with w as (select * from hr.worker where owner_user_id = $1),
+              s as (insert into hr.shift (tenant_id, org_node_id, local_date, start_at, end_at, role_code)
+                    select tenant_id, org_node_id, current_date - 1, now() - interval '30 hours',
+                           now() - interval '22 hours', role_code from w returning *)
+         insert into hr.attendance_exception (tenant_id, org_node_id, worker_id, owner_user_id,
+                                              shift_id, local_date, kind, detail)
+         select w.tenant_id, w.org_node_id, w.id, w.owner_user_id, s.id, s.local_date, 'late',
+                '{"minutes": 20}' from w, s`,
+        [ids.user('test.commis.1.0')],
+      );
       const flags = (u: string) =>
         rows(c, u, 'select * from rpt.people_flags($1, current_date - 7, current_date - 1)', [
           hotel,

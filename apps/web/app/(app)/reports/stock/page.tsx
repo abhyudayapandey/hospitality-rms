@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { FilterList, type FilterListRow } from '@/components/filter-list';
 import { Empty } from '@/components/messages';
 import { CsvLink, NoReport, ReportHeader, ReportSections } from '@/components/report-view';
 import { requireUser } from '@/lib/auth/server';
@@ -58,86 +59,78 @@ export default async function StockPosition({ searchParams }: { searchParams: Se
         trend={(m) => trendHref('stock_position', place.id, m)}
       />
 
-      <section aria-label="Value by category" className="space-y-2">
-        <h2 className="text-sm font-semibold text-slate-700">Value by category</h2>
-        {categories.length === 0 ? (
-          <Empty>Nothing in stock.</Empty>
-        ) : (
-          <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-            {categories.map(([c, v]) => (
-              <li key={c} className="flex justify-between gap-2 px-4 py-3 text-sm">
-                <span>{c}</span>
-                <span className="tabular-nums">{formatMeasure('money', v)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
       {dated.length > 0 && (
         <section aria-label="Expired and expiring" className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-700">Expired and expiring</h2>
-          <ul
-            className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
-            data-testid="expiry-items"
-          >
-            {dated.map((i) => (
-              <Item
-                key={`${i.store}:${i.sku}`}
-                i={i}
-                all={all}
-                right={
-                  Number(i.expired_value) > 0
-                    ? `${formatMoney(i.expired_value)} expired`
-                    : `${formatMoney(i.expiring_value)} expiring`
-                }
-              />
-            ))}
-          </ul>
+          <FilterList
+            testid="expiry-items"
+            limit={5}
+            searchFrom={5}
+            noun="expiring items"
+            rows={dated.map((i) =>
+              itemRow(
+                i,
+                Number(i.expired_value) > 0
+                  ? `${formatMoney(i.expired_value)} expired`
+                  : `${formatMoney(i.expiring_value)} expiring`,
+                all,
+              ),
+            )}
+          />
         </section>
       )}
-
-      <section aria-label="Longest on hand" className="space-y-2">
-        <h2 className="text-sm font-semibold text-slate-700">Longest on hand</h2>
-        {held.length === 0 ? (
-          <Empty>Not enough use yet to work out days on hand (a week at least).</Empty>
-        ) : (
-          <ul
-            className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
-            data-testid="days-on-hand"
-          >
-            {held.map((i) => (
-              <Item
-                key={`${i.store}:${i.sku}`}
-                i={i}
-                all={all}
-                right={formatMeasure('days', i.days_on_hand)}
-              />
-            ))}
-          </ul>
-        )}
-      </section>
 
       <section aria-label="Not moved in 30 days" className="space-y-2">
         <h2 className="text-sm font-semibold text-slate-700">Not moved in 30 days</h2>
         {dead.length === 0 ? (
           <Empty>Everything in stock has moved in the last 30 days.</Empty>
         ) : (
-          <ul
-            className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
-            data-testid="dead-stock"
-          >
-            {dead.map((i) => (
-              <Item
-                key={`${i.store}:${i.sku}`}
-                i={i}
-                all={all}
-                right={formatMoney(i.value) ?? ''}
-              />
-            ))}
-          </ul>
+          <FilterList
+            testid="dead-stock"
+            limit={5}
+            searchFrom={5}
+            noun="items"
+            rows={dead.map((i) => itemRow(i, formatMoney(i.value) ?? '', all))}
+          />
         )}
       </section>
+      <details data-testid="stock-more">
+        <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-slate-700 underline">
+          More: value by category, longest on hand
+        </summary>
+        <div className="space-y-4 pt-2">
+          <section aria-label="Value by category" className="space-y-2">
+            <h2 className="text-sm font-semibold text-slate-700">Value by category</h2>
+            {categories.length === 0 ? (
+              <Empty>Nothing in stock.</Empty>
+            ) : (
+              <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
+                {categories.map(([c, v]) => (
+                  <li key={c} className="flex justify-between gap-2 px-4 py-3 text-sm">
+                    <span>{c}</span>
+                    <span className="tabular-nums">{formatMeasure('money', v)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section aria-label="Longest on hand" className="space-y-2">
+            <h2 className="text-sm font-semibold text-slate-700">Longest on hand</h2>
+            {held.length === 0 ? (
+              <Empty>Not enough use yet to work out days on hand (a week at least).</Empty>
+            ) : (
+              <FilterList
+                testid="days-on-hand"
+                limit={5}
+                searchFrom={5}
+                noun="items"
+                rows={held.map((i) => itemRow(i, formatMeasure('days', i.days_on_hand), all))}
+              />
+            )}
+          </section>
+        </div>
+      </details>
       <CsvLink report="stock_items" node={place.id} label="Every item as CSV" />
       <p className="text-xs text-slate-500">
         Use is stock that left for sales, production, other use, wastage and transfers, over the
@@ -148,9 +141,12 @@ export default async function StockPosition({ searchParams }: { searchParams: Se
   );
 }
 
-function Item({ i, right, all }: { i: StockItemRow; right: string; all: boolean }) {
-  return (
-    <li className="text-sm" data-sku={i.sku}>
+function itemRow(i: StockItemRow, right: string, all: boolean): FilterListRow {
+  return {
+    key: `${i.store}:${i.sku}`,
+    text: `${i.name} ${i.sku} ${i.store}`,
+    attrs: { 'data-sku': i.sku, className: 'text-sm' },
+    node: (
       <Link
         href={`/reports/item?node=${i.store_id}&item=${i.item_id}`}
         className="flex justify-between gap-2 px-4 py-3"
@@ -164,6 +160,6 @@ function Item({ i, right, all }: { i: StockItemRow; right: string; all: boolean 
         </span>
         <span className="shrink-0 text-right tabular-nums">{right}</span>
       </Link>
-    </li>
-  );
+    ),
+  };
 }

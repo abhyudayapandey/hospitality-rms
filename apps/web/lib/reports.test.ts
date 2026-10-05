@@ -3,11 +3,14 @@ import {
   capRange,
   compare,
   costParts,
+  costShares,
   DISH_CLASSES,
   dishClass,
   dishWords,
   flashCostParts,
   formatMeasure,
+  groupReports,
+  HEADLINE,
   MEASURES,
   menuMonths,
   monthsRange,
@@ -17,11 +20,13 @@ import {
   sectionRows,
   sortLeague,
   SECTIONS,
+  splitHeadline,
   topLosses,
   trendHref,
   trendLabel,
   trendRange,
   trendSettings,
+  type ReportCode,
 } from './reports';
 import { daysInclusive } from './dates';
 
@@ -214,6 +219,9 @@ describe('the league table (R-4, ADR 031)', () => {
     drink_pct: null,
     labour_pct: null,
     materials_pct: null,
+    food_share: null,
+    drink_share: null,
+    losses_share: null,
     wastage_pct: null,
     tasks_pct: tasks,
   });
@@ -322,5 +330,89 @@ describe('trends (RPT-12)', () => {
     expect(trendHref('cost_of_sales', 'n1', 'food_cost_pct', { months: 6 })).toBe(
       '/reports/trend?report=cost_of_sales&node=n1&measure=food_cost_pct&months=6',
     );
+  });
+});
+
+describe('a report opens with its headline figures (UX-7)', () => {
+  const rows = [
+    { measure: 'sales', value: '1000' },
+    { measure: 'food_sales', value: '600' },
+    { measure: 'food_cost_pct', value: '30' },
+    { measure: 'labour_pct', value: '48' },
+    { measure: 'task_pct', value: '90' },
+    { measure: 'stock_value', value: '5000' },
+  ];
+
+  it('the headline figures first, in the order set; the rest in their sections', () => {
+    const { headline, rest } = splitHeadline('outlet_flash', rows);
+    expect(headline.map((r) => r.measure)).toEqual([
+      'sales',
+      'food_cost_pct',
+      'labour_pct',
+      'task_pct',
+    ]);
+    expect(rest.map((r) => r.measure)).toEqual(['food_sales', 'stock_value']);
+    expect(rest.find((r) => r.measure === 'stock_value')!.section).toBe('Stock');
+  });
+
+  it('a figure the data does not have is skipped, not shown empty', () => {
+    const { headline } = splitHeadline('outlet_flash', [{ measure: 'sales', value: '1' }]);
+    expect(headline.map((r) => r.measure)).toEqual(['sales']);
+  });
+
+  it('every headline figure is a known measure of that report', () => {
+    for (const [code, list] of Object.entries(HEADLINE)) {
+      const all = SECTIONS[code as ReportCode].flatMap(([, m]) => m);
+      for (const m of list) {
+        expect(MEASURES[m], m).toBeDefined();
+        expect(all, `${code} ${m}`).toContain(m);
+      }
+    }
+  });
+
+  it('a term a GM may not know has a one-line explanation, and keeps its name', () => {
+    for (const m of ['beyond_tolerance', 'days_on_hand', 'prime_cost', 'dead_items']) {
+      expect(MEASURES[m]!.hint, m).toBeTruthy();
+    }
+    expect(MEASURES.beyond_tolerance!.label).toBe('Items beyond tolerance');
+    expect(DISH_CLASSES.map((c) => c.title)).toEqual(['Stars', 'Plowhorses', 'Puzzles', 'Dogs']);
+  });
+});
+
+describe('Where the money went, drawn (UX-7)', () => {
+  const part = (p: string, pct: string | null) => ({ part: p, value: '1', pct });
+
+  it('food, drinks, losses and people add up to 100; a part with no cost is left out', () => {
+    const shares = costShares([
+      part('food_recipe', '37.3'),
+      part('bar_recipe', '0.0'),
+      part('expired', '1.0'),
+      part('count_loss', '1.7'),
+      part('labour', '60.0'),
+    ]);
+    expect(shares.map((x) => x.key)).toEqual(['food', 'losses', 'people']);
+    expect(shares.reduce((a, x) => a + x.pct, 0)).toBeCloseTo(100, 5);
+  });
+
+  it('without labour cost (the person may not see it) there is no People share', () => {
+    const shares = costShares([part('food_recipe', '90'), part('bar_recipe', '10')]);
+    expect(shares.map((x) => x.key)).toEqual(['food', 'drinks']);
+  });
+});
+
+describe('the reports list is grouped by question (UX-7)', () => {
+  it('keeps each group in its order and leaves out groups with no report', () => {
+    const g = groupReports(['people', 'outlet_flash', 'my_week', 'cost_of_sales']);
+    expect(g.map((x) => x.title)).toEqual([
+      'How are we doing?',
+      'What does it cost?',
+      'Our people',
+    ]);
+    expect(g[0]!.reports).toEqual(['outlet_flash', 'my_week']);
+  });
+
+  it('every report is in exactly one group', () => {
+    const all = groupReports(Object.keys(REPORTS) as ReportCode[]).flatMap((x) => x.reports);
+    expect([...all].sort()).toEqual(Object.keys(REPORTS).sort());
   });
 });

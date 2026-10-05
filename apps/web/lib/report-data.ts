@@ -542,7 +542,8 @@ export async function league(
 ): Promise<LeagueRow[]> {
   const r = await sql<LeagueRow>`
     select outlet_id, code, name, sales::text, food_pct::text, drink_pct::text,
-           labour_pct::text, materials_pct::text, wastage_pct::text, tasks_pct::text
+           labour_pct::text, materials_pct::text, food_share::text, drink_share::text,
+           losses_share::text, wastage_pct::text, tasks_pct::text
       from rpt.league(${place}::uuid, ${from}::date, ${to}::date)`.execute(tx);
   return r.rows;
 }

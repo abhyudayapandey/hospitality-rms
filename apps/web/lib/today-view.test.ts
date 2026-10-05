@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  clockable,
+  doFirst,
   attentionGroups,
   currentShift,
   shiftLine,
@@ -163,5 +165,77 @@ describe('attentionGroups (DB-2)', () => {
       'Test Hotel & Bar 1.0 – Kitchen',
       'Test Bar 3.0',
     ]);
+  });
+});
+
+describe('clockable: Clock in only near a shift (UX-9)', () => {
+  const s = (start: string, end: string) => ({
+    start_at: new Date(start),
+    end_at: new Date(end),
+    node_name: 'Kitchen',
+  });
+  it('on now, or starting within two hours: yes', () => {
+    expect(clockable(s('2026-10-02T00:30:00Z', '2026-10-02T08:30:00Z'), NOW)).toBe(true);
+    expect(clockable(s('2026-10-02T06:00:00Z', '2026-10-02T14:00:00Z'), NOW)).toBe(true);
+  });
+  it('tomorrow, or later today: no; already over: no', () => {
+    expect(clockable(s('2026-10-02T16:30:00Z', '2026-10-03T00:30:00Z'), NOW)).toBe(false);
+    expect(clockable(s('2026-10-03T00:30:00Z', '2026-10-03T08:30:00Z'), NOW)).toBe(false);
+    expect(clockable(s('2026-10-01T20:00:00Z', '2026-10-02T04:00:00Z'), NOW)).toBe(false);
+  });
+});
+
+describe('doFirst: the ranked list (UX-8)', () => {
+  const group = (key: string, lines: [string, number][]) => ({
+    key,
+    label: key,
+    total: lines.reduce((t, [, n]) => t + n, 0),
+    tone: 'warn' as const,
+    lines: lines.map(([kind, n]) => ({
+      kind: kind as 'lowStock' | 'flags' | 'repairs' | 'openSlots',
+      href: `/${kind}`,
+      text: '',
+      n,
+    })),
+  });
+  const attention = [
+    group('Kitchen', [
+      ['lowStock', 5],
+      ['flags', 40],
+    ]),
+    group('Bar', [
+      ['lowStock', 4],
+      ['openSlots', 2],
+      ['repairs', 1],
+    ]),
+  ];
+
+  it('adds up over the departments, red first, one line per kind', () => {
+    const d = doFirst({ attention, overdueTasks: 3, toAssign: 2 });
+    expect(d.map((x) => x.key)).toEqual(['lowStock', 'overdue', 'openSlots', 'flags', 'repairs']);
+    expect(d[0]).toMatchObject({ n: 9, text: 'items running low', tone: 'bad' });
+    expect(d[1]!.text).toBe('tasks are late');
+  });
+
+  it('never more than five, and says "1 repair", not "1 repairs"', () => {
+    expect(doFirst({ attention, overdueTasks: 3, toAssign: 2 })).toHaveLength(5);
+    const one = doFirst({
+      attention: [group('x', [['repairs', 1]])],
+      overdueTasks: 0,
+      toAssign: 0,
+    });
+    expect(one).toEqual([expect.objectContaining({ key: 'repairs', text: 'open repair' })]);
+  });
+
+  it('nothing to do: an empty list', () => {
+    expect(doFirst({ attention: null, overdueTasks: 0, toAssign: 0 })).toEqual([]);
+  });
+
+  it('an open slot opens the roster day it is on', () => {
+    const a = [group('x', [['openSlots', 1]])];
+    a[0]!.lines[0]!.href = '/roster/week?day=2026-10-05';
+    expect(doFirst({ attention: a, overdueTasks: 0, toAssign: 0 })[0]!.href).toBe(
+      '/roster/week?day=2026-10-05',
+    );
   });
 });

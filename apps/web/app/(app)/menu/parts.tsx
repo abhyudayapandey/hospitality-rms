@@ -25,7 +25,7 @@ export function MenuTabs({
   // one tab is no choice (audit #8)
   if (tabs.length < 2) return null;
   return (
-    <nav aria-label="Menu" className="-mx-4 flex gap-2 overflow-x-auto px-4">
+    <nav aria-label="Menu" className="flex flex-wrap gap-2">
       {tabs.map((t) => (
         <Link
           key={t.key}

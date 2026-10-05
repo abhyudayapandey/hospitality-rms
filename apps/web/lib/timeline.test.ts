@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { formatDuration, inOutLabel, rowTitle, statusLabel, type TimelineRow } from './timeline';
+import {
+  endsNextDay,
+  formatDuration,
+  inOutLabel,
+  nextShift,
+  rowTitle,
+  statusLabel,
+  weekStrip,
+  type TimelineRow,
+} from './timeline';
 
 // Labels for My shifts and Clock (ADR 018). The rows come from hr.my_timeline; these are
 // the brief's examples as the screen shows them.
@@ -52,7 +61,7 @@ describe('the brief: shift 08:00–20:00', () => {
       'In 07:00 · Out 08:00',
     ]);
     expect([rowTitle(shift, TZ), inOutLabel(shift, TZ), statusLabel(shift)]).toEqual([
-      '08:00–20:00 · commis',
+      '08:00–20:00 · Commis',
       'In 08:00 · Out 19:00',
       'Left 1 h early',
     ]);
@@ -91,5 +100,39 @@ describe('statuses and open sessions', () => {
     );
     expect(inOutLabel(row({ status: 'no_show' }), TZ)).toBeNull();
     expect(rowTitle(row({ kind: 'unrostered', shift_id: null }), TZ)).toBe('Unrostered');
+  });
+});
+
+describe('My shifts leads with the next shift (UX-9)', () => {
+  it('a shift past midnight says when it ends, not "+1"', () => {
+    const night = row({ shift_start: at('17:00'), shift_end: '2026-10-06T01:00:00+05:30' });
+    expect(endsNextDay(night, TZ)).toBe('ends 01:00 next day');
+    expect(rowTitle(night, TZ)).toBe('17:00–01:00 · Commis');
+    expect(endsNextDay(row({}), TZ)).toBeNull();
+  });
+
+  it('job names read as titles: store_keeper is Store keeper', () => {
+    expect(rowTitle(row({ role_code: 'store_keeper' }), TZ)).toBe('08:00–20:00 · Store keeper');
+  });
+
+  it('the next shift is the first one still to come', () => {
+    const rows = [
+      row({ local_date: '2026-10-04', status: 'on_time' }),
+      row({ local_date: '2026-10-05', status: 'upcoming', shift_id: 'a' }),
+      row({ local_date: '2026-10-06', status: 'upcoming', shift_id: 'b' }),
+    ];
+    expect(nextShift(rows, '2026-10-05')!.shift_id).toBe('a');
+    expect(nextShift(rows.slice(0, 1), '2026-10-05')).toBeNull();
+  });
+
+  it('a week strip: seven days from today, the start time or off', () => {
+    const strip = weekStrip(
+      [row({ local_date: '2026-10-06', shift_start: at('17:00'), shift_end: at('23:00') })],
+      '2026-10-05',
+      TZ,
+    );
+    expect(strip).toHaveLength(7);
+    expect(strip[0]).toMatchObject({ day: 'Mon', start: null, today: true });
+    expect(strip[1]).toMatchObject({ day: 'Tue', start: '17:00' });
   });
 });

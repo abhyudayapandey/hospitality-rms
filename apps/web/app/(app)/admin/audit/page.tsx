@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { FilterList } from '@/components/filter-list';
+import { groupLabel } from '@/lib/labels';
 import { Empty } from '@/components/messages';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
@@ -42,23 +44,29 @@ export default async function AuditPage() {
       {rows.length === 0 ? (
         <Empty>No access changes yet.</Empty>
       ) : (
-        <ul
-          className="divide-y divide-slate-200 rounded-xl bg-white ring-1 ring-slate-200"
-          data-testid="audit"
-        >
-          {rows.map((e, i) => (
-            <li key={i} className="p-3 text-sm">
-              <span className="font-medium">{e.action}</span>
-              {e.person ? ` · ${e.person}` : ''}
-              {e.access_group ? ` · ${e.access_group}` : ''}
-              {e.place ? ` at ${e.place}` : ''}
-              <span className="block text-xs text-slate-500">
-                by {e.actor} · {formatWhen(e.occurred_at)}
-                {e.note ? ` · ${e.note}` : ''}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <FilterList
+          testid="audit"
+          limit={25}
+          searchFrom={10}
+          noun="access events"
+          listClass="divide-y divide-slate-200 rounded-xl bg-white ring-1 ring-slate-200"
+          rows={rows.map((e, i) => ({
+            key: String(i),
+            text: [e.action, e.person, e.access_group, e.place, e.actor, e.note].join(' '),
+            node: (
+              <div className="p-3 text-sm">
+                <span className="font-medium">{e.action}</span>
+                {e.person ? ` · ${e.person}` : ''}
+                {e.access_group ? ` · ${groupLabel(e.access_group)}` : ''}
+                {e.place ? ` at ${e.place}` : ''}
+                <span className="block text-xs text-slate-500">
+                  by {e.actor} · {formatWhen(e.occurred_at)}
+                  {e.note ? ` · ${e.note}` : ''}
+                </span>
+              </div>
+            ),
+          }))}
+        />
       )}
     </div>
   );

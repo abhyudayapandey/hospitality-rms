@@ -32,8 +32,11 @@ import {
 import {
   formatDuration,
   inOutLabel,
+  endsNextDay,
   isFlagged,
+  nextShift,
   rowTitle,
+  weekStrip,
   statusLabel,
   type TimelineRow,
 } from '@/lib/timeline';
@@ -91,6 +94,8 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
     ['upcoming', 'Upcoming', data.timeline.filter((r) => r.local_date > today)],
     ['past', 'Past 14 days', data.timeline.filter((r) => r.local_date < today)],
   ];
+  const next = nextShift(data.timeline, today);
+  const strip = weekStrip(data.timeline, today, ctx.tz);
   return (
     <div className="space-y-4">
       <PollRefresh />
@@ -118,6 +123,51 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
               ⏱
             </span>
           </Link>
+          {next && (
+            <section
+              aria-label="Your next shift"
+              className="space-y-1 rounded-2xl bg-brand-700 p-4 text-white"
+              data-testid="next-shift"
+            >
+              <p className="text-sm text-brand-100">
+                Your next shift ·{' '}
+                {next.local_date === today
+                  ? 'Today'
+                  : next.local_date === addDays(today, 1)
+                    ? 'Tomorrow'
+                    : formatDay(next.local_date)}
+              </p>
+              <p className="text-2xl font-bold tabular-nums">
+                {formatTime(next.shift_start!, ctx.tz)}–{formatTime(next.shift_end!, ctx.tz)}
+              </p>
+              <p className="text-sm text-brand-100">
+                {[
+                  next.role_code ? title(next.role_code) : null,
+                  next.place_name,
+                  endsNextDay(next, ctx.tz),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
+            </section>
+          )}
+          <ol
+            className="grid grid-cols-7 gap-1 text-center text-xs"
+            aria-label="The next seven days"
+            data-testid="week-strip"
+          >
+            {strip.map((c) => (
+              <li
+                key={c.date}
+                className={`rounded-lg py-2 ring-1 ${
+                  c.start ? 'bg-white ring-slate-300' : 'bg-slate-50 text-slate-400 ring-slate-200'
+                } ${c.today ? 'ring-2 ring-sky-400' : ''}`}
+              >
+                <span className="block font-medium">{c.day}</span>
+                <span className="block tabular-nums">{c.start ?? 'off'}</span>
+              </li>
+            ))}
+          </ol>
           <p className="text-sm text-slate-600">
             {data.worker.node_name} · {title(data.worker.role_code)} · {hours} h in the next 7 days
           </p>
@@ -158,16 +208,21 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
                 .map(([key, title, rows]) => (
                   <section key={key} data-testid={`my-shifts-${key}`} className="space-y-2">
                     <h2 className="text-sm font-semibold text-slate-500">{title}</h2>
-                    {(key === 'past' ? groupByDay(rows).reverse() : groupByDay(rows)).map(
-                      ([day, dayRows]) => (
+                    {(() => {
+                      const days = key === 'past' ? groupByDay(rows).reverse() : groupByDay(rows);
+                      // beyond a week, the rest of the upcoming shifts wait behind a tap
+                      const later =
+                        key === 'upcoming' ? days.filter(([d]) => d > addDays(today, 7)) : [];
+                      const soon = days.filter(([d]) => !later.some(([l]) => l === d));
+                      const day = ([d, dayRows]: [string, TimelineRow[]]) => (
                         <div
-                          key={day}
+                          key={d}
                           data-testid="shift-day"
-                          data-today={day === today ? 'true' : undefined}
-                          className={`space-y-1 rounded-xl p-2 ${day === today ? 'bg-sky-50 ring-2 ring-sky-300' : ''}`}
+                          data-today={d === today ? 'true' : undefined}
+                          className={`space-y-1 rounded-xl p-2 ${d === today ? 'bg-sky-50 ring-2 ring-sky-300' : ''}`}
                         >
                           <p className="px-2 text-sm font-medium">
-                            {day === today ? `Today, ${formatDay(day)}` : formatDay(day)}
+                            {d === today ? `Today, ${formatDay(d)}` : formatDay(d)}
                           </p>
                           <ul className="space-y-1">
                             {dayRows.map((r, i) => (
@@ -185,8 +240,21 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
                             ))}
                           </ul>
                         </div>
-                      ),
-                    )}
+                      );
+                      return (
+                        <>
+                          {soon.map(day)}
+                          {later.length > 0 && (
+                            <details data-testid="shifts-later">
+                              <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-slate-700 underline">
+                                Later: {later.length} more {later.length === 1 ? 'day' : 'days'}
+                              </summary>
+                              <div className="space-y-2 pt-1">{later.map(day)}</div>
+                            </details>
+                          )}
+                        </>
+                      );
+                    })()}
                   </section>
                 ))}
             </div>
@@ -224,6 +292,9 @@ function Row({
         <span className={`block font-medium tabular-nums ${extra ? 'text-slate-600' : ''}`}>
           {rowTitle(row, tz)}
         </span>
+        {endsNextDay(row, tz) && (
+          <span className="block text-xs text-slate-500">{endsNextDay(row, tz)}</span>
+        )}
         {row.place_name && !extra && (
           <span className="block text-xs text-slate-500">{row.place_name}</span>
         )}

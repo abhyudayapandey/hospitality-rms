@@ -86,7 +86,7 @@ test('the cost controller: Reports instead of Menu, Menu one tap away', async ({
     .getByRole('navigation', { name: 'Main' })
     .getByRole('link', { name: 'Reports' })
     .click();
-  await page.getByRole('link', { name: 'Menu costs and prices' }).click();
+  await page.getByRole('link', { name: 'Menu: recipes and prices' }).click();
   await expect(page.getByRole('heading', { name: 'Menu costs' })).toBeVisible();
   // the tabs replace one another, so Back leaves Menu for Reports
   await page
