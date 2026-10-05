@@ -392,6 +392,7 @@ Reads go straight to tables through the Supabase client under RLS; every write t
 | Orders | `inv.create_po(node, supplier, lines)` | PURCHASE\_ORDERS · modify | Creates draft, then `wf.submit` |
 | Supply requests | `inv.request_supplies(node, lines)`; `inv.place_order(request, groups)`; `inv.desk_orders()` | PURCHASE\_ORDERS · modify (at the store; to place, at its Main Store) | Items and quantities only, then `wf.submit`; the Main Store keeper names suppliers and dates, one order per supplier (ADR 049) |
 | Orders | `inv.receive(po, lines)` | PURCHASE\_ORDERS · modify | Receipt ledger rows |
+| Vendor bills | `inv.add_bill(store, po, supplier, name, no, date, amount, for, files)`; `inv.archive_bill(bill, reason)`; `inv.bill_detail(bill)`; `inv.po_bills(po)`; read `inv.bill` | BILLS · modify (view to read); a goods bill: whoever may receive its order | A bill sits at a store; files under `bills/<tenant>/<store>/`, photos or PDFs, kept 7 years; archived, never deleted (ADR 050) |
 | Orders | `inv.request_transfer(from, to, lines)` | TRANSFERS · modify | Two-leg workflow |
 | Rostering | `hr.generate_week(node, week)` | ROSTER · modify | From templates |
 | Rostering | `hr.assign(shift, worker)`, `hr.publish_week(node, week)` | ROSTER · modify | Validation errors returned as codes |

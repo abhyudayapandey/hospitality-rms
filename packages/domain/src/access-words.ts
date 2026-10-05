@@ -9,6 +9,7 @@ export const DOMAIN_WORDS: Readonly<Record<string, string>> = {
   STOCK_ADJUSTMENTS: 'stock counts and wastage',
   STOCK_CHECK: 'the stock check',
   PURCHASE_ORDERS: 'purchase orders',
+  BILLS: 'vendor bills',
   TRANSFERS: 'transfers',
   RECIPES: 'recipes',
   RECIPES_TEAM: 'your team’s recipes',

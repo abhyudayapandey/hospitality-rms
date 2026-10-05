@@ -19,6 +19,15 @@ export function isPhotoType(t: string): t is PhotoType {
   return Object.hasOwn(PHOTO_TYPES, t);
 }
 
+/** Vendor bills (ADR 050) are photos or PDFs, up to 10 MB: a PDF is not shrunk on the phone. */
+export const BILL_TYPES = { ...PHOTO_TYPES, 'application/pdf': 'pdf' } as const;
+export type BillFileType = keyof typeof BILL_TYPES;
+export const MAX_BILL_BYTES = 10 * 1024 * 1024;
+
+export function isBillFileType(t: string): t is BillFileType {
+  return Object.hasOwn(BILL_TYPES, t);
+}
+
 /**
  * Where photos live. The bucket's lifecycle keeps tasks/routine/ 90 days and tasks/keep/
  * (flagged readings, maintenance) 400 days (ADR 020); items/ (item photos, ADR 034) as long
@@ -29,10 +38,12 @@ export const PHOTO_PREFIXES = [
   'tasks/routine',
   'tasks/keep',
   'items',
-  // stock check proof photos (INV-10, ADR 043): kept 5 years
+  // stock check proof photos (INV-10, ADR 043): kept 7 years
   'stockcheck',
   // clock-in selfies (ATT-7, ADR 045): personnel data, kept under the retention rule
   'selfies',
+  // vendor bills (BIL-1, BIL-2, ADR 050): money data, kept 7 years
+  'bills',
 ] as const;
 export type PhotoPrefix = (typeof PHOTO_PREFIXES)[number];
 
@@ -59,8 +70,8 @@ export interface UploadTarget {
 }
 
 /**
- * A presigned POST for one photo: fixed key under the node's prefix, exact content type,
- * 1 byte to 5 MB, valid for 5 minutes. S3 enforces all of it.
+ * A presigned POST for one photo (or a bill's PDF): fixed key under the node's prefix, exact
+ * content type, 1 byte to 5 MB (10 MB for bills), valid for 5 minutes. S3 enforces all of it.
  */
 export async function presignUpload(
   client: S3Client,
@@ -68,14 +79,18 @@ export async function presignUpload(
   prefix: PhotoPrefix,
   tenantId: string,
   nodeId: string,
-  contentType: PhotoType,
+  contentType: PhotoType | BillFileType,
 ): Promise<UploadTarget> {
-  const key = `${prefix}/${tenantId}/${nodeId}/${randomUUID()}.${PHOTO_TYPES[contentType]}`;
+  if (contentType === 'application/pdf' && prefix !== 'bills') {
+    throw new Error('INVALID_PHOTO');
+  }
+  const max = prefix === 'bills' ? MAX_BILL_BYTES : MAX_PHOTO_BYTES;
+  const key = `${prefix}/${tenantId}/${nodeId}/${randomUUID()}.${BILL_TYPES[contentType]}`;
   const { url, fields } = await createPresignedPost(client, {
     Bucket: bucket,
     Key: key,
     Conditions: [
-      ['content-length-range', 1, MAX_PHOTO_BYTES],
+      ['content-length-range', 1, max],
       ['eq', '$Content-Type', contentType],
     ],
     Fields: { 'Content-Type': contentType },

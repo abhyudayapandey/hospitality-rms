@@ -11,6 +11,7 @@ and question, in the person's words.
 | Store Keeper               | "Find how much rice is left, and count one item."           | 45 s   |
 | Chef (department head)     | "Ask the main store for 5 kg of onions."                    | 30 s   |
 | Main Store Keeper          | "Order what the kitchen asked for, from any supplier."      | 45 s   |
+| Main Store Keeper          | "Add the bill for the order you just received."             | 45 s   |
 | General Manager            | "Tell me the three things you would do first this morning." | 30 s   |
 | Account Owner or Area Mgr. | "Which outlet is doing worst this week, and why?"           | 45 s   |
 

@@ -436,10 +436,11 @@
         <p class="note">
           Supplies: a department asks for items and quantities only; the Main Store's Store Keeper
           picks the supplier and the delivery date, then receives, and the department is told at
-          each step. Above the outlet: the Area Manager sees and approves across the outlets in the
-          area; the Account Owner reads every outlet. HR Admin, Security Admin and the Auditor work
-          company-wide. Server, Cashier and Host on the floor are from Test Bar 3.0, a standalone
-          bar.
+          each step. Bills: whoever receives an order adds its bill; bills for services (linen, pest
+          control, repairs) are added under Stock → Bills; the GM sees every bill. Above the outlet:
+          the Area Manager sees and approves across the outlets in the area; the Account Owner reads
+          every outlet. HR Admin, Security Admin and the Auditor work company-wide. Server, Cashier
+          and Host on the floor are from Test Bar 3.0, a standalone bar.
         </p>
       </section>
 
@@ -562,7 +563,8 @@
           shifts: 'Not rostered',
           checklists: NONE,
           makes: NONE,
-          stock: 'Every store at the outlet, with prices and costs; told of every supply request',
+          stock:
+            'Every store at the outlet, with prices and costs; told of every supply request; sees and adds every vendor bill',
           recipes: 'All, with costs',
           approves:
             'Leave and swaps after the department head, unusual supply requests (off the menu or more than usual), stock adjustments',
@@ -968,7 +970,7 @@
           checklists: NONE,
           makes: NONE,
           stock:
-            'Main Store: everything, plus a view of every store at the outlet; orders the departments’ supply requests (picks the supplier and delivery date) and receives them',
+            'Main Store: everything, plus a view of every store at the outlet; orders the departments’ supply requests (picks the supplier and delivery date), receives them and adds their bills',
           recipes: NONE,
           approves: 'Stores leave and swaps (first step)',
           hidden: 'Sales, people cost',
@@ -981,7 +983,7 @@
           checklists: NONE,
           makes: NONE,
           stock:
-            'Main Store: counts, wastage, sends transfers; orders the departments’ supply requests from the To do list (picks the supplier, optional, and the delivery date, one order per supplier) and receives them',
+            'Main Store: counts, wastage, sends transfers; orders the departments’ supply requests from the To do list (picks the supplier, optional, and the delivery date, one order per supplier), receives them and adds their bills; adds bills for the outlet’s services',
           recipes: NONE,
           approves: NONE,
           hidden: 'Prices on recipes, sales, people cost',

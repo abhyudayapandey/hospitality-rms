@@ -97,6 +97,10 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 - Supply requests (ADR 049): the requester gives items and quantities only; the Main Store's
   keeper picks the supplier (optional) and the delivery date (`inv.place_order`), and the
   department is told when it is ordered and received. Approval only for unusual requests.
+- Vendor bills (ADR 050): a bill sits at a store (`BILLS`, delivery tree): a goods bill at its
+  order's store, added by whoever receives it; a service bill at a store the person keeps.
+  Photos or PDFs under `bills/`; money data, bills included, is kept 7 years. Archived, never
+  deleted.
 
 ## Commands
 ```

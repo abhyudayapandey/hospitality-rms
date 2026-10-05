@@ -2019,3 +2019,23 @@ The Deploy workflow's product sync then drops the step from every tenant.
    supplier (or none) and a date, **Ordered**: it moves to **To receive**. Try "Different
    suppliers for different items": it becomes one order per supplier. **Receive goods** closes it.
 6. The Executive Chef gets a notice at each step: ordered (with the due date) and received.
+
+## Releasing vendor bills (ADR 050)
+
+One migration (`inv.bill` and its functions), a new access area (`BILLS`, added to every
+tenant by the Deploy workflow's product sync) and a **stack change**: the photo bucket keeps
+`bills/` and `stockcheck/` for 7 years (2,557 days, money data), and the instance role may put
+and get `bills/*`. Nothing to re-import.
+
+1. Merge, then preview the stack change: `cd infra && pnpm cdk diff`. It should show only the
+   photo bucket's lifecycle (`stockcheck/` 1830 → 2557 days, a new `bills/` rule) and the
+   instance role's policy (a new `VendorBills` statement). Stop if anything says replace.
+2. `pnpm cdk deploy` (type `y`), then **Deploy** the app as usual (the migration runs with it).
+3. Check, as the Store Keeper 1.0: open an order that has been received; the **Bill** section
+   asks for the bill. Take a photo (or pick a PDF), enter the amount, **Save the bill**: it is
+   listed on the order. **Stock → Bills → Add a bill for a service**: a supplier (or "Someone
+   not on the list"), what it was for, the amount, a photo; it shows under Services.
+4. Check, as the General Manager 1.0: **Stock → Bills** with All stores shows both bills; the
+   goods bill is gone from **Waiting for a bill**; open one, the photo or PDF opens. "This bill is
+   wrong" archives it with a reason.
+5. Check, as the Cost Controller 1.0: the same bills, read-only (no "Add a bill").
