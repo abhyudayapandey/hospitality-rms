@@ -1,6 +1,6 @@
 # UX audit 3: findings by role (draft for review)
 
-Status: **P1 (F1 to F12) built in ADR 052; P2 and P3 open.** Draft of 5 Oct 2026. These findings come from a code-and-copy review at commit f581899.
+Status: **P1 (F1 to F12) built in ADR 052; P2 and P3 (F13 to F26, polish) built in ADR 053.** Draft of 5 Oct 2026. These findings come from a code-and-copy review at commit f581899.
 Live screens could not be checked in this run, so nothing visual (layout and truncation at
 380 px) is covered. Each finding names the file to change.
 

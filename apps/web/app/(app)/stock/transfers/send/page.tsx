@@ -21,7 +21,8 @@ export default async function SendStockPage({ searchParams }: { searchParams: Se
     const items = chosen
       ? (
           await sql<SendItem>`
-            select item_id::text, name, base_uom, on_hand::text, item_group
+            select item_id::text, name, base_uom, on_hand::text, item_group,
+                   to_on_hand::text, to_keep::text
               from inv.send_items(${from.id}::uuid, ${chosen.id}::uuid)`.execute(tx)
         ).rows
       : [];
@@ -44,7 +45,13 @@ export default async function SendStockPage({ searchParams }: { searchParams: Se
             It leaves {short(from.name)} now. Whoever is on shift there gets a task to check it and
             confirm; their head is told.
           </p>
-          <SendStockForm from={from.id} to={data.chosen.id} items={data.items} done={back} />
+          <SendStockForm
+            from={from.id}
+            to={data.chosen.id}
+            toName={short(data.chosen.name)}
+            items={data.items}
+            done={`${back}&tab=all`}
+          />
         </>
       ) : (
         <>

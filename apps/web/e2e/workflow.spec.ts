@@ -15,7 +15,7 @@ test('store keeper orders, outlet manager approves, store keeper receives', asyn
   const before = parseFloat((await napkins.textContent())!.replace(/,/g, ''));
 
   const po = await createOrder(page, 'Test Paper Napkins (Pack of 100)', '5');
-  await expect(page.getByTestId('po-progress')).toHaveText('awaiting approval');
+  await expect(page.getByTestId('po-progress')).toHaveText('waiting for approval');
 
   // The head cook cannot approve their own order: it is not in their inbox.
   await page.goto('/inbox');
@@ -26,7 +26,9 @@ test('store keeper orders, outlet manager approves, store keeper receives', asyn
   const item = page.getByTestId('inbox-item').filter({
     has: page.locator(`a[href^="/stock/orders/${po}"]`),
   });
-  await expect(item).toContainText('Purchase Order');
+  await expect(item).toContainText('Supply request');
+  // decided from what was asked for (ADR 053)
+  await expect(item.getByTestId('inbox-items')).toContainText('Test Paper Napkins');
   await expect(item).toContainText('Test Head Cook 3.0');
   await item.getByRole('button', { name: 'Approve' }).click();
   await expect(item.getByRole('status')).toHaveText('Approved');
@@ -37,7 +39,7 @@ test('store keeper orders, outlet manager approves, store keeper receives', asyn
   await page.goto(`/stock/orders/${po}?node=${store}`);
   // approved, now the store's keeper places the order (ADR 049): a date, no supplier needed
   await expect(page.getByTestId('po-progress')).toHaveText('to be ordered');
-  await page.getByRole('button', { name: 'Ordered' }).click();
+  await page.getByRole('button', { name: 'Mark as ordered' }).click();
   await expect(page.getByTestId('po-progress')).toHaveText('ordered');
   // nothing filled in (ADR 051): what arrived and what it cost, the amount required
   const napkinsIn = page.getByRole('textbox', {

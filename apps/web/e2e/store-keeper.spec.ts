@@ -85,7 +85,7 @@ test('Send stock: it leaves the Main Store, the person who gets the task confirm
   const form = page.getByTestId('send-stock');
   // an item the Main Store has
   const row = form.locator('li').filter({ hasNotText: 'in stock here: 0 ' }).first();
-  const item = (await row.locator('span.font-medium').textContent())!;
+  const item = (await row.getByTestId('item-name').textContent())!.trim();
   await form.getByRole('textbox', { name: `Send ${item}` }).fill('1');
   await page.getByRole('button', { name: 'Send 1 item' }).click();
   await page.waitForURL(/\/stock\/transfers\?node=/);

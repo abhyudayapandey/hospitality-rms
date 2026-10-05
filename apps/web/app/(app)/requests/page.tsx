@@ -108,7 +108,7 @@ export default async function RequestsPage() {
                 )}
                 {r.top_of_chain && !supply && (
                   <span className="block text-sm text-slate-600" data-testid="top-of-chain">
-                    Approved automatically: top of chain, no higher approver.
+                    Approved at once: nobody above you approves this.
                   </span>
                 )}
                 <span className="block text-sm text-slate-600">

@@ -6,6 +6,7 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { ListSearch } from '@/components/list-search';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { byGroup } from '@/lib/item-groups';
+import { toKeepLevel } from '@/lib/send-keep';
 import { sendStock } from '../../actions';
 
 export interface SendItem {
@@ -14,16 +15,22 @@ export interface SendItem {
   base_uom: string;
   on_hand: string;
   item_group: string | null;
+  /** what the department has and keeps (ADR 053) */
+  to_on_hand: string;
+  to_keep: string;
 }
 
 export function SendStockForm({
   from,
   to,
+  toName,
   items,
   done,
 }: {
   from: string;
   to: string;
+  /** the department's short name: "Kitchen has 2 kg · keeps 10" */
+  toName: string;
   items: SendItem[];
   done: string;
 }) {
@@ -45,8 +52,9 @@ export function SendStockForm({
       else setError(r.message);
     });
 
+  const short = items.filter((i) => toKeepLevel(i) > 0);
   if (items.length === 0) {
-    return <p className="text-slate-600">No item is set up at both stores.</p>;
+    return <p className="text-slate-600">There is nothing in stock here to send.</p>;
   }
   return (
     <form
@@ -59,6 +67,21 @@ export function SendStockForm({
     >
       <div id="send-lines" className="space-y-2">
         <ListSearch scope="send-lines" count={items.length} noun="items" />
+        {short.length > 0 && (
+          <button
+            type="button"
+            data-testid="fill-to-keep"
+            className="min-h-11 text-sm font-medium text-brand-700 underline"
+            onClick={() =>
+              setQty((v) => ({
+                ...v,
+                ...Object.fromEntries(short.map((i) => [i.item_id, String(toKeepLevel(i))])),
+              }))
+            }
+          >
+            Fill to keep level ({short.length} {short.length === 1 ? 'item' : 'items'} short)
+          </button>
+        )}
         {byGroup(items).map((g) => (
           <section key={g.group} className="space-y-1" data-testid={`group-${g.group}`}>
             <h2 className="text-sm font-semibold text-slate-500">{g.label}</h2>
@@ -71,9 +94,18 @@ export function SendStockForm({
                   data-filter-text={i.name}
                 >
                   <label htmlFor={`s-${i.item_id}`} className="min-w-0 flex-1 text-sm">
-                    <span className="block font-medium">{i.name}</span>
-                    <span className="text-xs text-slate-500">
+                    <span className="block font-medium" data-testid="item-name">
+                      {i.name}
+                    </span>
+                    <span className="block text-xs text-slate-500">
                       in stock here: {Number(i.on_hand)} {i.base_uom}
+                    </span>
+                    <span
+                      className={`block text-xs ${toKeepLevel(i) > 0 ? 'font-medium text-rose-700' : 'text-slate-500'}`}
+                      data-testid="their-stock"
+                    >
+                      {toName} has {Number(i.to_on_hand)} {i.base_uom}
+                      {Number(i.to_keep) > 0 ? ` · keeps ${Number(i.to_keep)}` : ''}
                     </span>
                   </label>
                   <input

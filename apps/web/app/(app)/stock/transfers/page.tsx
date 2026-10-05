@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { withBack } from '@/lib/back';
 import { Empty } from '@/components/messages';
 import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
 import { PollRefresh } from '@/components/use-polling';
@@ -17,12 +18,22 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
   const sp = await searchParams;
   // "All stores" and the "To send" tab: what Home's Send count opens (ADR 048)
   const all = param(sp, 'all') === '1' && ctx.nodes.length > 1;
-  const tab = param(sp, 'tab') === 'send' ? 'send' : 'all';
+  const raw = param(sp, 'tab');
   const user = await requireUser();
   const node = ctx.node;
   const ids = ctx.nodes.map((n) => n.id);
-  // the latest LIST_PAGE, then "Show more"; the counts have no limit (ADR 052)
-  const limit = listLimit(param(sp, 'n'));
+  // the Main Store gives stock out: it opens on To send, 10 at a time, so Send stock is near
+  // the top (ADR 053); elsewhere All, 30 at a time (ADR 052)
+  const mainStore =
+    !all &&
+    (await withUser(
+      user.id,
+      async (tx) =>
+        (await sql<{ m: boolean }>`select inv.is_main_store(${node.id}::uuid) as m`.execute(tx))
+          .rows[0]?.m ?? false,
+    ));
+  const tab = raw === 'send' || (raw !== 'all' && mainStore) ? 'send' : 'all';
+  const limit = listLimit(param(sp, 'n'), mainStore ? 10 : LIST_PAGE);
   const scope = all
     ? sql`(from_node_id = any(${ids}::uuid[]) or to_node_id = any(${ids}::uuid[]))`
     : sql`(from_node_id = ${node.id}::uuid or to_node_id = ${node.id}::uuid)`;
@@ -30,11 +41,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
   const sending = sql`(progress = 'awaiting_dispatch' and ${
     all ? sql`from_node_id = any(${ids}::uuid[])` : sql`from_node_id = ${node.id}::uuid`
   })`;
-  const {
-    rows: fetched,
-    toSend,
-    mainStore,
-  } = await withUser(user.id, async (tx) => {
+  const { rows: fetched, toSend } = await withUser(user.id, async (tx) => {
     const r = await sql<{
       id: string;
       from_node_id: string;
@@ -44,9 +51,15 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
       progress: string;
       kind: string;
       created_at: Date;
+      items: string | null;
     }>`
-      select id, from_node_id, to_node_id, from_name, to_name, progress, kind, created_at
-        from inv.transfer_summary
+      select t.id, t.from_node_id, t.to_node_id, t.from_name, t.to_name, t.progress, t.kind,
+             t.created_at,
+             -- what is in it (ADR 053)
+             (select string_agg(i.name, ', ' order by i.name)
+                from inv.transfer_line l join inv.item i on i.id = l.item_id
+               where l.transfer_id = t.id) as items
+        from inv.transfer_summary t
        where ${scope} and (${tab === 'send'} = false or ${sending})
        order by created_at desc limit ${limit + 1}`.execute(tx);
     // counted in SQL with no limit, with the To send tab's own filter (ADR 052)
@@ -54,16 +67,12 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
       select count(*)::int as n from inv.transfer_summary where ${scope} and ${sending}`.execute(
       tx,
     );
-    const main = await sql<{ m: boolean }>`select inv.is_main_store(${node.id}::uuid) as m`.execute(
-      tx,
-    );
-    return {
-      rows: r.rows,
-      toSend: toSend.rows[0]?.n ?? 0,
-      mainStore: main.rows[0]?.m ?? false,
-    };
+    return { rows: r.rows, toSend: toSend.rows[0]?.n ?? 0 };
   });
   const rows = fetched.slice(0, limit);
+  // "Test Hotel & Bar 1.0 – Kitchen Store" → "Kitchen Store": the outlet is the screen's (ADR 053)
+  // under "All stores" two outlets can each have a Kitchen Store: the full name stays
+  const short = (name: string) => (all ? name : (name.split(' – ').pop() ?? name));
   const q = `?node=${node.id}`;
   const canMove = !all && ctx.can('TRANSFERS', 'modify') && !node.derived && node.holds_stock;
   return (
@@ -82,7 +91,8 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
           {
             key: 'all',
             label: 'All transfers',
-            href: listHref('/stock/transfers', { all, node: node.id }),
+            // the Main Store's default is To send, so All says so
+            href: `${listHref('/stock/transfers', { all, node: node.id })}${mainStore ? '&tab=all' : ''}`,
           },
           {
             key: 'send',
@@ -104,14 +114,17 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
             return (
               <li key={r.id} data-testid="transfer-item" data-transfer-id={r.id}>
                 <Link
-                  href={`/stock/transfers/${r.id}?node=${outgoing ? r.from_node_id : r.to_node_id}`}
+                  href={withBack(
+                    `/stock/transfers/${r.id}?node=${outgoing ? r.from_node_id : r.to_node_id}`,
+                    `${listHref('/stock/transfers', { all, node: node.id, tab })}${mainStore && tab === 'all' ? '&tab=all' : ''}`,
+                  )}
                   className="block rounded-xl bg-white p-4 ring-1 ring-slate-200"
                 >
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="font-medium">
                       {r.kind === 'rfm' ? 'Request for material · ' : ''}
                       {r.kind === 'send' && outgoing ? 'Sent · ' : ''}
-                      {outgoing ? `To ${r.to_name}` : `From ${r.from_name}`}
+                      {outgoing ? `To ${short(r.to_name)}` : `From ${short(r.from_name)}`}
                     </span>
                     <span
                       data-testid="transfer-progress"
@@ -120,6 +133,14 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
                       {label}
                     </span>
                   </span>
+                  {r.items && (
+                    <span
+                      className="mt-1 block truncate text-sm text-slate-700"
+                      data-testid="transfer-items"
+                    >
+                      {r.items}
+                    </span>
+                  )}
                   <span className="text-sm text-slate-600">{formatWhen(r.created_at)}</span>
                 </Link>
               </li>
@@ -133,7 +154,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
             all,
             node: node.id,
             tab,
-            n: limit + LIST_PAGE,
+            n: limit + (mainStore ? 10 : LIST_PAGE),
           })}
         />
       )}

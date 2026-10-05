@@ -49,7 +49,7 @@ export default async function BillsPage({ searchParams }: { searchParams: Search
   const node = ctx.node;
   const nodes = all ? ctx.nodes.map((n) => n.id) : [node.id];
   const user = await requireUser();
-  const { bills, waiting } = await withUser(user.id, async (tx) => {
+  const { bills, waiting, count, sum } = await withUser(user.id, async (tx) => {
     const b = await sql<BillRow>`
       select b.id, b.kind, coalesce(s.name, b.supplier_name) as supplier, b.bill_no, b.bill_date,
              b.amount, b.description, b.delivery_node_id::text as store_id
@@ -72,10 +72,20 @@ export default async function BillsPage({ searchParams }: { searchParams: Search
          and not exists (select 1 from inv.bill b where b.po_id = po.id and b.archived_at is null)
        order by po.released_at desc
        limit 50`.execute(tx);
-    return { bills: b.rows, waiting: w.rows };
+    // the count and the total of every bill in the tab, not only the 50 shown (ADR 053)
+    const t = await sql<{ n: number; total: string | null }>`
+      select count(*)::int as n, sum(b.amount) as total from inv.bill b
+       where b.delivery_node_id = any(${nodes}::uuid[]) and b.archived_at is null
+         and (${tab} not in ('goods', 'services')
+              or b.kind = case ${tab} when 'goods' then 'goods' else 'service' end)`.execute(tx);
+    return {
+      bills: b.rows,
+      waiting: w.rows,
+      count: t.rows[0]?.n ?? 0,
+      sum: Number(t.rows[0]?.total ?? 0),
+    };
   });
   const names = new Map(ctx.nodes.map((n) => [n.id, n.name]));
-  const total = bills.reduce((t, b) => t + Number(b.amount), 0);
   const href = (t: Tab) => listHref('/stock/bills', { all, node: node.id, tab: t });
   return (
     <div className="space-y-4">
@@ -140,7 +150,8 @@ export default async function BillsPage({ searchParams }: { searchParams: Search
       ) : (
         <>
           <p className="text-sm text-slate-600" data-testid="bills-total">
-            {bills.length} {bills.length === 1 ? 'bill' : 'bills'} · {formatMoney(total)}
+            {count} {count === 1 ? 'bill' : 'bills'} · {formatMoney(sum)}
+            {count > bills.length && ` · the latest ${bills.length} shown`}
           </p>
           <ul className="space-y-2">
             {bills.map((b) => (

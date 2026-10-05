@@ -143,7 +143,8 @@ export function ReceiveForm({
                   />
                 </label>
                 <label className="block space-y-1">
-                  <span className="text-xs text-slate-600">Amount (₹)</span>
+                  {/* the line's total on the bill, not a price per unit (ADR 053) */}
+                  <span className="text-xs text-slate-600">Bill amount, total (₹)</span>
                   <input
                     aria-label={`Amount ${l.name}`}
                     inputMode="decimal"
@@ -153,6 +154,12 @@ export function ReceiveForm({
                   />
                 </label>
               </div>
+              {Number(qty[l.item_id]) > 0 && Number(amount[l.item_id]) > 0 && (
+                <p className="text-right text-xs text-slate-500" data-testid="unit-price">
+                  = {formatMoney(Number(amount[l.item_id]) / Number(qty[l.item_id]))} per{' '}
+                  {l.base_uom}
+                </p>
+              )}
             </li>
           );
         })}

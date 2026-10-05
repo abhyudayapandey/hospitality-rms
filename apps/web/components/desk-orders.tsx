@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { formatWhen } from '@/lib/format';
+import { formatDay } from '@/lib/dates';
 import type { DeskOrder } from '@/lib/inventory';
 
 /**
@@ -39,7 +40,7 @@ export function DeskOrders({ rows }: { rows: DeskOrder[] }) {
                         {stage === 'to_order'
                           ? ` · asked by ${r.requested_by ?? 'someone'}, ${formatWhen(r.requested_at)}`
                           : r.expected_on
-                            ? ` · due ${new Date(r.expected_on).toISOString().slice(0, 10)}`
+                            ? ` · due ${formatDay(new Date(r.expected_on).toISOString().slice(0, 10))}`
                             : ''}
                       </span>
                     </span>

@@ -20,7 +20,7 @@ async function askForOnions(page: Page): Promise<string> {
   const po = new URL(page.url()).pathname.split('/').pop()!;
   await runExecutor();
   await page.reload();
-  if ((await page.getByTestId('po-progress').textContent()) === 'awaiting approval') {
+  if ((await page.getByTestId('po-progress').textContent()) === 'waiting for approval') {
     await signInAs(page, 'Test General Manager 1.0');
     await page.goto('/inbox');
     const item = page.getByTestId('inbox-item').filter({
@@ -47,7 +47,7 @@ test('the keeper sees To order on Home; the chef follows the order, on the way, 
   await page.locator(`[data-po-id="${po}"]`).getByRole('link').click();
   await page.waitForURL(`**/stock/orders/${po}**`);
   await page.getByRole('combobox', { name: 'Supplier' }).selectOption({ index: 1 });
-  await page.getByRole('button', { name: 'Ordered' }).click();
+  await page.getByRole('button', { name: 'Mark as ordered' }).click();
   await expect(page.getByTestId('po-progress')).toHaveText('ordered');
 
   // the department follows it: on the way, no receive form, no ₹

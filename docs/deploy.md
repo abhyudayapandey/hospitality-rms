@@ -2084,3 +2084,16 @@ orders). No stack change, nothing to re-import.
    reason: the order says **closed**. The General Manager 1.0 has a notification.
 6. Check, as the Store Keeper 1.0: Stock lists first, then **Send stock**, Count, Record
    wastage; Ask for supplies is a small link.
+
+## Releasing UX audit 3's P2 and P3 findings (ADR 053)
+
+One migration (who orders a store's supplies, Send stock's department columns, "about ₹" in the
+GM's order notice). No stack change, nothing to re-import.
+
+1. Merge, then **Deploy** as usual (the migration runs with it). `cdk diff` shows nothing.
+2. Check, as the Executive Chef 1.0: Ask for supplies is empty, each line says "have · keep",
+   the text says the Main Store orders it; **Fill to keep level** fills the short items.
+3. Check, as the Store Keeper 1.0: Transfers opens on **To send**; Send stock → Kitchen Store
+   says what the kitchen has and keeps, short items first; Home's Count tile says when it was
+   last counted; Stock shows 4 tabs and **More**.
+4. Check, as the General Manager 1.0: an approval on Home names its items and says "about ₹".

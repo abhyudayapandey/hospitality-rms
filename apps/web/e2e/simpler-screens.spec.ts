@@ -35,7 +35,7 @@ test('the area manager: outlets side by side as shares of total cost, adding up 
   }
   await expect(card).toContainText("shares of each outlet's total cost");
   // a row with every share adds up to 100
-  const rows = card.locator('tbody tr');
+  const rows = card.locator('tbody tr[data-tone]'); // an outlet's row, not its why (ADR 053)
   const count = await rows.count();
   let checked = 0;
   for (let i = 0; i < count; i++) {

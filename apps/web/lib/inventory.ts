@@ -215,7 +215,7 @@ export function formatQty(qty: string | number, uom: string): string {
 
 /** Purchase order progress (inv.purchase_order_summary.progress): label and badge style. */
 export const PO_PROGRESS: Record<string, [string, string]> = {
-  awaiting_approval: ['awaiting approval', 'bg-amber-100 text-amber-900'],
+  awaiting_approval: ['waiting for approval', 'bg-amber-100 text-amber-900'],
   to_order: ['to be ordered', 'bg-amber-100 text-amber-900'],
   released: ['ordered', 'bg-sky-100 text-sky-900'],
   partially_received: ['part received', 'bg-sky-100 text-sky-900'],
@@ -241,7 +241,7 @@ export const SUPPLY_PROGRESS: Record<string, [string, string]> = {
 /** Transfer progress (inv.transfer_summary.progress): label and badge style. */
 export const TRANSFER_PROGRESS: Record<string, [string, string]> = {
   awaiting_approval: ['waiting for approval', 'bg-violet-100 text-violet-900'],
-  awaiting_dispatch: ['awaiting dispatch', 'bg-amber-100 text-amber-900'],
+  awaiting_dispatch: ['waiting to be sent', 'bg-amber-100 text-amber-900'],
   in_transit: ['in transit', 'bg-sky-100 text-sky-900'],
   received: ['received', 'bg-emerald-100 text-emerald-900'],
   completed: ['received', 'bg-emerald-100 text-emerald-900'],

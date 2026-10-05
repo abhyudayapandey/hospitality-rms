@@ -558,7 +558,7 @@ test('the sole owner: own leave approved at the top of the chain; the admin page
   const mine = page.getByTestId('request-item').filter({ hasText: 'Leave' }).first();
   await expect(mine.getByTestId('request-state')).toHaveText('approved');
   await expect(mine.getByTestId('top-of-chain')).toHaveText(
-    'Approved automatically: top of chain, no higher approver.',
+    'Approved at once: nobody above you approves this.',
   );
 
   await page.goto('/admin');

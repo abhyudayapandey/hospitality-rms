@@ -17,6 +17,7 @@ import {
 import type { LeagueRow, MeasureRow } from './reports';
 import type { TargetKey } from './settings';
 import { companySettings } from './settings-data';
+import { countDue, type CountDue } from './stock-hub';
 import type { Shell } from './shell';
 import { myTasks, toAssign, type MyTask } from './tasks';
 import { listHref } from './stock-view';
@@ -61,6 +62,8 @@ export interface StoreWork {
   issue: number;
   /** items that run out within three days (lib/low-stock.ts) */
   low: number;
+  /** the store they keep that was counted longest ago: whether a count is due (ADR 035, 053) */
+  count: CountDue | null;
 }
 
 /** Expired and expiring batches at all the stores they see; the banners open them with
@@ -192,7 +195,8 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
         });
       }
       const all: AttentionCount[] = [
-        ...counts.rows,
+        // the store keeper's Running low tile says it once (ADR 053), not three times
+        ...counts.rows.filter((c) => profile !== 'store' || c.kind !== 'lowStock'),
         ...(slots?.rows ?? []).map((s) => ({
           kind: 'openSlots' as const,
           node: s.node,
@@ -234,7 +238,18 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
                  where n.archived_at is null and n.par_level > 0 and ${IS_LOW})::int as low`.execute(
         tx,
       );
+      // the stores they count; the one counted longest ago (never counted first) says when
+      const counted = await sql<{ last: Date | null; never: boolean }>`
+        select min(x.last) as last, bool_or(x.last is null) as never
+          from (select (select max(c.submitted_at) from inv.stock_count c
+                         where c.delivery_node_id = n.id and c.status = 'submitted') as last
+                  from core.nodes() n
+                 where n.holds_stock and not n.derived
+                   and core.can('STOCK_ADJUSTMENTS', 'modify', null, n.id)) x`.execute(tx);
+      const c = counted.rows[0];
+      const everyDays = (await companySettings(tx)).count_due_days;
       store = {
+        count: c && (c.never || c.last) ? countDue(c.never ? null : c.last, everyDays, now) : null,
         toOrder: r.rows[0]?.to_order ?? 0,
         receive: r.rows[0]?.receive ?? 0,
         low: r.rows[0]?.low ?? 0,

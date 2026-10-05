@@ -198,7 +198,7 @@ function ItemRow({ r, store }: { r: CostItemRow; store: boolean }) {
           {formatQty(r.went_out, r.unit)} − used {formatQty(r.used, r.unit)} = expected{' '}
           {formatQty(r.expected_closing, r.unit)}
           {Number(r.pending_qty) !== 0 && (
-            <> · {formatQty(r.pending_qty, r.unit)} awaiting approval</>
+            <> · {formatQty(r.pending_qty, r.unit)} waiting for approval</>
           )}{' '}
           <Link
             className="font-medium text-brand-700 underline"

@@ -113,8 +113,11 @@ test('report a problem (commis)', async ({ page }) => {
 test('record wastage (store keeper)', async ({ page }) => {
   const j = await start(page, 'Test Store Keeper 1.0');
   await j.go(nav(page, 'Stock'));
+  // the store's jobs under its list (ADR 052); the Wastage tab is under More (ADR 053)
   await j.go(
-    page.getByRole('navigation', { name: 'Supply' }).getByRole('link', { name: 'Wastage' }),
+    page
+      .getByRole('navigation', { name: 'Stock jobs' })
+      .getByRole('link', { name: 'Record wastage' }),
   );
   await j.choose(page.getByRole('combobox', { name: /^Item/ }), { index: 1 });
   await j.type(page.getByLabel(/^Quantity/), '1');

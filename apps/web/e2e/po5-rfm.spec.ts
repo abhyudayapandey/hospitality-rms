@@ -59,8 +59,14 @@ test('a request for material off the menu waits for the department head, with wh
   await signInAs(page, 'Test Central Kitchen Store Keeper');
   await page.goto('/inbox');
   await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
-  await expect(page.getByTestId('transfer-progress')).toHaveText('awaiting dispatch');
+  await expect(page.getByTestId('transfer-progress')).toHaveText('waiting to be sent');
+  // rejecting asks why and is confirmed (ADR 053)
   await page.getByRole('button', { name: 'Reject' }).click();
+  const why = page.getByTestId('reject-why');
+  await why.getByRole('button', { name: 'Reject' }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Say why' })).toBeVisible();
+  await why.getByRole('textbox').fill('Not in stock at the central kitchen');
+  await why.getByRole('button', { name: 'Reject' }).click();
   await expect(page.getByRole('status')).toHaveText('Rejected.');
 });
 

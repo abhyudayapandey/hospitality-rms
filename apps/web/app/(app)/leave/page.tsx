@@ -52,14 +52,6 @@ export default async function LeavePage({ searchParams }: { searchParams: Search
                 </li>
               ))}
           </ul>
-          <LeaveForm
-            today={localToday(ctx.tz)}
-            types={data.balances.map((b) => ({
-              id: b.leave_type_id,
-              name: b.name,
-              available: b.available_days === null ? null : Number(b.available_days),
-            }))}
-          />
           <h2 className="text-sm font-semibold text-slate-700">My requests</h2>
           {data.leave.length === 0 ? (
             <Empty>No leave requested yet.</Empty>
@@ -87,6 +79,15 @@ export default async function LeavePage({ searchParams }: { searchParams: Search
               ))}
             </ul>
           )}
+          {/* the balances and requests first, then asking for leave (ADR 051, 053) */}
+          <LeaveForm
+            today={localToday(ctx.tz)}
+            types={data.balances.map((b) => ({
+              id: b.leave_type_id,
+              name: b.name,
+              available: b.available_days === null ? null : Number(b.available_days),
+            }))}
+          />
         </>
       )}
     </div>

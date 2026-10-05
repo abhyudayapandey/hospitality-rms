@@ -1,10 +1,11 @@
 import Link from 'next/link';
+import { backHref } from '@/lib/back';
 import { Empty } from '@/components/messages';
 import { NoSupplyAccess } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
-import { supplyContext, TRANSFER_PROGRESS, type SearchParams } from '@/lib/inventory';
+import { param, supplyContext, TRANSFER_PROGRESS, type SearchParams } from '@/lib/inventory';
 import { TransferStepForm, type TransferLine } from './transfer-step-form';
 
 export default async function TransferPage({
@@ -63,7 +64,10 @@ export default async function TransferPage({
   return (
     <div className="space-y-4">
       {ctx.node && (
-        <Link href={`/stock/transfers?node=${ctx.node.id}`} className="text-sm text-slate-600">
+        <Link
+          href={backHref(param(await searchParams, 'back'), `/stock/transfers?node=${ctx.node.id}`)}
+          className="text-sm text-slate-600"
+        >
           ← Transfers
         </Link>
       )}

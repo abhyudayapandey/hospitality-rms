@@ -41,8 +41,13 @@ export function InboxItem({ entry, compact = false }: { entry: InboxEntry; compa
       <p className="text-sm text-slate-600">
         {compact
           ? `${entry.from} · ${entry.waitingSince}`
-          : `${entry.from} · ${entry.step.replace(/_/g, ' ')} · waiting since ${entry.waitingSince}`}
+          : `${entry.from} · ${entry.stepLabel} · waiting since ${entry.waitingSince}`}
       </p>
+      {entry.items && (
+        <p className="mt-1 text-sm text-slate-700" data-testid="inbox-items">
+          {entry.items}
+        </p>
+      )}
       {entry.why && (
         <p className="mt-1 text-sm text-slate-700" data-testid="inbox-why">
           Needs your approval: {entry.why}.
@@ -75,7 +80,7 @@ export function InboxItem({ entry, compact = false }: { entry: InboxEntry; compa
             onClick={() => act('reject')}
             className="min-h-12 rounded-lg border border-slate-300 font-medium disabled:opacity-50"
           >
-            {compact ? 'No' : 'Reject'}
+            Reject
           </button>
           <button
             type="button"

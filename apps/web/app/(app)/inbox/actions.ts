@@ -13,13 +13,17 @@ export async function actOnRequest(
   requestId: string,
   action: 'approve' | 'reject',
   _idempotencyKey?: string,
+  /** why, kept on the step (a rejected transfer says why, ADR 053) */
+  comment?: string,
 ): Promise<ActionResult<{ state: string }>> {
   const user = await requireUser();
   try {
     const state = await withUser(user.id, async (tx) => {
       const r = await sql<{
         state: string;
-      }>`select wf.act(${requestId}::uuid, ${action}) as state`.execute(tx);
+      }>`select wf.act(${requestId}::uuid, ${action}, ${comment?.trim() || null}) as state`.execute(
+        tx,
+      );
       return r.rows[0]!.state;
     });
     return { ok: true, data: { state } };

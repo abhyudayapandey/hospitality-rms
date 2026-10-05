@@ -1,13 +1,16 @@
 import Link from 'next/link';
+import { backHref } from '@/lib/back';
 import { Empty } from '@/components/messages';
 import { NoSupplyAccess } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatMoney, formatWhen } from '@/lib/format';
+import { formatDay } from '@/lib/dates';
 import {
   formatQty,
   PO_PROGRESS as PROGRESS,
   SUPPLY_PROGRESS,
+  param,
   supplyContext,
   type SearchParams,
 } from '@/lib/inventory';
@@ -209,7 +212,10 @@ export default async function OrderPage({
   return (
     <div className="space-y-4">
       <Link
-        href={`/stock/orders?node=${canPlace && data.viaDesk ? ctx.node.id : po.delivery_node_id}`}
+        href={backHref(
+          param(await searchParams, 'back'),
+          `/stock/orders?node=${canPlace && data.viaDesk ? ctx.node.id : po.delivery_node_id}`,
+        )}
         className="text-sm text-slate-600"
       >
         ← Orders
@@ -230,7 +236,8 @@ export default async function OrderPage({
         </div>
         <p className="text-sm text-slate-600">
           For {po.store} · {follow ? 'asked' : 'ordered'} {formatWhen(po.created_at)}
-          {po.expected_on && ` · due ${new Date(po.expected_on).toISOString().slice(0, 10)}`}
+          {po.expected_on &&
+            ` · due ${formatDay(new Date(po.expected_on).toISOString().slice(0, 10))}`}
         </p>
         {paid && (
           <p className="mt-1 text-sm" data-testid="po-paid">
@@ -334,7 +341,7 @@ export default async function OrderPage({
                     data-testid="po-bill"
                   >
                     <span>
-                      {new Date(b.bill_date).toISOString().slice(0, 10)}
+                      {formatDay(new Date(b.bill_date).toISOString().slice(0, 10))}
                       {b.bill_no && ` · ${b.bill_no}`}
                       <span className="block text-xs text-slate-500">
                         {b.files} {b.files === 1 ? 'page' : 'pages'}
