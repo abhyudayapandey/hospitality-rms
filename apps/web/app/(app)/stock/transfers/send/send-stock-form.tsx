@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
 import { ListSearch } from '@/components/list-search';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
+import { byGroup } from '@/lib/item-groups';
 import { sendStock } from '../../actions';
 
 export interface SendItem {
@@ -12,6 +13,7 @@ export interface SendItem {
   name: string;
   base_uom: string;
   on_hand: string;
+  item_group: string | null;
 }
 
 export function SendStockForm({
@@ -57,31 +59,36 @@ export function SendStockForm({
     >
       <div id="send-lines" className="space-y-2">
         <ListSearch scope="send-lines" count={items.length} noun="items" />
-        <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-          {items.map((i) => (
-            <li
-              key={i.item_id}
-              className="flex items-center justify-between gap-3 px-4 py-2"
-              data-filter-row
-              data-filter-text={i.name}
-            >
-              <label htmlFor={`s-${i.item_id}`} className="min-w-0 flex-1 text-sm">
-                <span className="block font-medium">{i.name}</span>
-                <span className="text-xs text-slate-500">
-                  in stock here: {Number(i.on_hand)} {i.base_uom}
-                </span>
-              </label>
-              <input
-                id={`s-${i.item_id}`}
-                aria-label={`Send ${i.name}`}
-                inputMode="decimal"
-                value={qty[i.item_id] ?? ''}
-                onChange={(e) => setQty((v) => ({ ...v, [i.item_id]: e.target.value }))}
-                className={`${inputClass} max-w-28 text-right`}
-              />
-            </li>
-          ))}
-        </ul>
+        {byGroup(items).map((g) => (
+          <section key={g.group} className="space-y-1" data-testid={`group-${g.group}`}>
+            <h2 className="text-sm font-semibold text-slate-500">{g.label}</h2>
+            <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
+              {g.rows.map((i) => (
+                <li
+                  key={i.item_id}
+                  className="flex items-center justify-between gap-3 px-4 py-2"
+                  data-filter-row
+                  data-filter-text={i.name}
+                >
+                  <label htmlFor={`s-${i.item_id}`} className="min-w-0 flex-1 text-sm">
+                    <span className="block font-medium">{i.name}</span>
+                    <span className="text-xs text-slate-500">
+                      in stock here: {Number(i.on_hand)} {i.base_uom}
+                    </span>
+                  </label>
+                  <input
+                    id={`s-${i.item_id}`}
+                    aria-label={`Send ${i.name}`}
+                    inputMode="decimal"
+                    value={qty[i.item_id] ?? ''}
+                    onChange={(e) => setQty((v) => ({ ...v, [i.item_id]: e.target.value }))}
+                    className={`${inputClass} max-w-28 text-right`}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
       </div>
       <ErrorBox message={error} />
       <button

@@ -51,3 +51,18 @@ Feedback from using the app as the Main Store's keeper:
 6. **Lists first, then actions.** On a list screen the information comes first and its
    buttons follow it: Orders, Transfers, Bills, Count, Events, Admin → People. (CLAUDE.md
    convention.)
+
+## Addendum: every store sees all the Main Store's materials, grouped
+
+Migration 20261109100000. Send stock and Request stock (from the Main Store) listed only the
+items already set up at both stores, so the bar could not get ketchup, foil or cling film.
+
+- Every store now sees everything the Main Store holds, in two groups:
+  - **Kitchen & Bar items**;
+  - **Housekeeping items**: items that, in the outlet, only housekeeping stores have, such as
+    linen and guest amenities.
+- The receiving store's own group comes first: Kitchen & Bar for the kitchen and the bar,
+  Housekeeping for housekeeping.
+- The first time an item goes to a store it is set up there (par 0), so it shows in that
+  store's stock.
+- Asking a central kitchen (a hub) still lists only the store's own items.

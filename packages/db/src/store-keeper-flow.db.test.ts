@@ -402,3 +402,89 @@ describe('send stock', () => {
     });
   });
 });
+
+describe('what the Main Store can give (ADR 051 addendum)', () => {
+  const bar = () => ids.node('TEST-HOTEL-1.0-BAR-STORE');
+  const housekeeping = () => ids.node('TEST-HOTEL-1.0-HOUSEKEEPING-STORE');
+  const BAR_KEEPER = 'test.bar-manager.1.0';
+  const names = async (c: PoolClient, who: string, text: string, params: unknown[]) =>
+    (await rows(c, who, text, params)).map((r) => r.name as string);
+  const itemId = async (c: PoolClient, name: string) =>
+    (
+      await c.query<{ id: string }>(
+        `select id from inv.item where name = $1 and tenant_id =
+           (select tenant_id from core.hierarchy_node where id = $2)`,
+        [name, main()],
+      )
+    ).rows[0]!.id;
+
+  it('every store sees everything, in two groups, its own first; the first send sets it up', async () => {
+    await inRolledBackTx(async (c) => {
+      // linen at the Main Store too: used only by housekeeping, so a Housekeeping item
+      const linen = (
+        await c.query<{ item_id: string; name: string }>(
+          `select x.item_id, i.name from inv.item_node x join inv.item i on i.id = x.item_id
+            where x.delivery_node_id = $1 and i.category = 'Linen' limit 1`,
+          [housekeeping()],
+        )
+      ).rows[0]!;
+      await c.query(
+        `insert into inv.item_node (tenant_id, item_id, delivery_node_id)
+         select tenant_id, $1, id from core.hierarchy_node where id = $2`,
+        [linen.item_id, main()],
+      );
+      const list = async (to: string) =>
+        (
+          await rows(c, KEEPER, `select name, item_group from inv.send_items($1, $2)`, [main(), to])
+        ).map((r) => [r.name as string, r.item_group as string]);
+      const toBar = await list(bar());
+      expect(toBar).toEqual(
+        expect.arrayContaining([
+          ['Test Tomato Ketchup', 'kitchen_bar'],
+          ['Test Aluminium Foil Roll', 'kitchen_bar'],
+          [linen.name, 'housekeeping'],
+        ]),
+      );
+      // the bar's own group first
+      expect(toBar[0]![1]).toBe('kitchen_bar');
+      expect(toBar.at(-1)![1]).toBe('housekeeping');
+      const toHk = await list(housekeeping());
+      expect(toHk[0]).toEqual([linen.name, 'housekeeping']);
+      expect(toHk.map((r) => r[0])).toContain('Test Basmati Rice');
+      // ketchup is not set up at the bar; sending it sets it up and it arrives
+      const ketchup = await itemId(c, 'Test Tomato Ketchup');
+      await c.query(`select inv.post_at($1, $2, 'receipt', 5, 80, 'test', null, now())`, [
+        ketchup,
+        main(),
+      ]);
+      await call(c, KEEPER, `select inv.send_stock($1, $2, $3::jsonb, null)`, [
+        main(),
+        bar(),
+        JSON.stringify([{ item_id: ketchup, qty: 1 }]),
+      ]);
+      const setUp = await c.query(
+        `select par_level from inv.item_node where item_id = $1 and delivery_node_id = $2`,
+        [ketchup, bar()],
+      );
+      expect(setUp.rows).toEqual([{ par_level: '0.000' }]);
+    });
+  });
+
+  it('the bar can ask the Main Store for them too', async () => {
+    await inRolledBackTx(async (c) => {
+      const foil = await itemId(c, 'Test Aluminium Foil Roll');
+      expect(
+        await names(c, BAR_KEEPER, `select name from inv.request_items($1, $2)`, [bar(), main()]),
+      ).toContain('Test Aluminium Foil Roll');
+      await call(c, BAR_KEEPER, `select inv.request_transfer($1, $2, $3::jsonb, null)`, [
+        main(),
+        bar(),
+        JSON.stringify([{ item_id: foil, qty: 1 }]),
+      ]);
+      // and nobody else's list: another outlet's keeper is refused
+      expect(
+        await error(c, OUTSIDER, `select name from inv.request_items($1, $2)`, [bar(), main()]),
+      ).toMatch(/NOT_AUTHORISED/);
+    });
+  });
+});

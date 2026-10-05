@@ -21,7 +21,7 @@ export default async function SendStockPage({ searchParams }: { searchParams: Se
     const items = chosen
       ? (
           await sql<SendItem>`
-            select item_id::text, name, base_uom, on_hand::text
+            select item_id::text, name, base_uom, on_hand::text, item_group
               from inv.send_items(${from.id}::uuid, ${chosen.id}::uuid)`.execute(tx)
         ).rows
       : [];

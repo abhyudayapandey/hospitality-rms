@@ -180,7 +180,8 @@ paid for each item (required), and optionally the bill; without a bill the order
 missing** to the GM, the department head and the keeper. **Send stock** gives stock to a
 department's store: it leaves the Main Store at once, the person on shift there (else the head,
 who can assign it on) gets a task to confirm what arrived, and a shortfall is posted as transit
-loss. On every list screen the information comes first and the buttons after it; on the Main
+loss. Every store can be sent (or ask for) any of the Main Store's materials, grouped
+as Kitchen & Bar items and Housekeeping items, its own group first. On every list screen the information comes first and the buttons after it; on the Main
 Store, asking for stock or supplies is a small link.
 
 **Vendor bills** (ADR 050). A supplier's bill (photos or PDFs, number, date, amount) is added

@@ -165,6 +165,8 @@ export interface ItemOption {
   base_uom: string;
   on_hand: string;
   avg_cost: string;
+  /** Kitchen & Bar or Housekeeping, where the list is grouped (ADR 051 addendum) */
+  item_group?: string | null;
 }
 
 /** Items set up at the node, for pickers. */
