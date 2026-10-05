@@ -142,17 +142,51 @@ export function attentionGroups(
   const of = new Map(places.map((p) => [p.node_id, p]));
   const groups = new Map<
     string,
-    { place: PlaceDepartment | undefined; n: Map<AttentionKind, number>; slot: string | null }
+    {
+      place: PlaceDepartment | undefined;
+      n: Map<AttentionKind, number>;
+      slot: string | null;
+      stores: Set<string>;
+    }
   >();
   for (const c of counts) {
     if (c.n <= 0) continue;
     const p = of.get(c.node);
     const key = p?.department_id ?? `outlet:${p?.outlet_id ?? ''}`;
-    const g = groups.get(key) ?? { place: p, n: new Map<AttentionKind, number>(), slot: null };
+    const g = groups.get(key) ?? {
+      place: p,
+      n: new Map<AttentionKind, number>(),
+      slot: null,
+      stores: new Set<string>(),
+    };
     g.n.set(c.kind, (g.n.get(c.kind) ?? 0) + c.n);
     if (c.kind === 'openSlots' && !g.slot && c.href) g.slot = c.href;
+    if (c.kind === 'lowStock') g.stores.add(c.node);
     groups.set(key, g);
   }
+  // A department's line opens that department, not every place (ADR 048): exceptions and
+  // repairs there, low stock at its store; what is at the outlet itself opens the outlet.
+  const hrefOf = (
+    k: AttentionKind,
+    g: { place: PlaceDepartment | undefined; slot: string | null; stores: Set<string> },
+  ) => {
+    const dept = g.place?.department_id ?? null;
+    const scope = dept ?? g.place?.outlet_id ?? null;
+    switch (k) {
+      case 'openSlots':
+        return g.slot ?? LINE[k].href;
+      case 'lowStock':
+        return g.stores.size === 1
+          ? stockHref({ tab: 'low', node: [...g.stores][0]! })
+          : LINE[k].href;
+      case 'flags':
+        return dept ? listHref('/roster/exceptions', { node: dept }) : LINE[k].href;
+      case 'repairs':
+        return scope
+          ? listHref('/tasks/maintenance', { node: scope, tab: 'assign' })
+          : LINE[k].href;
+    }
+  };
   const outlets = new Set([...groups.values()].map((g) => g.place?.outlet_id ?? ''));
   const oneOutlet = outlets.size === 1;
   const label = (p: PlaceDepartment | undefined) => {
@@ -172,7 +206,7 @@ export function attentionGroups(
         const n = g.n.get(k)!;
         return {
           kind: k,
-          href: k === 'openSlots' ? (g.slot ?? LINE[k].href) : LINE[k].href,
+          href: hrefOf(k, g),
           n,
           text: n === 1 ? LINE[k].one : LINE[k].many,
         };

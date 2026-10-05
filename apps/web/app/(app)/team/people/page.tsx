@@ -1,10 +1,11 @@
+import Link from 'next/link';
 import { FilterList } from '@/components/filter-list';
 import { Empty } from '@/components/messages';
 import { PeopleHeader } from '@/components/people-header';
 import { requireUser } from '@/lib/auth/server';
 import { formatDay } from '@/lib/dates';
 import { withUser } from '@/lib/db';
-import type { SearchParams } from '@/lib/inventory';
+import { param, type SearchParams } from '@/lib/inventory';
 import { peopleContext, teamPeople } from '@/lib/people';
 import { DeactivateForm } from './deactivate-form';
 
@@ -16,7 +17,11 @@ export default async function TeamPeoplePage({ searchParams }: { searchParams: S
   if (!ctx.node) return <Empty>You don&apos;t see anyone&apos;s records.</Empty>;
   const node = ctx.node;
   const user = await requireUser();
-  const people = await withUser(user.id, (tx) => teamPeople(tx, node.id));
+  const everyone = await withUser(user.id, (tx) => teamPeople(tx, node.id));
+  // from a report row (here=1): only the people placed at exactly this place, so the list
+  // is as long as the row's count; the outlet's own row is the people in no department
+  const here = param(await searchParams, 'here') === '1';
+  const people = here ? everyone.filter((p) => p.place_id === node.id) : everyone;
   const active = people.filter((p) => p.status === 'active');
   const inactive = people.filter((p) => p.status !== 'active');
   return (
@@ -24,7 +29,17 @@ export default async function TeamPeoplePage({ searchParams }: { searchParams: S
       <PeopleHeader ctx={ctx} active="/team/people" title="People" />
       <p className="text-sm text-slate-600" data-testid="people-count">
         {active.length} working here{inactive.length > 0 ? ` · ${inactive.length} inactive` : ''}
+        {here && people.length < everyone.length && ' (not in a department)'}
       </p>
+      {here && people.length < everyone.length && (
+        <Link
+          href={`/team/people?node=${node.id}`}
+          className="inline-flex min-h-11 items-center text-sm underline"
+          data-testid="people-everyone"
+        >
+          Everyone at {node.name.split(' – ').pop()} ({everyone.length})
+        </Link>
+      )}
       {people.length === 0 ? (
         <Empty>Nobody works here yet.</Empty>
       ) : (
