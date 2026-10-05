@@ -54,12 +54,6 @@ export default async function UsersPage({
           Administration
         </Link>
       </div>
-      <Link
-        href="/admin/users/new"
-        className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
-      >
-        Add a person
-      </Link>
       <form role="search" className="flex gap-2">
         <input
           name="q"
@@ -103,6 +97,12 @@ export default async function UsersPage({
           }))}
         />
       )}
+      <Link
+        href="/admin/users/new"
+        className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
+      >
+        Add a person
+      </Link>
     </div>
   );
 }

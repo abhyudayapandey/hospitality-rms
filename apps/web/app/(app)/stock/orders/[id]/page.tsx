@@ -113,6 +113,10 @@ export default async function OrderPage({
       amount: string;
       files: number;
     }>`select id, bill_no, bill_date, amount, files from inv.po_bills(${id}::uuid)`.execute(tx);
+    // what was received and what it cost; whether the bill is still to come (ADR 051)
+    const got = await sql<{ value: string | null; missing: boolean | null }>`
+      select inv.po_received_value(${id}::uuid) as value,
+             inv.po_bill_missing(${id}::uuid) as missing`.execute(tx);
     // the desk picks suppliers; a bill for an order placed with none names its supplier
     const suppliers =
       canPlace || (row && !row.supplier_id)
@@ -128,11 +132,13 @@ export default async function OrderPage({
       suppliers,
       sends: sends.rows,
       bills: bills.rows,
+      receivedValue: got.rows[0]?.value ?? null,
+      billMissing: got.rows[0]?.missing ?? false,
       prices: (await companySettings(tx)).po_send_prices,
     };
   });
   if (!data.po) return <Empty>Order not found.</Empty>;
-  const { po, lines, sends, prices, canPlace, suppliers, bills } = data;
+  const { po, lines, sends, prices, canPlace, suppliers, bills, receivedValue, billMissing } = data;
   const supplierName = po.supplier ?? 'Supplies request';
   // PO-4 (ADR 032): a released order goes to the supplier from this phone
   const message = {
@@ -159,8 +165,10 @@ export default async function OrderPage({
   const canReceive =
     (po.can_modify || canPlace) &&
     (po.progress === 'released' || po.progress === 'partially_received');
-  // prices are for whoever orders and receives; the person who asked sees items and quantities
-  const showPrices = po.supplier_id !== null && (po.can_modify || canPlace);
+  // what was paid, from the receipts (ADR 051); the order's own prices are only estimates
+  const paid = receivedValue && Number(receivedValue) > 0 ? receivedValue : null;
+  // the status sits in the header only when there is nothing to do here
+  const showStatus = !canReceive && !(canPlace && po.progress === 'to_order');
   return (
     <div className="space-y-4">
       <Link href={`/stock/orders?node=${po.delivery_node_id}`} className="text-sm text-slate-600">
@@ -169,18 +177,34 @@ export default async function OrderPage({
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <div className="flex items-baseline justify-between gap-2">
           <h1 className="text-lg font-semibold">{supplierName}</h1>
+          {/* the status sits here only when there is nothing to do on the order; otherwise
+              the form says it, and the status is for screen readers */}
           <span
             data-testid="po-progress"
-            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${style}`}
+            className={
+              showStatus ? `rounded-full px-2 py-0.5 text-xs font-semibold ${style}` : 'sr-only'
+            }
           >
             {label}
           </span>
         </div>
         <p className="text-sm text-slate-600">
-          {po.store} · {formatWhen(po.created_at)}
-          {showPrices && ` · ${formatMoney(po.total)}`}
+          For {po.store} · ordered {formatWhen(po.created_at)}
           {po.expected_on && ` · due ${new Date(po.expected_on).toISOString().slice(0, 10)}`}
         </p>
+        {paid && (
+          <p className="mt-1 text-sm" data-testid="po-paid">
+            Received for <span className="font-semibold tabular-nums">{formatMoney(paid)}</span>
+          </p>
+        )}
+        {billMissing && (
+          <p
+            className="mt-2 rounded-lg bg-amber-50 p-2 text-sm font-medium text-amber-900"
+            data-testid="bill-missing"
+          >
+            Bill missing: no photo or PDF of the bill yet.
+          </p>
+        )}
         {po.notes && <p className="mt-1 text-sm">{po.notes}</p>}
       </div>
       {canSend && (
@@ -228,7 +252,7 @@ export default async function OrderPage({
           </ul>
         )
       ) : canReceive ? (
-        <ReceiveForm po={po.id} lines={lines} />
+        <ReceiveForm po={po.id} lines={lines} billHere={po.supplier_id !== null} />
       ) : (
         <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
           {lines.map((l) => (
@@ -236,7 +260,6 @@ export default async function OrderPage({
               <span className="font-medium">{l.name}</span>
               <span className="text-right tabular-nums">
                 {formatQty(l.ordered, l.base_uom)}
-                {showPrices && ` × ${formatMoney(l.unit_cost)}`}
                 <span className="block text-xs text-slate-500">
                   received {formatQty(l.received, l.base_uom)}
                 </span>
@@ -245,52 +268,58 @@ export default async function OrderPage({
           ))}
         </ul>
       )}
-      {['released', 'partially_received', 'received'].includes(po.progress) &&
-        (bills.length > 0 || po.can_modify || canPlace) && (
-          <section className="space-y-2" data-testid="po-bills">
-            <h2 className="text-sm font-semibold text-slate-500">Bill</h2>
-            {bills.length > 0 && (
-              <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-                {bills.map((b) => (
-                  <li key={b.id}>
-                    <Link
-                      href={`/stock/bills/${b.id}?node=${po.delivery_node_id}`}
-                      className="flex min-h-12 items-center justify-between gap-2 px-4 py-2 text-sm"
-                      data-testid="po-bill"
-                    >
-                      <span>
-                        {new Date(b.bill_date).toISOString().slice(0, 10)}
-                        {b.bill_no && ` · ${b.bill_no}`}
-                        <span className="block text-xs text-slate-500">
-                          {b.files} {b.files === 1 ? 'page' : 'pages'}
-                        </span>
+      {/* the bill, once something has arrived (ADR 050, 051) */}
+      {paid !== null && (bills.length > 0 || po.can_modify || canPlace) && (
+        <section className="space-y-2" data-testid="po-bills">
+          <h2 className="text-sm font-semibold text-slate-500">Bill</h2>
+          {bills.length > 0 && (
+            <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
+              {bills.map((b) => (
+                <li key={b.id}>
+                  <Link
+                    href={`/stock/bills/${b.id}?node=${po.delivery_node_id}`}
+                    className="flex min-h-12 items-center justify-between gap-2 px-4 py-2 text-sm"
+                    data-testid="po-bill"
+                  >
+                    <span>
+                      {new Date(b.bill_date).toISOString().slice(0, 10)}
+                      {b.bill_no && ` · ${b.bill_no}`}
+                      <span className="block text-xs text-slate-500">
+                        {b.files} {b.files === 1 ? 'page' : 'pages'}
                       </span>
-                      <span className="font-semibold tabular-nums">{formatMoney(b.amount)}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {(po.can_modify || canPlace) && (
-              <details
-                open={bills.length === 0 && po.progress !== 'released'}
-                className="rounded-xl bg-white p-4 ring-1 ring-slate-200"
-              >
-                <summary className="min-h-11 cursor-pointer py-2 font-medium">
-                  {bills.length === 0 ? 'Add the bill' : 'Add another bill'}
-                </summary>
-                <div className="pt-2">
-                  <BillForm
-                    node={null}
-                    po={po.id}
-                    askSupplier={!po.supplier_id}
-                    suppliers={suppliers}
-                  />
-                </div>
-              </details>
-            )}
-          </section>
-        )}
+                    </span>
+                    <span className="font-semibold tabular-nums">{formatMoney(b.amount)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          {(po.can_modify || canPlace) && (
+            // while more is to come the receive form takes the bill; this one is for later
+            <details
+              open={bills.length === 0 && !canReceive}
+              className="rounded-xl bg-white p-4 ring-1 ring-slate-200"
+            >
+              <summary className="min-h-11 cursor-pointer py-2 font-medium">
+                {bills.length === 0
+                  ? canReceive
+                    ? 'Add the bill for what came earlier'
+                    : 'Add the bill'
+                  : 'Add another bill'}
+              </summary>
+              <div className="pt-2">
+                <BillForm
+                  node={null}
+                  po={po.id}
+                  askSupplier={!po.supplier_id}
+                  suppliers={suppliers}
+                  amount={bills.length === 0 && paid ? String(Number(paid)) : ''}
+                />
+              </div>
+            </details>
+          )}
+        </section>
+      )}
       {po.can_modify && po.supplier_id && (
         <ContactForm supplier={po.supplier_id} phone={po.phone} email={po.email} />
       )}

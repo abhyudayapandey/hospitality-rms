@@ -99,14 +99,6 @@ export default async function BillsPage({ searchParams }: { searchParams: Search
           },
         ]}
       />
-      {!all && tab !== 'waiting' && ctx.can('BILLS', 'modify') && !node.derived && (
-        <Link
-          href={`/stock/bills/new?node=${node.id}`}
-          className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
-        >
-          Add a bill for a service
-        </Link>
-      )}
       {tab === 'waiting' ? (
         waiting.length === 0 ? (
           <Empty>Every order received has its bill.</Empty>
@@ -177,6 +169,14 @@ export default async function BillsPage({ searchParams }: { searchParams: Search
             ))}
           </ul>
         </>
+      )}
+      {!all && tab !== 'waiting' && ctx.can('BILLS', 'modify') && !node.derived && (
+        <Link
+          href={`/stock/bills/new?node=${node.id}`}
+          className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
+        >
+          Add a bill for a service
+        </Link>
       )}
     </div>
   );

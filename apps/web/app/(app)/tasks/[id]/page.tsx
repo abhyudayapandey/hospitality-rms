@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { failure } from '@outlet-ops/domain';
 import { requireUser } from '@/lib/auth/server';
-import { withUser } from '@/lib/db';
+import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { formatQty } from '@/lib/inventory';
 import { photosEnabled } from '@/lib/photos';
 import { assignablePeople, taskDetail, type Person, type TaskDetail } from '@/lib/tasks';
 import { AssignExpiry, CancelTask, TaskWork } from './task-work';
+import { ReassignTask, ReceiveSent, SentLines, type SentLine } from './receive-sent';
 
 // One task (ADR 020): its steps for whoever works on it, and for task managers there who
 // it is with. A reported expired batch shows the lead whom to give the discard to.
@@ -15,12 +16,25 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   const user = await requireUser();
   let task: TaskDetail;
   let people: Person[];
+  let sent: SentLine[];
   try {
-    ({ task, people } = await withUser(user.id, async (tx) => {
+    ({ task, people, sent } = await withUser(user.id, async (tx) => {
       const t = await taskDetail(tx, id);
+      const toDo = t.status === 'reported' || t.status === 'open' || t.status === 'in_progress';
       const p =
-        t.status === 'reported' && t.can_manage ? await assignablePeople(tx, t.org_node_id) : [];
-      return { task: t, people: p };
+        toDo && t.can_manage && (t.status === 'reported' || t.kind === 'receive')
+          ? await assignablePeople(tx, t.org_node_id)
+          : [];
+      // a delivery from the Main Store (ADR 051): what was sent
+      const lines =
+        t.kind === 'receive'
+          ? (
+              await sql<SentLine>`
+                select item_id::text, name, base_uom, sent::text, received::text
+                  from ops.sent_lines(${id}::uuid)`.execute(tx)
+            ).rows
+          : [];
+      return { task: t, people: p, sent: lines };
     }));
   } catch (err) {
     return (
@@ -65,10 +79,25 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
             Reported. The department head will give it to someone to discard.
           </p>
         ))}
-      {(task.steps.length > 0 || task.can_work) && (
-        <TaskWork task={task} canWork={task.can_work} photos={photosEnabled()} />
+      {task.kind === 'receive' ? (
+        <>
+          {open && task.can_work ? (
+            <ReceiveSent task={task.id} lines={sent} />
+          ) : (
+            <SentLines lines={sent} />
+          )}
+          {open && task.can_manage && (
+            <ReassignTask task={task.id} people={people} current={task.assignee_user_id} />
+          )}
+        </>
+      ) : (
+        (task.steps.length > 0 || task.can_work) && (
+          <TaskWork task={task} canWork={task.can_work} photos={photosEnabled()} />
+        )
       )}
-      {open && task.can_manage && task.kind !== 'expiry' && <CancelTask task={task.id} />}
+      {open && task.can_manage && task.kind !== 'expiry' && task.kind !== 'receive' && (
+        <CancelTask task={task.id} />
+      )}
     </div>
   );
 }

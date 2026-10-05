@@ -60,7 +60,9 @@ test('the chef asks for supplies with no supplier or price; the Main Store keepe
   ).toHaveCount(0);
   const receive = page.getByTestId('desk-to_receive').locator(`a[href^="/stock/orders/${po}"]`);
   await receive.click();
-  await page.getByRole('button', { name: 'Receive goods' }).click();
+  await page.getByRole('textbox', { name: 'Received Test Onions' }).fill('1');
+  await page.getByRole('textbox', { name: 'Amount Test Onions' }).fill('40');
+  await page.getByRole('button', { name: 'Receive', exact: true }).click();
   await expect(page.getByTestId('po-progress')).toHaveText('received');
   await page.goto('/inbox');
   await expect(page.locator(`a[href^="/stock/orders/${po}"]`)).toHaveCount(0);

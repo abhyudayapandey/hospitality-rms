@@ -140,6 +140,7 @@ export const ERROR_MESSAGES = {
   INVALID_AMOUNT: 'Amounts are zero or more.',
   // vendor bills (BIL-1 to BIL-3, ADR 050)
   INVALID_BILL: 'Check the bill: its date (within the last year), amount and what it was for.',
+  AMOUNT_REQUIRED: 'Enter the amount for every item that arrived (what the bill says).',
   INVALID_FILE: "A file didn't upload. Add it again (photos or PDFs, up to 5).",
   INVALID_CODE: 'Enter the POS item code, up to 40 characters, no spaces.',
   // trends (RPT-12, ADR 041)

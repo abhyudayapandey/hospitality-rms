@@ -101,6 +101,10 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   order's store, added by whoever receives it; a service bill at a store the person keeps.
   Photos or PDFs under `bills/`; money data, bills included, is kept 7 years. Archived, never
   deleted.
+- Screens put the information first and its actions after it (ADR 051): a list, then its
+  buttons. A store's main action is what it does: the Main Store sends and receives, so asking
+  for stock or supplies is a small secondary link there. Receiving records the amount paid
+  per item (required); a received order with no bill shows "Bill missing".
 
 ## Commands
 ```

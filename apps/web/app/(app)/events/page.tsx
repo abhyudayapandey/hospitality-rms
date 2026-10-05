@@ -24,14 +24,6 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
     <div className="space-y-4">
       <PollRefresh />
       <PeopleHeader ctx={ctx} active="/events" title="Events" />
-      {ctx.can('EVENTS', 'modify') && (
-        <Link
-          href={`/events/new?node=${node.id}`}
-          className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
-        >
-          New event
-        </Link>
-      )}
       {rows.length === 0 ? (
         <Empty>No upcoming events.</Empty>
       ) : (
@@ -69,6 +61,14 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
             );
           })}
         </ul>
+      )}
+      {ctx.can('EVENTS', 'modify') && (
+        <Link
+          href={`/events/new?node=${node.id}`}
+          className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
+        >
+          New event
+        </Link>
       )}
     </div>
   );

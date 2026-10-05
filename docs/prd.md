@@ -282,6 +282,8 @@ Spec and test data: file 29 (checklists, any customer) and files 30 to 32 (test 
 
 ### 6.12 Vendor bills _(Built, ADR 050)_
 
+- **INV-13** _(Done, ADR 051)_ **Send stock.** The Main Store sends stock to a department's store; it leaves the Main Store at once and arrives when the person on shift in the department (else the head, who can assign it on) confirms what came; a shortfall is transit loss and the head and the sender are told.
+- **PO-8** _(Done, ADR 051)_ **Receiving at the amount paid.** Each item received needs its amount (what the bill says); the unit cost on the ledger is amount / quantity. Nothing is pre-filled. A received order without its bill shows **Bill missing** to the GM, the department head and the keeper.
 - **BIL-1** _(Done, ADR 050)_ A bill (one to five photos or PDFs, number, date, amount) is attached to its order when the goods are received, by whoever receives it, the order desk included; the order page asks for it after receiving, and the Bills screen lists orders received without one ("Waiting for a bill").
 - **BIL-2** _(Done, ADR 050)_ Bills for services with no stock (linen washing, pest control, repairs) are recorded at a store the person keeps (the Main Store for the outlet's own services) with the supplier (from the list or typed), what it was for, date, amount and the photo or PDF.
 - **BIL-3** _(Done, ADR 050)_ The GM and the cost controller see every bill of the outlet's stores (All stores, Goods, Services); store keepers see their store's; the hub manager the central kitchen's. A wrong bill is archived with a reason, never deleted. The account owner sees bills only as report totals (later), since owners hold no business data; reading bills automatically is BILL-1 in the AI layer.
