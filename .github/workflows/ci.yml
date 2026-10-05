@@ -87,6 +87,17 @@ jobs:
         env:
           PGPASSWORD: postgres_ci
         run: psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d outlet_ops -f packages/db/docker/init/001-roles.sql
+      # the tests raise thousands of expected errors (NOT_AUTHORISED...); Postgres logging each
+      # buries this job's own output under the container's log when it stops
+      - name: Quiet the database log
+        env:
+          PGPASSWORD: postgres_ci
+        run: >-
+          psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d outlet_ops
+          -c "alter system set log_min_messages = 'fatal'"
+          -c "alter system set log_min_error_statement = 'panic'"
+          -c "alter system set log_checkpoints = off"
+          -c "select pg_reload_conf()"
       - run: pnpm db:migrate
       - run: pnpm db:seed
       - name: DB tests (shard ${{ matrix.shard }} of 2)
