@@ -40,7 +40,7 @@ Initial market: India, starting in Mumbai.
 | Frontline staff      | Bartender, steward, room attendant, commis          | See shifts, clock in, request leave and swaps                 |
 | Stock users          | Chef, head bartender, store keeper, receiving clerk | Count stock, record wastage, request transfers, receive goods |
 | Department heads     | Executive chef, bar manager, front office manager   | Build rosters, approve the team's requests, run their store   |
-| Outlet heads         | General manager, standalone bar manager             | Run the whole outlet from one dashboard and inbox             |
+| Outlet heads         | General manager, standalone bar manager             | Run the whole outlet from one dashboard and To do list        |
 | Multi-outlet leaders | Area manager, owner                                 | See every outlet, approve escalations                         |
 | Customer admins      | Account owner, user admin                           | Manage users and access for their company                     |
 | Platform admin       | The Outlet Ops team                                 | Onboard and support customers                                 |
@@ -139,7 +139,7 @@ Requests escalate up the operational chain, skipping any level an outlet doesn't
 - **SEC-5** Sensitive grants (outlet manager, user admin, account owner, HR, pay access) require a second person's approval; everyday grants apply immediately.
 - **SEC-6** The last account owner can never be removed or deactivated.
 - **SEC-7** Every admin action, every stock movement and every approval is audited with actor, place and approver. Owners and admins see an access-audit view limited to access events.
-- **SEC-8** Approvers without data access can read a request only while it is pending in their inbox, plus a stored summary of what they decided.
+- **SEC-8** Approvers without data access can read a request only while it is pending in their To do list, plus a stored summary of what they decided.
 - **SEC-9** The AI agent is a service identity with view-only data access; its only write paths are creating recommendations and submitting workflow requests.
 
 ## 6. Functional requirements by module
@@ -156,7 +156,7 @@ Requests escalate up the operational chain, skipping any level an outlet doesn't
 - **INV-11** _(Done, ADR 043)_ The verifier is the **Cost Controller** by default; where a company has none, whoever holds the **Stock Verifier** access group (given by the Account Owner in Admin). Stock users and others cannot verify.
 - **INV-7** _(Done, ADR 043)_ **Bar count mode:** the sheet is ordered by shelf (optional `shelf` and `shelf_order` in onboarding file 11), partial bottles are counted in tenths of the open one, and one check is shared by several phones, each counting an area.
 - **INV-8** _(Done, ADR 043)_ **Offline counts and wastage:** a count line or a small wastage entry made with no signal is kept on the phone and synced with the time it was made; the latest original time wins.
-- **INV-12** _(Done, ADR 033, 038, 040)_ **Expiring and expired banners.** "Items expiring within 3 days" opens a list of the batches with their use-by dates, soonest first; "Expired items" opens the expired ones, most recently expired first. Home's banners count every store the person sees and open the list with "All stores" chosen in the Place picker; picking a store there narrows it, and "All stores" brings them all back. Expiry comes from prep batches (shelf life, PRD-1); raw materials do not need an expiry date. Each morning (from 06:00, once a day) the leads of the team that uses a store are notified of what expires there by the end of tomorrow, with how much is left and the dishes that use it up; servers, bartenders, cashiers and the outlet's managers see "Push today" on Home with those dishes (dishes whose own recipe uses the item; a rule from recipes and expiry, AI wording later).
+- **INV-12** _(Done, ADR 033, 038, 040)_ **Expiring and expired banners.** "Items expiring within 3 days" opens a list of the batches with their use-by dates, soonest first; "Expired items" opens the expired ones, most recently expired first. Home's banners count every store the person sees and open Stock on its Expiring or Expired tab (ADR 048) with "All stores" chosen in the Place picker; picking a store there narrows it, and "All stores" brings them all back. Expiry comes from prep batches (shelf life, PRD-1); raw materials do not need an expiry date. Each morning (from 06:00, once a day) the leads of the team that uses a store are notified of what expires there by the end of tomorrow, with how much is left and the dishes that use it up; servers, bartenders, cashiers and the outlet's managers see "Push today" on Home with those dishes (dishes whose own recipe uses the item; a rule from recipes and expiry, AI wording later).
 
 **Data flow: recording wastage**
 
@@ -166,10 +166,11 @@ Every stock change follows this path: the database checks the user's access at t
 
 ### 6.2 Purchase orders _(Built)_
 
-- **PO-1** Store keepers and outlet heads create POs with suggested quantities: par level minus on-hand minus open orders.
+- **PO-1** Store keepers and outlet heads ask for supplies with suggested quantities: par level minus on-hand minus open orders. Since PO-7 they give items and quantities only.
 - **PO-2** _(Built; replaced by PO-5)_ Approval by the outlet head; above a threshold (default ₹50,000) also by the area manager or owner.
-- **PO-5** _(Done, ADR 044)_ **Department heads are responsible for orders.** No approval for menu ingredients in usual quantities (the order is approved at once). The department head approves anything off the menu (an item in no recipe of the outlet), or more than the **usual quantity**: 1.5× (a company setting) the item's average weekly use over the last 4 weeks; with no use in those weeks a menu item is usual. The GM is told of every order and can also approve (in case the department head is away), but is not the one responsible. The area manager step above the value threshold stays. The approver's To do list says why, and the order form says so before sending.
-- **PO-3** Receiving against a PO by stock users; receipts capped at ordered quantity plus 5%; any excess recorded as a supplier-excess adjustment for approval.
+- **PO-5** _(Done, ADR 044)_ **Department heads are responsible for orders.** No approval for menu ingredients in usual quantities (the order is approved at once). The department head approves anything off the menu (an item in no recipe of the outlet), or more than the **usual quantity**: 1.5× (a company setting) the item's average weekly use over the last 4 weeks; with no use in those weeks a menu item is usual. The GM is told of every order and can also approve (in case the department head is away), but is not the one responsible. There is no value limit and no area manager step (ADR 049: the person asking gives no prices). The approver's To do list says why, and the order form says so before sending.
+- **PO-7** _(Done, ADR 049)_ **Supply requests: the requester asks, the Main Store orders.** The person who needs supplies gives items and quantities only, never a supplier or a price. Once approved (only unusual requests need it, PO-5), the keeper of the outlet's Main Store (or of the store itself where there is none) gets it on the To do list under **To order**: a supplier (optional, kept for the record; suppliers are told outside the app for now) and a delivery date. One supplier for everything is the default; with different suppliers for different items the request becomes one order per supplier, each with its date. The order then waits under **To receive** until received. The department (the person who asked, the store's keepers and its department head) is told when it is ordered (with the due date) and when it is received, or what is still to come.
+- **PO-3** Receiving against a PO by stock users, or by the Main Store keeper for the department stores' requests (PO-7); receipts capped at ordered quantity plus 5%; any excess recorded as a supplier-excess adjustment for approval.
 
 ### 6.3 Transfers _(Built: central kitchen → outlet and store to store)_
 
@@ -213,6 +214,7 @@ Every stock change follows this path: the database checks the user's access at t
 - **NT-1** In-app notifications with unread badge for roster publish, swap and leave decisions, tasks, reminders and escalations _(Built)_. Web push _(Planned)_.
 - **NT-2** _(Done, ADR 033)_ Any discard or wastage also notifies the GM: the outlet managers of the store's outlet (GM, Assistant GM; a standalone bar's Bar Manager), never the person who recorded it.
 - **DB-2** _(Done, ADR 033)_ **Needs attention by department**, in a fixed order: Kitchen first, then Service (servers, then housekeeping), then the rest (maintenance, front office, security, stores). A department's type (kitchen, service, housekeeping, other) is an optional column in onboarding file 01.
+- **DB-3** _(Done, ADR 048)_ **One screen per function.** Each function has one screen whose tabs are its views (Stock: All, Running low, Expiring, Expired). A count on Home opens that screen on the matching tab with "All stores" or "All departments" chosen, so the list is as long as the count: running low, the expiry banners, open shifts (the roster for All departments, a collapsible section each), attendance issues (Exceptions), open repairs (one line, tagged Assign, opens Maintenance on To assign), Receive (Orders on To receive) and Send (Transfers on To send).
 - **DB-1** Manager dashboard: stock below par, today's roster coverage, open approvals, open exceptions, transfers in transit _(Done as Home "Today": needs attention, today's numbers, ADR 023; transfers in transit come with R-2)_.
 
 ### 6.9 Menu, recipes, production and cost control _(Built; POS import later)_
@@ -248,7 +250,7 @@ Spec and test data: file 29 (checklists, any customer) and files 30 to 32 (test 
 - **TSK-2** Steps are a tick, a number with an acceptable range, text or a photo; any step may need a photo. A reading outside its range is flagged, the leads are told, and its photo is kept 400 days instead of 90.
 - **TSK-3** Checklists: templates at a place with a schedule (daily at times; some weekdays at times; every N hours within a window) and steps. A job every 5 minutes creates each round 24 hours ahead, reminds 30 minutes before, and escalates when overdue: to whoever assigned it at the due time, to the place's lead an hour later. Department heads and outlet managers edit templates; supervisors read them. Stopping a checklist cancels its future rounds.
 - **TSK-4** Prep list per store: for each item made there, par + event needs in the next 48 hours − usable stock on hand − what open prep tasks will make. Chosen lines become prep tasks for the team; a task is done by recording the batch (partial batches allowed), which is linked to it.
-- **TSK-5** Maintenance: anyone reports a problem where they work, with an optional photo. It goes to the outlet's Engineering department head, else the outlet manager; they assign it to someone there, who starts it and closes it with a photo of the fix. Open → assigned → in progress → done.
+- **TSK-5** Maintenance: anyone reports a problem where they work, with an optional photo. It goes to the outlet's Engineering department head, else the outlet manager; they assign it to someone there, who starts it and closes it with a photo of the fix. Open → assigned → in progress → done. The Maintenance screen has the Place picker with "All departments" first, a section per department (where the problem is), an All repairs and a To assign tab, and "Report a problem" at the end of the list (ADR 048); Home counts only the repairs waiting to be assigned.
 - **TSK-6** Expired batches: anyone who sees one taps Report; the department head (else the outlet manager) gets it under To do list → To assign and gives "Discard" or "Discard and remake" to someone in the department. The discard records expired wastage through the normal path, linked to the report; above the store's limit it still needs a photo and the outlet manager's approval, and is sent in the lead's name for the person who threw it away: the request, the approver's screen and the audit log name both (ADR 021). The cost report's Expired line and AI read the whole trace.
 - **TSK-7** Screens: My tasks (overdue first), task detail, new task, Team tasks (today's tasks, and completion % per department this week and last), checklists, prep list, maintenance.
 - **NAV-1** The bottom nav has at most five items, chosen by the kind of work a person does; everything else is on Home. Frontline staff without approvals (server, room attendant, technician) have Home, Tasks, Roster, To do list; cooks and bartenders add Production.
@@ -290,14 +292,14 @@ Every state-changing business action is a workflow request: submitted, routed th
 
 **Processes**
 
-| Process          | Initiated by                          | Approval chain (nearest available first)                                                                                            |
-| ---------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Stock adjustment | Stock users, store keepers            | Store's outlet head → area manager → owner. A stock check difference (INV-10, built) needs a photo, posts at once and notifies      |
-| Purchase order   | Store keepers, outlet heads, AI agent | None for usual menu ingredients (PO-5, built); else department head (or GM); GM notified; above threshold also area manager → owner |
-| Transfer         | Stock users                           | Dispatch: sending location's store keeper / hub manager → outlet head → owner. Receipt: receiving location's equivalent             |
-| Leave            | The worker                            | Department head → outlet head → area manager → owner; then HR step (outlet HR → HR admin → owner) if the customer enables it        |
-| Shift swap       | The receiving colleague               | Department head → outlet head → area manager → owner                                                                                |
-| Role change      | User admin, account owner             | Security admin → account owner                                                                                                      |
+| Process          | Initiated by                          | Approval chain (nearest available first)                                                                                       |
+| ---------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Stock adjustment | Stock users, store keepers            | Store's outlet head → area manager → owner. A stock check difference (INV-10, built) needs a photo, posts at once and notifies |
+| Purchase order   | Store keepers, outlet heads, AI agent | None for usual menu ingredients (PO-5, built); else department head (or GM); GM notified; no value limit (ADR 049)             |
+| Transfer         | Stock users                           | Dispatch: sending location's store keeper / hub manager → outlet head → owner. Receipt: receiving location's equivalent        |
+| Leave            | The worker                            | Department head → outlet head → area manager → owner; then HR step (outlet HR → HR admin → owner) if the customer enables it   |
+| Shift swap       | The receiving colleague               | Department head → outlet head → area manager → owner                                                                           |
+| Role change      | User admin, account owner             | Security admin → account owner                                                                                                 |
 
 **Example user flow: a leave request**
 
