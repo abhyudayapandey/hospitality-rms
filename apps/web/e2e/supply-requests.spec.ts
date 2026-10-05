@@ -17,7 +17,7 @@ test('the chef asks for supplies with no supplier or price; the Main Store keepe
   for (const input of await page.getByRole('textbox', { name: /^Quantity / }).all()) {
     await input.fill('');
   }
-  await page.getByRole('textbox', { name: 'Quantity Test Mint Chutney' }).fill('1');
+  await page.getByRole('textbox', { name: 'Quantity Test Onions' }).fill('1');
   await page.getByRole('button', { name: /^Send request/ }).click();
   await page.waitForURL(/\/stock\/orders\/[0-9a-f-]{36}/);
   const po = new URL(page.url()).pathname.split('/').pop()!;
