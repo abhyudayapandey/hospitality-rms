@@ -92,17 +92,23 @@ The user also asked for a dark/light switch, with dark as the default.
       - The heaviest files all landed on shard 2: RLS equivalence (now about 250 s) and the
         report refusals (about 330 s).
       - Measured as CI runs them, that was 415 s against 189 s.
-    - **The fix:**
-      - The refusals run as two files, half the people each.
-      - The weights are re-measured. The expected loads are 585 s and 582 s, about 5 minutes a
-        shard.
+    - **The fix (#69, #70):**
+      - Each DB shard in CI ends with a **DB test times** step. It prints every file's
+        seconds on CI's own machines, ready to paste into the weights
+        (`packages/db/test/print-times.mjs`).
+      - The DB jobs quiet Postgres's log (`log_min_messages = fatal`). Without that, the
+        container's log of thousands of expected errors buries the times.
+      - Weights taken locally don't transfer. #69's local weights sent one shard to 412 s and
+        the other to 155 s. The weights are now CI's numbers.
+      - On CI the loader tests are the longest file (367 s) and the refusals take 281 s. A
+        file runs on one worker, so both are split in two:
+        - `loader.db.test.ts` loads the customers, and `loader-checks.db.test.ts` holds the
+          checks;
+        - `reports-refusals-1` and `-2` take half the people each.
+      - The expected loads are 698 s and 697 s, about 6 minutes a shard. Before, CI ran
+        385 s and 266 s.
       - A unit test (`sequencer.test.ts`) fails when a weight names a missing file, or one
         file takes more than a third of the total.
-      - Each DB shard in CI ends with a **DB test times** step. It prints every file's
-        seconds on CI's own machines as lines ready to paste into the weights table
-        (`packages/db/test/print-times.mjs`). Local timings differ too much to use: on the
-        first push, the weights measured locally sent shard 1 to 412 s and shard 2 to 155 s.
-        The weights now come from CI's numbers.
 
 ## Not done here
 
