@@ -121,13 +121,17 @@ test('Send stock: it leaves the Main Store, the person who gets the task confirm
   await expect(page.getByTestId('sent-lines')).toContainText('arrived 1');
 });
 
-test('the bar gets the Main Store’s materials: ketchup, foil, cling film, to send or to ask for', async ({
+test('every store sees the Main Store’s materials, grouped: the bar gets ketchup, foil, cling film', async ({
   page,
 }) => {
   const main = await placeId('TEST-HOTEL-1.0-MAIN-STORE');
   const bar = await placeId('TEST-HOTEL-1.0-BAR-STORE');
   await signInAs(page, 'Test Store Keeper 1.0');
   await page.goto(`/stock/transfers/send?node=${main}&to=${bar}`);
+  // grouped, the bar's own group first (ADR 051 addendum)
+  await expect(page.getByTestId('group-kitchen_bar').getByRole('heading')).toHaveText(
+    'Kitchen & Bar items',
+  );
   for (const item of ['Test Tomato Ketchup', 'Test Aluminium Foil Roll', 'Test Cling Film Roll']) {
     await expect(page.getByRole('textbox', { name: `Send ${item}` })).toBeVisible();
   }

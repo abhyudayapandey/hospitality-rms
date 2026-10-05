@@ -418,42 +418,39 @@ describe('what the Main Store can give (ADR 051 addendum)', () => {
       )
     ).rows[0]!.id;
 
-  it('kitchen and bar get every material, housekeeping-only ones aside; the first send sets it up', async () => {
+  it('every store sees everything, in two groups, its own first; the first send sets it up', async () => {
     await inRolledBackTx(async (c) => {
-      // linen at the Main Store too: a housekeeping-only item
+      // linen at the Main Store too: used only by housekeeping, so a Housekeeping item
       const linen = (
-        await c.query<{ item_id: string }>(
-          `select x.item_id from inv.item_node x join inv.item i on i.id = x.item_id
+        await c.query<{ item_id: string; name: string }>(
+          `select x.item_id, i.name from inv.item_node x join inv.item i on i.id = x.item_id
             where x.delivery_node_id = $1 and i.category = 'Linen' limit 1`,
           [housekeeping()],
         )
-      ).rows[0]!.item_id;
+      ).rows[0]!;
       await c.query(
         `insert into inv.item_node (tenant_id, item_id, delivery_node_id)
          select tenant_id, $1, id from core.hierarchy_node where id = $2`,
-        [linen, main()],
+        [linen.item_id, main()],
       );
-      const toBar = await names(c, KEEPER, `select name from inv.send_items($1, $2)`, [
-        main(),
-        bar(),
-      ]);
+      const list = async (to: string) =>
+        (
+          await rows(c, KEEPER, `select name, item_group from inv.send_items($1, $2)`, [main(), to])
+        ).map((r) => [r.name as string, r.item_group as string]);
+      const toBar = await list(bar());
       expect(toBar).toEqual(
         expect.arrayContaining([
-          'Test Tomato Ketchup',
-          'Test Aluminium Foil Roll',
-          'Test Cling Film Roll',
+          ['Test Tomato Ketchup', 'kitchen_bar'],
+          ['Test Aluminium Foil Roll', 'kitchen_bar'],
+          [linen.name, 'housekeeping'],
         ]),
       );
-      const linenName = (
-        await c.query<{ name: string }>(`select name from inv.item where id = $1`, [linen])
-      ).rows[0]!.name;
-      expect(toBar).not.toContain(linenName);
-      const toHk = await names(c, KEEPER, `select name from inv.send_items($1, $2)`, [
-        main(),
-        housekeeping(),
-      ]);
-      expect(toHk).toContain(linenName);
-      expect(toHk).not.toContain('Test Basmati Rice'); // food goes to food and drink
+      // the bar's own group first
+      expect(toBar[0]![1]).toBe('kitchen_bar');
+      expect(toBar.at(-1)![1]).toBe('housekeeping');
+      const toHk = await list(housekeeping());
+      expect(toHk[0]).toEqual([linen.name, 'housekeeping']);
+      expect(toHk.map((r) => r[0])).toContain('Test Basmati Rice');
       // ketchup is not set up at the bar; sending it sets it up and it arrives
       const ketchup = await itemId(c, 'Test Tomato Ketchup');
       await c.query(`select inv.post_at($1, $2, 'receipt', 5, 80, 'test', null, now())`, [

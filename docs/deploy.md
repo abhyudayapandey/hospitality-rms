@@ -2055,13 +2055,14 @@ No stack change, nothing to re-import.
    1.0, who can **Assign** it): the task lists what was sent; **Everything arrived**, **Confirm
    what arrived**; the Kitchen Store's stock goes up.
 
-## Releasing the Main Store's materials for every department (ADR 051 addendum)
+## Releasing the Main Store's materials for every store, grouped (ADR 051 addendum)
 
 One migration (what the Main Store can send or be asked for). No stack change, nothing to
 re-import.
 
 1. Merge, then **Deploy** as usual.
-2. Check, as the Store Keeper 1.0: Transfers → Send stock → Bar Store lists Test Tomato Ketchup,
-   Test Aluminium Foil Roll and Test Cling Film Roll. Send one: the Bar Store's stock shows it once
+2. Check, as the Store Keeper 1.0: Transfers → Send stock → Bar Store lists everything the Main
+   Store holds under **Kitchen & Bar items** (Test Tomato Ketchup, Test Aluminium Foil Roll, Test
+   Cling Film Roll among them), and Housekeeping items after it when there are any. Send one: the Bar Store's stock shows it once
    the bar's person confirms.
 3. Check, as the Bar Manager 1.0: Transfers → Request stock from the Main Store lists them too.

@@ -23,7 +23,7 @@ export default async function NewTransferPage({ searchParams }: { searchParams: 
     // this store's items, and from its Main Store whatever the Main Store may give it (ADR 051)
     const items = (
       await sql<ItemOption>`
-        select item_id::text, name, base_uom, on_hand::text, avg_cost::text
+        select item_id::text, name, base_uom, on_hand::text, avg_cost::text, item_group
           from inv.request_items(${ctx.node!.id}::uuid, ${from}::uuid)`.execute(tx)
     ).rows;
     return { sources, from, items };
