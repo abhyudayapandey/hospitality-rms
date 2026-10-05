@@ -48,8 +48,8 @@ test('the GM: Needs attention by department, Kitchen first', async ({ page }) =>
 
 test('the executive chef: the expiry banners open their lists', async ({ page }) => {
   await signInAs(page, 'Test Executive Chef 1.0');
-  await page.goto('/stock');
-  expect(await viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen Store');
+  // the banners are on Home; they open the Expiring and Expired tabs of Stock (ADR 048)
+  await page.goto('/');
   await expect(page.getByTestId('banner-expiring')).toContainText('Items expiring within 3 days');
   await expect(page.getByTestId('banner-expired')).toContainText('Expired items');
 

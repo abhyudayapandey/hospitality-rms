@@ -5,18 +5,22 @@ import { withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { inboxEntries } from '@/lib/inbox';
 import { toAssign } from '@/lib/tasks';
+import { DeskOrders } from '@/components/desk-orders';
+import { deskOrders } from '@/lib/inventory';
 import { InboxItem } from './inbox-item';
 
 export default async function InboxPage() {
   const user = await requireUser();
-  const { rows, assign } = await withUser(user.id, async (tx) => ({
+  const { rows, assign, desk } = await withUser(user.id, async (tx) => ({
     rows: await inboxEntries(tx),
     assign: await toAssign(tx),
+    desk: await deskOrders(tx),
   }));
   return (
     <div className="space-y-4">
       <PollRefresh />
       <h1 className="text-xl font-semibold">To do list</h1>
+      <DeskOrders rows={desk} />
       {assign.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-500">To assign</h2>
@@ -41,7 +45,7 @@ export default async function InboxPage() {
           </ul>
         </section>
       )}
-      {rows.length === 0 && assign.length === 0 ? (
+      {rows.length === 0 && assign.length === 0 && desk.length === 0 ? (
         <p className="rounded-xl bg-white p-6 text-center text-slate-600 ring-1 ring-slate-200">
           Nothing is waiting for you.
         </p>

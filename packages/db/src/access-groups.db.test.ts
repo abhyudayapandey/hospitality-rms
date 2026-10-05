@@ -158,8 +158,9 @@ describe('receiving against a purchase order', () => {
       const { item, supplier } = r[0]!;
       const po = (
         await c.query<{ id: string }>(
-          `insert into inv.purchase_order (tenant_id, delivery_node_id, supplier_id, status, total, released_at)
-           values ($1, $2, $3, 'released', 20, now()) returning id`,
+          `insert into inv.purchase_order (tenant_id, delivery_node_id, supplier_id, status, total, released_at,
+                                           ordered_at)
+           values ($1, $2, $3, 'released', 20, now(), now()) returning id`,
           [tenant, node, supplier],
         )
       ).rows[0]!.id;

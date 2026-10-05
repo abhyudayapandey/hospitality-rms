@@ -5,35 +5,74 @@ import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
-import { supplyContext, TRANSFER_PROGRESS, type SearchParams } from '@/lib/inventory';
+import { param, supplyContext, TRANSFER_PROGRESS, type SearchParams } from '@/lib/inventory';
+import { ViewTabs } from '@/components/view-tabs';
+import { listHref } from '@/lib/stock-view';
 
 export default async function TransfersPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await supplyContext(searchParams, 'transfers');
   if (!ctx.can('TRANSFERS') || !ctx.node) return <NoSupplyAccess />;
+  const sp = await searchParams;
+  // "All stores" and the "To send" tab: what Home's Send count opens (ADR 048)
+  const all = param(sp, 'all') === '1' && ctx.nodes.length > 1;
+  const tab = param(sp, 'tab') === 'send' ? 'send' : 'all';
   const user = await requireUser();
+  const node = ctx.node;
+  const ids = ctx.nodes.map((n) => n.id);
   const rows = await withUser(user.id, async (tx) => {
     const r = await sql<{
       id: string;
       from_node_id: string;
+      to_node_id: string;
       from_name: string;
       to_name: string;
       progress: string;
       kind: string;
       created_at: Date;
     }>`
-      select id, from_node_id, from_name, to_name, progress, kind, created_at
+      select id, from_node_id, to_node_id, from_name, to_name, progress, kind, created_at
         from inv.transfer_summary
-       where from_node_id = ${ctx.node!.id}::uuid or to_node_id = ${ctx.node!.id}::uuid
+       where ${
+         all
+           ? sql`(from_node_id = any(${ids}::uuid[]) or to_node_id = any(${ids}::uuid[]))`
+           : sql`(from_node_id = ${node.id}::uuid or to_node_id = ${node.id}::uuid)`
+       }
+         and (${tab === 'send'} = false
+              or (progress = 'awaiting_dispatch'
+                  and ${all ? sql`from_node_id = any(${ids}::uuid[])` : sql`from_node_id = ${node.id}::uuid`}))
        order by created_at desc limit 30`.execute(tx);
     return r.rows;
   });
-  const q = `?node=${ctx.node.id}`;
+  const toSend = rows.filter((r) => r.progress === 'awaiting_dispatch').length;
+  const q = `?node=${node.id}`;
   return (
     <div className="space-y-4">
       <PollRefresh />
-      <SupplyHeader ctx={ctx} active="/stock/transfers" title="Transfers" />
+      <SupplyHeader
+        ctx={ctx}
+        active="/stock/transfers"
+        title="Transfers"
+        all={ctx.nodes.length > 1 ? { label: 'All stores', on: all } : undefined}
+      />
+      <ViewTabs
+        label="Transfers view"
+        current={tab}
+        tabs={[
+          {
+            key: 'all',
+            label: 'All transfers',
+            href: listHref('/stock/transfers', { all, node: node.id }),
+          },
+          {
+            key: 'send',
+            label: 'To send',
+            count: tab === 'send' ? rows.length : toSend,
+            href: listHref('/stock/transfers', { all, node: node.id, tab: 'send' }),
+          },
+        ]}
+      />
       {/* any stock location they move stock at, a store or an outlet's own (audit #5) */}
-      {ctx.can('TRANSFERS', 'modify') && !ctx.node.derived && ctx.node.holds_stock && (
+      {!all && ctx.can('TRANSFERS', 'modify') && !node.derived && node.holds_stock && (
         <Link
           href={`/stock/transfers/new${q}`}
           className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
@@ -42,16 +81,18 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
         </Link>
       )}
       {rows.length === 0 ? (
-        <Empty>No transfers here yet.</Empty>
+        <Empty>
+          {tab === 'send' ? 'Nothing is waiting to be sent.' : 'No transfers here yet.'}
+        </Empty>
       ) : (
         <ul className="space-y-2">
           {rows.map((r) => {
             const [label, style] = TRANSFER_PROGRESS[r.progress] ?? [r.progress, ''];
-            const outgoing = r.from_node_id === ctx.node!.id;
+            const outgoing = all ? ids.includes(r.from_node_id) : r.from_node_id === node.id;
             return (
               <li key={r.id} data-testid="transfer-item" data-transfer-id={r.id}>
                 <Link
-                  href={`/stock/transfers/${r.id}${q}`}
+                  href={`/stock/transfers/${r.id}?node=${outgoing ? r.from_node_id : r.to_node_id}`}
                   className="block rounded-xl bg-white p-4 ring-1 ring-slate-200"
                 >
                   <span className="flex items-baseline justify-between gap-2">

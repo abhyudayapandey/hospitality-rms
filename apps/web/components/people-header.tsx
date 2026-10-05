@@ -16,17 +16,22 @@ export function PeopleHeader({
   ctx,
   active,
   title,
+  all,
 }: {
   ctx: PeopleContext;
   active: PeopleTab;
   title: string;
+  /** "All departments" first in the Place picker (ADR 038, 048) */
+  all?: { label: string; on: boolean } | undefined;
 }) {
   const sides = peopleTabs(tabAccess(ctx));
   const side: Side = PEOPLE_TABS.find((t) => t.href === active)!.side;
   const tabs = sides[side];
   // Team tabs keep the place on screen; Me tabs have none
   const href = (t: { href: string; side: Side }) =>
-    t.side === 'team' && ctx.node ? `${t.href}?node=${ctx.node.id}` : t.href;
+    t.side === 'team' && ctx.node
+      ? `${t.href}?node=${ctx.node.id}${all?.on ? '&all=1' : ''}`
+      : t.href;
   return (
     <div className="space-y-3">
       {ctx.screen && ctx.node && (
@@ -34,6 +39,7 @@ export function PeopleHeader({
           screen={ctx.screen}
           places={ctx.nodes.map((n) => ({ id: n.id, name: n.name, kind: n.kind }))}
           current={ctx.node.id}
+          all={all}
         />
       )}
       <h1 className="text-xl font-semibold">{title}</h1>

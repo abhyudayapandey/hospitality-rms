@@ -14,7 +14,7 @@ beforeAll(async () => {
 afterAll(closePools);
 
 // the outlets' business day (04:00 to 04:00 IST, ADR 037)
-const BUSINESS_DAY = new Date(Date.now() - 6 * 3_600_000).toLocaleDateString('en-CA', {
+const BUSINESS_DAY = new Date(Date.now() - 4 * 3_600_000).toLocaleDateString('en-CA', {
   timeZone: 'Asia/Kolkata',
 });
 

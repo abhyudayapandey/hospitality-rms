@@ -283,10 +283,14 @@ class Loader {
         });
       }
     }
+    // The load day is the business day (04:00 to 04:00, ADR 046), not the calendar date:
+    // between 00:00 and 04:00 it is still yesterday, as every report and the expiry
+    // lists count it. (Inline: platform_loader has no access to rpt.business_date.)
     this.today = (
-      await this.c.query<{ d: string }>(`select (now() at time zone $1)::date::text as d`, [
-        cu.default_timezone,
-      ])
+      await this.c.query<{ d: string }>(
+        `select ((now() at time zone $1) - interval '4 hours')::date::text as d`,
+        [cu.default_timezone],
+      )
     ).rows[0]!.d;
     if (cu.leave_hr_approval !== undefined) {
       await this.c.query(
@@ -1736,7 +1740,7 @@ class Loader {
       const done = await this.c.query(
         `select 1 from inv.stock_count
           where delivery_node_id = $1 and status = 'submitted'
-            and (submitted_at at time zone $2)::date = $3::date`,
+            and ((submitted_at at time zone $2) - interval '4 hours')::date = $3::date`,
         [store, this.timezoneOf(code), this.today],
       );
       this.count('stock counts', !done.rowCount);

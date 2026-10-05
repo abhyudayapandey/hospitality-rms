@@ -90,7 +90,7 @@ test('Home expiry banners open a list with as many items as they count', async (
     if ((await banner.count()) === 0) continue;
     const n = Number((await banner.locator('.tabular-nums').innerText()).trim());
     await banner.click();
-    await page.waitForURL(/\/stock\/expiry/);
+    await page.waitForURL(/\/stock\?.*tab=expir/);
     // "All stores" chosen in the Place picker (ADR 038)
     expect(await viewing(page)).toBe('All stores');
     await expect(page.getByTestId('expiry-row')).toHaveCount(n);

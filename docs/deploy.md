@@ -1992,3 +1992,30 @@ is the app. No stack change, no parameter, nothing to re-import.
    Account Owner: the outlet table shows Food, Drinks, Losses and People adding up to 100.
 3. Check, as any Commis: no "Clock in" button on a day without a shift near; My shifts leads with
    the next shift and a week strip. Each report opens with four large figures and "More figures".
+
+## Releasing one screen per function (ADR 048)
+
+Two migrations (`ops.maintenance_requests` gains `place_node_id`; supply requests, ADR 049), the
+rest is the app and the test-data loader. No stack change, no parameter, nothing to re-import.
+
+1. Merge, then **Deploy** as usual (the migration runs with it). `cdk diff` shows nothing.
+2. Check, as the General Manager, from Home: **9 items running low** opens Stock on the
+   Running low tab with All stores chosen and nine items; Stock has four tabs; the expiry
+   banners open its Expiring and Expired tabs; **open shifts** opens the roster for All
+   departments with a section each; **attendance issues** opens Exceptions for All departments;
+   **open repairs** (one line, tagged Assign) opens Maintenance for All departments on To assign,
+   with Report a problem at the end of the list.
+3. Check, as the Store Keeper: Receive opens Orders on To receive, Send opens Transfers on To send.
+
+Supply requests (ADR 049), part of the same release. Before deploying, check no order is
+waiting at the removed `area_approval` step (`select count(*) from wf.step_instance where step =
+'area_approval' and state in ('waiting','pending')` must be 0; approve or reject any first).
+The Deploy workflow's product sync then drops the step from every tenant.
+
+4. Check, as the Executive Chef 1.0: **Ask for supplies** shows items and quantities only, no
+   supplier or price. Send one; approve it as the GM if it asks (off the menu or more than
+   usual).
+5. Check, as the Store Keeper 1.0: the To do list shows it under **To order**. Open it, pick a
+   supplier (or none) and a date, **Ordered**: it moves to **To receive**. Try "Different
+   suppliers for different items": it becomes one order per supplier. **Receive goods** closes it.
+6. The Executive Chef gets a notice at each step: ordered (with the due date) and received.

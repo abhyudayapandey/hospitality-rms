@@ -7,6 +7,8 @@ import { addDays, formatDay, formatSpan, isIsoDate, localToday, weekStart } from
 import { sql, withUser } from '@/lib/db';
 import { param, type SearchParams } from '@/lib/inventory';
 import { peopleContext, weekRoster, type RosterShift } from '@/lib/people';
+import { departmentSections } from '@/lib/department-groups';
+import type { PlaceDepartment } from '@/lib/today-view';
 import { dayStrip, groupByTime, pickDay } from '@/lib/roster-view';
 import { RemoveButton, WeekActions, type TemplateWindow } from './week-actions';
 import { jobTitles } from '@/lib/job-titles';
@@ -26,23 +28,72 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
   const monday = weekStart(isIsoDate(asked) ? asked : localToday(ctx.tz));
   const user = await requireUser();
   const title = await withUser(user.id, jobTitles);
-  const shifts = await withUser(user.id, (tx) => weekRoster(tx, node.id, monday));
+  // "All departments" (ADR 048): every department's shifts, in a section each; Home's open
+  // shifts count opens it
+  const all = param(sp, 'all') === '1' && ctx.nodes.length > 1;
+  const { shifts, places } = await withUser(user.id, async (tx) => {
+    const shifts = await weekRoster(tx, all ? ctx.nodes.map((n) => n.id) : node.id, monday);
+    const nodes = [...new Set(shifts.map((s) => s.org_node_id))];
+    const places =
+      all && nodes.length > 0
+        ? (
+            await sql<PlaceDepartment>`
+              select node_id::text, department_id::text, department, rank, outlet_id::text, outlet
+                from core.department_of(${nodes}::uuid[])`.execute(tx)
+          ).rows
+        : [];
+    return { shifts, places };
+  });
   const canEdit = ctx.can('ROSTER', 'modify');
   const drafts = shifts.filter((s) => s.status === 'draft').length;
   const open = shifts.reduce((n, s) => n + Math.max(0, s.headcount - s.people.length), 0);
-  const window = canEdit ? await templateWindow(user.id, node.id, monday) : null;
+  const window = canEdit && !all ? await templateWindow(user.id, node.id, monday) : null;
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const list = param(sp, 'view') === 'list';
   const day = pickDay(days, param(sp, 'day'), localToday(ctx.tz));
-  const base = `/roster/week?node=${node.id}`;
+  const base = `/roster/week?node=${node.id}${all ? '&all=1' : ''}`;
   const link = (week: string) => `${base}&week=${week}${list ? '&view=list' : ''}`;
   const now = new Date();
   const editable = (s: RosterShift) => canEdit && new Date(s.start_at) > now;
 
+  const timeGroups = (rows: RosterShift[]) =>
+    groupByTime(rows).map((g) => {
+      const span = formatSpan(g.start_at, g.end_at, ctx.tz);
+      return (
+        <section
+          key={g.key}
+          aria-label={span}
+          className="rounded-xl bg-white ring-1 ring-slate-200"
+          data-testid="time-group"
+        >
+          <h3 className="flex items-center justify-between border-b border-slate-100 px-3 py-2 text-sm">
+            <span className="font-medium tabular-nums">{span}</span>
+            {g.open > 0 && <span className="text-amber-700">{g.open} open</span>}
+          </h3>
+          <ul className="divide-y divide-slate-100">
+            {g.shifts.map((s) => (
+              <ShiftRow
+                key={s.id}
+                s={s}
+                title={title}
+                node={s.org_node_id}
+                editable={editable(s)}
+              />
+            ))}
+          </ul>
+        </section>
+      );
+    });
+
   return (
     <div className="space-y-4">
       <PollRefresh />
-      <PeopleHeader ctx={ctx} active="/roster/week" title="Roster" />
+      <PeopleHeader
+        ctx={ctx}
+        active="/roster/week"
+        title="Roster"
+        all={ctx.nodes.length > 1 ? { label: 'All departments', on: all } : undefined}
+      />
       <div className="flex items-center justify-between gap-2">
         <Link
           href={link(addDays(monday, -7))}
@@ -77,27 +128,46 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
       {shifts.length === 0 ? (
         <Empty>No shifts this week yet.{canEdit ? ' Add them from the templates.' : ''}</Empty>
       ) : list ? (
-        days.map((d) => {
-          const dayShifts = shifts.filter((s) => s.local_date === d);
-          if (dayShifts.length === 0) return null;
-          return (
-            <section key={d} className="space-y-2" aria-label={formatDay(d)}>
-              <h2 className="text-sm font-semibold text-slate-700">{formatDay(d)}</h2>
-              <ul className="space-y-2">
-                {dayShifts.map((s) => (
-                  <ShiftCard
-                    key={s.id}
-                    s={s}
-                    tz={ctx.tz}
-                    title={title}
-                    node={node.id}
-                    editable={editable(s)}
-                  />
-                ))}
-              </ul>
-            </section>
-          );
-        })
+        (() => {
+          const byDay = (rows: RosterShift[]) =>
+            days.map((d) => {
+              const dayShifts = rows.filter((s) => s.local_date === d);
+              if (dayShifts.length === 0) return null;
+              return (
+                <section key={d} className="space-y-2" aria-label={formatDay(d)}>
+                  <h2 className="text-sm font-semibold text-slate-700">{formatDay(d)}</h2>
+                  <ul className="space-y-2">
+                    {dayShifts.map((s) => (
+                      <ShiftCard
+                        key={s.id}
+                        s={s}
+                        tz={ctx.tz}
+                        title={title}
+                        node={s.org_node_id}
+                        editable={editable(s)}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              );
+            });
+          return all
+            ? departmentSections(shifts, places).map((sec) => (
+                <details
+                  key={sec.key}
+                  open
+                  className="rounded-xl bg-slate-50 p-2 ring-1 ring-slate-200"
+                  data-testid="department-section"
+                  data-department={sec.label}
+                >
+                  <summary className="flex min-h-11 cursor-pointer items-center px-1 text-sm font-semibold">
+                    {sec.label}
+                  </summary>
+                  <div className="space-y-3 pt-2">{byDay(sec.rows)}</div>
+                </details>
+              ))
+            : byDay(shifts);
+        })()
       ) : (
         <>
           <nav aria-label="Days" className="grid grid-cols-7 gap-1">
@@ -143,33 +213,40 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
           </nav>
           <section className="space-y-3" aria-label={formatDay(day)} data-testid="roster-day">
             <h2 className="text-sm font-semibold text-slate-700">{formatDay(day)}</h2>
-            {groupByTime(shifts.filter((s) => s.local_date === day)).map((g) => {
-              const span = formatSpan(g.start_at, g.end_at, ctx.tz);
-              return (
-                <section
-                  key={g.key}
-                  aria-label={span}
-                  className="rounded-xl bg-white ring-1 ring-slate-200"
-                  data-testid="time-group"
-                >
-                  <h3 className="flex items-center justify-between border-b border-slate-100 px-3 py-2 text-sm">
-                    <span className="font-medium tabular-nums">{span}</span>
-                    {g.open > 0 && <span className="text-amber-700">{g.open} open</span>}
-                  </h3>
-                  <ul className="divide-y divide-slate-100">
-                    {g.shifts.map((s) => (
-                      <ShiftRow
-                        key={s.id}
-                        s={s}
-                        title={title}
-                        node={node.id}
-                        editable={editable(s)}
-                      />
-                    ))}
-                  </ul>
-                </section>
-              );
-            })}
+            {all
+              ? departmentSections(
+                  shifts.filter((s) => s.local_date === day),
+                  places,
+                ).map((sec, i, list) => {
+                  const open = sec.rows.reduce(
+                    (n, s) => n + Math.max(0, s.headcount - s.people.length),
+                    0,
+                  );
+                  // the department with open slots is open; if none has, the first is
+                  const first = list.findIndex((x) =>
+                    x.rows.some((s) => s.headcount > s.people.length),
+                  );
+                  const isOpen = open > 0 || (first === -1 && i === 0);
+                  return (
+                    <details
+                      key={sec.key}
+                      open={isOpen}
+                      className="rounded-xl bg-slate-50 p-2 ring-1 ring-slate-200"
+                      data-testid="department-section"
+                      data-department={sec.label}
+                    >
+                      <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-1 text-sm font-semibold">
+                        <span>{sec.label}</span>
+                        <span className="font-normal text-slate-600">
+                          {sec.rows.length} shift{sec.rows.length === 1 ? '' : 's'}
+                          {open > 0 ? <span className="text-amber-700"> · {open} open</span> : ''}
+                        </span>
+                      </summary>
+                      <div className="space-y-3 pt-2">{timeGroups(sec.rows)}</div>
+                    </details>
+                  );
+                })
+              : timeGroups(shifts.filter((s) => s.local_date === day))}
             {!shifts.some((s) => s.local_date === day) && <Empty>No shifts this day.</Empty>}
           </section>
         </>

@@ -123,7 +123,7 @@ test('the area manager sees outlet stock read-only (derived view)', async ({ pag
   await expect(tabs.getByRole('link', { name: 'Count' })).toHaveCount(0);
   await expect(tabs.getByRole('link', { name: 'Wastage' })).toHaveCount(0);
   await page.goto(`/stock/orders?node=${store}`);
-  await expect(page.getByRole('link', { name: 'New order' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Ask for supplies' })).toHaveCount(0);
 });
 
 test('a department store keeper sees their own store, not the kitchen next door', async ({

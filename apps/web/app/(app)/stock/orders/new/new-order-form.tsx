@@ -1,13 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
-import { formatMoney } from '@/lib/format';
 import { ListSearch } from '@/components/list-search';
 import { UnusualNote } from '@/components/unusual-note';
-import { createPo } from '../../actions';
+import { requestSupplies } from '../../actions';
 
 export interface OrderLine {
   item_id: string;
@@ -16,44 +15,16 @@ export interface OrderLine {
   on_hand: string;
   par_level: string;
   suggested_qty: string;
-  unit_cost: string;
-  preferred_supplier_id: string | null;
 }
 
 const trim = (n: string) => String(Number(n));
 
-export function NewOrderForm({
-  node,
-  lines,
-  suppliers,
-}: {
-  node: string;
-  lines: OrderLine[];
-  suppliers: { id: string; name: string }[];
-}) {
+export function NewOrderForm({ node, lines }: { node: string; lines: OrderLine[] }) {
   const router = useRouter();
-  const suggestedSupplier = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const l of lines) {
-      if (Number(l.suggested_qty) > 0 && l.preferred_supplier_id) {
-        counts.set(l.preferred_supplier_id, (counts.get(l.preferred_supplier_id) ?? 0) + 1);
-      }
-    }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? suppliers[0]?.id ?? '';
-  }, [lines, suppliers]);
-  const [supplier, setSupplier] = useState(suggestedSupplier);
   const [qty, setQty] = useState<Record<string, string>>(() =>
     Object.fromEntries(
-      lines.map((l) => [
-        l.item_id,
-        Number(l.suggested_qty) > 0 && l.preferred_supplier_id === suggestedSupplier
-          ? trim(l.suggested_qty)
-          : '',
-      ]),
+      lines.map((l) => [l.item_id, Number(l.suggested_qty) > 0 ? trim(l.suggested_qty) : '']),
     ),
-  );
-  const [cost, setCost] = useState<Record<string, string>>(() =>
-    Object.fromEntries(lines.map((l) => [l.item_id, trim(l.unit_cost)])),
   );
   const [notes, setNotes] = useState('');
   const [usual, setUsual] = useState(false);
@@ -63,26 +34,17 @@ export function NewOrderForm({
   const [error, setError] = useState<string | null>(null);
 
   const chosen = lines
-    .map((l) => ({
-      item_id: l.item_id,
-      qty: Number(qty[l.item_id]),
-      unit_cost: Number(cost[l.item_id]),
-    }))
+    .map((l) => ({ item_id: l.item_id, qty: Number(qty[l.item_id]) }))
     .filter((l) => qty[l.item_id]?.trim() && l.qty > 0);
-  const total = chosen.reduce((s, l) => s + l.qty * l.unit_cost, 0);
 
   const submit = () =>
     start(async () => {
       setError(null);
-      if (
-        chosen.some(
-          (l) => !Number.isFinite(l.qty) || !Number.isFinite(l.unit_cost) || l.unit_cost < 0,
-        )
-      ) {
-        setError('Check the quantities and prices.');
+      if (chosen.some((l) => !Number.isFinite(l.qty))) {
+        setError('Check the quantities.');
         return;
       }
-      const r = await createPo(node, supplier, chosen, notes, key);
+      const r = await requestSupplies(node, chosen, notes, key);
       if (r.ok) router.push(`/stock/orders/${r.data.id}?node=${node}`);
       else setError(r.message);
     });
@@ -95,20 +57,6 @@ export function NewOrderForm({
         submit();
       }}
     >
-      <label className="block space-y-1">
-        <span className="text-sm font-medium">Supplier</span>
-        <select
-          value={supplier}
-          onChange={(e) => setSupplier(e.target.value)}
-          className={inputClass}
-        >
-          {suppliers.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </label>
       <div id="order-lines" className="space-y-2">
         <ListSearch scope="order-lines" count={lines.length} noun="items" />
         {lines.some((l) => Number(l.suggested_qty) > 0) && lines.length > 8 && (
@@ -126,7 +74,7 @@ export function NewOrderForm({
               }}
               className="size-5"
             />
-            Only items that need ordering
+            Only items that are running short
           </label>
         )}
         <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
@@ -145,24 +93,14 @@ export function NewOrderForm({
                   {trim(l.on_hand)} / {trim(l.par_level)} {l.base_uom}
                 </span>
               </p>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  aria-label={`Quantity ${l.name}`}
-                  inputMode="decimal"
-                  placeholder={`qty (${l.base_uom})`}
-                  value={qty[l.item_id] ?? ''}
-                  onChange={(e) => setQty((v) => ({ ...v, [l.item_id]: e.target.value }))}
-                  className={inputClass}
-                />
-                <input
-                  aria-label={`Price ${l.name}`}
-                  inputMode="decimal"
-                  placeholder="price"
-                  value={cost[l.item_id] ?? ''}
-                  onChange={(e) => setCost((v) => ({ ...v, [l.item_id]: e.target.value }))}
-                  className={inputClass}
-                />
-              </div>
+              <input
+                aria-label={`Quantity ${l.name}`}
+                inputMode="decimal"
+                placeholder={`how much (${l.base_uom})`}
+                value={qty[l.item_id] ?? ''}
+                onChange={(e) => setQty((v) => ({ ...v, [l.item_id]: e.target.value }))}
+                className={inputClass}
+              />
             </li>
           ))}
         </ul>
@@ -182,7 +120,7 @@ export function NewOrderForm({
         disabled={!hydrated || pending || chosen.length === 0}
         className={primaryButton}
       >
-        Submit order · {chosen.length} lines · {formatMoney(total)}
+        Send request · {chosen.length} {chosen.length === 1 ? 'item' : 'items'}
       </button>
     </form>
   );
