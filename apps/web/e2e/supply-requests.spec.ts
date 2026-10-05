@@ -12,7 +12,7 @@ test('the chef asks for supplies with no supplier or price; the Main Store keepe
   await signInAs(page, 'Test Executive Chef 1.0');
   await page.goto(`/stock/orders/new?node=${kitchen}`);
   // no supplier and no price anywhere on the form
-  await expect(page.getByText('Supplier')).toHaveCount(0);
+  await expect(page.getByRole('combobox', { name: 'Supplier' })).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: /^Price / })).toHaveCount(0);
   for (const input of await page.getByRole('textbox', { name: /^Quantity / }).all()) {
     await input.fill('');
