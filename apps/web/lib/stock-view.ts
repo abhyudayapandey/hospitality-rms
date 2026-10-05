@@ -50,6 +50,8 @@ export function listHref(
     tab?: string | null;
     week?: string | null;
     day?: string | null;
+    /** how many rows to show ("Show more", ADR 052) */
+    n?: number | null;
   } = {},
 ): string {
   const q: string[] = [];
@@ -58,5 +60,6 @@ export function listHref(
   if (o.tab && o.tab !== 'all') q.push(`tab=${o.tab}`);
   if (o.week) q.push(`week=${o.week}`);
   if (o.day) q.push(`day=${o.day}`);
+  if (o.n) q.push(`n=${o.n}`);
   return q.length > 0 ? `${path}?${q.join('&')}` : path;
 }

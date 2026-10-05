@@ -265,6 +265,8 @@ export function doFirst(
     toAssign: number;
     /** the roster, all departments, on the earliest day with an open slot */
     openSlotsHref?: string | null;
+    /** they may ask for or order supplies somewhere; else running low is only to see (ADR 052) */
+    canOrder?: boolean;
   },
   max = DO_FIRST_MAX,
 ): DoFirstItem[] {
@@ -281,7 +283,7 @@ export function doFirst(
       tone: 'bad',
       n: sum('lowStock'),
       text: '',
-      action: 'Order',
+      action: input.canOrder === false ? 'See' : 'Order',
       href: LINE.lowStock.href,
     },
     {

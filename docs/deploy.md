@@ -2066,3 +2066,21 @@ re-import.
    Cling Film Roll among them), and Housekeeping items after it when there are any. Send one: the Bar Store's stock shows it once
    the bar's person confirms.
 3. Check, as the Bar Manager 1.0: Transfers → Request stock from the Main Store lists them too.
+
+## Releasing UX audit 3's serious findings and dark by default (ADR 052)
+
+One migration (closing and withdrawing orders, the desk receives and sends its departments'
+orders). No stack change, nothing to re-import.
+
+1. Merge, then **Deploy** as usual (the migration runs with it). `cdk diff` shows nothing.
+2. Check, as anyone: the app opens dark; the sun button right of the bell switches to light and
+   the choice stays after a reload.
+3. Check, as the Executive Chef 1.0: ask for supplies. As the Store Keeper 1.0: Home starts with
+   **To order**, and the To do list badge counts it. Order it, then send it from the order
+   (WhatsApp, email or print).
+4. Check, as the Executive Chef 1.0: Orders → **On the way** lists it with no ₹; opening it
+   shows no receive form. Things I asked for shows it as a Supply request with its items.
+5. Check, as the Store Keeper 1.0: receive part of it, then **Rest is not coming** with a
+   reason: the order says **closed**. The General Manager 1.0 has a notification.
+6. Check, as the Store Keeper 1.0: Stock lists first, then **Send stock**, Count, Record
+   wastage; Ask for supplies is a small link.

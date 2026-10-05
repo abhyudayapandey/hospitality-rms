@@ -87,6 +87,15 @@ test('store to store in one outlet: the main store keeper sends, the kitchen’s
   await signInAs(page, 'Test Executive Chef 1.0');
   await page.goto('/inbox');
   await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
+  // nothing filled in (ADR 052): a shortfall is counted, not assumed away
+  const rice = page.getByRole('textbox', { name: 'Received Test Basmati Rice' });
+  await expect(rice).toHaveValue('');
+  await page.getByRole('button', { name: 'Confirm receipt' }).click();
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'Enter what arrived of Test Basmati Rice' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Everything arrived' }).click();
+  await expect(rice).toHaveValue('2');
   await page.getByRole('button', { name: 'Confirm receipt' }).click();
   await expect(page.getByRole('status')).toHaveText('Received.');
   await runExecutor();

@@ -27,6 +27,8 @@ import {
   type SearchParams,
 } from '@/lib/inventory';
 
+const storeOfRow = (r: StockRow, node: string) => (r as Partial<StockRowAll>).store_id ?? node;
+
 // The one Stock screen (ADR 048): four tabs, All, Running low, Expiring and Expired, and the
 // Place picker with "All stores" first (ADR 038). Home's counts, the banners, the menu and
 // old push links all arrive here, on the tab that matches what they counted.
@@ -70,7 +72,28 @@ export default async function StockPage({ searchParams }: { searchParams: Search
              where delivery_node_id = ${node.id}::uuid and status = 'submitted'`.execute(tx)
           ).rows[0]?.at ?? null)
         : null;
-    return { rows, dated, transit, last, settings: await companySettings(tx) };
+    const main = await sql<{ m: boolean }>`select inv.is_main_store(${node.id}::uuid) as m`.execute(
+      tx,
+    );
+    // Running low: where the person may ask for (or order) what is low, per store (ADR 052)
+    const lowStores =
+      tab === 'low'
+        ? (
+            await sql<{ id: string; main: boolean }>`
+              select x.id::text, inv.is_main_store(x.id) as main
+                from unnest(${[...new Set(rows.filter((r) => isLow(r)).map((r) => storeOfRow(r, node.id)))]}::uuid[]) x(id)
+               where core.can('PURCHASE_ORDERS', 'modify', null, x.id)`.execute(tx)
+          ).rows
+        : [];
+    return {
+      rows,
+      dated,
+      transit,
+      last,
+      mainStore: main.rows[0]?.m ?? false,
+      lowStores,
+      settings: await companySettings(tx),
+    };
   });
   const { rows, dated } = data;
   const due = adjust && !all ? countDue(data.last, data.settings.count_due_days) : null;
@@ -86,18 +109,20 @@ export default async function StockPage({ searchParams }: { searchParams: Search
     expired: dated.expired.length,
   };
   const actions = all
-    ? []
+    ? { main: [], more: [] }
     : hubActions(
         {
           adjust,
           order: ctx.can('PURCHASE_ORDERS', 'modify') && !node.derived,
           request: ctx.can('TRANSFERS', 'modify') && !node.derived && node.holds_stock,
+          mainStore: data.mainStore,
         },
         q,
       );
+  const storeNames = new Map(ctx.nodes.map((n) => [n.id, n.name]));
   const attention = 'flex min-h-14 items-center gap-3 rounded-xl px-4 py-2 ring-1';
   const categories = [...new Set(shown.map((r) => r.category))];
-  const storeOf = (r: StockRow) => (r as Partial<StockRowAll>).store_id ?? node.id;
+  const storeOf = (r: StockRow) => storeOfRow(r, node.id);
   return (
     <div className="space-y-4">
       <PollRefresh />
@@ -137,20 +162,6 @@ export default async function StockPage({ searchParams }: { searchParams: Search
             </Link>
           )}
         </div>
-      )}
-      {actions.length > 0 && (
-        <nav aria-label="Stock jobs" className="grid grid-cols-2 gap-2">
-          {actions.map((a) => (
-            <Link
-              key={a.key}
-              href={a.href}
-              className="flex min-h-14 items-center gap-2 rounded-xl bg-white px-3 font-medium shadow-sm ring-1 ring-slate-200"
-            >
-              <Icon name={a.icon} className="size-5 text-brand-700" />
-              {a.label}
-            </Link>
-          ))}
-        </nav>
       )}
       <ViewTabs
         label="Stock view"
@@ -235,6 +246,49 @@ export default async function StockPage({ searchParams }: { searchParams: Search
                   ))}
               </ul>
             </section>
+          ))}
+        </div>
+      )}
+      {/* Running low: ask for (or order) what is low, store by store (ADR 052) */}
+      {tab === 'low' && data.lowStores.length > 0 && (
+        <div className="space-y-2" data-testid="order-low">
+          {data.lowStores.map((st) => (
+            <Link
+              key={st.id}
+              href={`/stock/orders/new?node=${st.id}`}
+              className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 px-3 text-center font-medium text-white"
+            >
+              {st.main ? 'Order these' : 'Ask for these'}
+              {all || data.lowStores.length > 1 ? ` · ${storeNames.get(st.id) ?? ''}` : ''}
+            </Link>
+          ))}
+        </div>
+      )}
+      {/* the list first, then the store's jobs (ADR 051, 052) */}
+      {actions.main.length > 0 && (
+        <nav aria-label="Stock jobs" className="grid grid-cols-2 gap-2">
+          {actions.main.map((a) => (
+            <Link
+              key={a.key}
+              href={a.href}
+              className="flex min-h-14 items-center gap-2 rounded-xl bg-white px-3 font-medium shadow-sm ring-1 ring-slate-200"
+            >
+              <Icon name={a.icon} className="size-5 text-brand-700" />
+              {a.label}
+            </Link>
+          ))}
+        </nav>
+      )}
+      {actions.more.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-x-6" data-testid="stock-more">
+          {actions.more.map((a) => (
+            <Link
+              key={a.key}
+              href={a.href}
+              className="flex min-h-11 items-center text-sm font-medium text-brand-700 underline"
+            >
+              {a.label}
+            </Link>
           ))}
         </div>
       )}

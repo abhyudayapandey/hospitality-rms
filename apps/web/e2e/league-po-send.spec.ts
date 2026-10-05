@@ -77,13 +77,21 @@ test('the owner sets the targets; a figure worse by more than 2 points shows red
   }
 });
 
-test('the executive chef sends a released order on WhatsApp and prints it', async ({ page }) => {
+test('the Main Store keeper sends the order they placed on WhatsApp and prints it; the chef follows it', async ({
+  page,
+}) => {
   const po = await dairyOrder();
   // WhatsApp opens outside the app: answer it here instead
   await page.route('https://wa.me/**', (route) =>
     route.fulfill({ status: 200, contentType: 'text/html', body: '<p>WhatsApp</p>' }),
   );
+  // the kitchen's order goes through the Main Store (ADR 049, 052): the chef follows it
   await signInAs(page, 'Test Executive Chef 1.0');
+  await page.goto(`/stock/orders/${po}`);
+  await expect(page.getByTestId('po-progress')).toHaveText('on the way');
+  await expect(page.getByTestId('send-card')).toHaveCount(0);
+
+  await signInAs(page, 'Test Store Keeper 1.0');
   await page.goto(`/stock/orders/${po}`);
   const card = page.getByTestId('send-card');
   const whatsapp = card.getByRole('button', { name: 'WhatsApp' });
@@ -97,7 +105,7 @@ test('the executive chef sends a released order on WhatsApp and prints it', asyn
 
   await page.goto(`/stock/orders/${po}`);
   await expect(page.getByTestId('sends')).toContainText(
-    'Sent on WhatsApp by Test Executive Chef 1.0',
+    'Sent on WhatsApp by Test Store Keeper 1.0',
   );
   await page.getByTestId('send-card').getByRole('button', { name: 'Print' }).click();
   await expect(page).toHaveURL(new RegExp(`/stock/orders/${po}/print`));

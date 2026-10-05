@@ -10,7 +10,7 @@ export const FIRST_RUN: Readonly<Record<NavProfile, readonly string[]>> = {
     'Everything else is under Me.',
   ],
   store: [
-    'The four big buttons are your day: receive, send, running low, count.',
+    'The big buttons are your day: to order, receive, send, running low, count.',
     'Search an item in Stock to see what is left.',
     'Everything else is under Me.',
   ],

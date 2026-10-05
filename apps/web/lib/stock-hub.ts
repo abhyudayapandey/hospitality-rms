@@ -1,7 +1,8 @@
-// The Stock screen as a store's hub (UX-4, ADR 035): what needs doing first (running low,
-// expiring, stock on its way here, a count that is due), then four buttons for the jobs a
-// store does (Count, Record wastage, Order, Request stock), then the list. Pure, so it can
-// be unit tested; access still comes from core.can through the pages and RPCs.
+// The Stock screen as a store's hub (UX-4, ADR 035, 052): what needs doing first (stock on
+// its way here, a count that is due), the list, then the jobs a store does. A department's
+// store counts, records wastage and asks (for supplies, for stock); the Main Store sends
+// stock out, counts and records wastage, and asking is a small link there (ADR 051). Pure, so
+// it can be unit tested; access still comes from core.can through the pages and RPCs.
 
 import type { IconName } from '@/components/icon';
 
@@ -32,38 +33,61 @@ export function countDueText(c: CountDue): string {
 export interface HubAccess {
   /** STOCK_ADJUSTMENTS modify at a store they count (not a view-only place) */
   adjust: boolean;
-  /** PURCHASE_ORDERS modify */
+  /** PURCHASE_ORDERS modify: asking for supplies */
   order: boolean;
-  /** TRANSFERS modify at a place that holds stock */
+  /** TRANSFERS modify at a place that holds stock: sending or asking for stock */
   request: boolean;
+  /** the outlet's Main Store, which supplies the departments (ADR 049, 051) */
+  mainStore: boolean;
 }
 
 export interface HubAction {
-  key: 'count' | 'wastage' | 'order' | 'request';
+  key: 'send' | 'count' | 'wastage' | 'order' | 'request';
   label: string;
   href: string;
   icon: IconName;
 }
 
-/** The buttons the person may use here, in the order a store works. */
-export function hubActions(a: HubAccess, q: string): HubAction[] {
-  const all: (HubAction & { ok: boolean })[] = [
-    { key: 'count', label: 'Count', href: `/stock/count?${q}`, icon: 'clipboard', ok: a.adjust },
-    {
-      key: 'wastage',
-      label: 'Record wastage',
-      href: `/stock/wastage?${q}`,
-      icon: 'trash',
-      ok: a.adjust,
-    },
-    { key: 'order', label: 'Order', href: `/stock/orders/new?${q}`, icon: 'cart', ok: a.order },
-    {
-      key: 'request',
-      label: 'Request stock',
-      href: `/stock/transfers/new?${q}`,
-      icon: 'truck',
-      ok: a.request,
-    },
-  ];
-  return all.filter((x) => x.ok).map(({ ok: _ok, ...x }) => x);
+/** The store's jobs: `main` as buttons, in the order a store works; `more` as small links. */
+export function hubActions(a: HubAccess, q: string): { main: HubAction[]; more: HubAction[] } {
+  const send = {
+    key: 'send',
+    label: 'Send stock',
+    href: `/stock/transfers/send?${q}`,
+    icon: 'truck',
+    ok: a.request && a.mainStore,
+  } as const;
+  const count = {
+    key: 'count',
+    label: 'Count',
+    href: `/stock/count?${q}`,
+    icon: 'clipboard',
+    ok: a.adjust,
+  } as const;
+  const wastage = {
+    key: 'wastage',
+    label: 'Record wastage',
+    href: `/stock/wastage?${q}`,
+    icon: 'trash',
+    ok: a.adjust,
+  } as const;
+  const order = {
+    key: 'order',
+    label: 'Ask for supplies',
+    href: `/stock/orders/new?${q}`,
+    icon: 'cart',
+    ok: a.order,
+  } as const;
+  const request = {
+    key: 'request',
+    label: 'Request stock',
+    href: `/stock/transfers/new?${q}`,
+    icon: 'box',
+    ok: a.request,
+  } as const;
+  const pick = (xs: readonly (HubAction & { ok: boolean })[]) =>
+    xs.filter((x) => x.ok).map(({ ok: _ok, ...x }) => x);
+  return a.mainStore
+    ? { main: pick([send, count, wastage]), more: pick([order, request]) }
+    : { main: pick([count, wastage, order, request]), more: [] };
 }

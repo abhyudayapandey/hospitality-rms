@@ -7,6 +7,7 @@ import { formatMoney, formatWhen } from '@/lib/format';
 import {
   formatQty,
   PO_PROGRESS as PROGRESS,
+  SUPPLY_PROGRESS,
   supplyContext,
   type SearchParams,
 } from '@/lib/inventory';
@@ -17,6 +18,7 @@ import { ReceiveForm, type ReceiveLine } from './receive-form';
 import { PlaceOrderForm, type PlaceLine } from './place-order-form';
 import { SendCard } from './send-card';
 import { BillForm } from '../../bills/bill-form';
+import { CloseOrder, WithdrawRequest } from './close-order';
 
 const CHANNEL = { whatsapp: 'on WhatsApp', email: 'by email', print: 'printed' } as const;
 
@@ -101,10 +103,34 @@ export default async function OrderPage({
                             where gl.po_line_id = pl.id), 0) as received
             from inv.purchase_order_line pl join inv.item i on i.id = pl.item_id
            where pl.po_id = ${id}::uuid order by i.name`.execute(tx);
-    const sends = po.rows[0]
-      ? await sql<{ channel: 'whatsapp' | 'email' | 'print'; sent_at: Date; sent_by_name: string }>`
+    // the supplier's contact, for the desk too, which sends the order it placed (ADR 052)
+    const supplierId = row?.supplier_id ?? null;
+    const contact = supplierId
+      ? (
+          await sql<{ phone: string | null; email: string | null }>`
+            select phone, contact as email from inv.supplier where id = ${supplierId}::uuid`.execute(
+            tx,
+          )
+        ).rows[0]
+      : undefined;
+    // the Main Store orders and receives it for this store (ADR 049, 052); who asked; why closed
+    const facts = await sql<{ via_desk: boolean; mine: boolean }>`
+      select inv.via_desk(${id}::uuid) as via_desk,
+             exists (select 1 from inv.purchase_order_summary
+                      where id = ${id}::uuid and created_by = core.current_user_id()) as mine`.execute(
+      tx,
+    );
+    const closed = await sql<{ closed_at: Date; closed_by: string | null; reason: string }>`
+      select * from inv.po_closed(${id}::uuid)`.execute(tx);
+    const sends =
+      po.rows[0] || canPlace
+        ? await sql<{
+            channel: 'whatsapp' | 'email' | 'print';
+            sent_at: Date;
+            sent_by_name: string;
+          }>`
           select channel, sent_at, sent_by_name from inv.po_sends(${id}::uuid)`.execute(tx)
-      : { rows: [] };
+        : { rows: [] };
     // the bills for this order (BIL-1, ADR 050), for whoever sees or places it
     const bills = await sql<{
       id: string;
@@ -126,8 +152,11 @@ export default async function OrderPage({
           ).rows
         : [];
     return {
-      po: row,
+      po: row ? { ...row, phone: contact?.phone ?? null, email: contact?.email ?? null } : row,
       canPlace,
+      viaDesk: facts.rows[0]?.via_desk ?? false,
+      mine: facts.rows[0]?.mine ?? false,
+      closed: closed.rows[0] ?? null,
       lines: lines.rows,
       suppliers,
       sends: sends.rows,
@@ -139,7 +168,12 @@ export default async function OrderPage({
   });
   if (!data.po) return <Empty>Order not found.</Empty>;
   const { po, lines, sends, prices, canPlace, suppliers, bills, receivedValue, billMissing } = data;
-  const supplierName = po.supplier ?? 'Supplies request';
+  const supplierName = po.supplier ?? 'Supply request';
+  // a department's order that its Main Store places and receives: the department follows it,
+  // "on the way" with its date, and neither receives it nor sees what it cost (ADR 052)
+  const follow = data.viaDesk && !canPlace;
+  // who runs this order: the store's own keeper, or the Main Store's for a department
+  const runs = canPlace || (po.can_modify && !data.viaDesk);
   // PO-4 (ADR 032): a released order goes to the supplier from this phone
   const message = {
     store: po.store,
@@ -157,21 +191,27 @@ export default async function OrderPage({
   };
   const text = orderText(message);
   const canSend =
-    po.can_modify &&
+    runs &&
     po.status === 'released' &&
     po.supplier_id !== null &&
-    po.progress !== 'to_order';
-  const [label, style] = PROGRESS[po.progress] ?? [po.progress, ''];
-  const canReceive =
-    (po.can_modify || canPlace) &&
-    (po.progress === 'released' || po.progress === 'partially_received');
+    po.progress !== 'to_order' &&
+    po.progress !== 'closed';
+  const [label, style] = (follow ? SUPPLY_PROGRESS : PROGRESS)[po.progress] ?? [po.progress, ''];
+  const open = po.progress === 'released' || po.progress === 'partially_received';
+  const canReceive = runs && open;
   // what was paid, from the receipts (ADR 051); the order's own prices are only estimates
-  const paid = receivedValue && Number(receivedValue) > 0 ? receivedValue : null;
+  const paid = !follow && receivedValue && Number(receivedValue) > 0 ? receivedValue : null;
+  // whoever asked may withdraw it until it is ordered (ADR 052)
+  const canWithdraw =
+    data.mine && (po.progress === 'to_order' || po.progress === 'awaiting_approval');
   // the status sits in the header only when there is nothing to do here
   const showStatus = !canReceive && !(canPlace && po.progress === 'to_order');
   return (
     <div className="space-y-4">
-      <Link href={`/stock/orders?node=${po.delivery_node_id}`} className="text-sm text-slate-600">
+      <Link
+        href={`/stock/orders?node=${canPlace && data.viaDesk ? ctx.node.id : po.delivery_node_id}`}
+        className="text-sm text-slate-600"
+      >
         ← Orders
       </Link>
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
@@ -189,7 +229,7 @@ export default async function OrderPage({
           </span>
         </div>
         <p className="text-sm text-slate-600">
-          For {po.store} · ordered {formatWhen(po.created_at)}
+          For {po.store} · {follow ? 'asked' : 'ordered'} {formatWhen(po.created_at)}
           {po.expected_on && ` · due ${new Date(po.expected_on).toISOString().slice(0, 10)}`}
         </p>
         {paid && (
@@ -206,6 +246,16 @@ export default async function OrderPage({
           </p>
         )}
         {po.notes && <p className="mt-1 text-sm">{po.notes}</p>}
+        {data.closed && (
+          <p className="mt-2 rounded-lg bg-slate-100 p-2 text-sm" data-testid="po-closed">
+            {po.progress === 'withdrawn' ? 'Withdrawn' : 'Closed: the rest is not coming'}
+            {data.closed.closed_by && ` · by ${data.closed.closed_by}`},{' '}
+            {formatWhen(data.closed.closed_at)}
+            {data.closed.reason !== 'withdrawn' && (
+              <span className="block text-slate-600">{data.closed.reason}</span>
+            )}
+          </p>
+        )}
       </div>
       {canSend && (
         <SendCard
@@ -261,15 +311,17 @@ export default async function OrderPage({
               <span className="text-right tabular-nums">
                 {formatQty(l.ordered, l.base_uom)}
                 <span className="block text-xs text-slate-500">
-                  received {formatQty(l.received, l.base_uom)}
+                  {follow ? 'arrived' : 'received'} {formatQty(l.received, l.base_uom)}
                 </span>
               </span>
             </li>
           ))}
         </ul>
       )}
+      {canReceive && <CloseOrder po={po.id} />}
+      {canWithdraw && <WithdrawRequest po={po.id} />}
       {/* the bill, once something has arrived (ADR 050, 051) */}
-      {paid !== null && (bills.length > 0 || po.can_modify || canPlace) && (
+      {paid !== null && (bills.length > 0 || runs) && (
         <section className="space-y-2" data-testid="po-bills">
           <h2 className="text-sm font-semibold text-slate-500">Bill</h2>
           {bills.length > 0 && (
@@ -294,7 +346,7 @@ export default async function OrderPage({
               ))}
             </ul>
           )}
-          {(po.can_modify || canPlace) && (
+          {runs && (
             // while more is to come the receive form takes the bill; this one is for later
             <details
               open={bills.length === 0 && !canReceive}
@@ -320,7 +372,7 @@ export default async function OrderPage({
           )}
         </section>
       )}
-      {po.can_modify && po.supplier_id && (
+      {runs && po.supplier_id && (
         <ContactForm supplier={po.supplier_id} phone={po.phone} email={po.email} />
       )}
     </div>

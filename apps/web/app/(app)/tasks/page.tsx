@@ -27,24 +27,6 @@ export default async function MyTasksPage() {
     <div className="space-y-4">
       <PollRefresh />
       <TasksHeader tabs={data.tabs} active="/tasks" title="Tasks" />
-      <div className="grid grid-cols-2 gap-2">
-        {data.tabs.create && (
-          <Link
-            href="/tasks/new"
-            className="flex min-h-12 items-center justify-center rounded-xl bg-brand-700 font-medium text-white"
-          >
-            New task
-          </Link>
-        )}
-        {data.tabs.maintenance && (
-          <Link
-            href="/tasks/maintenance/new"
-            className="flex min-h-12 items-center justify-center rounded-xl bg-white font-medium ring-1 ring-slate-300"
-          >
-            Report a problem
-          </Link>
-        )}
-      </div>
       {data.fixes.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-500">Repairs for you</h2>
@@ -85,6 +67,25 @@ export default async function MyTasksPage() {
             </section>
           ))
       )}
+      {/* the list first, then what to do (ADR 051) */}
+      <div className="grid grid-cols-2 gap-2">
+        {data.tabs.create && (
+          <Link
+            href="/tasks/new"
+            className="flex min-h-12 items-center justify-center rounded-xl bg-brand-700 font-medium text-white"
+          >
+            New task
+          </Link>
+        )}
+        {data.tabs.maintenance && (
+          <Link
+            href="/tasks/maintenance/new"
+            className="flex min-h-12 items-center justify-center rounded-xl bg-white font-medium ring-1 ring-slate-300"
+          >
+            Report a problem
+          </Link>
+        )}
+      </div>
     </div>
   );
 }

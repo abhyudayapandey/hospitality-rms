@@ -105,6 +105,12 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   buttons. A store's main action is what it does: the Main Store sends and receives, so asking
   for stock or supplies is a small secondary link there. Receiving records the amount paid
   per item (required); a received order with no bill shows "Bill missing".
+- A tab's count is the whole list, counted in SQL; long lists show 30 then "Show more"
+  (ADR 052). Nothing is pre-filled where a person confirms what arrived. A department follows
+  the orders its Main Store places for it ("on the way", no ₹) and never receives them; the
+  keeper closes an order whose rest is not coming ("closed"), whoever asked withdraws one not
+  yet ordered. A request to the Main Store is a "Supply request". Dark is the default theme
+  (`html[data-theme]`, `lib/theme.ts`); colours come from the palette, never hard-coded.
 
 ## Commands
 ```

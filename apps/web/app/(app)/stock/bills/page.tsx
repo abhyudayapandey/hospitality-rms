@@ -29,7 +29,8 @@ interface WaitingRow {
   id: string;
   supplier: string | null;
   store_id: string;
-  total: string;
+  /** what was received and what it cost (the receipts), never the order's estimate */
+  received: string;
   released_at: Date | null;
 }
 
@@ -61,12 +62,12 @@ export default async function BillsPage({ searchParams }: { searchParams: Search
        limit 50`.execute(tx);
     // orders received in the last 60 days with no bill yet
     const w = await sql<WaitingRow>`
-      select po.id, s.name as supplier, po.delivery_node_id::text as store_id, po.total,
-             po.released_at
+      select po.id, s.name as supplier, po.delivery_node_id::text as store_id,
+             inv.po_received_value(po.id) as received, po.released_at
         from inv.purchase_order_summary po
         left join inv.supplier s on s.id = po.supplier_id
        where po.delivery_node_id = any(${nodes}::uuid[])
-         and po.progress in ('partially_received', 'received')
+         and po.received_qty > 0
          and po.released_at > now() - interval '60 days'
          and not exists (select 1 from inv.bill b where b.po_id = po.id and b.archived_at is null)
        order by po.released_at desc
@@ -119,7 +120,12 @@ export default async function BillsPage({ searchParams }: { searchParams: Search
                         </span>
                       )}
                     </span>
-                    <span className="tabular-nums">{formatMoney(o.total)}</span>
+                    <span className="text-right text-sm text-slate-600">
+                      received for{' '}
+                      <span className="font-semibold text-slate-900 tabular-nums">
+                        {formatMoney(o.received)}
+                      </span>
+                    </span>
                   </span>
                   <span className="mt-1 block text-sm text-slate-600">
                     Ordered {day(o.released_at)} · Add the bill

@@ -53,6 +53,8 @@ export interface TodayNumbers {
 
 /** The store keeper's four jobs (UX-6): what waits at the stores they keep. */
 export interface StoreWork {
+  /** the departments' supply requests waiting for this order desk to order (ADR 049, 052) */
+  toOrder: number;
   /** orders sent to suppliers, not yet received in full */
   receive: number;
   /** transfers waiting to be sent from their stores */
@@ -82,11 +84,20 @@ export interface TodayLeague {
   rows: LeagueRow[];
 }
 
+/** A repair assigned to the person, not done yet (ADR 052): Home's Next shows it. */
+export interface MyRepair {
+  id: string;
+  title: string;
+  place_name: string;
+  status: string;
+}
+
 export interface Today {
   profile: NavProfile;
   shift: MyShift | null;
   punch: OpenPunch | null;
   tasks: MyTask[];
+  repairs: MyRepair[];
   /** the first few requests waiting for them, and how many in all */
   approvals: { shown: InboxEntry[]; total: number; toAssign: number };
   attention: AttentionGroup[] | null;
@@ -116,6 +127,14 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       atWork && shell.domains.has('ROSTER') ? await myShifts(tx, addDays(today, -1), 2) : [];
     const punch = atWork ? await openPunch(tx) : null;
     const tasks = shell.domains.has('TASKS') ? await myTasks(tx) : [];
+    // repairs given to them (the technician's work): with the module on
+    const repairs = (
+      await sql<MyRepair>`
+        select id::text, title, place_name, status from ops.maintenance_requests()
+         where assigned_to = core.current_user_id() and status <> 'done'
+           and (select "on" from core.my_modules() where code = 'maintenance')
+         order by created_at`.execute(tx)
+    ).rows;
     const inbox = await inboxEntries(tx);
     // expired items waiting to be given to someone; repairs waiting are the repairs count
     const assign = lead ? (await toAssign(tx)).filter((x) => x.kind === 'expiry').length : 0;
@@ -197,8 +216,9 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     // the store keeper's tiles (UX-6): the stores they see, under RLS
     let store: StoreWork | null = null;
     if (profile === 'store' && shell.domains.has('STOCK_LEVELS')) {
-      const r = await sql<{ receive: number; low: number }>`
-        select (select count(*) from (
+      const r = await sql<{ to_order: number; receive: number; low: number }>`
+        select (select count(*) from inv.desk_orders() where stage = 'to_order')::int as to_order,
+               (select count(*) from (
                   select id from inv.purchase_order_summary
                    where progress in ('released', 'partially_received')
                   union
@@ -215,6 +235,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
         tx,
       );
       store = {
+        toOrder: r.rows[0]?.to_order ?? 0,
         receive: r.rows[0]?.receive ?? 0,
         low: r.rows[0]?.low ?? 0,
         issue: inbox.filter((e) => e.processType === 'TRANSFER' && e.step === 'dispatch').length,
@@ -285,6 +306,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       shift: currentShift(shifts, now),
       punch,
       tasks,
+      repairs,
       approvals: { shown: inbox.slice(0, HOME_APPROVALS), total: inbox.length, toAssign: assign },
       attention,
       openSlotsHref,

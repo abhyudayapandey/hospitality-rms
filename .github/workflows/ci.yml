@@ -90,7 +90,13 @@ jobs:
       - run: pnpm db:migrate
       - run: pnpm db:seed
       - name: DB tests (shard ${{ matrix.shard }} of 2)
-        run: pnpm exec vitest run --project db --shard=${{ matrix.shard }}/2
+        run: >-
+          pnpm exec vitest run --project db --shard=${{ matrix.shard }}/2
+          --reporter=default --reporter=json --outputFile=db-times.json
+      # each file's seconds on CI's machines, for the shard weights (sequencer.ts, ADR 052)
+      - name: DB test times (shard ${{ matrix.shard }})
+        if: always()
+        run: test -f db-times.json && node packages/db/test/print-times.mjs db-times.json || true
 
   e2e:
     runs-on: ubuntu-latest

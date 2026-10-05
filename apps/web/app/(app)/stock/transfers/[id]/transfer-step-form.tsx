@@ -26,8 +26,9 @@ const n = (v: string | null) => (v === null ? null : Number(v));
 
 /**
  * Dispatch (hub): what is sent, defaulting to the request; Reject is still possible.
- * Receive (outlet): what arrived, defaulting to what was sent; no reject once in transit,
- * any shortfall is recorded as transit loss. Read-only otherwise.
+ * Receive (outlet): what arrived, nothing filled in (ADR 052), so a shortfall is counted, not
+ * assumed away; "Everything arrived" fills what was sent. No reject once in transit, any
+ * shortfall is recorded as transit loss. Read-only otherwise.
  */
 export function TransferStepForm({
   transfer,
@@ -42,12 +43,9 @@ export function TransferStepForm({
 }) {
   const router = useRouter();
   const [qty, setQty] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      lines.map((l) => [
-        l.item_id,
-        String(mode === 'receive' ? (n(l.dispatched_qty) ?? 0) : n(l.requested_qty)),
-      ]),
-    ),
+    mode === 'receive'
+      ? {}
+      : Object.fromEntries(lines.map((l) => [l.item_id, String(n(l.requested_qty))])),
   );
   const [pending, start] = useTransition();
   const hydrated = useHydrated();
@@ -57,6 +55,12 @@ export function TransferStepForm({
   const confirm = () =>
     start(async () => {
       setError(null);
+      const missing =
+        mode === 'receive' ? lines.find((l) => !(qty[l.item_id] ?? '').trim()) : undefined;
+      if (missing) {
+        setError(`Enter what arrived of ${missing.name} (0 if nothing).`);
+        return;
+      }
       const payload = lines.map((l) => ({ item_id: l.item_id, qty: Number(qty[l.item_id] || 0) }));
       const r =
         mode === 'dispatch'
@@ -102,6 +106,22 @@ export function TransferStepForm({
           store keeper issues it.
         </p>
       )}
+      {mode === 'receive' && !done && (
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-slate-500">What arrived</h2>
+          <button
+            type="button"
+            className="min-h-11 text-sm font-medium text-brand-700 underline"
+            onClick={() =>
+              setQty(
+                Object.fromEntries(lines.map((l) => [l.item_id, String(n(l.dispatched_qty) ?? 0)])),
+              )
+            }
+          >
+            Everything arrived
+          </button>
+        </div>
+      )}
       <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
         {lines.map((l) => (
           <li key={l.item_id} className="flex items-center justify-between gap-3 px-4 py-2">
@@ -117,6 +137,7 @@ export function TransferStepForm({
               <input
                 id={`q-${l.item_id}`}
                 aria-label={`${mode === 'dispatch' ? 'Send' : 'Received'} ${l.name}`}
+                placeholder={mode === 'receive' ? '0 if nothing' : undefined}
                 inputMode="decimal"
                 value={qty[l.item_id] ?? ''}
                 onChange={(e) => setQty((v) => ({ ...v, [l.item_id]: e.target.value }))}
