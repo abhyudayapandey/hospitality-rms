@@ -469,6 +469,19 @@ begin
   execute replace(replace(v_src, v_old, v_new), v_end_old, v_end_new);
 end $$;
 
+-- the test data's past orders name their supplier, so they are ordered when released
+do $$
+declare
+  v_src text := pg_get_functiondef('inv.record_test_release(uuid, timestamptz)'::regprocedure);
+  v_old text := E'  update inv.purchase_order set status = ''released'', released_at = p_at where id = p_po;\n';
+  v_new text := E'  update inv.purchase_order set status = ''released'', released_at = p_at,\n         ordered_at = case when supplier_id is not null then p_at end\n   where id = p_po;\n';
+begin
+  if position(v_old in v_src) = 0 then
+    raise exception 'inv.record_test_release changed; update this migration';
+  end if;
+  execute replace(v_src, v_old, v_new);
+end $$;
+
 revoke execute on all functions in schema inv from public;
 grant execute on function
   inv.request_supplies(uuid, jsonb, text, text),
@@ -479,6 +492,14 @@ grant execute on function
   to app_rw;
 
 -- migrate:down
+do $$
+declare
+  v_src text := pg_get_functiondef('inv.record_test_release(uuid, timestamptz)'::regprocedure);
+  v_new text := E'  update inv.purchase_order set status = ''released'', released_at = p_at where id = p_po;\n';
+  v_old text := E'  update inv.purchase_order set status = ''released'', released_at = p_at,\n         ordered_at = case when supplier_id is not null then p_at end\n   where id = p_po;\n';
+begin
+  execute replace(v_src, v_old, v_new);
+end $$;
 -- never used on deployed data: put the schema back (requests without a supplier cannot be
 -- kept, so the down only works while there are none)
 drop function inv.order_lines_for_desk(uuid);
