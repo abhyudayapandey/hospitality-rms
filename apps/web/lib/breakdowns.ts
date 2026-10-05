@@ -93,6 +93,8 @@ export function selectedPeriod(
   if (points.length === 0) return null;
   const chosen =
     points.find((p) => p.period === at) ??
+    // the latest period with something in it: a Monday's week so far is still empty
+    [...points].reverse().find((p) => p.value !== null && Number(p.value) !== 0) ??
     [...points].reverse().find((p) => p.value !== null) ??
     points[points.length - 1]!;
   const end = periodEnd(by, chosen.period);
