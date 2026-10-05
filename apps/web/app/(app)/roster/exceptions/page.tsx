@@ -128,7 +128,10 @@ export default async function ExceptionsPage({ searchParams }: { searchParams: S
                   rows={g.rows.map((e) => ({
                     key: e.id,
                     text: `${e.worker_name} ${EXCEPTION_LABEL[e.kind] ?? e.kind}`,
-                    attrs: { className: 'rounded-xl bg-white p-4 ring-1 ring-slate-200' },
+                    attrs: {
+                      className: 'rounded-xl bg-white p-4 ring-1 ring-slate-200',
+                      'data-testid': 'exception',
+                    },
                     node: (
                       <>
                         <div className="flex items-start justify-between gap-2">

@@ -138,5 +138,23 @@ test('People report: a department opens the names of the people in it', async ({
   await kitchen.getByRole('link').click();
   await page.waitForURL(/\/team\/people\?node=/);
   await expect(page.getByTestId('person').first()).toBeVisible();
-  expect(await page.getByTestId('person').count()).toBeGreaterThanOrEqual(headcount);
+  // the department, not the outlet: as many people as the row says
+  expect(await viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen');
+  expect(await page.getByTestId('person').count()).toBe(headcount);
+});
+
+test("People report: the outlet's own row opens the people in no department, not everyone", async ({
+  page,
+}) => {
+  await signInAs(page, 'Test General Manager 1.0');
+  await page.goto('/reports/people');
+  const own = page.getByTestId('people-department').filter({ hasText: 'Not in a department' });
+  const headcount = Number((await own.locator('.tabular-nums').first().innerText()).split(' ')[0]);
+  await own.getByRole('link').click();
+  await page.waitForURL(/\/team\/people\?node=.*here=1/);
+  expect(await viewing(page)).toBe('Test Hotel & Bar 1.0');
+  await expect(page.getByTestId('person')).toHaveCount(headcount);
+  // and everyone at the outlet is one tap away
+  await page.getByTestId('people-everyone').click();
+  await expect(page.getByTestId('people-count')).not.toContainText('not in a department');
 });

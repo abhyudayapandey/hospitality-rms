@@ -85,3 +85,36 @@ test('Orders and Transfers: All stores, with To receive and To send tabs', async
   expect(await viewing(page)).toBe('All stores');
   await expect(page.getByTestId('tab-send')).toHaveAttribute('aria-current', 'page');
 });
+
+test("the GM: a department's line under All departments opens that department, not all", async ({
+  page,
+}) => {
+  await signInAs(page, 'Test General Manager 1.0');
+  await page.goto('/');
+  const groups = page.getByTestId('attention-card').getByTestId('attention-group');
+  const n = await groups.count();
+  let checked = 0;
+  for (let i = 0; i < n; i++) {
+    const g = groups.nth(i);
+    const label = (await g.getAttribute('aria-label')) ?? '';
+    if (label === 'Whole outlet') continue;
+    for (const link of await g.getByRole('link').all()) {
+      const href = (await link.getAttribute('href')) ?? '';
+      // never the all-places view from a department's own line
+      expect(href, `${label}: ${href}`).not.toContain('all=1');
+      expect(href, `${label}: ${href}`).toContain('node=');
+      checked++;
+    }
+  }
+  expect(checked).toBeGreaterThan(0);
+  // and an attendance line lands on its department with as many issues as it says
+  const line = groups.getByRole('link', { name: /attendance issue/ }).first();
+  if ((await line.count()) > 0) {
+    const want = Number((await line.locator('.tabular-nums').innerText()).trim());
+    const dept = await line.locator('xpath=ancestor::section[1]').getAttribute('aria-label');
+    await line.click();
+    await page.waitForURL(/\/roster\/exceptions\?node=/);
+    expect(await viewing(page)).toContain(dept!);
+    await expect(page.getByTestId('exception')).toHaveCount(want);
+  }
+});

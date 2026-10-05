@@ -91,7 +91,7 @@ export default async function PeopleReport({ searchParams }: { searchParams: Sea
               <li key={d.org_node_id} data-testid="people-department">
                 {named.has(d.org_node_id) ? (
                   <Link
-                    href={`/team/people?node=${d.org_node_id}`}
+                    href={`/team/people?node=${d.org_node_id}&here=1`}
                     className="block space-y-1 px-4 py-3 text-sm"
                   >
                     <DepartmentLine d={d} />
@@ -190,7 +190,11 @@ function DepartmentLine({ d }: { d: PeopleDepartmentRow }) {
   return (
     <>
       <div className="flex justify-between gap-2">
-        <span className="font-medium">{d.name.split(' – ').pop()}</span>
+        {/* a row counts the people placed at exactly that place: the outlet's own row is
+            the people in no department (the GM, the AGM), not the whole outlet */}
+        <span className="font-medium">
+          {d.name.includes(' – ') ? d.name.split(' – ').pop() : 'Not in a department'}
+        </span>
         <span className="tabular-nums">{d.headcount} people</span>
       </div>
       <p className="text-xs text-slate-500">

@@ -41,3 +41,13 @@ tell why.
 - A unit test pins every Home count's link; a new e2e spec taps each count and checks the
   screen, the tab, "All ..." and the length of the list.
 - The stock screen no longer has its own expiry banners; Home has them.
+
+## Addendum (5 Oct)
+
+The rule has a second half: **a row or line that names one place opens that place.** The
+GM's "All departments" list on Home linked each department's low stock, attendance issues and
+repairs to the all-departments view; each now opens its own department (its store for low
+stock), and what sits at the outlet itself opens the outlet. The People report's outlet row
+counted the people in no department (the GM, the AGM) but opened all 43; it now reads "Not in a
+department" and opens those people only (`/team/people?node=...&here=1`), with a link to everyone.
+In every case the list is as long as the row's count.

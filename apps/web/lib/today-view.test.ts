@@ -110,9 +110,20 @@ describe('attentionGroups (DB-2)', () => {
       'Whole outlet',
     ]);
     // a store's counts go to the department it serves; lines in a fixed order
+    // and each opens that department, not every place (ADR 048)
     expect(g[0]!.lines).toEqual([
-      { kind: 'lowStock', href: '/stock?all=1&tab=low', n: 5, text: 'items running low' },
-      { kind: 'flags', href: '/roster/exceptions?all=1', n: 1, text: 'attendance issue' },
+      {
+        kind: 'lowStock',
+        href: '/stock?node=kitchen-store&tab=low',
+        n: 5,
+        text: 'items running low',
+      },
+      {
+        kind: 'flags',
+        href: '/roster/exceptions?node=d-Test Hotel & Bar 1.0-Kitchen',
+        n: 1,
+        text: 'attendance issue',
+      },
     ]);
     // low stock is red; flags and repairs amber (UX-6)
     expect(g.map((x) => [x.label, x.tone, x.total])).toEqual([
@@ -122,6 +133,27 @@ describe('attentionGroups (DB-2)', () => {
       ['Housekeeping', 'warn', 1],
       ['Security', 'warn', 1],
       ['Whole outlet', 'warn', 2],
+    ]);
+  });
+
+  it("a department's line opens that department; the outlet's own opens the outlet", () => {
+    const g = attentionGroups(
+      [
+        { kind: 'repairs', node: 'hk', n: 2 },
+        { kind: 'flags', node: 'hk', n: 1 },
+        { kind: 'repairs', node: 'outlet', n: 1 },
+        { kind: 'flags', node: 'outlet', n: 1 },
+      ],
+      places,
+    );
+    const hk = 'd-Test Hotel & Bar 1.0-Housekeeping';
+    expect(g.map((x) => [x.label, x.lines.map((l) => l.href)])).toEqual([
+      [
+        'Housekeeping',
+        [`/roster/exceptions?node=${hk}`, `/tasks/maintenance?node=${hk}&tab=assign`],
+      ],
+      // attendance has no outlet-level place: the whole list; repairs at the outlet itself
+      ['Whole outlet', ['/roster/exceptions?all=1', '/tasks/maintenance?node=o1&tab=assign']],
     ]);
   });
 
