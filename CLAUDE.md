@@ -92,6 +92,9 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 - One screen per function (ADR 048): its tabs are its views (Stock: All, Running low, Expiring,
   Expired). A count on Home opens that screen on the matching tab with "All ..." chosen;
   build the link with `stockHref` / `listHref` (`apps/web/lib/stock-view.ts`), never by hand.
+- Supply requests (ADR 049): the requester gives items and quantities only; the Main Store's
+  keeper picks the supplier (optional) and the delivery date (`inv.place_order`), and the
+  department is told when it is ordered and received. Approval only for unusual requests.
 
 ## Commands
 ```

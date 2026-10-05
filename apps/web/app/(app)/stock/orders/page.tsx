@@ -5,9 +5,16 @@ import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatMoney, formatWhen } from '@/lib/format';
-import { PO_PROGRESS as PROGRESS, param, supplyContext, type SearchParams } from '@/lib/inventory';
+import {
+  deskOrders,
+  PO_PROGRESS as PROGRESS,
+  param,
+  supplyContext,
+  type SearchParams,
+} from '@/lib/inventory';
 import { ViewTabs } from '@/components/view-tabs';
 import { listHref } from '@/lib/stock-view';
+import { DeskOrders } from '@/components/desk-orders';
 
 export default async function OrdersPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await supplyContext(searchParams, 'orders');
@@ -18,10 +25,11 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
   const tab = param(sp, 'tab') === 'receive' ? 'receive' : 'all';
   const user = await requireUser();
   const node = ctx.node;
+  let desk: Awaited<ReturnType<typeof deskOrders>> = [];
   const rows = await withUser(user.id, async (tx) => {
     const r = await sql<{
       id: string;
-      supplier: string;
+      supplier: string | null;
       store_id: string;
       total: string;
       progress: string;
@@ -29,7 +37,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
     }>`
       select po.id, s.name as supplier, po.delivery_node_id::text as store_id, po.total, po.progress, po.created_at
         from inv.purchase_order_summary po
-        join inv.supplier s on s.id = po.supplier_id
+        left join inv.supplier s on s.id = po.supplier_id
        where ${
          all
            ? sql`po.delivery_node_id = any(${ctx.nodes.map((n) => n.id)}::uuid[])`
@@ -38,6 +46,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
          and (${tab === 'receive'} = false or po.progress in ('released', 'partially_received'))
        order by po.created_at desc limit 30`.execute(tx);
     const names = new Map(ctx.nodes.map((n) => [n.id, n.name]));
+    desk = await deskOrders(tx);
     return r.rows.map((x) => ({ ...x, store: names.get(x.store_id) ?? '' }));
   });
   const toReceive = rows.filter(
@@ -70,12 +79,13 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
           },
         ]}
       />
+      <DeskOrders rows={desk} />
       {!all && ctx.can('PURCHASE_ORDERS', 'modify') && !node.derived && (
         <Link
           href={`/stock/orders/new${q}`}
           className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
         >
-          New order
+          Ask for supplies
         </Link>
       )}
       {rows.length === 0 ? (
@@ -96,7 +106,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
                 >
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="font-medium">
-                      {r.supplier}
+                      {r.supplier ?? 'Supplies request'}
                       {all && (
                         <span
                           className="block text-xs font-normal text-slate-500"

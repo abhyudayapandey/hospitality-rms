@@ -27,7 +27,8 @@ export const STOCK_ADJUSTMENT: ProcessDef = {
 // PO-5 (ADR 044): department heads are responsible for orders. Menu ingredients in usual
 // quantities need no approval (every step is skipped and the order is approved at once); the
 // department head approves anything off the menu or more than usual, and the GM can approve
-// too. The area manager step above the value threshold stays.
+// too. No value limit and no area manager step (ADR 049): the person who raises a request
+// gives quantities, not prices.
 export const PURCHASE_ORDER: ProcessDef = {
   type: 'PURCHASE_ORDER',
   subject: 'inv.purchase_order',
@@ -42,12 +43,6 @@ export const PURCHASE_ORDER: ProcessDef = {
       alsoEscalateTo: true,
       fallback: ['AREA_MANAGER'], // a sole GM who is also the department head: the area manager
       when: { payload_true: 'unusual' },
-    },
-    {
-      step: 'area_approval',
-      group: 'AREA_MANAGER',
-      scope: 'nearest_ancestor', // resolved across trees via core.node_link
-      when: { amount_gt: 50000 },
     },
   ],
   onApproved: 'inv.po.release',

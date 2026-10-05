@@ -193,7 +193,6 @@ describe('PO-5: which orders need an approval', () => {
       expect(po.state).toBe('approved');
       expect(await steps(c, po.request)).toEqual([
         { step: 'department_approval', state: 'skipped' },
-        { step: 'area_approval', state: 'skipped' },
       ]);
     });
   });
@@ -260,10 +259,10 @@ describe('PO-5: which orders need an approval', () => {
     });
   });
 
-  it('keeps the area manager step above the value threshold, even for usual quantities', async () => {
+  it('has no value limit: a usual 60,000 order is approved at once (ADR 049)', async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c, 10000);
-      const l = [{ item_id: f.item('P5-ON'), qty: 6000, unit_cost: 10 }]; // 60,000, under 15,000? usual
+      const l = [{ item_id: f.item('P5-ON'), qty: 6000, unit_cost: 10 }];
       const { id } = await call<{ id: string }>(
         c,
         OLIVIA,
@@ -276,9 +275,8 @@ describe('PO-5: which orders need an approval', () => {
       );
       expect(await steps(c, rows[0]!.r)).toEqual([
         { step: 'department_approval', state: 'skipped' },
-        { step: 'area_approval', state: 'pending' },
       ]);
-      expect(await inbox(c, ARIA)).toContain(rows[0]!.r);
+      expect(await inbox(c, ARIA)).not.toContain(rows[0]!.r);
     });
   });
 });

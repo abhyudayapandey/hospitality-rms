@@ -212,7 +212,7 @@ async function assign(c: PoolClient, who: string, group: string, node: string) {
 }
 
 describe('purchase order routing', () => {
-  it('happy path: one approval only, area step recorded as skipped', async () => {
+  it('happy path: one approval only', async () => {
     await inRolledBackTx(async (c) => {
       const id = await submitOk(c, KIM, po(10_000));
       expect(await request(c, id)).toEqual({
@@ -227,7 +227,6 @@ describe('purchase order routing', () => {
           scope: 'TEST-BAR-3.0-SUPPLY', // Kim is the department head and asked: the GM
           grp: 'OUTLET_MANAGER',
         },
-        { step: 'area_approval', state: 'skipped', scope: null, grp: 'AREA_MANAGER' },
       ]);
       expect(await inbox(c, OLIVIA)).toContain(id);
       expect(await actOk(c, OLIVIA, id, 'approve')).toBe('approved');
@@ -235,7 +234,7 @@ describe('purchase order routing', () => {
     });
   });
 
-  it('adds the area step above the threshold and routes it across trees to the Area manager', async () => {
+  it('has no value limit and no area step: a large order needs the department approval only (ADR 049)', async () => {
     await inRolledBackTx(async (c) => {
       const id = await submitOk(c, KIM, po(60_000));
       expect(await steps(c, id)).toEqual([
@@ -245,14 +244,8 @@ describe('purchase order routing', () => {
           scope: 'TEST-BAR-3.0-SUPPLY', // Kim is the department head and asked: the GM
           grp: 'OUTLET_MANAGER',
         },
-        { step: 'area_approval', state: 'waiting', scope: 'TEST-AREA-MUMBAI', grp: 'AREA_MANAGER' },
       ]);
-      expect(await inbox(c, ARIA)).not.toContain(id); // not active yet
-      expect(await actOk(c, OLIVIA, id, 'approve')).toBe('in_approval');
-      expect((await request(c, id)).current_step).toBe('area_approval');
-      expect(await inbox(c, ARIA)).toContain(id);
-      expect((await act(c, OLIVIA, id, 'approve')).error).toBe('NOT_AUTHORISED');
-      expect(await actOk(c, ARIA, id, 'approve')).toBe('approved');
+      expect(await actOk(c, OLIVIA, id, 'approve')).toBe('approved');
       expect(await outbox(c, id)).toEqual([{ handler: 'inv.po.release', status: 'pending' }]);
     });
   });
@@ -261,7 +254,7 @@ describe('purchase order routing', () => {
     await inRolledBackTx(async (c) => {
       const id = await submitOk(c, KIM, po(60_000));
       expect(await actOk(c, OLIVIA, id, 'reject')).toBe('rejected');
-      expect((await steps(c, id)).map((s) => s.state)).toEqual(['rejected', 'cancelled']);
+      expect((await steps(c, id)).map((s) => s.state)).toEqual(['rejected']);
       expect(await outbox(c, id)).toEqual([{ handler: 'inv.po.reject', status: 'pending' }]);
       expect((await act(c, ARIA, id, 'approve')).error).toBe('INVALID_STATE');
     });
@@ -272,7 +265,7 @@ describe('purchase order routing', () => {
       const id = await submitOk(c, KIM, po(10_000));
       expect((await act(c, OLIVIA, id, 'cancel')).error).toBe('NOT_AUTHORISED');
       expect(await actOk(c, KIM, id, 'cancel')).toBe('cancelled');
-      expect((await steps(c, id)).map((s) => s.state)).toEqual(['cancelled', 'skipped']);
+      expect((await steps(c, id)).map((s) => s.state)).toEqual(['cancelled']);
       // cancel runs onRejected too, so the subject (e.g. the PO) closes
       expect(await outbox(c, id)).toEqual([{ handler: 'inv.po.reject', status: 'pending' }]);
       expect((await act(c, OLIVIA, id, 'approve')).error).toBe('INVALID_STATE');
@@ -309,7 +302,6 @@ describe('purchase order routing', () => {
           scope: 'TEST-AREA-MUMBAI',
           grp: 'AREA_MANAGER',
         },
-        { step: 'area_approval', state: 'skipped', scope: null, grp: 'AREA_MANAGER' },
       ]);
       expect(await inbox(c, OLIVIA)).not.toContain(id);
       expect((await act(c, OLIVIA, id, 'approve')).error).toBe('SEGREGATION_OF_DUTIES');
@@ -317,10 +309,8 @@ describe('purchase order routing', () => {
     });
   });
 
-  it('skips a step whose approver already approved the previous step (same_approver)', async () => {
+  it('falls back to the Area manager when a sole GM raises it and nobody heads the department', async () => {
     await inRolledBackTx(async (c) => {
-      // Sole outlet manager and nobody heading the department, PO over 50,000: step 1 falls
-      // back to the Area manager, who is also the area_approval approver.
       await endGroup(c, KIM, 'DEPARTMENT_HEAD');
       const id = await submitOk(c, OLIVIA, po(60_000));
       expect(await steps(c, id)).toEqual([
@@ -330,32 +320,8 @@ describe('purchase order routing', () => {
           scope: 'TEST-AREA-MUMBAI',
           grp: 'AREA_MANAGER',
         },
-        { step: 'area_approval', state: 'waiting', scope: 'TEST-AREA-MUMBAI', grp: 'AREA_MANAGER' },
       ]);
-      expect(await actOk(c, ARIA, id, 'approve')).toBe('approved'); // once
-
-      const { rows } = await c.query<{
-        step: string;
-        state: string;
-        skip_reason: string | null;
-        covered_by: string | null;
-      }>(
-        `select s.step, s.state, s.skip_reason, c.step as covered_by
-           from wf.step_instance s left join wf.step_instance c on c.id = s.covered_by_step_id
-          where s.request_id = $1 order by s.seq`,
-        [id],
-      );
-      expect(rows).toEqual([
-        { step: 'department_approval', state: 'approved', skip_reason: null, covered_by: null },
-        {
-          step: 'area_approval',
-          state: 'skipped',
-          skip_reason: 'same_approver',
-          covered_by: 'department_approval',
-        },
-      ]);
-
-      // ...and the request completes: run the executor functions (as migrator here).
+      expect(await actOk(c, ARIA, id, 'approve')).toBe('approved');
       const claimed = await c.query<{ outbox_id: string; handler: string }>(
         'select outbox_id, handler from wf.claim_next()',
       );
@@ -365,14 +331,14 @@ describe('purchase order routing', () => {
     });
   });
 
-  it('records condition skips with reason "condition"', async () => {
+  it('records the step of an unusual order with no skip reason', async () => {
     await inRolledBackTx(async (c) => {
       const id = await submitOk(c, KIM, po(10_000));
       const { rows } = await c.query<{ skip_reason: string | null }>(
         'select skip_reason from wf.step_instance where request_id = $1 order by seq',
         [id],
       );
-      expect(rows.map((r) => r.skip_reason)).toEqual([null, 'condition']);
+      expect(rows.map((r) => r.skip_reason)).toEqual([null]);
     });
   });
 
@@ -562,8 +528,7 @@ describe('subject-derived nodes and amount', () => {
         [id],
       );
       expect(rows).toEqual([{ amount: '60000.00', node: 'TEST-BAR-3.0-KITCHEN-STORE' }]);
-      // the 60,000 from the row adds the area step; a caller cannot understate it
-      expect((await steps(c, id)).map((s) => s.state)).toEqual(['pending', 'waiting']);
+      expect((await steps(c, id)).map((s) => s.state)).toEqual(['pending']);
     });
   });
 
@@ -862,9 +827,9 @@ describe('wf tables under RLS', () => {
         );
         return r.error ?? Number(r.rows[0]!.n);
       };
-      expect(await see(KIM)).toBe(3);
-      expect(await see(OLIVIA)).toBe(3);
-      expect(await see(ARIA)).toBe(3); // DERIVED_PURCHASE_ORDERS
+      expect(await see(KIM)).toBe(2);
+      expect(await see(OLIVIA)).toBe(2);
+      expect(await see(ARIA)).toBe(2); // DERIVED_PURCHASE_ORDERS
       expect(await see(HUGO)).toBe(0); // HUB_MANAGER does not descend
       expect(await see(SAM)).toBe(0);
     });

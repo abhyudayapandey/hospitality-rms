@@ -3,7 +3,7 @@ import { createOrder, PLACE, placeId, runExecutor, signInAs } from './helpers';
 
 // The acceptance flow on the production build, through the real screens: the store keeper
 // (Test Bar 3.0's head cook) orders, cannot approve their own order, the outlet manager
-// (the Bar Manager) approves it, the executor releases it, the store keeper receives it and
+// (the Bar Manager) approves it, the executor releases it, the store keeper places the order and receives it and
 // stock on hand goes up. Paper napkins are in no recipe, so the order is off the menu and
 // needs the department head or the GM (PO-5, ADR 044); the head cook is the department head
 // and made it, so it goes to the Bar Manager, the GM.
@@ -35,6 +35,9 @@ test('store keeper orders, outlet manager approves, store keeper receives', asyn
 
   await signInAs(page, 'Test Head Cook 3.0');
   await page.goto(`/stock/orders/${po}?node=${store}`);
+  // approved, now the store's keeper places the order (ADR 049): a date, no supplier needed
+  await expect(page.getByTestId('po-progress')).toHaveText('to be ordered');
+  await page.getByRole('button', { name: 'Ordered' }).click();
   await expect(page.getByTestId('po-progress')).toHaveText('ordered');
   await expect(
     page.getByRole('textbox', { name: 'Received Test Paper Napkins (Pack of 100)' }),

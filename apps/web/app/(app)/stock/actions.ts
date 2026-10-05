@@ -149,18 +149,39 @@ export async function checkUnusual(
   }
 }
 
-export async function createPo(
+// A supply request (ADR 049): what and how much; no supplier, no price
+export async function requestSupplies(
   node: string,
-  supplier: string,
-  lines: { item_id: string; qty: number; unit_cost: number }[],
+  lines: Line[],
   notes: string,
   idempotencyKey: string,
 ): Promise<ActionResult<{ id: string }>> {
-  return run('create_po', async (tx) => {
+  return run('request_supplies', async (tx) => {
     const r = await sql<{ id: string }>`
-      select inv.create_po(${node}::uuid, ${supplier}::uuid, ${json(lines)}::jsonb,
-                           ${notes || null}, ${idempotencyKey}) as id`.execute(tx);
+      select inv.request_supplies(${node}::uuid, ${json(cleanLines(lines))}::jsonb,
+                                  ${notes || null}, ${idempotencyKey}) as id`.execute(tx);
     return { id: r.rows[0]!.id };
+  });
+}
+
+export interface OrderGroup {
+  supplier_id: string | null;
+  expected_on: string;
+  lines: { item_id: string; unit_cost?: number | null }[];
+}
+
+// The order desk places the order: one group per supplier (ADR 049)
+export async function placeOrder(
+  po: string,
+  groups: OrderGroup[],
+  idempotencyKey: string,
+): Promise<ActionResult<{ ids: string[] }>> {
+  return run('place_order', async (tx) => {
+    const r = await sql<{ ids: string[] }>`
+      select inv.place_order(${po}::uuid, ${json(groups)}::jsonb, ${idempotencyKey}) as ids`.execute(
+      tx,
+    );
+    return { ids: r.rows[0]!.ids };
   });
 }
 

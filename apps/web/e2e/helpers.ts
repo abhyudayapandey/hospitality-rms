@@ -161,7 +161,7 @@ export async function createOrder(page: Page, item: string, qty: string): Promis
     await input.fill(''); // start from an empty order, not the suggestion
   }
   await page.getByRole('textbox', { name: `Quantity ${item}` }).fill(qty);
-  await page.getByRole('button', { name: /^Submit order/ }).click();
+  await page.getByRole('button', { name: /^Send request/ }).click();
   await page.waitForURL(/\/stock\/orders\/[0-9a-f-]{36}/);
   return new URL(page.url()).pathname.split('/').pop()!;
 }

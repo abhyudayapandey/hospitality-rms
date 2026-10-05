@@ -13,28 +13,23 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Sea
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
     const lines = await sql<OrderLine>`
-      select s.item_id, i.name, i.base_uom, s.on_hand, s.par_level, s.suggested_qty,
-             coalesce(s.last_unit_cost, lv.avg_cost, 0) as unit_cost, s.preferred_supplier_id
+      select s.item_id, i.name, i.base_uom, s.on_hand, s.par_level, s.suggested_qty
         from inv.suggested_order(${ctx.node!.id}::uuid) s
         join inv.item i on i.id = s.item_id
-        left join inv.stock_level lv
-          on lv.item_id = s.item_id and lv.delivery_node_id = ${ctx.node!.id}::uuid
        order by (s.suggested_qty > 0) desc, i.name`.execute(tx);
-    const suppliers = await sql<{ id: string; name: string }>`
-      select id, name from inv.supplier where archived_at is null order by name`.execute(tx);
-    return { lines: lines.rows, suppliers: suppliers.rows };
+    return { lines: lines.rows };
   });
   return (
     <div className="space-y-4">
       <Link href={`/stock/orders?node=${ctx.node.id}`} className="text-sm text-slate-600">
         ← Orders
       </Link>
-      <h1 className="text-xl font-semibold">New order for {ctx.node.name}</h1>
+      <h1 className="text-xl font-semibold">Ask for supplies for {ctx.node.name}</h1>
       <p className="text-sm text-slate-600">
-        Quantities start at the suggestion: par level minus stock on hand minus what is already on
-        order.
+        Say what you need and how much. The main store picks the supplier and tells you when it will
+        arrive.
       </p>
-      <NewOrderForm node={ctx.node.id} lines={data.lines} suppliers={data.suppliers} />
+      <NewOrderForm node={ctx.node.id} lines={data.lines} />
     </div>
   );
 }

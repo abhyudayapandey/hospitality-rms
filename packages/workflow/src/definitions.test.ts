@@ -42,10 +42,9 @@ describe('process definitions', () => {
     }
   });
 
-  it('has orders approved by the department head (or the GM) only when unusual, then the area manager above the threshold (PO-5)', () => {
+  it('has orders approved by the department head (or the GM) only when unusual, and no value limit (ADR 049)', () => {
     expect(PURCHASE_ORDER.steps.map((s) => [s.step, s.group, s.when])).toEqual([
       ['department_approval', 'DEPARTMENT_HEAD', { payload_true: 'unusual' }],
-      ['area_approval', 'AREA_MANAGER', { amount_gt: 50000 }],
     ]);
     expect(PURCHASE_ORDER.steps[0]).toMatchObject({
       escalateTo: 'OUTLET_MANAGER',

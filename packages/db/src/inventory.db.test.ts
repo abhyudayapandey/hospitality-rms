@@ -477,7 +477,7 @@ describe('count -> PO -> approve -> receive', () => {
     });
   });
 
-  it('routes a PO above 50,000 to the Area manager too, and is idempotent on its key', async () => {
+  it('is idempotent on its key, and a large PO needs no area manager (ADR 049)', async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c, [{ sku: 'P-LAMB' }]);
       const sql = `select inv.create_po($1, $2, $3::jsonb, null, 'po-big') as id`;
@@ -490,8 +490,7 @@ describe('count -> PO -> approve -> receive', () => {
       expect((await call<{ id: string }>(c, KIM, sql, args)).id).toBe(po.id);
       const req = await requestOf(c, 'purchase_order', po.id);
       await call(c, OLIVIA, `select wf.act($1, 'approve')`, [req]);
-      expect(await inbox(c, ARIA)).toContain(req);
-      await call(c, ARIA, `select wf.act($1, 'approve')`, [req]);
+      expect(await inbox(c, ARIA)).not.toContain(req);
       expect(await execute(c, req)).toEqual(['inv.po.release']);
       expect(await statusOf(c, 'purchase_order', po.id)).toBe('released');
     });

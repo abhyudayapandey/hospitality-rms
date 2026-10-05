@@ -206,6 +206,7 @@ export function formatQty(qty: string | number, uom: string): string {
 /** Purchase order progress (inv.purchase_order_summary.progress): label and badge style. */
 export const PO_PROGRESS: Record<string, [string, string]> = {
   awaiting_approval: ['awaiting approval', 'bg-amber-100 text-amber-900'],
+  to_order: ['to be ordered', 'bg-amber-100 text-amber-900'],
   released: ['ordered', 'bg-sky-100 text-sky-900'],
   partially_received: ['part received', 'bg-sky-100 text-sky-900'],
   received: ['received', 'bg-emerald-100 text-emerald-900'],
@@ -223,3 +224,23 @@ export const TRANSFER_PROGRESS: Record<string, [string, string]> = {
   rejected: ['rejected', 'bg-rose-100 text-rose-900'],
   cancelled: ['cancelled', 'bg-slate-200 text-slate-700'],
 };
+
+export interface DeskOrder {
+  po_id: string;
+  store_id: string;
+  store: string;
+  requested_by: string | null;
+  requested_at: Date;
+  supplier: string | null;
+  expected_on: Date | null;
+  stage: 'to_order' | 'to_receive';
+  items: string | null;
+  unusual: boolean;
+}
+
+/** What the order desk (the Main Store's keeper) has to do: requests to order, orders to
+ * receive (ADR 049). Empty for anyone who is not the desk of some store. */
+export async function deskOrders(tx: Tx): Promise<DeskOrder[]> {
+  const r = await sql<DeskOrder>`select * from inv.desk_orders()`.execute(tx);
+  return r.rows;
+}
