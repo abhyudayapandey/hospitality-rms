@@ -11,15 +11,18 @@ import { requestTransfer } from '../../actions';
 
 export function TransferRequestForm({
   to,
+  from: initialFrom,
   sources,
   items,
 }: {
   to: string;
+  /** the source the items were listed for; another source lists its own (ADR 051) */
+  from: string | null;
   sources: { id: string; name: string }[];
   items: ItemOption[];
 }) {
   const router = useRouter();
-  const [from, setFrom] = useState(sources[0]?.id ?? '');
+  const [from, setFrom] = useState(initialFrom ?? sources[0]?.id ?? '');
   const [qty, setQty] = useState<Record<string, string>>({});
   const [key] = useState(() => crypto.randomUUID());
   const [pending, start] = useTransition();
@@ -49,7 +52,14 @@ export function TransferRequestForm({
     >
       <label className="block space-y-1">
         <span className="text-sm font-medium">From</span>
-        <select value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass}>
+        <select
+          value={from}
+          onChange={(e) => {
+            setFrom(e.target.value);
+            router.replace(`/stock/transfers/new?node=${to}&from=${e.target.value}`);
+          }}
+          className={inputClass}
+        >
           {sources.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
