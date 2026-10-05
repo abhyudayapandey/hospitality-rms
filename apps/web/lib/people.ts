@@ -152,6 +152,7 @@ export async function openPunch(tx: Tx): Promise<OpenPunch | null> {
 
 export interface RosterShift {
   id: string;
+  org_node_id: string;
   local_date: string;
   start_at: Date;
   end_at: Date;
@@ -162,10 +163,19 @@ export interface RosterShift {
   people: { assignment_id: string; worker_id: string; name: string }[];
 }
 
-/** A node-week of shifts with the people assigned (names from hr.worker_directory). */
-export async function weekRoster(tx: Tx, node: string, monday: string): Promise<RosterShift[]> {
+/**
+ * A week of shifts at one place, or at several ("All departments", ADR 048), with the people
+ * assigned (names from hr.worker_directory).
+ */
+export async function weekRoster(
+  tx: Tx,
+  node: string | readonly string[],
+  monday: string,
+): Promise<RosterShift[]> {
+  const nodes = typeof node === 'string' ? [node] : [...node];
+  if (nodes.length === 0) return [];
   const r = await sql<RosterShift>`
-    select s.id, s.local_date::text as local_date, s.start_at, s.end_at, s.role_code, s.headcount,
+    select s.id, s.org_node_id::text as org_node_id, s.local_date::text as local_date, s.start_at, s.end_at, s.role_code, s.headcount,
            s.status, t.name as template_name,
            coalesce((select json_agg(json_build_object('assignment_id', a.id, 'worker_id', a.worker_id,
                                                        'name', coalesce(d.display_name, 'Worker'))
@@ -175,7 +185,7 @@ export async function weekRoster(tx: Tx, node: string, monday: string): Promise<
                       where a.shift_id = s.id and a.status = 'assigned'), '[]') as people
       from hr.shift s
       left join hr.shift_template t on t.id = s.template_id
-     where s.org_node_id = ${node}::uuid and s.status <> 'cancelled'
+     where s.org_node_id = any(${nodes}::uuid[]) and s.status <> 'cancelled'
        and s.local_date between ${monday}::date and ${monday}::date + 6
      order by s.start_at, s.role_code`.execute(tx);
   return r.rows;
@@ -245,6 +255,24 @@ export async function exceptions(
            assignee_group, assignee_names, assigned_to_me
       from hr.exception_queue(${node}::uuid, ${status})`.execute(tx);
   return r.rows;
+}
+
+/** Exceptions at several places at once ("All departments", ADR 048): each exactly once. */
+export async function exceptionsAll(
+  tx: Tx,
+  nodes: readonly string[],
+  status: 'open' | 'closed',
+): Promise<ExceptionRow[]> {
+  const seen = new Set<string>();
+  const out: ExceptionRow[] = [];
+  for (const n of nodes) {
+    for (const e of await exceptions(tx, n, status)) {
+      if (seen.has(e.id)) continue;
+      seen.add(e.id);
+      out.push(e);
+    }
+  }
+  return out;
 }
 
 /**

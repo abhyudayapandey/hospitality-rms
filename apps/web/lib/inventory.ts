@@ -93,6 +93,35 @@ export async function stockList(tx: Tx, node: string): Promise<StockRow[]> {
   return r.rows;
 }
 
+export interface StockRowAll extends StockRow {
+  store_id: string;
+  store: string;
+}
+
+/** Every item at each of the stores `nodes` (the person's stock places), naming its store:
+ * "All stores" on the Stock screen (ADR 038, 048). */
+export async function stockListAll(tx: Tx, nodes: readonly string[]): Promise<StockRowAll[]> {
+  if (nodes.length === 0) return [];
+  const r = await sql<StockRowAll>`
+    select i.id as item_id, i.sku, i.name, i.category, i.base_uom, n.par_level, i.photo_key,
+           n.delivery_node_id::text as store_id, st.name as store,
+           coalesce(s.on_hand, 0) as on_hand, s.avg_cost, s.value,
+           coalesce(s.on_hand, 0) < n.par_level as below_par, u.used
+      from inv.item_node n
+      join inv.item i on i.id = n.item_id
+      join core.hierarchy_node st on st.id = n.delivery_node_id
+      left join inv.stock_level s on s.item_id = n.item_id and s.delivery_node_id = n.delivery_node_id
+      left join lateral (
+        select -sum(l.qty) as used from inv.stock_ledger l
+         where l.item_id = n.item_id and l.delivery_node_id = n.delivery_node_id
+           and l.qty < 0 and l.movement_type <> 'count_adjust'
+           and l.occurred_at > now() - interval '14 days') u on true
+     where n.delivery_node_id = any(${nodes}::uuid[])
+       and n.archived_at is null and i.archived_at is null
+     order by i.category, i.name, st.name`.execute(tx);
+  return r.rows;
+}
+
 export interface LedgerRow {
   id: string;
   occurred_at: Date;

@@ -1992,3 +1992,17 @@ is the app. No stack change, no parameter, nothing to re-import.
    Account Owner: the outlet table shows Food, Drinks, Losses and People adding up to 100.
 3. Check, as any Commis: no "Clock in" button on a day without a shift near; My shifts leads with
    the next shift and a week strip. Each report opens with four large figures and "More figures".
+
+## Releasing one screen per function (ADR 048)
+
+One migration (`ops.maintenance_requests` gains `place_node_id`), the rest is the app and the
+test-data loader. No stack change, no parameter, nothing to re-import.
+
+1. Merge, then **Deploy** as usual (the migration runs with it). `cdk diff` shows nothing.
+2. Check, as the General Manager, from Home: **9 items running low** opens Stock on the
+   Running low tab with All stores chosen and nine items; Stock has four tabs; the expiry
+   banners open its Expiring and Expired tabs; **open shifts** opens the roster for All
+   departments with a section each; **attendance issues** opens Exceptions for All departments;
+   **open repairs** (one line, tagged Assign) opens Maintenance for All departments on To assign,
+   with Report a problem at the end of the list.
+3. Check, as the Store Keeper: Receive opens Orders on To receive, Send opens Transfers on To send.

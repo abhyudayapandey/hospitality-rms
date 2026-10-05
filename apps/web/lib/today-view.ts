@@ -2,6 +2,7 @@
 // These helpers choose what each card shows; they are pure so they can be unit tested.
 
 import { formatSpan, localDate } from './dates';
+import { listHref, stockHref } from './stock-view';
 
 export interface TaskLike {
   id: string;
@@ -104,11 +105,29 @@ const TONE: Record<AttentionKind, AttentionTone> = {
   openSlots: 'warn',
 };
 
+// Every count that spans places opens its screen on the matching tab with "All ..." chosen
+// (ADR 038, 048): one screen per function, narrowed from its own Place picker.
 const LINE: Record<AttentionKind, { href: string; one: string; many: string }> = {
-  lowStock: { href: '/stock?low=1', one: 'item running low', many: 'items running low' },
-  flags: { href: '/roster/exceptions', one: 'attendance issue', many: 'attendance issues' },
-  repairs: { href: '/tasks/maintenance', one: 'open repair', many: 'open repairs' },
-  openSlots: { href: '/roster', one: 'open shift this week', many: 'open shifts this week' },
+  lowStock: {
+    href: stockHref({ tab: 'low', all: true }),
+    one: 'item running low',
+    many: 'items running low',
+  },
+  flags: {
+    href: listHref('/roster/exceptions', { all: true }),
+    one: 'attendance issue',
+    many: 'attendance issues',
+  },
+  repairs: {
+    href: listHref('/tasks/maintenance', { all: true, tab: 'assign' }),
+    one: 'open repair',
+    many: 'open repairs',
+  },
+  openSlots: {
+    href: listHref('/roster/week', { all: true }),
+    one: 'open shift this week',
+    many: 'open shifts this week',
+  },
 };
 
 /**
@@ -205,7 +224,14 @@ export const DO_FIRST_MAX = 5;
  * the jobs matter in.
  */
 export function doFirst(
-  input: { attention: readonly AttentionGroup[] | null; overdueTasks: number; toAssign: number },
+  input: {
+    attention: readonly AttentionGroup[] | null;
+    overdueTasks: number;
+    /** expired batches waiting to be given to someone (repairs are the "open repairs" line) */
+    toAssign: number;
+    /** the roster, all departments, on the earliest day with an open slot */
+    openSlotsHref?: string | null;
+  },
   max = DO_FIRST_MAX,
 ): DoFirstItem[] {
   const sum = (kind: AttentionKind) =>
@@ -213,9 +239,7 @@ export function doFirst(
       (t, g) => t + g.lines.filter((l) => l.kind === kind).reduce((a, l) => a + l.n, 0),
       0,
     );
-  const slotHref =
-    (input.attention ?? []).flatMap((g) => g.lines).find((l) => l.kind === 'openSlots')?.href ??
-    LINE.openSlots.href;
+  const slotHref = input.openSlotsHref ?? LINE.openSlots.href;
   const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
   const all: DoFirstItem[] = [
     {
@@ -255,14 +279,14 @@ export function doFirst(
       tone: 'warn',
       n: sum('repairs'),
       text: '',
-      action: 'Open',
+      action: 'Assign',
       href: LINE.repairs.href,
     },
     {
       key: 'toAssign',
       tone: 'warn',
       n: input.toAssign,
-      text: plural(input.toAssign, 'job to give to someone', 'jobs to give to someone'),
+      text: plural(input.toAssign, 'expired item to assign', 'expired items to assign'),
       action: 'Assign',
       href: '/inbox',
     },

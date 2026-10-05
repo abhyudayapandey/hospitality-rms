@@ -13,7 +13,7 @@ beforeAll(async () => {
 });
 afterAll(closePools);
 
-const BUSINESS_DAY = new Date(Date.now() - 6 * 3_600_000).toLocaleDateString('en-CA', {
+const BUSINESS_DAY = new Date(Date.now() - 4 * 3_600_000).toLocaleDateString('en-CA', {
   timeZone: 'Asia/Kolkata',
 });
 const daysBefore = (n: number) => {

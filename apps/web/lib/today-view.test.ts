@@ -111,8 +111,8 @@ describe('attentionGroups (DB-2)', () => {
     ]);
     // a store's counts go to the department it serves; lines in a fixed order
     expect(g[0]!.lines).toEqual([
-      { kind: 'lowStock', href: '/stock?low=1', n: 5, text: 'items running low' },
-      { kind: 'flags', href: '/roster/exceptions', n: 1, text: 'attendance issue' },
+      { kind: 'lowStock', href: '/stock?all=1&tab=low', n: 5, text: 'items running low' },
+      { kind: 'flags', href: '/roster/exceptions?all=1', n: 1, text: 'attendance issue' },
     ]);
     // low stock is red; flags and repairs amber (UX-6)
     expect(g.map((x) => [x.label, x.tone, x.total])).toEqual([
@@ -233,9 +233,52 @@ describe('doFirst: the ranked list (UX-8)', () => {
 
   it('an open slot opens the roster day it is on', () => {
     const a = [group('x', [['openSlots', 1]])];
-    a[0]!.lines[0]!.href = '/roster/week?day=2026-10-05';
-    expect(doFirst({ attention: a, overdueTasks: 0, toAssign: 0 })[0]!.href).toBe(
-      '/roster/week?day=2026-10-05',
-    );
+    expect(
+      doFirst({
+        attention: a,
+        overdueTasks: 0,
+        toAssign: 0,
+        openSlotsHref: '/roster/week?all=1&week=2026-10-05&day=2026-10-06',
+      })[0]!.href,
+    ).toBe('/roster/week?all=1&week=2026-10-05&day=2026-10-06');
+  });
+});
+
+describe('every count that spans places opens its screen with All chosen (ADR 048)', () => {
+  const line = (kind: 'lowStock' | 'flags' | 'repairs' | 'openSlots') => ({
+    kind,
+    href: '',
+    text: '',
+    n: 1,
+  });
+  const group = (kinds: ('lowStock' | 'flags' | 'repairs' | 'openSlots')[]) => ({
+    key: 'k',
+    label: 'Kitchen',
+    total: kinds.length,
+    tone: 'warn' as const,
+    lines: kinds.map(line),
+  });
+
+  it('Home links: low stock, attendance, repairs, open shifts', () => {
+    const items = doFirst({
+      attention: [group(['lowStock', 'flags', 'repairs', 'openSlots'])],
+      overdueTasks: 0,
+      toAssign: 0,
+    });
+    const href = Object.fromEntries(items.map((x) => [x.key, x.href]));
+    expect(href).toMatchObject({
+      lowStock: '/stock?all=1&tab=low',
+      flags: '/roster/exceptions?all=1',
+      repairs: '/tasks/maintenance?all=1&tab=assign',
+      openSlots: '/roster/week?all=1',
+    });
+  });
+
+  it('one repairs line, tagged Assign; expired items to assign are their own line', () => {
+    const items = doFirst({ attention: [group(['repairs'])], overdueTasks: 0, toAssign: 2 });
+    expect(items.map((x) => [x.key, x.text, x.action])).toEqual([
+      ['repairs', 'open repair', 'Assign'],
+      ['toAssign', 'expired items to assign', 'Assign'],
+    ]);
   });
 });

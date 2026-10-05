@@ -184,6 +184,8 @@ export interface Maintenance {
   done_note: string | null;
   created_at: Date;
   done_at: Date | null;
+  /** where the problem is (org_node_id is the node that handles it) */
+  place_node_id: string;
 }
 
 /** Requests the person reads: their own, their department's queue, assigned or managed. */

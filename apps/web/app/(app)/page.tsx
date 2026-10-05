@@ -10,6 +10,7 @@ import { loadShell, screenInput } from '@/lib/shell';
 import { HOME_APPROVALS, loadToday, type Today, type TodayNumbers } from '@/lib/today';
 import type { MyTask } from '@/lib/tasks';
 import { clockable, doFirst, shiftLine, todaysTasks } from '@/lib/today-view';
+import { listHref, stockHref } from '@/lib/stock-view';
 import { InboxItem } from './inbox/inbox-item';
 
 // Home is "Today" (UX-2), simplified for each role (UX-6, ADR 034): what the person must
@@ -118,7 +119,7 @@ export default async function Home() {
       {today.store && (
         <nav aria-label="Store jobs" className="grid grid-cols-2 gap-3" data-testid="tiles">
           <Tile
-            href="/stock/orders"
+            href={listHref('/stock/orders', { all: true, tab: 'receive' })}
             icon="truck"
             label="Receive"
             note={`${today.store.receive} to come`}
@@ -126,7 +127,7 @@ export default async function Home() {
             badge={today.store.receive > 0 ? { n: today.store.receive, tone: 'warn' } : null}
           />
           <Tile
-            href="/inbox"
+            href={listHref('/stock/transfers', { all: true, tab: 'send' })}
             icon="box"
             label="Send"
             note={`${today.store.issue} to send`}
@@ -134,7 +135,7 @@ export default async function Home() {
             badge={today.store.issue > 0 ? { n: today.store.issue, tone: 'bad' } : null}
           />
           <Tile
-            href="/stock?low=1"
+            href={stockHref({ tab: 'low', all: true })}
             icon="down"
             label="Running low"
             note={today.store.low > 0 ? 'order now' : 'nothing low'}
@@ -152,6 +153,7 @@ export default async function Home() {
                 attention: today.attention,
                 overdueTasks: today.tasks.filter((x) => x.overdue).length,
                 toAssign: today.approvals.toAssign,
+                openSlotsHref: today.openSlotsHref,
               })
             : []
         }
@@ -178,7 +180,7 @@ function Banners({ today }: { today: Today }) {
       {(['expiring', 'expired'] as const)
         .filter((k) => e[k].n > 0)
         .map((k) => (
-          <ExpiryBanner key={k} show={k} n={e[k].n} q="all=1&" />
+          <ExpiryBanner key={k} show={k} n={e[k].n} href={stockHref({ tab: k, all: true })} />
         ))}
     </>
   );

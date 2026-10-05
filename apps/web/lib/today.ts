@@ -19,6 +19,7 @@ import type { TargetKey } from './settings';
 import { companySettings } from './settings-data';
 import type { Shell } from './shell';
 import { myTasks, toAssign, type MyTask } from './tasks';
+import { listHref } from './stock-view';
 import {
   attentionGroups,
   currentShift,
@@ -89,6 +90,8 @@ export interface Today {
   /** the first few requests waiting for them, and how many in all */
   approvals: { shown: InboxEntry[]; total: number; toAssign: number };
   attention: AttentionGroup[] | null;
+  /** the roster for all departments, on the earliest day with an open slot (null if none) */
+  openSlotsHref: string | null;
   numbers: TodayNumbers | null;
   league: TodayLeague | null;
   store: StoreWork | null;
@@ -114,9 +117,11 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     const punch = atWork ? await openPunch(tx) : null;
     const tasks = shell.domains.has('TASKS') ? await myTasks(tx) : [];
     const inbox = await inboxEntries(tx);
-    const assign = lead ? (await toAssign(tx)).length : 0;
+    // expired items waiting to be given to someone; repairs waiting are the repairs count
+    const assign = lead ? (await toAssign(tx)).filter((x) => x.kind === 'expiry').length : 0;
 
     let attention: AttentionGroup[] | null = null;
+    let openSlotsHref: string | null = null;
     if (lead) {
       // each count at its place, under RLS; then the places' departments and order (DB-2)
       const counts = await sql<AttentionCount>`
@@ -136,13 +141,12 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
            and x.org_node_id in (select id from core.screen_places('exceptions'))
          group by x.org_node_id
         union all
-        select 'repairs', m.org_node_id::text, count(*)::int, null
+        select 'repairs', m.place_node_id::text, count(*)::int, null
           from ops.maintenance_requests() m
-         where m.status in ('open', 'assigned', 'in_progress')
+         where m.status = 'open'
            and (select "on" from core.my_modules() where code = 'maintenance')
-           and exists (select 1 from core.screen_places('maintenance') p
-                        where p.id = m.org_node_id)
-         group by m.org_node_id`.execute(tx);
+           and core.can('MAINTENANCE', 'modify', m.org_node_id, null)
+         group by m.place_node_id`.execute(tx);
       // open slots in shifts that haven't started, the next seven days, where they build the
       // roster (ROSTER modify there, checked by core.can; RLS shows the shifts)
       const slots =
@@ -160,6 +164,14 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
               from open where gap > 0
              group by org_node_id`.execute(tx)
           : null;
+      const earliest = (slots?.rows ?? []).map((x) => x.day).sort()[0];
+      if (earliest) {
+        openSlotsHref = listHref('/roster/week', {
+          all: true,
+          week: weekStart(earliest),
+          day: earliest,
+        });
+      }
       const all: AttentionCount[] = [
         ...counts.rows,
         ...(slots?.rows ?? []).map((s) => ({
@@ -270,6 +282,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       tasks,
       approvals: { shown: inbox.slice(0, HOME_APPROVALS), total: inbox.length, toAssign: assign },
       attention,
+      openSlotsHref,
       numbers,
       league: leagueTable,
       store,

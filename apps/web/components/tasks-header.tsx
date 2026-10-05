@@ -24,7 +24,14 @@ export function TasksHeader({
   active: TasksTab | null;
   title: string;
   switcher?:
-    { screen: Screen; places: SwitcherPlace[]; current: string; collapsed?: boolean } | undefined;
+    | {
+        screen: Screen;
+        places: SwitcherPlace[];
+        current: string;
+        collapsed?: boolean;
+        all?: { label: string; on: boolean };
+      }
+    | undefined;
 }) {
   const shown = TABS.filter((t) => t.show(tabs));
   return (
