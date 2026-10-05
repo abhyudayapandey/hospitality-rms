@@ -90,7 +90,7 @@ clock-in, leave, tasks, My week). What differs is the job (files 06, 16, 20 and 
 | Receiving Clerk (Stores)      | Stores Day 08:00–17:00            |                                             | nothing                                               | Main Store: counts, wastage, transfers    | none                |
 
 The prospect-facing version, with any two jobs compared side by side, is the "Who does
-what" page.
+what" page (`docs/who-does-what.html`; keep it in step with this table).
 
 ### Access behind it
 

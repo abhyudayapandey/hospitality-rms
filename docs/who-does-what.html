@@ -1,0 +1,1170 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <style>
+      :root {
+        color-scheme: light;
+        box-sizing: border-box;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      html {
+        scroll-padding-top: env(safe-area-inset-top, 0px);
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font:
+          14px -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        background: #faf9f5;
+        color: #141413;
+      }
+      img {
+        max-width: 100%;
+      }
+      [hidden]:not([hidden='until-found' i]) {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <title>Who Does What</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500&display=swap"
+    />
+    <style>
+      /* Layout: a duty board. Departments run across, levels run down; pick two jobs to compare. */
+      :root {
+        --bg: #f3f4f1;
+        --panel: #ffffff;
+        --ink: #1d2428;
+        --muted: #5d676c;
+        --line: #d9ddd8;
+        --accent: #a4561b;
+        --accent-soft: #f5e6d8;
+        --pick-b: #2f5f73;
+        --pick-b-soft: #dce9ee;
+        --display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+        --body: 'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
+        --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --bg: #151a1d;
+          --panel: #1e2529;
+          --ink: #e7eae7;
+          --muted: #9aa4a8;
+          --line: #323b40;
+          --accent: #e3955a;
+          --accent-soft: #3a2a1e;
+          --pick-b: #8cc3d8;
+          --pick-b-soft: #1f3540;
+          color-scheme: dark;
+        }
+      }
+      :root[data-theme='dark'] {
+        --bg: #151a1d;
+        --panel: #1e2529;
+        --ink: #e7eae7;
+        --muted: #9aa4a8;
+        --line: #323b40;
+        --accent: #e3955a;
+        --accent-soft: #3a2a1e;
+        --pick-b: #8cc3d8;
+        --pick-b-soft: #1f3540;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.55 var(--body);
+      }
+      .wrap {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding-inline: 16px;
+        padding-block: 32px 64px;
+        display: grid;
+        gap: 48px;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: var(--display);
+        line-height: 1.15;
+        text-wrap: balance;
+        margin: 0;
+      }
+      h1 {
+        font-size: clamp(2rem, 5vw, 3rem);
+        font-weight: 700;
+      }
+      h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+      }
+      h3 {
+        font-size: 1.1rem;
+        font-weight: 700;
+      }
+      p {
+        margin: 0;
+        max-width: 65ch;
+      }
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      .lede {
+        font-size: 1.15rem;
+        color: var(--muted);
+      }
+      section {
+        display: grid;
+        gap: 16px;
+      }
+
+      /* the two questions */
+      .questions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+      }
+      .q {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 20px;
+        display: grid;
+        gap: 8px;
+      }
+      .q .axis {
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
+      /* the board */
+      .board-scroll {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+      }
+      .board {
+        border-collapse: separate;
+        border-spacing: 0;
+        min-width: 980px;
+        width: 100%;
+      }
+      .board th,
+      .board td {
+        border-bottom: 1px solid var(--line);
+        border-right: 1px solid var(--line);
+        padding: 10px;
+        vertical-align: top;
+        text-align: left;
+      }
+      .board tr:last-child td,
+      .board tr:last-child th {
+        border-bottom: 0;
+      }
+      .board th:last-child,
+      .board td:last-child {
+        border-right: 0;
+      }
+      .board thead th {
+        font-family: var(--display);
+        font-size: 0.95rem;
+        background: var(--panel);
+        position: sticky;
+        top: 0;
+      }
+      .board th.level {
+        position: sticky;
+        left: 0;
+        background: var(--panel);
+        width: 150px;
+        min-width: 150px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        z-index: 1;
+      }
+      .board th.level small {
+        display: block;
+        font-weight: 400;
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.35;
+        margin-top: 4px;
+      }
+      .board td.span {
+        background: var(--accent-soft);
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .chip {
+        font: 600 0.85rem/1.2 var(--body);
+        color: var(--ink);
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 10px;
+        cursor: pointer;
+        min-height: 32px;
+      }
+      .chip:hover {
+        border-color: var(--accent);
+      }
+      .chip:focus-visible,
+      select:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .chip[data-pick='a'] {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--panel);
+      }
+      .chip[data-pick='b'] {
+        background: var(--pick-b);
+        border-color: var(--pick-b);
+        color: var(--panel);
+      }
+      .note {
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+
+      /* compare */
+      .picker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: end;
+      }
+      .picker label {
+        display: grid;
+        gap: 4px;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      select {
+        font: 600 1rem var(--body);
+        color: var(--ink);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 8px 10px;
+        min-height: 44px;
+        min-width: 220px;
+      }
+      .compare {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 16px;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-top: 4px solid var(--accent);
+        border-radius: 10px;
+        padding: 20px;
+        display: grid;
+        gap: 14px;
+        min-width: 0;
+      }
+      .card.b {
+        border-top-color: var(--pick-b);
+      }
+      .card header {
+        display: grid;
+        gap: 2px;
+      }
+      .card .where {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .card dl {
+        margin: 0;
+        display: grid;
+        gap: 12px;
+      }
+      .card dt {
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .card dd {
+        margin: 2px 0 0;
+      }
+      .card dd.none {
+        color: var(--muted);
+      }
+      .time {
+        font-family: var(--mono);
+        font-size: 0.85rem;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* ladder */
+      .ladder {
+        display: grid;
+        gap: 0;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+      }
+      .rung {
+        display: grid;
+        grid-template-columns: minmax(160px, 220px) 1fr;
+        gap: 16px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+      .rung:last-child {
+        border-bottom: 0;
+      }
+      .rung h3 {
+        font-size: 1rem;
+      }
+      .rung .who {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      @media (max-width: 560px) {
+        .rung {
+          grid-template-columns: 1fr;
+          gap: 6px;
+        }
+      }
+
+      .everyone {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        padding: 0;
+        margin: 0;
+        list-style: none;
+      }
+      .everyone li {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      .everyone b {
+        display: block;
+        font-family: var(--display);
+      }
+      footer {
+        font-size: 0.85rem;
+        color: var(--muted);
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .card {
+          transition: border-color 0.2s;
+        }
+      }
+    </style>
+
+    <div class="wrap">
+      <header style="display: grid; gap: 12px">
+        <span class="eyebrow">Outlet Ops · Test Hotel &amp; Bar 1.0</span>
+        <h1>Who does what</h1>
+        <p class="lede">
+          A cook and a bartender open the same app and see a different one. Two things decide what
+          each person gets: how senior they are, and which department they work in.
+        </p>
+      </header>
+
+      <section aria-labelledby="two-q">
+        <h2 id="two-q">Two questions decide what someone sees</h2>
+        <div class="questions">
+          <div class="q">
+            <span class="axis">↓ Down the board · level</span>
+            <h3>How much do they decide?</h3>
+            <p>
+              Doing the work, leading a shift, running a department or running the outlet. This sets
+              what they can approve and whose work they can see.
+            </p>
+          </div>
+          <div class="q">
+            <span class="axis">→ Across the board · department</span>
+            <h3>What is their work?</h3>
+            <p>
+              Kitchen, bar, housekeeping and so on. This sets their shifts, their checklists, what
+              they make, the store they use and the recipes they read.
+            </p>
+          </div>
+        </div>
+        <p class="note">
+          So a cook and a bartender share a level but not a job. Each sits on the same rung of a
+          different ladder.
+        </p>
+      </section>
+
+      <section aria-labelledby="board-h">
+        <h2 id="board-h">The outlet, department by department</h2>
+        <p class="note">
+          Tap any two jobs to compare them below. On a phone, swipe the board sideways.
+        </p>
+        <div class="board-scroll" tabindex="0" aria-label="Jobs by department and level">
+          <table class="board" id="board"></table>
+        </div>
+        <p class="note">
+          Supplies: a department asks for items and quantities only; the Main Store's Store Keeper
+          picks the supplier and the delivery date, then receives, and the department is told at
+          each step. Above the outlet: the Area Manager sees and approves across the outlets in the
+          area; the Account Owner reads every outlet. HR Admin, Security Admin and the Auditor work
+          company-wide. Server, Cashier and Host on the floor are from Test Bar 3.0, a standalone
+          bar.
+        </p>
+      </section>
+
+      <section aria-labelledby="cmp-h">
+        <h2 id="cmp-h">Same level, different job</h2>
+        <div class="picker">
+          <label for="pick-a">First job<select id="pick-a"></select></label>
+          <label for="pick-b">Second job<select id="pick-b"></select></label>
+        </div>
+        <div class="compare" id="compare" aria-live="polite"></div>
+      </section>
+
+      <section aria-labelledby="ladder-h">
+        <h2 id="ladder-h">What each level adds</h2>
+        <div class="ladder">
+          <div class="rung">
+            <h3>Does the work</h3>
+            <div>
+              <p>
+                Their own shifts, checklists and tasks; what their department makes, from its
+                recipes; the store their job uses, if any.
+              </p>
+              <p class="who">
+                Cook, Commis, Bartender, Room Attendant, Front Desk Executive, Technician
+              </p>
+            </div>
+          </div>
+          <div class="rung">
+            <h3>Leads a shift</h3>
+            <div>
+              <p>
+                Adds the department's roster and attendance, giving tasks to the team, and counting
+                the department's store.
+              </p>
+              <p class="who">
+                Sous Chef, Head Bartender, Captain, Housekeeping Supervisor, Bell Captain
+              </p>
+            </div>
+          </div>
+          <div class="rung">
+            <h3>Runs a department</h3>
+            <div>
+              <p>
+                Adds building and publishing the roster, first approval of leave and swaps and of
+                unusual supply requests, the store's prices and costs, editing checklists and
+                assigning repairs.
+              </p>
+              <p class="who">
+                Executive Chef, Bar Manager, Executive Housekeeper, Front Office Manager, Chief
+                Engineer
+              </p>
+            </div>
+          </div>
+          <div class="rung">
+            <h3>Runs the outlet</h3>
+            <div>
+              <p>
+                Adds every department, the outlet's sales and costs, people cost, approving unusual
+                supply requests (and hearing of every one), and the outlet's own user admin.
+              </p>
+              <p class="who">
+                General Manager, Assistant General Manager; the Bar Manager of a standalone bar
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="all-h">
+        <h2 id="all-h">What everyone has, whatever the job</h2>
+        <ul class="everyone">
+          <li><b>My shifts and clock-in</b>Their own roster, clocking in on site, and swaps.</li>
+          <li><b>Leave</b>Requests and balances, approved up their own department's chain.</li>
+          <li>
+            <b>Tasks</b>Their checklists and one-off tasks, and reporting a problem for repair.
+          </li>
+          <li>
+            <b>To do list</b>What waits for them: approvals, jobs to assign, supplies to order or
+            receive.
+          </li>
+          <li><b>My week</b>Their hours, on-time record and tasks. No one else's figures.</li>
+        </ul>
+      </section>
+
+      <footer>
+        Built from the demo company's own setup files. Each customer names its own departments and
+        job titles when it is set up, and chooses what each job gets by default; one person can also
+        be given a second job's access on top.
+      </footer>
+    </div>
+
+    <script>
+      const DEPTS = [
+        'Kitchen',
+        'Bar',
+        'Restaurant',
+        'Floor service',
+        'Banquets',
+        'Front Office',
+        'Housekeeping',
+        'Stores',
+        'Engineering',
+        'Security',
+      ];
+      const LEVELS = [
+        ['outlet', 'Runs the outlet', 'every department'],
+        ['head', 'Runs a department', 'roster, approvals, costs'],
+        ['lead', 'Leads a shift', 'or runs a store'],
+        ['work', 'Does the work', 'their own shifts and tasks'],
+      ];
+      const NONE = '—';
+      // Each job: department, level, and what they get in the demo company (Test Hotel & Bar 1.0
+      // unless noted). Taken from files 06 (job defaults), 16 (shifts), 20 (what is made where)
+      // and 29 (checklists).
+      const JOBS = {
+        'General Manager': {
+          dept: '*',
+          level: 'outlet',
+          where: 'The whole outlet',
+          shifts: 'Not rostered',
+          checklists: NONE,
+          makes: NONE,
+          stock: 'Every store at the outlet, with prices and costs; told of every supply request',
+          recipes: 'All, with costs',
+          approves:
+            'Leave and swaps after the department head, unusual supply requests (off the menu or more than usual), stock adjustments',
+          hidden: 'Other outlets',
+        },
+        'Assistant General Manager': {
+          dept: '*',
+          level: 'outlet',
+          where: 'The whole outlet',
+          shifts: 'Not rostered',
+          checklists: NONE,
+          makes: NONE,
+          stock: 'Every store at the outlet, with prices and costs',
+          recipes: 'All, with costs',
+          approves: 'As the General Manager',
+          hidden: 'Other outlets',
+        },
+        'Executive Chef': {
+          dept: 'Kitchen',
+          level: 'head',
+          where: 'Kitchen · runs the Kitchen Store',
+          shifts: 'Builds the kitchen roster',
+          checklists: 'Edits the kitchen checklists',
+          makes: 'Kitchen prep, and plans the prep lists',
+          stock:
+            'Kitchen Store: counts, wastage, asks the Main Store for supplies (items and quantities, no supplier or price)',
+          recipes: 'Kitchen recipes with prices and costs',
+          approves:
+            'Kitchen leave and swaps (first step); unusual supply requests for the kitchen; assigns expired-batch discards',
+          hidden: 'Other departments, the outlet’s sales, people cost',
+        },
+        'Sous Chef': {
+          dept: 'Kitchen',
+          level: 'lead',
+          where: 'Kitchen · uses the Kitchen Store',
+          shifts: 'Kitchen shifts; sees the kitchen roster',
+          checklists: 'Reads the kitchen checklists; gives tasks',
+          makes: 'Kitchen prep',
+          stock: 'Kitchen Store: counts, wastage, transfer requests',
+          recipes: 'Kitchen recipes, no costs',
+          approves: NONE,
+          hidden: 'Costs, sales, other departments',
+        },
+        'Chef de Partie': {
+          dept: 'Kitchen',
+          level: 'work',
+          where: 'Kitchen · uses the Kitchen Store',
+          shifts: 'Breakfast 06:00–14:00, Dinner 14:00–23:00',
+          checklists:
+            'Fridge temperature log every 4 h, Kitchen closing 23:00 (whoever is on shift)',
+          makes: 'Kitchen prep',
+          stock: 'Kitchen Store: counts, wastage, transfer requests',
+          recipes: 'Kitchen recipes, no costs',
+          approves: NONE,
+          hidden: 'Costs, sales, the bar, other stores',
+        },
+        Cook: {
+          dept: 'Kitchen',
+          level: 'work',
+          where: 'Kitchen · uses the Kitchen Store (Test Bar 3.0)',
+          shifts: 'Kitchen Evening 16:00–00:00',
+          checklists: 'Kitchen opening 11:00; Kitchen closing 23:30 (on shift)',
+          makes: 'Ginger Garlic Paste, Mint Chutney',
+          stock: 'Kitchen Store: counts, wastage, transfer requests',
+          recipes: 'Kitchen recipes and prep methods, no costs',
+          approves: NONE,
+          hidden: 'Costs, sales, the bar and its store',
+        },
+        Commis: {
+          dept: 'Kitchen',
+          level: 'work',
+          where: 'Kitchen',
+          shifts: 'Breakfast 06:00–14:00, Dinner 14:00–23:00',
+          checklists:
+            'Kitchen opening 07:00; Fridge temperature log every 4 h and Kitchen closing 23:00 (on shift)',
+          makes:
+            'Ginger Garlic Paste, Mint Chutney, Steamed Basmati Rice; reports batches past their shelf life',
+          stock: 'None: records the batches they make',
+          recipes: 'Kitchen recipes and prep methods, no costs',
+          approves: NONE,
+          hidden: 'Stock levels, costs, sales, the bar',
+        },
+        'Kitchen Steward': {
+          dept: 'Kitchen',
+          level: 'work',
+          where: 'Kitchen',
+          shifts: 'Breakfast 06:00–14:00, Dinner 14:00–23:00',
+          checklists: 'Kitchen closing 23:00 (on shift)',
+          makes: NONE,
+          stock: NONE,
+          recipes: 'Kitchen recipes, no costs',
+          approves: NONE,
+          hidden: 'Stock, costs, sales',
+        },
+        'Bar Manager': {
+          dept: 'Bar',
+          level: 'head',
+          where: 'Bar · runs the Bar Store',
+          shifts: 'Builds the bar roster',
+          checklists: 'Edits the bar checklists',
+          makes: 'Bar batches',
+          stock:
+            'Bar Store: counts, wastage, asks the Main Store for supplies (items and quantities, no supplier or price)',
+          recipes: 'Cocktail and bar recipes with prices and costs',
+          approves: 'Bar leave and swaps (first step); unusual supply requests for the bar',
+          hidden: 'The kitchen, the outlet’s sales, people cost',
+        },
+        'Head Bartender': {
+          dept: 'Bar',
+          level: 'lead',
+          where: 'Bar · uses the Bar Store',
+          shifts: 'Bar Evening 17:00–01:00; sees the bar roster',
+          checklists: 'Bar closing 01:00 (on shift); gives tasks',
+          makes: 'Bar batches',
+          stock: 'Bar Store: counts, wastage, transfer requests',
+          recipes: 'Cocktail and bar recipes, no costs',
+          approves: NONE,
+          hidden: 'Costs, sales, the kitchen',
+        },
+        Bartender: {
+          dept: 'Bar',
+          level: 'work',
+          where: 'Bar',
+          shifts: 'Bar Evening 17:00–01:00, Bar Late 20:00–02:00',
+          checklists: 'Bar setup 17:00; Bar closing 01:00 (on shift)',
+          makes: 'Sugar Syrup, Sour Mix, pre-batched Negroni, Old Fashioned and House Sangria',
+          stock: 'None: records the batches they make',
+          recipes: 'Cocktail and bar recipes, no costs',
+          approves: NONE,
+          hidden: 'Stock levels, costs, sales, the kitchen',
+        },
+        'Bar Back': {
+          dept: 'Bar',
+          level: 'work',
+          where: 'Bar',
+          shifts: 'Bar Evening 17:00–01:00',
+          checklists: 'Bar closing 01:00 (on shift)',
+          makes: NONE,
+          stock: NONE,
+          recipes: 'Bar recipes, no costs',
+          approves: NONE,
+          hidden: 'Stock, costs, sales',
+        },
+        'F&B Manager': {
+          dept: 'Restaurant',
+          level: 'head',
+          where: 'Restaurant, Bar and Banquets',
+          shifts: 'Builds their rosters',
+          checklists: 'Edits their checklists',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: 'Leave and swaps (first step) in the three departments; plans events',
+          hidden: 'The kitchen, housekeeping, people cost',
+        },
+        'Restaurant Manager': {
+          dept: 'Restaurant',
+          level: 'head',
+          where: 'Restaurant',
+          shifts: 'Builds the restaurant roster',
+          checklists: 'Edits the restaurant checklists',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: 'Restaurant leave and swaps (first step); plans events',
+          hidden: 'Stock, costs, other departments',
+        },
+        Captain: {
+          dept: 'Restaurant',
+          level: 'lead',
+          where: 'Restaurant',
+          shifts: 'Dinner 16:00–00:00; sees the restaurant roster',
+          checklists: 'Gives tasks to the team',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Stock, costs, sales',
+        },
+        Steward: {
+          dept: 'Restaurant',
+          level: 'work',
+          where: 'Restaurant',
+          shifts: 'Breakfast 06:30–14:30, Dinner 16:00–00:00',
+          checklists: 'Tasks given by the Captain',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Stock, recipes, costs, sales',
+        },
+        Host: {
+          dept: 'Restaurant',
+          level: 'work',
+          where: 'Restaurant (and the floor at Test Bar 3.0)',
+          shifts: 'Breakfast 06:30–14:30, Dinner 16:00–00:00',
+          checklists: 'Tasks given by the Captain',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Stock, recipes, costs, sales',
+        },
+        'Floor Manager': {
+          dept: 'Floor service',
+          level: 'head',
+          where: 'The floor (Test Bar 3.0)',
+          shifts: 'Builds the floor roster',
+          checklists: 'Edits the floor checklists',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: 'Floor leave and swaps (first step)',
+          hidden: 'Stock, costs',
+        },
+        Server: {
+          dept: 'Floor service',
+          level: 'work',
+          where: 'The floor (Test Bar 3.0)',
+          shifts: 'Floor Evening 17:00–01:00',
+          checklists: 'Tasks given to the floor',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Stock, recipes, costs, the bar’s sales',
+        },
+        Cashier: {
+          dept: 'Floor service',
+          level: 'work',
+          where: 'The floor (Test Bar 3.0)',
+          shifts: 'Floor Evening 17:00–01:00',
+          checklists: 'Tasks given to the floor',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Stock, recipes, costs',
+        },
+        'Banquet Manager': {
+          dept: 'Banquets',
+          level: 'head',
+          where: 'Banquets',
+          shifts: 'Builds the banquet roster',
+          checklists: 'Edits the banquet checklists',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: 'Banquet leave and swaps (first step); plans events',
+          hidden: 'Stock, costs, other departments',
+        },
+        'Banquet Captain': {
+          dept: 'Banquets',
+          level: 'lead',
+          where: 'Banquets',
+          shifts: 'Banquet Event 11:00–23:00',
+          checklists: 'Gives tasks to the team',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Stock, costs, sales',
+        },
+        'Banquet Server': {
+          dept: 'Banquets',
+          level: 'work',
+          where: 'Banquets',
+          shifts: 'Banquet Event 11:00–23:00',
+          checklists: 'Tasks given for the event',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Stock, recipes, costs',
+        },
+        'Front Office Manager': {
+          dept: 'Front Office',
+          level: 'head',
+          where: 'Front Office',
+          shifts: 'Builds the front office roster',
+          checklists: 'Edits the handover checklist',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: 'Front office leave and swaps (first step)',
+          hidden: 'Stock, food and drink costs',
+        },
+        'Bell Captain': {
+          dept: 'Front Office',
+          level: 'lead',
+          where: 'Front Office',
+          shifts: 'Sees the front office roster',
+          checklists: 'Gives tasks to the bell desk',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Stock, costs, sales',
+        },
+        'Front Desk Executive': {
+          dept: 'Front Office',
+          level: 'work',
+          where: 'Front Office',
+          shifts: 'Morning 07:00–15:00, Evening 15:00–23:00, Night 23:00–07:00',
+          checklists: 'Front desk shift handover at 07:00, 15:00 and 23:00 (on shift)',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Stock, recipes, costs, sales',
+        },
+        'Guest Relations Executive': {
+          dept: 'Front Office',
+          level: 'work',
+          where: 'Front Office',
+          shifts: 'Morning 07:00–15:00',
+          checklists: 'Front desk shift handover (on shift)',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Stock, recipes, costs, sales',
+        },
+        Bellboy: {
+          dept: 'Front Office',
+          level: 'work',
+          where: 'Front Office',
+          shifts: 'Morning 07:00–15:00, Evening 15:00–23:00',
+          checklists: 'Tasks given by the Bell Captain',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Stock, recipes, costs, sales',
+        },
+        'Executive Housekeeper': {
+          dept: 'Housekeeping',
+          level: 'head',
+          where: 'Housekeeping · runs the Housekeeping Store',
+          shifts: 'Builds the housekeeping roster',
+          checklists: 'Edits the housekeeping checklists',
+          makes: NONE,
+          stock:
+            'Housekeeping Store (linen, chemicals): counts, wastage, asks the Main Store for supplies',
+          recipes: NONE,
+          approves:
+            'Housekeeping leave and swaps (first step); unusual supply requests for housekeeping',
+          hidden: 'Food and drink, the outlet’s sales',
+        },
+        'Housekeeping Supervisor': {
+          dept: 'Housekeeping',
+          level: 'lead',
+          where: 'Housekeeping · uses the Housekeeping Store',
+          shifts: 'Sees the housekeeping roster',
+          checklists: 'Reads the checklists; gives tasks',
+          makes: NONE,
+          stock: 'Housekeeping Store: counts, wastage, transfer requests',
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Costs, sales, food and drink',
+        },
+        'Room Attendant': {
+          dept: 'Housekeeping',
+          level: 'work',
+          where: 'Housekeeping',
+          shifts: 'Morning 08:00–16:00, Evening 14:00–22:00',
+          checklists: 'Linen room count, Mondays 10:00',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Stock levels, recipes, costs, sales',
+        },
+        'Public Area Attendant': {
+          dept: 'Housekeeping',
+          level: 'work',
+          where: 'Housekeeping',
+          shifts: 'Morning 08:00–16:00, Evening 14:00–22:00',
+          checklists: 'Lobby washroom check every 2 h, 08:00–22:00',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Stock, recipes, costs, sales',
+        },
+        'Laundry Attendant': {
+          dept: 'Housekeeping',
+          level: 'work',
+          where: 'Housekeeping · uses the Housekeeping Store',
+          shifts: 'Morning 08:00–16:00',
+          checklists: 'Tasks given by the supervisor',
+          makes: NONE,
+          stock: 'Housekeeping Store: counts, wastage, transfer requests',
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Costs, sales, food and drink',
+        },
+        'Store Manager': {
+          dept: 'Stores',
+          level: 'head',
+          where: 'Stores · runs the Main Store',
+          shifts: 'Builds the stores roster',
+          checklists: NONE,
+          makes: NONE,
+          stock:
+            'Main Store: everything, plus a view of every store at the outlet; orders the departments’ supply requests (picks the supplier and delivery date) and receives them',
+          recipes: NONE,
+          approves: 'Stores leave and swaps (first step)',
+          hidden: 'Sales, people cost',
+        },
+        'Store Keeper': {
+          dept: 'Stores',
+          level: 'lead',
+          where: 'Stores · runs the Main Store',
+          shifts: 'Stores Day 08:00–17:00',
+          checklists: NONE,
+          makes: NONE,
+          stock:
+            'Main Store: counts, wastage, sends transfers; orders the departments’ supply requests from the To do list (picks the supplier, optional, and the delivery date, one order per supplier) and receives them',
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Prices on recipes, sales, people cost',
+        },
+        'Receiving Clerk': {
+          dept: 'Stores',
+          level: 'work',
+          where: 'Stores · uses the Main Store',
+          shifts: 'Stores Day 08:00–17:00',
+          checklists: NONE,
+          makes: NONE,
+          stock: 'Main Store: counts, wastage, transfer requests',
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Prices, sales, other stores',
+        },
+        'Chief Engineer': {
+          dept: 'Engineering',
+          level: 'head',
+          where: 'Engineering',
+          shifts: 'Builds the engineering roster',
+          checklists: 'Edits the engineering checklists',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: 'Engineering leave and swaps (first step); assigns repair requests',
+          hidden: 'Stock, food and drink, sales',
+        },
+        Technician: {
+          dept: 'Engineering',
+          level: 'work',
+          where: 'Engineering',
+          shifts: 'Engineering Day 09:00–18:00',
+          checklists: 'Repair requests assigned by the Chief Engineer',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Stock, recipes, costs, sales',
+        },
+        'Security Supervisor': {
+          dept: 'Security',
+          level: 'head',
+          where: 'Security',
+          shifts: 'Builds the security roster',
+          checklists: 'Edits the security checklists',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: 'Security leave and swaps (first step)',
+          hidden: 'Stock, food and drink, sales',
+        },
+        'Security Guard': {
+          dept: 'Security',
+          level: 'work',
+          where: 'Security',
+          shifts:
+            'Security Day 07:00–19:00, Security Night 19:00–07:00 (Door 20:00–02:00 at Test Bar 3.0)',
+          checklists: 'Tasks given by the supervisor',
+          makes: NONE,
+          stock: NONE,
+          recipes: NONE,
+          approves: NONE,
+          hidden: 'Stock, recipes, costs, sales',
+        },
+      };
+      const ROWS = [
+        ['Works in', 'where'],
+        ['Shifts', 'shifts'],
+        ['Checklists and tasks', 'checklists'],
+        ['Makes', 'makes'],
+        ['Stock', 'stock'],
+        ['Recipes they read', 'recipes'],
+        ['Approves', 'approves'],
+        ['Never sees', 'hidden'],
+      ];
+
+      let pickA = 'Cook',
+        pickB = 'Bartender',
+        nextSlot = 'a';
+      try {
+        const s = JSON.parse(localStorage.getItem('wdw-picks') || 'null');
+        if (s && JOBS[s[0]] && JOBS[s[1]]) {
+          pickA = s[0];
+          pickB = s[1];
+        }
+      } catch (e) {}
+
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>"]/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+        );
+      const chip = (name) =>
+        `<button type="button" class="chip" data-job="${esc(name)}">${esc(name)}</button>`;
+
+      function buildBoard() {
+        const t = document.getElementById('board');
+        let h =
+          '<thead><tr><th class="level" scope="col">Level</th>' +
+          DEPTS.map((d) => `<th scope="col">${esc(d)}</th>`).join('') +
+          '</tr></thead><tbody>';
+        for (const [key, label, sub] of LEVELS) {
+          h += `<tr><th class="level" scope="row">${esc(label)}<small>${esc(sub)}</small></th>`;
+          if (key === 'outlet') {
+            const names = Object.keys(JOBS).filter((n) => JOBS[n].level === 'outlet');
+            h += `<td class="span" colspan="${DEPTS.length}"><div class="chips">${names.map(chip).join('')}</div></td>`;
+          } else {
+            for (const d of DEPTS) {
+              const names = Object.keys(JOBS).filter(
+                (n) => JOBS[n].dept === d && JOBS[n].level === key,
+              );
+              h += `<td><div class="chips">${names.map(chip).join('')}</div></td>`;
+            }
+          }
+          h += '</tr>';
+        }
+        t.innerHTML = h + '</tbody>';
+        t.addEventListener('click', (e) => {
+          const b = e.target.closest('.chip');
+          if (!b) return;
+          const name = b.dataset.job;
+          if (nextSlot === 'a') {
+            pickA = name;
+            nextSlot = 'b';
+          } else {
+            pickB = name;
+            nextSlot = 'a';
+          }
+          render();
+        });
+      }
+
+      function fillSelects() {
+        for (const id of ['pick-a', 'pick-b']) {
+          const sel = document.getElementById(id);
+          sel.innerHTML = DEPTS.concat(['*'])
+            .map((d) => {
+              const names = Object.keys(JOBS).filter((n) => JOBS[n].dept === d);
+              if (!names.length) return '';
+              return `<optgroup label="${d === '*' ? 'Whole outlet' : esc(d)}">${names.map((n) => `<option>${esc(n)}</option>`).join('')}</optgroup>`;
+            })
+            .join('');
+          sel.addEventListener('change', () => {
+            if (id === 'pick-a') pickA = sel.value;
+            else pickB = sel.value;
+            render();
+          });
+        }
+      }
+
+      function card(name, slot) {
+        const j = JOBS[name];
+        const level = LEVELS.find((l) => l[0] === j.level)[1];
+        const dept = j.dept === '*' ? 'Whole outlet' : j.dept;
+        const rows = ROWS.map(([label, k]) => {
+          const v = j[k];
+          const cls = v === NONE ? ' class="none"' : '';
+          const val =
+            k === 'shifts'
+              ? esc(v).replace(/(\d\d:\d\d–\d\d:\d\d)/g, '<span class="time">$1</span>')
+              : esc(v);
+          return `<div><dt>${esc(label)}</dt><dd${cls}>${val}</dd></div>`;
+        }).join('');
+        return `<article class="card ${slot}"><header><span class="eyebrow">${esc(level)} · ${esc(dept)}</span><h3>${esc(name)}</h3></header><dl>${rows}</dl></article>`;
+      }
+
+      function render() {
+        document.getElementById('pick-a').value = pickA;
+        document.getElementById('pick-b').value = pickB;
+        document.getElementById('compare').innerHTML = card(pickA, 'a') + card(pickB, 'b');
+        document.querySelectorAll('.chip').forEach((c) => {
+          c.dataset.pick = c.dataset.job === pickA ? 'a' : c.dataset.job === pickB ? 'b' : '';
+          c.setAttribute('aria-pressed', c.dataset.pick ? 'true' : 'false');
+        });
+        try {
+          localStorage.setItem('wdw-picks', JSON.stringify([pickA, pickB]));
+        } catch (e) {}
+      }
+
+      buildBoard();
+      fillSelects();
+      render();
+    </script>
+  </body>
+</html>
