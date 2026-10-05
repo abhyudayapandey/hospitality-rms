@@ -1,6 +1,6 @@
 # 038 — "All stores" is an option in the Place picker
 
-Status: accepted · 2026-10-04
+Status: accepted · 2026-10-04 · extended by ADR 048 (one screen per function: the Stock expiry list is now Stock's Expiring and Expired tabs, and roster, exceptions, maintenance, orders and transfers have "All ..." too)
 
 Home's expiry banners count batches at every store a person sees. Since #52 they opened the
 expiry list for all of them, with a line "All your stores · only <store>" above it. Once a

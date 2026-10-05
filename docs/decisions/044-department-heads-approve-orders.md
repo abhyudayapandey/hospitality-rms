@@ -1,6 +1,6 @@
 # 044 — Department heads are responsible for orders and requests for material
 
-Status: accepted · 2026-10-04 (migration 20261102100000)
+Status: accepted · 2026-10-04 (migration 20261102100000) · amended by ADR 049: the area manager step above ₹50,000 is gone, and the person asking for supplies gives no supplier or price
 
 Prospect feedback (3 Oct): PO-5 (orders) and TR-3 (requests for material, RFM). The owner
 answered the open questions on 4 Oct.

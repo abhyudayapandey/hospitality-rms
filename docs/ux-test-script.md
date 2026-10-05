@@ -9,6 +9,8 @@ and question, in the person's words.
 | Commis                     | "Find out when you next work, and start your first job."    | 30 s   |
 | Server                     | "Clock in for your shift." (only when it is near a shift)   | 20 s   |
 | Store Keeper               | "Find how much rice is left, and count one item."           | 45 s   |
+| Chef (department head)     | "Ask the main store for 5 kg of onions."                    | 30 s   |
+| Main Store Keeper          | "Order what the kitchen asked for, from any supplier."      | 45 s   |
 | General Manager            | "Tell me the three things you would do first this morning." | 30 s   |
 | Account Owner or Area Mgr. | "Which outlet is doing worst this week, and why?"           | 45 s   |
 

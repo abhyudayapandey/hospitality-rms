@@ -140,7 +140,7 @@ where current_date between ra.effective_from and coalesce(ra.effective_to, 'infi
 | `inv.stock_ledger` | id, item\_id, delivery\_node\_id, movement\_type, qty (signed), unit\_cost, ref\_type, ref\_id, occurred\_at |
 | `inv.stock_level` | materialized: item\_id, delivery\_node\_id, on\_hand, value |
 | `inv.stock_count` | id, delivery\_node\_id, status, counted\_at; lines: item\_id, counted\_qty, system\_qty |
-| `inv.purchase_order` | id, delivery\_node\_id, supplier\_id, status, total, wf\_request\_id; lines |
+| `inv.purchase_order` | id, delivery\_node\_id, supplier\_id (null until the Main Store keeper names one, ADR 049), status, total, wf\_request\_id, expected\_on, ordered\_at, request\_po\_id; lines |
 | `inv.goods_receipt` | id, po\_id, delivery\_node\_id, received\_at; lines: item\_id, qty, unit\_cost |
 | `inv.transfer` | id, from\_node\_id, to\_node\_id, status, wf\_request\_id; lines |
 
@@ -253,9 +253,10 @@ export const PURCHASE_ORDER: ProcessDef = {
   subject: 'inv.purchase_order',
   hierarchy: 'delivery',
   steps: [
-    { step: 'outlet_approval', group: 'OUTLET_MANAGER', scope: 'subject_node' },
-    { step: 'area_approval', group: 'AREA_MANAGER', scope: 'nearest_ancestor',
-      when: { amount_gt: 50000 } },
+    // only unusual requests (off the menu or more than usual, ADR 044); no value limit (ADR 049)
+    { step: 'department_approval', group: 'DEPARTMENT_HEAD', scope: 'nearest_ancestor',
+      escalateTo: 'OUTLET_MANAGER', alsoEscalateTo: true, fallback: ['AREA_MANAGER'],
+      when: { payload_true: 'unusual' } },
   ],
   onApproved: 'inv.po.release',
   onRejected: 'inv.po.reject',
@@ -268,7 +269,7 @@ export const PURCHASE_ORDER: ProcessDef = {
 | Process | Initiator | Approval steps | On approved |
 | --- | --- | --- | --- |
 | `STOCK_ADJUSTMENT` | Store Keeper, Chef | Outlet Mgr (if variance above threshold) | Post `count_adjust` / `wastage` ledger rows |
-| `PURCHASE_ORDER` | Store Keeper, AI agent | Outlet Mgr; Area Mgr above amount | Status `released`, notify supplier |
+| `PURCHASE_ORDER` | Store Keeper, AI agent | Dept head (or GM), only if unusual (ADR 044, 049) | Status `released`; a request with no supplier waits for the Main Store keeper to place it (`inv.place_order`, ADR 049) |
 | `TRANSFER` | Outlet Mgr (receiving) | Hub Mgr (dispatch), receiving Outlet Mgr (receipt) | Post `transfer_out` then `transfer_in` |
 | `LEAVE` | Worker (self) | Outlet Mgr, then HR Admin | Update balance, block roster slots |
 | `SHIFT_SWAP` | Worker (self) | Outlet Mgr | Reassign `shift_assignment` |
@@ -389,6 +390,7 @@ Reads go straight to tables through the Supabase client under RLS; every write t
 | Inventory | `inv.record_wastage(node, lines)` | STOCK\_ADJUSTMENTS · modify | Writes ledger rows |
 | Inventory | `inv.start_count(node)`, `inv.submit_count(id, lines)` | STOCK\_ADJUSTMENTS · modify | Variance routes to workflow |
 | Orders | `inv.create_po(node, supplier, lines)` | PURCHASE\_ORDERS · modify | Creates draft, then `wf.submit` |
+| Supply requests | `inv.request_supplies(node, lines)`; `inv.place_order(request, groups)`; `inv.desk_orders()` | PURCHASE\_ORDERS · modify (at the store; to place, at its Main Store) | Items and quantities only, then `wf.submit`; the Main Store keeper names suppliers and dates, one order per supplier (ADR 049) |
 | Orders | `inv.receive(po, lines)` | PURCHASE\_ORDERS · modify | Receipt ledger rows |
 | Orders | `inv.request_transfer(from, to, lines)` | TRANSFERS · modify | Two-leg workflow |
 | Rostering | `hr.generate_week(node, week)` | ROSTER · modify | From templates |

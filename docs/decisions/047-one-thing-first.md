@@ -1,6 +1,6 @@
 # 047: Home and reports show one thing first
 
-Status: accepted · 4 Oct 2026 · follows `docs/ux-audit-2.md` (V-1 to V-24); builds on ADR 034, 041, 042
+Status: accepted · 4 Oct 2026 · follows `docs/ux-audit-2.md` (V-1 to V-24); builds on ADR 034, 041, 042 · amended by ADR 048: repairs and jobs to give were one thing, now one line "N open repairs" (tagged Assign); expired items to assign are their own line
 
 ## Context
 
