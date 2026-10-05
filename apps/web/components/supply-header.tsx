@@ -10,6 +10,7 @@ const TABS = [
   { href: '/stock/production', label: 'Make', domain: null, access: 'modify' },
   { href: '/stock/orders', label: 'Orders', domain: 'PURCHASE_ORDERS', access: 'view' },
   { href: '/stock/transfers', label: 'Transfers', domain: 'TRANSFERS', access: 'view' },
+  { href: '/stock/bills', label: 'Bills', domain: 'BILLS', access: 'view' },
 ] as const;
 
 /**

@@ -526,22 +526,20 @@ describe('wastage photos (ADR 006)', () => {
     );
   });
 
-  it('keeps stock check photos 5 years and selfies at most 24 months (ADR 043, 045)', () => {
+  it('keeps stock check photos and bills 7 years and selfies at most 24 months (ADR 043, 045, 050)', () => {
     const { props } = photoBucket();
     const rules = (props.LifecycleConfiguration as { Rules: Record<string, unknown>[] }).Rules;
-    expect(rules).toContainEqual(
-      expect.objectContaining({
-        Prefix: 'stockcheck/',
-        ExpirationInDays: 1830,
-        Status: 'Enabled',
-      }),
-    );
+    for (const prefix of ['stockcheck/', 'bills/']) {
+      expect(rules).toContainEqual(
+        expect.objectContaining({ Prefix: prefix, ExpirationInDays: 2557, Status: 'Enabled' }),
+      );
+    }
     expect(rules).toContainEqual(
       expect.objectContaining({ Prefix: 'selfies/', ExpirationInDays: 731, Status: 'Enabled' }),
     );
   });
 
-  it('lets the instance role put and get wastage/*, onboarding/*, tasks/*, stockcheck/*, selfies/* and items/* in the photo bucket, nothing else', () => {
+  it('lets the instance role put and get wastage/*, onboarding/*, tasks/*, stockcheck/*, selfies/*, items/* and bills/* in the photo bucket, nothing else', () => {
     const { id } = photoBucket();
     const st = statements('InstanceRole').filter((s) => JSON.stringify(s.Resource).includes(id));
     expect(st.map((s) => [s.Sid, actions(s).sort()])).toEqual([
@@ -551,6 +549,7 @@ describe('wastage photos (ADR 006)', () => {
       ['StockCheckPhotos', ['s3:GetObject', 's3:PutObject']],
       ['ClockSelfies', ['s3:GetObject', 's3:PutObject']],
       ['ItemPhotos', ['s3:GetObject', 's3:PutObject']],
+      ['VendorBills', ['s3:GetObject', 's3:PutObject']],
     ]);
     expect(JSON.stringify(st[0]!.Resource)).toContain('/wastage/*');
     expect(JSON.stringify(st[1]!.Resource)).toContain('/onboarding/*');
@@ -558,6 +557,7 @@ describe('wastage photos (ADR 006)', () => {
     expect(JSON.stringify(st[3]!.Resource)).toContain('/stockcheck/*');
     expect(JSON.stringify(st[4]!.Resource)).toContain('/selfies/*');
     expect(JSON.stringify(st[5]!.Resource)).toContain('/items/*');
+    expect(JSON.stringify(st[6]!.Resource)).toContain('/bills/*');
     // no list or delete: the lifecycle rule removes old uploads
     expect(st.flatMap(actions)).not.toContain('s3:DeleteObject');
   });

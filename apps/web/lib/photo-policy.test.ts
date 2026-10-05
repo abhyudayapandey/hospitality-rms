@@ -1,7 +1,9 @@
 import { S3Client } from '@aws-sdk/client-s3';
 import { describe, expect, it } from 'vitest';
 import {
+  isBillFileType,
   isPhotoType,
+  MAX_BILL_BYTES,
   keptKey,
   MAX_PHOTO_BYTES,
   photoKeyPattern,
@@ -63,5 +65,26 @@ describe('wastage photo upload policy', () => {
   it('issues short-lived GET URLs', async () => {
     const url = new URL(await presignView(client, 'photos-bucket', 'wastage/a/b/c.jpg'));
     expect(url.searchParams.get('X-Amz-Expires')).toBe('300');
+  });
+
+  it('takes PDFs up to 10 MB for bills only (ADR 050)', async () => {
+    expect(isBillFileType('application/pdf')).toBe(true);
+    expect(isBillFileType('image/jpeg')).toBe(true);
+    expect(isBillFileType('text/html')).toBe(false);
+    expect(isPhotoType('application/pdf')).toBe(false);
+    const t = await presignUpload(client, 'b', 'bills', TENANT, NODE, 'application/pdf');
+    expect(t.key).toMatch(new RegExp(`^bills/${TENANT}/${NODE}/[0-9a-f-]{36}\\.pdf$`));
+    const policy = JSON.parse(Buffer.from(t.fields.Policy!, 'base64').toString()) as {
+      conditions: unknown[];
+    };
+    expect(policy.conditions).toEqual(
+      expect.arrayContaining([
+        ['content-length-range', 1, MAX_BILL_BYTES],
+        ['eq', '$Content-Type', 'application/pdf'],
+      ]),
+    );
+    await expect(
+      presignUpload(client, 'b', 'wastage', TENANT, NODE, 'application/pdf'),
+    ).rejects.toThrow('INVALID_PHOTO');
   });
 });

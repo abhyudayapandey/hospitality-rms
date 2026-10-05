@@ -152,8 +152,10 @@ export class OutletOpsStack extends Stack {
         // maintenance requests 400 days (the app copies a flagged photo to keep/)
         { prefix: 'tasks/routine/', expiration: Duration.days(90) },
         { prefix: 'tasks/keep/', expiration: Duration.days(400) },
-        // stock check proof photos (ADR 043): money data, kept 5 years
-        { prefix: 'stockcheck/', expiration: Duration.days(1830) },
+        // stock check proof photos (ADR 043) and vendor bills (ADR 050): money data, kept
+        // 7 years (NFR Data retention)
+        { prefix: 'stockcheck/', expiration: Duration.days(2557) },
+        { prefix: 'bills/', expiration: Duration.days(2557) },
         // clock-in selfies (ATT-7, ADR 045): personnel data, never kept longer than the
         // data-retention rule allows (at most 24 months); the nightly job deletes the
         // rows by the exact rule, this removes the files
@@ -285,6 +287,15 @@ export class OutletOpsStack extends Stack {
         sid: 'ItemPhotos',
         actions: ['s3:PutObject', 's3:GetObject'],
         resources: [photoBucket.arnForObjects('items/*')],
+      }),
+    );
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        // vendor bills (BIL-1, BIL-2, ADR 050): photos and PDFs, written with a presigned POST
+        // and read through a short-lived GET URL by whoever may see the bill
+        sid: 'VendorBills',
+        actions: ['s3:PutObject', 's3:GetObject'],
+        resources: [photoBucket.arnForObjects('bills/*')],
       }),
     );
     role.addToPolicy(

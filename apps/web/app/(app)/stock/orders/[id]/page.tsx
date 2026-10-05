@@ -16,6 +16,7 @@ import { ContactForm } from './contact-form';
 import { ReceiveForm, type ReceiveLine } from './receive-form';
 import { PlaceOrderForm, type PlaceLine } from './place-order-form';
 import { SendCard } from './send-card';
+import { BillForm } from '../../bills/bill-form';
 
 const CHANNEL = { whatsapp: 'on WhatsApp', email: 'by email', print: 'printed' } as const;
 
@@ -104,23 +105,34 @@ export default async function OrderPage({
       ? await sql<{ channel: 'whatsapp' | 'email' | 'print'; sent_at: Date; sent_by_name: string }>`
           select channel, sent_at, sent_by_name from inv.po_sends(${id}::uuid)`.execute(tx)
       : { rows: [] };
-    const suppliers = canPlace
-      ? (
-          await sql<{ id: string; name: string }>`
+    // the bills for this order (BIL-1, ADR 050), for whoever sees or places it
+    const bills = await sql<{
+      id: string;
+      bill_no: string | null;
+      bill_date: Date;
+      amount: string;
+      files: number;
+    }>`select id, bill_no, bill_date, amount, files from inv.po_bills(${id}::uuid)`.execute(tx);
+    // the desk picks suppliers; a bill for an order placed with none names its supplier
+    const suppliers =
+      canPlace || (row && !row.supplier_id)
+        ? (
+            await sql<{ id: string; name: string }>`
             select id, name from inv.supplier where archived_at is null order by name`.execute(tx)
-        ).rows
-      : [];
+          ).rows
+        : [];
     return {
       po: row,
       canPlace,
       lines: lines.rows,
       suppliers,
       sends: sends.rows,
+      bills: bills.rows,
       prices: (await companySettings(tx)).po_send_prices,
     };
   });
   if (!data.po) return <Empty>Order not found.</Empty>;
-  const { po, lines, sends, prices, canPlace, suppliers } = data;
+  const { po, lines, sends, prices, canPlace, suppliers, bills } = data;
   const supplierName = po.supplier ?? 'Supplies request';
   // PO-4 (ADR 032): a released order goes to the supplier from this phone
   const message = {
@@ -233,6 +245,52 @@ export default async function OrderPage({
           ))}
         </ul>
       )}
+      {['released', 'partially_received', 'received'].includes(po.progress) &&
+        (bills.length > 0 || po.can_modify || canPlace) && (
+          <section className="space-y-2" data-testid="po-bills">
+            <h2 className="text-sm font-semibold text-slate-500">Bill</h2>
+            {bills.length > 0 && (
+              <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
+                {bills.map((b) => (
+                  <li key={b.id}>
+                    <Link
+                      href={`/stock/bills/${b.id}?node=${po.delivery_node_id}`}
+                      className="flex min-h-12 items-center justify-between gap-2 px-4 py-2 text-sm"
+                      data-testid="po-bill"
+                    >
+                      <span>
+                        {new Date(b.bill_date).toISOString().slice(0, 10)}
+                        {b.bill_no && ` · ${b.bill_no}`}
+                        <span className="block text-xs text-slate-500">
+                          {b.files} {b.files === 1 ? 'page' : 'pages'}
+                        </span>
+                      </span>
+                      <span className="font-semibold tabular-nums">{formatMoney(b.amount)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {(po.can_modify || canPlace) && (
+              <details
+                open={bills.length === 0 && po.progress !== 'released'}
+                className="rounded-xl bg-white p-4 ring-1 ring-slate-200"
+              >
+                <summary className="min-h-11 cursor-pointer py-2 font-medium">
+                  {bills.length === 0 ? 'Add the bill' : 'Add another bill'}
+                </summary>
+                <div className="pt-2">
+                  <BillForm
+                    node={null}
+                    po={po.id}
+                    askSupplier={!po.supplier_id}
+                    suppliers={suppliers}
+                  />
+                </div>
+              </details>
+            )}
+          </section>
+        )}
       {po.can_modify && po.supplier_id && (
         <ContactForm supplier={po.supplier_id} phone={po.phone} email={po.email} />
       )}

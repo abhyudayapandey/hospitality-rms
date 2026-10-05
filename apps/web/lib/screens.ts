@@ -35,6 +35,7 @@ export type ScreenKey =
   | 'wastage'
   | 'orders'
   | 'transfers'
+  | 'bills'
   | 'sales'
   | 'posImport'
   | 'roster'
@@ -204,6 +205,15 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     icon: 'truck',
     section: 'work',
     show: (i) => can(i, 'TRANSFERS'),
+  },
+  {
+    // vendor bills (BIL-1 to BIL-3, ADR 050)
+    key: 'bills',
+    href: '/stock/bills',
+    label: 'Bills',
+    icon: 'bill',
+    section: 'work',
+    show: (i) => can(i, 'BILLS'),
   },
   {
     key: 'sales',

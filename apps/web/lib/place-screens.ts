@@ -9,6 +9,8 @@ export const PLACE_SCREENS = [
   'wastage',
   'orders',
   'transfers',
+  // vendor bills (ADR 050): stores where the caller holds BILLS
+  'bills',
   'variance',
   'production',
   'sales',

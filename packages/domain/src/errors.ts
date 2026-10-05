@@ -138,6 +138,9 @@ export const ERROR_MESSAGES = {
   POS_NO_GRAND_TOTAL: 'The file has no Grand Total row. Export the whole report.',
   POS_NO_LINES: 'The file has no sales lines.',
   INVALID_AMOUNT: 'Amounts are zero or more.',
+  // vendor bills (BIL-1 to BIL-3, ADR 050)
+  INVALID_BILL: 'Check the bill: its date (within the last year), amount and what it was for.',
+  INVALID_FILE: "A file didn't upload. Add it again (photos or PDFs, up to 5).",
   INVALID_CODE: 'Enter the POS item code, up to 40 characters, no spaces.',
   // trends (RPT-12, ADR 041)
   INVALID_GRAIN: 'Show the trend by week or month.',

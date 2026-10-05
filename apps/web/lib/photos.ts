@@ -3,6 +3,7 @@ import { CopyObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import {
   presignUpload,
   presignView,
+  type BillFileType,
   type PhotoPrefix,
   type PhotoType,
   type UploadTarget,
@@ -13,11 +14,14 @@ import {
 // Callers check core.can() in SQL before asking for a URL (never in TypeScript).
 
 export {
+  isBillFileType,
   isPhotoType,
+  MAX_BILL_BYTES,
   keptKey,
   MAX_PHOTO_BYTES,
   photoKeyPattern,
   wastageKeyPattern,
+  type BillFileType,
   type PhotoPrefix,
   type PhotoType,
   type UploadTarget,
@@ -55,6 +59,15 @@ export function presignPhotoUpload(
   contentType: PhotoType,
 ): Promise<UploadTarget> {
   return presignUpload(s3(), bucket(), prefix, tenantId, nodeId, contentType);
+}
+
+/** A presigned POST for one bill file (photo or PDF) at the bill's store (ADR 050). */
+export function presignBillUpload(
+  tenantId: string,
+  nodeId: string,
+  contentType: BillFileType,
+): Promise<UploadTarget> {
+  return presignUpload(s3(), bucket(), 'bills', tenantId, nodeId, contentType);
 }
 
 /** Copies a photo to another key in the bucket (a routine task photo kept for 400 days). */

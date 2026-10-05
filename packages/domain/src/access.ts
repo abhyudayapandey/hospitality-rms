@@ -21,6 +21,8 @@ export const DOMAINS: readonly DomainDef[] = [
   // seeing who verified what (INV-10, ADR 043); modify is the verifier's right
   { code: 'STOCK_CHECK', tree: 'delivery' },
   { code: 'PURCHASE_ORDERS', tree: 'delivery' },
+  // vendor bills (BIL-1 to BIL-3, ADR 050): at the store, like the orders they pay for
+  { code: 'BILLS', tree: 'delivery' },
   { code: 'TRANSFERS', tree: 'delivery' },
   // recipes and prep procedures where they are made or sold (no costs, ADR 014)
   { code: 'RECIPES', tree: 'delivery' },
@@ -190,6 +192,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       STOCK_CHECK: v,
       TRANSFERS: m,
       PURCHASE_ORDERS: m,
+      BILLS: m,
       AI_RECOMMENDATIONS: v,
       RECIPES: v,
       PRODUCTION: m,
@@ -204,6 +207,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       STOCK_ADJUSTMENTS: v,
       STOCK_CHECK: m,
       PURCHASE_ORDERS: v,
+      BILLS: v,
       TRANSFERS: v,
       RECIPES: v,
       MENU: v,
@@ -234,6 +238,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       STOCK_ADJUSTMENTS: m,
       STOCK_CHECK: v,
       PURCHASE_ORDERS: m,
+      BILLS: m,
       TRANSFERS: m,
       // worker records: People, and asking for a deactivation where there is no HR
       // executive (UX-5, ADR 035)
@@ -291,6 +296,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       STOCK_ADJUSTMENTS: m,
       STOCK_CHECK: v,
       PURCHASE_ORDERS: v,
+      BILLS: v,
       TRANSFERS: m,
       RECIPES: v,
       MENU: v,
