@@ -22,7 +22,10 @@ test('the chef asks for supplies with no supplier or price; the Main Store keepe
   await page.waitForURL(/\/stock\/orders\/[0-9a-f-]{36}/);
   const po = new URL(page.url()).pathname.split('/').pop()!;
 
-  // off the menu or more than usual waits for the department head or GM
+  // usual items are approved at once and released by the executor; anything off the menu or
+  // more than usual still waits for the department head or GM
+  await runExecutor();
+  await page.reload();
   if ((await page.getByTestId('po-progress').textContent()) === 'awaiting approval') {
     await signInAs(page, 'Test General Manager 1.0');
     await page.goto('/inbox');
@@ -31,8 +34,8 @@ test('the chef asks for supplies with no supplier or price; the Main Store keepe
     });
     await item.getByRole('button', { name: 'Approve' }).click();
     await expect(item.getByRole('status')).toHaveText('Approved');
+    await runExecutor();
   }
-  await runExecutor();
 
   // the Main Store's keeper has it on the To do list, and orders it
   await signInAs(page, 'Test Store Keeper 1.0');
