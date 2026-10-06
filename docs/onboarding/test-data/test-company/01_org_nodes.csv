@@ -2,7 +2,7 @@ node_code,name,kind,parent_code,timezone,outlet_format,department_type
 TEST-COMPANY,Test Company,company,,,,
 TEST-REGION-WEST,Test Region West,region,TEST-COMPANY,,,
 TEST-AREA-MUMBAI,Test Area Mumbai,area,TEST-REGION-WEST,,,
-TEST-HOTEL-1.0,Test Hotel & Bar 1.0,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,full_hotel,
+TEST-HOTEL-1.0,Test Hotel & Bar 1.0,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,hotel,
 TEST-HOTEL-1.0-FRONT-OFFICE,Test Hotel & Bar 1.0 – Front Office,department,TEST-HOTEL-1.0,Asia/Kolkata,,other
 TEST-HOTEL-1.0-HOUSEKEEPING,Test Hotel & Bar 1.0 – Housekeeping,department,TEST-HOTEL-1.0,Asia/Kolkata,,housekeeping
 TEST-HOTEL-1.0-RESTAURANT,Test Hotel & Bar 1.0 – Restaurant,department,TEST-HOTEL-1.0,Asia/Kolkata,,service
@@ -13,7 +13,7 @@ TEST-HOTEL-1.0-STORES-TEAM,Test Hotel & Bar 1.0 – Stores Team,department,TEST-
 TEST-HOTEL-1.0-ENGINEERING,Test Hotel & Bar 1.0 – Engineering,department,TEST-HOTEL-1.0,Asia/Kolkata,,other
 TEST-HOTEL-1.0-SECURITY,Test Hotel & Bar 1.0 – Security,department,TEST-HOTEL-1.0,Asia/Kolkata,,other
 TEST-HOTEL-1.0-ADMIN-FINANCE,Test Hotel & Bar 1.0 – Admin & Finance,department,TEST-HOTEL-1.0,Asia/Kolkata,,other
-TEST-HOTEL-1.1,Test Hotel & Bar 1.1,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,full_hotel,
+TEST-HOTEL-1.1,Test Hotel & Bar 1.1,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,hotel,
 TEST-HOTEL-1.1-FRONT-OFFICE,Test Hotel & Bar 1.1 – Front Office,department,TEST-HOTEL-1.1,Asia/Kolkata,,other
 TEST-HOTEL-1.1-HOUSEKEEPING,Test Hotel & Bar 1.1 – Housekeeping,department,TEST-HOTEL-1.1,Asia/Kolkata,,housekeeping
 TEST-HOTEL-1.1-RESTAURANT,Test Hotel & Bar 1.1 – Restaurant,department,TEST-HOTEL-1.1,Asia/Kolkata,,service
@@ -24,8 +24,8 @@ TEST-HOTEL-1.1-STORES-TEAM,Test Hotel & Bar 1.1 – Stores Team,department,TEST-
 TEST-HOTEL-1.1-ENGINEERING,Test Hotel & Bar 1.1 – Engineering,department,TEST-HOTEL-1.1,Asia/Kolkata,,other
 TEST-HOTEL-1.1-SECURITY,Test Hotel & Bar 1.1 – Security,department,TEST-HOTEL-1.1,Asia/Kolkata,,other
 TEST-HOTEL-1.1-ADMIN-FINANCE,Test Hotel & Bar 1.1 – Admin & Finance,department,TEST-HOTEL-1.1,Asia/Kolkata,,other
-TEST-GUEST-HOUSE-2.0,Test Guest House 2.0,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,small_hotel,
-TEST-BAR-3.0,Test Bar 3.0,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,standalone_bar,
+TEST-GUEST-HOUSE-2.0,Test Guest House 2.0,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,hotel,
+TEST-BAR-3.0,Test Bar 3.0,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,bar_pub,
 TEST-BAR-3.0-BAR,Test Bar 3.0 – Bar,department,TEST-BAR-3.0,Asia/Kolkata,,service
 TEST-BAR-3.0-FLOOR-SERVICE,Test Bar 3.0 – Floor Service,department,TEST-BAR-3.0,Asia/Kolkata,,service
 TEST-BAR-3.0-KITCHEN,Test Bar 3.0 – Kitchen,department,TEST-BAR-3.0,Asia/Kolkata,,kitchen

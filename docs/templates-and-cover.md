@@ -21,7 +21,7 @@ this plan comes from are in `docs/sop/`.
 | Places: company, region, area, outlet, site, department, stores | Any shape; levels are optional (ADR 009)                                                             | Yes, unchanged                                     |
 | Access groups (STAFF, SUPERVISOR, DEPARTMENT_HEAD, …)           | Product code in `packages/domain/src/access.ts`, synced to every customer                            | Yes, unchanged                                     |
 | Job roles                                                       | Customer data (file 06): each role lists `GROUP@scope` defaults, which can differ by `outlet_format` | Yes, but defaults come from the catalogue (§4)     |
-| Outlet formats                                                  | `full_hotel`, `small_hotel`, `standalone_bar`                                                        | Extended (§5)                                      |
+| Outlet formats                                                  | `full_hotel`, `small_hotel`, `standalone_bar`                                                        | Renamed to the SOP formats (ADR 062)               |
 | Modules per company                                             | Events, Swaps, Leave, Production, Prep lists, Checklists, Maintenance, Menu and sales                | Yes; grouped for selling (§9)                      |
 | Approvals                                                       | Walk up the place tree to whoever holds the group; end at the Account Owner                          | Yes. A missing role already falls upward           |
 | Checklists and tasks                                            | Given to a person, a job role or whoever is on shift                                                 | Yes; "job role" learns about cover (§6)            |
@@ -117,8 +117,13 @@ ranges allow for findings from the full test runs.
   fryer oil, cleaning schedule. Templates switch them on; the customer can edit them later.
 - **Starter item lists (optional).** Common items per department with units, so a store
   isn't empty on day one. The customer adds par and prices.
-- **`outlet_format`.** Extended to the template codes. The three existing values map
-  across: `full_hotel` and `small_hotel` become Hotel, `standalone_bar` becomes Bar / Pub.
+- **`outlet_format`.** The SOP formats: `restaurant`, `bar_pub`, `qsr`, `cloud_kitchen`, `hotel`
+  (built, ADR 062). `full_hotel` and `small_hotel` became `hotel`, `standalone_bar` became
+  `bar_pub`; old files still load.
+- **Built (ADR 062, decided 6 Oct):** the format is picked from tiles ("Restaurant + Bar") and
+  "Anything else here?" ticks, in the platform console (Customer → Add an outlet); Café and
+  Restaurant are one template with a café view; the starter checklists are copies that
+  remember their library version.
 - **Effort.** Most of this step is content, not code.
 
 ### Step 4. "Who covers it" (cover). 6–9 days — built (ADR 061)

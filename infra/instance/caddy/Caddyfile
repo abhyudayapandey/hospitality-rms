@@ -1,10 +1,25 @@
 # TLS termination with automatic Let's Encrypt certificates for the app domain.
 {
 	email {$ACME_EMAIL}
+	# HTTP/1.1 and HTTP/2 only (ADR 063): the security group opens TCP 443, not UDP 443, so
+	# offering HTTP/3 made phones that remembered the offer try a connection that can't open
+	# (an iPhone on Wi-Fi stalled on a blank screen).
+	servers {
+		protocols h1 h2
+	}
 }
 
 {$APP_DOMAIN} {
 	encode zstd gzip
 	header Strict-Transport-Security "max-age=31536000"
+	# One line per request in the journal (journalctl -u outlet-ops-caddy): method, path,
+	# status and time taken. Headers (cookies included) are left out.
+	log {
+		output stderr
+		format filter {
+			request>headers delete
+			resp_headers delete
+		}
+	}
 	reverse_proxy 127.0.0.1:3000
 }

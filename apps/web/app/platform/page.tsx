@@ -41,6 +41,9 @@ export default async function PlatformHome() {
       >
         New customer
       </Link>
+      <Link href="/platform/templates" className="text-sm text-slate-700 underline">
+        Outlet templates: what each kind of outlet starts with
+      </Link>
       <ul
         className="divide-y divide-slate-200 rounded-xl bg-white ring-1 ring-slate-200"
         data-testid="customers"

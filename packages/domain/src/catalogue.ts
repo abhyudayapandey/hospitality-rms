@@ -9,6 +9,7 @@
 // Existing codes keep their meaning: STORE_MANAGER is a hotel's head of Stores, so the QSR's
 // Store Manager is QSR_STORE_MANAGER, titled "Store Manager".
 
+import type { OutletFormat } from './formats';
 import { DUTY_BY_CODE, expandDuty } from './duties';
 
 /** The SOP manuals: Restaurant, Bar and brewery, Cloud kitchen, Franchise, Hotel, QSR. */
@@ -84,9 +85,6 @@ export const DEPARTMENTS: readonly DepartmentDef[] = [
 /** Where a role's people usually work: a department, or a level with no department. */
 export type RoleHome = string; // a DEPARTMENTS code, or '(company)', '(area)', '(outlet)'
 export const ROLE_HOMES_WITHOUT_DEPARTMENT = ['(company)', '(area)', '(outlet)'] as const;
-
-/** The outlet formats a role's duties can differ by (file 06 `outlet_format`). */
-export type OutletFormat = 'full_hotel' | 'small_hotel' | 'standalone_bar';
 
 export interface RoleDef {
   code: string;
@@ -295,8 +293,8 @@ export const ROLES: readonly RoleDef[] = [
     title: 'Bar Manager',
     home: 'BAR',
     duties: [D, 'KEEPS_DEPARTMENT_STORE'],
-    formatDuties: { standalone_bar: ['RUNS_OUTLET'] },
-    formatHome: { standalone_bar: '(outlet)' },
+    formatDuties: { bar_pub: ['RUNS_OUTLET'] },
+    formatHome: { bar_pub: '(outlet)' },
     sops: ['B', 'H'],
   },
   {

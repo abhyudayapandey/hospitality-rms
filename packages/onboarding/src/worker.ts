@@ -1,6 +1,9 @@
 import type { ClientBase } from 'pg';
 import { loadCustomer, type LoadOptions, type LoadReport } from './apply';
-import { createCustomer, type NewCustomer } from './create';
+import { createCustomer } from './create';
+import { newCustomerFrom, type CreatePayload } from './customer-files';
+
+export { newCustomerFrom } from './customer-files';
 import { inviteSender, type InviteSender } from './invites';
 import type { ImportReport, InviteProgress } from './report';
 import { readUpload, UploadError } from './upload';
@@ -19,38 +22,6 @@ export interface PlatformJob {
   id: string;
   kind: string;
   payload: Record<string, unknown>;
-}
-
-interface CreatePayload {
-  code: string;
-  name: string;
-  country?: string;
-  currency?: string;
-  timezone?: string;
-  is_test?: boolean;
-  owner: {
-    display_name: string;
-    email?: string | null;
-    username?: string | null;
-    login_type?: 'email' | 'username' | null;
-  };
-}
-
-export function newCustomerFrom(p: CreatePayload): NewCustomer {
-  return {
-    code: p.code,
-    name: p.name.trim(),
-    country: p.country?.trim() || 'India',
-    currency: p.currency?.trim() || 'INR',
-    timezone: p.timezone?.trim() || 'Asia/Kolkata',
-    isTest: p.is_test === true,
-    owner: {
-      displayName: p.owner.display_name.trim(),
-      email: p.owner.email ?? null,
-      ...(p.owner.username ? { username: p.owner.username } : {}),
-      loginType: p.owner.login_type ?? 'email',
-    },
-  };
 }
 
 export interface WorkerOptions extends LoadOptions {

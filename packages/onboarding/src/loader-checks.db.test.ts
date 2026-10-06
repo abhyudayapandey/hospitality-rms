@@ -79,8 +79,8 @@ describe('loader errors', () => {
       });
       const outlet = edit(
         '01_org_nodes.csv',
-        'TEST-HOTEL-1.0,Test Hotel & Bar 1.0,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,full_hotel,',
-        'TEST-HOTEL-1.0,Test Hotel & Bar 1.0,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,full_hotel,service',
+        'TEST-HOTEL-1.0,Test Hotel & Bar 1.0,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,hotel,',
+        'TEST-HOTEL-1.0,Test Hotel & Bar 1.0,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,hotel,service',
       );
       const r1 = await loadCustomer(c, outlet, { nested: true });
       expect(r1.issues).toContainEqual({

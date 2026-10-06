@@ -2221,20 +2221,37 @@ class Loader {
         `select ops.check_schedule($1), ops.check_steps($2), ops.check_assign($3, $4)`,
         [schedule, steps, node, assign],
       );
+      // a library copy records its source (ADR 062); blank keeps what was recorded
+      const lib = first.from_library;
       await this.upsert(
         'checklists',
         `insert into ops.checklist_template as t (tenant_id, org_node_id, code, name, schedule,
-                                                 assign, steps)
-         values ($1, $2, $3, $4, $5, $6, $7)
+                                                 assign, steps, library_code, library_version)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          on conflict (tenant_id, code) where code is not null do update
             set org_node_id = excluded.org_node_id, name = excluded.name,
                 schedule = excluded.schedule, assign = excluded.assign, steps = excluded.steps,
+                library_code = coalesce(excluded.library_code, t.library_code),
+                library_version = coalesce(excluded.library_version, t.library_version),
                 archived_at = null
-          where (t.org_node_id, t.name, t.schedule, t.assign, t.steps, t.archived_at)
+          where (t.org_node_id, t.name, t.schedule, t.assign, t.steps, t.library_code,
+                 t.library_version, t.archived_at)
                 is distinct from (excluded.org_node_id, excluded.name, excluded.schedule,
-                                  excluded.assign, excluded.steps, null)
+                                  excluded.assign, excluded.steps,
+                                  coalesce(excluded.library_code, t.library_code),
+                                  coalesce(excluded.library_version, t.library_version), null)
          returning id, xmax = 0 as inserted`,
-        [this.tenant, node, code, first.name, schedule, assign, steps],
+        [
+          this.tenant,
+          node,
+          code,
+          first.name,
+          schedule,
+          assign,
+          steps,
+          lib?.code ?? null,
+          lib?.version ?? null,
+        ],
       );
     }
   }

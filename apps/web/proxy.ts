@@ -1,7 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { appUrl } from './lib/app-url';
-import { cognitoConfig, refreshTokens, verifyIdToken } from './lib/auth/cognito';
 import {
+  CognitoUnavailable,
+  cognitoConfig,
+  refreshTokens,
+  verifyIdToken,
+  withinTime,
+} from './lib/auth/cognito';
+import {
+  COGNITO_GRACE_S,
   COGNITO_REFRESH_AFTER_S,
   PLACE_COOKIE,
   REFRESH_COOKIE,
@@ -86,13 +93,26 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
     const cfg = cognitoConfig();
     const refresh = req.cookies.get(REFRESH_COOKIE)?.value;
     if (!cfg || !refresh) return toLogin(req, 'expired');
+    const started = Date.now();
     try {
       const tokens = await refreshTokens(cfg, refresh);
-      await verifyIdToken(cfg, tokens.idToken);
+      await withinTime(verifyIdToken(cfg, tokens.idToken));
       newRefresh = tokens.refreshToken;
       payload = { ...payload, ref: now };
-    } catch {
-      return toLogin(req, 'expired');
+      const ms = Date.now() - started;
+      if (ms > 2000) console.warn(JSON.stringify({ event: 'cognito_refresh_slow', ms }));
+    } catch (err) {
+      // Cognito not answering says nothing about the session: carry on with it and try again
+      // on the next request, for up to a day (ADR 063). A rejection signs the person out.
+      const unavailable = err instanceof CognitoUnavailable;
+      console.warn(
+        JSON.stringify({
+          event: unavailable ? 'cognito_unavailable' : 'cognito_refresh_rejected',
+          ms: Date.now() - started,
+          error: err instanceof Error ? err.message : 'unknown',
+        }),
+      );
+      if (!unavailable || now - payload.ref > COGNITO_GRACE_S) return toLogin(req, 'expired');
     }
   }
 

@@ -24,7 +24,7 @@ BAKER,Baker,,works,KITCHEN,USES_DEPARTMENT_STORE; WORKS_SHIFTS; MAKES_PREP,,Hote
 KITCHEN_STEWARD,Kitchen Steward,Utility; Dishwasher,works,KITCHEN,WORKS_SHIFTS,,Restaurant; Hotel
 CHIEF_STEWARD,Chief Steward,,leads_shift,KITCHEN,LEADS_SHIFT; WORKS_SHIFTS,,Hotel
 FOOD_SAFETY_SUPERVISOR,Food Safety Supervisor,,leads_shift,KITCHEN,LEADS_SHIFT; WORKS_SHIFTS,,Restaurant; Cloud kitchen; Hotel; QSR
-BAR_MANAGER,Bar Manager,,runs_department,BAR,RUNS_DEPARTMENT; KEEPS_DEPARTMENT_STORE,standalone_bar: RUNS_OUTLET,Bar; Hotel
+BAR_MANAGER,Bar Manager,,runs_department,BAR,RUNS_DEPARTMENT; KEEPS_DEPARTMENT_STORE,bar_pub: RUNS_OUTLET,Bar; Hotel
 HEAD_BARTENDER,Head Bartender,,leads_shift,BAR,LEADS_SHIFT; USES_DEPARTMENT_STORE; WORKS_SHIFTS,,Bar
 BARTENDER,Bartender,,works,BAR,WORKS_SHIFTS; MAKES_PREP,,Restaurant; Bar; Hotel
 BAR_BACK,Bar Back,,works,BAR,WORKS_SHIFTS,,Bar

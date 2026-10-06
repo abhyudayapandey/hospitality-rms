@@ -150,6 +150,14 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   covered by a role it has, or not done. Cover adds the covered role's grants inside
   `core.derive_job_role_access`, so every way access is applied picks it up; covered job-role
   tasks go to one coverer on duty (`ops.give_covered_task`). Only exceptions are stored.
+- Outlet formats are the SOPs' (`restaurant`, `bar_pub`, `qsr`, `cloud_kitchen`, `hotel`; ADR 062).
+  Outlet templates, tiles, extras and the starter checklist library are product code
+  (`packages/domain/src/templates.ts`, `checklists.ts`). An outlet from a template is added to
+  the customer's complete current files (`addOutlet`, `platform.current_files`) and dry run like
+  any import, never loaded on its own. People who onboard never see a code.
+- The service worker shows "Can't reach Outlet Ops" after 10 s and caches nothing; Cognito calls
+  give up after 5 s, and Cognito not answering never signs anyone out (ADR 063). Caddy speaks
+  HTTP/1.1 and HTTP/2 only (the security group has no UDP 443) and logs each request.
 
 ## Commands
 
