@@ -5,4 +5,7 @@ export * from './access';
 export * from './access-words';
 export * from './modules';
 export * from './duties';
+export * from './formats';
 export * from './catalogue';
+export * from './checklists';
+export * from './templates';

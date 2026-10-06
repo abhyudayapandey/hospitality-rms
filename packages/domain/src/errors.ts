@@ -91,6 +91,7 @@ export const ERROR_MESSAGES = {
   UPLOAD_NO_CUSTOMER_FILE: 'The upload needs 00_customer.csv.',
   LAST_ACCOUNT_OWNER: 'The organisation must keep at least one active Account Owner.',
   JOB_ROLE_SCOPE: "This job role's default access doesn't fit the person's place.",
+  FORMAT_MERGE: 'A job role has access for one hotel size only. Give it for every hotel first.',
   INVALID_RECIPE: 'A recipe or procedure belongs to a prep item or a menu item.',
   INVALID_STORE: 'Pick one of the outlet’s own stores that holds stock.',
   UNIT_MISSING: 'That ingredient has no recipe unit yet. Set its unit conversion first.',

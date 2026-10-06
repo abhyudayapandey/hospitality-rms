@@ -59,7 +59,7 @@ describe('structure', () => {
       const t = await tenant(c);
       const co = await node(c, t, 'org', 'company', 'SHAPE-CO', null);
       const bar = await node(c, t, 'org', 'outlet', 'SHAPE-BAR', co, {
-        outlet_format: 'standalone_bar',
+        outlet_format: 'bar_pub',
       });
       const net = await node(c, t, 'delivery', 'network', 'SHAPE-NET', null, {
         holds_stock: false,
@@ -82,7 +82,7 @@ describe('structure', () => {
       const t = await tenant(c);
       const co = await node(c, t, 'org', 'company', 'SHAPE-CO', null);
       const hotel = await node(c, t, 'org', 'outlet', 'SHAPE-HOTEL', co, {
-        outlet_format: 'full_hotel',
+        outlet_format: 'hotel',
       });
       await node(c, t, 'org', 'department', 'SHAPE-HOTEL-BAR', hotel);
       const insert = `insert into core.hierarchy_node (tenant_id, type, kind, name, code, parent_id)
@@ -101,11 +101,9 @@ describe('structure', () => {
       );
       // outlet formats only on org outlets
       expect(
-        await fails(
-          c,
-          `update core.hierarchy_node set outlet_format = 'full_hotel' where id = $1`,
-          [co],
-        ),
+        await fails(c, `update core.hierarchy_node set outlet_format = 'hotel' where id = $1`, [
+          co,
+        ]),
       ).toMatch(/hierarchy_node_format/);
     });
   });

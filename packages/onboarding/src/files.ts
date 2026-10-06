@@ -2,6 +2,9 @@ import { z } from 'zod';
 import {
   DUTY_BY_CODE,
   MODULE_CODES,
+  OUTLET_FORMATS,
+  outletFormat,
+  type OutletFormat,
   ROLE_BY_CODE,
   SCOPE_WORDS,
   expandDuty,
@@ -56,7 +59,22 @@ const recipeUnit = z.enum(['g', 'ml', 'each'], 'must be g, ml or each');
 const timezone = z.string().refine(isTimezone, 'is not a known time zone');
 const optTimezone = z.union([z.literal('').transform(() => undefined), timezone]);
 
-export const OUTLET_FORMATS = ['full_hotel', 'small_hotel', 'standalone_bar'] as const;
+// The SOPs' formats (ADR 062); a file may still use an old code, read as the new one.
+const FORMAT_MESSAGE = `must be one of ${OUTLET_FORMATS.join(', ')}`;
+const toFormat = (v: string, ctx: z.RefinementCtx) => {
+  const f = outletFormat(v);
+  if (f) return f;
+  ctx.addIssue({ code: 'custom', message: FORMAT_MESSAGE });
+  return z.NEVER;
+};
+/** An outlet's format (file 01): blank for anything but an outlet. */
+const outletFormatColumn = z
+  .string()
+  .transform((v, ctx) => (v === '' ? undefined : toFormat(v, ctx)));
+/** The format a job role's row is for (file 06): `any`, or one format. */
+const roleFormatColumn = z
+  .string()
+  .transform((v, ctx): 'any' | OutletFormat => (v === 'any' ? 'any' : toFormat(v, ctx)));
 /** What a department does, for the order of Home's "Needs attention" (DB-2, ADR 033). */
 export const DEPARTMENT_TYPES = ['kitchen', 'service', 'housekeeping', 'other'] as const;
 /** Scope words for job-role access (ADR 009), defined with the duties (ADR 059). */
@@ -306,7 +324,7 @@ export const FILES = {
       kind: z.enum(['company', 'region', 'area', 'outlet', 'site', 'department']),
       parent_code: optCode,
       timezone: optTimezone,
-      outlet_format: z.union([z.literal('').transform(() => undefined), z.enum(OUTLET_FORMATS)]),
+      outlet_format: outletFormatColumn,
       // DB-2 (ADR 033): optional column, departments only; blank means other
       department_type: z
         .enum(['', ...DEPARTMENT_TYPES], 'must be kitchen, service, housekeeping or other')
@@ -369,7 +387,7 @@ export const FILES = {
       job_role_code: z.string().regex(/^[A-Z][A-Z0-9_]*$/, 'must be an upper-case code'),
       // blank for a catalogue role: its title comes from the catalogue (ADR 060)
       job_title: optional,
-      outlet_format: z.enum(['any', ...OUTLET_FORMATS]),
+      outlet_format: roleFormatColumn,
       usual_department: optional,
       default_duties: defaultDuties,
       default_access: defaultAccess,
@@ -684,7 +702,19 @@ export const FILES = {
       max: optNum,
       unit: optional,
       photo_required: optYesNo,
+      // ADR 062: optional, `CHILLER-LOG@1` for a copy of a library checklist
+      from_library: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          if (v === '') return undefined;
+          const m = /^([A-Z][A-Z0-9-]*)@([1-9]\d*)$/.exec(v);
+          if (m) return { code: m[1]!, version: Number(m[2]) };
+          ctx.addIssue({ code: 'custom', message: 'must be like CHILLER-LOG@1' });
+          return z.NEVER;
+        }),
     }),
+    optional: ['from_library'],
   },
   // Test-only tasks (ADR 020): one-off tasks, open maintenance requests and prep lists.
   tasks: {

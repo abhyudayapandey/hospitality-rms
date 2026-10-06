@@ -12,6 +12,8 @@ export const IDLE_TIMEOUT_S = 12 * 60 * 60; // 12 h without activity
 export const ABSOLUTE_TIMEOUT_S = 30 * 24 * 60 * 60; // 30 days from sign-in
 export const TOUCH_AFTER_S = 5 * 60; // re-issue the cookie at most every 5 min
 export const COGNITO_REFRESH_AFTER_S = 60 * 60; // re-validate with Cognito hourly
+/** How long a session carries on while Cognito doesn't answer (ADR 063). */
+export const COGNITO_GRACE_S = 24 * 60 * 60;
 
 export interface SessionPayload {
   v: 1;

@@ -6,13 +6,12 @@ test('sign-out clears the session and refresh cookies and the service-worker cac
   context,
 }) => {
   await signInAs(page, 'Test Head Cook 3.0');
-  // The service worker precaches the offline page.
+  // The service worker caches nothing (ADR 063); a cache left by an older one must still go.
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
+    await (await caches.open('oo-shell-v1')).put('/offline', new Response('old'));
   });
-  await expect
-    .poll(() => page.evaluate(async () => (await caches.keys()).length), { timeout: 15_000 })
-    .toBeGreaterThan(0);
+  expect(await page.evaluate(async () => (await caches.keys()).length)).toBeGreaterThan(0);
   // Pretend a Cognito refresh cookie exists too.
   await context.addCookies([{ name: 'oo_refresh', value: 'x', url: page.url() }]);
 

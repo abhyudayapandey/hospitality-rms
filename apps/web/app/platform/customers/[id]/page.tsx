@@ -57,6 +57,9 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
         <Link href={`/platform/customers/${id}/logins`} className={link}>
           Logins
         </Link>
+        <Link href={`/platform/customers/${id}/add-outlet`} className={link}>
+          Add an outlet
+        </Link>
       </div>
       <AccountOwners tenantId={id} owners={owners} />
       {jobs.length > 0 && (

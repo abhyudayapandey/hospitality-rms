@@ -75,3 +75,17 @@ export function parseCsv(text: string): CsvTable {
     }),
   };
 }
+
+const cell = (v: string) => (/[",\r\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v);
+
+/** Writes a table back out: the header, then each row in the header's order. */
+export function writeCsv(
+  header: readonly string[],
+  rows: readonly Record<string, string>[],
+): string {
+  return (
+    [header.join(','), ...rows.map((r) => header.map((h) => cell(r[h] ?? '')).join(','))].join(
+      '\n',
+    ) + '\n'
+  );
+}

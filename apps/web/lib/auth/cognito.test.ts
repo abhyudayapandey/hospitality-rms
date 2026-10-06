@@ -1,6 +1,8 @@
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  COGNITO_TIMEOUT_MS,
+  CognitoUnavailable,
   authorizeUrl,
   cognitoConfig,
   createIdTokenVerifier,
@@ -117,5 +119,35 @@ describe('Cognito config and OAuth calls', () => {
     expect(await refreshTokens(cfg, 'r1', notRotated)).toEqual({ idToken: 'id3' });
     const failed = vi.fn(() => Promise.resolve(new Response('{}', { status: 400 })));
     await expect(refreshTokens(cfg, 'revoked', failed)).rejects.toThrow('COGNITO_TOKEN_400');
+  });
+});
+
+describe('Cognito not answering (ADR 063)', () => {
+  const cfg = { userPoolId: 'ap-south-1_x', clientId: 'c', domain: 'auth.example.com' };
+
+  it('gives up after 5 seconds and says Cognito is unavailable', async () => {
+    vi.useFakeTimers();
+    try {
+      const never: typeof fetch = () => new Promise(() => {});
+      const p = refreshTokens(cfg as never, 'r', never);
+      const check = expect(p).rejects.toBeInstanceOf(CognitoUnavailable);
+      await vi.advanceTimersByTimeAsync(COGNITO_TIMEOUT_MS + 1);
+      await check;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a server error is unavailable; a rejection is not', async () => {
+    const answer =
+      (status: number): typeof fetch =>
+      () =>
+        Promise.resolve(new Response('{}', { status }));
+    await expect(refreshTokens(cfg as never, 'r', answer(503))).rejects.toBeInstanceOf(
+      CognitoUnavailable,
+    );
+    const rejected = refreshTokens(cfg as never, 'r', answer(400));
+    await expect(rejected).rejects.toThrow('COGNITO_TOKEN_400');
+    await expect(rejected).rejects.not.toBeInstanceOf(CognitoUnavailable);
   });
 });

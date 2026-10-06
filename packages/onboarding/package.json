@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./upload": "./src/upload-entry.ts",
-    "./pos": "./src/pos.ts"
+    "./pos": "./src/pos.ts",
+    "./templates": "./src/templates-entry.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

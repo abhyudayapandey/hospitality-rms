@@ -2188,3 +2188,30 @@ one's access changes.
    `select count(*) from core.role_assignment where source_note like 'covers %'` shows 0.
 3. Check, in the app: sign in as the General Manager 1.0 and the Front Desk Executive 2.0;
    their Home, Tasks and bottom nav are as before.
+
+## Releasing outlet templates and the slow-start fix (ADR 062, 063)
+
+Three migrations:
+
+- `20261115100000_outlet_formats`: renames the formats. It refuses to run, with
+  `FORMAT_MERGE`, if a job role has hotel-size rows; none do.
+- `20261116100000_checklist_library`: two new columns on checklist templates.
+- `20261117100000_platform_current_files`: a console function.
+
+The Caddyfile changes too: HTTP/3 is off and each request is logged. It ships with the release
+and the Deploy workflow reloads Caddy. There is no stack change and nothing to re-import.
+
+1. Merge, then **Deploy** as usual. `cdk diff` shows nothing.
+2. Check the formats in the database, the same way as in "Releasing duties", with the query
+   `select outlet_format, count(*) from core.hierarchy_node where outlet_format is not null
+group by 1`. It shows only `hotel` and `bar_pub` for the test customers.
+3. Check Caddy: in the same JSON file, run `journalctl -u outlet-ops-caddy -n 5 --no-pager`.
+   It shows one JSON line per request, with no headers. Run
+   `curl -sI https://<app domain>/login | grep -i alt-svc` from a laptop: it prints nothing
+   (no HTTP/3 offer).
+4. Check on the phone: open the app once on Wi-Fi so the new service worker takes over. Then
+   switch to flight mode and open it again: within about 10 seconds it says "Can't reach
+   Outlet Ops", and with Wi-Fi back on it returns by itself.
+5. Check in the platform console: Outlet templates lists the seven kinds of outlet. A test
+   customer created in the console can add a Café: Add an outlet → Café → name and code →
+   See what it adds → Add and dry run.

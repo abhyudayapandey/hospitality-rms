@@ -181,22 +181,17 @@ describe('job roles from the catalogue', () => {
       ),
     ).toEqual([
       'any BAR RUNS_DEPARTMENT,KEEPS_DEPARTMENT_STORE',
-      'standalone_bar (outlet) RUNS_OUTLET,RUNS_OUTLET',
+      'bar_pub (outlet) RUNS_OUTLET,RUNS_OUTLET',
     ]);
   });
 
   it('uses a filled-in row as written, and adds no format the file lists itself', () => {
-    const { roles } = read(
-      'BAR_MANAGER,Bar Boss,any,BAR,RUNS_DEPARTMENT\nBAR_MANAGER,,standalone_bar,,',
-    );
+    const { roles } = read('BAR_MANAGER,Bar Boss,any,BAR,RUNS_DEPARTMENT\nBAR_MANAGER,,bar_pub,,');
     expect(
       roles.map(
         (r) => `${r.outlet_format} ${r.job_title} ${r.default_duties.map((a) => a.duty).join(',')}`,
       ),
-    ).toEqual([
-      'any Bar Boss RUNS_DEPARTMENT',
-      'standalone_bar Bar Manager RUNS_OUTLET,RUNS_OUTLET',
-    ]);
+    ).toEqual(['any Bar Boss RUNS_DEPARTMENT', 'bar_pub Bar Manager RUNS_OUTLET,RUNS_OUTLET']);
   });
 
   it('a role not in the catalogue must be filled in', () => {
@@ -221,7 +216,7 @@ describe('job roles from the catalogue', () => {
           diffs.push(`${customer} ${v['job_role_code']}: not in the catalogue`);
           continue;
         }
-        const fmt = v['outlet_format'] as 'standalone_bar';
+        const fmt = v['outlet_format'] as 'bar_pub';
         const duties =
           (fmt in (role.formatDuties ?? {}) && role.formatDuties?.[fmt]) || role.duties;
         const home = role.formatHome?.[fmt] ?? role.home;
@@ -323,5 +318,43 @@ describe('who covers it (file 37)', () => {
     expect(
       issuesWith(['TEST-BAR-3.0,HOST,sometimes,']).map((i) => `${i.column}: ${i.message}`),
     ).toEqual(['mode: must be covered_by or not_done']);
+  });
+});
+
+// Outlet formats follow the SOPs (ADR 062); files written before still load.
+describe('outlet formats', () => {
+  const company = readCustomerDir(
+    join(import.meta.dirname, '..', '..', '..', 'docs', 'onboarding', 'test-data', 'test-company'),
+  );
+  it('reads the old codes as the SOP formats', () => {
+    const old = {
+      ...company,
+      '01_org_nodes.csv': company['01_org_nodes.csv']!.replace(
+        'TEST-HOTEL-1.0,Test Hotel & Bar 1.0,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,hotel',
+        'TEST-HOTEL-1.0,Test Hotel & Bar 1.0,outlet,TEST-AREA-MUMBAI,Asia/Kolkata,full_hotel',
+      )
+        .replace(',hotel,', ',small_hotel,')
+        .replace(',bar_pub,', ',standalone_bar,'),
+      '06_job_roles.csv': company['06_job_roles.csv']!.replace(',bar_pub,', ',standalone_bar,'),
+    };
+    const { bundle, issues } = readBundle(old);
+    expect(issues).toEqual([]);
+    expect(
+      new Set(bundle.orgNodes.flatMap((n) => (n.outlet_format ? [n.outlet_format] : []))),
+    ).toEqual(new Set(['hotel', 'bar_pub']));
+    expect(
+      bundle.jobRoles.find((r) => r.job_role_code === 'BAR_MANAGER' && r.outlet_format !== 'any')
+        ?.outlet_format,
+    ).toBe('bar_pub');
+  });
+
+  it('refuses a code that is neither', () => {
+    const { issues } = readBundle({
+      ...company,
+      '01_org_nodes.csv': company['01_org_nodes.csv']!.replace(',bar_pub,', ',nightclub,'),
+    });
+    expect(issues.map((i) => `${i.column}: ${i.message}`)).toEqual([
+      'outlet_format: must be one of restaurant, bar_pub, qsr, cloud_kitchen, hotel',
+    ]);
   });
 });

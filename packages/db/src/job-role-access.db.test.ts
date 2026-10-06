@@ -48,12 +48,12 @@ async function fixture(c: PoolClient): Promise<Fixture> {
   };
   await add('org', 'CO', 'company', null);
   await add('org', 'AREA', 'area', 'CO');
-  await add('org', 'HOTEL', 'outlet', 'AREA', { format: 'full_hotel' });
+  await add('org', 'HOTEL', 'outlet', 'AREA', { format: 'hotel' });
   await add('org', 'HOTEL-BAR', 'department', 'HOTEL');
   await add('org', 'HOTEL-KITCHEN', 'department', 'HOTEL');
   await add('org', 'HOTEL-SECURITY', 'department', 'HOTEL');
-  await add('org', 'GH', 'outlet', 'AREA', { format: 'small_hotel' });
-  await add('org', 'BAR3', 'outlet', 'AREA', { format: 'standalone_bar' });
+  await add('org', 'GH', 'outlet', 'AREA', { format: 'hotel' });
+  await add('org', 'BAR3', 'outlet', 'AREA', { format: 'bar_pub' });
   await add('org', 'BAR3-BAR', 'department', 'BAR3');
   await add('org', 'CK', 'site', 'AREA');
   await add('org', 'CK-PROD', 'department', 'CK');
@@ -101,8 +101,8 @@ async function fixture(c: PoolClient): Promise<Fixture> {
     BAR_MANAGER: [
       ['any', 'DEPARTMENT_HEAD', 'home_department', true],
       ['any', 'STORE_KEEPER', 'department_store', true],
-      ['standalone_bar', 'OUTLET_MANAGER', 'whole_outlet', true],
-      ['standalone_bar', 'OUTLET_MANAGER', 'outlet_stores', true],
+      ['bar_pub', 'OUTLET_MANAGER', 'whole_outlet', true],
+      ['bar_pub', 'OUTLET_MANAGER', 'outlet_stores', true],
     ],
     STORE_KEEPER: [['any', 'STORE_KEEPER', 'main_store', true]],
     FANDB_MANAGER: [
@@ -214,7 +214,7 @@ describe('job-role default access', () => {
         ok('DEPARTMENT_HEAD', 'HOTEL-BAR'),
         ok('STORE_KEEPER', 'HOTEL-BAR-STORE'),
       ]);
-      const sb = 'job role default (standalone_bar)';
+      const sb = 'job role default (bar_pub)';
       expect(await derive(c, await f.person('BAR3-BM', 'BAR_MANAGER', 'BAR3'), f)).toEqual([
         ok('OUTLET_MANAGER', 'BAR3', sb),
         ok('OUTLET_MANAGER', 'BAR3-SUPPLY', sb),

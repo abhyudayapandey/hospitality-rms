@@ -100,16 +100,55 @@ export interface TokenSet {
   refreshToken?: string;
 }
 
+/** How long a call to Cognito may take before it counts as not answering (ADR 063). */
+export const COGNITO_TIMEOUT_MS = 5000;
+
+/**
+ * Cognito did not answer: no connection, a timeout or a server error. Unlike a rejection
+ * (a refresh token revoked or expired), it says nothing about the session (ADR 063).
+ */
+export class CognitoUnavailable extends Error {}
+
+/** Resolves with `p`, or rejects with CognitoUnavailable after `ms`. */
+export function withinTime<T>(p: Promise<T>, ms = COGNITO_TIMEOUT_MS): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new CognitoUnavailable(`no answer in ${ms} ms`)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e: unknown) => {
+        clearTimeout(timer);
+        reject(e instanceof Error ? e : new Error(String(e)));
+      },
+    );
+  });
+}
+
 async function tokenRequest(
   cfg: CognitoConfig,
   body: Record<string, string>,
   fetchImpl: typeof fetch,
 ): Promise<TokenSet> {
-  const res = await fetchImpl(`https://${cfg.domain}/oauth2/token`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ client_id: cfg.clientId, ...body }),
-  });
+  let res: Response;
+  try {
+    res = await withinTime(
+      fetchImpl(`https://${cfg.domain}/oauth2/token`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ client_id: cfg.clientId, ...body }),
+        signal: AbortSignal.timeout(COGNITO_TIMEOUT_MS),
+      }),
+    );
+  } catch (err) {
+    throw err instanceof CognitoUnavailable
+      ? err
+      : new CognitoUnavailable(err instanceof Error ? err.name : 'fetch failed');
+  }
+  if (res.status >= 500 || res.status === 429) {
+    throw new CognitoUnavailable(`COGNITO_TOKEN_${res.status}`);
+  }
   if (!res.ok) throw new Error(`COGNITO_TOKEN_${res.status}`);
   const json = (await res.json()) as { id_token?: string; refresh_token?: string };
   if (!json.id_token) throw new Error('COGNITO_TOKEN_NO_ID_TOKEN');
