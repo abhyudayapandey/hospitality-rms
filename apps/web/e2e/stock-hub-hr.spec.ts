@@ -103,7 +103,8 @@ test('the expiry lists: All stores or one store, from the Place picker', async (
   await page.getByTestId('banner-expiring').click();
   await page.waitForURL(/all=1/);
   const picker = page.getByTestId('place-switcher').getByRole('combobox', { name: 'Place' });
-  expect((await viewingOptions(page))[0]).toBe('All stores');
+  // the picker may not be on screen the moment the URL changes
+  await expect.poll(async () => (await viewingOptions(page))[0]).toBe('All stores');
   const all = await page.getByTestId('expiry-row').count();
   // one store: only its batches, without the store on each line
   await picker.selectOption({ label: 'Kitchen Store' });
