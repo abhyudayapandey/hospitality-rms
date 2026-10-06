@@ -477,7 +477,10 @@ class Loader {
     const titles = new Map<string, { title: string; dept?: string | undefined }>();
     for (const r of this.b.jobRoles) {
       if (!titles.has(r.job_role_code) || r.outlet_format === 'any') {
-        titles.set(r.job_role_code, { title: r.job_title, dept: r.usual_department });
+        titles.set(r.job_role_code, {
+          title: r.job_title ?? r.job_role_code,
+          dept: r.usual_department,
+        });
       }
     }
     for (const [code, t] of titles) {

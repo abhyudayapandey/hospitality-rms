@@ -5,3 +5,4 @@ export * from './access';
 export * from './access-words';
 export * from './modules';
 export * from './duties';
+export * from './catalogue';

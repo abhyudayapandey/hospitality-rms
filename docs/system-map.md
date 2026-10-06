@@ -121,7 +121,9 @@ anyone without the tab. Rostering uses only their own job role; rostering one pe
 second role is on hold (PRD section 15, open question 7).
 
 `docs/onboarding/test-data/PRODUCT_access_groups_REFERENCE.csv` says what each group
-allows. Each customer's `99_access_preview_GENERATED.csv` lists every person's access.
+allows. `PRODUCT_roles_REFERENCE.csv` beside it is the product's role catalogue
+(ADR 060): every role the SOP manuals name, with its level and default duties; a customer may
+list a catalogue role by code alone. Each customer's `99_access_preview_GENERATED.csv` lists every person's access.
 
 ### Outside every customer
 

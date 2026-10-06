@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { DUTY_BY_CODE, MODULE_CODES, SCOPE_WORDS, expandDuty } from '@outlet-ops/domain';
+import {
+  DUTY_BY_CODE,
+  MODULE_CODES,
+  ROLE_BY_CODE,
+  SCOPE_WORDS,
+  expandDuty,
+} from '@outlet-ops/domain';
 import { CsvError, parseCsv } from './csv';
 
 // The onboarding files (docs/onboarding/test-data/README.md): one zod schema per file turns
@@ -110,24 +116,32 @@ const defaultAccess = z.string().transform((v, ctx): AccessDefault[] => {
 });
 
 /** `RUNS_DEPARTMENT; RUNS_DEPARTMENT@department:BAR; KEEPS_DEPARTMENT_STORE` (ADR 059) */
-const defaultDuties = z.string().transform((v, ctx): AccessDefault[] => {
+const defaultDuties = z.string().transform((v, ctx): AccessDefault[] =>
+  dutyGrants(
+    v
+      .split(';')
+      .map((p) => p.trim())
+      .filter(Boolean),
+    (message) => ctx.addIssue({ code: 'custom', message }),
+  ),
+);
+
+/** The grants of a list of duties (`DUTY` or `DUTY@department:CODE`); problems go to `fail`. */
+function dutyGrants(parts: readonly string[], fail: (message: string) => void): AccessDefault[] {
   const out: AccessDefault[] = [];
-  for (const part of v
-    .split(';')
-    .map((p) => p.trim())
-    .filter(Boolean)) {
+  for (const part of parts) {
     const m = /^([A-Z][A-Z0-9_]*)(?:@(department:[A-Z0-9][A-Z0-9-]*))?$/.exec(part);
     if (!m) {
-      ctx.addIssue({ code: 'custom', message: `"${part}" is not DUTY or DUTY@department:CODE` });
+      fail(`"${part}" is not DUTY or DUTY@department:CODE`);
       continue;
     }
     const duty = DUTY_BY_CODE.get(m[1]!);
     if (!duty) {
-      ctx.addIssue({ code: 'custom', message: `${m[1]} is not a duty` });
+      fail(`${m[1]} is not a duty`);
       continue;
     }
     if (m[2] && !duty.atAnotherDepartment) {
-      ctx.addIssue({ code: 'custom', message: `${m[1]} cannot be given at another department` });
+      fail(`${m[1]} cannot be given at another department`);
       continue;
     }
     for (const g of expandDuty(duty.code, m[2])) {
@@ -140,7 +154,7 @@ const defaultDuties = z.string().transform((v, ctx): AccessDefault[] => {
     }
   }
   return out;
-});
+}
 
 const DAY = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 } as const;
 type Day = keyof typeof DAY;
@@ -353,14 +367,16 @@ export const FILES = {
     required: true,
     schema: z.object({
       job_role_code: z.string().regex(/^[A-Z][A-Z0-9_]*$/, 'must be an upper-case code'),
-      job_title: text,
+      // blank for a catalogue role: its title comes from the catalogue (ADR 060)
+      job_title: optional,
       outlet_format: z.enum(['any', ...OUTLET_FORMATS]),
       usual_department: optional,
       default_duties: defaultDuties,
       default_access: defaultAccess,
     }),
-    // a role lists its duties, or grants directly, or both (ADR 059)
-    optional: ['default_duties', 'default_access'],
+    // a role lists its duties, or grants directly, or both (ADR 059); a catalogue role may
+    // leave all of it blank (ADR 060)
+    optional: ['job_title', 'usual_department', 'default_duties', 'default_access'],
   },
   users: {
     file: '07_users.csv',
@@ -846,7 +862,59 @@ export function readBundle(files: Record<string, string>): { bundle: Bundle; iss
       }
     }
   }
+  fillFromCatalogue(bundle as Bundle, issues);
   return { bundle: bundle as Bundle, issues };
+}
+
+/**
+ * File 06 rows for catalogue roles (ADR 060): a blank title, department or access is taken
+ * from the role catalogue; a value that is given is used as written. A blank `any` row also
+ * brings the catalogue's rows for other outlet formats (the Bar Manager runs a standalone
+ * bar) unless the file lists that format itself. A role that is not in the catalogue must be
+ * filled in.
+ */
+function fillFromCatalogue(b: Bundle, issues: Issue[]): void {
+  const file = FILES.jobRoles.file;
+  const listed = new Set(b.jobRoles.map((r) => `${r.job_role_code} ${r.outlet_format}`));
+  const extra: Bundle['jobRoles'] = [];
+  for (const r of b.jobRoles) {
+    const role = ROLE_BY_CODE.get(r.job_role_code);
+    const blank = r.default_duties.length === 0 && r.default_access.length === 0;
+    if (!role) {
+      if (!r.job_title) {
+        issues.push({
+          file,
+          row: r.line,
+          column: 'job_title',
+          message: `is required: ${r.job_role_code} is not a role in the catalogue`,
+        });
+      }
+      continue;
+    }
+    const fmt = r.outlet_format === 'any' ? undefined : r.outlet_format;
+    r.job_title ??= role.title;
+    r.usual_department ??= (fmt && role.formatHome?.[fmt]) || role.home;
+    if (!blank) continue;
+    const duties = (fmt && role.formatDuties?.[fmt]) || role.duties;
+    r.default_duties = dutyGrants(duties, (message) => {
+      throw new Error(`role catalogue: ${role.code}: ${message}`);
+    });
+    if (r.outlet_format !== 'any') continue;
+    for (const [format, list] of Object.entries(role.formatDuties ?? {})) {
+      if (listed.has(`${role.code} ${format}`)) continue;
+      extra.push({
+        ...r,
+        outlet_format: format as (typeof r)['outlet_format'],
+        usual_department:
+          role.formatHome?.[format as keyof typeof role.formatHome] ?? r.usual_department,
+        default_duties: dutyGrants(list ?? [], (message) => {
+          throw new Error(`role catalogue: ${role.code}: ${message}`);
+        }),
+        default_access: [],
+      });
+    }
+  }
+  b.jobRoles.push(...extra);
 }
 
 /** Everything a job role row grants: its duties' grants, then its direct grants (ADR 059). */
