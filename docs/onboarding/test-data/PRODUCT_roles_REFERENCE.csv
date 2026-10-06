@@ -1,0 +1,102 @@
+job_role_code,job_title,also_called,level,usual_department,default_duties,format_duties,from_sops
+ACCOUNT_OWNER,Account Owner,Owner; Partner; Licensee; Founder,above_outlet,(company),OWNS_COMPANY_ACCOUNT,,Restaurant; Bar; Cloud kitchen; Franchise; Hotel; QSR
+AREA_MANAGER,Area Manager,Field Consultant,above_outlet,(area),RUNS_AREA,,QSR; Franchise
+HR_ADMIN,HR Admin,,above_outlet,(company),RUNS_COMPANY_HR,,(the app)
+SECURITY_ADMIN,Security Admin,,above_outlet,(company),APPROVES_ACCESS,,(the app)
+AUDITOR,Auditor,,above_outlet,(company),AUDITS_COMPANY,,Franchise; QSR
+GENERAL_MANAGER,General Manager,Outlet Manager,runs_outlet,(outlet),RUNS_OUTLET,,Bar; Hotel
+ASSISTANT_GENERAL_MANAGER,Assistant General Manager,,runs_outlet,(outlet),RUNS_OUTLET,,Hotel
+RESTAURANT_GENERAL_MANAGER,Restaurant Manager,,runs_outlet,(outlet),RUNS_OUTLET,,Restaurant
+ASSISTANT_MANAGER,Assistant Manager,Shift Manager,leads_shift,(outlet),LEADS_SHIFT; WORKS_SHIFTS,,Restaurant
+QSR_STORE_MANAGER,Store Manager,Restaurant General Manager,runs_outlet,(outlet),RUNS_OUTLET,,QSR; Franchise
+ASSISTANT_STORE_MANAGER,Assistant Store Manager,,runs_outlet,(outlet),RUNS_OUTLET,,QSR
+KITCHEN_MANAGER,Kitchen Manager,,runs_outlet,(outlet),RUNS_OUTLET,,Cloud kitchen
+DUTY_MANAGER,Duty Manager,Manager on Duty,leads_shift,(outlet),LEADS_SHIFT; WORKS_SHIFTS,,Hotel
+EXECUTIVE_CHEF,Executive Chef,,runs_department,KITCHEN,RUNS_DEPARTMENT; KEEPS_DEPARTMENT_STORE,,Hotel
+HEAD_COOK,Head Cook,Head Chef,runs_department,KITCHEN,RUNS_DEPARTMENT; KEEPS_DEPARTMENT_STORE,,Restaurant; Bar
+EXECUTIVE_SOUS_CHEF,Executive Sous Chef,,leads_shift,KITCHEN,LEADS_SHIFT; USES_DEPARTMENT_STORE; WORKS_SHIFTS,,Hotel
+SOUS_CHEF,Sous Chef,Shift Lead,leads_shift,KITCHEN,LEADS_SHIFT; USES_DEPARTMENT_STORE; WORKS_SHIFTS,,Restaurant; Cloud kitchen; Hotel
+CHEF_DE_PARTIE,Chef de Partie,,works,KITCHEN,USES_DEPARTMENT_STORE; WORKS_SHIFTS,,Restaurant; Hotel
+COOK,Cook,Line Cook,works,KITCHEN,USES_DEPARTMENT_STORE; WORKS_SHIFTS; MAKES_PREP,,Restaurant; Cloud kitchen
+COMMIS,Commis,Kitchen Helper,works,KITCHEN,WORKS_SHIFTS; MAKES_PREP,,Restaurant; Hotel
+PASTRY_CHEF,Pastry Chef,,works,KITCHEN,USES_DEPARTMENT_STORE; WORKS_SHIFTS; MAKES_PREP,,Hotel
+BAKER,Baker,,works,KITCHEN,USES_DEPARTMENT_STORE; WORKS_SHIFTS; MAKES_PREP,,Hotel
+KITCHEN_STEWARD,Kitchen Steward,Utility; Dishwasher,works,KITCHEN,WORKS_SHIFTS,,Restaurant; Hotel
+CHIEF_STEWARD,Chief Steward,,leads_shift,KITCHEN,LEADS_SHIFT; WORKS_SHIFTS,,Hotel
+FOOD_SAFETY_SUPERVISOR,Food Safety Supervisor,,leads_shift,KITCHEN,LEADS_SHIFT; WORKS_SHIFTS,,Restaurant; Cloud kitchen; Hotel; QSR
+BAR_MANAGER,Bar Manager,,runs_department,BAR,RUNS_DEPARTMENT; KEEPS_DEPARTMENT_STORE,standalone_bar: RUNS_OUTLET,Bar; Hotel
+HEAD_BARTENDER,Head Bartender,,leads_shift,BAR,LEADS_SHIFT; USES_DEPARTMENT_STORE; WORKS_SHIFTS,,Bar
+BARTENDER,Bartender,,works,BAR,WORKS_SHIFTS; MAKES_PREP,,Restaurant; Bar; Hotel
+BAR_BACK,Bar Back,,works,BAR,WORKS_SHIFTS,,Bar
+BARISTA,Barista,,works,BAR,WORKS_SHIFTS; MAKES_PREP,,Restaurant
+SOMMELIER,Sommelier,,works,RESTAURANT,WORKS_SHIFTS,,Restaurant
+HEAD_BREWER,Head Brewer,,runs_department,BREWHOUSE,RUNS_DEPARTMENT; KEEPS_DEPARTMENT_STORE,,Bar
+BREWER,Brewer,,works,BREWHOUSE,USES_DEPARTMENT_STORE; WORKS_SHIFTS; MAKES_PREP,,Bar
+FANDB_MANAGER,F&B Manager,Director of F&B,runs_department,RESTAURANT,RUNS_DEPARTMENT; RUNS_DEPARTMENT@department:BAR; RUNS_DEPARTMENT@department:BANQUETS; PLANS_EVENTS,,Hotel
+RESTAURANT_MANAGER,Restaurant Manager,Outlet Manager,runs_department,RESTAURANT,RUNS_DEPARTMENT; PLANS_EVENTS,,Hotel
+ASSISTANT_RESTAURANT_MANAGER,Assistant Restaurant Manager,,leads_shift,RESTAURANT,LEADS_SHIFT; WORKS_SHIFTS,,Hotel
+CAPTAIN,Captain,Supervisor,leads_shift,RESTAURANT,LEADS_SHIFT; WORKS_SHIFTS,,Restaurant; Hotel
+STEWARD,Steward,Server; Waiter,works,RESTAURANT,WORKS_SHIFTS,,Restaurant; Hotel
+HOST,Host,Hostess,works,RESTAURANT,WORKS_SHIFTS,,Restaurant
+FLOOR_MANAGER,Floor Manager,,runs_department,FLOOR-SERVICE,RUNS_DEPARTMENT,,Bar
+SERVER,Server,Floor Staff,works,FLOOR-SERVICE,WORKS_SHIFTS,,Bar
+CASHIER,Cashier,,works,FLOOR-SERVICE,WORKS_SHIFTS; UPLOADS_POS_SALES,,Restaurant
+SHIFT_MANAGER,Shift Manager,,leads_shift,COUNTER,LEADS_SHIFT; USES_DEPARTMENT_STORE; WORKS_SHIFTS,,QSR
+CREW_TRAINER,Crew Trainer,,works,COUNTER,WORKS_SHIFTS,,QSR
+CREW_MEMBER,Crew Member,,works,COUNTER,WORKS_SHIFTS; MAKES_PREP,,QSR
+IRD_MANAGER,In-Room Dining Manager,,runs_department,IN-ROOM-DINING,RUNS_DEPARTMENT,,Hotel
+IRD_ORDER_TAKER,In-Room Dining Order Taker,,works,IN-ROOM-DINING,WORKS_SHIFTS,,Hotel
+BANQUET_MANAGER,Banquet Manager,,runs_department,BANQUETS,RUNS_DEPARTMENT; PLANS_EVENTS,,Hotel
+BANQUET_CAPTAIN,Banquet Captain,,leads_shift,BANQUETS,LEADS_SHIFT; WORKS_SHIFTS,,Hotel
+BANQUET_SERVER,Banquet Server,,works,BANQUETS,WORKS_SHIFTS,,Hotel
+EVENTS_MANAGER,Events Manager,Entertainment Manager,runs_department,EVENTS,RUNS_DEPARTMENT; PLANS_EVENTS,,Bar
+FRONT_OFFICE_MANAGER,Front Office Manager,,runs_department,FRONT-OFFICE,RUNS_DEPARTMENT,,Hotel
+FRONT_DESK_EXECUTIVE,Front Desk Executive,Guest Service Associate,works,FRONT-OFFICE,WORKS_SHIFTS,,Hotel
+GUEST_RELATIONS_EXECUTIVE,Guest Relations Executive,,works,FRONT-OFFICE,WORKS_SHIFTS,,Hotel
+RESERVATIONS_EXECUTIVE,Reservations Executive,,works,FRONT-OFFICE,WORKS_SHIFTS,,Hotel
+CONCIERGE,Concierge,,works,FRONT-OFFICE,WORKS_SHIFTS,,Hotel
+NIGHT_AUDITOR,Night Auditor,,works,FRONT-OFFICE,WORKS_SHIFTS,,Hotel
+BELL_CAPTAIN,Bell Captain,,leads_shift,FRONT-OFFICE,LEADS_SHIFT; WORKS_SHIFTS,,Hotel
+BELLBOY,Bellboy,Bell Desk,works,FRONT-OFFICE,WORKS_SHIFTS,,Hotel
+EXECUTIVE_HOUSEKEEPER,Executive Housekeeper,,runs_department,HOUSEKEEPING,RUNS_DEPARTMENT; KEEPS_DEPARTMENT_STORE,,Hotel
+HOUSEKEEPING_SUPERVISOR,Housekeeping Supervisor,Floor Supervisor,leads_shift,HOUSEKEEPING,LEADS_SHIFT; USES_DEPARTMENT_STORE; WORKS_SHIFTS,,Hotel
+LAUNDRY_MANAGER,Laundry Manager,,leads_shift,HOUSEKEEPING,LEADS_SHIFT; USES_DEPARTMENT_STORE; WORKS_SHIFTS,,Hotel
+ROOM_ATTENDANT,Room Attendant,,works,HOUSEKEEPING,WORKS_SHIFTS,,Hotel
+PUBLIC_AREA_ATTENDANT,Public Area Attendant,,works,HOUSEKEEPING,WORKS_SHIFTS,,Hotel
+LAUNDRY_ATTENDANT,Laundry Attendant,,works,HOUSEKEEPING,WORKS_SHIFTS; USES_DEPARTMENT_STORE,,Hotel
+STORE_MANAGER,Store Manager,,runs_department,STORES-TEAM,RUNS_DEPARTMENT; KEEPS_MAIN_STORE; SEES_OUTLET_STOCK,,Hotel
+PURCHASE_MANAGER,Purchase Manager,Purchase Executive; Purchase Officer,leads_shift,STORES-TEAM,KEEPS_MAIN_STORE; SEES_OUTLET_STOCK; WORKS_SHIFTS,,Restaurant; Hotel
+STORE_KEEPER,Store Keeper,Storekeeper,leads_shift,STORES-TEAM,KEEPS_MAIN_STORE; WORKS_SHIFTS,,Restaurant; Cloud kitchen; Hotel
+RECEIVING_CLERK,Receiving Clerk,,works,STORES-TEAM,USES_MAIN_STORE; WORKS_SHIFTS,,Hotel
+CHIEF_ENGINEER,Chief Engineer,,runs_department,ENGINEERING,RUNS_DEPARTMENT,,Hotel
+SHIFT_ENGINEER,Shift Engineer,Assistant Engineer,leads_shift,ENGINEERING,LEADS_SHIFT; WORKS_SHIFTS,,Hotel
+TECHNICIAN,Technician,,works,ENGINEERING,WORKS_SHIFTS,,Hotel
+SECURITY_SUPERVISOR,Security Supervisor,Security Manager; Security Head,runs_department,SECURITY,RUNS_DEPARTMENT,,Hotel; Bar
+SECURITY_GUARD,Security Guard,Bouncer,works,SECURITY,WORKS_SHIFTS,,Hotel; Bar
+HR_EXECUTIVE,HR Executive,,works,ADMIN-FINANCE,RUNS_OUTLET_HR; WORKS_SHIFTS,,Hotel
+COST_CONTROLLER,Cost Controller,,works,ADMIN-FINANCE,CONTROLS_COSTS; WORKS_SHIFTS,,Hotel
+STOCK_VERIFIER,Stock Verifier,,works,(outlet),VERIFIES_STOCK_CHECKS,,(the app)
+FINANCIAL_CONTROLLER,Financial Controller,,runs_department,ADMIN-FINANCE,RUNS_DEPARTMENT; CONTROLS_COSTS,,Hotel
+ACCOUNTANT,Accountant,Excise Clerk,works,ADMIN-FINANCE,WORKS_SHIFTS,,Restaurant; Bar; Cloud kitchen; Hotel
+INCOME_AUDITOR,Income Auditor,,works,ADMIN-FINANCE,WORKS_SHIFTS,,Hotel
+GENERAL_CASHIER,General Cashier,,works,ADMIN-FINANCE,WORKS_SHIFTS,,Hotel
+HR_MANAGER,HR Manager,,runs_department,HR,RUNS_DEPARTMENT; RUNS_OUTLET_HR,,Hotel
+IT_MANAGER,IT Manager,,runs_department,IT,RUNS_DEPARTMENT,,Hotel
+IT_EXECUTIVE,IT Executive,,works,IT,WORKS_SHIFTS,,Hotel
+DIRECTOR_OF_SALES,Director of Sales & Marketing,,runs_department,SALES-MARKETING,RUNS_DEPARTMENT; PLANS_EVENTS,,Hotel
+SALES_MANAGER,Sales Manager,Catering Sales Manager,works,SALES-MARKETING,WORKS_SHIFTS,,Hotel
+REVENUE_MANAGER,Revenue Manager,,works,SALES-MARKETING,WORKS_SHIFTS,,Hotel
+ONLINE_PLATFORM_MANAGER,Online Platform Manager,,works,SALES-MARKETING,WORKS_SHIFTS; UPLOADS_POS_SALES,,Cloud kitchen
+SPA_MANAGER,Spa Manager,,runs_department,SPA-RECREATION,RUNS_DEPARTMENT; KEEPS_DEPARTMENT_STORE,,Hotel
+THERAPIST,Therapist,,works,SPA-RECREATION,WORKS_SHIFTS,,Hotel
+SPA_RECEPTIONIST,Spa Receptionist,,works,SPA-RECREATION,WORKS_SHIFTS,,Hotel
+RECREATION_MANAGER,Recreation Manager,,leads_shift,SPA-RECREATION,LEADS_SHIFT; WORKS_SHIFTS,,Hotel
+LIFEGUARD,Lifeguard,,works,SPA-RECREATION,WORKS_SHIFTS,,Hotel
+KIDS_CLUB_SUPERVISOR,Kids' Club Supervisor,,leads_shift,SPA-RECREATION,LEADS_SHIFT; WORKS_SHIFTS,,Hotel
+PACKER,Packer,Dispatcher,works,DISPATCH,WORKS_SHIFTS,,Cloud kitchen
+DELIVERY_DRIVER,Delivery Driver,Rider,works,CENTRAL-KITCHEN-DISPATCH-TEAM,WORKS_SHIFTS,,Cloud kitchen; QSR
+CENTRAL_KITCHEN_MANAGER,Central Kitchen Manager,Commissary Manager,runs_department,CENTRAL-KITCHEN-DISPATCH-TEAM,RUNS_CENTRAL_KITCHEN_STORE; RUNS_DEPARTMENT,,QSR
+CENTRAL_KITCHEN_SUPERVISOR,Central Kitchen Supervisor,,runs_outlet,CENTRAL-KITCHEN-PRODUCTION,RUNS_CENTRAL_KITCHEN,,QSR
+CENTRAL_KITCHEN_CHEF,Central Kitchen Chef,,works,CENTRAL-KITCHEN-PRODUCTION,USES_CENTRAL_KITCHEN_STORE; WORKS_SHIFTS,,QSR
+CENTRAL_KITCHEN_COMMIS,Central Kitchen Commis,,works,CENTRAL-KITCHEN-PRODUCTION,WORKS_SHIFTS; MAKES_PREP,,QSR
+CENTRAL_KITCHEN_STORE_KEEPER,Central Kitchen Store Keeper,,leads_shift,CENTRAL-KITCHEN-DISPATCH-TEAM,KEEPS_CENTRAL_KITCHEN_STORE; WORKS_SHIFTS,,QSR

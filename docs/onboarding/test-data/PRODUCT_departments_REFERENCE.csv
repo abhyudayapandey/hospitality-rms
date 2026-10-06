@@ -1,0 +1,23 @@
+department_code,name,department_type,usual_store,from_sops
+KITCHEN,Kitchen,kitchen,Kitchen Store,Restaurant; Bar; Cloud kitchen; Hotel; QSR
+BAR,Bar,service,Bar Store,Restaurant; Bar; Hotel
+RESTAURANT,Restaurant,service,,Restaurant; Hotel
+FLOOR-SERVICE,Floor Service,service,,Bar
+COUNTER,Counter,service,,QSR; Restaurant
+IN-ROOM-DINING,In-Room Dining,service,,Hotel
+BANQUETS,Banquets,service,,Hotel
+FRONT-OFFICE,Front Office,other,,Hotel
+HOUSEKEEPING,Housekeeping,housekeeping,Housekeeping Store,Hotel
+STORES-TEAM,Stores,other,Main Store,Restaurant; Bar; Cloud kitchen; Hotel; QSR
+ENGINEERING,Engineering,other,,Hotel
+SECURITY,Security,other,,Hotel; Bar
+ADMIN-FINANCE,Admin & Finance,other,,Restaurant; Bar; Cloud kitchen; Hotel; QSR
+HR,Human Resources,other,,Hotel
+IT,IT,other,,Hotel
+SALES-MARKETING,Sales & Marketing,other,,Hotel; Cloud kitchen
+SPA-RECREATION,Spa & Recreation,other,Spa Store,Hotel
+BREWHOUSE,Brewhouse,kitchen,Brewhouse Store,Bar
+DISPATCH,Packing & Dispatch,other,,Cloud kitchen
+EVENTS,Events & Entertainment,other,,Bar
+CENTRAL-KITCHEN-PRODUCTION,Production,kitchen,,QSR; Cloud kitchen
+CENTRAL-KITCHEN-DISPATCH-TEAM,Dispatch Team,other,,QSR; Cloud kitchen

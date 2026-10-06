@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { DUTIES } from '@outlet-ops/domain';
+import { DUTIES, ROLE_BY_CODE, catalogueReference } from '@outlet-ops/domain';
 import { describe, expect, it } from 'vitest';
-import { FILES, jobRoleAccess } from './files';
+import { parseCsv } from './csv';
+import { FILES, jobRoleAccess, readBundle } from './files';
 
 // The checklist columns of file 29 (ADR 020): what the database's checks then receive.
 const row = (schedule: string, assign_to = 'on_shift') =>
@@ -145,5 +146,112 @@ describe('job role duties', () => {
         );
       }
     }
+  });
+});
+
+// The role catalogue in file 06 (ADR 060): a catalogue role may be listed by its code alone,
+// a filled-in row is used as written, and the test customers differ from the catalogue only
+// where listed here.
+describe('job roles from the catalogue', () => {
+  const DATA = join(import.meta.dirname, '..', '..', '..', 'docs', 'onboarding', 'test-data');
+  const read = (rows: string) => {
+    const { bundle, issues } = readBundle({
+      '06_job_roles.csv': `job_role_code,job_title,outlet_format,usual_department,default_duties\n${rows}\n`,
+    });
+    return { roles: bundle.jobRoles, issues: issues.filter((i) => i.file === '06_job_roles.csv') };
+  };
+
+  it('fills a blank row from the catalogue, its other formats included', () => {
+    const { roles, issues } = read('SOUS_CHEF,,any,,\nBAR_MANAGER,,any,,');
+    expect(issues).toEqual([]);
+    const sous = roles.find((r) => r.job_role_code === 'SOUS_CHEF')!;
+    expect(sous).toMatchObject({ job_title: 'Sous Chef', usual_department: 'KITCHEN' });
+    expect(sous.default_duties.map((a) => `${a.duty} ${a.group}@${a.scope}`)).toEqual([
+      'LEADS_SHIFT SUPERVISOR@home_department',
+      'USES_DEPARTMENT_STORE STOCK_USER@department_store',
+      'WORKS_SHIFTS STAFF@home_department',
+    ]);
+    const bar = roles.filter((r) => r.job_role_code === 'BAR_MANAGER');
+    expect(
+      bar.map(
+        (r) =>
+          `${r.outlet_format} ${r.usual_department} ${r.default_duties.map((a) => a.duty).join(',')}`,
+      ),
+    ).toEqual([
+      'any BAR RUNS_DEPARTMENT,KEEPS_DEPARTMENT_STORE',
+      'standalone_bar (outlet) RUNS_OUTLET,RUNS_OUTLET',
+    ]);
+  });
+
+  it('uses a filled-in row as written, and adds no format the file lists itself', () => {
+    const { roles } = read(
+      'BAR_MANAGER,Bar Boss,any,BAR,RUNS_DEPARTMENT\nBAR_MANAGER,,standalone_bar,,',
+    );
+    expect(
+      roles.map(
+        (r) => `${r.outlet_format} ${r.job_title} ${r.default_duties.map((a) => a.duty).join(',')}`,
+      ),
+    ).toEqual([
+      'any Bar Boss RUNS_DEPARTMENT',
+      'standalone_bar Bar Manager RUNS_OUTLET,RUNS_OUTLET',
+    ]);
+  });
+
+  it('a role not in the catalogue must be filled in', () => {
+    const { issues } = read('TEA_MAKER,,any,KITCHEN,WORKS_SHIFTS');
+    expect(issues).toEqual([
+      {
+        file: '06_job_roles.csv',
+        row: 2,
+        column: 'job_title',
+        message: 'is required: TEA_MAKER is not a role in the catalogue',
+      },
+    ]);
+  });
+
+  it('the test customers differ from the catalogue only where listed', () => {
+    const diffs: string[] = [];
+    for (const customer of ['test-company', 'test-solo-bar-co']) {
+      const t = parseCsv(readFileSync(join(DATA, customer, '06_job_roles.csv'), 'utf8'));
+      for (const { values: v } of t.rows) {
+        const role = ROLE_BY_CODE.get(v['job_role_code']!);
+        if (!role) {
+          diffs.push(`${customer} ${v['job_role_code']}: not in the catalogue`);
+          continue;
+        }
+        const fmt = v['outlet_format'] as 'standalone_bar';
+        const duties =
+          (fmt in (role.formatDuties ?? {}) && role.formatDuties?.[fmt]) || role.duties;
+        const home = role.formatHome?.[fmt] ?? role.home;
+        const got = v['default_duties']!.split(';')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if ([...got].sort().join() !== [...duties].sort().join()) {
+          diffs.push(`${customer} ${role.code}: duties ${got.join('; ')}`);
+        }
+        if (v['job_title'] !== role.title)
+          diffs.push(`${customer} ${role.code}: title ${v['job_title']}`);
+        if (v['usual_department'] !== home) {
+          diffs.push(`${customer} ${role.code}: department ${v['usual_department']}`);
+        }
+      }
+    }
+    expect(diffs).toEqual([
+      // a Host works in both the hotel's restaurant and Bar 3.0's floor service
+      'test-company HOST: department RESTAURANT / FLOOR-SERVICE',
+      // the solo bar's Head Bartender keeps the bar store: there is no Bar Manager to
+      'test-solo-bar-co HEAD_BARTENDER: duties LEADS_SHIFT; KEEPS_DEPARTMENT_STORE; WORKS_SHIFTS',
+    ]);
+  });
+
+  it('the reference files list the catalogue', () => {
+    const ref = catalogueReference();
+    expect(
+      readFileSync(join(DATA, 'PRODUCT_roles_REFERENCE.csv'), 'utf8'),
+      'pnpm --filter @outlet-ops/onboarding catalogue-reference',
+    ).toBe(ref.roles);
+    expect(readFileSync(join(DATA, 'PRODUCT_departments_REFERENCE.csv'), 'utf8')).toBe(
+      ref.departments,
+    );
   });
 });

@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed.ts",
     "load": "tsx scripts/load.ts",
-    "worker": "tsx scripts/worker.ts"
+    "worker": "tsx scripts/worker.ts",
+    "catalogue-reference": "tsx scripts/catalogue-reference.ts"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1143.0",

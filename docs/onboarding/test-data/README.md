@@ -65,6 +65,16 @@ Each access row means: this person has this access group at this place. It cover
 | `36_transfers_TEST_DATA_ONLY.csv`                  | Test Company only: two transfers from the central kitchen, requested, sent and received by the people named (below) — test only                                                                                                                                                                                                                                                                                                                                                                                           |
 | `99_access_preview_GENERATED.csv`                  | Every resulting access grant, with place name, what it covers, and where it came from                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
+## The role catalogue (file 06, ADR 060)
+
+`PRODUCT_roles_REFERENCE.csv` lists the product's roles (from the SOP manuals in `docs/sop/`)
+with their title, other names, level, usual department and default duties;
+`PRODUCT_departments_REFERENCE.csv` lists the departments. A customer can list a catalogue
+role in file 06 by its code alone (`SOUS_CHEF,,any,,`): the blank title, department and
+duties come from the catalogue, and a blank `any` row also brings the catalogue's rows for
+other outlet formats. A row that is filled in is used as written; a role that is not in the
+catalogue must be filled in. The two test customers list their roles in full.
+
 ## Duties (file 06, ADR 059)
 
 A job role lists its duties in `default_duties`, separated by `;`. Each duty stands for the

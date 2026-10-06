@@ -141,6 +141,11 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   rows labelled with `duty_code`, and the derivation reads those rows unchanged. A new group
   or scope a job role needs comes with a duty; `default_access` is for a company's own groups.
   The plan built on this is `docs/templates-and-cover.md`; the SOP manuals are in `docs/sop/`.
+- The role and department catalogue (ADR 060, `packages/domain/src/catalogue.ts`): every role
+  an SOP names, with its default duties; a role's level comes from its duties (`levelOf`).
+  File 06 may list a catalogue role by code alone. A role only holds duties for work the app
+  does; a new duty a role gains goes in the catalogue, and `PRODUCT_roles_REFERENCE.csv` is
+  regenerated (`pnpm --filter @outlet-ops/onboarding catalogue-reference`).
 
 ## Commands
 

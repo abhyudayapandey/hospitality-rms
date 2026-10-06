@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { expandDuty } from '@outlet-ops/domain';
+import { ROLE_BY_CODE, expandDuty } from '@outlet-ops/domain';
 import { closePools, inRolledBackTx } from '@outlet-ops/db/test-helpers';
 import type { PoolClient } from 'pg';
 import { afterAll, describe, expect, it, vi } from 'vitest';
@@ -116,21 +116,60 @@ describe('duties in file 06', () => {
 
   it('reports a grant given twice and a role with no access, and writes nothing', async () => {
     await inRolledBackTx(async (c) => {
-      const text = files[FILE]!.replace(
-        'STEWARD,Steward,any,RESTAURANT,WORKS_SHIFTS',
-        'STEWARD,Steward,any,RESTAURANT,',
-      ).replace(
-        'HOST,Host,any,RESTAURANT / FLOOR-SERVICE,WORKS_SHIFTS',
-        'HOST,Host,any,RESTAURANT / FLOOR-SERVICE,WORKS_SHIFTS; WORKS_SHIFTS',
-      );
+      // a role of the customer's own, not in the catalogue (ADR 060), given nothing
+      const text =
+        files[FILE]!.replace(
+          'HOST,Host,any,RESTAURANT / FLOOR-SERVICE,WORKS_SHIFTS',
+          'HOST,Host,any,RESTAURANT / FLOOR-SERVICE,WORKS_SHIFTS; WORKS_SHIFTS',
+        ).trimEnd() + '\nTEA_MAKER,Tea Maker,any,KITCHEN,\n';
       const before = await roleRows(c);
       const r = await loadCustomer(c, { ...files, [FILE]: text }, { nested: true });
       expect(r.applied).toBe(false);
       expect(r.issues.map((i) => `${i.file}:${i.row}:${i.column}:${i.message}`)).toEqual([
-        `${FILE}:${rowOf(text, 'STEWARD')}:default_duties:needs default_duties or default_access`,
         `${FILE}:${rowOf(text, 'HOST')}:default_duties:STAFF@home_department is given twice (already by WORKS_SHIFTS)`,
+        `${FILE}:${rowOf(text, 'TEA_MAKER')}:default_duties:needs default_duties or default_access`,
       ]);
       expect(await roleRows(c)).toEqual(before);
+    });
+  });
+
+  it('roles listed by their catalogue code alone load to the same access (ADR 060)', async () => {
+    await inRolledBackTx(async (c) => {
+      const before = await loadCustomer(c, files, { nested: true });
+      expect(before.issues).toEqual([]);
+      const rows = await roleRows(c);
+      // every role whose row is the catalogue's own, as code and format only
+      const table = parseCsv(files[FILE]!);
+      const lines = ['job_role_code,job_title,outlet_format,usual_department,default_duties'];
+      for (const { values: v } of table.rows) {
+        const role = ROLE_BY_CODE.get(v['job_role_code']!);
+        const own =
+          role &&
+          v['outlet_format'] === 'any' &&
+          v['job_title'] === role.title &&
+          v['usual_department'] === role.home &&
+          v['default_duties'] === role.duties.join('; ');
+        lines.push(
+          own
+            ? `${v['job_role_code']},,any,,`
+            : [
+                v['job_role_code'],
+                v['job_title'],
+                v['outlet_format'],
+                v['usual_department'],
+                v['default_duties'],
+              ].join(','),
+        );
+      }
+      expect(lines.filter((l) => l.endsWith(',,any,,')).length).toBeGreaterThan(40);
+      const short = { ...files, [FILE]: lines.join('\n') + '\n' };
+      const after = await loadCustomer(c, short, { nested: true });
+      expect(after.issues).toEqual([]);
+      expect(after.access.map(key).sort()).toEqual(before.access.map(key).sort());
+      expect(after.counts['job role access']).toMatchObject({ created: 0, updated: 0 });
+      // titles and departments come from the catalogue unchanged
+      expect(after.counts['job roles']).toMatchObject({ created: 0, updated: 0 });
+      expect(await roleRows(c)).toEqual(rows);
     });
   });
 });

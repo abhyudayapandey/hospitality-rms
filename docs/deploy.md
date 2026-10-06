@@ -2143,9 +2143,34 @@ catalogue into every customer and labels their job roles' existing grants with t
 No one's access changes.
 
 1. Merge, then **Deploy** as usual (the migration runs with it). `cdk diff` shows nothing.
-2. Check, on the instance:
-   `docker exec -u postgres -e PGOPTIONS='-c default_transaction_read_only=on' outlet-ops-pg psql -d outlet_ops -X -P pager=off -c "select t.code, (select count(*) from hr.duty d where d.tenant_id = t.id) as duties, (select count(*) from hr.job_role_access a where a.tenant_id = t.id) as grants, (select count(duty_code) from hr.job_role_access a where a.tenant_id = t.id) as labelled from core.tenant t order by 1"`
-   shows 24 duties for each customer, and `labelled` equal to `grants` for the test
-   customers.
+2. Check the database, from your workstation after `aws login --profile outlet-ops`. It runs on the
+   instance through SSM and is read-only:
+
+   ```sh
+   export AWS_PROFILE=outlet-ops AWS_REGION=ap-south-1
+   IID=$(aws cloudformation describe-stacks --stack-name OutletOps \
+     --query "Stacks[0].Outputs[?OutputKey=='InstanceId'].OutputValue" --output text)
+   cat > /tmp/duties-check.json <<'JSON'
+   {"commands":["docker exec -u postgres -e PGOPTIONS='-c default_transaction_read_only=on' outlet-ops-pg psql -d outlet_ops -X -P pager=off -c \"select t.code, (select count(*) from hr.duty d where d.tenant_id = t.id) as duties, (select count(*) from hr.job_role_access a where a.tenant_id = t.id) as grants, (select count(duty_code) from hr.job_role_access a where a.tenant_id = t.id) as labelled from core.tenant t order by 1\""]}
+   JSON
+   id=$(aws ssm send-command --instance-ids "$IID" --document-name AWS-RunShellScript \
+     --parameters file:///tmp/duties-check.json --query Command.CommandId --output text)
+   sleep 5
+   aws ssm get-command-invocation --instance-id "$IID" --command-id "$id" \
+     --query StandardOutputContent --output text
+   ```
+
+   It shows 24 duties for each customer, and `labelled` equal to `grants` for the test
+   customers. If the last command prints nothing, run it again after a few seconds.
+
 3. Check, in the app: sign in as the General Manager 1.0 and a Cook 3.0; their Home and
    bottom nav are as before.
+
+## Releasing the role catalogue (ADR 060)
+
+No migration, no stack change, nothing to re-import. The catalogue is used by the onboarding
+loader only (the platform worker and `pnpm --filter @outlet-ops/onboarding load`); the test
+customers' files are unchanged, so no one's access changes.
+
+1. Merge, then **Deploy** as usual. `cdk diff` shows nothing.
+2. Check, in the platform console: a dry run of Test Company's files reports no changes.
