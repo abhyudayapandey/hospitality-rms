@@ -1,5 +1,6 @@
 'use server';
 
+import { after } from 'next/server';
 import { InvalidPasswordException } from '@aws-sdk/client-cognito-identity-provider';
 import { failure, type ActionResult } from '@outlet-ops/domain';
 import { cognitoConfig, logoutUrl } from '@/lib/auth/cognito';
@@ -78,11 +79,16 @@ export async function signOutEverywhere(): Promise<ActionResult<string>> {
     return failure(err);
   }
   if (login) {
-    await loginDirectory()
-      .signOutEverywhere(login)
-      .catch((err: unknown) =>
-        console.error('cognito global sign-out failed', (err as Error).name),
-      );
+    // the sessions here are already revoked; Cognito's own sign-out follows the answer
+    // (ADR 056), so the phone does not wait on it
+    const who = login;
+    after(() =>
+      loginDirectory()
+        .signOutEverywhere(who)
+        .catch((err: unknown) =>
+          console.error('cognito global sign-out failed', (err as Error).name),
+        ),
+    );
   }
   await clearAuthCookies();
   const cfg = cognitoConfig();

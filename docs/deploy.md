@@ -2121,3 +2121,16 @@ Ships with ADR 054 in one PR. No migration, no stack change, nothing to re-impor
    does nothing.
 3. Check, with the app left open from before the deploy: when it comes back to the screen, a
    bar says "A new version of the app is ready". **Reload** loads the new version.
+
+## Releasing sign-in and sign-out, and the reports audit (ADR 056, 057)
+
+One migration (report figures; it rebuilds the stored report days). No stack change, nothing to
+re-import.
+
+1. Merge, then **Deploy** as usual (the migration runs with it). `cdk diff` shows nothing.
+2. Check, on a phone: **Sign out** covers the screen with "Signing you out…" at once, and the
+   sign-in screen shows one **Sign in** button.
+3. Check, as the Executive Chef 1.0: Home's **On shift today** equals the people listed on
+   Department today, and Department today → Shifts → the people list adds up to it. Tapping a
+   Today so far figure opens its trend.
+4. Check, as the Bar Manager 1.0: Cost of sales → Food and drinks → the dishes are the bar's only.

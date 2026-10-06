@@ -8,6 +8,7 @@ import {
   secondaryButton,
   StatusBox,
 } from '@/components/messages';
+import { clearCaches, LeavingScreen } from '@/components/leaving-screen';
 import { passwordProblems } from '@/lib/auth/passwords';
 import { changeOwnPassword, signOutEverywhere } from './actions';
 
@@ -104,11 +105,8 @@ export function SignOutEverywhere() {
       setError(r.message);
       return;
     }
-    if ('caches' in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
-    }
-    window.location.assign(r.data);
+    await clearCaches().catch(() => undefined);
+    window.location.replace(r.data);
   }
 
   if (!confirming) {
@@ -120,6 +118,7 @@ export function SignOutEverywhere() {
   }
   return (
     <div className="space-y-2 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
+      {busy && <LeavingScreen />}
       <p>You will be signed out on every phone and computer, including this one.</p>
       <ErrorBox message={error} />
       <button
