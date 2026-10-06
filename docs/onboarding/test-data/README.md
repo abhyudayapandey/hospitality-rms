@@ -63,6 +63,7 @@ Each access row means: this person has this access group at this place. It cover
 | `34_pay_rates.csv`                                 | Optional, any customer: each person's pay, `hourly` or `monthly`, in rupees (ADR 030). Read only by people with COMPENSATION; reports show totals of 3 or more                                                                                                                                                                                                                                                                                                                                                            |
 | `35_attendance_TEST_DATA_ONLY.csv`                 | Test Company only: a past week of clock-ins and clock-outs (below) — test only                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `36_transfers_TEST_DATA_ONLY.csv`                  | Test Company only: two transfers from the central kitchen, requested, sent and received by the people named (below) — test only                                                                                                                                                                                                                                                                                                                                                                                           |
+| `37_role_cover.csv`                                | Optional, any customer: per outlet, who covers a job role it doesn't have, or that the role is not done there (ADR 061, below). The test customers have none                                                                                                                                                                                                                                                                                                                                                              |
 | `99_access_preview_GENERATED.csv`                  | Every resulting access grant, with place name, what it covers, and where it came from                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 ## The role catalogue (file 06, ADR 060)
@@ -74,6 +75,43 @@ role in file 06 by its code alone (`SOUS_CHEF,,any,,`): the blank title, departm
 duties come from the catalogue, and a blank `any` row also brings the catalogue's rows for
 other outlet formats. A row that is filled in is used as written; a role that is not in the
 catalogue must be filled in. The two test customers list their roles in full.
+
+## Who covers it: file 37 (ADR 061)
+
+An outlet that lacks a job role says who does its work instead. Only the exceptions are listed:
+a role not in the file is one the outlet has.
+
+| Column            | Meaning                                                                  |
+| ----------------- | ------------------------------------------------------------------------ |
+| `outlet_code`     | an outlet or the central kitchen, from file 01                           |
+| `job_role_code`   | the role the outlet doesn't have                                         |
+| `mode`            | `covered_by` (another role does its work) or `not_done` (nobody does it) |
+| `covered_by_role` | the role that does it, for `covered_by`; blank for `not_done`            |
+
+```
+outlet_code,job_role_code,mode,covered_by_role
+TEST-GUEST-HOUSE-2.0,STORE_KEEPER,covered_by,FRONT_DESK_EXECUTIVE
+TEST-BAR-3.0,COOK,not_done,
+```
+
+- **Covered by.** Everyone in the covering role at that outlet gets the covered role's access
+  there, on their own shifts. A "runs the department" duty lands on the covered role's
+  department at that outlet, or, if the outlet doesn't have it, on the covering person's own.
+  A task or checklist for the covered role goes to one of them who is on duty when it comes
+  due: clocked in first, then on a shift; the one with fewest open tasks; then whoever was
+  given one longest ago. With nobody on duty it waits for whoever comes on.
+- **Not done.** That role's checklists have no rounds at that outlet. Its approvals and alerts
+  already go up to the department head, then the GM.
+- **Refused** (by row and column): a role that covers itself, a chain (the covering role is
+  itself covered or not done there), a role whose duties don't work at that outlet (Bar 3.0
+  has no main store, so nobody there can cover its Store Keeper), and anything above the
+  outlet or account administration (an Area Manager, the Account Owner).
+- **Warned** in the dry run: someone already holds the role there; nobody holds the covering
+  role there yet; a role lower than "runs a department" covering one that runs a department
+  or the outlet; a checklist that loses its rounds.
+- When uploaded, the file is authoritative: a cover it no longer lists is removed, and
+  everyone at that outlet gets their access worked out again. A re-import without file 37
+  leaves covers as they are.
 
 ## Duties (file 06, ADR 059)
 

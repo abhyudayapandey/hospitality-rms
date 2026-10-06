@@ -1,5 +1,5 @@
 import { syncProcessDefs, syncProductAccess } from '@outlet-ops/workflow';
-import { MODULE_CODES } from '@outlet-ops/domain';
+import { LEVELS, levelOf, MODULE_CODES } from '@outlet-ops/domain';
 import type { ClientBase } from 'pg';
 import {
   FILES,
@@ -89,6 +89,8 @@ export async function loadCustomer(
   const at = { file: '', row: undefined as number | undefined };
   try {
     const l = new Loader(client, bundle, report, at);
+    // file 37 is authoritative only when it is uploaded: a re-import without it keeps covers
+    l.coverFile = Object.keys(files).some((f) => f.split('/').pop()!.startsWith('37_'));
     await l.run();
     report.ok = report.issues.length === 0;
     if (report.ok && !opts.dryRun) {
@@ -124,6 +126,9 @@ class Loader {
   private nodes = new Map<string, string>();
   private users = new Map<string, string>();
   private workers = new Map<string, string>();
+  private coverOutlets = new Set<string>();
+  /** Whether file 37 was uploaded (ADR 061). */
+  coverFile = false;
   private suppliers = new Map<string, string>();
   private items = new Map<string, string>();
   private leaveTypes = new Map<string, string>();
@@ -174,6 +179,7 @@ class Loader {
     await this.rostering();
     await this.events();
     await this.checklists();
+    await this.notDoneChecklists();
     if (this.isTest) {
       await this.shifts();
       await this.pastWeek();
@@ -609,6 +615,8 @@ class Loader {
       );
     }
 
+    await this.roleCover();
+
     // every job-role scope must resolve for every person
     for (const u of this.b.users) {
       const { rows } = await this.c.query<{ error: string }>(
@@ -624,6 +632,133 @@ class Loader {
         });
       }
     }
+  }
+
+  /**
+   * File 37 (ADR 061): who covers a job role an outlet doesn't have, or that it isn't done
+   * there. Authoritative when uploaded: a cover the file no longer lists is archived; a load
+   * without the file leaves covers as they are. Each row is checked
+   * as the database checks it (core.role_cover_errors); access at an outlet whose cover
+   * changed is applied again in access(), for everyone working there.
+   */
+  private async roleCover() {
+    const wanted = this.b.roleCover.map(
+      (r) => `${this.nodes.get(r.outlet_code)} ${r.job_role_code}`,
+    );
+    if (!this.coverFile) return;
+    this.step(FILES.roleCover.file);
+    const gone = await this.c.query<{ org_node_id: string }>(
+      `update hr.role_cover set archived_at = now()
+        where tenant_id = $1 and archived_at is null
+          and not (org_node_id || ' ' || job_role_code = any ($2))
+       returning org_node_id`,
+      [this.tenant, wanted],
+    );
+    if (gone.rowCount) {
+      const counts = (this.report.counts['role cover'] ??= {
+        created: 0,
+        updated: 0,
+        unchanged: 0,
+      });
+      counts.updated += gone.rowCount;
+    }
+    for (const g of gone.rows) this.coverOutlets.add(g.org_node_id);
+    for (const r of this.b.roleCover) {
+      this.step(FILES.roleCover.file, r.line);
+      const outlet = this.nodes.get(r.outlet_code)!;
+      const by = r.mode === 'covered_by' ? (r.covered_by_role ?? null) : null;
+      const { rows: errors } = await this.c.query<{ code: string; detail: string }>(
+        `select * from core.role_cover_errors($1, $2, $3, $4, $5)`,
+        [this.tenant, outlet, r.job_role_code, r.mode, by],
+      );
+      for (const e of errors) {
+        this.report.issues.push({
+          file: FILES.roleCover.file,
+          row: r.line,
+          column:
+            e.code === 'COVER_CHAIN' || e.code === 'COVER_SELF'
+              ? 'covered_by_role'
+              : 'job_role_code',
+          message: `${e.detail} (${e.code})`,
+        });
+      }
+      if (errors.length) continue;
+      const id = await this.upsert(
+        'role cover',
+        `with cur as (select id from hr.role_cover
+                       where org_node_id = $2 and job_role_code = $3 and archived_at is null),
+         upd as (update hr.role_cover c set mode = $4, covered_by_role = $5
+                  where c.id in (select id from cur)
+                    and (c.mode, c.covered_by_role) is distinct from ($4, $5)
+                 returning c.id, false as inserted),
+         ins as (insert into hr.role_cover (tenant_id, org_node_id, job_role_code, mode,
+                                            covered_by_role)
+                 select $1, $2, $3, $4, $5 where not exists (select 1 from cur)
+                 returning id, true as inserted)
+         select * from upd union all select * from ins`,
+        [this.tenant, outlet, r.job_role_code, r.mode, by],
+      );
+      if (id) this.coverOutlets.add(outlet);
+      for (const w of await this.coverWarnings(r, outlet, by)) {
+        this.report.warnings.push({
+          file: FILES.roleCover.file,
+          row: r.line,
+          column: 'job_role_code',
+          message: w,
+        });
+      }
+    }
+  }
+
+  /** What a cover row may not mean to do: nobody to do it, or someone lower doing it. */
+  private async coverWarnings(
+    r: Bundle['roleCover'][number],
+    outlet: string,
+    by: string | null,
+  ): Promise<string[]> {
+    const warnings: string[] = [];
+    const count = async (role: string) =>
+      (
+        await this.c.query<{ n: number }>(
+          `select count(*)::int n from hr.worker w
+            where w.tenant_id = $1 and w.status = 'active' and w.role_code = $2
+              and core.nearest(w.org_node_id, array['outlet', 'site']) = $3`,
+          [this.tenant, role, outlet],
+        )
+      ).rows[0]!.n;
+    const here = await count(r.job_role_code);
+    if (here > 0) {
+      warnings.push(
+        `${r.outlet_code} has ${here} ${r.job_role_code}: ` +
+          (by
+            ? `they and every ${by} there will share its work`
+            : 'its checklists stop all the same'),
+      );
+    }
+    if (by) {
+      if ((await count(by)) === 0) {
+        warnings.push(
+          `nobody at ${r.outlet_code} is a ${by} yet, so nobody does ${r.job_role_code}'s work`,
+        );
+      }
+      const duties = (code: string) =>
+        this.b.jobRoles
+          .filter((j) => j.job_role_code === code)
+          .flatMap((j) => jobRoleAccess(j).flatMap((a) => (a.duty ? [a.duty] : [])));
+      const [mine, theirs] = [levelOf(duties(by)), levelOf(duties(r.job_role_code))];
+      // leading a shift or keeping a store is covered by staff every day; running a
+      // department or the outlet by someone lower is worth a second look (decided 6 Oct)
+      if (
+        LEVELS.indexOf(theirs) >= LEVELS.indexOf('runs_department') &&
+        LEVELS.indexOf(mine) < LEVELS.indexOf(theirs)
+      ) {
+        warnings.push(
+          `${by} (${mine.replace(/_/g, ' ')}) covers ${r.job_role_code} ` +
+            `(${theirs.replace(/_/g, ' ')}) at ${r.outlet_code}: check that is meant`,
+        );
+      }
+    }
+    return warnings;
   }
 
   /**
@@ -674,6 +809,11 @@ class Loader {
     for (const u of this.b.users) {
       this.step(FILES.users.file, u.line);
       await this.c.query('select core.apply_job_role_access($1)', [this.users.get(u.username)]);
+    }
+    // everyone at an outlet whose cover changed, people added in the app included (ADR 061)
+    for (const outlet of this.coverOutlets) {
+      this.step(FILES.roleCover.file);
+      await this.c.query('select core.apply_cover_access($1)', [outlet]);
     }
     const wanted: string[] = [];
     for (const e of this.b.extraAccess) {
@@ -2096,6 +2236,27 @@ class Loader {
          returning id, xmax = 0 as inserted`,
         [this.tenant, node, code, first.name, schedule, assign, steps],
       );
+    }
+  }
+
+  /** Checklists given to a job role that is not done at their outlet: no rounds (ADR 061). */
+  private async notDoneChecklists() {
+    const { rows } = await this.c.query<{ name: string; place: string; role: string }>(
+      `select t.name, n.code as place, t.assign ->> 'role' as role
+         from ops.checklist_template t
+         join core.hierarchy_node n on n.id = t.org_node_id
+         join hr.role_cover rc on rc.tenant_id = t.tenant_id and rc.mode = 'not_done'
+                              and rc.archived_at is null and rc.job_role_code = t.assign ->> 'role'
+                              and rc.org_node_id = core.nearest(t.org_node_id, array['outlet', 'site'])
+        where t.tenant_id = $1 and t.archived_at is null and t.assign ->> 'mode' = 'job_role'
+        order by 2, 1`,
+      [this.tenant],
+    );
+    for (const r of rows) {
+      this.report.warnings.push({
+        file: FILES.roleCover.file,
+        message: `${r.name} at ${r.place} goes to ${r.role}, which is not done there: it has no rounds`,
+      });
     }
   }
 
