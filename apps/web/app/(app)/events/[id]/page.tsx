@@ -9,6 +9,7 @@ import { EventForm } from '../event-form';
 import { eventFormOptions } from '../options';
 import { CancelEvent } from './cancel-event';
 import { jobTitles } from '@/lib/job-titles';
+import { formatQty } from '@/lib/qty';
 
 export default async function EventPage({
   params,
@@ -48,7 +49,7 @@ export default async function EventPage({
             <li key={i} className="tabular-nums">
               {r.kind === 'role'
                 ? `${r.headcount} × ${title(r.role_code)} · ${formatTime(r.starts_at!, tz)}–${formatTime(r.ends_at!, tz)}`
-                : `${r.item_name ?? 'Item'} · ${Number(r.qty)} ${r.base_uom ?? ''}`}
+                : `${r.item_name ?? 'Item'} · ${formatQty(r.qty ?? 0, r.base_uom ?? '')}`}
             </li>
           ))}
         </ul>

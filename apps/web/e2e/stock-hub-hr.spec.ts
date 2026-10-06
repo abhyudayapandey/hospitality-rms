@@ -92,7 +92,7 @@ test('Home expiry banners open a list with as many items as they count', async (
     await banner.click();
     await page.waitForURL(/\/stock\?.*tab=expir/);
     // "All stores" chosen in the Place picker (ADR 038)
-    expect(await viewing(page)).toBe('All stores');
+    await expect.poll(() => viewing(page)).toBe('All stores');
     await expect(page.getByTestId('expiry-row')).toHaveCount(n);
   }
 });
@@ -108,18 +108,18 @@ test('the expiry lists: All stores or one store, from the Place picker', async (
   // one store: only its batches, without the store on each line
   await picker.selectOption({ label: 'Kitchen Store' });
   await page.waitForURL((u) => !u.searchParams.has('all'));
-  expect(await viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen Store');
+  await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen Store');
   await expect(page.getByTestId('expiry-store')).toHaveCount(0);
   await expect(page.locator('[data-sku="GINGER-GARLIC-PASTE"]')).toBeVisible();
   expect(await page.getByTestId('expiry-row').count()).toBeLessThanOrEqual(all);
   // the Expired tab keeps the choice
   await page.getByRole('link', { name: /^Expired/ }).click();
-  expect(await viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen Store');
+  await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen Store');
   await expect(page.locator('[data-sku="MINT-CHUTNEY"]')).toBeVisible();
   // and back to all of them, each line naming its store
   await picker.selectOption({ label: 'All stores' });
   await page.waitForURL(/all=1/);
-  expect(await viewing(page)).toBe('All stores');
+  await expect.poll(() => viewing(page)).toBe('All stores');
   await expect(page.getByRole('link', { name: /^Expired/ })).toHaveAttribute(
     'aria-current',
     'page',
@@ -139,7 +139,7 @@ test('People report: a department opens the names of the people in it', async ({
   await page.waitForURL(/\/team\/people\?node=/);
   await expect(page.getByTestId('person').first()).toBeVisible();
   // the department, not the outlet: as many people as the row says
-  expect(await viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen');
+  await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen');
   expect(await page.getByTestId('person').count()).toBe(headcount);
 });
 
@@ -152,7 +152,7 @@ test("People report: the outlet's own row opens the people in no department, not
   const headcount = Number((await own.locator('.tabular-nums').first().innerText()).split(' ')[0]);
   await own.getByRole('link').click();
   await page.waitForURL(/\/team\/people\?node=.*here=1/);
-  expect(await viewing(page)).toBe('Test Hotel & Bar 1.0');
+  await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0');
   await expect(page.getByTestId('person')).toHaveCount(headcount);
   // and everyone at the outlet is one tap away
   await page.getByTestId('people-everyone').click();

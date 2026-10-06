@@ -12,25 +12,30 @@ const tabs = [
   '/stock/bills',
 ].map((href) => ({ href }));
 
-describe('supply tabs: 4, the rest under More (ADR 053)', () => {
-  it('shows the first 4 and keeps the rest', () => {
-    const { shown, more } = splitTabs(tabs, '/stock');
+describe('Stock tabs: 4, then More / Less in the same row (ADR 054)', () => {
+  it('shows the first 4 and keeps the rest, in order, closed', () => {
+    const { shown, more, open } = splitTabs(tabs, '/stock');
     expect(shown.map((t) => t.href)).toEqual([
       '/stock',
       '/stock/orders',
       '/stock/transfers',
       '/stock/count',
     ]);
-    expect(more).toHaveLength(4);
+    expect(more.map((t) => t.href)).toEqual([
+      '/stock/wastage',
+      '/stock/production',
+      '/stock/check',
+      '/stock/bills',
+    ]);
+    expect(open).toBe(false);
   });
-  it('the screen you are on is always shown', () => {
-    const { shown, more } = splitTabs(tabs, '/stock/bills');
-    expect(shown.map((t) => t.href)).toContain('/stock/bills');
-    expect(shown).toHaveLength(4);
-    expect(more.map((t) => t.href)).not.toContain('/stock/bills');
-    expect(more.map((t) => t.href)).toContain('/stock/count');
+  it('on one of the rest, the row opens with the order kept', () => {
+    const { shown, more, open } = splitTabs(tabs, '/stock/bills');
+    expect(open).toBe(true);
+    expect(shown.map((t) => t.href)).not.toContain('/stock/bills');
+    expect(more.at(-1)?.href).toBe('/stock/bills');
   });
   it('no More for one extra tab: it would hide only one', () => {
-    expect(splitTabs(tabs.slice(0, 5), '/stock').more).toEqual([]);
+    expect(splitTabs(tabs.slice(0, 5), '/stock')).toMatchObject({ more: [], open: false });
   });
 });

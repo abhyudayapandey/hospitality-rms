@@ -11,13 +11,15 @@ test('the general manager sees only stores on Stock and only departments on Rost
   await signInAs(page, 'Test General Manager 1.0');
   await page.goto('/stock');
   await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Main Store');
-  expect(await viewingOptions(page)).toEqual([
-    'All stores', // first, for every list that spans stores (ADR 038)
-    'Test Hotel & Bar 1.0 – Main Store',
-    'Test Hotel & Bar 1.0 – Bar Store',
-    'Test Hotel & Bar 1.0 – Housekeeping Store',
-    'Test Hotel & Bar 1.0 – Kitchen Store',
-  ]);
+  await expect
+    .poll(() => viewingOptions(page))
+    .toEqual([
+      'All stores', // first, for every list that spans stores (ADR 038)
+      'Test Hotel & Bar 1.0 – Main Store',
+      'Test Hotel & Bar 1.0 – Bar Store',
+      'Test Hotel & Bar 1.0 – Housekeeping Store',
+      'Test Hotel & Bar 1.0 – Kitchen Store',
+    ]);
 
   await page.goto('/roster/week');
   const options = await viewingOptions(page);
@@ -63,7 +65,7 @@ test('the choice is remembered per screen, and tabs carry the place where it fit
   await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen Store');
   // the Orders tab keeps the store
   await page
-    .getByRole('navigation', { name: 'Supply' })
+    .getByRole('navigation', { name: 'Stock tabs' })
     .getByRole('link', { name: 'Orders' })
     .click();
   await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen Store');
@@ -88,7 +90,7 @@ test('a bartender sees no switcher on Stock and only the Bar Store on Production
   await expect(page.getByTestId('place-switcher')).toHaveCount(0);
   await page.goto('/stock/production');
   await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Bar Store');
-  expect(await viewingOptions(page)).toEqual([]);
+  await expect.poll(() => viewingOptions(page)).toEqual([]);
 });
 
 test('a commis sees only the Kitchen Store on Make, and no other stock screen', async ({
@@ -99,11 +101,11 @@ test('a commis sees only the Kitchen Store on Make, and no other stock screen', 
   await page.getByTestId('tile-make').click();
   await page.waitForURL(/\/stock\/production/);
   await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen Store');
-  expect(await viewingOptions(page)).toEqual([]);
+  await expect.poll(() => viewingOptions(page)).toEqual([]);
   const main = page.locator('main');
   await expect(main.getByRole('heading', { name: 'Make' })).toBeVisible();
   // production only: no stock tabs; an expired batch is reported to the lead, not wasted
-  await expect(page.getByRole('navigation', { name: 'Supply' })).toHaveCount(0);
+  await expect(page.getByRole('navigation', { name: 'Stock tabs' })).toHaveCount(0);
   await expect(main.getByRole('link', { name: /record the wastage/ })).toHaveCount(0);
   await expect(page.getByTestId('expired').getByRole('button', { name: 'Report' })).not.toHaveCount(
     0,

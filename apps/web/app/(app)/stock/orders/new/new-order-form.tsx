@@ -6,6 +6,8 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { ListSearch } from '@/components/list-search';
 import { UnusualNote } from '@/components/unusual-note';
+import { FillToPar } from '@/components/fill-to-par';
+import { formatQty, inputQty } from '@/lib/qty';
 import { requestSupplies } from '../../actions';
 
 export interface OrderLine {
@@ -17,17 +19,16 @@ export interface OrderLine {
   suggested_qty: string;
 }
 
-const trim = (n: string) => String(Number(n));
-
 /**
  * A supply request (ADR 049): items and quantities only. Nothing is filled in (ADR 053); each
- * line says what the store has and keeps, and "Fill to keep level" fills what would bring the
- * short items back up to it.
+ * line says what the store has and its par, and "Fill all N short items up to par" fills what
+ * would bring the short items back up to it (ADR 054).
  */
 export function NewOrderForm({ node, lines }: { node: string; lines: OrderLine[] }) {
   const router = useRouter();
   const [qty, setQty] = useState<Record<string, string>>({});
   const short = lines.filter((l) => Number(l.suggested_qty) > 0);
+  const [filled, setFilled] = useState(false);
   const [notes, setNotes] = useState('');
   const [usual, setUsual] = useState(false);
   const [key] = useState(() => crypto.randomUUID());
@@ -61,21 +62,25 @@ export function NewOrderForm({ node, lines }: { node: string; lines: OrderLine[]
     >
       <div id="order-lines" className="space-y-2">
         <ListSearch scope="order-lines" count={lines.length} noun="items" />
-        {short.length > 0 && (
-          <button
-            type="button"
-            data-testid="fill-to-keep"
-            className="min-h-11 text-sm font-medium text-brand-700 underline"
-            onClick={() =>
-              setQty((v) => ({
-                ...v,
-                ...Object.fromEntries(short.map((l) => [l.item_id, trim(l.suggested_qty)])),
-              }))
-            }
-          >
-            Fill to keep level ({short.length} {short.length === 1 ? 'item' : 'items'} short)
-          </button>
-        )}
+        <FillToPar
+          short={short.length}
+          filled={filled}
+          onFill={() => {
+            setQty((v) => ({
+              ...v,
+              ...Object.fromEntries(short.map((l) => [l.item_id, inputQty(l.suggested_qty)])),
+            }));
+            setFilled(true);
+          }}
+          onClear={() => {
+            setQty((v) =>
+              Object.fromEntries(
+                Object.entries(v).filter(([id]) => !short.some((l) => l.item_id === id)),
+              ),
+            );
+            setFilled(false);
+          }}
+        />
         {lines.some((l) => Number(l.suggested_qty) > 0) && lines.length > 8 && (
           <label className="flex min-h-11 items-center gap-2 text-sm">
             <input
@@ -106,8 +111,13 @@ export function NewOrderForm({ node, lines }: { node: string; lines: OrderLine[]
             >
               <p className="flex justify-between gap-2 text-sm">
                 <span className="font-medium">{l.name}</span>
-                <span className="text-slate-500 tabular-nums" data-testid="have-keep">
-                  have {trim(l.on_hand)} · keep {trim(l.par_level)} {l.base_uom}
+                <span
+                  className={`tabular-nums ${Number(l.on_hand) < 0 ? 'text-rose-700' : 'text-slate-500'}`}
+                  data-testid="have-keep"
+                >
+                  In stock {formatQty(l.on_hand, l.base_uom)} · par{' '}
+                  {formatQty(l.par_level, l.base_uom)}
+                  {Number(l.on_hand) < 0 ? ' (below zero: count it)' : ''}
                 </span>
               </p>
               <input
@@ -116,6 +126,10 @@ export function NewOrderForm({ node, lines }: { node: string; lines: OrderLine[]
                 placeholder={`how much (${l.base_uom})`}
                 value={qty[l.item_id] ?? ''}
                 onChange={(e) => setQty((v) => ({ ...v, [l.item_id]: e.target.value }))}
+                onBlur={(e) =>
+                  e.target.value.trim() &&
+                  setQty((v) => ({ ...v, [l.item_id]: inputQty(e.target.value) || e.target.value }))
+                }
                 className={inputClass}
               />
             </li>

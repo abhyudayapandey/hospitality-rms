@@ -445,28 +445,34 @@ test('Roster is Me and Team: staff see only Me; the manager switches; HR has Tea
   page,
 }) => {
   const sides = (p: Page) => p.getByRole('navigation', { name: 'Me or team' });
-  const tabs = async (p: Page, side: 'Me' | 'Team') =>
-    p.getByRole('navigation', { name: side, exact: true }).getByRole('link').allInnerTexts();
+  const tabs = (p: Page, side: 'Me' | 'Team') =>
+    p.getByRole('navigation', { name: side, exact: true }).getByRole('link');
 
   // a server: Roster opens on My shifts; no switch, no team tabs
   await signInAs(page, 'Test Server 3.0');
   await page.goto('/roster');
   await page.waitForURL('**/roster/my');
   await expect(sides(page)).toHaveCount(0);
-  expect(await tabs(page, 'Me')).toEqual(['My shifts', 'Clock', 'Leave', 'Swaps']);
+  await expect(tabs(page, 'Me')).toHaveText(['My shifts', 'Clock', 'Leave', 'Swaps']);
 
   // the bar manager: Roster opens on Team; the switch goes to Me and back
   await signInAs(page, 'Test Bar Manager 3.0');
   await page.goto('/roster');
   await page.waitForURL(/\/roster\/week/);
-  expect(await tabs(page, 'Team')).toEqual(['Roster', 'Exceptions', 'Events', 'People', 'Leave']);
+  await expect(tabs(page, 'Team')).toHaveText([
+    'Roster',
+    'Exceptions',
+    'Events',
+    'People',
+    'Leave',
+  ]);
   await expect(sides(page).getByRole('link', { name: 'Team' })).toHaveAttribute(
     'aria-current',
     'true',
   );
   await sides(page).getByRole('link', { name: 'Me' }).click();
   await page.waitForURL('**/roster/my');
-  expect(await tabs(page, 'Me')).toEqual(['My shifts', 'Clock', 'Leave', 'Swaps']);
+  await expect(tabs(page, 'Me')).toHaveText(['My shifts', 'Clock', 'Leave', 'Swaps']);
   await sides(page).getByRole('link', { name: 'Team' }).click();
   await page.waitForURL(/\/roster\/week/);
 
@@ -519,10 +525,13 @@ test('offline clock-in is saved on the phone and synced with its time when back 
   await context.setGeolocation(AT_BAR);
   await signInAs(page, 'Test Server 3.0');
   await page.goto('/roster/clock');
+  await expect(page.getByTestId('clock-state')).toBeVisible();
   if (await page.getByRole('button', { name: 'Clock out' }).isVisible()) {
     await page.getByRole('button', { name: 'Clock out' }).click();
     await expect(page.getByRole('button', { name: 'Clock in with a selfie' })).toBeVisible();
   }
+  // the page is live before the signal goes (ADR 055)
+  await expect(page.getByRole('button', { name: 'Clock in with a selfie' })).toBeEnabled();
   await context.setOffline(true);
   // no camera in this test: clock in without a selfie (flagged, never blocked; ATT-7)
   await page.getByTestId('clock-no-selfie').click();

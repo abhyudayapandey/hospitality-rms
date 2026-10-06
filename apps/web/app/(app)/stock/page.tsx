@@ -214,9 +214,9 @@ export default async function StockPage({ searchParams }: { searchParams: Search
                               {(r as Partial<StockRowAll>).store}
                             </span>
                           )}
-                          {/* plain words (UX-6): what the store keeps, not "par" */}
+                          {/* one word for it everywhere: par (ADR 054) */}
                           <span className="text-xs text-slate-500">
-                            keep at {formatQty(r.par_level, r.base_uom)}
+                            par {formatQty(r.par_level, r.base_uom)}
                             {isLow(r) && lastsText(r) ? ` · ${lastsText(r)}` : ''}
                           </span>
                         </span>

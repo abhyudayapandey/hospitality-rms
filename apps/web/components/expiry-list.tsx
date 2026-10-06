@@ -3,6 +3,7 @@ import { Empty } from '@/components/messages';
 import { businessDate, formatDay } from '@/lib/dates';
 import { EXPIRY_TITLE, type ExpiryBatch, type ExpiryShow } from '@/lib/expiry';
 import { formatQty } from '@/lib/inventory';
+import { inputQty } from '@/lib/qty';
 
 /**
  * The Expiring and Expired tabs of the Stock screen (INV-12, ADR 033): batches expiring
@@ -62,7 +63,7 @@ export function ExpiryList({
                 </span>
                 {show === 'expired' && canDiscard && (
                   <Link
-                    href={`/stock/wastage?node=${b.store_id}&item=${b.item_id}&qty=${Number(b.remaining)}&reason=expired`}
+                    href={`/stock/wastage?node=${b.store_id}&item=${b.item_id}&qty=${inputQty(b.remaining)}&reason=expired`}
                     className="mt-1 inline-flex min-h-11 items-center text-sm font-medium underline"
                   >
                     Throw away

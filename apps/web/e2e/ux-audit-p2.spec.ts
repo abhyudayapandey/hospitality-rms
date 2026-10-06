@@ -16,11 +16,19 @@ test('asking for supplies: nothing filled in, have and keep on each line, says w
   for (const input of await page.getByRole('textbox', { name: /^Quantity / }).all()) {
     await expect(input).toHaveValue('');
   }
-  await expect(page.getByTestId('have-keep').first()).toContainText(/^have .* · keep /);
+  await expect(page.getByTestId('have-keep').first()).toContainText(/^In stock .* · par /);
+  // a real button that says what it does; then it clears what it put in (ADR 054)
   const fill = page.getByTestId('fill-to-keep');
   if (await fill.count()) {
+    await expect(fill).toHaveText(/^Fill (all \d+|the 1) short items? up to par$/);
     await fill.click();
     await expect(page.getByRole('button', { name: /^Send request · [1-9]/ })).toBeVisible();
+    // at most 2 decimals in every box
+    for (const input of await page.getByRole('textbox', { name: /^Quantity / }).all()) {
+      expect(await input.inputValue()).toMatch(/^(\d+(\.\d{1,2})?)?$/);
+    }
+    await page.getByRole('button', { name: 'Clear the amounts' }).click();
+    await expect(page.getByRole('button', { name: 'Send request · 0 items' })).toBeVisible();
   }
 
   // a bar with no Main Store orders for itself
@@ -38,14 +46,24 @@ test('Send stock shows what the department has and keeps; the Main Store opens o
   await page.goto(`/stock/transfers?node=${main}`);
   await expect(page.getByTestId('tab-send')).toHaveAttribute('aria-current', 'page');
   await page.goto(`/stock/transfers/send?node=${main}&to=${kitchen}`);
-  await expect(page.getByTestId('their-stock').first()).toContainText('Kitchen Store has');
-  // the Supply tabs: 4, the rest under More
-  await expect(page.getByTestId('supply-more')).toHaveCount(0); // not on this form
+  await expect(page.getByTestId('their-stock').first()).toContainText(/^Kitchen Store -?[\d,.]+ /);
+  // no quantity shows more than 2 decimals (ADR 054)
+  for (const t of await page.getByTestId('their-stock').allTextContents()) {
+    expect(t).not.toMatch(/\d\.\d{3}/);
+  }
+  // the Stock tabs: 4, then More, which shows the rest in the same row and becomes Less
+  await expect(page.getByTestId('tabs-more')).toHaveCount(0); // not on this form
   await page.goto(`/stock?node=${main}`);
-  const more = page.getByTestId('supply-more');
-  await expect(more).toBeVisible();
-  await more.getByText('More').click();
-  await expect(more.getByRole('link', { name: 'Wastage' })).toBeVisible();
+  const tabs = page.getByRole('navigation', { name: 'Stock tabs' });
+  await expect(tabs.getByRole('link', { name: 'Wastage' })).toHaveCount(0);
+  await page.getByTestId('tabs-more').click();
+  await expect(tabs.getByRole('link', { name: 'Wastage' })).toBeVisible();
+  await expect(page.getByTestId('tabs-more')).toHaveText(/^Less/);
+  // on a tab from the rest, the row opens already showing them
+  await tabs.getByRole('link', { name: 'Bills' }).click();
+  await page.waitForURL(/\/stock\/bills/);
+  await expect(tabs.getByRole('link', { name: 'Bills' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('tabs-more')).toHaveText(/^Less/);
 });
 
 test('back goes to the list as it was, its tab kept', async ({ page }) => {

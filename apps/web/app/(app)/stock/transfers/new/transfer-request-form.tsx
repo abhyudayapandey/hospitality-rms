@@ -9,6 +9,7 @@ import type { ItemOption } from '@/lib/inventory';
 import { UnusualNote } from '@/components/unusual-note';
 import { byGroup } from '@/lib/item-groups';
 import { requestTransfer } from '../../actions';
+import { formatQty } from '@/lib/qty';
 
 export function TransferRequestForm({
   to,
@@ -84,7 +85,7 @@ export function TransferRequestForm({
                   <label htmlFor={`t-${i.item_id}`} className="min-w-0 flex-1 text-sm">
                     <span className="block font-medium">{i.name}</span>
                     <span className="text-xs text-slate-500">
-                      here: {Number(i.on_hand)} {i.base_uom}
+                      here: {formatQty(i.on_hand, i.base_uom)}
                     </span>
                   </label>
                   <input

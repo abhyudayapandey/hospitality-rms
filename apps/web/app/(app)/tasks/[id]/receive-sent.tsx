@@ -6,6 +6,7 @@ import { ErrorBox, inputClass, primaryButton, secondaryButton } from '@/componen
 import type { Person } from '@/lib/tasks';
 import { useHydrated } from '@/lib/use-hydrated';
 import { reassignTask, receiveSent } from '../actions';
+import { formatQty } from '@/lib/qty';
 
 export interface SentLine {
   item_id: string;
@@ -69,9 +70,7 @@ export function ReceiveSent({ task, lines }: { task: string; lines: SentLine[] }
           <li key={l.item_id} className="flex items-center justify-between gap-3 px-4 py-2">
             <label htmlFor={`r-${l.item_id}`} className="min-w-0 flex-1 text-sm">
               <span className="block font-medium">{l.name}</span>
-              <span className="text-xs text-slate-500">
-                sent {Number(l.sent)} {l.base_uom}
-              </span>
+              <span className="text-xs text-slate-500">sent {formatQty(l.sent, l.base_uom)}</span>
             </label>
             <input
               id={`r-${l.item_id}`}
@@ -105,7 +104,7 @@ export function SentLines({ lines }: { lines: SentLine[] }) {
           <li key={l.item_id} className="flex justify-between gap-2 px-4 py-3 text-sm">
             <span className="font-medium">{l.name}</span>
             <span className="text-right tabular-nums">
-              sent {Number(l.sent)} {l.base_uom}
+              sent {formatQty(l.sent, l.base_uom)}
               {got !== null && (
                 <span
                   className={`block text-xs ${got < Number(l.sent) ? 'text-amber-800' : 'text-slate-500'}`}

@@ -6,6 +6,7 @@ import type { ModuleCode } from '@outlet-ops/domain';
 import { isProductCode } from './custom-groups';
 import { modulesOn, withModules } from './modules';
 import { navProfile, type NavInput } from './nav';
+import { navFlagsKey } from './nav-flags';
 import { unreadLines, type NotificationRow } from './notifications-view';
 import type { ScreenInput } from './screens';
 
@@ -51,6 +52,26 @@ export interface Shell {
 
 const MENU_DOMAINS = ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM'];
 
+/**
+ * Which tabs the bottom nav offers (Menu, Make, Reports) costs about 400 ms of access checks
+ * and rarely changes, so it is kept per person for a few minutes (ADR 055). The key carries
+ * their domains, modules and roles: a change to any of them asks again at once. Only the nav
+ * reads it; every screen still checks access in the database.
+ */
+const NAV_TTL_MS = 5 * 60_000;
+type NavFlags = Pick<Shell, 'menu' | 'production' | 'reports'>;
+const navFlags = new Map<string, { at: number; v: NavFlags }>();
+
+async function cachedNavFlags(key: string, load: () => Promise<NavFlags>): Promise<NavFlags> {
+  const now = Date.now();
+  const hit = navFlags.get(key);
+  if (hit && now - hit.at < NAV_TTL_MS) return hit.v;
+  const v = await load();
+  if (navFlags.size > 5000) navFlags.clear();
+  navFlags.set(key, { at: now, v });
+  return v;
+}
+
 /** Everything the app layout needs, in one withUser transaction. */
 export const loadShell = cache(async (): Promise<Shell> => {
   const user = await requireUser();
@@ -90,33 +111,43 @@ export const loadShell = cache(async (): Promise<Shell> => {
        where owner_user_id = core.current_user_id()
        order by created_at desc, id desc limit 50`.execute(tx);
     const tz = nodes.rows.find((n) => n.id === home.rows[0]?.id)?.timezone ?? 'Asia/Kolkata';
-    // RLS shows only the recipes they may read; menu places are where they see costs
-    const menu = MENU_DOMAINS.some(has)
-      ? await sql<{ v: boolean }>`
-          select exists (select 1 from inv.recipe) or exists (select 1 from menu.my_menu_places())
-            as v`.execute(tx)
-      : null;
-    const production =
-      has('PRODUCTION') || has('PRODUCTION_TEAM')
-        ? await sql<{ v: boolean }>`
-            select exists (select 1 from core.screen_places('production')) as v`.execute(tx)
-        : null;
-    // frontline staff have only their own week; others ask rpt.my_reports() (ADR 023)
     // product roles only: a custom group's own code says nothing about the kind of work
     const groupSet = new Set(groups.rows.map((g) => g.access_group).filter(isProductCode));
-    const listed =
-      navProfile(groupSet) === 'frontline'
-        ? null
-        : await sql<{ report: string }>`select report from rpt.my_reports()`.execute(tx);
-    const reports: NavInput['reports'] = listed
-      ? listed.rows.some((r) => r.report !== 'my_week')
-        ? 'business'
-        : listed.rows.length > 0
-          ? 'mine'
-          : 'none'
-      : home.rows.length > 0
-        ? 'mine'
-        : 'none';
+    const flags = await cachedNavFlags(
+      navFlagsKey(user.id, domainMap, modules, groupSet, home.rows[0]?.id ?? null),
+      async () => {
+        // RLS shows only the recipes they may read; menu places are where they see costs
+        const menu = MENU_DOMAINS.some(has)
+          ? await sql<{ v: boolean }>`
+              select exists (select 1 from inv.recipe)
+                  or exists (select 1 from menu.my_menu_places()) as v`.execute(tx)
+          : null;
+        const production =
+          has('PRODUCTION') || has('PRODUCTION_TEAM')
+            ? await sql<{ v: boolean }>`
+                select exists (select 1 from core.screen_places('production')) as v`.execute(tx)
+            : null;
+        // frontline staff have only their own week; others ask rpt.my_reports() (ADR 023)
+        const listed =
+          navProfile(groupSet) === 'frontline'
+            ? null
+            : await sql<{ report: string }>`select report from rpt.my_reports()`.execute(tx);
+        const reports: NavInput['reports'] = listed
+          ? listed.rows.some((r) => r.report !== 'my_week')
+            ? 'business'
+            : listed.rows.length > 0
+              ? 'mine'
+              : 'none'
+          : home.rows.length > 0
+            ? 'mine'
+            : 'none';
+        return {
+          menu: menu?.rows[0]?.v ?? false,
+          production: production?.rows[0]?.v ?? false,
+          reports,
+        };
+      },
+    );
     return {
       user,
       domains: domainMap,
@@ -126,9 +157,7 @@ export const loadShell = cache(async (): Promise<Shell> => {
       home: home.rows[0] ?? null,
       inboxCount: inbox.rows[0]?.n ?? 0,
       unreadCount: unreadLines(recent.rows, tz),
-      menu: menu?.rows[0]?.v ?? false,
-      production: production?.rows[0]?.v ?? false,
-      reports,
+      ...flags,
     };
   });
 });

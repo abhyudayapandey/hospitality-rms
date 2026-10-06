@@ -2,8 +2,9 @@ import Link from 'next/link';
 import type { SupplyContext } from '@/lib/inventory';
 import { PlaceSwitcher } from './place-switcher';
 import { splitTabs } from '@/lib/supply-tabs';
+import { MoreTabs } from './more-tabs';
 
-// in the order a store works: the first 4 a person has are shown, the rest under More (ADR 053)
+// in the order a store works: the first 4 a person has, then More / Less (ADR 053, 054)
 const TABS = [
   { href: '/stock', label: 'Stock', domain: 'STOCK_LEVELS', access: 'view' },
   { href: '/stock/orders', label: 'Orders', domain: 'PURCHASE_ORDERS', access: 'view' },
@@ -38,7 +39,7 @@ export function SupplyHeader({
   const tabs = TABS.filter((t) =>
     t.domain === null ? ctx.shell.production : ctx.can(t.domain, t.access),
   );
-  const { shown, more } = splitTabs(tabs, active);
+  const { shown, more, open } = splitTabs(tabs, active);
   const pill = (t: (typeof TABS)[number]) => (
     <Link
       href={`${t.href}${q}`}
@@ -65,26 +66,16 @@ export function SupplyHeader({
       />
       <h1 className="text-xl font-semibold">{title}</h1>
       {tabs.length > 1 && (
-        <nav aria-label="Supply" className="px-0">
-          <ul className="flex flex-wrap gap-2">
-            {shown.map((t) => (
+        <nav aria-label="Stock tabs" className="px-0">
+          <MoreTabs
+            shown={shown.map((t) => (
               <li key={t.href}>{pill(t)}</li>
             ))}
-            {more.length > 0 && (
-              <li>
-                <details className="group" data-testid="supply-more">
-                  <summary className="inline-flex min-h-11 w-fit cursor-pointer list-none items-center rounded-full bg-white px-4 text-sm text-slate-700 ring-1 ring-slate-300">
-                    More
-                  </summary>
-                  <ul className="mt-2 flex flex-wrap gap-2">
-                    {more.map((t) => (
-                      <li key={t.href}>{pill(t)}</li>
-                    ))}
-                  </ul>
-                </details>
-              </li>
-            )}
-          </ul>
+            more={more.map((t) => (
+              <li key={t.href}>{pill(t)}</li>
+            ))}
+            open={open}
+          />
         </nav>
       )}
     </div>

@@ -1,10 +1,12 @@
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { BottomNav } from '@/components/bottom-nav';
 import { Icon } from '@/components/icon';
 import { ActionSync } from '@/components/action-sync';
 import { PunchSync } from '@/components/punch-sync';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { NavProgress } from '@/components/nav-progress';
+import { VersionCheck } from '@/components/version-check';
 import { approvalsInNav, visibleNav } from '@/lib/nav';
 import { loadShell, navInput } from '@/lib/shell';
 
@@ -78,6 +80,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <ThemeToggle />
         </div>
       </header>
+      <Suspense fallback={null}>
+        <NavProgress />
+      </Suspense>
+      <VersionCheck />
       <PunchSync userId={shell.user.id} />
       <ActionSync userId={shell.user.id} />
       <main className="flex-1 px-4 pt-4 pb-24 print:p-0">{children}</main>

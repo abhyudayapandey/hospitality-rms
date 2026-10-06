@@ -10,8 +10,10 @@ const AT_BAR = { latitude: 12.9716, longitude: 77.5946 };
 
 async function clockOutIfIn(page: import('@playwright/test').Page) {
   await page.goto('/roster/clock');
+  await expect(page.getByTestId('clock-state')).toBeVisible();
   const out = page.getByRole('button', { name: 'Clock out' });
   if (await out.isVisible()) {
+    await expect(out).toBeEnabled();
     await out.click();
     await expect(page.getByRole('button', { name: 'Clock in with a selfie' })).toBeVisible();
   }
@@ -25,6 +27,8 @@ test('a selfie taken at clock-in goes with the punch; with no storage it is flag
   await context.setGeolocation(AT_BAR);
   await signInAs(page, 'Test Server 3.0');
   await clockOutIfIn(page);
+  // the page is live once its button is (ADR 055)
+  await expect(page.getByRole('button', { name: 'Clock in with a selfie' })).toBeEnabled();
 
   // the camera input takes the photo (a file here), and the punch follows it
   await page.getByTestId('selfie-input').setInputFiles({

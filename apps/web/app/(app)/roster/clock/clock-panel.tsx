@@ -15,6 +15,7 @@ import {
   type QueuedPunch,
 } from '@/lib/punch-queue';
 import { clock, type PunchInput } from '../actions';
+import { useHydrated } from '@/lib/use-hydrated';
 
 /**
  * Clock in/out. Online first; with no connection the punch is saved on the phone with its
@@ -32,6 +33,8 @@ export function ClockPanel({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  // the camera opens only once the page is live (ADR 055)
+  const hydrated = useHydrated();
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [waiting, setWaiting] = useState<QueuedPunch[]>([]);
@@ -169,7 +172,7 @@ export function ClockPanel({
       />
       <button
         type="button"
-        disabled={pending}
+        disabled={!hydrated || pending}
         onClick={() => (action === 'in' ? camera.current?.click() : punch(null))}
         className={`${primaryButton} min-h-16 text-lg`}
       >

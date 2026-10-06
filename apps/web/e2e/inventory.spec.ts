@@ -50,7 +50,7 @@ test('two-leg transfer: requested, sent by the central kitchen store keeper, rec
   await page.reload();
   await expect(page.getByTestId('transfer-progress')).toHaveText('received');
   // +4 in, -0.5 transit loss
-  expect(await onHand(page, 'POTATOES', store)).toBeCloseTo(before + 3.5, 3);
+  expect(await onHand(page, 'POTATOES', store)).toBeCloseTo(before + 3.5, 2);
 });
 
 test('store to store in one outlet: the main store keeper sends, the kitchen’s keeper receives', async ({
@@ -99,7 +99,7 @@ test('store to store in one outlet: the main store keeper sends, the kitchen’s
   await page.getByRole('button', { name: 'Confirm receipt' }).click();
   await expect(page.getByRole('status')).toHaveText('Received.');
   await runExecutor();
-  expect(await onHand(page, 'BASMATI-RICE', kitchen)).toBeCloseTo(before + 2, 3);
+  expect(await onHand(page, 'BASMATI-RICE', kitchen)).toBeCloseTo(before + 2, 2);
 });
 
 test('a count within tolerance posts straight away', async ({ page }) => {
@@ -118,7 +118,8 @@ test('a count within tolerance posts straight away', async ({ page }) => {
   await page.getByRole('button', { name: /^Submit count/ }).click();
   await expect(page.getByRole('status')).toContainText('1 posted, 0 sent for approval');
 
-  expect(await onHand(page, 'SALT', store)).toBeCloseTo(counted, 3);
+  // the screen shows 2 decimals (ADR 054)
+  expect(await onHand(page, 'SALT', store)).toBeCloseTo(counted, 2);
 });
 
 test('the area manager sees outlet stock read-only (derived view)', async ({ page }) => {
@@ -127,7 +128,7 @@ test('the area manager sees outlet stock read-only (derived view)', async ({ pag
   await page.goto(`/stock?node=${store}`);
   await expect.poll(() => viewing(page)).toBe('Test Bar 3.0 – Kitchen Store (view only)');
   await expect(page.getByTestId('stock-row').first()).toBeVisible();
-  const tabs = page.getByRole('navigation', { name: 'Supply' });
+  const tabs = page.getByRole('navigation', { name: 'Stock tabs' });
   await expect(tabs.getByRole('link', { name: 'Stock', exact: true })).toBeVisible();
   await expect(tabs.getByRole('link', { name: 'Count' })).toHaveCount(0);
   await expect(tabs.getByRole('link', { name: 'Wastage' })).toHaveCount(0);
@@ -146,5 +147,5 @@ test('a department store keeper sees their own store, not the kitchen next door'
   await page.goto(`/stock?node=${await placeId('TEST-HOTEL-1.0-KITCHEN-STORE')}`);
   await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Bar Store');
   // one store: a plain label, no picker
-  expect(await viewingOptions(page)).toEqual([]);
+  await expect.poll(() => viewingOptions(page)).toEqual([]);
 });

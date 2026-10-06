@@ -17,8 +17,13 @@ export default function config(phase: string): NextConfig {
     throw new Error('DEV_AUTH_STUB=true is not allowed in a production build');
   }
 
+  // one id per build, in the server and in the page's code: a page from an older build sees
+  // the server's differ and offers a reload (ADR 055). CI passes the commit.
+  const buildId = process.env.GIT_SHA || process.env.GITHUB_SHA || String(Date.now());
+
   return {
     reactStrictMode: true,
+    env: { NEXT_PUBLIC_BUILD_ID: buildId },
     // Self-contained server for the EC2 instance (ADR 005); built in CI only.
     output: 'standalone',
     outputFileTracingRoot: join(import.meta.dirname, '..', '..'),
