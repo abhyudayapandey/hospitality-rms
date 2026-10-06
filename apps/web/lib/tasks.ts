@@ -19,6 +19,8 @@ export interface MyTask {
   steps_total: number;
   steps_done: number;
   overdue: boolean;
+  /** the job role whose work this is, when it came to me by cover (ADR 061) */
+  covering: string | null;
 }
 
 export async function myTasks(tx: Tx): Promise<MyTask[]> {

@@ -120,6 +120,12 @@ on Home; everyone's other screens are on **Me**, and the To do list sits in the 
 anyone without the tab. Rostering uses only their own job role; rostering one person in a
 second role is on hold (PRD section 15, open question 7).
 
+**A role the outlet doesn't have** (ADR 061, file 37). An outlet can say another role covers
+it ("no Store Keeper at Guest House 2.0: the Front Desk covers"), or that it isn't done there.
+The covering role's people get the covered role's access at that outlet only, on their own
+shifts, and its tasks go to one of them on duty ("Store Keeper's work (you're covering)").
+A role not done there has no checklist rounds; its approvals already go up to the head or GM.
+
 `docs/onboarding/test-data/PRODUCT_access_groups_REFERENCE.csv` says what each group
 allows. `PRODUCT_roles_REFERENCE.csv` beside it is the product's role catalogue
 (ADR 060): every role the SOP manuals name, with its level and default duties; a customer may

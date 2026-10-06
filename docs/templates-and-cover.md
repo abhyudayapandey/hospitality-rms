@@ -121,20 +121,24 @@ ranges allow for findings from the full test runs.
   across: `full_hotel` and `small_hotel` become Hotel, `standalone_bar` becomes Bar / Pub.
 - **Effort.** Most of this step is content, not code.
 
-### Step 4. "Who covers it" (cover). 5–7 days
+### Step 4. "Who covers it" (cover). 6–9 days — built (ADR 061)
 
-- **Data.** `hr.role_cover(outlet, job_role, mode, covered_by_role)`, where mode is `have`,
-  `covered_by` or `not_done`. It has RLS and is audited like every business table.
+- **Data.** `hr.role_cover(outlet, job_role, mode, covered_by_role)`, where mode is
+  `covered_by` or `not_done`; no row means the outlet has the role. It has RLS and is audited
+  like every business table, and is loaded from the optional file `37_role_cover.csv`.
 - **Derivation.** At that outlet, the covering role's people get the absent role's duties,
   through the same derivation as Step 1. Their roster job does not change: they do the
   absent role's work on their own shifts. That is the "one person, two jobs" rule, with no
   rostering change.
-- **Tasks.** A checklist given to the absent role goes to the covering role. If a duty is
-  `not_done`, its checklists are switched off.
+- **Tasks (decided 6 Oct).** A task or checklist given to the absent role goes to one covering
+  person on duty when it comes due: clocked in first, the fewest open tasks, then round robin.
+  With nobody on duty it waits in the pool. If a role is `not_done`, its checklists are
+  switched off.
 - **Safety net.**
   - A duty nobody holds at a place falls to the next level up: department head, then GM.
     Approvals already behave this way.
-  - Admin gets a "Duties with nobody" check, so a gap is visible, never silent.
+  - The loader's dry run warns about gaps and doubtful covers. Admin's view of them comes
+    with Step 6, and "duties with nobody" per template with Step 3.
 - **Tests.**
   - DB tests: cover gives the covering role's people the absent role's access at that
     outlet only.
@@ -216,7 +220,7 @@ seven steps:
 | 1. Duty catalogue                | 6–8        |
 | 2. Role and department catalogue | 3–4        |
 | 3. Templates and starter library | 5–7        |
-| 4. Who covers it                 | 5–7        |
+| 4. Who covers it                 | 6–9        |
 | 5. Set-up wizard                 | 8–10       |
 | 6. Changing it after go-live     | 3–4        |
 | 7. Test customers and docs       | 3–4        |

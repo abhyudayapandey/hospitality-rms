@@ -146,6 +146,10 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   File 06 may list a catalogue role by code alone. A role only holds duties for work the app
   does; a new duty a role gains goes in the catalogue, and `PRODUCT_roles_REFERENCE.csv` is
   regenerated (`pnpm --filter @outlet-ops/onboarding catalogue-reference`).
+- Who covers it (ADR 061, `hr.role_cover`, file 37): per outlet, a job role it lacks is
+  covered by a role it has, or not done. Cover adds the covered role's grants inside
+  `core.derive_job_role_access`, so every way access is applied picks it up; covered job-role
+  tasks go to one coverer on duty (`ops.give_covered_task`). Only exceptions are stored.
 
 ## Commands
 

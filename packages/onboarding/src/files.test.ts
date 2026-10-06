@@ -3,7 +3,9 @@ import { join } from 'node:path';
 import { DUTIES, ROLE_BY_CODE, catalogueReference } from '@outlet-ops/domain';
 import { describe, expect, it } from 'vitest';
 import { parseCsv } from './csv';
+import { readCustomerDir } from './dir';
 import { FILES, jobRoleAccess, readBundle } from './files';
+import { validateBundle } from './validate';
 
 // The checklist columns of file 29 (ADR 020): what the database's checks then receive.
 const row = (schedule: string, assign_to = 'on_shift') =>
@@ -253,5 +255,73 @@ describe('job roles from the catalogue', () => {
     expect(readFileSync(join(DATA, 'PRODUCT_departments_REFERENCE.csv'), 'utf8')).toBe(
       ref.departments,
     );
+  });
+});
+
+// File 37 (ADR 061): what the file itself can get wrong, before the database checks a cover.
+describe('who covers it (file 37)', () => {
+  const company = readCustomerDir(
+    join(import.meta.dirname, '..', '..', '..', 'docs', 'onboarding', 'test-data', 'test-company'),
+  );
+  const issuesWith = (rows: string[]) => {
+    const files = {
+      ...company,
+      '37_role_cover.csv': ['outlet_code,job_role_code,mode,covered_by_role', ...rows].join('\n'),
+    };
+    const { bundle, issues } = readBundle(files);
+    return issues.length ? issues : validateBundle(bundle);
+  };
+  const said = (rows: string[]) =>
+    issuesWith(rows)
+      .filter((i) => i.file === '37_role_cover.csv')
+      .map((i) => `${i.row} ${i.column}: ${i.message}`);
+
+  it('is optional, and a good file has nothing to say', () => {
+    expect(said([])).toEqual([]);
+    expect(
+      said([
+        'TEST-GUEST-HOUSE-2.0,STORE_KEEPER,covered_by,FRONT_DESK_EXECUTIVE',
+        'TEST-BAR-3.0,COOK,not_done,',
+      ]),
+    ).toEqual([]);
+  });
+
+  it('names each mistake by row and column', () => {
+    expect(
+      said([
+        'TEST-BAR-3.0-BAR,STORE_KEEPER,covered_by,BARTENDER',
+        'TEST-BAR-3.0,NO_SUCH_ROLE,not_done,',
+        'TEST-BAR-3.0,STORE_KEEPER,covered_by,',
+        'TEST-BAR-3.0,CASHIER,not_done,HOST',
+        'TEST-BAR-3.0,HOST,covered_by,HOST',
+        'TEST-NOWHERE,HOST,not_done,',
+      ]),
+    ).toEqual([
+      '2 outlet_code: TEST-BAR-3.0-BAR is a department: cover is set per outlet',
+      '3 job_role_code: NO_SUCH_ROLE is not in 06_job_roles.csv',
+      '4 covered_by_role: is required for covered_by',
+      '5 covered_by_role: must be blank when the role is not done',
+      '6 covered_by_role: a role cannot cover itself',
+      '7 outlet_code: TEST-NOWHERE is not in 01_org_nodes.csv',
+    ]);
+  });
+
+  it('refuses a role listed twice for an outlet, and chains', () => {
+    expect(
+      said([
+        'TEST-BAR-3.0,STORE_KEEPER,covered_by,HEAD_BARTENDER',
+        'TEST-BAR-3.0,STORE_KEEPER,not_done,',
+        'TEST-BAR-3.0,HEAD_BARTENDER,covered_by,BARTENDER',
+      ]),
+    ).toEqual([
+      '3 job_role_code: is listed twice for TEST-BAR-3.0',
+      '2 covered_by_role: HEAD_BARTENDER is itself covered or not done at TEST-BAR-3.0: no chains',
+    ]);
+  });
+
+  it('a bad mode is a parse error', () => {
+    expect(
+      issuesWith(['TEST-BAR-3.0,HOST,sometimes,']).map((i) => `${i.column}: ${i.message}`),
+    ).toEqual(['mode: must be covered_by or not_done']);
   });
 });

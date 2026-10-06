@@ -801,6 +801,19 @@ export const FILES = {
       received_by: optional,
     }),
   },
+  // Who covers it (ADR 061): per outlet, a job role it doesn't have is covered by a role it
+  // has, or not done there. Only the exceptions: a role not listed is one the outlet has.
+  // Any customer; authoritative (a cover no longer listed is removed).
+  roleCover: {
+    file: '37_role_cover.csv',
+    required: false,
+    schema: z.object({
+      outlet_code: code,
+      job_role_code: code,
+      mode: z.enum(['covered_by', 'not_done'], 'must be covered_by or not_done'),
+      covered_by_role: optional,
+    }),
+  },
 } as const;
 
 export type FileKey = keyof typeof FILES;

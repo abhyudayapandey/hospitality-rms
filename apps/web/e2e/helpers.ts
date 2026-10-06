@@ -307,3 +307,45 @@ export async function lateTemplate(on: boolean): Promise<void> {
     await client.end();
   }
 }
+
+/**
+ * Who covers it (ADR 061): Guest House 2.0 has no Store Keeper; with `on`, its Front Desk
+ * covers one, and a Store Keeper's task waits there. Off archives the cover and cancels the
+ * task. Access at 2.0 is applied again either way, as the loader does.
+ */
+export async function storeKeeperCover(on: boolean): Promise<void> {
+  const outlet = await placeId('TEST-GUEST-HOUSE-2.0');
+  const client = new pg.Client({ connectionString: env('MIGRATOR_DATABASE_URL') });
+  await client.connect();
+  try {
+    await client.query(
+      `update hr.role_cover set archived_at = now()
+        where org_node_id = $1 and job_role_code = 'STORE_KEEPER' and archived_at is null`,
+      [outlet],
+    );
+    await client.query(
+      `update ops.task set status = 'cancelled', cancel_reason = 'e2e'
+        where org_node_id = $1 and title = 'E2E covered count' and status <> 'cancelled'`,
+      [outlet],
+    );
+    if (on) {
+      await client.query(
+        `insert into hr.role_cover (tenant_id, org_node_id, job_role_code, mode, covered_by_role)
+         select tenant_id, id, 'STORE_KEEPER', 'covered_by', 'FRONT_DESK_EXECUTIVE'
+           from core.hierarchy_node where id = $1`,
+        [outlet],
+      );
+      await client.query(
+        `insert into ops.task (tenant_id, org_node_id, kind, title, due_at, assign_mode,
+                               job_role_code)
+         select tenant_id, id, 'one_off', 'E2E covered count', now() + interval '3 hours',
+                'job_role', 'STORE_KEEPER'
+           from core.hierarchy_node where id = $1`,
+        [outlet],
+      );
+    }
+    await client.query('select core.apply_cover_access($1)', [outlet]);
+  } finally {
+    await client.end();
+  }
+}

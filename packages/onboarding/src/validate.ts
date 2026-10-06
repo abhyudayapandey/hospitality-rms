@@ -663,6 +663,51 @@ function validateActivity(
     paid.add(r.username);
   }
 
+  // file 37 (ADR 061): per outlet, a role is covered by another or not done; once each, no
+  // chains. What the cover hands over is checked against the database in the dry run.
+  const covers = new Map<string, Bundle['roleCover'][number]>();
+  const org = new Map(b.orgNodes.map((n) => [n.node_code, n]));
+  const roles = new Set(b.jobRoles.map((r) => r.job_role_code));
+  for (const r of b.roleCover) {
+    const file = f('roleCover');
+    const o = org.get(r.outlet_code);
+    if (!o) add(file, r.line, 'outlet_code', `${r.outlet_code} is not in ${f('orgNodes')}`);
+    else if (o.kind !== 'outlet' && o.kind !== 'site') {
+      add(file, r.line, 'outlet_code', `${r.outlet_code} is a ${o.kind}: cover is set per outlet`);
+    }
+    if (!roles.has(r.job_role_code)) {
+      add(file, r.line, 'job_role_code', `${r.job_role_code} is not in ${f('jobRoles')}`);
+    }
+    if (r.mode === 'covered_by') {
+      if (!r.covered_by_role) add(file, r.line, 'covered_by_role', 'is required for covered_by');
+      else if (!roles.has(r.covered_by_role)) {
+        add(file, r.line, 'covered_by_role', `${r.covered_by_role} is not in ${f('jobRoles')}`);
+      } else if (r.covered_by_role === r.job_role_code) {
+        add(file, r.line, 'covered_by_role', 'a role cannot cover itself');
+      }
+    } else if (r.covered_by_role) {
+      add(file, r.line, 'covered_by_role', 'must be blank when the role is not done');
+    }
+    const key = `${r.outlet_code} ${r.job_role_code}`;
+    if (covers.has(key)) {
+      add(file, r.line, 'job_role_code', `is listed twice for ${r.outlet_code}`);
+    }
+    covers.set(key, r);
+  }
+  for (const r of b.roleCover) {
+    if (r.mode !== 'covered_by' || !r.covered_by_role || r.covered_by_role === r.job_role_code) {
+      continue;
+    }
+    if (covers.has(`${r.outlet_code} ${r.covered_by_role}`)) {
+      add(
+        f('roleCover'),
+        r.line,
+        'covered_by_role',
+        `${r.covered_by_role} is itself covered or not done at ${r.outlet_code}: no chains`,
+      );
+    }
+  }
+
   // file 35: past sessions that end the same day, never overlapping one another
   const sessions = new Map<string, { from: number; to: number; line: number }[]>();
   for (const a of b.attendance) {

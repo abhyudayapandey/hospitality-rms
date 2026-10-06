@@ -14,6 +14,8 @@ export interface ListedTask {
   steps_done: number;
   /** who it is with, on team lists */
   who?: string | null;
+  /** the job role whose work it is, when it came to me by cover (ADR 061) */
+  covering?: string | null;
   flagged?: number;
 }
 
@@ -48,6 +50,14 @@ export function TaskList({ tasks, testId }: { tasks: ListedTask[]; testId?: stri
                   )}
                   {t.title}
                 </span>
+                {t.covering && (
+                  <span
+                    data-testid="task-covering"
+                    className="block truncate text-xs text-slate-600"
+                  >
+                    {t.covering}&rsquo;s work (you&rsquo;re covering)
+                  </span>
+                )}
                 <span className="block truncate text-xs text-slate-500">
                   {t.place_name} · due {formatWhen(t.due_at)}
                   {t.who !== undefined && ` · ${t.who ?? 'not taken yet'}`}

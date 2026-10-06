@@ -2174,3 +2174,17 @@ customers' files are unchanged, so no one's access changes.
 
 1. Merge, then **Deploy** as usual. `cdk diff` shows nothing.
 2. Check, in the platform console: a dry run of Test Company's files reports no changes.
+
+## Releasing who covers it (ADR 061)
+
+One migration (`20261114100000_role_cover`: `hr.role_cover`, cover in
+`core.derive_job_role_access`, the task pool, the 5-minute tick and `ops.my_tasks`). No stack
+change, nothing to re-import: no customer has a cover until their file 37 lists one, so no
+one's access changes.
+
+1. Merge, then **Deploy** as usual (the migration runs with it). `cdk diff` shows nothing.
+2. Check the database from your workstation (as in "Releasing duties", with this query in the
+   JSON file): `select count(*) from hr.role_cover` shows 0, and
+   `select count(*) from core.role_assignment where source_note like 'covers %'` shows 0.
+3. Check, in the app: sign in as the General Manager 1.0 and the Front Desk Executive 2.0;
+   their Home, Tasks and bottom nav are as before.
