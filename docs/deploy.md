@@ -2134,3 +2134,18 @@ re-import.
    Department today, and Department today → Shifts → the people list adds up to it. Tapping a
    Today so far figure opens its trend.
 4. Check, as the Bar Manager 1.0: Cost of sales → Food and drinks → the dishes are the bar's only.
+
+## Releasing duties (ADR 059)
+
+One migration (`20261113100000_duties`: the duty tables and `duty_code` on job-role access).
+No stack change, nothing to re-import: the Deploy workflow's `sync-defs` step writes the duty
+catalogue into every customer and labels their job roles' existing grants with their duties.
+No one's access changes.
+
+1. Merge, then **Deploy** as usual (the migration runs with it). `cdk diff` shows nothing.
+2. Check, on the instance:
+   `docker exec -u postgres -e PGOPTIONS='-c default_transaction_read_only=on' outlet-ops-pg psql -d outlet_ops -X -P pager=off -c "select t.code, (select count(*) from hr.duty d where d.tenant_id = t.id) as duties, (select count(*) from hr.job_role_access a where a.tenant_id = t.id) as grants, (select count(duty_code) from hr.job_role_access a where a.tenant_id = t.id) as labelled from core.tenant t order by 1"`
+   shows 24 duties for each customer, and `labelled` equal to `grants` for the test
+   customers.
+3. Check, in the app: sign in as the General Manager 1.0 and a Cook 3.0; their Home and
+   bottom nav are as before.

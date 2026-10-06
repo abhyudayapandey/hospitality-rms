@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { DUTIES } from '@outlet-ops/domain';
 import { describe, expect, it } from 'vitest';
-import { FILES } from './files';
+import { FILES, jobRoleAccess } from './files';
 
 // The checklist columns of file 29 (ADR 020): what the database's checks then receive.
 const row = (schedule: string, assign_to = 'on_shift') =>
@@ -67,5 +70,80 @@ describe('who a task goes to', () => {
       username: 'test.commis.1.0',
     });
     expect(row('daily 07:00', 'commis').success).toBe(false);
+  });
+});
+
+// File 06's duties (ADR 059): read, expanded to their grants, and kept in step with the README.
+describe('job role duties', () => {
+  const role = (default_duties: string, default_access = '') =>
+    FILES.jobRoles.schema.safeParse({
+      job_role_code: 'F_AND_B',
+      job_title: 'F&B Manager',
+      outlet_format: 'any',
+      usual_department: 'RESTAURANT',
+      default_duties,
+      default_access,
+    });
+
+  it('expands duties to their grants, then adds direct grants', () => {
+    const r = role(
+      'RUNS_DEPARTMENT; RUNS_DEPARTMENT@department:BAR; RUNS_CENTRAL_KITCHEN_STORE',
+      'KITCHEN_LEAD@home_department',
+    );
+    expect(r.success).toBe(true);
+    expect(jobRoleAccess(r.data!)).toEqual([
+      {
+        group: 'DEPARTMENT_HEAD',
+        scope: 'home_department',
+        includeDescendants: true,
+        duty: 'RUNS_DEPARTMENT',
+      },
+      {
+        group: 'DEPARTMENT_HEAD',
+        scope: 'department:BAR',
+        includeDescendants: true,
+        duty: 'RUNS_DEPARTMENT',
+      },
+      {
+        group: 'HUB_MANAGER',
+        scope: 'central_kitchen_store',
+        includeDescendants: false,
+        duty: 'RUNS_CENTRAL_KITCHEN_STORE',
+      },
+      {
+        group: 'SUPPLY_VIEWER',
+        scope: 'central_kitchen_store',
+        includeDescendants: true,
+        duty: 'RUNS_CENTRAL_KITCHEN_STORE',
+      },
+      { group: 'KITCHEN_LEAD', scope: 'home_department', includeDescendants: true },
+    ]);
+  });
+
+  it('refuses unknown duties and duties given where they cannot be', () => {
+    const messages = (v: string) => role(v).error?.issues.map((i) => i.message);
+    expect(messages('RUNS_OUTLETS')).toEqual(['RUNS_OUTLETS is not a duty']);
+    expect(messages('WORKS_SHIFTS@department:BAR')).toEqual([
+      'WORKS_SHIFTS cannot be given at another department',
+    ]);
+    expect(messages('RUNS_DEPARTMENT@whole_outlet')).toEqual([
+      '"RUNS_DEPARTMENT@whole_outlet" is not DUTY or DUTY@department:CODE',
+    ]);
+  });
+
+  it('the onboarding README lists every duty with what it stands for', () => {
+    const readme = readFileSync(
+      join(import.meta.dirname, '..', '..', '..', 'docs', 'onboarding', 'test-data', 'README.md'),
+      'utf8',
+    );
+    for (const d of DUTIES) {
+      const line = readme.split('\n').find((l) => l.startsWith(`| \`${d.code}\``));
+      expect(line, d.code).toBeDefined();
+      for (const g of d.grants) {
+        expect(line).toContain(
+          `${g.group}@${g.scope}${g.thisPlaceOnly ? '(this store only)' : ''}`,
+        );
+      }
+    }
   });
 });

@@ -467,13 +467,21 @@ describe('stock access that reaches more than one stock location', () => {
   it('is a warning naming the person and the extra stores, not a blocker', async () => {
     await inRolledBackTx(async (c) => {
       const company = readCustomerDir(join(DATA, 'test-company'));
-      // the central kitchen chef's STOCK_USER without "(this store only)"
+      // the central kitchen chef's STOCK_USER given directly, without "(this store only)",
+      // instead of by its duty (ADR 059)
+      const lines = company['06_job_roles.csv']!.trimEnd().split('\n');
       const files = {
         ...company,
-        '06_job_roles.csv': company['06_job_roles.csv']!.replace(
-          'STOCK_USER@central_kitchen_store(this store only)',
-          'STOCK_USER@central_kitchen_store',
-        ),
+        '06_job_roles.csv':
+          lines
+            .map((l, i) =>
+              i === 0
+                ? `${l},default_access`
+                : l.startsWith('CENTRAL_KITCHEN_CHEF,')
+                  ? `${l.replace('USES_CENTRAL_KITCHEN_STORE; ', '')},STOCK_USER@central_kitchen_store`
+                  : `${l},`,
+            )
+            .join('\n') + '\n',
       };
       expect(files['06_job_roles.csv']).not.toBe(company['06_job_roles.csv']);
       const r = await loadCustomer(c, files, { nested: true, dryRun: true });

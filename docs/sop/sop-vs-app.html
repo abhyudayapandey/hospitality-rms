@@ -1,0 +1,1451 @@
+<title>SOPs vs the app</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap"
+/>
+<style>
+  /* Layout: a working register. Header with filters, four sections, each a scrollable table. */
+  :root {
+    --bg: #f7f8f6;
+    --surface: #ffffff;
+    --fg: #1d2420;
+    --muted: #5d6a63;
+    --line: #d9dfdb;
+    --accent: #1f6b52;
+    --accent-soft: #e3f0ea;
+    --same: #1f6b52;
+    --gap: #a3402c;
+    --diff: #8a6410;
+    --extra: #3b5b9a;
+    --display: 'Source Serif 4', Georgia, serif;
+    --body: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --bg: #121614;
+      --surface: #1a201d;
+      --fg: #e4ebe7;
+      --muted: #9aa8a0;
+      --line: #2e3833;
+      --accent: #6cc4a1;
+      --accent-soft: #1f3229;
+      --same: #6cc4a1;
+      --gap: #ef8f7a;
+      --diff: #e0b85a;
+      --extra: #93b0ec;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme='dark'] {
+    --bg: #121614;
+    --surface: #1a201d;
+    --fg: #e4ebe7;
+    --muted: #9aa8a0;
+    --line: #2e3833;
+    --accent: #6cc4a1;
+    --accent-soft: #1f3229;
+    --same: #6cc4a1;
+    --gap: #ef8f7a;
+    --diff: #e0b85a;
+    --extra: #93b0ec;
+    color-scheme: dark;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.5;
+    padding-inline: 16px;
+    padding-block: 24px 64px;
+  }
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: grid;
+    gap: 28px;
+  }
+  h1,
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    text-wrap: balance;
+    margin: 0;
+  }
+  h1 {
+    font-size: clamp(26px, 4vw, 34px);
+  }
+  h2 {
+    font-size: 22px;
+  }
+  p {
+    margin: 0;
+    max-width: 72ch;
+  }
+  .lede {
+    color: var(--muted);
+  }
+  .key {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .key b {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .bar {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 2;
+    background: var(--bg);
+    padding-block: 10px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .chip {
+    font: 600 13px var(--body);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--fg);
+    border-radius: 999px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .chip[aria-pressed='true'] {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .chip:focus-visible,
+  input:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  #q {
+    font: 14px var(--body);
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--fg);
+    min-width: 0;
+    flex: 1 1 180px;
+    max-width: 280px;
+  }
+  nav.jump {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 14px;
+  }
+  nav.jump a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  nav.jump a span {
+    color: var(--muted);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+  }
+  section {
+    display: grid;
+    gap: 10px;
+  }
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .tag {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid currentColor;
+  }
+  .t1 .tag {
+    color: var(--same);
+  }
+  .t2 .tag {
+    color: var(--gap);
+  }
+  .t3 .tag {
+    color: var(--diff);
+  }
+  .t4 .tag {
+    color: var(--extra);
+  }
+  .count {
+    color: var(--muted);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .scroll {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 760px;
+    font-size: 14px;
+  }
+  th,
+  td {
+    text-align: left;
+    vertical-align: top;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  thead th {
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+  }
+  tr.grp td {
+    background: var(--bg);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-block: 7px;
+  }
+  td.area {
+    font-weight: 600;
+    width: 15%;
+  }
+  td.sops {
+    width: 15%;
+    white-space: nowrap;
+  }
+  .s {
+    display: inline-block;
+    font: 700 11px var(--body);
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    border-radius: 4px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    margin: 0 3px 3px 0;
+  }
+  .ref {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    white-space: normal;
+  }
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  .empty {
+    padding: 14px;
+    color: var(--muted);
+  }
+  footer {
+    color: var(--muted);
+    font-size: 13px;
+    display: grid;
+    gap: 6px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .chip {
+      transition:
+        background 0.15s,
+        border-color 0.15s;
+    }
+  }
+</style>
+
+<div class="wrap">
+  <header style="display: grid; gap: 10px">
+    <h1>SOPs vs the app</h1>
+    <p class="lede">
+      I compared six SOP manuals with the app as it is on <b>master</b> today, after #73: the
+      hierarchy, departments and roles first, then the work each manual describes. Each row names
+      the manuals it comes from and their section codes.
+    </p>
+    <div class="key">
+      <span><b>R</b> Standalone Restaurant</span><span><b>B</b> Bar, Pub &amp; Microbrewery</span
+      ><span><b>C</b> Cloud Kitchen &amp; Virtual Brands</span
+      ><span><b>F</b> Food &amp; Hospitality Franchise</span
+      ><span><b>H</b> Full-Service Hotel &amp; Resort</span><span><b>Q</b> QSR Chain</span>
+    </div>
+  </header>
+
+  <div class="bar" role="toolbar" aria-label="Filter by SOP">
+    <button class="chip" data-s="all" aria-pressed="true" id="f-all">All SOPs</button>
+    <button class="chip" data-s="R" aria-pressed="false" id="f-R">Restaurant</button>
+    <button class="chip" data-s="B" aria-pressed="false" id="f-B">Bar</button>
+    <button class="chip" data-s="C" aria-pressed="false" id="f-C">Cloud kitchen</button>
+    <button class="chip" data-s="F" aria-pressed="false" id="f-F">Franchise</button>
+    <button class="chip" data-s="H" aria-pressed="false" id="f-H">Hotel</button>
+    <button class="chip" data-s="Q" aria-pressed="false" id="f-Q">QSR</button>
+    <input id="q" type="search" placeholder="Search rows" aria-label="Search rows" />
+  </div>
+
+  <nav class="jump" aria-label="Tables">
+    <a href="#t1">1. Same <span id="n-t1"></span></a>
+    <a href="#t2">2. Not built <span id="n-t2"></span></a>
+    <a href="#t3">3. Built differently <span id="n-t3"></span></a>
+    <a href="#t4">4. Ours only <span id="n-t4"></span></a>
+  </nav>
+
+  <section class="t1" id="t1">
+    <div class="sec-head">
+      <span class="tag">Table 1</span>
+      <h2>In the SOPs, built the same way</h2>
+      <span class="count" id="c-t1"></span>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>What the SOP says</th>
+            <th>SOPs</th>
+            <th>In the app</th>
+          </tr>
+        </thead>
+        <tbody id="b-t1"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="t2" id="t2">
+    <div class="sec-head">
+      <span class="tag">Table 2</span>
+      <h2>In the SOPs, not built</h2>
+      <span class="count" id="c-t2"></span>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>What the SOP says</th>
+            <th>SOPs</th>
+            <th>Where the app stands</th>
+          </tr>
+        </thead>
+        <tbody id="b-t2"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="t3" id="t3">
+    <div class="sec-head">
+      <span class="tag">Table 3</span>
+      <h2>In the SOPs, built differently</h2>
+      <span class="count" id="c-t3"></span>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>What the SOP says</th>
+            <th>SOPs</th>
+            <th>How the app does it</th>
+          </tr>
+        </thead>
+        <tbody id="b-t3"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="t4" id="t4">
+    <div class="sec-head">
+      <span class="tag">Table 4</span>
+      <h2>Not in the SOPs, built</h2>
+      <span class="count" id="c-t4"></span>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>What the app does</th>
+          </tr>
+        </thead>
+        <tbody id="b-t4"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      Sources: the six SOP manuals (6 Oct 2026); in the app: <code>docs/system-map.md</code>, ADRs
+      001–057, the onboarding test data (job roles, places, checklists) and the migrations on
+      master.
+    </p>
+    <p>
+      "Built the same way" means the app supports the practice as the SOP describes it. It does not
+      mean the app enforces the SOP's exact timings or limits. Those are the customer's settings:
+      checklist schedules, par, count tolerance and targets.
+    </p>
+  </footer>
+</div>
+
+<script>
+  // [group, area, sop, sops, refs, app]
+  const T1 = [
+    [
+      'Hierarchy, departments and roles',
+      'Hierarchy',
+      'Company, area and outlet, with departments under the outlet. An area manager looks after a group of stores, and department heads report to the GM.',
+      'HQR',
+      'Q scope, ARM · H org chart · R team',
+      'Company, then an optional region, then area, outlet and department. The Area Manager covers an area, and the GM and Assistant GM run the outlet with department heads under them.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Central kitchen',
+      'A central kitchen or hub makes product and sends it, labelled by batch, to stores.',
+      'QC',
+      'Q CK · C hub and spoke',
+      'The central kitchen is a site with its own hub store. It sends batches to the outlets, and each outlet receives them.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Hotel operating departments',
+      'Front Office, Housekeeping, F&B outlets (restaurant, bar), Banquets, Kitchen, Engineering, Security, Stores, Finance.',
+      'H',
+      'H org chart',
+      'The same departments: Front Office, Housekeeping, Restaurant, Bar, Banquets, Kitchen, Engineering, Security, Stores Team, and Admin & Finance.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Kitchen roles',
+      'Executive or Head Chef, then Sous Chef, then Chef de Partie, then Commis, plus a utility or kitchen steward.',
+      'RH',
+      'R team · H KT RACI',
+      'Executive Chef (Head Cook in a small outlet), then Sous Chef, then Chef de Partie, Cook and Commis, plus Kitchen Steward.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Bar roles',
+      'Bar Manager, then Head Bartender, then Bartender, then Bar Back.',
+      'BH',
+      'B roles · H FB RACI',
+      'The same four roles. In a standalone bar, the Bar Manager runs the outlet.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Service roles',
+      'F&B or Restaurant Manager, then Captain, then Steward or Server, plus a Host and a Cashier.',
+      'RH',
+      'R team · H FB RACI',
+      "The same roles. Floor Manager and Server are used in a bar's floor service.",
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Rooms roles',
+      'Front Office Manager with front desk (GSA), Bell Captain, Bellboy and Guest Relations. Executive Housekeeper with supervisor, room, public area and laundry attendants.',
+      'H',
+      'H FO, HK RACI',
+      'The same roles.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Banquets, Engineering, Security, Stores roles',
+      'Banquet Manager, Captain and Server. Chief Engineer and Technician. Security Manager and Guard. Storekeeper and Receiving Clerk.',
+      'HR',
+      'H BQ, EN, SE, PS RACI · R STK',
+      'The same roles. There is also a Store Manager above the Store Keeper and Receiving Clerk.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Owner at the top',
+      'The owner or licensee holds licences and gives final approvals.',
+      'RBC',
+      'R OWN · B OWN · C OWN',
+      'The Account Owner sees every report (read-only), sets company settings, and is the last step of every approval chain.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Cost Controller',
+      'A Cost Controller runs stock counts and costing with Finance.',
+      'H',
+      'H FN RACI (CC)',
+      'The Cost Controller sees all four cost reports and verifies stock checks.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'One person signs off',
+      'Exactly one accountable approver per task, and nobody signs off their own work.',
+      'RBCFHQ',
+      'RACI legend in all six',
+      'Each approval goes to one approver, found by walking up the place tree. Whoever asked can never approve it.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Access by role',
+      'Access is by role and asked for by the department head. It is removed on the last working day, with a quarterly review.',
+      'H',
+      'H IT-01',
+      'Access groups come from the job role, and extra grants are possible. A leaver is deactivated once the security admin approves, and every change is in the audit log.',
+    ],
+    [
+      'Daily routines',
+      'Rosters a week ahead',
+      'Rosters are published 7 days ahead and keep to rest-day, daily-hours and weekly-hours rules.',
+      'RHQC',
+      'R HR-04 · H HR-05 · Q CT-01 · C PF-01',
+      'The roster week is built from shift templates and then published. Less than 10 h rest and more than 48 h a week show as warnings.',
+    ],
+    [
+      'Daily routines',
+      'Opening and closing checklists',
+      'A signed checklist at every opening and closing.',
+      'RBHQ',
+      'R FOH-01, BOH-01, FOH-10 · B BR-01, BR-07 · H FB-01, FB-11 · Q ST-01, ST-04',
+      'Each department has checklists that run daily, weekly or every few hours. They go to a job role or to whoever is on shift, with tick, number, text and photo steps.',
+    ],
+    [
+      'Daily routines',
+      'Temperature logs',
+      'Chillers at 5 °C or below and freezers at −18 °C or below, logged at fixed points.',
+      'RHQC',
+      'R BOH · H KT-03 · Q FP · C IH',
+      'Number steps carry a minimum and maximum (chiller 0–5 °C, freezer −25 to −18 °C). The reports flag readings outside them.',
+    ],
+    [
+      'Daily routines',
+      'Shift handover',
+      'The outgoing shift hands over pending items and cash, and both sides sign the log.',
+      'QH',
+      'Q ST-02 · H FO-06',
+      'The front desk handover checklist (arrivals, cash float, handover note) runs at 07:00, 15:00 and 23:00.',
+    ],
+    [
+      'Daily routines',
+      'Washroom checks',
+      'Washrooms are checked every 30 to 60 minutes and the log is signed.',
+      'RH',
+      'R FA-01 · H HK-06',
+      'The lobby washroom check runs every 2 h, with a photo.',
+    ],
+    [
+      'Daily routines',
+      'Bar setup',
+      'Check draught lines and gas, cut and date garnishes, fill the ice well.',
+      'B',
+      'B BR-01',
+      'The bar setup checklist covers draught lines, dated garnishes, the ice well and the glass chiller temperature.',
+    ],
+    [
+      'Stock and purchasing',
+      'Receive against the order',
+      "Weigh or count against the PO and reject anything that doesn't conform.",
+      'RHQ',
+      'R BOH-02, PS-03 · H PS-04 · Q CK-05',
+      'Orders are received item by item: what arrived (all, short or none) and what was paid. Nothing is filled in beforehand.',
+    ],
+    [
+      'Stock and purchasing',
+      'Issues only against a requisition',
+      'Kitchen and bar draw stock only on a signed requisition, with no self-service from the store.',
+      'RHB',
+      'R PS-04 · H PS-05 · B LC-03',
+      "A department asks the Main Store for stock, and unusual requests need the head's or GM's approval. The store sends it and the department confirms what arrived.",
+    ],
+    [
+      'Stock and purchasing',
+      'Par levels',
+      'Every item has a par (min/max), and perishables are ordered up to par.',
+      'RHB',
+      'R PS-02 · H PS-06 · B BR-01',
+      'Each item has a par per store, with a Running low tab and a "Fill all N short items up to par" button.',
+    ],
+    [
+      'Stock and purchasing',
+      'Stock counts and variance',
+      'Count high-value items weekly and everything monthly, and look into differences.',
+      'RHQCB',
+      'R PS-06 · H PS-06 · Q IC-01/02 · C IH-02 · B LC-07',
+      'Stock checks are counted blind, with a photo for each difference, and the cost controller verifies them. Each item has its own count tolerance.',
+    ],
+    [
+      'Stock and purchasing',
+      'Wastage log',
+      'Every discard is logged with a reason.',
+      'RQ',
+      'R PS-05 · Q IC-03',
+      'Wastage is recorded with a reason, and wastage over the limit needs approval.',
+    ],
+    [
+      'Stock and purchasing',
+      'Theoretical vs actual usage',
+      'Compare what recipes and sales say was used with what the stock shows.',
+      'RQCB',
+      'R PS-07 · Q IC-02 · C IH-02 · B LC-05',
+      'The variance report compares sales × recipes and production with stock movements.',
+    ],
+    [
+      'Costs and menu',
+      'Food and beverage cost %',
+      'Actual food cost % is reviewed against a target.',
+      'RHC',
+      'R PS-07 · H KT KPIs · C KPIs',
+      'The cost of sales report shows food and drinks separately, against company targets (food 30%, drinks 22%).',
+    ],
+    [
+      'Costs and menu',
+      'Menu engineering',
+      'A quarterly review sorts dishes into stars, plough-horses, puzzles and dogs.',
+      'R',
+      'R PS-07',
+      'The menu engineering report uses the same four groups.',
+    ],
+    [
+      'Costs and menu',
+      'Recipe costing',
+      'Each recipe has a yield, a portion and a cost, and is re-costed when prices move.',
+      'RHB',
+      'R BOH-08 · H KT-07 · B BR-03',
+      'Recipes have a yield, trim loss and a cost worked out at standard cost. Prep procedures hold the method.',
+    ],
+    [
+      'Costs and menu',
+      'Measured pours',
+      'Spirits are poured at 30/60 ml, wine at 150 ml, and cocktails to the recipe card, with no free pouring.',
+      'BH',
+      'B BR-02 · H FB-06',
+      'Bar recipes are in ml, and stock is kept to 6 decimals, so a 30 ml pour from a 750 ml bottle is exact.',
+    ],
+    [
+      'Costs and menu',
+      'Labour and prime cost',
+      'Labour cost %, and prime cost below 60–65% of sales.',
+      'RQ',
+      'R AC-06 · Q FO-03',
+      'The labour cost report uses pay rates and overtime, against a prime cost target of 60%.',
+    ],
+    [
+      'Food safety and production',
+      'Use-by and FEFO',
+      'Prepped and opened items are labelled with a use-by date, used first-expiry-first-out, and discarded once expired.',
+      'RHQ',
+      'R BOH-03 · H KT-03 · Q FP',
+      'Prep batches have a shelf life, and Stock has Expiring and Expired tabs. A morning expiry alert goes out, and expired batches are assigned to someone and discarded.',
+    ],
+    [
+      'Food safety and production',
+      'Prep list',
+      'A prep list is issued for the day, and across brands it adds up demand.',
+      'RC',
+      'R BOH-01 · C MP-02',
+      'Prep lists are linked to the batches that get made.',
+    ],
+    [
+      'Food safety and production',
+      'Central kitchen dispatch',
+      'Batches leave with their number and use-by, and stores check them on receipt.',
+      'Q',
+      'Q CK-03, CK-04, CK-05',
+      'Transfers carry their batches and the store confirms receipt. Any shortfall is posted as transit loss.',
+    ],
+    [
+      'Maintenance and reporting',
+      'Work orders',
+      'Every fault is logged, assigned, fixed and closed.',
+      'HR',
+      'H EN-01 · R FA-04',
+      'Anyone can report a problem. Engineering or the GM assigns it from the To assign tab and the technician fixes it.',
+    ],
+    [
+      'Maintenance and reporting',
+      'Stores ranked monthly',
+      'Every store is ranked on the same scorecard.',
+      'Q',
+      'Q FO-03, FO-04',
+      'The league table shows outlets side by side against company targets.',
+    ],
+    [
+      'Maintenance and reporting',
+      'Delete data when its purpose ends',
+      'Personal data is kept only as long as it is needed.',
+      'H',
+      'H IT-04',
+      'Clock-in selfies, devices and locations are deleted on a retention rule.',
+    ],
+  ];
+  const T2 = [
+    [
+      'Hierarchy, departments and roles',
+      'Head-office roles',
+      'Head-office people: COO, Head of Operations, QA, Head of Supply Chain, Marketing, Training, HR, Finance and IT.',
+      'QF',
+      'Q roles · F roles',
+      "These people and their departments are not set up. The supply system they would run is built (stores, supply requests, orders, receiving, transfers, central kitchen; see table 1), but no head-office role sees every outlet's stock and orders. At company level there are only the Account Owner, HR Admin, Security Admin and Auditor, with the Area Manager in the field.",
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Franchise structure',
+      'Franchisor and franchisee as separate owners. FOFO, FOCO, COCO and COFO models, master franchise, a Franchise Business Partner per store.',
+      'F',
+      'F scope',
+      'One company owns and runs every outlet. There is no franchisee owner level and no franchisor view across franchisees.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Hotel commercial and support departments',
+      'Sales & Marketing, Revenue, HR, IT, Purchase, and Spa & Recreation.',
+      'H',
+      'H org chart',
+      'None of these exist as departments. HR Executive and Cost Controller sit in Admin & Finance, and the Store Manager does the buying.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Rooms and duty roles',
+      'Reservations, Night Auditor, Concierge, In-Room Dining Manager, and a rotating Duty Manager (MOD).',
+      'H',
+      'H FO RACI · XD',
+      'None of these roles exist.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Finance roles',
+      'Financial Controller, Accounts Manager, Income Auditor, General Cashier, Accountant.',
+      'HR',
+      'H FN RACI · R ACC',
+      'None of these roles exist. The Cost Controller is the only finance role.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Restaurant roles',
+      "Assistant or Shift Manager, Food Safety Supervisor (FoSTaC), Delivery Coordinator, Sommelier, maître d', Barista.",
+      'RB',
+      'R team, format table',
+      'None of these roles exist.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'QSR store roles',
+      'Assistant Store Manager, Shift Manager, Crew Trainer, Crew Member, with a certification path from crew to manager.',
+      'Q',
+      'Q roles · CT-03, CT-04',
+      'None of these roles exist, and nothing tracks certification.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Bar and nightlife roles',
+      'Security Head and bouncers (PSARA agency), Events/Entertainment Manager, Head Brewer, Excise Clerk.',
+      'B',
+      'B roles',
+      'Only Security Supervisor and Security Guard exist (hotel). None of the others do.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Cloud kitchen roles and brands',
+      'Kitchen Manager, Packer/Dispatcher, Online Platform Manager. Several virtual brands share one kitchen, with stations mapped to brands.',
+      'C',
+      'C roles · MP-01',
+      'There are no brands and no stations. A kitchen is one department with one store.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Outlet formats',
+      'QSR, café, fine or casual dining, cloud kitchen, microbrewery, resort.',
+      'RBCHQ',
+      'all scopes',
+      'There are three formats today: full hotel, small hotel and standalone bar.',
+    ],
+    [
+      'Compliance and legal',
+      'Licence register',
+      'Each licence has a number, an authority, an expiry date, a renewal owner and a reminder 90 days before expiry.',
+      'RBCFHQ',
+      'R, H licences · Q tracker · F SD-04',
+      'Not built.',
+    ],
+    [
+      'Compliance and legal',
+      'Longer compliance calendar',
+      'Monthly, quarterly, 6-monthly and annual tasks: pest service, duct cleaning, water test, fire drill, medicals.',
+      'RBCFHQ',
+      'calendar in all six',
+      'Not built. Checklists run only daily, weekly or every 1–12 hours.',
+    ],
+    [
+      'Compliance and legal',
+      'Excise registers',
+      'Daily sales by brand and size, the bond store, transport permits, empty-bottle disposal, dry days.',
+      'BH',
+      'B LC-01 to LC-08 · H FB-06, PS-05',
+      'Not built.',
+    ],
+    [
+      'Compliance and legal',
+      'Responsible service and door',
+      'ID checks, refusal log, drink count per guest, occupancy count, door policy.',
+      'BH',
+      'B RS, DS · H FB-06',
+      'Not built.',
+    ],
+    [
+      'Compliance and legal',
+      'Statutory filings',
+      'GST returns, TDS, EPF/ESI, FSSAI annual return.',
+      'RCHQF',
+      'R AC-05 · C PF-04 · H FN-05 · Q IN cal · F FE-03',
+      'Not built.',
+    ],
+    [
+      'People',
+      'Food safety people',
+      'FoSTaC supervisor coverage (1 per 25 handlers per shift), medical fitness certificates, training log.',
+      'RHQC',
+      'R HR-03 · H KT-01 · Q CT · C IH-03',
+      'Not built.',
+    ],
+    [
+      'People',
+      'Induction and certification',
+      'Induction days 1–3, SOP sign-off, station certification, yearly recertification.',
+      'RHQC',
+      'R HR-02 · H HR-03/04 · Q CT-03 · C PF-02',
+      'Not built.',
+    ],
+    [
+      'People',
+      'Hiring to exit',
+      'Requisition, appointment letter, police verification, appraisal, discipline, POSH committee, full and final settlement.',
+      'RHQ',
+      'R HR-01 to HR-07 · H HR · Q CT-02',
+      'Not built. Only the leaver deactivation exists.',
+    ],
+    [
+      'People',
+      'Payroll and service charge',
+      'Payslips, statutory deposits, and the tip or service-charge pool split by a written formula.',
+      'RH',
+      'R HR-05 · H HR-06, HR-07',
+      'Not built. Pay rates are used only for the labour cost report.',
+    ],
+    [
+      'People',
+      'Scheduling from forecast',
+      'Crew hours per ₹ of sales by daypart, in 15-minute blocks.',
+      'QC',
+      'Q CT-01 · C PF-01',
+      'Not built.',
+    ],
+    [
+      'People',
+      'Night shifts and minors',
+      'Consent and transport for women on late shifts; no under-18s on fryers or late shifts.',
+      'RBHQ',
+      'R HR-04 · B staff · H HR-05 · Q CT-02',
+      'Not built.',
+    ],
+    [
+      'Guest service and POS',
+      'Reservations and tables',
+      'Bookings, waitlist, seating, and service timing per course.',
+      'RH',
+      'R FOH-02 to FOH-06 · H FB-02',
+      'Not built. The app has no guests or tables.',
+    ],
+    [
+      'Guest service and POS',
+      'Tickets and speed',
+      'KOT/KDS, allergy flag on tickets, order-to-hand-off times, order accuracy.',
+      'RQC',
+      'R FOH-04 · Q SS · C OL',
+      'Not built.',
+    ],
+    [
+      'Guest service and POS',
+      'Billing and cash',
+      'Voids and discounts with a manager PIN, Z-report, drawer float and blind count, card and UPI settlement, day-end.',
+      'RQH',
+      'R AC-01 to AC-03 · Q IC-04 to IC-06 · H FO-06, FN-01/02',
+      'Not built. The POS stays the source; the app imports its sales.',
+    ],
+    [
+      'Guest service and POS',
+      'Complaints and recovery',
+      'Log every complaint, with set amounts each level can give without approval.',
+      'RQHF',
+      'R FOH-08 · Q SS-06 · H XD-02 · F BS-05',
+      'Not built.',
+    ],
+    [
+      'Guest service and POS',
+      'Allergens, veg mark, kcal',
+      'An allergen matrix per dish, veg/non-veg marks, and kcal on menus for chains.',
+      'RHQC',
+      'R BOH-06 · H KT-05 · Q FP-07 · C MP-03',
+      'Not built. Menu items have no allergen, veg or kcal fields.',
+    ],
+    [
+      'Guest service and POS',
+      'Holding, cooling, oil, samples',
+      'Hot-holding timers, cooling logs, fryer oil TPC, and banquet food samples kept 72 h.',
+      'QHR',
+      'Q FP-04 · H KT-06, KT-08, KT-11 · R BOH-10',
+      'Not built as features. A checklist step could record a reading, but nothing times or forces a discard.',
+    ],
+    [
+      'Hotel',
+      'Rooms and guests (PMS)',
+      'Reservations, check-in with ID, Form C, room status, folio, check-out, night audit, flash report.',
+      'H',
+      'H FO-01 to FO-11',
+      'Not built. Rooms and guests are not modelled (system map, "What is not modelled").',
+    ],
+    [
+      'Hotel',
+      'Housekeeping by room',
+      'Room allocation by credits, inspection, turndown, minibar, lost and found, key control.',
+      'H',
+      'H HK-01 to HK-13 · FB-08',
+      'Not built. Housekeeping works through checklists and tasks.',
+    ],
+    [
+      'Hotel',
+      'Banquet sales',
+      'Enquiry, contract, BEO, final guarantee and post-event billing.',
+      'HB',
+      'H BQ-01 to BQ-08 · B EV',
+      'Not built. Events record only times, covers and requirements (see table 3).',
+    ],
+    [
+      'Hotel',
+      'Revenue and sales',
+      'Daily pricing, forecast, rate parity, corporate accounts, OTAs.',
+      'H',
+      'H SM, RV',
+      'Not built.',
+    ],
+    [
+      'Hotel',
+      'Spa and recreation',
+      "Spa booking and health forms, gym, pool chemistry and lifeguards, kids' club, excursions.",
+      'H',
+      'H SP',
+      'Not built.',
+    ],
+    [
+      'Hotel',
+      'Engineering beyond repairs',
+      'PPM per asset, permits to work, fire system tests, DG, water and energy logs, statutory inspections.',
+      'H',
+      'H EN-02 to EN-11',
+      'Not built. Only repair requests exist.',
+    ],
+    [
+      'Hotel',
+      'Security operations',
+      'CCTV, patrols, gate passes, visitor and key registers.',
+      'H',
+      'H SE',
+      'Not built.',
+    ],
+    [
+      'Delivery and digital',
+      'Aggregator orders',
+      'Order intake, item-availability sync, packing seals, rider hand-off, ratings, payout reconciliation.',
+      'RCQ',
+      'R DL · C OL, AG · Q DG',
+      'Not built.',
+    ],
+    [
+      'Delivery and digital',
+      'Brand P&L and central menu',
+      'A P&L per virtual brand, and a menu published to every channel from one place.',
+      'CQ',
+      'C PF-03 · Q DG-01',
+      'Not built.',
+    ],
+    [
+      'Purchasing and finance',
+      'Vendor onboarding',
+      'FSSAI licence, GSTIN, bank and MSME status; vendor audits; an approved list with specifications; quotations.',
+      'RHQF',
+      'R PS-01 · H PS-01/02 · Q CK-01 · F SC-01',
+      'Not built. A supplier is a name, a lead time and contact details.',
+    ],
+    [
+      'Purchasing and finance',
+      'Payables, P&L, budget',
+      'Payment runs (MSME within 45 days), P&L by stream, budget and month-end close.',
+      'RHC',
+      'R AC-04, AC-06 · H FN-03 to FN-08 · C PF-03',
+      'Not built.',
+    ],
+    [
+      'Purchasing and finance',
+      'Staff meals',
+      'Staff meals are recorded at cost and taken out of food cost.',
+      'R',
+      'R AC-03, PS-07',
+      'Not built as its own line.',
+    ],
+    [
+      'Quality and incidents',
+      'Scored audits',
+      'Self-audits, area manager visits with actions, third-party audits with a pass mark, mystery guest, re-audit.',
+      'QFH',
+      'Q FO-01/02 · F BS-03/04, FS-01 · H KT-14',
+      'Not built.',
+    ],
+    [
+      'Quality and incidents',
+      'Incidents and escalation',
+      'An incident form within 1 hour; Level 1–3 escalation; food poisoning, fire, injury.',
+      'RBHQ',
+      'R EM · B DS-05 · H SE-07, XD · Q IN-01',
+      'Not built.',
+    ],
+    [
+      'Quality and incidents',
+      'Hold and recall',
+      'A hold notice to stores, quarantine confirmed within 1 hour, traceability, a mock recall every 6 months.',
+      'QF',
+      'Q IN-02, CK-07 · F SC-04',
+      'Not built. Batches are traceable in the data, but there is no hold or recall flow.',
+    ],
+    [
+      'Franchise',
+      'Franchise lifecycle',
+      'Pipeline, agreements, site and fit-out, royalty and marketing-fund invoices, field visits, support tickets, default and termination, renewal.',
+      'F',
+      'F FR, SD, BS, FE, MF, FS, RE',
+      'Not built.',
+    ],
+    [
+      'Marketing',
+      'Listings, reviews, consent',
+      'Business listings, replies to reviews, guest marketing consent, promotions.',
+      'RHF',
+      'R MK · H SM-05 to SM-09 · F MF',
+      'Not built.',
+    ],
+    [
+      'Microbrewery',
+      'Brewing',
+      'Brew log, gravity, CIP, tanks, excise production register.',
+      'B',
+      'B MB-01 to MB-07',
+      'Not built.',
+    ],
+  ];
+  const T3 = [
+    [
+      'Hierarchy, departments and roles',
+      'Who is accountable',
+      'A RACI table per activity: who does it, who signs off, who is consulted, who is told.',
+      'RBCFHQ',
+      'every department section',
+      'Access groups give rights at places. Approvals walk up the tree to one approver, and "told" is a notification (for example, the GM is told of every supply request). There is no per-activity RACI.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Head office',
+      'Head office is its own level, with departments.',
+      'QFH',
+      'Q roles · F roles',
+      'Head office is the company node, with company-wide groups (Account Owner, HR Admin, Security Admin, Auditor).',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Duty Manager',
+      "A rotating Manager on Duty holds the GM's authority out of hours.",
+      'H',
+      'H org · XD',
+      'The Assistant GM always has outlet-level rights. There is no duty rota for authority.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Small properties',
+      'Small properties merge roles but keep every step.',
+      'H',
+      'H manual intro',
+      "A small outlet can have no departments, and one person can hold two jobs' access. They are rostered in one job only.",
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Stores',
+      'One store, issuing to the kitchen and the bar.',
+      'RH',
+      'R PS · H PS',
+      'A separate supply tree: a Main Store that receives deliveries, plus a store per department (Kitchen, Bar, Housekeeping), each linked to its department.',
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Who buys',
+      'A Purchase Manager or Purchase Executive buys.',
+      'HR',
+      'H PS · R STK',
+      "The Main Store's keeper picks the supplier and the delivery date (Supply requests, ADR 049).",
+    ],
+    [
+      'Hierarchy, departments and roles',
+      'Food Safety Supervisor',
+      'A named, certified person on every shift owns the logs.',
+      'RHQC',
+      'R BOH · H KT · Q FO-02 · C IH-03',
+      'Logs go to a job role or to whoever is on shift. Nobody is named as Food Safety Supervisor.',
+    ],
+    [
+      'Purchasing',
+      'Who orders',
+      'The Sous Chef orders perishables by 16:00 and the storekeeper orders dry goods, all on a PO.',
+      'R',
+      'R PS-02',
+      'The person who needs something asks for items and quantities only, and the Main Store keeper places the order.',
+    ],
+    [
+      'Purchasing',
+      'Approval limits',
+      'An authority matrix by value, with 3 quotes above ₹25,000.',
+      'H',
+      'H PS-02',
+      "Only unusual requests (not on the store's list, or more than usual) need the head or the GM. There is no value limit and no quotations.",
+    ],
+    [
+      'Purchasing',
+      'Area manager approval',
+      'The Area Manager approves order exceptions.',
+      'Q',
+      'Q CK-06',
+      'The Area Manager has no approval step and only sees orders (ADR 049).',
+    ],
+    [
+      'Purchasing',
+      'Separation of duties',
+      'No single person orders, receives and pays.',
+      'H',
+      'H FN-09',
+      'Whoever asks never approves, but the Main Store keeper both orders and receives. Payment is outside the app.',
+    ],
+    [
+      'Purchasing',
+      'Three-way match',
+      'PO, GRN and invoice are matched before payment.',
+      'RH',
+      'R AC-04 · H FN-04',
+      'The bill is attached to its received order, the amount paid per item is entered on receipt, and "Bill missing" is flagged. Nothing compares the amounts automatically.',
+    ],
+    [
+      'Purchasing',
+      'Approved suppliers',
+      'An approved supplier list per item, with specifications.',
+      'FQ',
+      'F SC-01 · Q CK-01',
+      'Each item has a preferred supplier, and choosing a supplier on an order is optional.',
+    ],
+    [
+      'Stock',
+      'Count cadence and variance',
+      'High-value items weekly and a full count monthly. Differences above 2% (R, B) or 1% (H, Q) are looked into.',
+      'RBHQ',
+      'R PS-06 · B LC-05 · H PS-06 · Q IC-01/02',
+      'Each item has its own tolerance %, plus a company setting for when a count is due. Differences are photographed and verified and need no approval.',
+    ],
+    [
+      'Stock',
+      'Liquor reconciliation',
+      "Nightly, per brand, in ml, against POS sales, in the excise register's format.",
+      'BH',
+      'B LC-04, LC-05 · H FB-06',
+      'The per-item variance report compares POS sales × recipes with stock, and the bar store has its own counts. It does not use the excise format and is not nightly by rule.',
+    ],
+    [
+      'Stock',
+      'Linen',
+      'Par of 4–5 sets per bed, soiled linen counted, monthly inventory with Finance.',
+      'H',
+      'H HK-08',
+      'Linen is kept as Housekeeping Store items with a par, plus a weekly linen room count checklist.',
+    ],
+    [
+      'Stock',
+      'Expired product',
+      'Held product is discarded when its timer runs out, without exception.',
+      'Q',
+      'Q FP-04',
+      'An expired batch is reported, assigned to someone and discarded, and wastage over the limit needs approval.',
+    ],
+    [
+      'Data and planning',
+      'POS data',
+      'The POS syncs automatically, and franchise royalty depends on it.',
+      'FQ',
+      'F SD-06, FE-01 · Q SS',
+      "The cashier uploads the day's POS file and matches the POS codes to dishes.",
+    ],
+    [
+      'Data and planning',
+      'Prep and production plan',
+      'Planned from par and reservations, or a production chart by 15-minute slot from the sales forecast.',
+      'RQ',
+      'R BOH-01 · Q FP-01',
+      'The team sets the prep list. There is no forecast.',
+    ],
+    [
+      'Data and planning',
+      'Roster basis',
+      'Built from a sales forecast and a staffing guide.',
+      'QH',
+      'Q CT-01 · H HR-01',
+      'Built from shift templates, with a headcount per job role per day.',
+    ],
+    [
+      'Data and planning',
+      'Daily flash report',
+      'A flash report (occupancy, ADR, revenue) is sent out by 07:00.',
+      'H',
+      'H FO-08',
+      'Home\'s "Today so far" and the daily reports are rebuilt every night. Nothing is sent out.',
+    ],
+    [
+      'Data and planning',
+      'Store scorecard',
+      'Speed, order accuracy, audit score, rating, staff turnover, same-store growth.',
+      'Q',
+      'Q FO-03',
+      'The league table uses the figures the app holds: food, drinks, labour and prime cost, wastage, and tasks done on time.',
+    ],
+    [
+      'Operations',
+      'Repair priority',
+      'P1, P2 and P3, answered within 10 min, 30 min and 24 h; out-of-order rooms reported.',
+      'H',
+      'H EN-01',
+      'Repairs are reported, assigned and fixed, with no priority and no response clock.',
+    ],
+    [
+      'Operations',
+      'Events',
+      'A BEO signed by every department, guarantee + 5%, billed within 24 h.',
+      'HB',
+      'H BQ · B EV',
+      'An event has a name, times, covers and requirements, and shows on the roster.',
+    ],
+    [
+      'Operations',
+      'Temperature frequency',
+      'Fixed frequencies (chillers 3 times a day, hot holding every 2 h) with a corrective action.',
+      'RHQ',
+      'R day plan · H KT-03 · Q FP',
+      'The company picks the schedule, and readings out of range are flagged in reports. No corrective step is forced.',
+    ],
+    [
+      'Operations',
+      'Attendance',
+      'Biometric attendance at the time-office gate.',
+      'H',
+      'H SE-02',
+      "Staff clock in on their phone inside the outlet's geofence, with a selfie. A new or shared phone is flagged.",
+    ],
+    [
+      'Operations',
+      'Pest control',
+      'A licensed contractor, a monthly service, and the service reports filed.',
+      'RHC',
+      'R FA-03 · H HK-12 · C IH-04',
+      'The service bill is recorded at a store, and sightings come in through "Report a problem".',
+    ],
+    [
+      'Operations',
+      'Cash float',
+      'The float is counted and signed at each change of shift.',
+      'RH',
+      'R AC-01 · H FO-06',
+      'Only as a number step on the front desk handover checklist.',
+    ],
+    [
+      'Operations',
+      'Recipe card',
+      'Photo, method, allergens, kcal and cost.',
+      'RHB',
+      'R BOH-08 · H KT-07 · B BR-03',
+      'Ingredients, yield, trim loss, cost and the method. No photo, allergens or kcal.',
+    ],
+    [
+      'Operations',
+      'Menu control',
+      'Head office publishes the menu, and stores never change it.',
+      'QF',
+      'Q DG-01 · F BS-02',
+      'The menu is loaded per company with prices per outlet, and the Cost Controller and GM can change prices at their outlet.',
+    ],
+    [
+      'Operations',
+      'Record keeping',
+      'GST records kept 72 months; books of account 8 years.',
+      'H',
+      'H FN-10',
+      'Bills are kept 7 years.',
+    ],
+  ];
+  const T4 = [
+    [
+      'Places',
+      'Two trees of places',
+      'Where people work and where stock is kept are separate trees, linked: the Kitchen uses the Kitchen Store. So stock and people can be organised differently.',
+    ],
+    [
+      'Access',
+      'Access by place and right',
+      "Every read and write checks the person's right at that place, inside the database. Customers can build their own access groups and switch modules on or off.",
+    ],
+    [
+      'Access',
+      'Audit log',
+      'Every change records who made it and when, and an Auditor role reads the log.',
+    ],
+    [
+      'Setup',
+      'Platform console and imports',
+      'New customers are created from CSV files that are checked and dry-run before loading, and logins are sent from the console.',
+    ],
+    [
+      'Approvals',
+      'To do list',
+      'One list for approvals, things to assign, things to order and things to receive. Every status change goes through the approval engine.',
+    ],
+    [
+      'People',
+      'Shift swaps',
+      'Staff offer shifts to colleagues. Rest and weekly-hours breaks show as warnings for the approver, and a company can allow swaps only through managers.',
+    ],
+    ['People', 'Leave', 'Leave types, balances and approvals.'],
+    [
+      'People',
+      'Clock-in checks',
+      'A selfie at clock-in and a flag for a new or shared phone, deleted on a retention rule.',
+    ],
+    [
+      'People',
+      'Attendance exceptions',
+      'Late arrivals, missed punches and extra time are worked out every night for the manager to resolve.',
+    ],
+    ['People', 'My week', 'Every staff member sees their own week: hours, shifts and tasks.'],
+    [
+      'Stock',
+      'Expiry alert and Push today',
+      'A morning alert lists what expires today, and service teams see what to sell first.',
+    ],
+    [
+      'Stock',
+      'Send stock',
+      'The Main Store sends stock to a department. Whoever is on shift gets a task to confirm it, and any shortfall is posted as transit loss.',
+    ],
+    [
+      'Stock',
+      'Send orders to suppliers',
+      'Orders go to the supplier by WhatsApp, email or print, with or without prices.',
+    ],
+    ['Stock', 'Shelf-ordered count sheets', "Count sheets follow the store's shelves in order."],
+    [
+      'Stock',
+      'Service bills',
+      'Bills for services with no stock (linen washing, repairs) sit beside goods bills. A Bills screen shows bills waiting.',
+    ],
+    [
+      'Reports',
+      'Every figure opens its list',
+      'Each figure on Home and in the reports opens the list and the trend behind it, and a test checks they match for every kind of access.',
+    ],
+    [
+      'Reports',
+      'Business day',
+      "A day ends at 04:00 in the outlet's own time zone, so a late bar shift counts on the right day.",
+    ],
+    [
+      'Reports',
+      'Breakdowns',
+      'Cost shares by department, a central kitchen report and a People report (hours, on time, swaps). CSV export.',
+    ],
+    [
+      'App',
+      'Installable app',
+      'Installs like an app, has an offline page, asks to reload when there is a new version, and has a dark theme.',
+    ],
+    [
+      'App',
+      'AI suggestions (planned)',
+      'An AI agent that only suggests, through the same approvals. It never changes anything itself.',
+    ],
+  ];
+  const tables = { t1: T1, t2: T2, t3: T3, t4: T4 };
+  const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+  let sel = 'all',
+    q = '';
+  function badges(s) {
+    return [...s]
+      .map(
+        (c) =>
+          `<span class="s" title="${{ R: 'Restaurant', B: 'Bar', C: 'Cloud kitchen', F: 'Franchise', H: 'Hotel', Q: 'QSR' }[c]}">${c}</span>`,
+      )
+      .join('');
+  }
+  function render() {
+    for (const [id, rows] of Object.entries(tables)) {
+      const body = document.getElementById('b-' + id);
+      let html = '',
+        last = '',
+        n = 0;
+      for (const r of rows) {
+        const four = id === 't4';
+        const sops = four ? '' : r[3];
+        if (!four && sel !== 'all' && !sops.includes(sel)) continue;
+        if (four && sel !== 'all') continue;
+        if (q && !r.join(' ').toLowerCase().includes(q)) continue;
+        if (r[0] !== last) {
+          html += `<tr class="grp"><td colspan="4">${esc(r[0])}</td></tr>`;
+          last = r[0];
+        }
+        n++;
+        html += four
+          ? `<tr><td class="area">${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`
+          : `<tr><td class="area">${esc(r[1])}</td><td>${esc(r[2])}</td><td class="sops">${badges(r[3])}<span class="ref">${esc(r[4])}</span></td><td>${esc(r[5])}</td></tr>`;
+      }
+      if (!n)
+        html = `<tr><td colspan="4" class="empty">${id === 't4' && sel !== 'all' ? 'Not tied to any SOP. Choose All SOPs to see these.' : 'No rows match.'}</td></tr>`;
+      body.innerHTML = html;
+      document.getElementById('c-' + id).textContent = n + ' rows';
+      document.getElementById('n-' + id).textContent = '(' + n + ')';
+    }
+  }
+  document.querySelectorAll('.chip').forEach((b) =>
+    b.addEventListener('click', () => {
+      sel = b.dataset.s;
+      document
+        .querySelectorAll('.chip')
+        .forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      render();
+    }),
+  );
+  document.getElementById('q').addEventListener('input', (e) => {
+    q = e.target.value.trim().toLowerCase();
+    render();
+  });
+  render();
+</script>
