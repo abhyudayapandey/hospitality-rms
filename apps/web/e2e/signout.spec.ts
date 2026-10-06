@@ -18,8 +18,18 @@ test('sign-out clears the session and refresh cookies and the service-worker cac
 
   // Sign out is on Me (UX-6)
   await page.goto('/me');
+  // the server is slow to answer: the screen is covered at once all the same (ADR 056)
+  await page.route('**/auth/logout', async (route) => {
+    await new Promise((r) => setTimeout(r, 1_500));
+    await route.continue();
+  });
   await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByTestId('leaving')).toContainText('Signing you out');
   await page.waitForURL(/\/login/);
+  await expect(page.getByRole('heading', { name: 'Outlet Ops', level: 1 })).toBeVisible();
+  // the app's screen was replaced: Back does not return to it
+  await page.goBack().catch(() => undefined);
+  await expect(page).not.toHaveURL(/\/me$/);
 
   expect(await page.evaluate(async () => caches.keys())).toEqual([]);
   const names = (await context.cookies()).map((c) => c.name);

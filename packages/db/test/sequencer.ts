@@ -13,6 +13,8 @@ import { BaseSequencer, type TestSpecification } from 'vitest/node';
 export const WEIGHTS: Readonly<Record<string, number>> = {
   'packages/onboarding/src/loader-checks.db.test.ts': 217,
   'packages/onboarding/src/loader.db.test.ts': 150,
+  // ADR 057, measured locally (130 s): re-measure on CI with the rest
+  'packages/db/src/reports-reconcile.db.test.ts': 145,
   'packages/db/src/reports-refusals-2.db.test.ts': 141,
   'packages/db/src/reports-refusals-1.db.test.ts': 140,
   'packages/db/src/rls-equivalence.db.test.ts': 134,

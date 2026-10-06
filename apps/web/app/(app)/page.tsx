@@ -4,7 +4,7 @@ import { FirstRun } from '@/components/first-run';
 import { ExpiryBanner } from '@/components/expiry-banner';
 import { Icon, type IconName } from '@/components/icon';
 import { businessDate, formatDay, formatLongDay, formatTime } from '@/lib/dates';
-import { compare, formatMeasure, MEASURES, type MeasureRow } from '@/lib/reports';
+import { compare, formatMeasure, MEASURES, trendHref, type MeasureRow } from '@/lib/reports';
 import { homeTiles } from '@/lib/screens';
 import { vsTarget, type TargetKey } from '@/lib/settings';
 import { loadShell, screenInput } from '@/lib/shell';
@@ -519,31 +519,40 @@ function Kpi({
   row,
   label,
   targets,
+  href,
 }: {
   measure: string;
   row: MeasureRow | undefined;
   label?: string | undefined;
   targets: Record<TargetKey, number>;
+  /** the figure's own report: its trend, or the report (ADR 057) */
+  href: string;
 }) {
   const def = MEASURES[measure] ?? { label: label ?? measure, unit: 'count' as const };
   const t = vsTarget(measure, row?.value, targets);
   const c = compare(def, row?.value, row?.last_week);
   const bad = t.state === 'bad';
   return (
-    <div
-      className={`rounded-xl p-3 ring-1 ${bad ? 'bg-rose-50 ring-rose-200' : 'bg-white ring-slate-200'}`}
+    <Link
+      href={href}
+      className={`block rounded-xl p-3 ring-1 ${bad ? 'bg-rose-50 ring-rose-200' : 'bg-white ring-slate-200'}`}
       data-testid={`tile-${measure}`}
       data-state={t.state}
     >
-      <dt className="text-xs text-slate-500">{label ?? def.label}</dt>
-      <dd className={`text-xl font-bold tabular-nums ${bad ? 'text-rose-700' : 'text-slate-900'}`}>
+      <span className="flex items-center justify-between gap-1 text-xs text-slate-500">
+        {label ?? def.label}
+        <Icon name="chevron" className="size-3.5 shrink-0" />
+      </span>
+      <span
+        className={`block text-xl font-bold tabular-nums ${bad ? 'text-rose-700' : 'text-slate-900'}`}
+      >
         {formatMeasure(def.unit, row?.value)}
-      </dd>
+      </span>
       {t.target !== null ? (
-        <dd className="text-xs text-slate-500">target {t.target}%</dd>
+        <span className="block text-xs text-slate-500">target {t.target}%</span>
       ) : (
         c.text && (
-          <dd
+          <span
             className={`text-xs ${
               c.trend === 'good'
                 ? 'text-emerald-700'
@@ -553,10 +562,10 @@ function Kpi({
             }`}
           >
             {c.text}
-          </dd>
+          </span>
         )
       )}
-    </div>
+    </Link>
   );
 }
 
@@ -592,11 +601,19 @@ function Numbers({
   return (
     <section aria-label="Today's numbers" className={card} data-testid="numbers-card">
       <h2 className={cardTitle}>Today so far · {numbers.place.name}</h2>
-      <dl className="mt-3 grid grid-cols-2 gap-2">
+      {/* each figure opens its own report: its trend, else the report (ADR 057) */}
+      <div className="mt-3 grid grid-cols-2 gap-2">
         {tiles.map(({ key, row, label }) => (
-          <Kpi key={key} measure={key} row={row} label={label} targets={targets} />
+          <Kpi
+            key={key}
+            measure={key}
+            row={row}
+            label={label}
+            targets={targets}
+            href={trendHref(numbers.report, numbers.place.id, key) ?? href}
+          />
         ))}
-      </dl>
+      </div>
       <Link href={href} className="mt-3 flex items-center gap-1 text-sm font-medium text-brand-700">
         Open the report <Icon name="chevron" className="size-4" />
       </Link>
