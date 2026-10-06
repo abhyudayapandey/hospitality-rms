@@ -56,7 +56,9 @@ test('the Cost Controller counts blind and finishes; the GM then sees Verified, 
   await page.getByRole('button', { name: /^Show the differences/ }).click();
   await expect(page.getByText('Everything counted matches.')).toBeVisible();
   await page.getByRole('button', { name: 'Finish stock check' }).click();
-  await expect(page.getByRole('status').last()).toContainText('Finished');
+  // "Finished: …" from the sheet, then the page refreshes to "This stock check is finished.":
+  // either is the finished state, and which one the check sees depends on timing
+  await expect(page.getByRole('status').last()).toContainText(/finished/i);
 
   await signInAs(page, 'Test General Manager 1.0');
   await page.goto(`/stock/check?node=${store}`);
@@ -122,7 +124,9 @@ test('a bar check counts bottles and tenths (the Stock Verifier of the solo bar)
   await page.getByRole('button', { name: /^Show the differences/ }).click();
   await expect(page.getByText('Everything counted matches.')).toBeVisible();
   await page.getByRole('button', { name: 'Finish stock check' }).click();
-  await expect(page.getByRole('status').last()).toContainText('Finished');
+  // "Finished: …" from the sheet, then the page refreshes to "This stock check is finished.":
+  // either is the finished state, and which one the check sees depends on timing
+  await expect(page.getByRole('status').last()).toContainText(/finished/i);
 });
 
 test('offline: a count is saved on the phone and sent, with its time, when the signal is back', async ({

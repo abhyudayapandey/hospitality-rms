@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MODULE_CODES } from '@outlet-ops/domain';
+import { DUTY_BY_CODE, MODULE_CODES, SCOPE_WORDS, expandDuty } from '@outlet-ops/domain';
 import { CsvError, parseCsv } from './csv';
 
 // The onboarding files (docs/onboarding/test-data/README.md): one zod schema per file turns
@@ -53,17 +53,8 @@ const optTimezone = z.union([z.literal('').transform(() => undefined), timezone]
 export const OUTLET_FORMATS = ['full_hotel', 'small_hotel', 'standalone_bar'] as const;
 /** What a department does, for the order of Home's "Needs attention" (DB-2, ADR 033). */
 export const DEPARTMENT_TYPES = ['kitchen', 'service', 'housekeeping', 'other'] as const;
-export const SCOPES = [
-  'home_department',
-  'whole_outlet',
-  'outlet_stores',
-  'department_store',
-  'main_store',
-  'central_kitchen',
-  'central_kitchen_store',
-  'whole_area',
-  'whole_company',
-] as const;
+/** Scope words for job-role access (ADR 009), defined with the duties (ADR 059). */
+export const SCOPES = SCOPE_WORDS;
 
 function isTimezone(tz: string): boolean {
   try {
@@ -78,6 +69,8 @@ export interface AccessDefault {
   group: string;
   scope: string;
   includeDescendants: boolean;
+  /** The duty the grant comes from (`default_duties`, ADR 059); absent for a direct grant. */
+  duty?: string;
 }
 
 /** `OUTLET_MANAGER@whole_outlet; HUB_MANAGER@central_kitchen_store(this store only)` */
@@ -113,7 +106,39 @@ const defaultAccess = z.string().transform((v, ctx): AccessDefault[] => {
     }
     out.push({ group: m[1]!, scope: m[2]!, includeDescendants: !m[3] });
   }
-  if (out.length === 0) ctx.addIssue({ code: 'custom', message: 'is required' });
+  return out;
+});
+
+/** `RUNS_DEPARTMENT; RUNS_DEPARTMENT@department:BAR; KEEPS_DEPARTMENT_STORE` (ADR 059) */
+const defaultDuties = z.string().transform((v, ctx): AccessDefault[] => {
+  const out: AccessDefault[] = [];
+  for (const part of v
+    .split(';')
+    .map((p) => p.trim())
+    .filter(Boolean)) {
+    const m = /^([A-Z][A-Z0-9_]*)(?:@(department:[A-Z0-9][A-Z0-9-]*))?$/.exec(part);
+    if (!m) {
+      ctx.addIssue({ code: 'custom', message: `"${part}" is not DUTY or DUTY@department:CODE` });
+      continue;
+    }
+    const duty = DUTY_BY_CODE.get(m[1]!);
+    if (!duty) {
+      ctx.addIssue({ code: 'custom', message: `${m[1]} is not a duty` });
+      continue;
+    }
+    if (m[2] && !duty.atAnotherDepartment) {
+      ctx.addIssue({ code: 'custom', message: `${m[1]} cannot be given at another department` });
+      continue;
+    }
+    for (const g of expandDuty(duty.code, m[2])) {
+      out.push({
+        group: g.group,
+        scope: g.scope,
+        includeDescendants: g.includeDescendants,
+        duty: g.duty,
+      });
+    }
+  }
   return out;
 });
 
@@ -331,8 +356,11 @@ export const FILES = {
       job_title: text,
       outlet_format: z.enum(['any', ...OUTLET_FORMATS]),
       usual_department: optional,
+      default_duties: defaultDuties,
       default_access: defaultAccess,
     }),
+    // a role lists its duties, or grants directly, or both (ADR 059)
+    optional: ['default_duties', 'default_access'],
   },
   users: {
     file: '07_users.csv',
@@ -819,4 +847,12 @@ export function readBundle(files: Record<string, string>): { bundle: Bundle; iss
     }
   }
   return { bundle: bundle as Bundle, issues };
+}
+
+/** Everything a job role row grants: its duties' grants, then its direct grants (ADR 059). */
+export function jobRoleAccess(r: {
+  default_duties: AccessDefault[];
+  default_access: AccessDefault[];
+}): AccessDefault[] {
+  return [...r.default_duties, ...r.default_access];
 }

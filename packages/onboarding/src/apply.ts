@@ -3,6 +3,7 @@ import { MODULE_CODES } from '@outlet-ops/domain';
 import type { ClientBase } from 'pg';
 import {
   FILES,
+  jobRoleAccess,
   readBundle,
   TEST_ONLY_FILES,
   type AssignTo,
@@ -343,7 +344,7 @@ class Loader {
     const inFile = new Set(this.b.users.map((u) => u.username));
     const ownerRoles = new Set(
       this.b.jobRoles
-        .filter((r) => r.default_access.some((a) => a.group === 'ACCOUNT_OWNER'))
+        .filter((r) => jobRoleAccess(r).some((a) => a.group === 'ACCOUNT_OWNER'))
         .map((r) => r.job_role_code),
     );
     const fileOwners = [
@@ -496,17 +497,23 @@ class Loader {
     const wanted: string[] = [];
     for (const r of this.b.jobRoles) {
       this.step(FILES.jobRoles.file, r.line);
-      for (const [i, a] of r.default_access.entries()) {
+      // duties' grants first, then direct grants (ADR 059). A direct grant keeps the duty
+      // label the sync gave it (hr.label_job_role_duties, run below), so a re-import of the
+      // same files changes nothing.
+      for (const [i, a] of jobRoleAccess(r).entries()) {
         wanted.push([r.job_role_code, r.outlet_format, a.group, a.scope].join(' '));
         await this.upsert(
           'job role access',
           `insert into hr.job_role_access (tenant_id, job_role_code, outlet_format, access_group,
-                                           scope, include_descendants, position)
-           values ($1, $2, $3, $4, $5, $6, $7)
+                                           scope, include_descendants, position, duty_code)
+           values ($1, $2, $3, $4, $5, $6, $7, $8)
            on conflict (tenant_id, job_role_code, outlet_format, access_group, scope) do update
-              set include_descendants = excluded.include_descendants, position = excluded.position
-            where (hr.job_role_access.include_descendants, hr.job_role_access.position)
-                  is distinct from (excluded.include_descendants, excluded.position)
+              set include_descendants = excluded.include_descendants, position = excluded.position,
+                  duty_code = coalesce(excluded.duty_code, hr.job_role_access.duty_code)
+            where (hr.job_role_access.include_descendants, hr.job_role_access.position,
+                   hr.job_role_access.duty_code)
+                  is distinct from (excluded.include_descendants, excluded.position,
+                                    coalesce(excluded.duty_code, hr.job_role_access.duty_code))
            returning id, xmax = 0 as inserted`,
           [
             this.tenant,
@@ -516,6 +523,7 @@ class Loader {
             a.scope,
             a.includeDescendants,
             i,
+            a.duty ?? null,
           ],
         );
       }
@@ -528,6 +536,8 @@ class Loader {
                    = any ($2))`,
       [this.tenant, wanted],
     );
+    // direct grants that stand for a duty get its label; access does not change
+    await this.c.query('select hr.label_job_role_duties($1)', [this.tenant]);
 
     if (await this.loginClashes()) return;
     // the Test<Role>!12 password rule is for test customers only (ADR 012)

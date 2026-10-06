@@ -94,8 +94,9 @@ what" page (`docs/who-does-what.html`; keep it in step with this table).
 
 ### Access behind it
 
-Everyone has a **job role**. The role gives default **access groups** at places relative
-to their home (file 06). Extra grants come from file 08 or the Admin screens. The first
+Everyone has a **job role**. The role holds **duties** (ADR 059), such as "Runs the
+department" or "Keeps the Main Store", and each duty gives default **access groups** at
+places relative to their home (file 06). Extra grants come from file 08 or the Admin screens. The first
 column below is the level and kind of work, not a job description.
 
 | Level / kind of work        | Job roles (examples)                                                                                                                                                                        | Access groups                                                          | Bottom nav                                              |

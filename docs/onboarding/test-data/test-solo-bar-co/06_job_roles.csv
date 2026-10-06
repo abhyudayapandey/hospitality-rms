@@ -1,9 +1,9 @@
-job_role_code,job_title,outlet_format,usual_department,default_access
-BAR_MANAGER,Bar Manager,standalone_bar,(outlet),OUTLET_MANAGER@whole_outlet; OUTLET_MANAGER@outlet_stores
-FLOOR_MANAGER,Floor Manager,any,FLOOR-SERVICE,DEPARTMENT_HEAD@home_department
-HEAD_BARTENDER,Head Bartender,any,BAR,SUPERVISOR@home_department; STORE_KEEPER@department_store; STAFF@home_department
-BARTENDER,Bartender,any,BAR,STAFF@home_department; PRODUCTION_TEAM@home_department
-SERVER,Server,any,FLOOR-SERVICE,STAFF@home_department
-HEAD_COOK,Head Cook,any,KITCHEN,DEPARTMENT_HEAD@home_department; STORE_KEEPER@department_store
-COOK,Cook,any,KITCHEN,STOCK_USER@department_store; STAFF@home_department; PRODUCTION_TEAM@home_department
-STOCK_VERIFIER,Stock Verifier,standalone_bar,(outlet),STOCK_VERIFIER@outlet_stores
+job_role_code,job_title,outlet_format,usual_department,default_duties
+BAR_MANAGER,Bar Manager,standalone_bar,(outlet),RUNS_OUTLET
+FLOOR_MANAGER,Floor Manager,any,FLOOR-SERVICE,RUNS_DEPARTMENT
+HEAD_BARTENDER,Head Bartender,any,BAR,LEADS_SHIFT; KEEPS_DEPARTMENT_STORE; WORKS_SHIFTS
+BARTENDER,Bartender,any,BAR,WORKS_SHIFTS; MAKES_PREP
+SERVER,Server,any,FLOOR-SERVICE,WORKS_SHIFTS
+HEAD_COOK,Head Cook,any,KITCHEN,RUNS_DEPARTMENT; KEEPS_DEPARTMENT_STORE
+COOK,Cook,any,KITCHEN,USES_DEPARTMENT_STORE; WORKS_SHIFTS; MAKES_PREP
+STOCK_VERIFIER,Stock Verifier,standalone_bar,(outlet),VERIFIES_STOCK_CHECKS

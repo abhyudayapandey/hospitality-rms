@@ -169,7 +169,7 @@ describe('receiving against a purchase order', () => {
          values ($1, $2, $3, $4, 2, 10)`,
         [tenant, po, item, node],
       );
-      // STOCK_USER at the Main Store (job role default: STOCK_USER@main_store)
+      // STOCK_USER at the Main Store (job role duty USES_MAIN_STORE: STOCK_USER@main_store)
       const CLERK = ids.user('test.receiving-clerk.1.0');
       const lines = JSON.stringify([{ item_id: item, qty: 2 }]);
       const received = await attemptAs(c, CLERK, 'select inv.receive($1, $2::jsonb, $3)', [

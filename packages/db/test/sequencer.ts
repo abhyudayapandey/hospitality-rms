@@ -19,6 +19,8 @@ export const WEIGHTS: Readonly<Record<string, number>> = {
   'packages/db/src/reports-refusals-1.db.test.ts': 140,
   'packages/db/src/rls-equivalence.db.test.ts': 134,
   'packages/onboarding/src/menu.db.test.ts': 109,
+  // ADR 059, four loads of Test Company (14 s locally): re-measure on CI with the rest
+  'packages/onboarding/src/duties-loader.db.test.ts': 75,
   'packages/onboarding/src/import.db.test.ts': 72,
   'packages/db/src/reports-access.db.test.ts': 68,
   'packages/onboarding/src/derived.db.test.ts': 53,

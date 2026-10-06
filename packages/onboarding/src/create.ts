@@ -58,8 +58,8 @@ export function customerBundle(c: NewCustomer): Record<string, string> {
     ),
     '03_node_links.csv': csv('org_node_code,delivery_node_code,note', []),
     '06_job_roles.csv': csv(
-      'job_role_code,job_title,outlet_format,usual_department,default_access',
-      [['ACCOUNT_OWNER', 'Account Owner', 'any', '(company)', 'ACCOUNT_OWNER@whole_company']],
+      'job_role_code,job_title,outlet_format,usual_department,default_duties',
+      [['ACCOUNT_OWNER', 'Account Owner', 'any', '(company)', 'OWNS_COMPANY_ACCOUNT']],
     ),
     '07_users.csv': csv(
       'username,display_name,job_role_code,home_node_code,login_type,email,employment_type,joined_on,password_mode',

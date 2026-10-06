@@ -1,18 +1,22 @@
 import type { ClientBase } from 'pg';
-import { ACCESS_GROUPS, DOMAINS, type GroupDef } from '@outlet-ops/domain';
+import { ACCESS_GROUPS, DOMAINS, DUTIES, checkDuties, type GroupDef } from '@outlet-ops/domain';
 import { BP_POLICY, type BpRule } from './bp-policy';
 import { PROCESS_DEFS } from './processes';
 import { processDefSchema, type ProcessDef } from './types';
 
 /**
  * Writes the product-wide access definition into every tenant (or one): domains, access
- * groups, the domain policy matrix and bp_policy. Authoritative for product groups: their
- * policy and bp_policy rows that are not in the definition are removed. A company's own
- * groups (kind 'custom', ADR 027) and their rights are left alone. Run as migrator; part of
- * `pnpm db:seed`, every deploy (sync-defs) and the onboarding loader.
+ * groups, the domain policy matrix, bp_policy and the duties (ADR 059). Authoritative for
+ * product groups: their policy and bp_policy rows that are not in the definition are
+ * removed, and so are duties no longer in the catalogue (a duty a job role still holds
+ * cannot be removed: the foreign key fails the sync). A company's own groups (kind
+ * 'custom', ADR 027) and their rights are left alone. Then labels the tenant's job-role
+ * grants with their duties (`hr.label_job_role_duties`), which never changes access. Run
+ * as migrator; part of `pnpm db:seed`, every deploy (sync-defs) and the onboarding loader.
  */
 export async function syncProductAccess(client: ClientBase, tenantId?: string): Promise<void> {
   checkAdminGroups(ACCESS_GROUPS);
+  checkDuties(DUTIES);
   const tenants = tenantId
     ? [tenantId]
     : (await client.query<{ id: string }>('select id from core.tenant order by id')).rows.map(
@@ -24,6 +28,22 @@ export async function syncProductAccess(client: ClientBase, tenantId?: string): 
     Object.entries(g.grants).map(([domain, access]) => ({ grp: g.code, domain, access })),
   );
   const bp: readonly BpRule[] = BP_POLICY;
+  const duties = DUTIES.map((d, i) => ({
+    code: d.code,
+    name: d.name,
+    does: d.does,
+    other: d.atAnotherDepartment === true,
+    position: i,
+  }));
+  const dutyGrants = DUTIES.flatMap((d) =>
+    d.grants.map((g, i) => ({
+      duty: d.code,
+      grp: g.group,
+      scope: g.scope,
+      descendants: !g.thisPlaceOnly,
+      position: i,
+    })),
+  );
   for (const t of tenants) {
     // a product group added since a company built a group with the same code
     const clash = await client.query<{ code: string }>(
@@ -90,6 +110,45 @@ export async function syncProductAccess(client: ClientBase, tenantId?: string): 
        on conflict (process_type, step, group_id, action) do nothing`,
       [t, JSON.stringify(bp)],
     );
+    await client.query(
+      `with want as (
+         select * from jsonb_to_recordset($2::jsonb)
+                d(code text, name text, does text, other boolean, position int)),
+       gone as (
+         delete from hr.duty du
+          where du.tenant_id = $1 and not exists (select 1 from want w where w.code = du.code)
+         returning 1)
+       insert into hr.duty (tenant_id, code, name, does, at_another_department, position)
+       select $1, code, name, does, other, position from want
+       on conflict (tenant_id, code) do update
+          set name = excluded.name, does = excluded.does,
+              at_another_department = excluded.at_another_department,
+              position = excluded.position
+        where (hr.duty.name, hr.duty.does, hr.duty.at_another_department, hr.duty.position)
+              is distinct from (excluded.name, excluded.does, excluded.at_another_department,
+                                excluded.position)`,
+      [t, JSON.stringify(duties)],
+    );
+    await client.query(
+      `with want as (
+         select * from jsonb_to_recordset($2::jsonb)
+                g(duty text, grp text, scope text, descendants boolean, position int)),
+       gone as (
+         delete from hr.duty_grant dg
+          where dg.tenant_id = $1
+            and not exists (select 1 from want w
+                             where w.duty = dg.duty_code and w.grp = dg.access_group
+                               and w.scope = dg.scope))
+       insert into hr.duty_grant (tenant_id, duty_code, access_group, scope,
+                                  include_descendants, position)
+       select $1, duty, grp, scope, descendants, position from want
+       on conflict (tenant_id, duty_code, access_group, scope) do update
+          set include_descendants = excluded.include_descendants, position = excluded.position
+        where (hr.duty_grant.include_descendants, hr.duty_grant.position)
+              is distinct from (excluded.include_descendants, excluded.position)`,
+      [t, JSON.stringify(dutyGrants)],
+    );
+    await client.query('select hr.label_job_role_duties($1)', [t]);
   }
 }
 

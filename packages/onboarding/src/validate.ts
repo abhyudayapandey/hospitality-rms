@@ -1,6 +1,6 @@
 import { ACCESS_GROUPS, DOMAINS } from '@outlet-ops/domain';
 import type { AssignTo, Bundle, Issue } from './files';
-import { FILES } from './files';
+import { FILES, jobRoleAccess } from './files';
 
 // Checks across files: every code refers to something that exists, the trees have the
 // allowed shape, stock only sits where stock is held, and access uses product groups.
@@ -203,6 +203,26 @@ export function validateBundle(b: Bundle): Issue[] {
       if (!assignable(a.group)) {
         add(f('jobRoles'), r.line, 'default_access', `${a.group} is not an access group`);
       }
+    }
+    // duties and direct grants together (ADR 059): at least one, no grant twice
+    const all = jobRoleAccess(r);
+    if (all.length === 0) {
+      add(f('jobRoles'), r.line, 'default_duties', 'needs default_duties or default_access');
+    }
+    const given = new Map<string, string>();
+    for (const a of all) {
+      const k = `${a.group}@${a.scope}`;
+      const first = given.get(k);
+      if (first !== undefined) {
+        add(
+          f('jobRoles'),
+          r.line,
+          a.duty ? 'default_duties' : 'default_access',
+          `${k} is given twice (already by ${first})`,
+        );
+        continue;
+      }
+      given.set(k, a.duty ?? 'default_access');
     }
   }
 

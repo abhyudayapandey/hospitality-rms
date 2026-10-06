@@ -135,6 +135,12 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   04:00 business day in the outlet's time zone (`ops.tz_of`, never UTC); today counts what has
   come due; a list never shows what its report leaves out. Home's "Today so far" figures open
   their trends. Sign-out covers the screen at once and waits on nothing (ADR 056).
+- Job roles hold duties (ADR 058, 059): one piece of responsibility in plain words over the
+  `GROUP@scope` grants it stands for (`packages/domain/src/duties.ts`, synced to every tenant
+  as `hr.duty`; file 06 `default_duties`). The loader expands duties into `hr.job_role_access`
+  rows labelled with `duty_code`, and the derivation reads those rows unchanged. A new group
+  or scope a job role needs comes with a duty; `default_access` is for a company's own groups.
+  The plan built on this is `docs/templates-and-cover.md`; the SOP manuals are in `docs/sop/`.
 
 ## Commands
 
