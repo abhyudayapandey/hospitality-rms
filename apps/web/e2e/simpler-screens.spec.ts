@@ -147,7 +147,7 @@ test('the to-do list has one name in the bar and the heading', async ({ page }) 
 test('tabs wrap instead of running off the screen', async ({ page }) => {
   await signInAs(page, 'Test Store Keeper 1.0', { expanded: false });
   await page.goto('/stock');
-  const nav = page.getByRole('navigation', { name: 'Supply' });
+  const nav = page.getByRole('navigation', { name: 'Stock tabs' });
   await expect(nav).toBeVisible();
   const box = await nav.boundingBox();
   const last = await nav.getByRole('link').last().boundingBox();

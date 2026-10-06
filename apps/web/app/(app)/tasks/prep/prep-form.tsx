@@ -9,7 +9,7 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { createPrepTasks, type Assign } from '../actions';
 import { AssignPicker } from '../assign-picker';
 
-const n = (s: string) => Number(Number(s).toFixed(3));
+const n = (s: string) => Number(Number(s).toFixed(2));
 /** '2,000 g': Indian digit grouping, the unit on every figure (UX U-24) */
 const q = (s: string, unit: string) => `${n(s).toLocaleString('en-IN')} ${unit}`;
 

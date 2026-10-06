@@ -54,7 +54,7 @@ export default async function ItemLedgerPage({
         <p className="text-2xl font-semibold tabular-nums">
           {formatQty(item.on_hand, item.base_uom)}
         </p>
-        <p className="text-sm text-slate-600">keep {formatQty(item.par_level, item.base_uom)}</p>
+        <p className="text-sm text-slate-600">par {formatQty(item.par_level, item.base_uom)}</p>
         {canPhoto && photosEnabled() && <ItemPhoto item={item.item_id} has={!!item.photo_key} />}
       </div>
       <h2 className="text-sm font-semibold text-slate-500">Latest movements</h2>

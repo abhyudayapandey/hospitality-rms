@@ -7,6 +7,7 @@ import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/mes
 import { formatMoney } from '@/lib/format';
 import { receiveGoods } from '../../actions';
 import { BillFiles, type BillFile } from '../../bills/bill-files';
+import { formatQty } from '@/lib/qty';
 
 export interface ReceiveLine {
   item_id: string;
@@ -17,7 +18,7 @@ export interface ReceiveLine {
 }
 
 const left = (l: ReceiveLine) => Math.max(0, Number(l.ordered) - Number(l.received));
-const qtyText = (n: number, uom: string) => `${Number(n.toFixed(3))} ${uom}`;
+const qtyText = (n: number, uom: string) => formatQty(n, uom);
 
 /**
  * Receiving an order (ADR 051): for each item still to come, what arrived and what it cost

@@ -7,6 +7,8 @@ import { ListSearch } from '@/components/list-search';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { byGroup } from '@/lib/item-groups';
 import { toKeepLevel } from '@/lib/send-keep';
+import { FillToPar } from '@/components/fill-to-par';
+import { formatQty, inputQty } from '@/lib/qty';
 import { sendStock } from '../../actions';
 
 export interface SendItem {
@@ -15,7 +17,7 @@ export interface SendItem {
   base_uom: string;
   on_hand: string;
   item_group: string | null;
-  /** what the department has and keeps (ADR 053) */
+  /** what the department has and its par (ADR 053) */
   to_on_hand: string;
   to_keep: string;
 }
@@ -29,7 +31,7 @@ export function SendStockForm({
 }: {
   from: string;
   to: string;
-  /** the department's short name: "Kitchen has 2 kg · keeps 10" */
+  /** the department's short name: "Kitchen Store: 2 kg · par 10 kg" */
   toName: string;
   items: SendItem[];
   done: string;
@@ -40,6 +42,7 @@ export function SendStockForm({
   const [pending, start] = useTransition();
   const hydrated = useHydrated();
   const [error, setError] = useState<string | null>(null);
+  const [filled, setFilled] = useState(false);
   const lines = items
     .map((i) => ({ item_id: i.item_id, qty: Number(qty[i.item_id]) }))
     .filter((l) => qty[l.item_id]?.trim() && l.qty > 0);
@@ -67,21 +70,25 @@ export function SendStockForm({
     >
       <div id="send-lines" className="space-y-2">
         <ListSearch scope="send-lines" count={items.length} noun="items" />
-        {short.length > 0 && (
-          <button
-            type="button"
-            data-testid="fill-to-keep"
-            className="min-h-11 text-sm font-medium text-brand-700 underline"
-            onClick={() =>
-              setQty((v) => ({
-                ...v,
-                ...Object.fromEntries(short.map((i) => [i.item_id, String(toKeepLevel(i))])),
-              }))
-            }
-          >
-            Fill to keep level ({short.length} {short.length === 1 ? 'item' : 'items'} short)
-          </button>
-        )}
+        <FillToPar
+          short={short.length}
+          filled={filled}
+          onFill={() => {
+            setQty((v) => ({
+              ...v,
+              ...Object.fromEntries(short.map((i) => [i.item_id, inputQty(toKeepLevel(i))])),
+            }));
+            setFilled(true);
+          }}
+          onClear={() => {
+            setQty((v) =>
+              Object.fromEntries(
+                Object.entries(v).filter(([id]) => !short.some((i) => i.item_id === id)),
+              ),
+            );
+            setFilled(false);
+          }}
+        />
         {byGroup(items).map((g) => (
           <section key={g.group} className="space-y-1" data-testid={`group-${g.group}`}>
             <h2 className="text-sm font-semibold text-slate-500">{g.label}</h2>
@@ -98,14 +105,15 @@ export function SendStockForm({
                       {i.name}
                     </span>
                     <span className="block text-xs text-slate-500">
-                      in stock here: {Number(i.on_hand)} {i.base_uom}
+                      In stock here {formatQty(i.on_hand, i.base_uom)}
                     </span>
                     <span
                       className={`block text-xs ${toKeepLevel(i) > 0 ? 'font-medium text-rose-700' : 'text-slate-500'}`}
                       data-testid="their-stock"
                     >
-                      {toName} has {Number(i.to_on_hand)} {i.base_uom}
-                      {Number(i.to_keep) > 0 ? ` · keeps ${Number(i.to_keep)}` : ''}
+                      {toName} {formatQty(i.to_on_hand, i.base_uom)}
+                      {Number(i.to_keep) > 0 ? ` · par ${formatQty(i.to_keep, i.base_uom)}` : ''}
+                      {Number(i.to_on_hand) < 0 ? ' (below zero: count it)' : ''}
                     </span>
                   </label>
                   <input
@@ -114,6 +122,13 @@ export function SendStockForm({
                     inputMode="decimal"
                     value={qty[i.item_id] ?? ''}
                     onChange={(e) => setQty((v) => ({ ...v, [i.item_id]: e.target.value }))}
+                    onBlur={(e) =>
+                      e.target.value.trim() &&
+                      setQty((v) => ({
+                        ...v,
+                        [i.item_id]: inputQty(e.target.value) || e.target.value,
+                      }))
+                    }
                     className={`${inputClass} max-w-28 text-right`}
                   />
                 </li>

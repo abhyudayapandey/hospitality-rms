@@ -2092,8 +2092,32 @@ GM's order notice). No stack change, nothing to re-import.
 
 1. Merge, then **Deploy** as usual (the migration runs with it). `cdk diff` shows nothing.
 2. Check, as the Executive Chef 1.0: Ask for supplies is empty, each line says "have · keep",
-   the text says the Main Store orders it; **Fill to keep level** fills the short items.
+   the text says the Main Store orders it; **Fill to keep level** fills the short items (ADR 054 renames it **Fill all N short items up to par**).
 3. Check, as the Store Keeper 1.0: Transfers opens on **To send**; Send stock → Kitchen Store
    says what the kitchen has and keeps, short items first; Home's Count tile says when it was
    last counted; Stock shows 4 tabs and **More**.
 4. Check, as the General Manager 1.0: an approval on Home names its items and says "about ₹".
+
+## Releasing par, two decimals and More / Less (ADR 054)
+
+No migration, no stack change, nothing to re-import.
+
+1. Merge, then **Deploy** as usual. `cdk diff` shows nothing.
+2. Check, as the Executive Chef 1.0: Ask for supplies says "In stock 15.2 kg · par 20 kg" on each
+   line; the full-width **Fill all N short items up to par** button fills the boxes with at most
+   2 decimals and then reads **Clear the amounts**.
+3. Check, as the Store Keeper 1.0: Send stock → Kitchen Store says "Kitchen Store 15.2 kg · par
+   20 kg", a department below zero says "(below zero: count it)"; no quantity anywhere shows more
+   than 2 decimals. Stock shows 4 tabs and **More (4) ▾** in the same row; it shows Wastage,
+   Make, Stock check and Bills after Count and becomes **Less ▴**.
+
+## Releasing tap feedback, faster screens and the reload bar (ADR 055)
+
+Ships with ADR 054 in one PR. No migration, no stack change, nothing to re-import.
+
+1. Merge, then **Deploy** as usual. `cdk diff` shows nothing.
+2. Check, on a phone, as anyone: a tap on a tab or a row shows the next screen's grey outline at
+   once, with a thin bar at the top, and the screen fills in. Tapping again while it loads
+   does nothing.
+3. Check, with the app left open from before the deploy: when it comes back to the screen, a
+   bar says "A new version of the app is ready". **Reload** loads the new version.

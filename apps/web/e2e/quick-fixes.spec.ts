@@ -74,8 +74,8 @@ test('stock position: all of the outlet’s stores, with expired and expiring va
   await signInAs(page, 'Test General Manager 1.0');
   await page.goto('/reports/stock');
   // the GM opens on all of the outlet's stores
-  expect(await viewing(page)).toBe('Test Hotel & Bar 1.0 – All stores');
-  expect(await viewingOptions(page)).toContain('Test Hotel & Bar 1.0 – Kitchen Store');
+  await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – All stores');
+  await expect.poll(() => viewingOptions(page)).toContain('Test Hotel & Bar 1.0 – Kitchen Store');
   await expect(page.getByTestId('measure-expired_stock_value').getByTestId('value')).toHaveText(
     '₹25',
   );

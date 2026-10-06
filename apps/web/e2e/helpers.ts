@@ -239,22 +239,35 @@ export async function setupPeopleWeek(monday: string): Promise<void> {
 }
 
 /**
+ * A tap now shows the next screen's skeleton at once and its address before its content
+ * (ADR 055): wait until the screen is in before reading it.
+ */
+export async function settled(page: Page): Promise<void> {
+  await expect(page.getByTestId('page-loading')).toHaveCount(0, { timeout: 30_000 });
+}
+
+/**
  * The place the "Place:" switcher shows (ADR 016), by its full name: the chosen option
  * when it is a picker (options show short names; data-name has the full one), the label
  * when there is only one place, '' when the screen shows none.
  */
 export async function viewing(page: Page): Promise<string> {
+  await settled(page);
   const bar = page.getByTestId('place-switcher');
   if ((await bar.count()) === 0) return '';
   const picker = bar.getByRole('combobox', { name: 'Place' });
   if ((await picker.count()) > 0) {
     return (await picker.locator('option:checked').getAttribute('data-name')) ?? '';
   }
-  return (await bar.getByTestId('viewing').textContent())?.trim() ?? '';
+  // no waiting here: a screen mid-change may have neither yet, and callers poll
+  const label = bar.getByTestId('viewing');
+  if ((await label.count()) === 0) return '';
+  return (await label.textContent())?.trim() ?? '';
 }
 
 /** The full names of the "Place:" picker's options ([] when it is a plain label or absent). */
 export async function viewingOptions(page: Page): Promise<string[]> {
+  await settled(page);
   const picker = page.getByTestId('place-switcher').getByRole('combobox', { name: 'Place' });
   if ((await picker.count()) === 0) return [];
   return picker

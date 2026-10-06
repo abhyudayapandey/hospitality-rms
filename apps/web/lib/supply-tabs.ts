@@ -1,5 +1,6 @@
-// The supply tabs a person sees (ADR 053): up to 4, the rest under "More", so eight pills do
-// not push the screen down. The screen they are on is always among the 4. Pure, for tests.
+// The Stock screen's tabs (ADR 053, 054): up to 4, then a "More" button that shows the rest in
+// the same row and turns into "Less". Tabs keep their order; when the screen you are on is
+// one of the rest, the row opens already showing them. Pure, for tests.
 
 export const SHOWN_TABS = 4;
 
@@ -8,10 +9,8 @@ export function splitTabs<T extends { href: string }>(
   tabs: readonly T[],
   active: string,
   max = SHOWN_TABS,
-): { shown: T[]; more: T[] } {
-  if (tabs.length <= max + 1) return { shown: [...tabs], more: [] };
-  const shown = tabs.slice(0, max);
-  const current = tabs.find((t) => t.href === active);
-  if (current && !shown.includes(current)) shown[max - 1] = current;
-  return { shown, more: tabs.filter((t) => !shown.includes(t)) };
+): { shown: T[]; more: T[]; open: boolean } {
+  if (tabs.length <= max + 1) return { shown: [...tabs], more: [], open: false };
+  const more = tabs.slice(max);
+  return { shown: tabs.slice(0, max), more, open: more.some((t) => t.href === active) };
 }

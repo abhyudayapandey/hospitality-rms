@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
 import { PhotoField } from '@/components/photo-field';
 import {
@@ -42,7 +43,7 @@ interface Entry {
 
 /** A quantity with its unit; this file runs in the browser, so it cannot use lib/inventory. */
 function formatQty(qty: string | number, uom: string): string {
-  const text = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 3 }).format(Number(qty));
+  const text = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(Number(qty));
   return `${text} ${uom}`;
 }
 
@@ -97,6 +98,8 @@ export function CheckSheet({
   const [review, setReview] = useState<ReviewLine[] | null>(null);
   const [photoKeys, setPhotoKeys] = useState<Record<string, string | null>>({});
   const [pending, start] = useTransition();
+  // counts typed before the page is live would not be saved on the phone (ADR 055)
+  const hydrated = useHydrated();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -279,7 +282,7 @@ export function CheckSheet({
 
   let lastShelf: string | null | undefined;
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-ready={hydrated ? 'yes' : undefined} data-testid="check-sheet">
       <label className="block space-y-1">
         <span className="text-sm font-medium">Area you are counting (optional)</span>
         <input

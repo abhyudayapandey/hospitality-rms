@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { placeOrder, type OrderGroup } from '../../actions';
+import { formatQty } from '@/lib/qty';
 
 export interface PlaceLine {
   item_id: string;
@@ -127,9 +128,7 @@ export function PlaceOrderForm({
           <li key={l.item_id} className="space-y-2 px-4 py-2" data-testid="place-line">
             <p className="flex justify-between gap-2 text-sm">
               <span className="font-medium">{l.name}</span>
-              <span className="tabular-nums text-slate-600">
-                {Number(l.qty)} {l.base_uom}
-              </span>
+              <span className="tabular-nums text-slate-600">{formatQty(l.qty, l.base_uom)}</span>
             </p>
             {several &&
               supplierSelect(

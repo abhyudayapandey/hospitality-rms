@@ -113,7 +113,7 @@ test('report a problem (commis)', async ({ page }) => {
 test('record wastage (store keeper)', async ({ page }) => {
   const j = await start(page, 'Test Store Keeper 1.0');
   await j.go(nav(page, 'Stock'));
-  // the store's jobs under its list (ADR 052); the Wastage tab is under More (ADR 053)
+  // the store's jobs under its list (ADR 052); the Wastage tab is behind More (ADR 053, 054)
   await j.go(
     page
       .getByRole('navigation', { name: 'Stock jobs' })
@@ -128,7 +128,9 @@ test('record wastage (store keeper)', async ({ page }) => {
 test('count a store (store keeper)', async ({ page }) => {
   const j = await start(page, 'Test Store Keeper 1.0');
   await j.go(nav(page, 'Stock'));
-  await j.go(page.getByRole('navigation', { name: 'Supply' }).getByRole('link', { name: 'Count' }));
+  await j.go(
+    page.getByRole('navigation', { name: 'Stock tabs' }).getByRole('link', { name: 'Count' }),
+  );
   await j.last(page.getByRole('button', { name: 'Start a count' }));
   j.done('Start a count', 'Store keeper', { there: 2, form: 1 });
 });

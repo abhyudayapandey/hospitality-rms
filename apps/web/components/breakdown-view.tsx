@@ -17,7 +17,7 @@ const money = (v: string | number | null) => formatMeasure('money', v);
 const pct = (v: string | number | null) => formatMeasure('pct', v);
 const hrs = (v: string | number | null) => formatMeasure('hours', v);
 const qtyText = (q: string, unit: string) =>
-  `${Number(q).toLocaleString('en-IN', { maximumFractionDigits: 3 })} ${unit}`;
+  `${Number(q).toLocaleString('en-IN', { maximumFractionDigits: 2 })} ${unit}`;
 const sum = <T,>(rows: readonly T[], f: (r: T) => number) => rows.reduce((s, r) => s + f(r), 0);
 
 /** A section that opens and closes; closed by default. */

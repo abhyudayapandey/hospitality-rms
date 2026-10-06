@@ -111,11 +111,18 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   keeper closes an order whose rest is not coming ("closed"), whoever asked withdraws one not
   yet ordered. A request to the Main Store is a "Supply request". Dark is the default theme
   (`html[data-theme]`, `lib/theme.ts`); colours come from the palette, never hard-coded.
-- Forms that ask for or send stock fill nothing in and say what the store has and keeps, with
-  "Fill to keep level" (ADR 053). Back links return to the list as it was (`withBack`,
+- Forms that ask for or send stock fill nothing in and say what the store has and its par, with
+  a "Fill all N short items up to par" button (ADR 053, 054). The word is "par" everywhere.
+  Quantities show at most 2 decimals (`formatQty` / `inputQty`, `lib/qty.ts`); the DB keeps 6. Back links return to the list as it was (`withBack`,
   `backHref`, `lib/back.ts`). One name per thing: Supply request (buy), Stock request (from a
   store), Stock check, Reject, "waiting for approval". A step or status is never shown as its
-  code. Supply tabs show 4, the rest under More.
+  code. The Stock tabs show 4, then a "More" text button that shows the rest in the same row
+  and becomes "Less". To users it is "To do list" (never "Inbox") and "Stock" (never "Supply").
+- Every screen under `app/(app)` has a `loading.tsx` (the shared `page-skeleton`), so a tap
+  shows the next screen's shape at once; taps look pressed, a bar runs at the top and a second
+  tap is ignored (ADR 055). A new screen needs its `loading.tsx`. The bottom nav's Menu, Make
+  and Reports checks are kept per person (`lib/shell.ts`), never the access itself. A build
+  has one id (`NEXT_PUBLIC_BUILD_ID`); an open app on an older one offers "Reload".
 
 ## Commands
 ```

@@ -85,3 +85,41 @@
   --color-brand-700: oklch(78% 0.09 178);
   --color-brand-800: oklch(86% 0.07 178);
 }
+
+/* Tap feedback (ADR 055): a pressed look the moment a finger lands, the tapped link dimmed
+   while its screen loads, and a thin moving bar at the top. */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+:where(a, button, summary, label):active:not(:disabled) {
+  opacity: 0.6;
+}
+a[data-pending] {
+  opacity: 0.6;
+  cursor: progress;
+}
+.nav-progress {
+  background: var(--color-brand-100);
+}
+.nav-progress::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: var(--color-brand-700);
+  animation: nav-progress 1.1s ease-in-out infinite;
+}
+@keyframes nav-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-progress::before {
+    animation: none;
+    width: 100%;
+  }
+}

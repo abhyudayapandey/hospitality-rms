@@ -138,6 +138,8 @@ test('offline: a count is saved on the phone and sent, with its time, when the s
   await page.getByRole('button', { name: 'Start a stock check' }).click();
   await page.waitForURL(/\/stock\/check\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
+  // the sheet must be in and live before the signal goes (ADR 055)
+  await expect(page.getByTestId('check-sheet')).toHaveAttribute('data-ready', 'yes');
 
   await context.setOffline(true);
   const count = page.getByRole('textbox', { name: `Counted ${item.name}` });

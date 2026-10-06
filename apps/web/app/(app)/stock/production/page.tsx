@@ -8,6 +8,7 @@ import { batches, madeHere, productionPlan } from '@/lib/production';
 import { shelfLifeText, useByText } from '@/lib/shelf-life';
 import { ProductionForm } from './production-form';
 import { ReportExpired } from './report-expired';
+import { inputQty } from '@/lib/qty';
 
 // Production (ADR 015): record a batch of a prep item made at this store. Ingredients leave
 // by the recipe scaled to the batch (actual quantities can be changed), the batch arrives
@@ -53,7 +54,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
                   {canWaste && (
                     <Link
                       className="block text-xs underline"
-                      href={`/stock/wastage?node=${node}&item=${b.item_id}&qty=${Number(b.remaining)}&reason=expired`}
+                      href={`/stock/wastage?node=${node}&item=${b.item_id}&qty=${inputQty(b.remaining)}&reason=expired`}
                     >
                       or record the wastage yourself
                     </Link>

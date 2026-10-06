@@ -13,7 +13,7 @@ test('the GM: Stock is one screen with four tabs; running low opens All stores',
   const n = Number((await low.locator('.font-bold').innerText()).trim());
   await low.click();
   await page.waitForURL(/\/stock\?.*tab=low/);
-  expect(await viewing(page)).toBe('All stores');
+  await expect.poll(() => viewing(page)).toBe('All stores');
   for (const t of ['all', 'low', 'expiring', 'expired']) {
     await expect(page.getByTestId(`tab-${t}`)).toBeVisible();
   }
@@ -21,7 +21,7 @@ test('the GM: Stock is one screen with four tabs; running low opens All stores',
   await expect(page.getByTestId('stock-row')).toHaveCount(n);
   // another tab keeps All stores; the whole list is one tap away
   await page.getByTestId('tab-all').click();
-  expect(await viewing(page)).toBe('All stores');
+  await expect.poll(() => viewing(page)).toBe('All stores');
   expect(await page.getByTestId('stock-row').count()).toBeGreaterThanOrEqual(n);
   // an old address still lands on the right tab
   await page.goto('/stock/expiry?show=expired');
@@ -37,7 +37,7 @@ test('the GM: open shifts open the roster for All departments, a section each', 
     .getByRole('link', { name: /open shifts? this week/ })
     .click();
   await page.waitForURL(/\/roster\/week\?.*all=1/);
-  expect(await viewing(page)).toBe('All departments');
+  await expect.poll(() => viewing(page)).toBe('All departments');
   const sections = page.getByTestId('department-section');
   expect(await sections.count()).toBeGreaterThan(0);
   // a department with open slots is open, its Assign link one tap away
@@ -51,7 +51,7 @@ test('the GM: attendance issues open Exceptions for All departments', async ({ p
     .getByRole('link', { name: /attendance issues?/ })
     .click();
   await page.waitForURL(/\/roster\/exceptions\?.*all=1/);
-  expect(await viewing(page)).toBe('All departments');
+  await expect.poll(() => viewing(page)).toBe('All departments');
   await expect(page.getByTestId('exceptions')).toBeVisible();
 });
 
@@ -67,7 +67,7 @@ test('the GM: one open-repairs line, Assign; Maintenance has All departments and
   const n = Number((await line.locator('.font-bold').innerText()).trim());
   await line.click();
   await page.waitForURL(/\/tasks\/maintenance\?.*all=1/);
-  expect(await viewing(page)).toBe('All departments');
+  await expect.poll(() => viewing(page)).toBe('All departments');
   await expect(page.getByTestId('tab-assign')).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('maintenance').getByRole('listitem')).toHaveCount(n);
   // Report a problem is after the list, not above it
@@ -79,10 +79,10 @@ test('the GM: one open-repairs line, Assign; Maintenance has All departments and
 test('Orders and Transfers: All stores, with To receive and To send tabs', async ({ page }) => {
   await signInAs(page, 'Test General Manager 1.0', { expanded: false });
   await page.goto('/stock/orders?all=1&tab=receive');
-  expect(await viewing(page)).toBe('All stores');
+  await expect.poll(() => viewing(page)).toBe('All stores');
   await expect(page.getByTestId('tab-receive')).toHaveAttribute('aria-current', 'page');
   await page.goto('/stock/transfers?all=1&tab=send');
-  expect(await viewing(page)).toBe('All stores');
+  await expect.poll(() => viewing(page)).toBe('All stores');
   await expect(page.getByTestId('tab-send')).toHaveAttribute('aria-current', 'page');
 });
 
@@ -114,7 +114,7 @@ test("the GM: a department's line under All departments opens that department, n
     const dept = await line.locator('xpath=ancestor::section[1]').getAttribute('aria-label');
     await line.click();
     await page.waitForURL(/\/roster\/exceptions\?node=/);
-    expect(await viewing(page)).toContain(dept!);
+    await expect.poll(() => viewing(page)).toContain(dept!);
     await expect(page.getByTestId('exception')).toHaveCount(want);
   }
 });

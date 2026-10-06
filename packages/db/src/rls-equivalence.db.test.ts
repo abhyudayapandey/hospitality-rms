@@ -101,7 +101,8 @@ async function registrations(c: PoolClient): Promise<Registration[]> {
 // run by the manual "RLS equivalence (all users)" workflow before the pilot and whenever
 // access rules change.
 const ALL_USERS = process.env.RLS_ALL_USERS === '1';
-const SLOW = ALL_USERS ? 3_600_000 : 300_000;
+// a slow CI runner took just over 5 minutes for the select check (PR 72): 10 is the limit
+const SLOW = ALL_USERS ? 3_600_000 : 600_000;
 
 /** One holder of every distinct grant shape, plus a user with no grants at all. */
 async function userIds(c: PoolClient): Promise<{ id: string; name: string }[]> {
@@ -369,7 +370,7 @@ describe('ADR 007 policies are equivalent to per-row core.can()', () => {
 
   it(
     'covers SELF, derived and include_descendants (the rules the set must reproduce)',
-    { timeout: 60_000 },
+    { timeout: 180_000 },
     async () => {
       await inRolledBackTx(async (c) => {
         await fixtures(c);

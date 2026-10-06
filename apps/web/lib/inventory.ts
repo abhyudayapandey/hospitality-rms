@@ -10,6 +10,7 @@ import { loadShell, type Shell } from './shell';
 // delivery node (ADR 007: node-filtered reads stay well under 200 ms).
 
 export { isUuid, param, type SearchParams } from './params';
+export { formatQty, inputQty } from './qty';
 
 export interface SupplyContext {
   shell: Shell;
@@ -201,16 +202,6 @@ export function movementLabel(type: string, reason: string | null): string {
   };
   const r = reason && reason !== 'opening balance' ? ` · ${reason.replace(/_/g, ' ')}` : '';
   return `${base[type] ?? type}${r}`;
-}
-
-/** Decimals worth showing per unit: whole g and ml, 2 for bottles, cans and packs. */
-const UNIT_DECIMALS: Record<string, number> = { g: 0, ml: 0, each: 2, kg: 3, l: 3 };
-
-export function formatQty(qty: string | number, uom: string): string {
-  const n = Number(qty);
-  const digits = UNIT_DECIMALS[uom] ?? 2;
-  const text = new Intl.NumberFormat('en-IN', { maximumFractionDigits: digits }).format(n);
-  return `${text} ${uom}`;
 }
 
 /** Purchase order progress (inv.purchase_order_summary.progress): label and badge style. */
