@@ -161,7 +161,7 @@ const PEOPLE: Person[] = [
     user: 'test.ashesh-sajnani',
   },
   P('presenter', 'Demo Presenter', 'ACCOUNT_OWNER', '(company)', 1),
-  P('gm', 'Anjali Fernandes', 'GENERAL_MANAGER', null, 160000),
+  P('gm', 'Sainath', 'GENERAL_MANAGER', null, 160000),
   P('front-office-manager', "Rohan D'Souza", 'FRONT_OFFICE_MANAGER', 'FRONT-OFFICE', 65000),
   P('front-desk', 'Sneha Naik', 'FRONT_DESK_EXECUTIVE', 'FRONT-OFFICE', 28000),
   P('bell-captain', 'Joaquim Pereira', 'BELL_CAPTAIN', 'FRONT-OFFICE', 24000),

@@ -24,6 +24,8 @@ test('a demo presenter shows the app as the bar manager, then comes back', async
 
     await page.waitForURL((u) => u.pathname === '/');
     await expect(page.getByTestId('current-user')).toHaveText('Test Bar Manager 3.0');
+    // their job title beside their name
+    await expect(page.getByTestId('current-role')).toHaveText('Bar Manager');
     const banner = page.getByTestId('show-as-banner');
     await expect(banner).toContainText('Showing as Test Bar Manager 3.0');
     // every screen is theirs: their stock, not the owner's company-wide view

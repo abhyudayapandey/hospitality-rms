@@ -40,6 +40,8 @@ export interface Shell {
   nodes: NodeRow[];
   /** where the person works (their worker row), if they have one */
   home: HomePlace | null;
+  /** their job title, beside their name in the header */
+  jobTitle: string | null;
   inboxCount: number;
   unreadCount: number;
   /** they can read a recipe or see menu costs somewhere (the Menu tab) */
@@ -96,6 +98,11 @@ export const loadShell = cache(async (): Promise<Shell> => {
       tx,
     );
     const home = await sql<HomePlace>`select * from core.my_home()`.execute(tx);
+    const title = await sql<{ name: string }>`
+      select jr.name from hr.worker w
+        join hr.job_role jr on jr.tenant_id = w.tenant_id and jr.code = w.role_code
+       where w.owner_user_id = core.current_user_id() and w.status = 'active'
+       limit 1`.execute(tx);
     // approvals, plus expired batches and maintenance requests to assign (ADR 020), plus the
     // order desk's requests to order and orders to receive (ADR 049, 052): all of it is listed
     const inbox = await sql<{ n: number }>`
@@ -155,6 +162,7 @@ export const loadShell = cache(async (): Promise<Shell> => {
       groups: groupSet,
       nodes: nodes.rows,
       home: home.rows[0] ?? null,
+      jobTitle: title.rows[0]?.name ?? null,
       inboxCount: inbox.rows[0]?.n ?? 0,
       unreadCount: unreadLines(recent.rows, tz),
       ...flags,
