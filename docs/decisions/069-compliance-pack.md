@@ -42,12 +42,9 @@ A licence that lapses closes the outlet; a job not done fails the next inspectio
 6. **Documents** are photos or PDFs under `compliance/<tenant>/<outlet>/` in the photo bucket,
    up to 5 each, 10 MB like bills. **They never expire**: no lifecycle rule touches the
    prefix. The instance role gains put and get on `compliance/*` (a stack change).
-7. **Home** names what is late: "N compliance jobs overdue" (Open) and "N licences expiring"
-   (Renew, 90 days or expired), each opening Compliance on its tab with All outlets chosen
-   (ADR 038, 048). Compliance is one screen with four tabs: Licences, Calendar, Expiring,
-   Overdue; each tab's count is its list, counted in SQL (ADR 052). The two lines take their turn among
-   Home's five (low stock, late tasks and open shifts come first); a late renewal or job is
-   also a late task.
+7. **Home** shows Compliance first (see the addendum below). Compliance is one screen with
+   four tabs: Licences, Calendar, Expiring, Overdue; each tab's count is its list, counted in
+   SQL (ADR 052).
 8. **The set-up wizard asks "What they buy"** right after Outlets. Every bundle is listed: the
    ones the chosen outlets usually need are ticked, the rest unticked under "Also available".
    Compliance is offered, never ticked by itself. With it, the wizard writes files 38
@@ -68,3 +65,25 @@ A licence that lapses closes the outlet; a job not done fails the next inspectio
   calendar jobs (Hotel 1.0's pest control overdue). Test Solo Bar Co. hasn't bought it.
 - `pnpm db:seed` runs the tasks job once, so the FSSAI renewal and the pest control service
   are on the General Manager's To do list after a seed.
+
+## Addendum: Compliance first on Home (migration 20261126100000)
+
+A lapsed licence or a missed inspection can close the outlet, so compliance is never one of
+Home's five "Do these first" lines, where it could be crowded out. It is its own card, **the
+first thing on Home**, above the shift, the tiles and everything else.
+
+- **Rows**, one per licence or job, each opening what it is about: red for an expired licence
+  or an overdue job, amber for a licence expiring within 90 days or a job due within 14 (the
+  windows that put them on a To do list). Red first, then by days left; five rows, then "N
+  more". The count ("2 need action") opens Compliance with All outlets chosen, on the tab
+  holding what is most urgent.
+- **Nothing to do**: those who keep or see Compliance get one green line, "Compliance: all
+  licences valid, nothing overdue" (or "no licences recorded yet" when there are none), so
+  it is confirmed every day without taking room.
+- **Someone who doesn't keep it** (a Chief Engineer, an Executive Chef) sees only the
+  renewals and jobs whose reminder is with them, each opening their To do item; with none,
+  no card.
+- One query, `ops.compliance_attention()`, over what the caller sees: its licence rows are
+  the Expiring tab and its overdue jobs the Overdue tab (pinned in
+  `compliance.db.test.ts`). No new access.
+- Compliance is also first in the menu's Team section.

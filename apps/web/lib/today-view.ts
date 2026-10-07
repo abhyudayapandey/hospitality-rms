@@ -1,6 +1,7 @@
 // Home is "Today" (UX review U-1, UX-2): a short list of cards, each with one action.
 // These helpers choose what each card shows; they are pure so they can be unit tested.
 
+import { daysWords } from '@outlet-ops/domain';
 import { formatSpan, localDate } from './dates';
 import { listHref, stockHref } from './stock-view';
 
@@ -267,8 +268,6 @@ export function doFirst(
     openSlotsHref?: string | null;
     /** they may ask for or order supplies somewhere; else running low is only to see (ADR 052) */
     canOrder?: boolean;
-    /** licences expiring in 90 days (or expired) and compliance jobs overdue (ADR 069) */
-    compliance?: { expiring: number; overdue: number };
   },
   max = DO_FIRST_MAX,
 ): DoFirstItem[] {
@@ -321,26 +320,6 @@ export function doFirst(
       href: LINE.repairs.href,
     },
     {
-      key: 'complianceOverdue',
-      tone: 'bad',
-      n: input.compliance?.overdue ?? 0,
-      text: plural(
-        input.compliance?.overdue ?? 0,
-        'compliance job overdue',
-        'compliance jobs overdue',
-      ),
-      action: 'Open',
-      href: listHref('/compliance', { all: true, tab: 'overdue' }),
-    },
-    {
-      key: 'licences',
-      tone: 'warn',
-      n: input.compliance?.expiring ?? 0,
-      text: plural(input.compliance?.expiring ?? 0, 'licence expiring', 'licences expiring'),
-      action: 'Renew',
-      href: listHref('/compliance', { all: true, tab: 'expiring' }),
-    },
-    {
       key: 'toAssign',
       tone: 'warn',
       n: input.toAssign,
@@ -356,4 +335,94 @@ export function doFirst(
       return { ...x, text: x.text || (x.n === 1 ? line.one : line.many) };
     })
     .slice(0, max);
+}
+
+/** A row of Home's Compliance card: a licence or calendar job that needs action (ADR 069). */
+export interface ComplianceRow {
+  kind: 'licence' | 'job';
+  id: string;
+  task_id: string | null;
+  place_name: string;
+  name: string;
+  days_left: number;
+  /** not theirs to keep: the reminder is with them, so it opens their To do item */
+  own: boolean;
+}
+
+export interface ComplianceInput {
+  /** they see Compliance (keepers, area, owner); else only their own reminders */
+  keeps: boolean;
+  /** licences and calendar jobs recorded where they see them */
+  recorded: number;
+  rows: readonly ComplianceRow[];
+}
+
+export const COMPLIANCE_CARD_ROWS = 5;
+
+/**
+ * Home's Compliance card, above everything else (ADR 069 addendum): a lapsed licence or a
+ * missed inspection can close the outlet. Red for expired and overdue, amber for what is
+ * coming (licences within 90 days, jobs within 14). With nothing to do, a keeper gets one
+ * green line; someone with only their own reminders gets nothing.
+ */
+export function complianceCard(c: ComplianceInput | null): {
+  tone: 'bad' | 'warn' | 'ok' | 'empty';
+  title: string;
+  href: string;
+  rows: {
+    key: string;
+    tone: 'bad' | 'warn';
+    name: string;
+    place: string;
+    when: string;
+    href: string;
+  }[];
+  more: number;
+} | null {
+  if (!c) return null;
+  const all = listHref('/compliance', { all: true });
+  if (c.rows.length === 0) {
+    if (!c.keeps) return null;
+    return c.recorded === 0
+      ? { tone: 'empty', title: 'No licences recorded yet', href: all, rows: [], more: 0 }
+      : {
+          tone: 'ok',
+          title: 'All licences valid, nothing overdue',
+          href: all,
+          rows: [],
+          more: 0,
+        };
+  }
+  const bad = c.rows.filter((r) => r.days_left < 0).length;
+  const rows = c.rows.slice(0, COMPLIANCE_CARD_ROWS).map((r) => ({
+    key: `${r.kind}-${r.id}`,
+    tone: r.days_left < 0 ? ('bad' as const) : ('warn' as const),
+    name: r.name,
+    place: r.place_name,
+    when: daysWords(r.days_left, r.kind === 'licence' ? 'Expires' : 'Due'),
+    href:
+      r.own && r.task_id
+        ? `/tasks/${r.task_id}`
+        : r.kind === 'licence'
+          ? `/compliance/licences/${r.id}`
+          : `/compliance/calendar/${r.id}`,
+  }));
+  const n = c.rows.length;
+  return {
+    tone: bad > 0 ? 'bad' : 'warn',
+    title: `${n} ${n === 1 ? 'needs' : 'need'} action`,
+    // the tab holding what is most urgent: an overdue job, else the licences, else the calendar
+    href: c.keeps
+      ? listHref('/compliance', {
+          all: true,
+          tab: c.rows.some((r) => r.kind === 'job' && r.days_left < 0)
+            ? 'overdue'
+            : c.rows.some((r) => r.kind === 'licence')
+              ? 'expiring'
+              : 'calendar',
+        })
+      : '/inbox',
+    rows,
+    more: n - rows.length,
+  };
 }

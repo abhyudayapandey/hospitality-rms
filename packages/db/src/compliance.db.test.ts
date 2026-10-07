@@ -359,3 +359,74 @@ describe('the calendar', () => {
     });
   });
 });
+
+describe("Home's Compliance card (ADR 069 addendum)", () => {
+  type Row = { kind: string; name: string; days_left: number; own: boolean; task: boolean };
+  const card = async (c: pg.PoolClient, who: string) => {
+    const r = await attemptAs<Row>(
+      c,
+      ids.user(who),
+      `select kind, name, days_left, own, task_id is not null as task
+         from ops.compliance_attention()`,
+    );
+    expect(r.error, who).toBeUndefined();
+    return r.rows!;
+  };
+
+  it('its rows are the Expiring tab and the jobs due within 14 days, red first', async () => {
+    await inRolledBackTx(async (c) => {
+      for (const who of [GM, 'test.area-manager', 'test.account-owner']) {
+        const rows = await card(c, who);
+        expect(rows.map((r) => [r.kind, r.name, r.own])).toEqual([
+          ['job', 'Pest control service', false],
+          ['licence', 'FSSAI licence', false],
+        ]);
+        expect(rows.every((r) => r.days_left < 0)).toBe(true);
+        // the licence rows are exactly the Expiring tab, the overdue jobs the Overdue tab
+        const expiring = await attemptAs<{ name: string }>(
+          c,
+          ids.user(who),
+          `select name from ops.licences(null) where days_left <= 90`,
+        );
+        expect(rows.filter((r) => r.kind === 'licence').map((r) => r.name)).toEqual(
+          expiring.rows!.map((x) => x.name),
+        );
+        const overdue = await attemptAs<{ name: string }>(
+          c,
+          ids.user(who),
+          `select name from ops.compliance_items(null) where days_left < 0`,
+        );
+        expect(rows.filter((r) => r.kind === 'job' && r.days_left < 0).map((r) => r.name)).toEqual(
+          overdue.rows!.map((x) => x.name),
+        );
+      }
+      // a job due within 14 days joins in amber, after the red ones
+      await c.query(
+        `update ops.compliance_item set next_due = current_date + 10 where name = 'Lift rescue drill'`,
+      );
+      const rows = await card(c, GM);
+      expect(rows.map((r) => r.name)).toEqual([
+        'Pest control service',
+        'FSSAI licence',
+        'Lift rescue drill',
+      ]);
+      expect(rows[2]!.days_left).toBeGreaterThanOrEqual(9);
+    });
+  });
+
+  it('someone who does not keep it sees only the reminders that are theirs; others nothing', async () => {
+    await inRolledBackTx(async (c) => {
+      expect(await card(c, 'test.chief-engineer.1.0')).toEqual([]);
+      await c.query(
+        `update ops.compliance_item set next_due = current_date + 5 where name = 'Lift rescue drill'`,
+      );
+      await c.query(`select * from ops.compliance_tick()`);
+      expect(await card(c, 'test.chief-engineer.1.0')).toEqual([
+        { kind: 'job', name: 'Lift rescue drill', days_left: 5, own: true, task: true },
+      ]);
+      // nothing for a cook, nor for the Solo Bar, which hasn't bought it
+      expect(await card(c, 'test.commis.1.0')).toEqual([]);
+      expect(await card(c, 'test.solo.bar-manager')).toEqual([]);
+    });
+  });
+});

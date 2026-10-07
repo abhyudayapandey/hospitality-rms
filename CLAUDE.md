@@ -166,8 +166,11 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 - Compliance (ADR 069) is a bundle out of the plan until the platform admin adds it: licences
   (`ops.licence`, renewed by a job role, GM by default) and calendar jobs (`ops.compliance_item`,
   not checklists). Reminders are To do items from `ops.compliance_tick` (90 days before expiry,
-  14 before a job); documents under `compliance/` never expire. The wizard's "What they buy"
-  step lists every bundle, the usual ones ticked; bundles are bought, extras are what is there.
+  14 before a job); documents under `compliance/` never expire. It is the first card on Home,
+  above everything (`ops.compliance_attention`): red rows for expired or overdue, amber for
+  what is coming, one green line when all is clear; never one of the five "Do these first".
+  The wizard's "What they buy" step lists every bundle, the usual ones ticked; bundles are
+  bought, extras are what is there.
 - A hotel's pool, spa and gym are extras with the SOP's people and checks; breakfast is the
   restaurant's (ADR 068). A library checklist's copy is offered a newer library version on its
   screen and changes only when its editor takes it (`ops.use_library_version`).

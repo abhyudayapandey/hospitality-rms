@@ -2357,3 +2357,14 @@ No stack change.
 4. Check the set-up wizard as a platform admin: start a test customer with any tile and go as
    far as **Check everything**; it reads "All checked … no problems". (The test company stays,
    marked as a test.)
+
+## Releasing Compliance first on Home (ADR 069 addendum)
+
+One migration, `20261126100000_compliance_attention` (the rows of Home's Compliance card). No
+stack change and nothing to re-import.
+
+1. Merge, then **Deploy** as usual (it runs the migration). `cdk diff` shows nothing.
+2. Check as **Test General Manager 1.0**: the first thing on Home is the Compliance card, red,
+   "2 need action", with Pest control service and FSSAI licence; "Do these first" no longer
+   mentions compliance. As **Test Bar Manager 3.0**: one green line, "Compliance: all
+   licences valid, nothing overdue". As **Test Bar Manager** (Solo Bar): no card.
