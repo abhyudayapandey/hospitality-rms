@@ -80,6 +80,7 @@ export const ERROR_MESSAGES = {
   CUSTOMER_MISMATCH: 'These files are for a different customer (file 00 names another code).',
   CUSTOMER_SUSPENDED: 'This customer is suspended. Reactivate it first.',
   TEST_RULE_NOT_ALLOWED: 'The Test<Role>!12 password rule is only for test customers.',
+  INVALID_SETUP: 'Something in this set-up needs fixing first: see the list on Who does what.',
   INVALID_UPLOAD: 'That upload is not stored for this customer. Upload the files again.',
   UPLOAD_EMPTY: 'Choose a zip file or the CSV files to upload.',
   UPLOAD_TOO_LARGE: 'That upload is too large (5 MB, 40 files and 25 MB unpacked at most).',

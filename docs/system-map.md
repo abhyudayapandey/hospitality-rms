@@ -120,6 +120,12 @@ on Home; everyone's other screens are on **Me**, and the To do list sits in the 
 anyone without the tab. Rostering uses only their own job role; rostering one person in a
 second role is on hold (PRD section 15, open question 7).
 
+**A new customer from the set-up wizard** (ADR 064). Platform console → Set up a new customer:
+seven screens (company, outlets, departments, roles, people, stock, who does what), saved at
+every Next and resumable from "Set-ups in progress". Go live checks everything (the customer is
+created and its files dry run), then applies them and sends logins: an email invitation, or a
+login ID on a printed sheet for people without email.
+
 **A new outlet from a template** (ADR 062). In the platform console, Customer → Add an outlet:
 pick what it is (Hotel / Resort, Restaurant only, Restaurant + Bar, Bar / Pub, Café, Quick
 service, Delivery-only kitchen) and tick what else is there; it gets its departments, stores,

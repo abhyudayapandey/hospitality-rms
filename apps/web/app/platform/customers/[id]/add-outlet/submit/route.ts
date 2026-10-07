@@ -1,10 +1,9 @@
-import { createHash, randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { errorCodeOf } from '@outlet-ops/domain';
 import { TemplateError, addOutlet, parseCsv } from '@outlet-ops/onboarding/templates';
-import { uploadKey, uploadStore } from '@outlet-ops/onboarding/upload';
 import { appUrl } from '@/lib/app-url';
-import { sql, withPlatformAdmin } from '@/lib/db';
+import { withPlatformAdmin } from '@/lib/db';
+import { requestDryRun } from '@/lib/platform/import-files';
 import { currentFiles } from '@/lib/platform/outlet-files';
 import { requirePlatformAdmin } from '@/lib/platform/server';
 import { requireSameOrigin } from '@/lib/security/same-origin';
@@ -46,25 +45,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const timezone = customer['default_timezone'] || 'Asia/Kolkata';
     const merged = addOutlet(files, choiceFrom(q, timezone)).files;
 
-    const key = uploadKey(tenantId, randomUUID());
-    await uploadStore().put(key, { files: merged });
-    const hash = createHash('sha256');
-    for (const name of Object.keys(merged).sort()) hash.update(name).update(merged[name]!);
-    const upload = {
-      key,
-      name: `Add outlet ${String(q.code ?? '').toUpperCase()}`,
-      bytes: Object.values(merged).reduce((n, t) => n + Buffer.byteLength(t), 0),
-      sha256: hash.digest('hex'),
-      files: Object.keys(merged),
-      customer_code: customer['customer_code']!.toUpperCase(),
-    };
-    const job = await withPlatformAdmin(admin, async (tx) => {
-      const r = await sql<{ id: string }>`
-        select platform.request_import(${tenantId}::uuid, ${JSON.stringify(upload)}::jsonb) as id`.execute(
+    const job = await withPlatformAdmin(admin, (tx) =>
+      requestDryRun(
         tx,
-      );
-      return r.rows[0]!.id;
-    });
+        tenantId,
+        customer['customer_code']!,
+        `Add outlet ${String(q.code ?? '').toUpperCase()}`,
+        merged,
+      ),
+    );
     return NextResponse.redirect(appUrl(`/platform/jobs/${job}`), 303);
   } catch (err) {
     if (err instanceof TemplateError) return again(err.message);

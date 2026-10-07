@@ -2215,3 +2215,15 @@ group by 1`. It shows only `hotel` and `bar_pub` for the test customers.
 5. Check in the platform console: Outlet templates lists the seven kinds of outlet. A test
    customer created in the console can add a Café: Add an outlet → Café → name and code →
    See what it adds → Add and dry run.
+
+## Releasing the set-up wizard (ADR 064)
+
+One migration, `20261118100000_setup_drafts` (the drafts table and five console functions).
+There is no stack change and nothing to re-import.
+
+1. Merge, then **Deploy** as usual. `cdk diff` shows nothing.
+2. Check in the platform console: **Set up a new customer** opens screen 1. Set up a demo
+   company (tick "A demo or test company"): one Café, one person without an email. Go live:
+   **Check everything**, then **Looks right: apply and send logins**. **Create 1 username login**
+   and **Print the login sheet** show their login ID and one-time password.
+3. The demo can be suspended from the console home afterwards.

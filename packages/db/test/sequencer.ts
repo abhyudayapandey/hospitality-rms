@@ -28,6 +28,8 @@ export const WEIGHTS: Readonly<Record<string, number>> = {
   'packages/db/src/labour-cost.db.test.ts': 28,
   'packages/db/src/workflow.db.test.ts': 14,
   'packages/onboarding/src/create.db.test.ts': 12,
+  // ADR 064, 14 loads of a new customer (10 s locally): re-measure on CI with the rest
+  'packages/onboarding/src/setup-draft.db.test.ts': 20,
   'packages/db/src/workforce-flows.db.test.ts': 11,
   'packages/db/src/screen-places.db.test.ts': 9,
   'packages/db/src/expiry.db.test.ts': 8,

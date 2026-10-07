@@ -4,3 +4,4 @@
 export * from './customer-files';
 export * from './outlet-template';
 export { parseCsv } from './csv';
+export * from './setup-draft';

@@ -3,7 +3,17 @@ import { sql, withPlatformAdmin } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { requirePlatformAdmin } from '@/lib/platform/server';
 import { jobLabel, type PlatformCustomer as Customer } from './parts';
+import { startSetup } from './setup/actions';
 import { StatusControl } from './status-control';
+
+interface Draft {
+  id: string;
+  name: string;
+  step: string;
+  live: boolean;
+  created_by_email: string;
+  updated_at: Date;
+}
 
 interface Job {
   id: string;
@@ -17,8 +27,10 @@ interface Job {
 // Customer metadata only: a platform request cannot read customer data (ADR 012).
 export default async function PlatformHome() {
   const admin = await requirePlatformAdmin();
-  const { customers, jobs } = await withPlatformAdmin(admin, async (tx) => ({
+  const { customers, jobs, drafts } = await withPlatformAdmin(admin, async (tx) => ({
     customers: (await sql<Customer>`select * from platform.customers()`.execute(tx)).rows,
+    drafts: (await sql<Draft>`select * from platform.setup_drafts() where not live`.execute(tx))
+      .rows,
     jobs: (
       await sql<Job>`select id, kind, status, customer_code, created_at from platform.jobs(10)`.execute(
         tx,
@@ -35,12 +47,40 @@ export default async function PlatformHome() {
           </button>
         </form>
       </div>
-      <Link
-        href="/platform/customers/new"
-        className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
-      >
-        New customer
+      <form action={startSetup}>
+        <button
+          type="submit"
+          className="flex min-h-12 w-full items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
+        >
+          Set up a new customer
+        </button>
+      </form>
+      <Link href="/platform/customers/new" className="text-sm text-slate-700 underline">
+        New customer: the company and its owner only
       </Link>
+      {drafts.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="font-semibold">Set-ups in progress</h2>
+          <ul
+            className="divide-y divide-slate-200 rounded-xl bg-white text-sm ring-1 ring-slate-200"
+            data-testid="setups"
+          >
+            {drafts.map((d) => (
+              <li key={d.id}>
+                <Link
+                  href={`/platform/setup/${d.id}/${d.step}`}
+                  className="flex justify-between gap-2 p-3"
+                >
+                  <span className="font-medium underline">{d.name}</span>
+                  <span className="text-right text-slate-600">
+                    {d.created_by_email} · {formatWhen(d.updated_at)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <Link href="/platform/templates" className="text-sm text-slate-700 underline">
         Outlet templates: what each kind of outlet starts with
       </Link>

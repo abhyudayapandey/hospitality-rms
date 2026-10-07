@@ -123,3 +123,12 @@ a[data-pending] {
     width: 100%;
   }
 }
+
+/* Set-up wizard, Roles (ADR 064): "Who does it instead" only once "Someone else does it" is
+   picked; without CSS support it simply shows. */
+.cover-by {
+  display: none;
+}
+fieldset:has(input[value='covered_by']:checked) .cover-by {
+  display: block;
+}
