@@ -20,7 +20,7 @@ past week, the licences and their numbers.
   Bar (lobby)** and the Housekeeping Store, which also refills the in-room minibars. The bar
   team runs both bars' stores (the Mini Bar through file 08).
 - **One person per job role**: 37 people, plus **Demo Presenter**, who may show the app as
-  anyone (`demo_presenter` in file 07, ADR 071). The owner is Vikram Desai, the GM Anjali
+  anyone (`demo_presenter` in file 07, ADR 071). The owner is Ashesh Sajnani (`test.ashesh-sajnani`), the GM Anjali
   Fernandes. Usernames are `passport.<role>`, e.g. `passport.gm`, `passport.bar-manager`.
 - **Menus**: Mini Bar signatures and classics, Layover cocktails, beer and wine, breakfast
   (Ros omelette with poi), Layover's kitchen, in-room dining, pool snacks: 34 dishes, each
@@ -49,7 +49,8 @@ pnpm --filter @outlet-ops/onboarding passport-demo --today 2026-10-20
 ## Importing it on production
 
 The Deploy that carries ADRs 071 and 072 must be out first (the minibar files and
-`demo_presenter` are new).
+`demo_presenter` are new), and the one with migration `20261128100000_minibar_loader_grant`
+(the import marks file 42's checks added to the bill as `platform_loader`).
 
 **1. Build the zip**, from the repository root (only the numbered files):
 
@@ -59,20 +60,23 @@ The Deploy that carries ADRs 071 and 072 must be out first (the minibar files an
 
 It holds 40 files.
 
-**2. Create the customer**: `/platform` → **New customer**:
+**2. Create the customer**: on `/platform`, the link **New customer: the company and its owner
+only** (`/platform/customers/new`), not the **Set up a new customer** button: the set-up wizard
+(ADR 064) writes its own files and always makes an email owner, so it cannot load these.
+Enter:
 
-| Field               | Value                               |
-| ------------------- | ----------------------------------- |
-| Company name        | `[TEST] Passport Hotel`             |
-| Customer code       | `PASSPORT-TEST`                     |
-| Country / Currency  | `India` / `INR`                     |
-| Time zone           | `Asia/Kolkata`                      |
-| Test customer       | ticked                              |
-| Owner name          | `Vikram Desai`                      |
-| Owner signs in with | Username and password (no email)    |
-| Owner username      | `passport.owner` (type it yourself) |
+| Field               | Value                                    |
+| ------------------- | ---------------------------------------- |
+| Company name        | `[TEST] Passport Hotel`                  |
+| Customer code       | `PASSPORT-TEST`                          |
+| Country / Currency  | `India` / `INR`                          |
+| Time zone           | `Asia/Kolkata`                           |
+| Test customer       | ticked                                   |
+| Owner name          | `Ashesh Sajnani`                         |
+| Owner signs in with | Username and password (no email)         |
+| Owner username      | `test.ashesh-sajnani` (type it yourself) |
 
-**Create customer**, check the owner reads `passport.owner` and "no email is sent", then
+**Create customer**, check the owner reads `test.ashesh-sajnani` and "no email is sent", then
 **Confirm and create**.
 
 **3. Put Compliance in the plan**: the customer's page → **Bundles** → **Compliance** →
@@ -86,7 +90,8 @@ purchase orders 5, attendance sessions 138. **Apply**, then a second dry run sho
 changes.
 
 **5. Logins (the printed sheet)**: the customer's page → **Logins** → tick **Set passwords
-by the Test<Role>!12 rule** → **Create 38 username logins** → **Print the login sheet** (and
+by the Test<Role>!12 rule** → **Create 39 username logins** (the 38
+imported people and the owner) → **Print the login sheet** (and
 download the CSV once, if you want a copy; nothing keeps the passwords). Each person's
 password is `Test` + their job title without spaces + `!12`:
 
@@ -98,7 +103,9 @@ password is `Test` + their job title without spaces + `!12`:
 | Savio Dias, Room Attendant         | `passport.room-attendant` | `TestRoomAttendant!12`  |
 | Kunal Sawant, Cashier              | `passport.cashier`        | `TestCashier!12`        |
 
-The owner, `passport.owner`, already has the login made when the customer was created.
+The owner, Ashesh Sajnani, signs in as `test.ashesh-sajnani` with `TestAccountOwner!12`. The
+import refuses files whose account owners don't include the customer's (`ownersInFiles`), so
+the owner username in file 07 must be the one typed when the customer was created.
 
 **6. Check**: sign in at the app as `passport.presenter`. Me shows **Show the app as
 someone**; pick Anjali Fernandes: Home shows Compliance (pest control overdue, the bar

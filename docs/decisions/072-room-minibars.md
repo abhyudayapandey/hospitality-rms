@@ -36,7 +36,10 @@ Housekeeping runs the in-room bar and snacks.
 
 6. **Test data.** Test Company's Hotel 1.0 has rooms 101 to 202 and a Standard set (beer, cola,
    tonic from the Bar Store); 202 has none. File 42 (test customers only) loads past checks as
-   the person named, at their time (`ops.record_test_minibar_check`).
+   the person named, at their time (`ops.record_test_minibar_check`), and marks the ones its
+   `charged_by` names added to the bill as that person (`ops.mark_minibar_charged`, granted to
+   `platform_loader` by `20261128100000_minibar_loader_grant`: the worker imports as that role).
+   The Passport demo's load test imports as `platform_loader`, as production does.
 
 ## Not now
 
