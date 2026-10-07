@@ -92,6 +92,15 @@ export const ERROR_MESSAGES = {
   UPLOAD_NO_CUSTOMER_FILE: 'The upload needs 00_customer.csv.',
   LAST_ACCOUNT_OWNER: 'The organisation must keep at least one active Account Owner.',
   JOB_ROLE_SCOPE: "This job role's default access doesn't fit the person's place.",
+  // who covers it (file 37, Admin → Who does what; ADR 061, 065)
+  INVALID_MODE: "Choose We have it, Someone else does it, or We don't do this.",
+  COVER_NOT_OUTLET: 'Who does what is set for a whole outlet or central kitchen.',
+  COVER_SELF: "A role can't cover itself. Pick another role.",
+  COVER_CHAIN:
+    'One of these roles is itself covered or covering. Pick a role the outlet has that covers nothing.',
+  COVER_ADMIN: "That role manages people's access, so it can't be covered.",
+  COVER_ABOVE_OUTLET:
+    "That role works across outlets or the whole company, so it can't be covered at one outlet.",
   FORMAT_MERGE: 'A job role has access for one hotel size only. Give it for every hotel first.',
   INVALID_RECIPE: 'A recipe or procedure belongs to a prep item or a menu item.',
   INVALID_STORE: 'Pick one of the outlet’s own stores that holds stock.',

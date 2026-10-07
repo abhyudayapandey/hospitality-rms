@@ -55,6 +55,22 @@ describe('error mapping', () => {
     expect(missing).toEqual([]);
   });
 
+  it('has a message for every reason core.role_cover_errors gives (ADR 065)', () => {
+    const sql = readFileSync(
+      join(import.meta.dirname, '..', '..', 'db', 'migrations', '20261114100000_role_cover.sql'),
+      'utf8',
+    );
+    const body = sql.slice(
+      sql.indexOf('create function core.role_cover_errors'),
+      sql.indexOf('create or replace function core.derive_job_role_access'),
+    );
+    const codes = new Set(
+      [...body.matchAll(/select (?:distinct )?'([A-Z][A-Z_]+)'/g)].map((m) => m[1]!),
+    );
+    expect(codes.size).toBeGreaterThanOrEqual(7);
+    expect([...codes].filter((c) => !(c in ERROR_MESSAGES))).toEqual([]);
+  });
+
   it('knows every rostering rule code hr.assignment_violation returns', () => {
     const dir = join(import.meta.dirname, '..', '..', 'db', 'migrations');
     const returned = new Set<string>();

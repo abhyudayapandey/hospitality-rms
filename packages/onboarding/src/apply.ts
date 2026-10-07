@@ -1,5 +1,5 @@
 import { syncProcessDefs, syncProductAccess } from '@outlet-ops/workflow';
-import { LEVELS, levelOf, MODULE_CODES } from '@outlet-ops/domain';
+import { coverWarnings, MODULE_CODES } from '@outlet-ops/domain';
 import type { ClientBase } from 'pg';
 import {
   FILES,
@@ -647,8 +647,19 @@ class Loader {
     );
     if (!this.coverFile) return;
     this.step(FILES.roleCover.file);
+    await this.coverSetInApp(
+      new Map(
+        this.b.roleCover.map((r) => [
+          `${this.nodes.get(r.outlet_code)} ${r.job_role_code}`,
+          {
+            line: r.line,
+            answer: r.mode === 'covered_by' ? `covered_by ${r.covered_by_role ?? ''}` : 'not_done',
+          },
+        ]),
+      ),
+    );
     const gone = await this.c.query<{ org_node_id: string }>(
-      `update hr.role_cover set archived_at = now()
+      `update hr.role_cover set archived_at = now(), set_in_app_by = null, set_in_app_at = null
         where tenant_id = $1 and archived_at is null
           and not (org_node_id || ' ' || job_role_code = any ($2))
        returning org_node_id`,
@@ -687,7 +698,8 @@ class Loader {
         'role cover',
         `with cur as (select id from hr.role_cover
                        where org_node_id = $2 and job_role_code = $3 and archived_at is null),
-         upd as (update hr.role_cover c set mode = $4, covered_by_role = $5
+         upd as (update hr.role_cover c set mode = $4, covered_by_role = $5,
+                                            set_in_app_by = null, set_in_app_at = null
                   where c.id in (select id from cur)
                     and (c.mode, c.covered_by_role) is distinct from ($4, $5)
                  returning c.id, false as inserted),
@@ -710,13 +722,15 @@ class Loader {
     }
   }
 
-  /** What a cover row may not mean to do: nobody to do it, or someone lower doing it. */
+  /**
+   * What a cover row may not mean to do (the rule Admin uses too, `coverWarnings`): nobody
+   * to do it, or someone lower doing it.
+   */
   private async coverWarnings(
     r: Bundle['roleCover'][number],
     outlet: string,
     by: string | null,
   ): Promise<string[]> {
-    const warnings: string[] = [];
     const count = async (role: string) =>
       (
         await this.c.query<{ n: number }>(
@@ -726,39 +740,74 @@ class Loader {
           [this.tenant, role, outlet],
         )
       ).rows[0]!.n;
-    const here = await count(r.job_role_code);
-    if (here > 0) {
-      warnings.push(
-        `${r.outlet_code} has ${here} ${r.job_role_code}: ` +
-          (by
-            ? `they and every ${by} there will share its work`
-            : 'its checklists stop all the same'),
-      );
+    const duties = (code: string) =>
+      this.b.jobRoles
+        .filter((j) => j.job_role_code === code)
+        .flatMap((j) => jobRoleAccess(j).flatMap((a) => (a.duty ? [a.duty] : [])));
+    return coverWarnings({
+      outlet: r.outlet_code,
+      role: r.job_role_code,
+      answer: r.mode,
+      by,
+      holders: await count(r.job_role_code),
+      coverers: by ? await count(by) : 0,
+      roleDuties: duties(r.job_role_code),
+      byDuties: by ? duties(by) : [],
+    });
+  }
+
+  /**
+   * Covers changed in Admin → Who does what since the last import (ADR 065): a warning
+   * naming who changed it and when, before this file changes or removes it (as for
+   * locations, ADR 018). `wanted` is what the file says for each outlet and role; a role
+   * the file doesn't list is one the outlet has.
+   */
+  private async coverSetInApp(wanted: Map<string, { line?: number; answer: string }>) {
+    const { rows } = await this.c.query<{
+      key: string;
+      outlet_code: string;
+      job_role_code: string;
+      was: string;
+      who: string;
+      at: string;
+    }>(
+      `select * from (
+       select distinct on (c.org_node_id, c.job_role_code)
+              c.org_node_id || ' ' || c.job_role_code as key, n.code as outlet_code,
+              c.job_role_code,
+              case when c.archived_at is not null then 'have'
+                   when c.mode = 'covered_by' then 'covered_by ' || c.covered_by_role
+                   else c.mode end as was,
+              u.display_name as who,
+              to_char(c.set_in_app_at at time zone hr.node_tz(c.org_node_id), 'DD Mon YYYY HH24:MI')
+                || ' ' || hr.node_tz(c.org_node_id) as at
+         from hr.role_cover c
+         join core.hierarchy_node n on n.id = c.org_node_id
+         left join core.app_user u on u.id = c.set_in_app_by
+        where c.tenant_id = $1
+        order by c.org_node_id, c.job_role_code, c.archived_at is null desc, c.updated_at desc) x
+        order by x.outlet_code, x.job_role_code`,
+      [this.tenant],
+    );
+    // Admin's own words for the three answers
+    const said = (a: string) =>
+      a === 'have'
+        ? '"We have it"'
+        : a === 'not_done'
+          ? `"We don't do this"`
+          : `"Someone else does it: ${a.slice('covered_by '.length)}"`;
+    for (const r of rows) {
+      if (!r.who) continue;
+      const w = wanted.get(r.key) ?? { answer: 'have' };
+      if (w.answer === r.was) continue;
+      this.report.warnings.push({
+        file: FILES.roleCover.file,
+        ...(w.line ? { row: w.line, column: 'job_role_code' } : {}),
+        message:
+          `${r.outlet_code} ${r.job_role_code}: set in the app by ${r.who} on ${r.at} to ` +
+          `${said(r.was)}; this import makes it ${said(w.answer)}`,
+      });
     }
-    if (by) {
-      if ((await count(by)) === 0) {
-        warnings.push(
-          `nobody at ${r.outlet_code} is a ${by} yet, so nobody does ${r.job_role_code}'s work`,
-        );
-      }
-      const duties = (code: string) =>
-        this.b.jobRoles
-          .filter((j) => j.job_role_code === code)
-          .flatMap((j) => jobRoleAccess(j).flatMap((a) => (a.duty ? [a.duty] : [])));
-      const [mine, theirs] = [levelOf(duties(by)), levelOf(duties(r.job_role_code))];
-      // leading a shift or keeping a store is covered by staff every day; running a
-      // department or the outlet by someone lower is worth a second look (decided 6 Oct)
-      if (
-        LEVELS.indexOf(theirs) >= LEVELS.indexOf('runs_department') &&
-        LEVELS.indexOf(mine) < LEVELS.indexOf(theirs)
-      ) {
-        warnings.push(
-          `${by} (${mine.replace(/_/g, ' ')}) covers ${r.job_role_code} ` +
-            `(${theirs.replace(/_/g, ' ')}) at ${r.outlet_code}: check that is meant`,
-        );
-      }
-    }
-    return warnings;
   }
 
   /**

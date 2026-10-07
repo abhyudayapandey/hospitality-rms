@@ -9,3 +9,4 @@ export * from './formats';
 export * from './catalogue';
 export * from './checklists';
 export * from './templates';
+export * from './cover';

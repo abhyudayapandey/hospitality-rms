@@ -2,6 +2,8 @@
 // the company, the ACCOUNT_OWNER job role and the first owner. Pure, so the console can show
 // or extend them (an outlet from a template, ADR 062) without loading the loader.
 
+import { writeCsv } from './csv';
+
 export interface NewCustomer {
   code: string;
   name: string;
@@ -99,4 +101,35 @@ export function customerBundle(c: NewCustomer): Record<string, string> {
       ],
     ),
   };
+}
+
+/** A live cover as file 37 has it (`platform.role_cover_rows`). */
+export interface CoverRow {
+  outlet_code: string;
+  job_role_code: string;
+  mode: string;
+  covered_by_role: string | null;
+}
+
+/**
+ * The customer's files with file 37 written from the live covers (ADR 065): Admin → Who
+ * does what changes covers after go-live, and file 37 is the whole truth when present, so
+ * the last upload's copy would undo those changes. Left out when the files had none and
+ * there are no covers.
+ */
+export function withLiveCovers(
+  files: Record<string, string>,
+  covers: readonly CoverRow[],
+): Record<string, string> {
+  const name = Object.keys(files).find((f) => f.split('/').pop()!.startsWith('37_'));
+  if (!name && covers.length === 0) return files;
+  // beside file 00, in the same folder of the upload
+  const customer = Object.keys(files).find((f) => f.split('/').pop()!.startsWith('00_'));
+  const folder = customer?.includes('/') ? customer.slice(0, customer.lastIndexOf('/') + 1) : '';
+  const out = { ...files };
+  out[name ?? `${folder}37_role_cover.csv`] = writeCsv(
+    ['outlet_code', 'job_role_code', 'mode', 'covered_by_role'],
+    covers.map((c) => ({ ...c, covered_by_role: c.covered_by_role ?? '' })),
+  );
+  return out;
 }
