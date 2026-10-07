@@ -20,8 +20,7 @@ past week, the licences and their numbers.
   Bar (lobby)** and the Housekeeping Store, which also refills the in-room minibars. The bar
   team runs both bars' stores (the Mini Bar through file 08).
 - **One person per job role**: 37 people, plus **Demo Presenter**, who may show the app as
-  anyone (`demo_presenter` in file 07, ADR 071). The owner is Ashesh Sajnani (`test.ashesh-sajnani`), the GM Anjali
-  Fernandes. Usernames are `passport.<role>`, e.g. `passport.gm`, `passport.bar-manager`.
+  anyone (`demo_presenter` in file 07, ADR 071). The owner is Ashesh Sajnani (`test.ashesh-sajnani`), the GM Sainath. Usernames are `passport.<role>`, e.g. `passport.gm`, `passport.bar-manager`.
 - **Menus**: Mini Bar signatures and classics, Layover cocktails, beer and wine, breakfast
   (Ros omelette with poi), Layover's kitchen, in-room dining, pool snacks: 34 dishes, each
   with its recipe and cost, and 9 house preps (tepache liqueur, thecha salt, muskmelon shrub,
@@ -30,7 +29,8 @@ past week, the licences and their numbers.
   purchase orders (one arriving today), the Layover's closing count, rosters for next week,
   clock-ins (a few late, one no-show), checklists, tasks, two repairs, 53 minibar checks
   (some still to charge), two events at Jet Lag, six licences (the bar licence expires in 25
-  days) and the compliance calendar (pest control overdue).
+  days) and the regular jobs, which the GM answers for and each department head does (pest
+  control, the Executive Housekeeper's, overdue).
 - **Rooms**: 101–109, 201–209, 301–306 and the pool terraces P-10 to P-12; Passport Deluxe
   rooms have the Standard minibar, suites and terraces the Suite one.
 - `pos-sale-by-item.csv`: the cashier's end-of-day POS file, imported live in the pitch.
@@ -98,7 +98,7 @@ password is `Test` + their job title without spaces + `!12`:
 | Who                                | Username                  | Password                |
 | ---------------------------------- | ------------------------- | ----------------------- |
 | Demo Presenter (you, in the pitch) | `passport.presenter`      | `TestAccountOwner!12`   |
-| Anjali Fernandes, General Manager  | `passport.gm`             | `TestGeneralManager!12` |
+| Sainath, General Manager           | `passport.gm`             | `TestGeneralManager!12` |
 | Dylan Coutinho, Bar Manager        | `passport.bar-manager`    | `TestBarManager!12`     |
 | Savio Dias, Room Attendant         | `passport.room-attendant` | `TestRoomAttendant!12`  |
 | Kunal Sawant, Cashier              | `passport.cashier`        | `TestCashier!12`        |
@@ -108,8 +108,8 @@ import refuses files whose account owners don't include the customer's (`ownersI
 the owner username in file 07 must be the one typed when the customer was created.
 
 **6. Check**: sign in at the app as `passport.presenter`. Me shows **Show the app as
-someone**; pick Anjali Fernandes: Home shows Compliance (pest control overdue, the bar
-licence expiring), the departments and the banner "Showing as Anjali Fernandes". **Back to
+someone**; pick Sainath: Home shows Compliance (pest control overdue, the bar
+licence expiring), the departments and the banner "Showing as Sainath". **Back to
 Demo**.
 
 ## Starting again

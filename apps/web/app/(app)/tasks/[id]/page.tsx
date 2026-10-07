@@ -6,7 +6,7 @@ import { formatWhen } from '@/lib/format';
 import { formatQty } from '@/lib/inventory';
 import { photosEnabled } from '@/lib/photos';
 import { assignablePeople, taskDetail, type Person, type TaskDetail } from '@/lib/tasks';
-import { complianceTask, dayWords, type ComplianceTaskRow } from '@/lib/compliance';
+import { complianceTask, dayWords, handOnPeople, type ComplianceTaskRow } from '@/lib/compliance';
 import { DoneForm, RenewForm } from '../../compliance/act-forms';
 import { AssignExpiry, CancelTask, TaskWork } from './task-work';
 import { ReassignTask, ReceiveSent, SentLines, type SentLine } from './receive-sent';
@@ -40,7 +40,9 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       // a licence's renewal or a compliance job (ADR 069): what it is about
       const c =
         t.kind === 'licence' || t.kind === 'compliance' ? await complianceTask(tx, id) : null;
-      return { task: t, people: p, sent: lines, about: c };
+      // whoever has it (or keeps Compliance there) may give it to someone there (ADR 073)
+      const h: Person[] = c?.can_hand_on ? await handOnPeople(tx, id) : p;
+      return { task: t, people: h, sent: lines, about: c };
     }));
   } catch (err) {
     return (
@@ -86,7 +88,12 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
           </p>
         ))}
       {about ? (
-        <ComplianceWork task={task} about={about} />
+        <>
+          <ComplianceWork task={task} about={about} />
+          {about.can_hand_on && (
+            <ReassignTask task={task.id} people={people} current={task.assignee_user_id} />
+          )}
+        </>
       ) : task.kind === 'receive' ? (
         <>
           {open && task.can_work ? (
@@ -128,6 +135,7 @@ function ComplianceWork({ task, about }: { task: TaskDetail; about: ComplianceTa
             {about.name} at {about.place_name}
             {about.next_due && ` · due ${dayWords(about.next_due)}`}
             {about.needs_proof && ' · keep the report or certificate'}
+            {about.owner_role_name && ` · the ${about.owner_role_name} answers for it`}
           </>
         )}
       </p>

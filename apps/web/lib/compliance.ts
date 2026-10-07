@@ -37,6 +37,13 @@ export interface JobRow {
   last_done: string | null;
   last_files: string[] | null;
   open_task: string | null;
+  /** who does it, when not the accountable role (ADR 073) */
+  doer_role: string | null;
+  doer_role_name: string | null;
+  /** the person its open To do item was handed to */
+  with_name: string | null;
+  /** its outlet, where its accountable role is chosen from */
+  outlet_id: string;
 }
 
 export interface ComplianceCounts {
@@ -44,9 +51,12 @@ export interface ComplianceCounts {
   expiring: number;
   items: number;
   overdue: number;
+  /** licences within 90 days and jobs within 14: the first tab and Home's card */
+  needs_action: number;
 }
 
-export const COMPLIANCE_TABS = ['licences', 'calendar', 'expiring', 'overdue'] as const;
+/** Needs action (what is red or amber), then each kind in full (ADR 073). */
+export const COMPLIANCE_TABS = ['action', 'licences', 'jobs'] as const;
 export type ComplianceTab = (typeof COMPLIANCE_TABS)[number];
 
 export function isComplianceTab(s: string | undefined): s is ComplianceTab {
@@ -69,7 +79,8 @@ export async function complianceJobs(tx: Tx, node: string | null): Promise<JobRo
   return (
     await sql<JobRow>`
       select id, org_node_id, place_name, name, every_months, next_due::text, days_left,
-             owner_role, owner_role_name, needs_proof, last_done::text, last_files, open_task
+             owner_role, owner_role_name, needs_proof, last_done::text, last_files, open_task,
+             doer_role, doer_role_name, with_name, outlet_id
         from ops.compliance_items(${node}::uuid)`.execute(tx)
   ).rows;
 }
@@ -77,7 +88,7 @@ export async function complianceJobs(tx: Tx, node: string | null): Promise<JobRo
 export async function complianceCounts(tx: Tx, node: string | null): Promise<ComplianceCounts> {
   const r = await sql<ComplianceCounts>`
     select * from ops.compliance_counts(${node}::uuid)`.execute(tx);
-  return r.rows[0] ?? { licences: 0, expiring: 0, items: 0, overdue: 0 };
+  return r.rows[0] ?? { licences: 0, expiring: 0, items: 0, overdue: 0, needs_action: 0 };
 }
 
 export interface LicenceHistoryRow {
@@ -126,6 +137,10 @@ export interface ComplianceTaskRow {
   every_months: number | null;
   needs_proof: boolean;
   can_act: boolean;
+  /** they may give it to someone at the place (ADR 073) */
+  can_hand_on: boolean;
+  /** a regular job's accountable role */
+  owner_role_name: string | null;
 }
 
 /** What a To do item about a licence or a calendar job points at. */
@@ -134,10 +149,61 @@ export async function complianceTask(tx: Tx, task: string): Promise<ComplianceTa
     (
       await sql<ComplianceTaskRow>`
         select licence_id, item_id, name, place_name, number, authority, expires_on::text,
-               next_due::text, every_months, needs_proof, can_act
+               next_due::text, every_months, needs_proof, can_act, can_hand_on,
+               owner_role_name
           from ops.compliance_task(${task}::uuid)`.execute(tx)
     ).rows[0] ?? null
   );
+}
+
+export interface HandOnPerson {
+  user_id: string;
+  name: string;
+  job_role: string | null;
+  place_name: string;
+}
+
+/** Who a licence renewal or a regular job's To do item may be given to: anyone at its place. */
+export async function handOnPeople(tx: Tx, task: string): Promise<HandOnPerson[]> {
+  return (
+    await sql<HandOnPerson>`
+      select user_id, name, job_role, place_name
+        from ops.hand_on_people(${task}::uuid)`.execute(tx)
+  ).rows;
+}
+
+/** Needs action: licences within 90 days, jobs within 14 (Home's card), red first. */
+export function needsAction(
+  lic: LicenceRow[],
+  jobs: JobRow[],
+): ({ kind: 'licence'; row: LicenceRow } | { kind: 'job'; row: JobRow })[] {
+  const rows = [
+    ...lic
+      .filter((l) => l.days_left !== null && l.days_left <= 90)
+      .map((row) => ({ kind: 'licence' as const, row, days: row.days_left! })),
+    ...jobs
+      .filter((j) => j.days_left <= 14)
+      .map((row) => ({ kind: 'job' as const, row, days: row.days_left })),
+  ];
+  rows.sort(
+    (a, b) =>
+      Number(b.days < 0) - Number(a.days < 0) ||
+      a.days - b.days ||
+      a.row.name.localeCompare(b.row.name),
+  );
+  return rows.map((r) =>
+    r.kind === 'licence' ? { kind: r.kind, row: r.row } : { kind: r.kind, row: r.row },
+  );
+}
+
+/** Who answers for a regular job and who does it, in words. */
+export function jobPeople(
+  j: Pick<JobRow, 'owner_role_name' | 'doer_role_name' | 'with_name'>,
+): string {
+  const by = j.doer_role_name ?? j.owner_role_name;
+  return `Done by the ${by}${j.with_name ? ` (with ${j.with_name})` : ''}${
+    j.doer_role_name ? ` · the ${j.owner_role_name} answers for it` : ''
+  }`;
 }
 
 /** A licence's state in words: what it needs, or when it expires. */

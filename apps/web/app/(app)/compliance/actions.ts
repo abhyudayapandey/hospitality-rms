@@ -120,6 +120,8 @@ export interface JobInput {
   every_months: number;
   next_due: string;
   owner_role: string;
+  /** who does it, when not the accountable role (ADR 073) */
+  doer_role: string | null;
   needs_proof: boolean;
 }
 
@@ -132,6 +134,7 @@ export async function saveJob(
       select ops.save_compliance_item(${input.id}::uuid, ${input.node}::uuid, ${input.name},
                                       ${input.every_months}, ${input.next_due}::date,
                                       ${input.owner_role}, ${input.needs_proof},
+                                      ${input.doer_role || null},
                                       ${idempotencyKey ?? null}) as id`.execute(tx);
     return { id: r.rows[0]!.id };
   });

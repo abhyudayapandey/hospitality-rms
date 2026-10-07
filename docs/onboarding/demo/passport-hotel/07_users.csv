@@ -1,7 +1,7 @@
 username,display_name,job_role_code,home_node_code,login_type,email,employment_type,joined_on,password_mode,demo_presenter
 test.ashesh-sajnani,Ashesh Sajnani,ACCOUNT_OWNER,PASSPORT-TEST,username,,full_time,2025-09-02,test_rule,no
 passport.presenter,Demo Presenter,ACCOUNT_OWNER,PASSPORT-TEST,username,,full_time,2025-08-22,test_rule,yes
-passport.gm,Anjali Fernandes,GENERAL_MANAGER,PASSPORT-ASSAGAO,username,,full_time,2025-08-11,test_rule,no
+passport.gm,Sainath,GENERAL_MANAGER,PASSPORT-ASSAGAO,username,,full_time,2025-08-11,test_rule,no
 passport.front-office-manager,Rohan D'Souza,FRONT_OFFICE_MANAGER,PASSPORT-ASSAGAO-FRONT-OFFICE,username,,full_time,2025-07-31,test_rule,no
 passport.front-desk,Sneha Naik,FRONT_DESK_EXECUTIVE,PASSPORT-ASSAGAO-FRONT-OFFICE,username,,full_time,2025-07-20,test_rule,no
 passport.bell-captain,Joaquim Pereira,BELL_CAPTAIN,PASSPORT-ASSAGAO-FRONT-OFFICE,username,,full_time,2025-07-09,test_rule,no

@@ -40,8 +40,18 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             {initials(shell.user.name)}
           </span>
           <span className="min-w-0">
-            <span className="block truncate text-sm font-semibold" data-testid="current-user">
-              {shell.user.name}
+            <span className="flex min-w-0 items-baseline gap-1.5">
+              <span className="truncate text-sm font-semibold" data-testid="current-user">
+                {shell.user.name}
+              </span>
+              {shell.jobTitle && (
+                <span
+                  className="shrink-[2] truncate text-xs text-slate-500"
+                  data-testid="current-role"
+                >
+                  {shell.jobTitle}
+                </span>
+              )}
             </span>
             {shell.home && (
               <span className="block truncate text-xs text-slate-500" data-testid="home-place">

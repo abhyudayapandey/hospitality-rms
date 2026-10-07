@@ -6,6 +6,7 @@ import {
   complianceJobs,
   dayWords,
   jobHistory,
+  jobPeople,
   jobStatus,
   TONE_CLASS,
   type JobHistoryRow,
@@ -46,7 +47,7 @@ async function Job({ params }: { params: Promise<{ id: string }> }) {
         j,
         history: await jobHistory(tx, id),
         canKeep,
-        roles: canKeep ? await rolesByPlace(tx, [j.org_node_id]) : {},
+        roles: canKeep ? await rolesByPlace(tx, [j.org_node_id, j.outlet_id]) : {},
       };
     });
   } catch (err) {
@@ -70,13 +71,16 @@ async function Job({ params }: { params: Promise<{ id: string }> }) {
     : history.map(() => []);
   return (
     <div className="space-y-4">
-      <Link href="/compliance?tab=calendar" className="text-sm text-slate-600 underline">
-        Back to the calendar
+      <Link href="/compliance?tab=jobs" className="text-sm text-slate-600 underline">
+        Back to the regular jobs
       </Link>
       <header className="space-y-1">
         <h1 className="text-xl font-semibold">{j.name}</h1>
         <p className="text-sm text-slate-600">
-          {j.place_name} · {everyWords(j.every_months)} · the {j.owner_role_name}
+          {j.place_name} · {everyWords(j.every_months)}
+        </p>
+        <p className="text-sm text-slate-600" data-testid="job-people">
+          {jobPeople(j)}
         </p>
         <p>
           <span
@@ -90,7 +94,9 @@ async function Job({ params }: { params: Promise<{ id: string }> }) {
       </header>
       {j.open_task && (
         <Link href={`/tasks/${j.open_task}`} className="block text-sm underline">
-          It is on the {j.owner_role_name}&apos;s To do list
+          {j.with_name
+            ? `It is on ${j.with_name}'s To do list`
+            : `It is on the ${j.doer_role_name ?? j.owner_role_name}'s To do list`}
         </Link>
       )}
       <section className="space-y-1">
@@ -139,6 +145,7 @@ async function Job({ params }: { params: Promise<{ id: string }> }) {
               <JobForm
                 places={[{ id: j.org_node_id, name: j.place_name }]}
                 roles={roles}
+                ownerRoles={roles[j.outlet_id] ?? roles[j.org_node_id] ?? []}
                 existing={{
                   id: j.id,
                   node: j.org_node_id,
@@ -146,6 +153,7 @@ async function Job({ params }: { params: Promise<{ id: string }> }) {
                   every_months: j.every_months,
                   next_due: j.next_due,
                   owner_role: j.owner_role,
+                  doer_role: j.doer_role,
                   needs_proof: j.needs_proof,
                 }}
               />

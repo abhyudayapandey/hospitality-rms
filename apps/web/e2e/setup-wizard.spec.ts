@@ -199,8 +199,8 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
        join core.tenant t on t.id = i.tenant_id where t.code = $1 order by 1`,
     [code],
   );
-  // the Head Cook is covered by the Restaurant Manager (the café's manager): the kitchen's
-  // jobs are theirs
+  // the café's manager answers for every job; the Head Cook is covered by them, so they do the
+  // kitchen's too (ADR 073)
   expect(jobs.find((j) => j.name === 'Kitchen exhaust duct cleaning')?.role).toBe(
     'RESTAURANT_GENERAL_MANAGER',
   );
