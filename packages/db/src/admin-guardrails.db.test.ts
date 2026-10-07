@@ -87,6 +87,15 @@ async function approveRoleChange(c: PoolClient, who: string, roleChange: string)
 describe('(a) admin rights are not data access', () => {
   it('a User Admin grants stock access they cannot use themselves', async () => {
     await inRolledBackTx(async (c) => {
+      // in the seed the Front Desk covers 2.0's Store Keeper (ADR 066), which gives them its
+      // stock; without that cover they hold admin rights only
+      const gh = ids.node('TEST-GUEST-HOUSE-2.0');
+      await c.query(
+        `update hr.role_cover set archived_at = now()
+          where org_node_id = $1 and job_role_code = 'STORE_KEEPER'`,
+        [gh],
+      );
+      await c.query('select core.apply_cover_access($1)', [gh]);
       const r = await grant(
         c,
         FD2,
@@ -161,7 +170,7 @@ describe('(b) scope, no self-grants, admin rank', () => {
     await inRolledBackTx(async (c) => {
       expect(
         await error(c, GM1, GRANT, [
-          ids.user('test.store-manager.1.0'),
+          ids.user('test.purchase-manager.1.0'),
           'ACCOUNT_OWNER',
           ids.node('TEST-HOTEL-1.0'),
         ]),
@@ -208,13 +217,19 @@ describe('(c) sensitive grants go through ROLE_CHANGE; everyday grants apply at 
       );
       expect(everyday.status).toBe('applied');
 
-      const r = await grant(c, GM1, 'test.store-manager.1.0', 'OUTLET_MANAGER', 'TEST-HOTEL-1.0');
+      const r = await grant(
+        c,
+        GM1,
+        'test.purchase-manager.1.0',
+        'OUTLET_MANAGER',
+        'TEST-HOTEL-1.0',
+      );
       expect(r.status).toBe('pending');
-      expect(await holds(c, 'test.store-manager.1.0', 'OUTLET_MANAGER', 'TEST-HOTEL-1.0')).toBe(
+      expect(await holds(c, 'test.purchase-manager.1.0', 'OUTLET_MANAGER', 'TEST-HOTEL-1.0')).toBe(
         false,
       );
       await approveRoleChange(c, SEC, r.role_change_id!);
-      expect(await holds(c, 'test.store-manager.1.0', 'OUTLET_MANAGER', 'TEST-HOTEL-1.0')).toBe(
+      expect(await holds(c, 'test.purchase-manager.1.0', 'OUTLET_MANAGER', 'TEST-HOTEL-1.0')).toBe(
         true,
       );
     });
@@ -359,7 +374,13 @@ describe('(e) every admin action is audited; the access audit shows only access 
         [ids.node('TEST-HOTEL-1.0-KITCHEN')],
       );
       await call(c, GM1, `select core.set_user_status($1, 'inactive')`, [made.r.user_id]);
-      const rc = await grant(c, GM1, 'test.store-manager.1.0', 'OUTLET_MANAGER', 'TEST-HOTEL-1.0');
+      const rc = await grant(
+        c,
+        GM1,
+        'test.purchase-manager.1.0',
+        'OUTLET_MANAGER',
+        'TEST-HOTEL-1.0',
+      );
       await approveRoleChange(c, SEC, rc.role_change_id!);
       await grant(c, FD2, 'test.steward.2.0', 'STOCK_USER', 'TEST-GUEST-HOUSE-2.0-SUPPLY');
       // a business write in the same period

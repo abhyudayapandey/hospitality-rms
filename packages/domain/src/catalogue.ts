@@ -6,8 +6,8 @@
 // A role only holds duties for work the app does today: a Night Auditor or a Therapist is
 // rostered, clocks in and gets checklists and tasks ("works shifts"), not a night audit.
 // Two names are one role only where an SOP lists them as one job ("Steward / Server").
-// Existing codes keep their meaning: STORE_MANAGER is a hotel's head of Stores, so the QSR's
-// Store Manager is QSR_STORE_MANAGER, titled "Store Manager".
+// A hotel's head of Stores is the Purchase Manager ("Store Manager" is another name for it,
+// ADR 066), so the QSR's Store Manager is QSR_STORE_MANAGER, titled "Store Manager".
 
 import type { OutletFormat } from './formats';
 import { DUTY_BY_CODE, expandDuty } from './duties';
@@ -98,7 +98,7 @@ export interface RoleDef {
   formatDuties?: Readonly<Partial<Record<OutletFormat, readonly string[]>>>;
   /** Where they work in an outlet of that format (a standalone bar's Bar Manager: the outlet). */
   formatHome?: Readonly<Partial<Record<OutletFormat, RoleHome>>>;
-  /** The SOP manuals that name it; none for a role of the app's own (Stock Verifier). */
+  /** The SOP manuals that name it; none for a role of the app's own (HR Admin). */
   sops: readonly Sop[];
 }
 
@@ -552,19 +552,13 @@ export const ROLES: readonly RoleDef[] = [
   },
 
   // stores and purchase
-  {
-    code: 'STORE_MANAGER',
-    title: 'Store Manager',
-    home: 'STORES-TEAM',
-    duties: [D, 'KEEPS_MAIN_STORE', 'SEES_OUTLET_STOCK'],
-    sops: ['H'],
-  },
+  // the hotel SOP's head of Purchase and Stores (decided 7 Oct: "Store Manager" is this role)
   {
     code: 'PURCHASE_MANAGER',
     title: 'Purchase Manager',
-    alsoCalled: ['Purchase Executive', 'Purchase Officer'],
+    alsoCalled: ['Store Manager', 'Stores Manager', 'Purchase Executive', 'Purchase Officer'],
     home: 'STORES-TEAM',
-    duties: ['KEEPS_MAIN_STORE', 'SEES_OUTLET_STOCK', W],
+    duties: [D, 'KEEPS_MAIN_STORE', 'SEES_OUTLET_STOCK'],
     sops: ['R', 'H'],
   },
   {
@@ -633,13 +627,6 @@ export const ROLES: readonly RoleDef[] = [
     sops: ['H'],
   },
   {
-    code: 'STOCK_VERIFIER',
-    title: 'Stock Verifier',
-    home: '(outlet)',
-    duties: ['VERIFIES_STOCK_CHECKS'],
-    sops: [],
-  },
-  {
     code: 'FINANCIAL_CONTROLLER',
     title: 'Financial Controller',
     home: 'ADMIN-FINANCE',
@@ -649,9 +636,12 @@ export const ROLES: readonly RoleDef[] = [
   {
     code: 'ACCOUNTANT',
     title: 'Accountant',
-    alsoCalled: ['Excise Clerk'],
+    alsoCalled: ['Excise Clerk', 'Stock Verifier'],
     home: 'ADMIN-FINANCE',
     duties: [W],
+    // the bar SOP's monthly stock count is the Accountant / Excise Clerk's, with the GM (LC-07)
+    formatDuties: { bar_pub: ['VERIFIES_STOCK_CHECKS'] },
+    formatHome: { bar_pub: '(outlet)' },
     sops: ['R', 'B', 'C', 'H'],
   },
   {

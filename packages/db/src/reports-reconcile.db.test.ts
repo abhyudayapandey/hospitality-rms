@@ -10,9 +10,9 @@ import {
 } from '../test/helpers';
 
 // Reports audit (ADR 057): a figure is what is behind it, for everyone. As a person of every
-// kind of report access (one per set of reports the test customers' people have; every
-// person with REPORTS_ALL_USERS=1), at up to 3 of the places each report offers them, for
-// today, yesterday and 3 days ago:
+// kind of report access (one per set of reports the test customers' people have, and a person
+// covering a role; every person with REPORTS_ALL_USERS=1), at up to 3 of the places each
+// report offers them, for today, yesterday and 3 days ago:
 // - Department and Outlet today: shifts, hours, late and no-shows equal the people list;
 //   tasks equal the tasks list; wastage, stock value and sales equal their lists; every
 //   figure equals its trend's point for that day.
@@ -52,6 +52,10 @@ beforeAll(async () => {
       }
     }
   });
+  // and a person whose access comes partly from covering a role (ADR 061, 066): Guest House
+  // 2.0's Front Desk, covering its Store Keeper
+  const coverer = users.rows.find((u) => u.username === 'test.front-desk-executive.2.0')!;
+  if (!people.includes(coverer)) people.push(coverer);
 }, 120_000);
 afterAll(closePools);
 

@@ -123,6 +123,11 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
   ).not.toBeChecked();
   await page.getByRole('button', { name: 'Check everything' }).click();
   await workerUntil(page, 'checked');
+  // the check's warnings in names, never codes, and they don't block
+  const warnings = page.getByTestId('check-warnings');
+  await expect(warnings).toContainText("these don't stop you going live");
+  await expect(warnings).toContainText("Asha Rao's own");
+  await expect(warnings).not.toContainText(/[A-Z]{2,}_[A-Z]|wiz-/i);
   await expect(page.getByTestId('check-warnings')).toContainText(
     "Bandra Café uses Leave and Shift swaps, part of People & roster, which isn't on for this customer",
   );

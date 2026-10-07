@@ -182,7 +182,7 @@ seven steps:
   - Access is re-derived at once.
   - Open tasks of the moved duty go to the new holder.
 
-### Step 7. Move the test customers and docs. 3–4 days
+### Step 7. Move the test customers and docs. 3–4 days — built (ADR 066)
 
 - **Test customers.**
   - Test Company: Hotel for 1.0 and 1.1, small Hotel for 2.0, Bar / Pub for 3.0, plus the

@@ -26,8 +26,9 @@ Admins: `test.account-owner` (Account Owner, whole company); the GM of Hotel 1.0
 
 Company → Test Solo Bar → Bar, Floor Service, Kitchen. No region, area or central kitchen.
 The owner `test.solo.bar-manager` is both Bar Manager (outlet head) and Account Owner.
-There is no Cost Controller, so `test.solo.stock-verifier` (job role Stock Verifier, access
-group STOCK_VERIFIER at the outlet's stores, ADR 043) does the stock check there.
+There is no Cost Controller, so `test.solo.accountant` (the bar SOP's Accountant / Excise Clerk,
+who does the monthly count with the GM; access group STOCK_VERIFIER at the outlet's stores,
+ADR 043, 066) verifies the stock check there. Its Kitchen Steward is not done (file 37).
 Policy difference from Test Company: here the Head Bartender is a STORE_KEEPER (can order stock), not a STOCK_USER — job-role access is set per customer.
 
 ## How codes work
@@ -112,6 +113,10 @@ TEST-BAR-3.0,COOK,not_done,
 - When uploaded, the file is authoritative: a cover it no longer lists is removed, and
   everyone at that outlet gets their access worked out again. A re-import without file 37
   leaves covers as they are.
+
+The test customers' own file 37 (ADR 066): Guest House 2.0 has no Store Keeper, so its Front
+Desk Executive covers one (`test.front-desk-executive.2.0` gets STORE_KEEPER at its supply
+point, source "covers Store Keeper"); the Solo Bar's Kitchen Steward is not done.
 
 ## Duties (file 06, ADR 059)
 
@@ -275,6 +280,7 @@ instance) makes each checklist's tasks for the next 24 hours.
 | Test Company  | Hotel 1.0 Bar          | Bar setup, Bar closing                                               |
 | Test Company  | Hotel 1.0 Front Office | Front desk shift handover (07:00, 15:00, 23:00)                      |
 | Test Company  | Hotel 1.0 Housekeeping | Lobby washroom check (every 2 h), Linen room count (Mondays)         |
+| Test Company  | Hotel 1.1 Kitchen      | Kitchen opening, Chiller and freezer log: library copies (`@1`)      |
 | Test Company  | Bar 3.0 Kitchen, Bar   | Kitchen opening and closing; Bar setup                               |
 | Test Solo Bar | Kitchen, Bar           | Kitchen opening and closing; Bar setup and closing                   |
 

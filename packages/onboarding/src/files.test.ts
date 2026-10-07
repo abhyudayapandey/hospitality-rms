@@ -212,6 +212,8 @@ describe('job roles from the catalogue', () => {
       const t = parseCsv(readFileSync(join(DATA, customer, '06_job_roles.csv'), 'utf8'));
       for (const { values: v } of t.rows) {
         const role = ROLE_BY_CODE.get(v['job_role_code']!);
+        // listed by code alone: everything comes from the catalogue
+        if (role && !v['job_title'] && !v['default_duties'] && !v['usual_department']) continue;
         if (!role) {
           diffs.push(`${customer} ${v['job_role_code']}: not in the catalogue`);
           continue;
@@ -234,8 +236,8 @@ describe('job roles from the catalogue', () => {
       }
     }
     expect(diffs).toEqual([
-      // a Host works in both the hotel's restaurant and Bar 3.0's floor service
-      'test-company HOST: department RESTAURANT / FLOOR-SERVICE',
+      // Bar 3.0's Host works in its floor service (a bar has no restaurant)
+      'test-company HOST: department FLOOR-SERVICE',
       // the solo bar's Head Bartender keeps the bar store: there is no Bar Manager to
       'test-solo-bar-co HEAD_BARTENDER: duties LEADS_SHIFT; KEEPS_DEPARTMENT_STORE; WORKS_SHIFTS',
     ]);

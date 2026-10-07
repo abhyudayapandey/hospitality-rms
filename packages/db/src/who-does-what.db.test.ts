@@ -14,8 +14,8 @@ import {
 // role at an outlet after go-live. The same checks as file 37 (core.role_cover_errors), the
 // same guardrails as any access change (core.sync_job_role_access: your own access, rank,
 // sensitive grants waiting for approval), access applied at once for everyone there, and the
-// role's unstarted tasks follow. The test customers have no covers; every test adds its own
-// inside a rolled-back transaction.
+// role's unstarted tasks follow. Every test starts from no covers (the seed's, ADR 066, are
+// archived first) and adds its own inside a rolled-back transaction.
 
 afterAll(closePools);
 
@@ -23,6 +23,18 @@ let ids: SeedIds;
 beforeAll(async () => {
   ids = await loadSeedIds();
 });
+
+/** A rolled-back transaction with the seed's covers archived and their access taken off. */
+function fresh<T>(fn: (c: pg.PoolClient) => Promise<T>): Promise<T> {
+  return inRolledBackTx(async (c) => {
+    const { rows } = await c.query<{ org_node_id: string }>(
+      `update hr.role_cover set archived_at = now() where archived_at is null
+       returning org_node_id`,
+    );
+    for (const r of rows) await c.query('select core.apply_cover_access($1)', [r.org_node_id]);
+    return fn(c);
+  });
+}
 
 const H10 = 'TEST-HOTEL-1.0';
 const H11 = 'TEST-HOTEL-1.1';
@@ -110,7 +122,7 @@ async function live(c: pg.PoolClient, outlet: string) {
 
 describe('who may change it', () => {
   it('the Account Owner, anywhere in the company', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await saved(c, OWNER, H11, 'SOUS_CHEF', 'covered_by', 'EXECUTIVE_CHEF');
       await saved(c, OWNER, GH, 'STORE_KEEPER', 'covered_by', 'GENERAL_MANAGER');
       expect(await live(c, H11)).toEqual([
@@ -120,7 +132,7 @@ describe('who may change it', () => {
   });
 
   it('a user admin, only inside their user administration', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       // the GM of 1.0 holds USER_ADMIN at 1.0 only
       await saved(c, 'test.general-manager.1.0', H10, 'SOUS_CHEF', 'covered_by', 'EXECUTIVE_CHEF');
       for (const r of [
@@ -139,7 +151,7 @@ describe('who may change it', () => {
   });
 
   it('nobody without user administration: not a GM, not a department head, not staff', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       for (const who of [
         'test.general-manager.1.1',
         'test.executive-chef.1.1',
@@ -163,7 +175,7 @@ describe('who may change it', () => {
   });
 
   it('another customer’s outlet is the same as no outlet: not found, for every function', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       for (const node of [ids.node('TEST-SOLO-BAR'), '00000000-0000-7000-8000-000000000000']) {
         for (const sql of [
           `select core.set_role_cover($1, 'BARTENDER', 'not_done')`,
@@ -181,7 +193,7 @@ describe('who may change it', () => {
   });
 
   it('the app never writes covers itself, nor calls the loader’s functions', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       const me = ids.user(OWNER);
       for (const sql of [
         `insert into hr.role_cover (tenant_id, org_node_id, job_role_code, mode)
@@ -200,7 +212,7 @@ describe('who may change it', () => {
   });
 
   it('platform.role_cover_rows: platform admins only', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await saved(c, OWNER, GH, 'STORE_KEEPER', 'covered_by', 'GENERAL_MANAGER');
       const sql = 'select * from platform.role_cover_rows($1)';
       expect((await attemptAs(c, ids.user(OWNER), sql, [ids.tenant()])).error).toMatch(
@@ -221,7 +233,7 @@ describe('who may change it', () => {
 
 describe('the same rules and checks as file 37', () => {
   it('refuses what core.role_cover_errors refuses, with its code, and saves nothing', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await saved(c, OWNER, GH, 'COOK', 'covered_by', 'FRONT_DESK_EXECUTIVE');
       const cases: [string, string, string, string | null, string][] = [
         [GH, 'STORE_KEEPER', 'covered_by', 'STORE_KEEPER', 'COVER_SELF'],
@@ -259,7 +271,7 @@ describe('the same rules and checks as file 37', () => {
 
 describe('access, at once', () => {
   it('"Our Sous Chef left; the Executive Chef covers": the chef gets it at that outlet only', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       const before = await grants(c, 'test.executive-chef.1.1');
       const other = await grants(c, 'test.executive-chef.1.0');
       const r = await saved(c, OWNER, H11, 'SOUS_CHEF', 'covered_by', 'EXECUTIVE_CHEF');
@@ -288,7 +300,7 @@ describe('access, at once', () => {
   });
 
   it('"We hired a Store Keeper; stop the GM covering"', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       const before = await grants(c, 'test.general-manager.2.0');
       await saved(c, OWNER, GH, 'STORE_KEEPER', 'covered_by', 'GENERAL_MANAGER');
       expect(await grants(c, 'test.general-manager.2.0')).toContain(
@@ -308,7 +320,7 @@ describe('access, at once', () => {
   });
 
   it('your own access: refused, by the save and the preview, whichever way it changes', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       const fd = 'test.front-desk-executive.2.0';
       expect(
         (await set(c, fd, GH, 'STORE_KEEPER', 'covered_by', 'FRONT_DESK_EXECUTIVE')).error,
@@ -328,7 +340,7 @@ describe('access, at once', () => {
   });
 
   it('a sensitive grant waits for approval: the cover is saved, the access is not live yet', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       const before = await grants(c, 'test.general-manager.2.0');
       const r = await saved(c, OWNER, GH, 'HR_EXECUTIVE', 'covered_by', 'GENERAL_MANAGER');
       expect(r.pending).toBeGreaterThan(0);
@@ -352,7 +364,7 @@ describe('access, at once', () => {
   });
 
   it('every change is in the audit, by whoever made it; Admin’s changes are marked', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await saved(c, OWNER, H11, 'SOUS_CHEF', 'covered_by', 'EXECUTIVE_CHEF');
       await saved(c, 'test.general-manager.1.0', H10, 'SOUS_CHEF', 'not_done');
       await saved(c, OWNER, H11, 'SOUS_CHEF', 'not_done');
@@ -394,15 +406,19 @@ describe('access, at once', () => {
 
 describe('the preview', () => {
   it('says what the save does, and writes nothing', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       const before = await grants(c, 'test.executive-chef.1.1');
+      const audited = async () =>
+        (
+          await c.query<{ n: number }>(
+            `select count(*)::int n from audit.log where table_name = 'hr.role_cover'`,
+          )
+        ).rows[0]!.n;
+      const auditBefore = await audited();
       const p = await preview(c, OWNER, H11, 'SOUS_CHEF', 'covered_by', 'EXECUTIVE_CHEF');
       expect(await grants(c, 'test.executive-chef.1.1')).toEqual(before);
       expect(await live(c, H11)).toEqual([]);
-      const audit = await c.query<{ n: number }>(
-        `select count(*)::int n from audit.log where table_name = 'hr.role_cover'`,
-      );
-      expect(audit.rows[0]!.n).toBe(0);
+      expect(await audited()).toBe(auditBefore);
       const r = await saved(c, OWNER, H11, 'SOUS_CHEF', 'covered_by', 'EXECUTIVE_CHEF');
       expect(p.rows![0]!.r).toEqual({ errors: [], result: r });
     });
@@ -411,7 +427,7 @@ describe('the preview', () => {
 
 describe('who does what at an outlet', () => {
   it('lists the roles that work there, with their answer, people and duties', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await saved(c, OWNER, GH, 'STORE_KEEPER', 'covered_by', 'GENERAL_MANAGER');
       const { rows } = (await attemptAs<{
         job_role_code: string;
@@ -441,7 +457,7 @@ describe('who does what at an outlet', () => {
   });
 
   it('"All outlets": only the covers, only where the admin may look', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await saved(c, OWNER, GH, 'STORE_KEEPER', 'covered_by', 'GENERAL_MANAGER');
       await saved(c, OWNER, H11, 'SOUS_CHEF', 'not_done');
       const all = async (who: string) =>
@@ -504,7 +520,7 @@ async function holder(c: pg.PoolClient, task: string) {
 
 describe('open tasks of the moved duty', () => {
   it('a new cover gives what is due to a coverer on duty at once', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await clockIn(c, 'test.cook.2.0');
       const due = await newTask(c, GH, 'STORE_KEEPER');
       const later = await newTask(c, GH, 'STORE_KEEPER', '5 hours');
@@ -518,7 +534,7 @@ describe('open tasks of the moved duty', () => {
   });
 
   it('a different coverer: unstarted tasks move to them; a started one stays', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await clockIn(c, 'test.cook.2.0');
       await clockIn(c, 'test.general-manager.2.0');
       const a = await newTask(c, GH, 'STORE_KEEPER');
@@ -536,7 +552,7 @@ describe('open tasks of the moved duty', () => {
   });
 
   it('"We have it" again: what the coverer was given goes back to the role', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await clockIn(c, 'test.cook.2.0');
       const t = await newTask(c, GH, 'STORE_KEEPER');
       await saved(c, OWNER, GH, 'STORE_KEEPER', 'covered_by', 'COOK');
@@ -548,7 +564,7 @@ describe('open tasks of the moved duty', () => {
   });
 
   it('"We don\'t do this": nothing is cancelled; unstarted ones stay unassigned and say so', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await clockIn(c, 'test.cook.2.0');
       const given = await newTask(c, GH, 'STORE_KEEPER');
       await newTask(c, GH, 'STORE_KEEPER', '3 hours');
@@ -566,7 +582,7 @@ describe('open tasks of the moved duty', () => {
   });
 
   it('a task the role’s own people took stays with them', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       const t = await newTask(c, H11, 'SOUS_CHEF');
       await c.query(`update ops.task set assignee_user_id = $2 where id = $1`, [
         t,
@@ -575,6 +591,28 @@ describe('open tasks of the moved duty', () => {
       const r = await saved(c, OWNER, H11, 'SOUS_CHEF', 'covered_by', 'EXECUTIVE_CHEF');
       expect(r.tasks_returned).toBe(0);
       expect((await holder(c, t)).u).toBe('test.sous-chef.1.1');
+    });
+  });
+});
+
+describe('Admin and imports together', () => {
+  it('a cover ended in Admin and set again by an import gives its access back (ADR 066)', async () => {
+    await inRolledBackTx(async (c) => {
+      // the seed's cover: the Front Desk keeps Guest House 2.0's store
+      const keeper = `STORE_KEEPER@${GH}-SUPPLY covers Store Keeper`;
+      const fd = 'test.front-desk-executive.2.0';
+      expect(await grants(c, fd)).toContain(keeper);
+      // Admin: "We have it" ends the grant (kept as history)
+      await saved(c, OWNER, GH, 'STORE_KEEPER', 'have');
+      expect(await grants(c, fd)).not.toContain(keeper);
+      // an import of file 37 sets it again: the same rows the loader writes
+      await c.query(
+        `insert into hr.role_cover (tenant_id, org_node_id, job_role_code, mode, covered_by_role)
+         values ($1, $2, 'STORE_KEEPER', 'covered_by', 'FRONT_DESK_EXECUTIVE')`,
+        [ids.tenant(), ids.node(GH)],
+      );
+      await c.query('select core.apply_cover_access($1)', [ids.node(GH)]);
+      expect(await grants(c, fd)).toContain(keeper);
     });
   });
 });

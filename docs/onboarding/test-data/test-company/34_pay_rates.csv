@@ -5,7 +5,7 @@ test.hr-executive.1.0,monthly,54750
 test.cost-controller.1.0,monthly,73000
 test.front-office-manager.1.0,monthly,73000
 test.front-desk-executive.1.0,monthly,36500
-test.guest-relations-executive.1.0,monthly,36500
+test.front-desk-executive-b.1.0,monthly,36500
 test.bell-captain.1.0,monthly,36500
 test.bellboy.1.0,hourly,125
 test.executive-housekeeper.1.0,monthly,73000
@@ -19,7 +19,7 @@ test.restaurant-manager.1.0,monthly,73000
 test.captain.1.0,monthly,36500
 test.steward.1.0,hourly,125
 test.steward-b.1.0,hourly,125
-test.host.1.0,hourly,125
+test.steward-c.1.0,hourly,125
 test.executive-chef.1.0,monthly,91250
 test.sous-chef.1.0,monthly,54750
 test.chef-de-partie.1.0,monthly,54750
@@ -34,7 +34,7 @@ test.bar-back.1.0,hourly,125
 test.banquet-manager.1.0,monthly,73000
 test.banquet-captain.1.0,monthly,36500
 test.banquet-server.1.0,hourly,125
-test.store-manager.1.0,monthly,73000
+test.purchase-manager.1.0,monthly,73000
 test.store-keeper.1.0,monthly,36500
 test.receiving-clerk.1.0,monthly,36500
 test.chief-engineer.1.0,monthly,73000
@@ -47,7 +47,7 @@ test.hr-executive.1.1,monthly,54750
 test.cost-controller.1.1,monthly,73000
 test.front-office-manager.1.1,monthly,73000
 test.front-desk-executive.1.1,monthly,36500
-test.guest-relations-executive.1.1,monthly,36500
+test.front-desk-executive-b.1.1,monthly,36500
 test.bell-captain.1.1,monthly,36500
 test.bellboy.1.1,hourly,125
 test.executive-housekeeper.1.1,monthly,73000
@@ -59,7 +59,7 @@ test.fandb-manager.1.1,monthly,73000
 test.restaurant-manager.1.1,monthly,73000
 test.captain.1.1,monthly,36500
 test.steward.1.1,hourly,125
-test.host.1.1,hourly,125
+test.steward-b.1.1,hourly,125
 test.executive-chef.1.1,monthly,91250
 test.sous-chef.1.1,monthly,54750
 test.chef-de-partie.1.1,monthly,54750
@@ -72,7 +72,7 @@ test.bar-back.1.1,hourly,125
 test.banquet-manager.1.1,monthly,73000
 test.banquet-captain.1.1,monthly,36500
 test.banquet-server.1.1,hourly,125
-test.store-manager.1.1,monthly,73000
+test.purchase-manager.1.1,monthly,73000
 test.store-keeper.1.1,monthly,36500
 test.receiving-clerk.1.1,monthly,36500
 test.chief-engineer.1.1,monthly,73000

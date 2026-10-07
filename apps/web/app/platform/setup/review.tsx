@@ -6,6 +6,7 @@ import {
   draftBundles,
   logins,
   stepOfFile,
+  warningsInWords,
   whoDoesWhat,
   type DraftProblem,
   type SetupDraft,
@@ -161,14 +162,20 @@ export async function ReviewStep({
               </ul>
             )}
             {report.warnings.length > 0 && (
-              <ul
+              <section
                 className="space-y-1 rounded-lg bg-amber-50 p-3 text-sm text-amber-900"
                 data-testid="check-warnings"
               >
-                {report.warnings.map((w, n) => (
-                  <li key={n}>{w.message}</li>
-                ))}
-              </ul>
+                <p className="font-medium">Worth a look (these don't stop you going live)</p>
+                <ul className="list-disc space-y-1 pl-5">
+                  {warningsInWords(
+                    draft,
+                    report.warnings.map((w) => w.message),
+                  ).map((w) => (
+                    <li key={w}>{w}</li>
+                  ))}
+                </ul>
+              </section>
             )}
             <details className="text-sm">
               <summary className="min-h-10 cursor-pointer">The full check</summary>

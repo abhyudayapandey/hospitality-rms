@@ -480,12 +480,12 @@ describe('test data for the stock check', () => {
     });
   });
 
-  it('has a Stock Verifier in Test Solo Bar Co., which has no Cost Controller (INV-11)', async () => {
+  it('has an Accountant who verifies stock checks in Test Solo Bar Co., which has no Cost Controller (INV-11)', async () => {
     await inRolledBackTx(async (c) => {
       const solo = ids.node('TEST-SOLO-BAR-KITCHEN-STORE');
       const r = await attemptAs(
         c,
-        ids.user('test.solo.stock-verifier'),
+        ids.user('test.solo.accountant'),
         'select inv.start_stock_check($1) as id',
         [solo],
       );

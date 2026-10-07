@@ -132,7 +132,7 @@ describe('between stores of the same outlet', () => {
 });
 
 describe('central kitchen to an outlet', () => {
-  it('the central kitchen store keeper sends; the Guest House (no store keeper) receives via its GM', async () => {
+  it('the central kitchen store keeper sends; the Guest House (no store keeper) receives via its Front Desk, who covers it', async () => {
     await inRolledBackTx(async (c) => {
       const chicken = await item(c, 'CHICKEN-BREAST');
       const r = await request(
@@ -146,10 +146,10 @@ describe('central kitchen to an outlet', () => {
       const t = r.rows![0]!.id;
       expect(await route(c, t)).toEqual([
         { step: 'dispatch', grp: 'STORE_KEEPER', place: 'TEST-CENTRAL-KITCHEN-STORE' },
-        { step: 'receipt', grp: 'OUTLET_MANAGER', place: 'TEST-GUEST-HOUSE-2.0-SUPPLY' },
+        { step: 'receipt', grp: 'STORE_KEEPER', place: 'TEST-GUEST-HOUSE-2.0-SUPPLY' },
       ]);
       await as(c, 'test.central-kitchen-store-keeper', DISPATCH, [t]);
-      expect((await as<{ s: string }>(c, 'test.general-manager.2.0', RECEIVE, [t])).s).toBe(
+      expect((await as<{ s: string }>(c, 'test.front-desk-executive.2.0', RECEIVE, [t])).s).toBe(
         'approved',
       );
     });

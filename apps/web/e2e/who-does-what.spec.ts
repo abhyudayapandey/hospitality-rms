@@ -4,7 +4,8 @@ import { placeId, signInAs } from './helpers';
 
 // Admin → Who does what (ADR 065) at 380 px: the two common cases, as the Account Owner and
 // as a GM who is the user admin of one outlet. Every cover a test sets is put back in a
-// finally block, so the other specs see the seed's state (no covers). Who may do what, and
+// finally block, so the other specs see the seed's state (Guest House 2.0's Front Desk covers
+// its Store Keeper, ADR 066). Who may do what, and
 // what moves, is proved in packages/db/src/who-does-what.db.test.ts.
 
 test.use({ viewport: { width: 380, height: 800 } });
@@ -30,6 +31,8 @@ async function putBack(outlets: string[]): Promise<void> {
 async function openRole(page: Page, outlet: string, role: string): Promise<void> {
   await page.goto('/admin/cover');
   await page.getByLabel('Place').selectOption({ label: outlet });
+  // wait for that outlet's roles: "All outlets" lists the seed's cover, which may be this role
+  await expect(page.getByText(`Each role at ${outlet}:`)).toBeVisible();
   await page.locator(`[data-testid="cover-role"][data-role="${role}"] a`).click();
 }
 
@@ -39,7 +42,11 @@ test('"Our Sous Chef left; the Executive Chef covers", then back', async ({ page
     await page.goto('/admin');
     await page.getByRole('link', { name: 'Who does what' }).click();
     await expect(page.getByLabel('Place')).toHaveValue('all');
-    await expect(page.getByText('At every outlet, each role')).toBeVisible();
+    // the seed's one cover, at the Guest House
+    await expect(page.getByTestId('cover-role')).toHaveCount(1);
+    await expect(page.getByTestId('cover-role')).toContainText(
+      'Store Keeper · Test Guest House 2.0',
+    );
 
     await openRole(page, 'Test Hotel & Bar 1.1', 'SOUS_CHEF');
     await expect(page.getByRole('heading', { name: 'Sous Chef' })).toBeVisible();
@@ -67,14 +74,16 @@ test('"Our Sous Chef left; the Executive Chef covers", then back', async ({ page
 
     // "All outlets" now lists it
     await page.goto('/admin/cover');
-    await expect(page.getByTestId('cover-role')).toHaveCount(1);
-    await expect(page.getByTestId('cover-role')).toContainText('Sous Chef · Test Hotel & Bar 1.1');
-    await expect(page.getByTestId('cover-answer')).toHaveText(
+    await expect(page.getByTestId('cover-role')).toHaveCount(2);
+    const sous = page
+      .getByTestId('cover-role')
+      .filter({ hasText: 'Sous Chef · Test Hotel & Bar 1.1' });
+    await expect(sous.getByTestId('cover-answer')).toHaveText(
       'Someone else does it: Executive Chef',
     );
 
     // and back: the Sous Chef does it again
-    await page.getByTestId('cover-role').getByRole('link').click();
+    await sous.getByRole('link').click();
     await page.getByLabel('We have it').check();
     await expect(page.getByTestId('cover-sentence')).toContainText(
       'The Executive Chef stops covering; the Sous Chef does this work again',

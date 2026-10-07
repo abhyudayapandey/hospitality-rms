@@ -227,7 +227,7 @@ describe('labour cost: who sees it (every user)', () => {
         'test.executive-chef.1.0',
         'test.cost-controller.1.0',
         'test.hr-executive.1.0',
-        'test.store-manager.1.0',
+        'test.purchase-manager.1.0',
         'test.bartender.1.0',
       ]) {
         expect(await open(u), u).toBe(false);

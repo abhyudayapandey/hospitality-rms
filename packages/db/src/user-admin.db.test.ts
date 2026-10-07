@@ -232,7 +232,7 @@ describe('what the admin forms offer', () => {
         [ids.tenant()],
       );
       expect((await roles(c, OWNER)).sort()).toEqual(all.rows.map((r) => r.code).sort());
-      expect((await roles(c, SOLO_OWNER)).length).toBe(8);
+      expect((await roles(c, SOLO_OWNER)).length).toBe(9);
       // a home place narrows it: a kitchen role, not one that needs the outlet's bar
       const guestHouse = await roles(c, FD2);
       expect(guestHouse).toContain('COOK');

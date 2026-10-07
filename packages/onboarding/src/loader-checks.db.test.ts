@@ -285,7 +285,7 @@ describe('loader errors', () => {
       const r = await loadCustomer(c, files, { nested: true });
       expect(r.applied).toBe(false);
       expect(r.issues.map((i) => `${i.file}:${i.row}:${i.column}:${i.message}`)).toEqual([
-        '07_users.csv:38:job_role_code:STORE_MANAGER at TEST-HOTEL-1.0-STORES-TEAM: MAIN_STORE_REQUIRED (main_store)',
+        '07_users.csv:38:job_role_code:PURCHASE_MANAGER at TEST-HOTEL-1.0-STORES-TEAM: MAIN_STORE_REQUIRED (main_store)',
         '07_users.csv:39:job_role_code:STORE_KEEPER at TEST-HOTEL-1.0-STORES-TEAM: MAIN_STORE_REQUIRED (main_store)',
         '07_users.csv:40:job_role_code:RECEIVING_CLERK at TEST-HOTEL-1.0-STORES-TEAM: MAIN_STORE_REQUIRED (main_store)',
       ]);

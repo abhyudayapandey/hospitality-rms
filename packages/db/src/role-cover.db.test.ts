@@ -6,8 +6,10 @@ import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from
 // role it has, or not done there. The covering role's people get the covered role's grants
 // at that outlet only, through the same derivation as their own; its job-role tasks are
 // given to one of them on duty (clocked in first, fewest open tasks, then round robin); a
-// role not done has no checklist rounds there. The test customers have no cover rows, so
-// every test here adds its own inside a rolled-back transaction.
+// role not done has no checklist rounds there. The seed has one cover each (ADR 066): Guest
+// House 2.0's Front Desk covers the Store Keeper, and the Solo Bar's Kitchen Steward is not
+// done. The tests below start without them and add their own inside a rolled-back
+// transaction.
 
 afterAll(closePools);
 
@@ -68,19 +70,39 @@ async function errorsFor(
   return rows.map((r) => r.code);
 }
 
+/** A rolled-back transaction without the seed's covers, and the access they gave. */
+function fresh<T>(fn: (c: pg.PoolClient) => Promise<T>): Promise<T> {
+  return inRolledBackTx(async (c) => {
+    const { rows } = await c.query<{ org_node_id: string }>(
+      `update hr.role_cover set archived_at = now() where archived_at is null
+       returning org_node_id`,
+    );
+    for (const r of rows) await c.query('select core.apply_cover_access($1)', [r.org_node_id]);
+    return fn(c);
+  });
+}
+
 describe('cover and access', () => {
-  it('the test customers have no cover, so nobody’s access comes from one', async () => {
+  it('in the seed, the only access from a cover is 2.0’s Store Keeper, for its Front Desk', async () => {
     const { rows } = await inRolledBackTx((c) =>
-      c.query<{ n: number }>(
-        `select count(*)::int n from hr.worker w, core.derive_job_role_access(w.owner_user_id) d
+      c.query<{ username: string; access_group: string; source: string }>(
+        `select u.username, d.access_group, d.source
+           from hr.worker w join core.app_user u on u.id = w.owner_user_id,
+                core.derive_job_role_access(w.owner_user_id) d
           where d.source like 'covers %'`,
       ),
     );
-    expect(rows[0]!.n).toBe(0);
+    expect(rows).toEqual([
+      {
+        username: 'test.front-desk-executive.2.0',
+        access_group: 'STORE_KEEPER',
+        source: 'covers Store Keeper',
+      },
+    ]);
   });
 
   it('gives the covering role’s people the covered role’s grants, at that outlet only', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       const before = await grants(c, 'test.front-desk-executive.2.0');
       const otherBefore = await grants(c, 'test.front-desk-executive.1.0');
       await cover(c, GH, 'STORE_KEEPER', 'FRONT_DESK_EXECUTIVE');
@@ -99,7 +121,7 @@ describe('cover and access', () => {
   });
 
   it('the app follows it: the cover reaches 2.0’s store and nowhere else', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       const fd = ids.user('test.front-desk-executive.2.0');
       const can = async (store: string) =>
         (
@@ -118,7 +140,7 @@ describe('cover and access', () => {
   });
 
   it('removing the cover takes the access away; changing who covers moves it', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       const before = await grants(c, 'test.front-desk-executive.2.0');
       const id = await cover(c, GH, 'STORE_KEEPER', 'FRONT_DESK_EXECUTIVE');
       await c.query(`update hr.role_cover set covered_by_role = 'GENERAL_MANAGER' where id = $1`, [
@@ -138,7 +160,7 @@ describe('cover and access', () => {
   });
 
   it('a "runs the department" duty lands on the covered role’s department at that outlet', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       // Bar 3.0 has no Executive Chef: a bartender covering one runs 3.0's Kitchen, not the Bar
       await cover(c, BAR, 'EXECUTIVE_CHEF', 'BARTENDER');
       const g = await grants(c, 'test.bartender.3.0');
@@ -148,7 +170,7 @@ describe('cover and access', () => {
   });
 
   it('a department the outlet lacks: the work lands on the covering person’s own home', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       // Bar 3.0 has no Housekeeping: a bartender's own department (the Bar) takes it
       await cover(c, BAR, 'HOUSEKEEPING_SUPERVISOR', 'BARTENDER');
       const covered = (await grants(c, 'test.bartender.3.0')).filter((x) => x.includes('covers'));
@@ -160,7 +182,7 @@ describe('cover and access', () => {
 
 describe('what a cover may not be', () => {
   it('refuses with a stable code', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       expect(await errorsFor(c, GH, 'STORE_KEEPER', 'covered_by', 'STORE_KEEPER')).toEqual([
         'COVER_SELF',
       ]);
@@ -190,7 +212,7 @@ describe('what a cover may not be', () => {
   });
 
   it('refuses chains: a covering role is one the outlet has', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await cover(c, GH, 'STORE_KEEPER', 'FRONT_DESK_EXECUTIVE');
       expect(await errorsFor(c, GH, 'FRONT_DESK_EXECUTIVE', 'covered_by', 'COOK')).toEqual([
         'COVER_CHAIN',
@@ -212,14 +234,14 @@ describe('what a cover may not be', () => {
 
 describe('cover from the app', () => {
   it('a user admin reads their outlets’ covers; staff see none; nobody writes them', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await cover(c, GH, 'STORE_KEEPER', 'FRONT_DESK_EXECUTIVE');
       const read = async (u: string) =>
         (
           await attemptAs<{ n: number }>(
             c,
             ids.user(u),
-            `select count(*)::int n from hr.role_cover`,
+            `select count(*)::int n from hr.role_cover where archived_at is null`,
           )
         ).rows?.[0]?.n;
       // whoever administers users there (2.0's front desk, the Account Owner); not 1.0's GM
@@ -280,7 +302,7 @@ const tick = (c: pg.PoolClient, at = T) => c.query('select * from ops.tasks_tick
 
 describe('covered tasks', () => {
   it('are in the covering role’s pool at that outlet only; a task may be given to the role', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await cover(c, BAR, 'HOUSEKEEPING_SUPERVISOR', 'BARTENDER');
       const here = await newTask(c, BAR, 'HOUSEKEEPING_SUPERVISOR');
       const there = await newTask(c, 'TEST-HOTEL-1.0', 'HOUSEKEEPING_SUPERVISOR');
@@ -313,7 +335,7 @@ describe('covered tasks', () => {
   });
 
   it('go to one person on duty: fewest open tasks, then round robin', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await cover(c, BAR, 'HOUSEKEEPING_SUPERVISOR', 'BARTENDER');
       const servers = ['test.bartender.3.0', 'test.bartender-b.3.0'];
       // start both with nothing open
@@ -345,7 +367,7 @@ describe('covered tasks', () => {
   });
 
   it('stay in the pool while nobody is on duty, then go to whoever clocks in', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await cover(c, BAR, 'HOUSEKEEPING_SUPERVISOR', 'BARTENDER');
       const t = await newTask(c, BAR, 'HOUSEKEEPING_SUPERVISOR');
       await tick(c);
@@ -357,7 +379,7 @@ describe('covered tasks', () => {
   });
 
   it('move to someone else on duty if the person goes off duty before starting', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await cover(c, BAR, 'HOUSEKEEPING_SUPERVISOR', 'BARTENDER');
       await clockIn(c, 'test.bartender.3.0');
       const t = await newTask(c, BAR, 'HOUSEKEEPING_SUPERVISOR');
@@ -377,7 +399,7 @@ describe('covered tasks', () => {
   });
 
   it('a role the outlet has keeps its pool: its tasks are not given out', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       await clockIn(c, 'test.server.3.0');
       const t = await newTask(c, BAR, 'SERVER');
       await tick(c);
@@ -388,7 +410,7 @@ describe('covered tasks', () => {
 
 describe('not done', () => {
   it('a role not done at an outlet has no checklist rounds there; elsewhere it still does', async () => {
-    await inRolledBackTx(async (c) => {
+    await fresh(async (c) => {
       const rounds = async (node: string) =>
         (
           await c.query<{ n: number }>(

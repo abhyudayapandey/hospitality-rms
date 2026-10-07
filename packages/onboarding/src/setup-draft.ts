@@ -8,6 +8,7 @@ import {
   MODULES,
   ROLES,
   ROLE_BY_CODE,
+  ACCESS_GROUPS,
   TILE_BY_CODE,
   bundlesFor,
   levelOf,
@@ -164,13 +165,15 @@ export function outletCodes(draft: SetupDraft): Map<string, string> {
   const cust = companyCode(draft);
   const out = new Map<string, string>();
   const taken = new Set<string>();
+  const custWords = cust.split('-');
   for (const o of draft.outlets) {
+    let w = words(o.name).map((x) => x.toUpperCase());
+    // an outlet named like its company ("Test Cafe" of Test Cafe) is its main one, not
+    // TEST-CAFE-TEST-CAFE; "Test Cafe Bandra" is TEST-CAFE-BANDRA
+    const named = w.length > 0;
+    if (w.slice(0, custWords.length).join('-') === cust) w = w.slice(custWords.length);
     const base = `${cust}-${
-      words(o.name)
-        .map((x) => x.toUpperCase())
-        .join('-')
-        .slice(0, 24)
-        .replace(/-+$/, '') || 'OUTLET'
+      w.join('-').slice(0, 24).replace(/-+$/, '') || (named ? 'MAIN' : 'OUTLET')
     }`;
     let code = base;
     for (let n = 2; taken.has(code); n++) code = `${base}-${n}`;
@@ -828,4 +831,72 @@ export function peopleFromPaste(
     });
   }
   return { people, notes };
+}
+
+/**
+ * The dry run's warnings in the wizard's words (ADR 064). The loader names places, roles,
+ * people and access groups by code; whoever sets up a customer never sees one, so each is
+ * replaced by its name from the files this draft makes, and advice about a file's own syntax
+ * is left out. The same warning twice is said once.
+ */
+export function warningsInWords(draft: SetupDraft, messages: readonly string[]): string[] {
+  const names = new Map<string, string>();
+  for (const g of ACCESS_GROUPS) names.set(g.code, g.name);
+  for (const r of ROLES) names.set(r.code, r.title);
+  names.set(ownerUsername(companyCode(draft)), draft.company.ownerName || 'the owner');
+  let files: Record<string, string> = {};
+  try {
+    files = filesFromDraft(draft);
+  } catch {
+    // a draft that can't make its files has problems listed above; codes stay as they are
+  }
+  const rows = (key: keyof typeof FILES) => {
+    const prefix = FILES[key].file.slice(0, 3);
+    const f = Object.keys(files).find((n) => n.startsWith(prefix));
+    return f ? parseCsv(files[f]!).rows.map((r) => r.values) : [];
+  };
+  for (const r of rows('orgNodes')) if (r['name']) names.set(r['node_code']!, r['name']);
+  for (const r of rows('deliveryNodes')) if (r['name']) names.set(r['node_code']!, r['name']);
+  for (const r of rows('jobRoles'))
+    if (r['job_title']) names.set(r['job_role_code']!, r['job_title']);
+  for (const r of rows('users'))
+    if (r['display_name']) names.set(r['username']!, r['display_name']);
+  const word = (t: string) =>
+    names.get(t) ??
+    (/^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$/.test(t) && t.length > 2
+      ? t.toLowerCase().replace(/_/g, ' ')
+      : t);
+  const inWords = (m: string) =>
+    m
+      .replace(/\s*\([A-Z][A-Z0-9_]+\)/g, '') // an error code in brackets
+      .replace(/\s*\([a-z_]+(, [a-z_]+)*\)/g, '') // approval steps by code
+      .replace(/\.?\s*Add "\(this store only\)".*$/, '')
+      .replace(/[A-Za-z0-9][A-Za-z0-9._@-]*[A-Za-z0-9]/g, word);
+  // "<who>: <process> at <places> has no approver but them: ..." is said once per person
+  const alone = new Map<string, { processes: string[]; fails: boolean }>();
+  const said = new Set<string>();
+  for (const m of messages) {
+    const a = /^([^:]+): (\S+) .* has no approver but them: (.*)$/.exec(m);
+    if (a) {
+      const e = alone.get(a[1]!) ?? { processes: [], fails: false };
+      e.processes.push(word(a[2]!));
+      e.fails ||= !a[3]!.includes('account owner');
+      alone.set(a[1]!, e);
+      continue;
+    }
+    said.add(inWords(m));
+  }
+  for (const [who, e] of alone) {
+    const list =
+      e.processes.length > 1
+        ? `${e.processes.slice(0, -1).join(', ')} and ${e.processes.at(-1)}`
+        : e.processes[0];
+    said.add(
+      `${word(who)}'s own ${list} requests have nobody above them to approve: ` +
+        (e.fails
+          ? 'they will be refused until someone above them is set up'
+          : 'they go through at once, as the account owner'),
+    );
+  }
+  return [...said];
 }

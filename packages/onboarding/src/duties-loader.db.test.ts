@@ -119,8 +119,8 @@ describe('duties in file 06', () => {
       // a role of the customer's own, not in the catalogue (ADR 060), given nothing
       const text =
         files[FILE]!.replace(
-          'HOST,Host,any,RESTAURANT / FLOOR-SERVICE,WORKS_SHIFTS',
-          'HOST,Host,any,RESTAURANT / FLOOR-SERVICE,WORKS_SHIFTS; WORKS_SHIFTS',
+          'HOST,Host,any,FLOOR-SERVICE,WORKS_SHIFTS',
+          'HOST,Host,any,FLOOR-SERVICE,WORKS_SHIFTS; WORKS_SHIFTS',
         ).trimEnd() + '\nTEA_MAKER,Tea Maker,any,KITCHEN,\n';
       const before = await roleRows(c);
       const r = await loadCustomer(c, { ...files, [FILE]: text }, { nested: true });

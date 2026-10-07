@@ -309,11 +309,13 @@ export async function lateTemplate(on: boolean): Promise<void> {
 }
 
 /**
- * Who covers it (ADR 061): Guest House 2.0 has no Store Keeper; with `on`, its Front Desk
- * covers one, and a Store Keeper's task waits there. Off archives the cover and cancels the
- * task. Access at 2.0 is applied again either way, as the loader does.
+ * Who covers it (ADR 061): Guest House 2.0 has no Store Keeper, and in the seed its Front
+ * Desk covers one (file 37, ADR 066). `on` puts that cover in place, `off` takes it away;
+ * `task` adds a Store Keeper's task waiting there (any earlier one is cancelled). Access at
+ * 2.0 is applied again either way, as the loader does. Specs end with `(true, false)`: the
+ * seed's state.
  */
-export async function storeKeeperCover(on: boolean): Promise<void> {
+export async function storeKeeperCover(on: boolean, task = on): Promise<void> {
   const outlet = await placeId('TEST-GUEST-HOUSE-2.0');
   const client = new pg.Client({ connectionString: env('MIGRATOR_DATABASE_URL') });
   await client.connect();
@@ -335,6 +337,8 @@ export async function storeKeeperCover(on: boolean): Promise<void> {
            from core.hierarchy_node where id = $1`,
         [outlet],
       );
+    }
+    if (task) {
       await client.query(
         `insert into ops.task (tenant_id, org_node_id, kind, title, due_at, assign_mode,
                                job_role_code)

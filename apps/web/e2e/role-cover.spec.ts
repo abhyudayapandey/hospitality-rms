@@ -2,12 +2,12 @@ import { expect, test } from '@playwright/test';
 import { placeId, signInAs, storeKeeperCover } from './helpers';
 
 // Who covers it (ADR 061) through the real screens, at 380 px: Guest House 2.0 has no Store
-// Keeper, so its Front Desk covers one. They see the Store Keeper's task, saying whose work it
-// is, and the outlet's stock; with the cover gone, neither. Who may do what is proved in
-// packages/db/src/role-cover.db.test.ts.
+// Keeper, so its Front Desk covers one (the seed's file 37, ADR 066). They see the Store
+// Keeper's task, saying whose work it is, and the outlet's stock; with the cover gone, neither.
+// Who may do what is proved in packages/db/src/role-cover.db.test.ts.
 
 test.use({ viewport: { width: 380, height: 800 } });
-test.afterEach(() => storeKeeperCover(false));
+test.afterEach(() => storeKeeperCover(true, false)); // the seed's state
 
 test('the front desk covering the store keeper gets the store keeper’s task and stock', async ({
   page,

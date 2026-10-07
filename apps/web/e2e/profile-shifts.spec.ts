@@ -88,7 +88,7 @@ test.describe('outlet location', () => {
 });
 
 test.describe('My shifts on the matching rule', () => {
-  const NAME = 'Test Steward B 1.0';
+  const NAME = 'Test Steward B 1.1'; // no rostered shifts, so yesterday is only the one below
   let shift = '';
 
   test.beforeAll(async () => {

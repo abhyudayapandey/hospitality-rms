@@ -253,6 +253,9 @@ customer); files 30 to 32 (test customers only, ADR 020) load one-off tasks, a m
 request and a prep list linked to file 26's batches, also pinned by that test. File 33 (test
 customers only, ADR 028) loads past purchase orders, approved and received in full, short or
 not at all; the purchasing and stock figures are pinned by `packages/db/src/cost-reports.db.test.ts`.
+File 37 is who covers it (ADR 061, 066): Guest House 2.0's Front Desk covers its Store Keeper,
+the Solo Bar's Kitchen Steward is not done. The test customers' roles are the SOPs', and
+`test-customers-templates.test.ts` checks every test outlet against its template.
 File 34 is pay rates (any customer); files 35 and 36 (test customers only, ADR 030) load a
 past week of attendance and two central kitchen transfers; the labour, People and central
 kitchen figures are pinned by `packages/db/src/labour-reports.db.test.ts`.
@@ -266,8 +269,8 @@ Company sets it to no so its swap flows work) and the settings hold `count_due_d
 POS, for the POS import (ADR 039; Test Bar 3.0's dishes are 3001 to 3031), and the Cashier job
 role holds CASHIER at the outlet's stores (import only, no sales or reports).
 File 11 has optional `shelf` and `shelf_order` (shelf-ordered stock check sheets, ADR 043; Test
-Bar 3.0's bar store has them), and Test Solo Bar Co. has `test.solo.stock-verifier` because it
-has no Cost Controller. Test Company's orders in file 33 follow PO-5 (ADR 044): PO-1 to PO-3
+Bar 3.0's bar store has them), and Test Solo Bar Co.'s `test.solo.accountant` verifies its stock
+checks because it has no Cost Controller (the bar SOP's Accountant / Excise Clerk, ADR 066). Test Company's orders in file 33 follow PO-5 (ADR 044): PO-1 to PO-3
 are approved at once, PO-4 is unusual and the GM approves it.
 `TEST_LOGINS_do_not_commit.csv` (passwords) is never committed.
 

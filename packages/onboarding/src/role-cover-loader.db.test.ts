@@ -14,7 +14,9 @@ afterAll(closePools);
 vi.setConfig({ testTimeout: 400_000 });
 
 const DATA = join(import.meta.dirname, '..', '..', '..', 'docs', 'onboarding', 'test-data');
-const company = readCustomerDir(join(DATA, 'test-company'));
+// Test Company without its own file 37 (the seed's one cover, ADR 066), so each test says
+// which covers it loads
+const { '37_role_cover.csv': seedCover, ...company } = readCustomerDir(join(DATA, 'test-company'));
 const withCover = (rows: string[]) => ({
   ...company,
   '37_role_cover.csv':
@@ -37,7 +39,11 @@ describe('who covers it (file 37)', () => {
       ]);
       const first = await loadCustomer(c, files, { nested: true });
       expect(first.issues).toEqual([]);
-      expect(first.counts['role cover']).toEqual({ created: 3, updated: 0, unchanged: 0 });
+      // the seed already has 2.0's (ADR 066)
+      expect(seedCover).toContain(
+        'TEST-GUEST-HOUSE-2.0,STORE_KEEPER,covered_by,FRONT_DESK_EXECUTIVE',
+      );
+      expect(first.counts['role cover']).toEqual({ created: 2, updated: 0, unchanged: 1 });
       expect(covered(first.access)).toEqual([
         'test.commis.3.0 DEPARTMENT_HEAD@TEST-BAR-3.0-KITCHEN covers Executive Chef',
         'test.commis.3.0 STORE_KEEPER@TEST-BAR-3.0-KITCHEN-STORE covers Executive Chef',

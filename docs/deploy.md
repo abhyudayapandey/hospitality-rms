@@ -1715,7 +1715,7 @@ passwords file (`TEST_LOGINS_do_not_commit.csv`) and the README never are:
 (cd docs/onboarding/test-data/test-solo-bar-co && zip -q -FS ~/test-solo-bar-co.zip [0-9][0-9]_*.csv)
 ```
 
-`test-company.zip` holds 40 files, `test-solo-bar-co.zip` 28.
+`test-company.zip` holds 41 files, `test-solo-bar-co.zip` 29.
 
 **2. Create each customer**: `/platform` → **New customer**. Fill in exactly:
 
@@ -2258,3 +2258,37 @@ nothing to re-import.
    bundles, each bundle "On", read-only. Turn Maintenance off and on again: it still works
    inside a bundle that is on. A module can't be turned on outside the plan: there is no
    switch for it, and the database refuses it (NOT_IN_PLAN, "Not in your plan").
+
+## Releasing "the test customers follow the SOPs" (ADR 066)
+
+Two migrations: `20261122100000_cover_own_grant_first` (a grant someone holds through their
+own role stays their own when a cover gives it too; access is unchanged) and
+`20261122110000_reapply_ended_access` (access ended in Admin comes back when an import or a
+cover gives it again). Test data changed: both
+test customers are re-imported. No stack change.
+
+1. Merge, then **Deploy**.
+2. Re-import Test Company and Test Solo Bar Co. as usual (console → customer → Import).
+   - Test Company (41 files): no problems, the same 2 owner warnings; job roles 1 new,
+     1 changed; job role access 3 new; users 6 new; workers 6 new; role cover 1 new; leave
+     balances 18 new; pay rates 6 new; shift templates 4 changed; checklists 2 new; the rest
+     unchanged.
+   - Test Solo Bar Co. (29 files): no problems, the same 6 owner warnings; job roles 2 new;
+     job role access 2 new; users 1 new; workers 1 new; role cover 1 new; leave balances 3
+     new; the rest unchanged.
+   - Apply each, then a second dry run shows no changes.
+   - The old job roles (Store Manager, Guest Relations Executive, Stock Verifier) stay, held
+     by nobody once step 3 is done; an import never removes one either.
+3. Sign in as **Test Account Owner** → Admin → People, and deactivate the seven old test
+   people: `test.guest-relations-executive.1.0` and `.1.1`, `test.host.1.0` and `.1.1`,
+   `test.store-manager.1.0` and `.1.1`; and, as **Test Bar Manager** (the Solo Bar's owner),
+   `test.solo.stock-verifier`. An import never removes a person.
+4. In the console, each customer's **Logins** page: create the new username logins with the
+   Test<Role>!12 rule (`TestPurchaseManager!12`, `TestAccountant!12`, ...).
+5. Check: sign in as **Test Front Desk Executive 2.0**. Stock shows Guest House 2.0's supply
+   point (they cover its Store Keeper). Sign in as **Test Accountant** (Solo Bar): the stock
+   check's Verify step is theirs.
+6. Check the set-up wizard: in the console, start a test customer and go as far as **Check
+   everything**. Its warnings are under "Worth a look (these don't stop you going live)", in
+   names with no codes, and the owner's approvals are one sentence. (The test company it
+   creates stays, marked as a test.)
