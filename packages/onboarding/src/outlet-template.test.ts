@@ -54,6 +54,49 @@ describe('the plan for an outlet', () => {
     ).toContain('FANDB_MANAGER');
   });
 
+  it('a hotel: breakfast is the restaurant’s, said beside it; no spa or pool unless ticked', () => {
+    const p = planOutlet(choice('hotel'));
+    expect(p.departments.find((d) => d.code === 'RESTAURANT')?.note).toBe(
+      'includes breakfast; untick if no meals are served',
+    );
+    expect(p.departments.map((d) => d.code)).not.toContain('SPA-RECREATION');
+    expect(p.roles.map((r) => r.code)).not.toContain('LIFEGUARD');
+  });
+
+  it('a hotel with a pool, a spa and a gym: Spa & Recreation, its people and SOP checks', () => {
+    const p = planOutlet(choice('hotel', { extras: ['pool', 'spa', 'gym'] }));
+    expect(p.departments.map((d) => d.code)).toContain('SPA-RECREATION');
+    expect(p.roles.map((r) => r.code)).toEqual(
+      expect.arrayContaining([
+        'RECREATION_MANAGER',
+        'LIFEGUARD',
+        'SPA_MANAGER',
+        'THERAPIST',
+        'SPA_RECEPTIONIST',
+      ]),
+    );
+    expect(p.checklists.map((c) => [c.code, c.department])).toEqual(
+      expect.arrayContaining([
+        ['POOL-SAFETY', 'SPA-RECREATION'],
+        // the pool plant is Engineering's (EN-08)
+        ['POOL-WATER-TEST', 'ENGINEERING'],
+        ['SPA-OPENING', 'SPA-RECREATION'],
+        ['GYM-CHECK', 'SPA-RECREATION'],
+      ]),
+    );
+    // a gym alone needs no lifeguard or therapist
+    const gym = planOutlet(choice('hotel', { extras: ['gym'] })).roles.map((r) => r.code);
+    expect(gym).toContain('RECREATION_MANAGER');
+    expect(gym).not.toContain('LIFEGUARD');
+    expect(gym).not.toContain('THERAPIST');
+  });
+
+  it('amenities are a hotel’s only', () => {
+    expect(() => planOutlet(choice('restaurant', { extras: ['pool'] }))).toThrow(
+      /not offered for Restaurant only/,
+    );
+  });
+
   it('banquets switch the Events module on', () => {
     expect(planOutlet(choice('hotel')).modules).not.toContain('events');
     expect(planOutlet(choice('hotel', { extras: ['banquets'] })).modules).toContain('events');

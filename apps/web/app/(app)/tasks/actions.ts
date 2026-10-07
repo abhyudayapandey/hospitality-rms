@@ -1,7 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { failure, type ActionResult } from '@outlet-ops/domain';
+import {
+  failure,
+  libraryStepsJson,
+  newerLibraryVersion,
+  type ActionResult,
+} from '@outlet-ops/domain';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser, type Tx } from '@/lib/db';
 import {
@@ -15,6 +20,7 @@ import {
   type PhotoPrefix,
   type UploadTarget,
 } from '@/lib/photos';
+import { checklist } from '@/lib/tasks';
 import type { Schedule, StepInput } from '@/lib/tasks-view';
 import { requireModule } from '@/lib/modules-server';
 
@@ -205,6 +211,25 @@ export async function saveChecklist(input: {
                                ${json(input.schedule)}::jsonb, ${json(input.assign)}::jsonb,
                                ${json(input.steps)}::jsonb) as id`.execute(tx);
     return { id: r.rows[0]!.id };
+  });
+}
+
+/**
+ * "Use the new version" (ADR 068): the starter library's newer steps replace the checklist's;
+ * its name, schedule and who it goes to stay. The steps come from the product's library here,
+ * never from the browser.
+ */
+export async function adoptLibraryVersion(id: string): Promise<ActionResult<{ version: number }>> {
+  return run('use_library_version', async (tx) => {
+    await requireModule(tx, 'checklists');
+    const c = await checklist(tx, id);
+    const lib = newerLibraryVersion(c?.library_code, c?.library_version);
+    if (!c || !lib) throw new Error('INVALID_STATE');
+    await sql`
+      select ops.use_library_version(${id}::uuid, ${lib.code}, ${lib.version},
+                                     ${json(libraryStepsJson(lib))}::jsonb)`.execute(tx);
+    revalidatePath('/tasks/checklists', 'layout');
+    return { version: lib.version };
   });
 }
 

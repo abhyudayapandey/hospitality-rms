@@ -5,7 +5,7 @@
 export function AppliesBadge({ applies }: { applies: string }) {
   const [label, style] =
     applies === 'approval'
-      ? ['Needs approval (ROLE_CHANGE)', 'bg-amber-100 text-amber-900']
+      ? ['Waiting for approval', 'bg-amber-100 text-amber-900']
       : applies === 'sole owner: now'
         ? ['Applies now (sole owner)', 'bg-emerald-100 text-emerald-900']
         : ['Applies now', 'bg-emerald-100 text-emerald-900'];

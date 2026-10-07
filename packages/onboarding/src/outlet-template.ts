@@ -45,9 +45,9 @@ export interface OutletChoice {
 export interface OutletPlan {
   format: OutletTemplate['format'];
   view?: View;
-  departments: { code: string; name: string; type: string; store?: string }[];
+  departments: { code: string; name: string; type: string; store?: string; note?: string }[];
   /** Departments the template offers that are off (shown unticked). */
-  offered: { code: string; name: string; alsoIn?: View }[];
+  offered: { code: string; name: string; alsoIn?: View; note?: string }[];
   roles: { code: string; title: string; department: string }[];
   checklists: { code: string; name: string; department: string; version: number }[];
   items: StarterItem[];
@@ -90,11 +90,19 @@ export function planOutlet(choice: OutletChoice): OutletPlan {
     if (!known.has(d)) throw new TemplateError(`${d} is not a department of ${tile.name}`);
   }
   const deptDef = new Map(DEPARTMENTS.map((d) => [d.code, d]));
+  const noteOf = new Map(t.departments.flatMap((d) => (d.note ? [[d.code, d.note]] : [])));
   const departments = [...known]
     .filter((d) => chosen.has(d))
     .map((code) => {
       const d = deptDef.get(code)!;
-      return { code, name: d.name, type: d.type, ...(d.store && { store: d.store }) };
+      const note = noteOf.get(code);
+      return {
+        code,
+        name: d.name,
+        type: d.type,
+        ...(d.store && { store: d.store }),
+        ...(note && { note }),
+      };
     });
   const on = new Set(departments.map((d) => d.code));
 
@@ -151,6 +159,7 @@ export function planOutlet(choice: OutletChoice): OutletPlan {
         code: d.code,
         name: deptDef.get(d.code)!.name,
         ...(d.view && view && d.view !== view && { alsoIn: d.view }),
+        ...(d.note && { note: d.note }),
       })),
     roles: [...roles.values()],
     checklists: [...checklists.values()],

@@ -48,6 +48,12 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
   await o.getByRole('checkbox', { name: /Takes delivery orders/ }).check();
   await o.getByRole('button', { name: 'Save outlet' }).click();
   await expect(page.getByTestId('outlets')).toContainText('Bandra Café');
+  // Change and Remove: two equal buttons side by side
+  const card = page.getByTestId('outlets').locator('[data-outlet="Bandra Café"]');
+  const change = await card.getByRole('link', { name: 'Change' }).boundingBox();
+  const remove = await card.getByRole('button', { name: /Remove/ }).boundingBox();
+  expect(Math.abs(change!.width - remove!.width)).toBeLessThan(2);
+  expect(Math.abs(change!.y - remove!.y)).toBeLessThan(2);
 
   // left half way: the console lists it, and it opens where it was left
   await page.goto('/platform');
@@ -182,4 +188,27 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
     [code],
   );
   expect(par.map((p) => Number(p.par))).toEqual([12]);
+});
+
+test('a set-up can be thrown away, from its screens or from the list', async ({ page }) => {
+  const stamp = Date.now().toString(36).toUpperCase();
+  await signInPlatform(page);
+  for (const where of ['wizard', 'list'] as const) {
+    const company = `Thrown ${where} ${stamp}`;
+    await page.goto('/platform');
+    await page.getByRole('button', { name: 'Set up a new customer' }).click();
+    await page.waitForURL(/\/company$/);
+    await page.getByRole('form', { name: 'Company' }).getByLabel('Company name').fill(company);
+    await next(page);
+    await page.waitForURL(/\/outlets$/);
+    if (where === 'list') await page.goto('/platform');
+    const scope = where === 'list' ? page.locator(`[data-setup="${company}"]`) : page;
+    await scope.getByRole('button', { name: /Throw away/ }).click();
+    // two taps: the first asks, and Keep it leaves it be
+    const ask = page.getByRole('group', { name: 'Throw away this set-up?' });
+    await expect(ask).toContainText(`Throw away the set-up of ${company}?`);
+    await ask.getByRole('button', { name: 'Yes, throw it away' }).click();
+    await page.waitForURL(/\/platform$/);
+    await expect(page.getByText(company)).toHaveCount(0);
+  }
 });

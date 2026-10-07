@@ -2292,3 +2292,21 @@ test customers are re-imported. No stack change.
    everything**. Its warnings are under "Worth a look (these don't stop you going live)", in
    names with no codes, and the owner's approvals are one sentence. (The test company it
    creates stays, marked as a test.)
+
+## Releasing the admin and set-up fixes, hotel amenities and newer library versions (ADR 068)
+
+One migration, `20261123100000_checklist_library_version` (the checklist list says which
+library checklist and version each copy came from; `ops.use_library_version`). No stack change
+and nothing to re-import.
+
+1. Merge, then **Deploy** as usual (it runs the migration). `cdk diff` shows nothing.
+2. Check in the app as **Test Account Owner**: Admin's six buttons all look alike (none looks
+   chosen). As **Test Bar Manager** (Solo Bar), Admin → People → Test Stock Verifier →
+   Reactivate, then Deactivate: both say done, with no "Something went wrong" (they have no
+   login).
+3. Check in the platform console: **Set up a new customer** → a name → Next. On Outlets pick
+   Hotel / Resort: the tile mentions breakfast; "Anything else here?" offers A swimming pool,
+   A spa and A gym. Save it: its card's Change and Remove are two equal buttons. On
+   Departments, Restaurant says "includes breakfast; untick if no meals are served". Then
+   **Throw away this set-up** → **Yes, throw it away**: it is gone from Set-ups in progress.
+4. The "newer version" note shows nowhere yet: every library checklist is at version 1.

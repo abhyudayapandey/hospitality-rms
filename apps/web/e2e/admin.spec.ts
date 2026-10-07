@@ -19,8 +19,11 @@ test('add a person: preview the access, save, get a temporary password once', as
   await form.getByLabel('Name', { exact: true }).blur();
   await form.getByLabel('Job role').selectOption({ label: 'Commis' });
   await form.getByLabel('Home place').selectOption(await placeId('TEST-HOTEL-1.0-KITCHEN'));
-  // the suggestion starts with the customer code
-  await expect(form.getByLabel('Username', { exact: true })).toHaveValue(/^test-company\.e2e\./);
+  // the suggestion starts with the customer code (a server call on blur: the first one on a
+  // freshly started server can take a few seconds)
+  await expect(form.getByLabel('Username', { exact: true })).toHaveValue(/^test-company\.e2e\./, {
+    timeout: 15_000,
+  });
   await form.getByLabel('Username', { exact: true }).fill(`test-company.e2e.${stamp}`);
   await form.getByRole('button', { name: 'Preview access' }).click();
 
@@ -45,7 +48,7 @@ test('a sensitive grant says it needs approval before saving', async ({ page }) 
   const add = page.getByRole('form', { name: 'Add access' });
   await add.getByLabel('Place').selectOption(await placeId('TEST-HOTEL-1.0'));
   await add.getByLabel('Access').selectOption({ label: 'Outlet Manager' });
-  await expect(add.getByTestId('applies')).toHaveText('Needs approval (ROLE_CHANGE)');
+  await expect(add.getByTestId('applies')).toHaveText('Waiting for approval');
   await add.getByLabel('Access').selectOption({ label: 'Stock User' });
   await expect(add.getByTestId('applies')).toHaveText('Applies now');
 });

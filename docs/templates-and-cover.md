@@ -123,7 +123,9 @@ ranges allow for findings from the full test runs.
 - **Built (ADR 062, decided 6 Oct):** the format is picked from tiles ("Restaurant + Bar") and
   "Anything else here?" ticks, in the platform console (Customer → Add an outlet); Café and
   Restaurant are one template with a café view; the starter checklists are copies that
-  remember their library version.
+  remember their library version. A newer library version is offered on the checklist's
+  screen ("Use the new version", ADR 068). A hotel's pool, spa and gym are extras with the SOP's
+  people and checks (ADR 068).
 - **Effort.** Most of this step is content, not code.
 
 ### Step 4. "Who covers it" (cover). 6–9 days — built (ADR 061)

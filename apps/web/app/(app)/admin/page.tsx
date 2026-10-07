@@ -79,11 +79,12 @@ export default async function AdminPage() {
           owner turns approvals on.
         </p>
       )}
+      {/* a menu of equals: none looks chosen */}
       {people !== null && (
         <nav className="grid grid-cols-2 gap-2" aria-label="Administration">
           <Link
             href="/admin/users"
-            className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
+            className="flex min-h-12 items-center justify-center rounded-lg font-medium ring-1 ring-slate-300"
           >
             People ({people})
           </Link>

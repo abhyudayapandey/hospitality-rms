@@ -186,9 +186,7 @@ export function AccessList({ access }: { access: AccessRow[] }) {
                       act(
                         () => revokeAccess(a.assignment_id!),
                         (r) =>
-                          r.status === 'pending'
-                            ? 'Removal sent for approval (ROLE_CHANGE).'
-                            : 'Access ended.',
+                          r.status === 'pending' ? 'Removal sent for approval.' : 'Access ended.',
                       )
                     }
                   >
@@ -247,7 +245,7 @@ export function AddAccess({
         e.preventDefault();
         act(
           () => grantAccess(userId, { ...g, idempotencyKey: crypto.randomUUID() }),
-          (r) => (r.status === 'pending' ? 'Sent for approval (ROLE_CHANGE).' : 'Access added.'),
+          (r) => (r.status === 'pending' ? 'Sent for approval.' : 'Access added.'),
         );
       }}
     >
