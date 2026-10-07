@@ -1,5 +1,11 @@
 import { syncProcessDefs, syncProductAccess } from '@outlet-ops/workflow';
-import { coverWarnings, MODULE_CODES } from '@outlet-ops/domain';
+import {
+  BUNDLE_CODES,
+  coverWarnings,
+  missingBundleNotes,
+  MODULE_CODES,
+  TEMPLATE_BY_FORMAT,
+} from '@outlet-ops/domain';
 import type { ClientBase } from 'pg';
 import {
   FILES,
@@ -376,6 +382,14 @@ class Loader {
 
   private async structure() {
     const cu = this.b.customer[0]!;
+    const before = new Set(
+      (
+        await this.c.query<{ code: string }>(
+          `select code from core.hierarchy_node where tenant_id = $1 and code is not null`,
+          [this.tenant],
+        )
+      ).rows.map((r) => r.code),
+    );
     const tree = [
       ['org', FILES.orgNodes.file, this.b.orgNodes],
       ['delivery', FILES.deliveryNodes.file, this.b.deliveryNodes],
@@ -447,6 +461,7 @@ class Loader {
         this.nodes.set(n.node_code, id);
       }
     }
+    await this.bundleNotes(this.b.orgNodes.filter((n) => !before.has(n.node_code)));
     for (const l of this.b.nodeLinks) {
       this.step(FILES.nodeLinks.file, l.line);
       await this.upsert(
@@ -982,6 +997,35 @@ class Loader {
         `${s.org_node_code}: the location was set in the app by ${r.who} on ${r.at} (${r.was}); ` +
         `this import replaces it with ${s.latitude}, ${s.longitude}, ${s.geofence_radius_m} m`,
     });
+  }
+
+  /**
+   * A new outlet whose template uses a bundle the customer's plan doesn't have (ADR 067): its
+   * modules stay off, so the dry run says so. The plan is the platform admin's, never a file's.
+   */
+  private async bundleNotes(added: Bundle['orgNodes']) {
+    const outlets = added.filter((n) => 'outlet_format' in n && n.outlet_format);
+    if (!outlets.length) return;
+    const plan =
+      (
+        await this.c.query<{ b: Record<string, boolean> | null }>(
+          `select settings -> 'bundles' as b from core.tenant where id = $1`,
+          [this.tenant],
+        )
+      ).rows[0]?.b ?? {};
+    const inPlan = new Set<string>(BUNDLE_CODES.filter((b) => plan[b] !== false));
+    for (const n of outlets) {
+      const t = TEMPLATE_BY_FORMAT.get(n.outlet_format!);
+      if (!t) continue;
+      for (const message of missingBundleNotes(t.modules, inPlan, n.name)) {
+        this.report.warnings.push({
+          file: FILES.orgNodes.file,
+          row: n.line,
+          column: 'outlet_format',
+          message,
+        });
+      }
+    }
   }
 
   /** People whose own requests nobody else could approve: one warning per person and process. */

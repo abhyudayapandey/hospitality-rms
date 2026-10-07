@@ -9,6 +9,8 @@ import {
   draftProblems,
   emptyDraft,
   filesFromDraft,
+  planFromDraft,
+  type SetupDraft,
 } from '@outlet-ops/onboarding/templates';
 import { sql, withPlatformAdmin, type Tx } from '@/lib/db';
 import { requestDryRun } from '@/lib/platform/import-files';
@@ -39,6 +41,17 @@ async function draftOf(tx: Tx, id: string) {
   const d = await loadDraft(tx, id);
   if (!d) throw new Error('NOT_FOUND');
   return d;
+}
+
+/**
+ * What the customer buys (ADR 067): the bundles ticked on the review go in its plan, the rest
+ * stay out, through the same audited switch as the console's Bundles card. Before each check
+ * and before the apply, so a change of ticks after a check is what goes live.
+ */
+async function applyPlan(tx: Tx, tenant: string, draft: SetupDraft): Promise<void> {
+  for (const [bundle, on] of Object.entries(planFromDraft(draft))) {
+    await sql`select platform.set_bundle(${tenant}::uuid, ${bundle}, ${on})`.execute(tx);
+  }
 }
 
 /** "Set up a new customer": a new, empty draft. */
@@ -72,6 +85,7 @@ export async function checkSetup(id: string): Promise<ActionResult<null>> {
     }
     const created = await jobState(tx, row.create_job);
     if (created?.status !== 'done' || !created.tenant_id) return null;
+    await applyPlan(tx, created.tenant_id, draft);
     const job = await requestDryRun(
       tx,
       created.tenant_id,
@@ -100,11 +114,12 @@ export async function advanceSetup(id: string): Promise<ActionResult<null>> {
 /** Tap 2, after the dry run: apply the same files. */
 export async function applySetup(id: string): Promise<ActionResult<null>> {
   return run('apply_setup', async (tx) => {
-    const { row } = await draftOf(tx, id);
+    const { row, draft } = await draftOf(tx, id);
     const dry = await jobState(tx, row.dry_run_job);
     if (!row.dry_run_job || dry?.status !== 'done' || dry.result?.['ok'] !== true) {
       throw new Error('INVALID_STATE');
     }
+    if (dry.tenant_id) await applyPlan(tx, dry.tenant_id, draft);
     const job = (
       await sql<{ id: string }>`
         select platform.request_import_apply(${row.dry_run_job}::uuid) as id`.execute(tx)

@@ -249,3 +249,19 @@ export async function removeAccountOwner(
   }
   return r;
 }
+
+/**
+ * Puts a bundle in or out of a customer's plan (ADR 067). platform.set_bundle checks the
+ * admin again and writes the platform audit; true when something changed.
+ */
+export async function setBundle(
+  tenantId: string,
+  bundle: string,
+  on: boolean,
+): Promise<ActionResult<boolean>> {
+  return run('set_bundle', async (tx) => {
+    const r = await sql<{ changed: boolean }>`
+      select platform.set_bundle(${tenantId}::uuid, ${bundle}, ${on}) as changed`.execute(tx);
+    return r.rows[0]!.changed;
+  });
+}

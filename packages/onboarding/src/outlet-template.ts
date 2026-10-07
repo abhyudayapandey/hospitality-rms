@@ -171,7 +171,7 @@ const storeCode = (outlet: string, dept: string) =>
 /**
  * The customer's files with the outlet added. `files` is their complete current set (the
  * last import, or the files the customer was created with). Codes already in use are refused
- * in plain words; nothing already in the files is changed except modules switched on.
+ * in plain words; nothing already in the files is changed (modules included: ADR 067).
  */
 export function addOutlet(
   files: Record<string, string>,
@@ -468,9 +468,8 @@ export function addOutlet(
     }
   }
 
-  // modules the outlet needs are switched on for the company (never off)
-  const cust = table('customer', plan.modules);
-  for (const m of plan.modules) cust.rows[0]![m] = 'yes';
+  // modules are never switched on here: what is on is the customer's plan (ADR 067), and the
+  // console and the dry run say when the outlet uses a bundle that isn't in it
 
   const out = { ...files };
   for (const t of tables.values()) out[t.name] = writeCsv(t.header, t.rows);

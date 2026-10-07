@@ -232,6 +232,12 @@ approves like the department head.
 Prep lists, Checklists, Maintenance, and Menu and sales (Admin → Modules, Account Owner
 only). What is off disappears from the table above for everyone in that company. Test Solo
 Bar Co. has Events and Swaps off.
+The modules are sold in three bundles (ADR 067): Stock & cost (Production, Prep lists, Menu
+and sales), People & roster (Leave, Shift swaps, Events) and Tasks & food safety (Checklists,
+Maintenance); stock, orders, bills, recipes, the roster, clock-in, tasks and reports come with
+every plan. Only the platform admin puts a bundle in or out of a plan (the console customer
+page's Bundles card); Admin → Modules shows the plan read-only, and the Account Owner switches
+single modules only inside it. Both test customers have every bundle.
 
 ### Approval processes (To do list)
 

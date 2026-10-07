@@ -2,6 +2,7 @@ import { TILE_BY_CODE, type ExtraCode } from '@outlet-ops/domain';
 import {
   STEPS,
   UNITS,
+  draftBundles,
   outletPlan,
   peopleFromPaste,
   readDraft,
@@ -167,6 +168,13 @@ export function applyForm(
         });
       }
     }
+  }
+  if (step === 'review' && f.has('bundles')) {
+    // what the customer buys (ADR 067): the bundles left unticked stay out of the plan
+    const ticked = new Set(all(f, 'bundle'));
+    d.bundlesOff = draftBundles(d)
+      .map((b) => b.code)
+      .filter((b) => !ticked.has(b));
   }
   return { draft: d, notes };
 }

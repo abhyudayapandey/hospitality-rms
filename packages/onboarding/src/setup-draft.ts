@@ -1,13 +1,17 @@
 import { z } from 'zod';
 import {
+  BUNDLE_CODES,
   DEPARTMENTS,
   DUTY_BY_CODE,
   EXTRAS,
   LEVELS,
+  MODULES,
   ROLES,
   ROLE_BY_CODE,
   TILE_BY_CODE,
+  bundlesFor,
   levelOf,
+  type BundleCode,
   type ExtraCode,
   type Level,
 } from '@outlet-ops/domain';
@@ -119,6 +123,8 @@ export const SetupDraft = z.object({
     }),
   outlets: z.array(DraftOutlet).default([]),
   people: z.array(DraftPerson).default([]),
+  /** Bundles the outlets use that the platform admin unticked (ADR 067). */
+  bundlesOff: z.array(z.string()).default([]),
 });
 export type SetupDraft = z.output<typeof SetupDraft>;
 
@@ -209,6 +215,46 @@ export function outletPlan(draft: SetupDraft, o: DraftOutlet): OutletPlan {
     ...(o.departments && { departments: o.departments }),
     items: o.items,
   });
+}
+
+/**
+ * The bundles the draft's outlets use (ADR 067), each ticked unless the platform admin
+ * unticked it. Go live puts the ticked ones in the customer's plan and leaves the rest out.
+ */
+export function draftBundles(draft: SetupDraft): {
+  code: BundleCode;
+  name: string;
+  includes: string;
+  uses: string[];
+  ticked: boolean;
+}[] {
+  const modules = new Set<string>();
+  for (const o of draft.outlets) {
+    try {
+      for (const m of outletPlan(draft, o).modules) modules.add(m);
+    } catch {
+      // an outlet the review lists as a problem uses nothing yet
+    }
+  }
+  return bundlesFor(modules).map((b) => ({
+    code: b.code,
+    name: b.name,
+    includes: b.includes,
+    uses: MODULES.filter(
+      (m) => modules.has(m.code) && (b.modules as readonly string[]).includes(m.code),
+    ).map((m) => m.name),
+    ticked: !draft.bundlesOff.includes(b.code),
+  }));
+}
+
+/** Every bundle, and whether Go live puts it in the plan: only the ticked ones are. */
+export function planFromDraft(draft: SetupDraft): Record<BundleCode, boolean> {
+  const on = new Set(
+    draftBundles(draft)
+      .filter((b) => b.ticked)
+      .map((b) => b.code),
+  );
+  return Object.fromEntries(BUNDLE_CODES.map((b) => [b, on.has(b)])) as Record<BundleCode, boolean>;
 }
 
 const dutiesOf = (code: string, format: OutletPlan['format']): readonly string[] => {

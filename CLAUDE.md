@@ -161,6 +161,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   draft (`filesFromDraft`) and goes live through the usual create, dry run and apply jobs; it
   holds no rules of its own. Codes and login IDs are made from names. People without an email
   get a login ID on a printed sheet; everyone sets their own password at first sign-in.
+- Bundles (ADR 067, `bundles.ts`) are what a customer buys; only the platform admin changes the
+  plan (`platform.set_bundle`), modules switch inside it (`NOT_IN_PLAN`), templates switch nothing.
 - The service worker shows "Can't reach Outlet Ops" after 10 s and caches nothing; Cognito calls
   give up after 5 s, and Cognito not answering never signs anyone out (ADR 063). Caddy speaks
   HTTP/1.1 and HTTP/2 only (the security group has no UDP 443) and logs each request.

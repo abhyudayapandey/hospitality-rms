@@ -33,6 +33,44 @@ describe('the set-up forms', () => {
     });
   });
 
+  it('review: an unticked bundle stays out of the plan; ticking it again brings it back', () => {
+    const withCafe = applyForm(
+      emptyDraft(),
+      'outlets',
+      fields([
+        ['op', 'save'],
+        ['tile', 'cafe'],
+        ['name', 'Bandra Café'],
+      ]),
+      key,
+    ).draft;
+    const off = applyForm(
+      withCafe,
+      'review',
+      fields([
+        ['bundles', '1'],
+        ['bundle', 'stock_cost'],
+        ['bundle', 'tasks_food_safety'],
+      ]),
+      key,
+    ).draft;
+    expect(off.bundlesOff).toEqual(['people_roster']);
+    const back = applyForm(
+      off,
+      'review',
+      fields([
+        ['bundles', '1'],
+        ['bundle', 'stock_cost'],
+        ['bundle', 'people_roster'],
+        ['bundle', 'tasks_food_safety'],
+      ]),
+      key,
+    ).draft;
+    expect(back.bundlesOff).toEqual([]);
+    // the Go live buttons post nothing about bundles: nothing changes
+    expect(applyForm(off, 'review', fields([]), key).draft.bundlesOff).toEqual(['people_roster']);
+  });
+
   it('outlets: add, change keeps answers, a new kind starts again, remove', () => {
     let d = applyForm(
       emptyDraft(),
