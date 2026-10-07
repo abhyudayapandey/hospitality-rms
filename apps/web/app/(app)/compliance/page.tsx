@@ -9,19 +9,23 @@ import {
   complianceJobs,
   dayWords,
   isComplianceTab,
+  jobPeople,
   jobStatus,
   licences,
   licenceStatus,
+  needsAction,
   TONE_CLASS,
   type ComplianceTab,
+  type JobRow,
+  type LicenceRow,
 } from '@/lib/compliance';
 import { sql, withUser } from '@/lib/db';
 import { param, type SearchParams } from '@/lib/params';
 import { placesFor } from '@/lib/places';
 import { listHref } from '@/lib/stock-view';
 
-// Compliance (ADR 069): the outlet's licences and its compliance calendar, with what is
-// expiring and what is overdue. "All outlets" first when there are several (ADR 038); a
+// Compliance (ADR 069, 073): what needs action first (licences within 90 days, regular jobs
+// within 14), then every licence and every regular job. "All outlets" first when there are several (ADR 038); a
 // tab's count is its whole list, counted in SQL (ADR 052). The list first, then what to do.
 
 export default function CompliancePage({ searchParams }: { searchParams: SearchParams }) {
@@ -45,24 +49,26 @@ async function Compliance({ searchParams }: { searchParams: SearchParams }) {
   }
   const all = param(sp, 'all') === '1' && places.length > 1;
   const raw = param(sp, 'tab');
-  const tab: ComplianceTab = isComplianceTab(raw) ? raw : 'licences';
+  const tab: ComplianceTab = isComplianceTab(raw) ? raw : 'action';
   const node = all ? null : place.id;
   const { counts, lic, jobs, canAdd } = await withUser(shell.user.id, async (tx) => {
-    const c = await complianceCounts(tx, node);
-    const showLic = tab === 'licences' || tab === 'expiring';
-    const l = showLic ? await licences(tx, node) : [];
-    const j = showLic ? [] : await complianceJobs(tx, node);
     const add = await sql<{ v: boolean }>`
       select bool_or(core.can('COMPLIANCE', 'modify', p.id, null)) as v
         from unnest(${places.map((p) => p.id)}::uuid[]) p(id)`.execute(tx);
     return {
-      counts: c,
-      lic: tab === 'expiring' ? l.filter((x) => x.days_left !== null && x.days_left <= 90) : l,
-      jobs: tab === 'overdue' ? j.filter((x) => x.days_left < 0) : j,
+      counts: await complianceCounts(tx, node),
+      lic: tab === 'jobs' ? [] : await licences(tx, node),
+      jobs: tab === 'licences' ? [] : await complianceJobs(tx, node),
       canAdd: add.rows[0]?.v ?? false,
     };
   });
   const href = (t: ComplianceTab) => listHref('/compliance', { all, node: place.id, tab: t });
+  const rows =
+    tab === 'action'
+      ? needsAction(lic, jobs)
+      : tab === 'licences'
+        ? lic.map((row) => ({ kind: 'licence' as const, row }))
+        : jobs.map((row) => ({ kind: 'job' as const, row }));
 
   return (
     <div className="space-y-4">
@@ -77,91 +83,33 @@ async function Compliance({ searchParams }: { searchParams: SearchParams }) {
         label="Compliance view"
         current={tab}
         tabs={[
+          {
+            key: 'action',
+            label: 'Needs action',
+            count: counts.needs_action,
+            href: href('action'),
+          },
           { key: 'licences', label: 'Licences', count: counts.licences, href: href('licences') },
-          { key: 'calendar', label: 'Calendar', count: counts.items, href: href('calendar') },
-          { key: 'expiring', label: 'Expiring', count: counts.expiring, href: href('expiring') },
-          { key: 'overdue', label: 'Overdue', count: counts.overdue, href: href('overdue') },
+          { key: 'jobs', label: 'Regular jobs', count: counts.items, href: href('jobs') },
         ]}
       />
-      {tab === 'licences' || tab === 'expiring' ? (
-        lic.length === 0 ? (
-          <Empty>
-            {tab === 'expiring'
-              ? 'No licence expires in the next 90 days.'
-              : 'No licences here yet.'}
-          </Empty>
-        ) : (
-          <ul className="space-y-2" data-testid="licences">
-            {lic.map((l) => {
-              const s = licenceStatus(l);
-              return (
-                <li key={l.id} data-testid="licence" data-name={l.name}>
-                  <Link
-                    href={`/compliance/licences/${l.id}`}
-                    className="block rounded-xl bg-white p-4 ring-1 ring-slate-200"
-                  >
-                    <span className="flex items-baseline justify-between gap-2">
-                      <span className="min-w-0 font-medium">
-                        {l.name}
-                        {all && (
-                          <span className="block text-xs font-normal text-slate-500">
-                            {l.place_name}
-                          </span>
-                        )}
-                      </span>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${TONE_CLASS[s.tone]}`}
-                        data-testid="licence-status"
-                      >
-                        {s.words}
-                      </span>
-                    </span>
-                    <span className="mt-1 block truncate text-sm text-slate-600">
-                      {[l.number, l.expires_on && `to ${dayWords(l.expires_on)}`]
-                        .filter(Boolean)
-                        .join(' · ')}
-                      {` · renewed by the ${l.renewal_role_name}`}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )
-      ) : jobs.length === 0 ? (
-        <Empty>{tab === 'overdue' ? 'Nothing is overdue.' : 'No calendar jobs here yet.'}</Empty>
+      {rows.length === 0 ? (
+        <Empty>
+          {tab === 'action'
+            ? 'Nothing needs action: every licence is valid for 90 days and no job is due within 14.'
+            : tab === 'licences'
+              ? 'No licences here yet.'
+              : 'No regular jobs here yet.'}
+        </Empty>
       ) : (
-        <ul className="space-y-2" data-testid="jobs">
-          {jobs.map((j) => {
-            const s = jobStatus(j);
-            return (
-              <li key={j.id} data-testid="job" data-name={j.name}>
-                <Link
-                  href={`/compliance/calendar/${j.id}`}
-                  className="block rounded-xl bg-white p-4 ring-1 ring-slate-200"
-                >
-                  <span className="flex items-baseline justify-between gap-2">
-                    <span className="min-w-0 font-medium">
-                      {j.name}
-                      <span className="block text-xs font-normal text-slate-500">
-                        {j.place_name}
-                      </span>
-                    </span>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${TONE_CLASS[s.tone]}`}
-                      data-testid="job-status"
-                    >
-                      {s.words}
-                    </span>
-                  </span>
-                  <span className="mt-1 block truncate text-sm text-slate-600">
-                    {everyWords(j.every_months)} · the {j.owner_role_name}
-                    {j.last_done && ` · last done ${dayWords(j.last_done)}`}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
+        <ul className="space-y-2" data-testid="compliance-rows">
+          {rows.map((r) =>
+            r.kind === 'licence' ? (
+              <LicenceItem key={`l-${r.row.id}`} l={r.row} all={all} />
+            ) : (
+              <JobItem key={`j-${r.row.id}`} j={r.row} />
+            ),
+          )}
         </ul>
       )}
       {canAdd && (
@@ -181,5 +129,68 @@ async function Compliance({ searchParams }: { searchParams: SearchParams }) {
         </div>
       )}
     </div>
+  );
+}
+
+function LicenceItem({ l, all }: { l: LicenceRow; all: boolean }) {
+  const s = licenceStatus(l);
+  return (
+    <li data-testid="licence" data-name={l.name}>
+      <Link
+        href={`/compliance/licences/${l.id}`}
+        className="block rounded-xl bg-white p-4 ring-1 ring-slate-200"
+      >
+        <span className="flex items-baseline justify-between gap-2">
+          <span className="min-w-0 font-medium">
+            {l.name}
+            {all && (
+              <span className="block text-xs font-normal text-slate-500">{l.place_name}</span>
+            )}
+          </span>
+          <span
+            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${TONE_CLASS[s.tone]}`}
+            data-testid="licence-status"
+          >
+            {s.words}
+          </span>
+        </span>
+        <span className="mt-1 block truncate text-sm text-slate-600">
+          {[l.number, l.expires_on && `to ${dayWords(l.expires_on)}`].filter(Boolean).join(' · ')}
+          {` · renewed by the ${l.renewal_role_name}`}
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+function JobItem({ j }: { j: JobRow }) {
+  const s = jobStatus(j);
+  return (
+    <li data-testid="job" data-name={j.name}>
+      <Link
+        href={`/compliance/calendar/${j.id}`}
+        className="block rounded-xl bg-white p-4 ring-1 ring-slate-200"
+      >
+        <span className="flex items-baseline justify-between gap-2">
+          <span className="min-w-0 font-medium">
+            {j.name}
+            <span className="block text-xs font-normal text-slate-500">{j.place_name}</span>
+          </span>
+          <span
+            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${TONE_CLASS[s.tone]}`}
+            data-testid="job-status"
+          >
+            {s.words}
+          </span>
+        </span>
+        <span className="mt-1 block text-sm text-slate-600">
+          {everyWords(j.every_months)}
+          {j.last_done && ` · last done ${dayWords(j.last_done)}`}
+        </span>
+        <span className="block text-sm text-slate-600" data-testid="job-people">
+          {jobPeople(j)}
+        </span>
+      </Link>
+    </li>
   );
 }

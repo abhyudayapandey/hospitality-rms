@@ -369,7 +369,7 @@ describe('Compliance first on Home (ADR 069)', () => {
     })!;
     expect(c.tone).toBe('bad');
     expect(c.title).toBe('3 need action');
-    expect(c.href).toBe('/compliance?all=1&tab=overdue');
+    expect(c.href).toBe('/compliance?all=1');
     expect(c.rows.map((r) => [r.tone, r.name, r.when, r.href])).toEqual([
       ['bad', 'Pest control service', 'Overdue 3 days', '/compliance/calendar/j1'],
       ['bad', 'FSSAI licence', 'Expired 1 day ago', '/compliance/licences/l1'],
@@ -377,13 +377,9 @@ describe('Compliance first on Home (ADR 069)', () => {
     ]);
   });
 
-  it('licences only: amber, and See all opens Expiring', () => {
+  it('licences only: amber, and See all opens Needs action', () => {
     const c = complianceCard({ keeps: true, recorded: 1, rows: [row({})] })!;
-    expect([c.tone, c.title, c.href]).toEqual([
-      'warn',
-      '1 needs action',
-      '/compliance?all=1&tab=expiring',
-    ]);
+    expect([c.tone, c.title, c.href]).toEqual(['warn', '1 needs action', '/compliance?all=1']);
   });
 
   it("someone's own reminder opens their To do item; they see no more than theirs", () => {

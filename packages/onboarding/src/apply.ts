@@ -747,16 +747,18 @@ class Loader {
                          and archived_at is null),
               upd as (update ops.compliance_item i
                          set every_months = $4, next_due = $5, owner_role = $6,
-                             needs_proof = $7, library_code = $8, library_version = $9
+                             needs_proof = $7, library_code = $8, library_version = $9,
+                             doer_role = $10
                         where i.id = (select id from cur)
                           and (i.every_months, i.next_due, i.owner_role, i.needs_proof,
-                               i.library_code, i.library_version)
-                              is distinct from ($4::int, $5::date, $6, $7::boolean, $8, $9::int)
+                               i.library_code, i.library_version, i.doer_role)
+                              is distinct from ($4::int, $5::date, $6, $7::boolean, $8, $9::int,
+                                                $10::text)
                        returning i.id, false as inserted),
               ins as (insert into ops.compliance_item (tenant_id, org_node_id, name, every_months,
                                                        next_due, owner_role, needs_proof,
-                                                       library_code, library_version)
-                      select $1, $2, $3, $4, $5, $6, $7, $8, $9
+                                                       library_code, library_version, doer_role)
+                      select $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
                        where not exists (select 1 from cur)
                       returning id, true as inserted)
          select * from upd union all select * from ins`,
@@ -770,9 +772,25 @@ class Loader {
           j.needs_proof,
           j.from_library?.code ?? null,
           j.from_library?.version ?? null,
+          // the accountable role doing it itself is no separate doer
+          j.doer_role && j.doer_role !== j.owner_role ? j.doer_role : null,
         ],
       );
       await nobody(FILES.complianceCalendar.file, j.line, 'owner_role', j.place_code, j.owner_role);
+      if (j.doer_role && j.doer_role !== j.owner_role) {
+        await nobody(FILES.complianceCalendar.file, j.line, 'doer_role', j.place_code, j.doer_role);
+      }
+    }
+    // an open reminder goes to whoever does the job now (ADR 073), as a change in the app does
+    if (this.b.complianceCalendar.length > 0) {
+      await this.c.query(
+        `update ops.task t set job_role_code = coalesce(i.doer_role, i.owner_role)
+           from ops.compliance_item i
+          where t.compliance_item_id = i.id and i.tenant_id = $1
+            and t.status in ('open', 'in_progress') and t.assign_mode = 'job_role'
+            and t.job_role_code is distinct from coalesce(i.doer_role, i.owner_role)`,
+        [this.tenant],
+      );
     }
   }
 

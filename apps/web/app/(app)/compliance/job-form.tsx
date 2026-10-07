@@ -17,17 +17,21 @@ const field = (f: FormData, name: string) => {
 const EVERY = [1, 2, 3, 4, 6, 12, 24, 36] as const;
 
 /**
- * Adds a calendar job or changes one (ADR 069): what it is (the library's jobs suggest names
- * and how often), where, how often, when it is next due, whose job it is, and whether each
- * time needs a report or certificate.
+ * Adds a regular job or changes one (ADR 069, 073): what it is (the library's jobs suggest
+ * names and how often), where, how often, when it is next due, who answers for it (a role at
+ * the outlet), who does it (a role at its place; none: the accountable role), and whether
+ * each time needs a report or certificate.
  */
 export function JobForm({
   places,
   roles,
+  ownerRoles,
   existing,
 }: {
   places: Choice[];
   roles: Record<string, { code: string; name: string }[]>;
+  /** the outlet's roles, for a job at a department (else the place's) */
+  ownerRoles?: { code: string; name: string }[];
   existing?: JobInput;
 }) {
   const router = useRouter();
@@ -40,9 +44,10 @@ export function JobForm({
   const [proof, setProof] = useState(existing?.needs_proof ?? true);
   const [key] = useState(() => crypto.randomUUID());
   const here = roles[node] ?? [];
+  const owners = ownerRoles ?? here;
   return (
     <form
-      aria-label={existing ? 'Change the job' : 'Add a calendar job'}
+      aria-label={existing ? 'Change the job' : 'Add a regular job'}
       className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200"
       onSubmit={(e) => {
         e.preventDefault();
@@ -57,6 +62,7 @@ export function JobForm({
               every_months: every,
               next_due: field(f, 'next_due'),
               owner_role: field(f, 'owner_role'),
+              doer_role: field(f, 'doer_role') || null,
               needs_proof: proof,
             },
             existing ? undefined : key,
@@ -131,13 +137,27 @@ export function JobForm({
         </label>
       </div>
       <label className="block text-sm font-medium">
-        Whose job it is
+        Who answers for it
         <select
           name="owner_role"
           required
           defaultValue={existing?.owner_role}
           className={inputClass}
         >
+          {owners.map((r) => (
+            <option key={r.code} value={r.code}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+        <span className="mt-1 block text-xs font-normal text-slate-500">
+          They see it on Home and are told when it is due and when it is done.
+        </span>
+      </label>
+      <label className="block text-sm font-medium">
+        Who does it
+        <select name="doer_role" defaultValue={existing?.doer_role ?? ''} className={inputClass}>
+          <option value="">The same person</option>
           {here.map((r) => (
             <option key={r.code} value={r.code}>
               {r.name}
@@ -145,7 +165,7 @@ export function JobForm({
           ))}
         </select>
         <span className="mt-1 block text-xs font-normal text-slate-500">
-          Their To do list gets it 14 days before it is due.
+          Their To do list gets it 14 days before it is due; they can give it to someone there.
         </span>
       </label>
       <label className="flex min-h-12 items-center gap-3 text-sm">
@@ -199,7 +219,7 @@ export function RemoveButton({ kind, id }: { kind: 'licence' | 'job'; id: string
             setError(r.message);
             return;
           }
-          router.push(kind === 'licence' ? '/compliance' : '/compliance?tab=calendar');
+          router.push(kind === 'licence' ? '/compliance' : '/compliance?tab=jobs');
           router.refresh();
         });
       }}

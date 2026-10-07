@@ -411,17 +411,8 @@ export function complianceCard(c: ComplianceInput | null): {
   return {
     tone: bad > 0 ? 'bad' : 'warn',
     title: `${n} ${n === 1 ? 'needs' : 'need'} action`,
-    // the tab holding what is most urgent: an overdue job, else the licences, else the calendar
-    href: c.keeps
-      ? listHref('/compliance', {
-          all: true,
-          tab: c.rows.some((r) => r.kind === 'job' && r.days_left < 0)
-            ? 'overdue'
-            : c.rows.some((r) => r.kind === 'licence')
-              ? 'expiring'
-              : 'calendar',
-        })
-      : '/inbox',
+    // Compliance opens on Needs action: these same rows (ADR 073)
+    href: c.keeps ? listHref('/compliance', { all: true }) : '/inbox',
     rows,
     more: n - rows.length,
   };

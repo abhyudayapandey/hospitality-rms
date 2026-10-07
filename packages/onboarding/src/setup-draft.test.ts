@@ -287,19 +287,23 @@ describe('what the customer buys (ADR 067)', () => {
     expect(new Set(lic.map((r) => r['renewal_role']))).toEqual(new Set(['GENERAL_MANAGER']));
     expect(lic.every((r) => r['number'] === '' && r['expires_on'] === '')).toBe(true);
     const cal = new Map(rows(files, '39_').map((r) => [r['from_library'], r]));
-    // the kitchen head's at the kitchen, the chief engineer's at engineering, else the GM's
+    // the GM answers for every job (ADR 073); the kitchen head does the kitchen's, at the
+    // kitchen, the chief engineer engineering's, the GM the rest
     expect(cal.get('DUCT-CLEANING@1')).toMatchObject({
-      owner_role: 'EXECUTIVE_CHEF',
+      owner_role: 'GENERAL_MANAGER',
+      doer_role: 'EXECUTIVE_CHEF',
       place_code: 'GH-ONE-KITCHEN',
       next_due: '2026-11-06',
       needs_proof: 'yes',
     });
     expect(cal.get('LIFT-RESCUE-DRILL@1')).toMatchObject({
-      owner_role: 'CHIEF_ENGINEER',
+      owner_role: 'GENERAL_MANAGER',
+      doer_role: 'CHIEF_ENGINEER',
       place_code: 'GH-ONE-ENGINEERING',
     });
     expect(cal.get('PEST-CONTROL@1')).toMatchObject({
       owner_role: 'GENERAL_MANAGER',
+      doer_role: '',
       place_code: 'GH-ONE',
     });
     expect(cal.get('FSSAI-ANNUAL-RETURN@1')).toMatchObject({ next_due: '2027-05-31' });

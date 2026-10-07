@@ -608,8 +608,8 @@ export function filesFromDraft(
   }
 
   // what they buy (ADR 069): no checklist rounds without Tasks & food safety; with
-  // Compliance, each outlet's licences (to fill in) and its calendar jobs, owned by its
-  // kitchen head, its chief engineer or else its manager
+  // Compliance, each outlet's licences (to fill in) and its calendar jobs, which its manager
+  // answers for and its kitchen head or chief engineer does (ADR 073), else the manager
   const plan = planFromDraft(draft);
   if (!plan.tasks_food_safety) {
     for (const f of Object.keys(files)) if (f.startsWith('29_')) delete files[f];
@@ -631,6 +631,7 @@ export function filesFromDraft(
       'every_months',
       'next_due',
       'owner_role',
+      'doer_role',
       'needs_proof',
       'from_library',
     ]);
@@ -664,13 +665,14 @@ export function filesFromDraft(
         const h = dept ? head(dept) : undefined;
         const a = h?.answer;
         const covered = a?.mode === 'covered_by' ? qs.find((q) => q.code === a.by) : h;
-        const owner = (covered && covered.answer.mode !== 'not_done' && covered) || manager;
+        const doer = (covered && covered.answer.mode !== 'not_done' && covered) || manager;
         cal.rows.push({
-          place_code: owner === manager || !dept ? code : `${code}-${dept}`,
+          place_code: doer === manager || !dept ? code : `${code}-${dept}`,
           name: j.name,
           every_months: String(j.everyMonths),
           next_due: firstDue(j, today),
-          owner_role: owner.code,
+          owner_role: manager.code,
+          doer_role: doer === manager ? '' : doer.code,
           needs_proof: j.needsProof ? 'yes' : 'no',
           from_library: `${j.code}@${j.version}`,
         });

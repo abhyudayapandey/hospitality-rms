@@ -739,6 +739,9 @@ function validateActivity(
     if (!roles.has(j.owner_role)) {
       add(file, j.line, 'owner_role', `${j.owner_role} is not in ${f('jobRoles')}`);
     }
+    if (j.doer_role && !roles.has(j.doer_role)) {
+      add(file, j.line, 'doer_role', `${j.doer_role} is not in ${f('jobRoles')}`);
+    }
     const lib = j.from_library && CALENDAR_JOB_BY_CODE.get(j.from_library.code);
     if (j.from_library && (!lib || j.from_library.version > lib.version)) {
       add(file, j.line, 'from_library', `${j.from_library.code} is not in the compliance library`);

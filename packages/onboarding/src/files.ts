@@ -867,8 +867,9 @@ export const FILES = {
     }),
   },
   // The compliance calendar (ADR 069): recurring statutory jobs of an outlet or a department,
-  // every 1 to 36 months, with the job role they go to. Keyed by place and name, like file 38;
-  // `from_library` (`PEST-CONTROL@1`) marks a copy of the product library's job.
+  // every 1 to 36 months. `owner_role` answers for it (at the outlet); `doer_role`, if given,
+  // does it at its place and gets the To do item (ADR 073). Keyed by place and name, like file
+  // 38; `from_library` (`PEST-CONTROL@1`) marks a copy of the product library's job.
   complianceCalendar: {
     file: '39_compliance_calendar.csv',
     required: false,
@@ -883,6 +884,7 @@ export const FILES = {
         ),
       next_due: date,
       owner_role: code,
+      doer_role: optCode,
       needs_proof: yesNo,
       from_library: z
         .string()
@@ -895,7 +897,7 @@ export const FILES = {
           return z.NEVER;
         }),
     }),
-    optional: ['from_library'],
+    optional: ['doer_role', 'from_library'],
   },
   // The rooms' minibars (ADR 072). File 41: each minibar set of an outlet, one row per item,
   // with its par and the price charged to the guest, refilled from one store of the outlet.

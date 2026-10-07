@@ -94,6 +94,30 @@ describe('the Passport Hotel demo', () => {
       const again = await loadCustomer(c, files, { nested: true, dryRun: true });
       expect(Object.entries(again.counts).filter(([, x]) => x.created || x.updated)).toEqual([]);
       await c.query('reset role');
+      // the GM answers for pest control; the executive housekeeper does it (ADR 073). A
+      // reminder made before (on the GM's list) moves to them when the files are loaded again
+      // Compliance in the plan, as the README's step 3
+      await c.query(
+        `update core.tenant
+            set settings = settings || jsonb_build_object('bundles',
+                  coalesce(settings -> 'bundles', '{}') || '{"compliance": true}')
+          where code = 'PASSPORT-TEST'`,
+      );
+      await c.query(`select * from ops.compliance_tick()`);
+      const pest = `select t.job_role_code from ops.task t
+                      join ops.compliance_item i on i.id = t.compliance_item_id
+                      join core.tenant x on x.id = i.tenant_id
+                     where x.code = 'PASSPORT-TEST' and i.name = 'Pest control service'
+                       and t.status in ('open', 'in_progress')`;
+      expect((await c.query(pest)).rows).toEqual([{ job_role_code: 'EXECUTIVE_HOUSEKEEPER' }]);
+      await c.query(`update ops.task set job_role_code = 'GENERAL_MANAGER'
+                      where id in (select t.id from ops.task t
+                                     join ops.compliance_item i on i.id = t.compliance_item_id
+                                    where i.name = 'Pest control service')`);
+      await c.query('set local role platform_loader');
+      expect((await loadCustomer(c, files, { nested: true })).ok).toBe(true);
+      await c.query('reset role');
+      expect((await c.query(pest)).rows).toEqual([{ job_role_code: 'EXECUTIVE_HOUSEKEEPER' }]);
       // file 42's checks the front desk added to the bill are marked so
       const charged = await c.query(
         `select 1 from ops.minibar_check k join core.tenant t on t.id = k.tenant_id
