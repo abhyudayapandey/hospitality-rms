@@ -114,6 +114,8 @@ export interface Today {
   /** dishes to sell first today at their outlet (INV-12, ADR 040) */
   push: PushDish[];
   targets: Record<TargetKey, number>;
+  /** licences expiring within 90 days and compliance jobs overdue, where they see them (ADR 069) */
+  compliance: { expiring: number; overdue: number };
 }
 
 /** Approvals shown on Home; the rest are one tap away. */
@@ -141,6 +143,13 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     const inbox = await inboxEntries(tx);
     // expired items waiting to be given to someone; repairs waiting are the repairs count
     const assign = lead ? (await toAssign(tx)).filter((x) => x.kind === 'expiry').length : 0;
+    // the same counts the Compliance screen's tabs show (ops.compliance_counts, ADR 069)
+    const compliance = shell.domains.has('COMPLIANCE')
+      ? (
+          await sql<{ expiring: number; overdue: number }>`
+            select expiring, overdue from ops.compliance_counts(null)`.execute(tx)
+        ).rows[0]!
+      : { expiring: 0, overdue: 0 };
 
     let attention: AttentionGroup[] | null = null;
     let openSlotsHref: string | null = null;
@@ -323,6 +332,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       tasks,
       repairs,
       approvals: { shown: inbox.slice(0, HOME_APPROVALS), total: inbox.length, toAssign: assign },
+      compliance,
       attention,
       openSlotsHref,
       numbers,

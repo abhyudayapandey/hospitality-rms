@@ -269,6 +269,25 @@ describe('doFirst: the ranked list (UX-8)', () => {
     ).toBe('See');
   });
 
+  it('licences expiring and compliance jobs overdue open Compliance on their tab, All outlets (ADR 069)', () => {
+    const d = doFirst({
+      attention: null,
+      overdueTasks: 0,
+      toAssign: 0,
+      compliance: { expiring: 2, overdue: 1 },
+    });
+    expect(d.map((x) => [x.key, x.text, x.action, x.href, x.tone])).toEqual([
+      [
+        'complianceOverdue',
+        'compliance job overdue',
+        'Open',
+        '/compliance?all=1&tab=overdue',
+        'bad',
+      ],
+      ['licences', 'licences expiring', 'Renew', '/compliance?all=1&tab=expiring', 'warn'],
+    ]);
+  });
+
   it('nothing to do: an empty list', () => {
     expect(doFirst({ attention: null, overdueTasks: 0, toAssign: 0 })).toEqual([]);
   });

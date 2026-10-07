@@ -39,6 +39,24 @@ function cafe(): SetupDraft {
   return d;
 }
 
+/** A hotel with a pool, its company code GH, the outlet One (GH-ONE). */
+function hotel(): SetupDraft {
+  const d = emptyDraft();
+  d.company = {
+    ...d.company,
+    name: 'Grand Hotels',
+    code: 'GH',
+    ownerName: 'Asha Rao',
+    ownerEmail: 'asha@grand.test',
+  };
+  d.outlets.push({
+    ...readDraft({ outlets: [{ key: 'h', tile: 'hotel', extras: ['pool'] }] }).outlets[0]!,
+    name: 'One',
+    location: '19.0596, 72.8295',
+  });
+  return d;
+}
+
 const rows = (files: Record<string, string>, prefix: string) => {
   const f = Object.keys(files).find((n) => n.startsWith(prefix));
   return f ? parseCsv(files[f]!).rows.map((r) => r.values) : [];
@@ -231,24 +249,74 @@ describe('people pasted from a sheet', () => {
 });
 
 describe('what the customer buys (ADR 067)', () => {
-  it("lists the bundles its outlets use, ticked unless unticked; Go live's plan follows", () => {
+  it("lists every bundle: its outlets' usual ones ticked, the rest (Compliance) not; Go live's plan follows", () => {
     const d = cafe();
     expect(emptyDraft().bundlesOff).toEqual([]);
-    expect(draftBundles(emptyDraft())).toEqual([]);
+    expect(emptyDraft().bundlesOn).toEqual([]);
     const b = draftBundles(d);
-    expect(b.map((x) => [x.name, x.ticked])).toEqual([
-      ['Stock & cost', true],
-      ['People & roster', true],
-      ['Tasks & food safety', true],
+    expect(b.map((x) => [x.name, x.usual, x.ticked])).toEqual([
+      ['Stock & cost', true, true],
+      ['People & roster', true, true],
+      ['Tasks & food safety', true, true],
+      ['Compliance', false, false],
     ]);
     expect(b[2]!.uses).toEqual(['Checklists', 'Maintenance']);
     expect(planFromDraft(d)).toEqual({
       stock_cost: true,
       people_roster: true,
       tasks_food_safety: true,
+      compliance: false,
     });
     d.bundlesOff = ['people_roster'];
-    expect(planFromDraft(d)).toMatchObject({ people_roster: false, stock_cost: true });
+    d.bundlesOn = ['compliance'];
+    expect(planFromDraft(d)).toMatchObject({
+      people_roster: false,
+      stock_cost: true,
+      compliance: true,
+    });
+  });
+
+  it("with Compliance: the outlet's licences to fill in and its calendar jobs, each with an owner", () => {
+    const d = hotel();
+    d.bundlesOn = ['compliance'];
+    const files = filesFromDraft(d, '2026-10-07');
+    const lic = rows(files, '38_');
+    expect(lic.map((r) => r['kind'])).toEqual(
+      expect.arrayContaining(['FSSAI', 'FIRE_NOC', 'LIFT', 'SPCB_CONSENT', 'SWIMMING_POOL']),
+    );
+    expect(new Set(lic.map((r) => r['renewal_role']))).toEqual(new Set(['GENERAL_MANAGER']));
+    expect(lic.every((r) => r['number'] === '' && r['expires_on'] === '')).toBe(true);
+    const cal = new Map(rows(files, '39_').map((r) => [r['from_library'], r]));
+    // the kitchen head's at the kitchen, the chief engineer's at engineering, else the GM's
+    expect(cal.get('DUCT-CLEANING@1')).toMatchObject({
+      owner_role: 'EXECUTIVE_CHEF',
+      place_code: 'GH-ONE-KITCHEN',
+      next_due: '2026-11-06',
+      needs_proof: 'yes',
+    });
+    expect(cal.get('LIFT-RESCUE-DRILL@1')).toMatchObject({
+      owner_role: 'CHIEF_ENGINEER',
+      place_code: 'GH-ONE-ENGINEERING',
+    });
+    expect(cal.get('PEST-CONTROL@1')).toMatchObject({
+      owner_role: 'GENERAL_MANAGER',
+      place_code: 'GH-ONE',
+    });
+    expect(cal.get('FSSAI-ANNUAL-RETURN@1')).toMatchObject({ next_due: '2027-05-31' });
+    // the loader reads them
+    const { issues } = readBundle(files);
+    expect(issues).toEqual([]);
+    // without it, neither file
+    d.bundlesOn = [];
+    const none = filesFromDraft(d, '2026-10-07');
+    expect(Object.keys(none).some((f) => /^3[89]_/.test(f))).toBe(false);
+  });
+
+  it('without Tasks & food safety, no checklist rounds are set up', () => {
+    const d = cafe();
+    expect(Object.keys(filesFromDraft(d)).some((f) => f.startsWith('29_'))).toBe(true);
+    d.bundlesOff = ['tasks_food_safety'];
+    expect(Object.keys(filesFromDraft(d)).some((f) => f.startsWith('29_'))).toBe(false);
   });
 
   it('the files switch no module on or off: the plan does', () => {

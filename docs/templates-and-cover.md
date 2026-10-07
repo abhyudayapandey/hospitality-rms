@@ -292,8 +292,8 @@ These are separate decisions, each sized separately if wanted.
   days.
 - **Head-office roles that see across outlets.** Ops head, QA, Supply Chain head, Training.
   About 3–4 build days once Step 2 exists, because they are duties at the company level.
-- **The gaps in table 2 of the SOP comparison.** Licence register, longer compliance
-  calendar, audits, incidents, POS, PMS.
+- **The gaps in table 2 of the SOP comparison.** Audits, incidents, POS, PMS. (The licence
+  register and the compliance calendar are built: ADR 069, the Compliance bundle.)
 - **Rostering one person in two jobs.** Open question 7. Cover doesn't need it.
 - **Today's briefing note (agreed 6 Oct; separate item, 2–3 build days).**
   - **What.** A short note for the shift from the head chef or a manager: specials, 86'd

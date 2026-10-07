@@ -4,7 +4,8 @@ import pg from 'pg';
 // The tasks job (ADR 020), every 5 minutes: checklist instances for the next 24 hours,
 // reminders 30 minutes before the due time, and escalation when a task is overdue; and,
 // once each business day from 04:00, the expiry alert to the leads of each store's team
-// (INV-12, ADR 040).
+// (INV-12, ADR 040); and licence and compliance calendar reminders where Compliance is on
+// (ADR 069).
 // Runs as wf_executor (systemd timer on the instance; locally on demand):
 //   pnpm --filter @outlet-ops/workflow tasks-tick
 try {
@@ -24,10 +25,13 @@ try {
     'select * from ops.tasks_tick()',
   );
   const alerts = await client.query<{ sent: number }>('select ops.expiry_alerts() as sent');
+  const compliance = await client.query<{ created: number; noticed: number }>(
+    'select * from ops.compliance_tick()',
+  );
   await client.query('commit');
   const r = rows[0];
   console.log(
-    `[tasks-tick] created=${r?.created ?? 0} reminded=${r?.reminded ?? 0} escalated=${r?.escalated ?? 0} expiry_alerts=${alerts.rows[0]?.sent ?? 0}`,
+    `[tasks-tick] created=${r?.created ?? 0} reminded=${r?.reminded ?? 0} escalated=${r?.escalated ?? 0} expiry_alerts=${alerts.rows[0]?.sent ?? 0} compliance=${compliance.rows[0]?.created ?? 0}/${compliance.rows[0]?.noticed ?? 0}`,
   );
 } catch (err) {
   await client.query('rollback').catch(() => undefined);

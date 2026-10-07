@@ -1,4 +1,4 @@
-import { ACCESS_GROUPS, DOMAINS } from '@outlet-ops/domain';
+import { ACCESS_GROUPS, CALENDAR_JOB_BY_CODE, DOMAINS } from '@outlet-ops/domain';
 import type { AssignTo, Bundle, Issue } from './files';
 import { FILES, jobRoleAccess } from './files';
 
@@ -706,6 +706,45 @@ function validateActivity(
         `${r.covered_by_role} is itself covered or not done at ${r.outlet_code}: no chains`,
       );
     }
+  }
+
+  // files 38 and 39 (ADR 069): at an outlet or one of its departments, for a job role in file
+  // 06, once each by name. Who works in that role is checked in the dry run.
+  const compliancePlace = (file: string, line: number, place: string) => {
+    const o = org.get(place);
+    if (!o) add(file, line, 'place_code', `${place} is not in ${f('orgNodes')}`);
+    else if (['company', 'area'].includes(o.kind)) {
+      add(file, line, 'place_code', `${place} is a ${o.kind}: use an outlet or a department`);
+    }
+  };
+  const named = new Set<string>();
+  for (const l of b.licences) {
+    const file = f('licences');
+    compliancePlace(file, l.line, l.place_code);
+    if (!roles.has(l.renewal_role)) {
+      add(file, l.line, 'renewal_role', `${l.renewal_role} is not in ${f('jobRoles')}`);
+    }
+    if (l.issued_on && l.expires_on && l.expires_on < l.issued_on) {
+      add(file, l.line, 'expires_on', 'is before issued_on');
+    }
+    const key = `${l.place_code} ${l.name.toLowerCase()}`;
+    if (named.has(key)) add(file, l.line, 'name', `is listed twice for ${l.place_code}`);
+    named.add(key);
+  }
+  named.clear();
+  for (const j of b.complianceCalendar) {
+    const file = f('complianceCalendar');
+    compliancePlace(file, j.line, j.place_code);
+    if (!roles.has(j.owner_role)) {
+      add(file, j.line, 'owner_role', `${j.owner_role} is not in ${f('jobRoles')}`);
+    }
+    const lib = j.from_library && CALENDAR_JOB_BY_CODE.get(j.from_library.code);
+    if (j.from_library && (!lib || j.from_library.version > lib.version)) {
+      add(file, j.line, 'from_library', `${j.from_library.code} is not in the compliance library`);
+    }
+    const key = `${j.place_code} ${j.name.toLowerCase()}`;
+    if (named.has(key)) add(file, j.line, 'name', `is listed twice for ${j.place_code}`);
+    named.add(key);
   }
 
   // file 35: past sessions that end the same day, never overlapping one another

@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import {
+  BUNDLES,
   BUNDLE_CODES,
+  calendarFor,
   DEPARTMENTS,
+  firstDue,
+  licencesFor,
   DUTY_BY_CODE,
   EXTRAS,
   LEVELS,
@@ -35,6 +39,8 @@ import { addOutlet, planOutlet, TemplateError, type OutletPlan } from './outlet-
 export const STEPS = [
   'company',
   'outlets',
+  // what the customer buys (ADR 069): the bundles, right after the outlets
+  'bundles',
   'departments',
   'roles',
   'people',
@@ -45,6 +51,7 @@ export type Step = (typeof STEPS)[number];
 export const STEP_TITLE: Readonly<Record<Step, string>> = {
   company: 'Company',
   outlets: 'Outlets',
+  bundles: 'What they buy',
   departments: 'Departments',
   roles: 'Roles',
   people: 'People',
@@ -126,6 +133,8 @@ export const SetupDraft = z.object({
   people: z.array(DraftPerson).default([]),
   /** Bundles the outlets use that the platform admin unticked (ADR 067). */
   bundlesOff: z.array(z.string()).default([]),
+  /** Bundles the outlets don't usually use that the platform admin ticked (Compliance; ADR 069). */
+  bundlesOn: z.array(z.string()).default([]),
 });
 export type SetupDraft = z.output<typeof SetupDraft>;
 
@@ -229,6 +238,8 @@ export function draftBundles(draft: SetupDraft): {
   name: string;
   includes: string;
   uses: string[];
+  /** its outlets use it: ticked unless unticked; the rest unticked unless ticked */
+  usual: boolean;
   ticked: boolean;
 }[] {
   const modules = new Set<string>();
@@ -239,18 +250,23 @@ export function draftBundles(draft: SetupDraft): {
       // an outlet the review lists as a problem uses nothing yet
     }
   }
-  return bundlesFor(modules).map((b) => ({
-    code: b.code,
-    name: b.name,
-    includes: b.includes,
-    uses: MODULES.filter(
-      (m) => modules.has(m.code) && (b.modules as readonly string[]).includes(m.code),
-    ).map((m) => m.name),
-    ticked: !draft.bundlesOff.includes(b.code),
-  }));
+  const used = new Set(bundlesFor(modules).map((b) => b.code));
+  return BUNDLES.map((b) => {
+    const usual = used.has(b.code);
+    return {
+      code: b.code,
+      name: b.name,
+      includes: b.includes,
+      uses: MODULES.filter(
+        (m) => modules.has(m.code) && (b.modules as readonly string[]).includes(m.code),
+      ).map((m) => m.name),
+      usual,
+      ticked: usual ? !draft.bundlesOff.includes(b.code) : draft.bundlesOn.includes(b.code),
+    };
+  });
 }
 
-/** Every bundle, and whether Go live puts it in the plan: only the ticked ones are. */
+/** Go live's plan: the bundles ticked on "What they buy", the rest out. */
 export function planFromDraft(draft: SetupDraft): Record<BundleCode, boolean> {
   const on = new Set(
     draftBundles(draft)
@@ -503,7 +519,10 @@ function edit(files: Record<string, string>, key: keyof typeof FILES, header: st
  * The customer's complete onboarding files from the draft. Throws a TemplateError for a
  * draft with problems (check draftProblems first; every screen shows them).
  */
-export function filesFromDraft(draft: SetupDraft): Record<string, string> {
+export function filesFromDraft(
+  draft: SetupDraft,
+  today: string = new Date().toISOString().slice(0, 10),
+): Record<string, string> {
   const problems = draftProblems(draft);
   if (problems.length) throw new TemplateError(problems[0]!.message);
   const cust = companyCode(draft);
@@ -586,6 +605,79 @@ export function filesFromDraft(draft: SetupDraft): Record<string, string> {
     ]);
     cover.rows.push(...covers);
     cover.save();
+  }
+
+  // what they buy (ADR 069): no checklist rounds without Tasks & food safety; with
+  // Compliance, each outlet's licences (to fill in) and its calendar jobs, owned by its
+  // kitchen head, its chief engineer or else its manager
+  const plan = planFromDraft(draft);
+  if (!plan.tasks_food_safety) {
+    for (const f of Object.keys(files)) if (f.startsWith('29_')) delete files[f];
+  }
+  if (plan.compliance) {
+    const lic = edit(files, 'licences', [
+      'place_code',
+      'kind',
+      'name',
+      'number',
+      'authority',
+      'issued_on',
+      'expires_on',
+      'renewal_role',
+    ]);
+    const cal = edit(files, 'complianceCalendar', [
+      'place_code',
+      'name',
+      'every_months',
+      'next_due',
+      'owner_role',
+      'needs_proof',
+      'from_library',
+    ]);
+    for (const o of draft.outlets) {
+      const code = codes.get(o.key)!;
+      const outletPlanned = plans.get(o.key)!;
+      const qs = roleQuestions(draft, o);
+      const manager = qs.find((q) => q.level === 'runs_outlet') ?? qs[0];
+      if (!manager) continue;
+      const head = (dept: string) =>
+        outletPlanned.departments.some((d) => d.code === dept)
+          ? qs.find((q) => q.department === dept && q.level === 'runs_department')
+          : undefined;
+      for (const k of licencesFor(outletPlanned.format, o.extras)) {
+        lic.rows.push({
+          place_code: code,
+          kind: k.code,
+          name: k.name,
+          number: '',
+          authority: k.authority,
+          issued_on: '',
+          expires_on: '',
+          renewal_role: manager.code,
+        });
+      }
+      for (const j of calendarFor(outletPlanned.format, o.extras)) {
+        const dept =
+          j.owner === 'kitchen' ? 'KITCHEN' : j.owner === 'engineering' ? 'ENGINEERING' : '';
+        // a head whose role is covered hands it to the role that covers it; one not done here
+        // leaves it with the manager
+        const h = dept ? head(dept) : undefined;
+        const a = h?.answer;
+        const covered = a?.mode === 'covered_by' ? qs.find((q) => q.code === a.by) : h;
+        const owner = (covered && covered.answer.mode !== 'not_done' && covered) || manager;
+        cal.rows.push({
+          place_code: owner === manager || !dept ? code : `${code}-${dept}`,
+          name: j.name,
+          every_months: String(j.everyMonths),
+          next_due: firstDue(j, today),
+          owner_role: owner.code,
+          needs_proof: j.needsProof ? 'yes' : 'no',
+          from_library: `${j.code}@${j.version}`,
+        });
+      }
+    }
+    lic.save();
+    cal.save();
   }
 
   // people: at their role's department at their outlet, else the outlet (or the company)
@@ -698,6 +790,7 @@ export function stepOfFile(file: string): Step {
   if (n === 0) return 'company';
   if (n >= 1 && n <= 4) return 'outlets';
   if (n === 6 || n === 37) return 'roles';
+  if (n === 38 || n === 39) return 'bundles';
   if (n === 7) return 'people';
   if (n >= 10 && n <= 12) return 'stock';
   return 'review';

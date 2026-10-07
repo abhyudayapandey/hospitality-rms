@@ -90,6 +90,6 @@ test('other administrators see the modules but cannot change them', async ({ pag
   await page.goto('/admin/modules');
   const list = page.getByTestId('modules');
   await expect(list.getByRole('switch')).toHaveCount(0);
-  await expect(list.getByTestId('module-state')).toHaveCount(8);
+  await expect(list.getByTestId('module-state')).toHaveCount(9);
   await expect(page.getByText('Only the account owner can change these.')).toBeVisible();
 });

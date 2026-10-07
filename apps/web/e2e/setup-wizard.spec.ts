@@ -64,13 +64,25 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
   await expect(page).toHaveURL(new RegExp(`${draftUrl}/outlets`));
   await next(page);
 
-  // 3. departments: a café's own first; the dining room offered, unticked
+  // 3. what they buy (ADR 067, 069): the café's usual bundles ticked, Compliance offered
+  // unticked; they don't buy People & roster, and they do buy Compliance
+  const usual = page.getByTestId('bundles-usual');
+  for (const b of ['Stock & cost', 'People & roster', 'Tasks & food safety']) {
+    await expect(usual.getByRole('checkbox', { name: new RegExp(b) })).toBeChecked();
+  }
+  const more = page.getByTestId('bundles-more');
+  await expect(more.getByRole('checkbox', { name: /Compliance/ })).not.toBeChecked();
+  await usual.getByRole('checkbox', { name: /People & roster/ }).uncheck();
+  await more.getByRole('checkbox', { name: /Compliance/ }).check();
+  await next(page);
+
+  // 4. departments: a café's own first; the dining room offered, unticked
   const depts = page.getByTestId('departments-Bandra Café');
   await expect(depts.getByRole('checkbox', { name: 'Counter' })).toBeChecked();
   await expect(depts.getByText('Also in a restaurant')).toBeVisible();
   await next(page);
 
-  // 4. roles: the manager covers the head cook; no kitchen steward
+  // 5. roles: the manager covers the head cook; no kitchen steward
   const roles = page.getByTestId('roles-Bandra Café');
   const head = roles.locator('[data-role="Head Cook"]');
   await head.getByRole('radio', { name: 'Someone else does it' }).check();
@@ -86,7 +98,7 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
   );
   await next(page);
 
-  // 5. people: typed and pasted; a role that isn't one is caught
+  // 6. people: typed and pasted; a role that isn't one is caught
   const people = page.getByTestId('person');
   await people.nth(0).getByLabel('Name').fill('Meera Shah');
   await people
@@ -105,28 +117,22 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
   await expect(page.getByTestId('login-summary')).toHaveText('1 by email · 2 on the printed sheet');
   await next(page);
 
-  // 6. stock: par on milk, no salt
+  // 7. stock: par on milk, no salt
   const stock = page.getByTestId('stock-Bandra Café');
   await stock.getByLabel('Par for Milk').fill('12');
   await stock.locator('[data-item="Salt"]').getByRole('checkbox').uncheck();
   await next(page);
 
-  // 7. who does what, then Go live in two taps
+  // 8. who does what, then Go live in two taps
   const who = page.getByTestId('who-Bandra Café');
   await expect(who.locator('[data-role="Head Cook"]')).toContainText(
     'The Restaurant Manager (Meera Shah)',
   );
   await expect(who.locator('[data-role="Kitchen Steward"]')).toContainText('Not done here');
-  // what they buy (ADR 067): the bundles the café uses, ticked; they don't buy People & roster
-  const buys = page.getByRole('form', { name: 'What they buy' });
-  for (const b of ['Stock & cost', 'People & roster', 'Tasks & food safety']) {
-    await expect(buys.getByRole('checkbox', { name: new RegExp(b) })).toBeChecked();
-  }
-  await buys.getByRole('checkbox', { name: /People & roster/ }).uncheck();
-  await buys.getByRole('button', { name: 'Save what they buy' }).click();
-  await expect(
-    page.getByRole('form', { name: 'What they buy' }).getByRole('checkbox', { name: /People/ }),
-  ).not.toBeChecked();
+  // what they buy, as chosen on screen 3
+  await expect(page.getByTestId('bundles')).toContainText(
+    'Stock & cost, Tasks & food safety, Compliance',
+  );
   await page.getByRole('button', { name: 'Check everything' }).click();
   await workerUntil(page, 'checked');
   // the check's warnings in names, never codes, and they don't block
@@ -180,7 +186,24 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
     `select settings -> 'bundles' as b from core.tenant where code = $1`,
     [code],
   );
-  expect(plan[0]!.b).toEqual({ people_roster: false });
+  expect(plan[0]!.b).toEqual({ people_roster: false, compliance: true });
+  // with Compliance, the café's licences to fill in and its calendar jobs
+  const lic = await asMigrator<{ n: number }>(
+    `select count(*)::int n from ops.licence l join core.tenant t on t.id = l.tenant_id
+      where t.code = $1`,
+    [code],
+  );
+  expect(lic[0]!.n).toBeGreaterThan(3);
+  const jobs = await asMigrator<{ name: string; role: string }>(
+    `select i.name, i.owner_role as role from ops.compliance_item i
+       join core.tenant t on t.id = i.tenant_id where t.code = $1 order by 1`,
+    [code],
+  );
+  // the Head Cook is covered by the Restaurant Manager (the café's manager): the kitchen's
+  // jobs are theirs
+  expect(jobs.find((j) => j.name === 'Kitchen exhaust duct cleaning')?.role).toBe(
+    'RESTAURANT_GENERAL_MANAGER',
+  );
   const par = await asMigrator<{ par: string }>(
     `select l.par_level::text par from inv.item_node l
        join inv.item i on i.id = l.item_id join core.tenant t on t.id = i.tenant_id

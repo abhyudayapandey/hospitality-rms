@@ -1,0 +1,4 @@
+place_code,kind,name,number,authority,issued_on,expires_on,renewal_role
+TEST-HOTEL-1.0,FSSAI,FSSAI licence,11521999000123,FSSAI,2021-02-01,2026-01-31,GENERAL_MANAGER
+TEST-HOTEL-1.0,FIRE_NOC,Fire NOC,MFS/2025/0451,Maharashtra Fire Services,2025-06-01,2030-05-31,CHIEF_ENGINEER
+TEST-BAR-3.0,EXCISE_BAR,Excise bar licence,FL-III/2026/118,State excise,2026-04-01,2031-03-31,BAR_MANAGER

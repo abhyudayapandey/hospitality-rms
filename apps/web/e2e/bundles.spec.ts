@@ -65,7 +65,9 @@ test('the platform admin takes a bundle out of the plan; the owner sees it read-
     const cook = await browser.newPage({ viewport: { width: 380, height: 900 } });
     await signInAs(cook, 'Test Cook');
     await cook.goto('/tasks/maintenance/new');
-    await expect(cook.getByTestId('module-off')).toContainText("Maintenance isn't switched on");
+    await expect(cook.getByTestId('module-off')).toContainText(
+      "Tasks & food safety isn't part of your company's plan. Ask Outlet Ops to add it.",
+    );
 
     // back in the plan: on again, for the owner too
     await tasks.click();

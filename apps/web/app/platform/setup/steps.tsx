@@ -1,11 +1,12 @@
 import Link from 'next/link';
-import { EXTRA_BY_CODE, TILES, TILE_BY_CODE } from '@outlet-ops/domain';
+import { ALWAYS_ON, EXTRA_BY_CODE, TILES, TILE_BY_CODE } from '@outlet-ops/domain';
 import {
   COMPANY_ROLES,
   UNITS,
   companyCode,
   coverLines,
   customerCodeFrom,
+  draftBundles,
   logins,
   outletPlan,
   roleChoices,
@@ -320,6 +321,54 @@ export function OutletsStep({
         {null}
       </Shell>
     </>
+  );
+}
+
+/**
+ * Screen 3, What they buy (ADR 067, 069): every bundle, those its outlets use first and
+ * ticked, the rest after them unticked (Compliance among them). Untick what they aren't
+ * buying; tick what they are. The next screens and the files follow it.
+ */
+export function BundlesStep({ id, draft }: { id: string; draft: SetupDraft }) {
+  const bundles = draftBundles(draft);
+  const usual = bundles.filter((b) => b.usual);
+  const more = bundles.filter((b) => !b.usual);
+  const row = (b: (typeof bundles)[number]) => (
+    <label
+      key={b.code}
+      className="flex min-h-12 items-start gap-3 rounded-lg bg-white p-3 ring-1 ring-slate-200"
+      data-bundle={b.name}
+    >
+      <input
+        type="checkbox"
+        name="bundle"
+        value={b.code}
+        defaultChecked={b.ticked}
+        className="mt-1 size-5"
+      />
+      <span>
+        <span className="block font-medium">{b.name}</span>
+        <span className="block text-sm text-slate-600">
+          {b.uses.length > 0 && `Used for ${b.uses.join(', ')}. `}
+          {b.includes}
+        </span>
+      </span>
+    </label>
+  );
+  return (
+    <Shell id={id} step="bundles" label="What they buy">
+      <p className="text-sm text-slate-600">{ALWAYS_ON}</p>
+      {usual.length > 0 && (
+        <fieldset className="space-y-2" data-testid="bundles-usual">
+          <legend className="pb-1 font-semibold">Usual for these outlets</legend>
+          {usual.map(row)}
+        </fieldset>
+      )}
+      <fieldset className="space-y-2" data-testid="bundles-more">
+        <legend className="pb-1 font-semibold">Also available</legend>
+        {more.map(row)}
+      </fieldset>
+    </Shell>
   );
 }
 

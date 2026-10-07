@@ -267,6 +267,8 @@ export function doFirst(
     openSlotsHref?: string | null;
     /** they may ask for or order supplies somewhere; else running low is only to see (ADR 052) */
     canOrder?: boolean;
+    /** licences expiring in 90 days (or expired) and compliance jobs overdue (ADR 069) */
+    compliance?: { expiring: number; overdue: number };
   },
   max = DO_FIRST_MAX,
 ): DoFirstItem[] {
@@ -317,6 +319,26 @@ export function doFirst(
       text: '',
       action: 'Assign',
       href: LINE.repairs.href,
+    },
+    {
+      key: 'complianceOverdue',
+      tone: 'bad',
+      n: input.compliance?.overdue ?? 0,
+      text: plural(
+        input.compliance?.overdue ?? 0,
+        'compliance job overdue',
+        'compliance jobs overdue',
+      ),
+      action: 'Open',
+      href: listHref('/compliance', { all: true, tab: 'overdue' }),
+    },
+    {
+      key: 'licences',
+      tone: 'warn',
+      n: input.compliance?.expiring ?? 0,
+      text: plural(input.compliance?.expiring ?? 0, 'licence expiring', 'licences expiring'),
+      action: 'Renew',
+      href: listHref('/compliance', { all: true, tab: 'expiring' }),
     },
     {
       key: 'toAssign',

@@ -1,0 +1,4 @@
+place_code,name,every_months,next_due,owner_role,needs_proof,from_library
+TEST-HOTEL-1.0,Pest control service,1,2026-01-15,GENERAL_MANAGER,yes,PEST-CONTROL@1
+TEST-HOTEL-1.0-KITCHEN,Kitchen exhaust duct cleaning,6,2030-06-30,EXECUTIVE_CHEF,yes,DUCT-CLEANING@1
+TEST-HOTEL-1.0-ENGINEERING,Lift rescue drill,3,2030-03-31,CHIEF_ENGINEER,no,LIFT-RESCUE-DRILL@1

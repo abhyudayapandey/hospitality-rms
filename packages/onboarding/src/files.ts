@@ -312,6 +312,8 @@ export const FILES = {
       checklists: keepYesNo,
       maintenance: keepYesNo,
       menu_sales: keepYesNo,
+      // only within the plan: Compliance is out unless the platform admin puts it in (ADR 069)
+      compliance: keepYesNo,
     }),
     optional: ['leave_hr_approval', 'is_test', 'swaps_managers_only', ...MODULE_CODES],
   },
@@ -843,6 +845,54 @@ export const FILES = {
       mode: z.enum(['covered_by', 'not_done'], 'must be covered_by or not_done'),
       covered_by_role: optional,
     }),
+  },
+  // The licence register (ADR 069): each licence of an outlet, with its number, authority,
+  // dates and the job role that renews it. Any customer; shows once Compliance is in the plan.
+  // Keyed by place and name: a later load corrects a licence, never removes one.
+  licences: {
+    file: '38_licences.csv',
+    required: false,
+    schema: z.object({
+      place_code: code,
+      kind: z.string().regex(/^[A-Z][A-Z0-9_]*$/, 'must be a kind like FSSAI or OTHER'),
+      name: text,
+      number: optional,
+      authority: optional,
+      issued_on: optDate,
+      expires_on: optDate,
+      renewal_role: code,
+    }),
+  },
+  // The compliance calendar (ADR 069): recurring statutory jobs of an outlet or a department,
+  // every 1 to 36 months, with the job role they go to. Keyed by place and name, like file 38;
+  // `from_library` (`PEST-CONTROL@1`) marks a copy of the product library's job.
+  complianceCalendar: {
+    file: '39_compliance_calendar.csv',
+    required: false,
+    schema: z.object({
+      place_code: code,
+      name: text,
+      every_months: z.coerce
+        .number()
+        .refine(
+          (v) => [1, 2, 3, 4, 6, 12, 24, 36].includes(v),
+          'must be 1, 2, 3, 4, 6, 12, 24 or 36',
+        ),
+      next_due: date,
+      owner_role: code,
+      needs_proof: yesNo,
+      from_library: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          if (v === '') return undefined;
+          const m = /^([A-Z][A-Z0-9-]*)@([1-9]\d*)$/.exec(v);
+          if (m) return { code: m[1]!, version: Number(m[2]) };
+          ctx.addIssue({ code: 'custom', message: 'must be like PEST-CONTROL@1' });
+          return z.NEVER;
+        }),
+    }),
+    optional: ['from_library'],
   },
 } as const;
 
