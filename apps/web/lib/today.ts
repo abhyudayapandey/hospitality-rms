@@ -1,6 +1,7 @@
 import 'server-only';
 import { addDays, localToday, weekStart } from './dates';
 import { sql, withUser } from './db';
+import { myBriefing, type MyBriefing } from './briefing';
 import { inboxEntries, type InboxEntry } from './inbox';
 import { expiryList } from './inventory';
 import { navProfile, type NavProfile } from './nav';
@@ -113,8 +114,10 @@ export interface Today {
   pos: PosToday | null;
   /** dishes to sell first today at their outlet (INV-12, ADR 040) */
   push: PushDish[];
+  /** today's briefing at their outlet (ADR 070); null when they work at none */
+  briefing: MyBriefing | null;
   targets: Record<TargetKey, number>;
-  /** licences expiring within 90 days and compliance jobs overdue, where they see them (ADR 069) */
+  /** licences expiring within 90 days and compliance jobs overdue, where they see them (ADR 070) */
   compliance: { expiring: number; overdue: number };
 }
 
@@ -143,7 +146,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     const inbox = await inboxEntries(tx);
     // expired items waiting to be given to someone; repairs waiting are the repairs count
     const assign = lead ? (await toAssign(tx)).filter((x) => x.kind === 'expiry').length : 0;
-    // the same counts the Compliance screen's tabs show (ops.compliance_counts, ADR 069)
+    // the same counts the Compliance screen's tabs show (ops.compliance_counts, ADR 070)
     const compliance = shell.domains.has('COMPLIANCE')
       ? (
           await sql<{ expiring: number; overdue: number }>`
@@ -292,6 +295,8 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     }
     // Push today: the function decides who sees it (service teams and the outlet's managers)
     const push = atWork ? await myPushToday(tx) : [];
+    // today's briefing: everyone who works at the outlet reads it (ADR 070)
+    const briefing = atWork ? await myBriefing(tx) : null;
 
     let numbers: TodayNumbers | null = null;
     let leagueTable: TodayLeague | null = null;
@@ -341,6 +346,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       expiry,
       pos,
       push,
+      briefing,
       targets: (await companySettings(tx)).targets,
     };
   });

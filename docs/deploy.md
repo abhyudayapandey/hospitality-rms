@@ -2335,3 +2335,25 @@ bucket. Test data changed: Test Company is re-imported.
 6. Check the set-up wizard: **Set up a new customer** → a name → Outlets → Next. "What they
    buy" lists every bundle, the usual ones ticked and Compliance unticked under "Also
    available". Throw the set-up away afterwards.
+
+## Releasing today's briefing and the final pass (ADR 070)
+
+One migration, `20261125100000_briefing` (the `ops.briefing` table and its functions). The
+product sync in Deploy adds the BRIEFING domain and the Briefing Writer group to every
+customer, and gives the outlet managers BRIEFING. Test data changed (file 06 gives the new
+duty to the heads of kitchen and service departments): both test customers are re-imported.
+No stack change.
+
+1. Merge, then **Deploy** (it runs the migration and the product sync). `cdk diff` shows nothing.
+2. Re-import Test Company and Test Solo Bar Co. as usual (console → customer → Import).
+   - Test Company: no problems, the same owner warnings; job role access 7 new; the rest
+     unchanged.
+   - Test Solo Bar Co.: no problems, the same owner warnings; job role access 2 new; the rest
+     unchanged.
+   - Apply each, then a second dry run shows no changes.
+3. Check: sign in as **Test Head Cook 3.0**. Home shows "Today's briefing" with "Write today's
+   briefing". Write a line, mark one dish off, share. Sign in as **Test Server 3.0**: Home shows
+   the note and "Off today: …", with no Edit. Take the note down again as the Head Cook.
+4. Check the set-up wizard as a platform admin: start a test customer with any tile and go as
+   far as **Check everything**; it reads "All checked … no problems". (The test company stays,
+   marked as a test.)

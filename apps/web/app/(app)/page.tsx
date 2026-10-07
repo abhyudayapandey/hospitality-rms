@@ -5,6 +5,7 @@ import { ExpiryBanner } from '@/components/expiry-banner';
 import { Icon, type IconName } from '@/components/icon';
 import { businessDate, formatDay, formatLongDay, formatTime } from '@/lib/dates';
 import { compare, formatMeasure, MEASURES, trendHref, type MeasureRow } from '@/lib/reports';
+import { PART_WORDS } from '@/lib/briefing';
 import { homeTiles } from '@/lib/screens';
 import { vsTarget, type TargetKey } from '@/lib/settings';
 import { loadShell, screenInput } from '@/lib/shell';
@@ -105,6 +106,14 @@ export default async function Home() {
         ))}
 
       {today.pos && <PosCard pos={today.pos} tz={tz} />}
+
+      {(today.briefing || shell.domains.get('BRIEFING') === 'modify') && (
+        <Briefing
+          briefing={today.briefing}
+          canWrite={shell.domains.get('BRIEFING') === 'modify'}
+          tz={tz}
+        />
+      )}
 
       {today.push.length > 0 && <PushToday push={today.push} tz={tz} />}
 
@@ -244,6 +253,72 @@ function PosCard({ pos, tz }: { pos: NonNullable<Today['pos']>; tz: string }) {
       </Link>
     </section>
   );
+}
+
+// Today's briefing (ADR 070): the outlet's notes for the shift, the outlet's own first, then
+// its departments'. Its writers get a link to write or edit theirs.
+function Briefing({
+  briefing,
+  canWrite,
+  tz,
+}: {
+  briefing: Today['briefing'];
+  canWrite: boolean;
+  tz: string;
+}) {
+  const notes = briefing?.notes ?? [];
+  return (
+    <section aria-label="Today's briefing" className={card} data-testid="briefing">
+      <h2 className={`${cardTitle} flex items-center gap-1.5`}>
+        <Icon name="clipboard" className="size-4 text-brand-700" />
+        Today&apos;s briefing
+      </h2>
+      {notes.length === 0 ? (
+        <p className="mt-2 text-sm text-slate-500">Nothing written for today yet.</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-slate-100">
+          {notes.map((n) => (
+            <li key={n.id} className="space-y-1 py-2" data-testid="briefing-note">
+              <p className="text-xs text-slate-500">
+                From {briefing!.outlet.name === n.place ? 'the outlet' : placeShort(n.place)}
+                {n.part !== 'day' && ` · ${PART_WORDS[n.part]}`}
+                {n.written_by && ` · ${n.written_by}`} · {formatTime(n.written_at, tz)}
+              </p>
+              {n.body && <p className="whitespace-pre-line">{n.body}</p>}
+              {n.off_dishes.length > 0 && (
+                <p className="text-sm font-medium text-rose-700" data-testid="briefing-off">
+                  Off today: {n.off_dishes.map((d) => d.name).join(', ')}
+                </p>
+              )}
+              {n.can_edit && (
+                <Link
+                  href={`/briefing?place=${n.place_id}`}
+                  className="inline-flex min-h-11 items-center text-sm font-medium text-brand-700"
+                >
+                  Edit
+                </Link>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {canWrite && (
+        <Link
+          href="/briefing"
+          className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-brand-700"
+        >
+          <Icon name="plus" className="size-4" />
+          Write today&apos;s briefing
+        </Link>
+      )}
+    </section>
+  );
+}
+
+/** "Test Bar 3.0 – Kitchen" -> "Kitchen": the card is already about the outlet. */
+function placeShort(place: string): string {
+  const i = place.lastIndexOf(' – ');
+  return i >= 0 ? place.slice(i + 3) : place;
 }
 
 // Dishes to sell first (INV-12, ADR 040): they use prep that expires by tomorrow.

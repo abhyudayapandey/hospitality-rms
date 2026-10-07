@@ -94,6 +94,7 @@ const FRONTLINE = new Set([
   'STOCK_USER',
   'EVENT_PLANNER',
   'CASHIER',
+  'BRIEFING_WRITER',
 ]);
 
 export type NavProfile = 'outlet' | 'department' | 'store' | 'cost' | 'frontline' | 'office';

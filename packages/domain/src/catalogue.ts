@@ -207,7 +207,7 @@ export const ROLES: readonly RoleDef[] = [
     code: 'EXECUTIVE_CHEF',
     title: 'Executive Chef',
     home: 'KITCHEN',
-    duties: [D, 'KEEPS_DEPARTMENT_STORE'],
+    duties: [D, 'KEEPS_DEPARTMENT_STORE', 'WRITES_SHIFT_BRIEFING'],
     sops: ['H'],
   },
   {
@@ -215,7 +215,7 @@ export const ROLES: readonly RoleDef[] = [
     title: 'Head Cook',
     alsoCalled: ['Head Chef'],
     home: 'KITCHEN',
-    duties: [D, 'KEEPS_DEPARTMENT_STORE'],
+    duties: [D, 'KEEPS_DEPARTMENT_STORE', 'WRITES_SHIFT_BRIEFING'],
     sops: ['R', 'B'],
   },
   {
@@ -292,7 +292,7 @@ export const ROLES: readonly RoleDef[] = [
     code: 'BAR_MANAGER',
     title: 'Bar Manager',
     home: 'BAR',
-    duties: [D, 'KEEPS_DEPARTMENT_STORE'],
+    duties: [D, 'KEEPS_DEPARTMENT_STORE', 'WRITES_SHIFT_BRIEFING'],
     formatDuties: { bar_pub: ['RUNS_OUTLET'] },
     formatHome: { bar_pub: '(outlet)' },
     sops: ['B', 'H'],
@@ -337,7 +337,13 @@ export const ROLES: readonly RoleDef[] = [
     title: 'F&B Manager',
     alsoCalled: ['Director of F&B'],
     home: 'RESTAURANT',
-    duties: [D, `${D}@department:BAR`, `${D}@department:BANQUETS`, 'PLANS_EVENTS'],
+    duties: [
+      D,
+      `${D}@department:BAR`,
+      `${D}@department:BANQUETS`,
+      'PLANS_EVENTS',
+      'WRITES_SHIFT_BRIEFING',
+    ],
     sops: ['H'],
   },
   {
@@ -345,7 +351,7 @@ export const ROLES: readonly RoleDef[] = [
     title: 'Restaurant Manager',
     alsoCalled: ['Outlet Manager'],
     home: 'RESTAURANT',
-    duties: [D, 'PLANS_EVENTS'],
+    duties: [D, 'PLANS_EVENTS', 'WRITES_SHIFT_BRIEFING'],
     sops: ['H'],
   },
   {
@@ -383,7 +389,7 @@ export const ROLES: readonly RoleDef[] = [
     code: 'FLOOR_MANAGER',
     title: 'Floor Manager',
     home: 'FLOOR-SERVICE',
-    duties: [D],
+    duties: [D, 'WRITES_SHIFT_BRIEFING'],
     sops: ['B'],
   },
   {
@@ -424,7 +430,7 @@ export const ROLES: readonly RoleDef[] = [
     code: 'IRD_MANAGER',
     title: 'In-Room Dining Manager',
     home: 'IN-ROOM-DINING',
-    duties: [D],
+    duties: [D, 'WRITES_SHIFT_BRIEFING'],
     sops: ['H'],
   },
   {
@@ -438,7 +444,7 @@ export const ROLES: readonly RoleDef[] = [
     code: 'BANQUET_MANAGER',
     title: 'Banquet Manager',
     home: 'BANQUETS',
-    duties: [D, 'PLANS_EVENTS'],
+    duties: [D, 'PLANS_EVENTS', 'WRITES_SHIFT_BRIEFING'],
     sops: ['H'],
   },
   {

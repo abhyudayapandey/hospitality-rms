@@ -245,6 +245,14 @@ every plan. Only the platform admin puts a bundle in or out of a plan (the conso
 page's Bundles card); Admin → Modules shows the plan read-only, and the Account Owner switches
 single modules only inside it. Both test customers have every bundle.
 
+**Today's briefing** (ADR 070). A note for the outlet's shift: words, and the dishes that are
+"Off today". It shows on Home, above Push today, for everyone who works at the outlet, for the
+business day (whole day, lunch until 16:00, dinner from 16:00). Written on `/briefing` (Me →
+Today's briefing) by the heads of kitchen and service departments (the duty "Writes the shift
+briefing", group BRIEFING_WRITER) at their department, by the outlet's managers at the outlet
+or any department, and by whoever covers a writer. One note per place and part of the day;
+saving again edits it, "Take down" archives it. No module: it comes with every plan.
+
 ### Approval processes (To do list)
 
 LEAVE, SHIFT_SWAP, PURCHASE_ORDER (only unusual ones, ADR 044: off the menu or more than

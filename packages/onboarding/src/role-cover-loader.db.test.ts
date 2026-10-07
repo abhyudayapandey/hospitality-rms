@@ -45,6 +45,7 @@ describe('who covers it (file 37)', () => {
       );
       expect(first.counts['role cover']).toEqual({ created: 2, updated: 0, unchanged: 1 });
       expect(covered(first.access)).toEqual([
+        'test.commis.3.0 BRIEFING_WRITER@TEST-BAR-3.0-KITCHEN covers Executive Chef',
         'test.commis.3.0 DEPARTMENT_HEAD@TEST-BAR-3.0-KITCHEN covers Executive Chef',
         'test.commis.3.0 STORE_KEEPER@TEST-BAR-3.0-KITCHEN-STORE covers Executive Chef',
         'test.front-desk-executive.2.0 STORE_KEEPER@TEST-GUEST-HOUSE-2.0-SUPPLY covers Store Keeper',
@@ -80,6 +81,7 @@ describe('who covers it (file 37)', () => {
       expect(without.issues).toEqual([]);
       expect(without.counts['role cover']).toEqual({ created: 0, updated: 2, unchanged: 1 });
       expect(covered(without.access)).toEqual([
+        'test.commis.3.0 BRIEFING_WRITER@TEST-BAR-3.0-KITCHEN covers Executive Chef',
         'test.commis.3.0 DEPARTMENT_HEAD@TEST-BAR-3.0-KITCHEN covers Executive Chef',
         'test.commis.3.0 STORE_KEEPER@TEST-BAR-3.0-KITCHEN-STORE covers Executive Chef',
       ]);

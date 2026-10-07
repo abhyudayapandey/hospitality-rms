@@ -39,6 +39,7 @@ export type ScreenKey =
   | 'compliance'
   | 'sales'
   | 'posImport'
+  | 'briefing'
   | 'roster'
   | 'events'
   | 'reports'
@@ -232,6 +233,15 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     icon: 'upload',
     section: 'work',
     show: (i) => can(i, 'POS_IMPORT', 'modify'),
+  },
+  {
+    // today's note for the shift (ADR 070): its writers; everyone reads it on Home
+    key: 'briefing',
+    href: '/briefing',
+    label: "Today's briefing",
+    icon: 'clipboard',
+    section: 'work',
+    show: (i) => can(i, 'BRIEFING', 'modify'),
   },
   {
     key: 'problem',
