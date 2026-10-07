@@ -4,12 +4,15 @@ import { formatWhen } from '@/lib/format';
 import { requirePlatformAdmin } from '@/lib/platform/server';
 import { jobLabel, type PlatformCustomer as Customer } from './parts';
 import { startSetup } from './setup/actions';
+import { ThrowAway } from './setup/throw-away';
 import { StatusControl } from './status-control';
 
 interface Draft {
   id: string;
   name: string;
   step: string;
+  /** set once Check everything has created the company */
+  tenant_id: string | null;
   live: boolean;
   created_by_email: string;
   updated_at: Date;
@@ -66,16 +69,17 @@ export default async function PlatformHome() {
             data-testid="setups"
           >
             {drafts.map((d) => (
-              <li key={d.id}>
+              <li key={d.id} className="p-3" data-setup={d.name}>
                 <Link
                   href={`/platform/setup/${d.id}/${d.step}`}
-                  className="flex justify-between gap-2 p-3"
+                  className="flex justify-between gap-2"
                 >
                   <span className="font-medium underline">{d.name}</span>
                   <span className="text-right text-slate-600">
                     {d.created_by_email} · {formatWhen(d.updated_at)}
                   </span>
                 </Link>
+                <ThrowAway id={d.id} name={d.name} created={!!d.tenant_id} compact />
               </li>
             ))}
           </ul>

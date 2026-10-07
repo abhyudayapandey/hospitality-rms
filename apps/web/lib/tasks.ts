@@ -128,6 +128,9 @@ export interface Checklist {
   assign: { mode: string; role?: string; user_id?: string };
   steps: StepInput[];
   archived_at: Date | null;
+  /** The starter library checklist and version it was copied from (ADR 062, 068). */
+  library_code: string | null;
+  library_version: number | null;
 }
 
 /** Checklists at the place and below that the person reads. */

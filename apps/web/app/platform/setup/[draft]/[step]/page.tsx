@@ -15,6 +15,7 @@ import {
   StockStep,
 } from '../../steps';
 import { ReviewStep } from '../../review';
+import { ThrowAway } from '../../throw-away';
 
 type Search = Record<string, string | string[] | undefined>;
 const list = (v: string | string[] | undefined) => [v ?? []].flat();
@@ -118,6 +119,13 @@ export default async function SetupStepPage({
       {step === 'stock' && <StockStep id={id} draft={draft} />}
       {step === 'review' && (
         <ReviewStep id={id} draft={draft} row={row} jobs={jobs} problems={problems} />
+      )}
+      {!row.apply_job && (
+        <ThrowAway
+          id={id}
+          name={draft.company.name || 'a new customer'}
+          created={!!row.create_job}
+        />
       )}
     </>
   );

@@ -177,10 +177,10 @@ export function OutletsStep({
                   ` · with ${o.extras.map((x) => EXTRA_BY_CODE.get(x)!.name.toLowerCase()).join(', ')}`}
                 {o.area && ` · ${o.area}`}
               </p>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Link
                   href={`/platform/setup/${id}/outlets?edit=${o.key}`}
-                  className={secondaryButton}
+                  className={`${secondaryButton} flex items-center justify-center`}
                 >
                   Change
                 </Link>
@@ -226,15 +226,15 @@ export function OutletsStep({
           <input type="hidden" name="op" value="save" />
           <input type="hidden" name="key" value={editing?.key ?? ''} />
           <input type="hidden" name="tile" value={picked.code} />
-          <p className="font-semibold">
-            {picked.name}{' '}
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="font-semibold">{picked.name}</p>
             <Link
               href={`/platform/setup/${id}/outlets?tile=${editing ? `&edit=${editing.key}` : ''}`}
-              className="text-sm font-normal underline"
+              className="flex min-h-11 items-center text-sm underline"
             >
-              Change
+              Change type
             </Link>
-          </p>
+          </div>
           <label className="block text-sm font-medium">
             Name
             <input
@@ -343,8 +343,13 @@ export function DepartmentsStep({ id, draft }: { id: string; draft: SetupDraft }
                   defaultChecked
                   className="size-5"
                 />
-                {d.name}
-                {d.store && <span className="text-sm text-slate-500">· keeps the {d.store}</span>}
+                <span>
+                  {d.name}
+                  {d.store && (
+                    <span className="text-sm text-slate-500"> · keeps the {d.store}</span>
+                  )}
+                  {d.note && <span className="block text-sm text-slate-500">{d.note}</span>}
+                </span>
               </label>
             ))}
             {p.offered.map((d, n) => (
@@ -356,7 +361,10 @@ export function DepartmentsStep({ id, draft }: { id: string; draft: SetupDraft }
                 )}
                 <label className="flex min-h-12 items-center gap-3">
                   <input type="checkbox" name={`dept:${o.key}`} value={d.code} className="size-5" />
-                  {d.name}
+                  <span>
+                    {d.name}
+                    {d.note && <span className="block text-sm text-slate-500">{d.note}</span>}
+                  </span>
                 </label>
               </div>
             ))}

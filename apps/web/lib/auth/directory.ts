@@ -10,6 +10,7 @@ import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
   NotAuthorizedException,
+  UserNotFoundException,
   UsernameExistsException,
 } from '@aws-sdk/client-cognito-identity-provider';
 
@@ -136,21 +137,37 @@ export class CognitoDirectory implements LoginDirectory {
     );
   }
 
+  // A person whose login was never created has nothing to disable, enable or sign out:
+  // the database step already did what was asked, so that is not an error.
+  private async ifLogin(send: () => Promise<unknown>): Promise<void> {
+    try {
+      await send();
+    } catch (err) {
+      if (!(err instanceof UserNotFoundException)) throw err;
+    }
+  }
+
   async disable(username: string): Promise<void> {
-    await this.client.send(
-      new AdminDisableUserCommand({ UserPoolId: this.userPoolId, Username: username }),
+    await this.ifLogin(() =>
+      this.client.send(
+        new AdminDisableUserCommand({ UserPoolId: this.userPoolId, Username: username }),
+      ),
     );
   }
 
   async enable(username: string): Promise<void> {
-    await this.client.send(
-      new AdminEnableUserCommand({ UserPoolId: this.userPoolId, Username: username }),
+    await this.ifLogin(() =>
+      this.client.send(
+        new AdminEnableUserCommand({ UserPoolId: this.userPoolId, Username: username }),
+      ),
     );
   }
 
   async signOutEverywhere(username: string): Promise<void> {
-    await this.client.send(
-      new AdminUserGlobalSignOutCommand({ UserPoolId: this.userPoolId, Username: username }),
+    await this.ifLogin(() =>
+      this.client.send(
+        new AdminUserGlobalSignOutCommand({ UserPoolId: this.userPoolId, Username: username }),
+      ),
     );
   }
 

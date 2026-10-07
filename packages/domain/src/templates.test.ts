@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { CHECKLISTS } from './checklists';
+import {
+  CHECKLISTS,
+  CHECKLIST_BY_CODE,
+  libraryStepsJson,
+  newerLibraryVersion,
+  type LibraryChecklist,
+} from './checklists';
 import { ROLE_BY_CODE } from './catalogue';
 import {
   EXTRA_BY_CODE,
@@ -64,5 +70,36 @@ describe('outlet templates', () => {
       expect(c.steps.length, c.code).toBeGreaterThan(0);
       expect(c.steps.length, c.code).toBeLessThanOrEqual(30);
     }
+  });
+
+  it('a copy is offered the library’s newer version only (ADR 068)', () => {
+    const v1 = CHECKLIST_BY_CODE.get('KITCHEN-OPENING')!;
+    // up to date, no library, or a code the library no longer has: nothing to offer
+    expect(newerLibraryVersion('KITCHEN-OPENING', v1.version)).toBeNull();
+    expect(newerLibraryVersion(null, null)).toBeNull();
+    expect(newerLibraryVersion('GONE', 1)).toBeNull();
+    // the library moves on to version 2
+    const v2: LibraryChecklist = { ...v1, version: 2, steps: [...v1.steps] };
+    const library = new Map([[v2.code, v2]]);
+    expect(newerLibraryVersion('KITCHEN-OPENING', 1, library)).toBe(v2);
+    expect(newerLibraryVersion('KITCHEN-OPENING', 2, library)).toBeNull();
+  });
+
+  it('library steps keep their range, unit and photo as a checklist stores them', () => {
+    const pool = CHECKLIST_BY_CODE.get('POOL-WATER-TEST')!;
+    expect(libraryStepsJson(pool)[0]).toEqual({
+      label: 'pH',
+      kind: 'number',
+      min: 7.2,
+      max: 7.8,
+      unit: 'pH',
+    });
+    const photo: LibraryChecklist = {
+      ...pool,
+      steps: [{ label: 'Photo of the deck', kind: 'tick', photo: true }],
+    };
+    expect(libraryStepsJson(photo)).toEqual([
+      { label: 'Photo of the deck', kind: 'tick', photo_required: true },
+    ]);
   });
 });

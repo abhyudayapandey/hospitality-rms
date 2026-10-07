@@ -201,8 +201,13 @@ export default async function AddOutletPage({
                   defaultChecked
                   className="size-5"
                 />
-                {d.name}
-                {d.store && <span className="text-sm text-slate-500">· keeps the {d.store}</span>}
+                <span>
+                  {d.name}
+                  {d.store && (
+                    <span className="text-sm text-slate-500"> · keeps the {d.store}</span>
+                  )}
+                  {d.note && <span className="block text-sm text-slate-500">{d.note}</span>}
+                </span>
               </label>
             ))}
             {plan.offered.map((d, n) => (
@@ -214,7 +219,10 @@ export default async function AddOutletPage({
                 )}
                 <label className="flex min-h-12 items-center gap-3 rounded-lg bg-white px-3 ring-1 ring-slate-200">
                   <input type="checkbox" name="dept" value={d.code} className="size-5" />
-                  {d.name}
+                  <span>
+                    {d.name}
+                    {d.note && <span className="block text-sm text-slate-500">{d.note}</span>}
+                  </span>
                 </label>
               </div>
             ))}

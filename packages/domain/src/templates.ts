@@ -21,6 +21,8 @@ export interface TemplateDepartment {
   /** On by default; off ones are offered, unticked. */
   on?: boolean;
   view?: View;
+  /** A word beside its tick box when it holds more than its name says. */
+  note?: string;
 }
 
 export interface TemplateRole {
@@ -274,12 +276,13 @@ export const TEMPLATES: readonly OutletTemplate[] = [
   {
     format: 'hotel',
     name: 'Hotel / Resort',
-    does: 'Rooms, with food and drink; a small hotel ticks fewer departments.',
+    does: 'Rooms, a restaurant with breakfast; a small hotel ticks fewer departments.',
     departments: [
       { code: 'FRONT-OFFICE' },
       { code: 'HOUSEKEEPING' },
       { code: 'KITCHEN' },
-      { code: 'RESTAURANT' },
+      // breakfast is the restaurant's (Hotel SOP FB-09), not a department of its own
+      { code: 'RESTAURANT', note: 'includes breakfast; untick if no meals are served' },
       { code: 'STORES-TEAM' },
       { code: 'ENGINEERING' },
       { code: 'SECURITY' },
@@ -327,8 +330,7 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       { code: 'ACCOUNTANT' },
       { code: 'HR_MANAGER' },
       { code: 'SALES_MANAGER' },
-      { code: 'SPA_MANAGER' },
-      { code: 'THERAPIST' },
+      // the spa's and the pool's people come with those extras (the pool, spa and gym)
     ],
     checklists: [
       { code: 'FRONT-OFFICE-HANDOVER' },
@@ -368,7 +370,8 @@ export const TEMPLATE_BY_FORMAT: ReadonlyMap<OutletFormat, OutletTemplate> = new
 );
 
 /** What else an outlet has ("Anything else here?"). */
-export type ExtraCode = 'bar' | 'banquets' | 'brewery' | 'delivery' | 'central_kitchen';
+export type ExtraCode =
+  'bar' | 'banquets' | 'brewery' | 'delivery' | 'central_kitchen' | 'pool' | 'spa' | 'gym';
 
 export interface Extra {
   code: ExtraCode;
@@ -436,6 +439,32 @@ export const EXTRAS: readonly Extra[] = [
     modules: ['production'],
     site: true,
   },
+  // a hotel's amenities (Hotel SOP EN-08, SP-01 to SP-06): Spa & Recreation with the people
+  // and checks each one needs; a repair to any of them is reported in Maintenance as usual
+  {
+    code: 'pool',
+    name: 'A swimming pool',
+    does: 'A lifeguard on duty, the pool safety check and the water test every 2 hours.',
+    departments: ['SPA-RECREATION'],
+    roles: [{ code: 'RECREATION_MANAGER' }, { code: 'LIFEGUARD' }],
+    checklists: [{ code: 'POOL-SAFETY' }, { code: 'POOL-WATER-TEST' }],
+  },
+  {
+    code: 'spa',
+    name: 'A spa',
+    does: 'Spa Manager, therapists and the spa opening hygiene check.',
+    departments: ['SPA-RECREATION'],
+    roles: [{ code: 'SPA_MANAGER' }, { code: 'THERAPIST' }, { code: 'SPA_RECEPTIONIST' }],
+    checklists: [{ code: 'SPA-OPENING' }],
+  },
+  {
+    code: 'gym',
+    name: 'A gym',
+    does: 'The daily equipment check, run by the Recreation Manager.',
+    departments: ['SPA-RECREATION'],
+    roles: [{ code: 'RECREATION_MANAGER' }],
+    checklists: [{ code: 'GYM-CHECK' }],
+  },
 ];
 
 export const EXTRA_BY_CODE: ReadonlyMap<ExtraCode, Extra> = new Map(EXTRAS.map((e) => [e.code, e]));
@@ -457,9 +486,9 @@ export const TILES: readonly Tile[] = [
   {
     code: 'hotel',
     name: 'Hotel / Resort',
-    example: 'rooms, with food and drink',
+    example: 'rooms and a restaurant with breakfast; a bar, spa, pool or gym if it has them',
     format: 'hotel',
-    offers: ['bar', 'banquets', 'central_kitchen'],
+    offers: ['bar', 'banquets', 'pool', 'spa', 'gym', 'central_kitchen'],
   },
   {
     code: 'restaurant',
