@@ -4,12 +4,14 @@ import { readBundle } from './files';
 import {
   coverLines,
   customerCodeFrom,
+  draftBundles,
   draftProblems,
   emptyDraft,
   filesFromDraft,
   logins,
   outletCodes,
   peopleFromPaste,
+  planFromDraft,
   readDraft,
   roleQuestions,
   stepOfFile,
@@ -198,5 +200,35 @@ describe('people pasted from a sheet', () => {
     ]);
     expect(notes[0]).toBe('Row 2: no role called Baristta: did you mean Barista?');
     expect(notes).toContain('Row 4: no outlet called Juhu');
+  });
+});
+
+describe('what the customer buys (ADR 067)', () => {
+  it("lists the bundles its outlets use, ticked unless unticked; Go live's plan follows", () => {
+    const d = cafe();
+    expect(emptyDraft().bundlesOff).toEqual([]);
+    expect(draftBundles(emptyDraft())).toEqual([]);
+    const b = draftBundles(d);
+    expect(b.map((x) => [x.name, x.ticked])).toEqual([
+      ['Stock & cost', true],
+      ['People & roster', true],
+      ['Tasks & food safety', true],
+    ]);
+    expect(b[2]!.uses).toEqual(['Checklists', 'Maintenance']);
+    expect(planFromDraft(d)).toEqual({
+      stock_cost: true,
+      people_roster: true,
+      tasks_food_safety: true,
+    });
+    d.bundlesOff = ['people_roster'];
+    expect(planFromDraft(d)).toMatchObject({ people_roster: false, stock_cost: true });
+  });
+
+  it('the files switch no module on or off: the plan does', () => {
+    const files = filesFromDraft(cafe());
+    const customer = rows(files, '00_')[0]!;
+    for (const m of ['checklists', 'events', 'production', 'leave']) {
+      expect(customer[m] ?? '', m).toBe('');
+    }
   });
 });

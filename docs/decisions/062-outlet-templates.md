@@ -57,7 +57,9 @@ time. Until now every outlet was written by hand into a customer's onboarding fi
      as any import. Every check the loader has still applies.
    - Codes already in use, an extra the tile doesn't offer, or a parent that doesn't exist
      are refused in plain words.
-   - Modules the outlet needs are switched on for the company, never off.
+   - Modules the outlet needs were switched on for the company, never off. Since ADR 067 a
+     template switches nothing on: the plan (bundles) decides, and the review says what is
+     missing.
 7. **What a template writes:**
    - places: the outlet, its departments, its supply point and stores, and their links. With
      no Main Store, a department without a store uses the kitchen's;

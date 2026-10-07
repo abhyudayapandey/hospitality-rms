@@ -2241,3 +2241,20 @@ changes until someone saves a cover.
    does it: Executive Chef": the preview names Test Executive Chef 1.1. Don't save (or save,
    then set it back to "We have it").
 3. Sign in as the General Manager 1.0: Who does what shows Test Hotel & Bar 1.0 only.
+
+## Releasing bundles (ADR 067)
+
+One migration, `20261121100000_bundles` (the plan beside the modules in the company
+settings, the NOT_IN_PLAN refusal and two console functions). It writes nothing: every
+existing customer keeps every bundle, and every module it has on today. No stack change and
+nothing to re-import.
+
+1. Merge, then **Deploy** as usual (it runs the migration). `cdk diff` shows nothing.
+2. Check in the platform console: open Test Company. The Bundles card shows Stock & cost,
+   People & roster and Tasks & food safety, each "On" with its switch on. Open Test Solo Bar
+   Co.: People & roster reads "Partly on · the customer turned Shift swaps and Events off".
+   Don't switch a bundle off for a real customer to try it: its modules stop at once.
+3. Check in the app as Test Account Owner: Admin → Modules lists the modules under the three
+   bundles, each bundle "On", read-only. Turn Maintenance off and on again: it still works
+   inside a bundle that is on. A module can't be turned on outside the plan: there is no
+   switch for it, and the database refuses it (NOT_IN_PLAN, "Not in your plan").

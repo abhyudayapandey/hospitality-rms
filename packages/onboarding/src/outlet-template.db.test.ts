@@ -113,6 +113,36 @@ describe('an outlet from a template', () => {
   });
 });
 
+describe('the plan decides what is on, never a template (ADR 067)', () => {
+  it("adding an outlet switches no module on; the dry run names the bundle it uses that isn't on", async () => {
+    await inRolledBackTx(async (c) => {
+      const { files } = addOutlet(company, choice('cafe', []));
+      const file00 = (f: Record<string, string>) =>
+        f[Object.keys(f).find((k) => k.split('/').pop()!.startsWith('00_'))!];
+      expect(file00(files)).toBe(file00(company));
+
+      await c.query(
+        `update core.tenant set settings = settings || '{"bundles": {"tasks_food_safety": false}}'
+          where code = 'TEST-COMPANY'`,
+      );
+      const r = await loadCustomer(c, files, { nested: true, dryRun: true });
+      expect(r.issues).toEqual([]);
+      const notes = r.warnings.filter((w) => /isn't on for this customer/.test(w.message));
+      expect(notes.map((w) => [w.file, w.column, w.message])).toEqual([
+        [
+          '01_org_nodes.csv',
+          'outlet_format',
+          "New cafe uses Checklists and Maintenance, part of Tasks & food safety, which isn't on for this customer",
+        ],
+      ]);
+      expect(notes[0]!.row).toBeGreaterThan(0);
+      // the outlets already there say nothing
+      const again = await loadCustomer(c, company, { nested: true, dryRun: true });
+      expect(again.warnings.filter((w) => /isn't on/.test(w.message))).toEqual([]);
+    });
+  });
+});
+
 describe('what an outlet from a template refuses', () => {
   it('says so in plain words', () => {
     expect(() => addOutlet(company, { ...choice('cafe', []), code: 'TEST-BAR-3.0' })).toThrow(

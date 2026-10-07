@@ -35,6 +35,9 @@ export const ERROR_MESSAGES = {
   INVALID_REPORT: "That report doesn't exist.",
   MODULE_OFF: "This isn't switched on for your company.",
   INVALID_MODULE: "That module doesn't exist.",
+  // selling by bundle (ADR 067)
+  NOT_IN_PLAN: 'Not in your plan. Ask Outlet Ops to add it.',
+  INVALID_BUNDLE: "That bundle doesn't exist.",
   // R-4, PO-4 (ADR 031, 032)
   INVALID_SETTING:
     'Check the values: targets are 0 to 100%, popularity 10 to 100%, overtime 1× to 3×.',

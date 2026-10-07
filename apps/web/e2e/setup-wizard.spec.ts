@@ -3,7 +3,8 @@ import { asMigrator, runPlatformWorker, signInPlatform } from './helpers';
 
 // The set-up wizard (ADR 064) at 380 px, through the real screens and the real worker: a café
 // company from nothing, left half way and resumed, one role covered and one not done, people
-// typed and pasted, par on its stock, then the two taps of Go live and the printed login sheet.
+// typed and pasted, par on its stock, a bundle they don't buy, then the two taps of Go live and
+// the printed login sheet.
 
 test.use({ viewport: { width: 380, height: 900 } });
 
@@ -110,8 +111,21 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
     'The Restaurant Manager (Meera Shah)',
   );
   await expect(who.locator('[data-role="Kitchen Steward"]')).toContainText('Not done here');
+  // what they buy (ADR 067): the bundles the café uses, ticked; they don't buy People & roster
+  const buys = page.getByRole('form', { name: 'What they buy' });
+  for (const b of ['Stock & cost', 'People & roster', 'Tasks & food safety']) {
+    await expect(buys.getByRole('checkbox', { name: new RegExp(b) })).toBeChecked();
+  }
+  await buys.getByRole('checkbox', { name: /People & roster/ }).uncheck();
+  await buys.getByRole('button', { name: 'Save what they buy' }).click();
+  await expect(
+    page.getByRole('form', { name: 'What they buy' }).getByRole('checkbox', { name: /People/ }),
+  ).not.toBeChecked();
   await page.getByRole('button', { name: 'Check everything' }).click();
   await workerUntil(page, 'checked');
+  await expect(page.getByTestId('check-warnings')).toContainText(
+    "Bandra Café uses Leave and Shift swaps, part of People & roster, which isn't on for this customer",
+  );
   await page.getByRole('button', { name: 'Looks right: apply and send logins' }).click();
   await workerUntil(page, 'live');
   await expect(page.getByTestId('live')).toBeVisible();
@@ -150,6 +164,12 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
     { job_role_code: 'HEAD_COOK', mode: 'covered_by' },
     { job_role_code: 'KITCHEN_STEWARD', mode: 'not_done' },
   ]);
+  // Go live put the ticked bundles in the plan and left People & roster out
+  const plan = await asMigrator<{ b: unknown }>(
+    `select settings -> 'bundles' as b from core.tenant where code = $1`,
+    [code],
+  );
+  expect(plan[0]!.b).toEqual({ people_roster: false });
   const par = await asMigrator<{ par: string }>(
     `select l.par_level::text par from inv.item_node l
        join inv.item i on i.id = l.item_id join core.tenant t on t.id = i.tenant_id

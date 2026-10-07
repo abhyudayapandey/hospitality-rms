@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { EXTRA_BY_CODE, TILES, TILE_BY_CODE } from '@outlet-ops/domain';
+import { EXTRA_BY_CODE, TILES, TILE_BY_CODE, missingBundleNotes } from '@outlet-ops/domain';
 import {
   TemplateError,
   addOutlet,
@@ -28,11 +28,24 @@ export default async function AddOutletPage({
   const q = await searchParams;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const admin = await requirePlatformAdmin();
-  const { customer, files } = await withPlatformAdmin(admin, async (tx) => ({
+  const {
+    customer,
+    files,
+    plan: inPlan,
+  } = await withPlatformAdmin(admin, async (tx) => ({
     customer: (
       await sql<PlatformCustomer>`select * from platform.customer(${id}::uuid)`.execute(tx)
     ).rows[0],
     files: await currentFiles(tx, id),
+    // what the customer buys (ADR 067): an outlet never switches a module on
+    plan: new Set(
+      (
+        await sql<{ bundle: string; in_plan: boolean }>`
+          select bundle, in_plan from platform.customer_modules(${id}::uuid)`.execute(tx)
+      ).rows
+        .filter((m) => m.in_plan)
+        .map((m) => m.bundle),
+    ),
   }));
   if (!customer) notFound();
   const back = (
@@ -258,6 +271,16 @@ export default async function AddOutletPage({
               </div>
             )}
           </dl>
+          {missingBundleNotes(plan.modules, inPlan).length > 0 && (
+            <ul
+              className="space-y-1 rounded-lg bg-amber-50 p-3 text-sm text-amber-900"
+              data-testid="bundle-notes"
+            >
+              {missingBundleNotes(plan.modules, inPlan).map((n) => (
+                <li key={n}>{n}. Turn it on in Bundles on the customer&apos;s page.</li>
+              ))}
+            </ul>
+          )}
           <p className="text-sm text-slate-600">
             Next: a dry run of the customer&apos;s files with this outlet added. Nothing changes
             until you apply it. People are added afterwards, in file 07 or in the app.

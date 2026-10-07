@@ -4,6 +4,7 @@ import { sql, withPlatformAdmin } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { requirePlatformAdmin } from '@/lib/platform/server';
 import { jobLabel, type PlatformCustomer } from '../../parts';
+import { Bundles, type CustomerModule } from './bundles';
 import { AccountOwners, type Owner } from './owners';
 
 interface Job {
@@ -13,12 +14,13 @@ interface Job {
   created_at: Date;
 }
 
-// One customer (metadata only, ADR 012): import its setup files, create its logins.
+// One customer (metadata only, ADR 012): import its setup files, create its logins, and
+// what it buys (bundles, ADR 067).
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const admin = await requirePlatformAdmin();
-  const { customer, jobs, owners } = await withPlatformAdmin(admin, async (tx) => ({
+  const { customer, jobs, owners, modules } = await withPlatformAdmin(admin, async (tx) => ({
     customer: (
       await sql<PlatformCustomer>`select * from platform.customer(${id}::uuid)`.execute(tx)
     ).rows[0],
@@ -29,6 +31,9 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
       created_at: new Date(o.created_at).toISOString(),
       last_sign_in_at: o.last_sign_in_at ? new Date(o.last_sign_in_at).toISOString() : null,
     })),
+    modules: (
+      await sql<CustomerModule>`select * from platform.customer_modules(${id}::uuid)`.execute(tx)
+    ).rows,
     jobs: (
       await sql<Job>`
         select id, kind, status, created_at from platform.jobs(200)
@@ -61,6 +66,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
           Add an outlet
         </Link>
       </div>
+      <Bundles tenantId={id} customer={customer.name} modules={modules} />
       <AccountOwners tenantId={id} owners={owners} />
       {jobs.length > 0 && (
         <section className="space-y-2">

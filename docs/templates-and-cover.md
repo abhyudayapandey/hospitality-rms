@@ -22,7 +22,7 @@ this plan comes from are in `docs/sop/`.
 | Access groups (STAFF, SUPERVISOR, DEPARTMENT_HEAD, …)           | Product code in `packages/domain/src/access.ts`, synced to every customer                            | Yes, unchanged                                     |
 | Job roles                                                       | Customer data (file 06): each role lists `GROUP@scope` defaults, which can differ by `outlet_format` | Yes, but defaults come from the catalogue (§4)     |
 | Outlet formats                                                  | `full_hotel`, `small_hotel`, `standalone_bar`                                                        | Renamed to the SOP formats (ADR 062)               |
-| Modules per company                                             | Events, Swaps, Leave, Production, Prep lists, Checklists, Maintenance, Menu and sales                | Yes; grouped for selling (§9)                      |
+| Modules per company                                             | Events, Swaps, Leave, Production, Prep lists, Checklists, Maintenance, Menu and sales                | Yes; grouped for selling (Step 8, ADR 067)         |
 | Approvals                                                       | Walk up the place tree to whoever holds the group; end at the Account Owner                          | Yes. A missing role already falls upward           |
 | Checklists and tasks                                            | Given to a person, a job role or whoever is on shift                                                 | Yes; "job role" learns about cover (§6)            |
 | Onboarding                                                      | 36 CSV files, a dry run and an apply in the platform console                                         | Kept for big or unusual customers; a wizard on top |
@@ -195,21 +195,28 @@ seven steps:
 - **Docs.** `docs/system-map.md`, the "Who does what" page, the onboarding README and the
   CLAUDE.md lines.
 
-### Step 8. Selling by module (packaging). 1–2 days
+### Step 8. Selling by module (packaging). 1–2 days — built (ADR 067)
 
-- **Four bundles** over the existing module switches:
+- **Three bundles** over the existing module switches. What has no switch comes with every
+  plan, so the planned "Reports" bundle became "always included":
 
-  | Bundle              | Covers                                        |
-  | ------------------- | --------------------------------------------- |
-  | Stock & cost        | stock, orders, bills, recipes, menu and sales |
-  | People & roster     | roster, clock-in, leave, swaps                |
-  | Tasks & food safety | checklists, tasks, maintenance, prep lists    |
-  | Reports             | reports                                       |
+  | Bundle              | Its switches                           | Always included with it       |
+  | ------------------- | -------------------------------------- | ----------------------------- |
+  | Stock & cost        | production, prep lists, menu and sales | stock, orders, bills, recipes |
+  | People & roster     | leave, swaps, events                   | the roster, clock-in          |
+  | Tasks & food safety | checklists, maintenance                | tasks                         |
+
+  Reports come with every plan. Prep lists need Production, so both are in Stock & cost and
+  no bundle depends on another.
 
 - **Template vs bundle.** A template never decides the price; a bundle never decides the
-  structure.
-- **Scope.** Admin and the platform console show bundles. Pricing itself is outside this
-  plan.
+  structure. Adding an outlet switches nothing on: its review and the dry run say which bundle
+  it uses that isn't in the plan.
+- **Who.** Only the platform admin puts a bundle in or out of a plan (the console's Bundles
+  card, audited). Admin → Modules shows the plan read-only; the Account Owner turns single
+  modules off and on inside it. The set-up wizard's review ticks the bundles its outlets use,
+  and Go live puts the ticked ones in the plan.
+- **Scope.** Pricing itself is outside this plan.
 
 ### Final pass. 2–3 days
 

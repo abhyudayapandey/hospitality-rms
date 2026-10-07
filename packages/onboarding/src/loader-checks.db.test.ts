@@ -1,4 +1,4 @@
-import { MODULE_CODES } from '@outlet-ops/domain';
+import { BUNDLES, MODULE_CODES } from '@outlet-ops/domain';
 import { join } from 'node:path';
 import { attemptAs, closePools, inRolledBackTx, loadSeedIds } from '@outlet-ops/db/test-helpers';
 import type { PoolClient } from 'pg';
@@ -358,6 +358,19 @@ describe('approvers (ADR 009)', () => {
     await inRolledBackTx(async (c) => {
       const { rows } = await c.query<{ codes: string[] }>('select core.module_codes() as codes');
       expect([...rows[0]!.codes].sort()).toEqual([...MODULE_CODES].sort());
+    });
+  });
+
+  it("the bundles and the module each is sold in are the database's (ADR 067)", async () => {
+    await inRolledBackTx(async (c) => {
+      const { rows } = await c.query<{ codes: string[] }>('select core.bundle_codes() as codes');
+      expect([...rows[0]!.codes].sort()).toEqual(BUNDLES.map((b) => b.code).sort());
+      const of = await c.query<{ m: string; b: string }>(
+        'select m, core.module_bundle(m) as b from unnest(core.module_codes()) m order by m',
+      );
+      expect(Object.fromEntries(of.rows.map((r) => [r.m, r.b]))).toEqual(
+        Object.fromEntries(BUNDLES.flatMap((b) => b.modules.map((m) => [m, b.code]))),
+      );
     });
   });
 

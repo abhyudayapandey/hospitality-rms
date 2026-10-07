@@ -4,6 +4,7 @@ export * from './errors';
 export * from './access';
 export * from './access-words';
 export * from './modules';
+export * from './bundles';
 export * from './duties';
 export * from './formats';
 export * from './catalogue';
