@@ -30,7 +30,10 @@ beforeAll(async () => {
 afterAll(closePools);
 
 const kitchen = () => ids.node('TEST-HOTEL-1.0-KITCHEN-STORE');
-const today = () => new Date().toISOString().slice(0, 10);
+// today at the test outlets (India), as current_date is in a test session (helpers.ts),
+// not the UTC date, which is a day behind from 18:30 to 24:00 UTC
+const today = () =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
 
 const error = async (c: PoolClient, who: string, text: string, params: unknown[] = []) =>
   (await attemptAs(c, ids.user(who), text, params)).error;
