@@ -66,6 +66,7 @@ export default async function LoginsPage({ params }: { params: Promise<{ id: str
           isTest={customer.is_test}
           waiting={usernameWaiting}
           suspended={customer.status !== 'active'}
+          company={customer.name}
         />
       </section>
 

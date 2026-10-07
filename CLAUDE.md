@@ -155,6 +155,10 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   (`packages/domain/src/templates.ts`, `checklists.ts`). An outlet from a template is added to
   the customer's complete current files (`addOutlet`, `platform.current_files`) and dry run like
   any import, never loaded on its own. People who onboard never see a code.
+- The set-up wizard (ADR 064, `/platform/setup`) writes a new customer's complete files from a
+  draft (`filesFromDraft`) and goes live through the usual create, dry run and apply jobs; it
+  holds no rules of its own. Codes and login IDs are made from names. People without an email
+  get a login ID on a printed sheet; everyone sets their own password at first sign-in.
 - The service worker shows "Can't reach Outlet Ops" after 10 s and caches nothing; Cognito calls
   give up after 5 s, and Cognito not answering never signs anyone out (ADR 063). Caddy speaks
   HTTP/1.1 and HTTP/2 only (the security group has no UDP 443) and logs each request.

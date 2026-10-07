@@ -150,7 +150,7 @@ ranges allow for findings from the full test runs.
   - RLS tests: cover never gives access at another outlet.
   - Removing cover takes the access away.
 
-### Step 5. Set-up wizard. 8–10 days
+### Step 5. Set-up wizard. 8–10 days — built (ADR 064)
 
 The wizard runs in the platform console (us) and, later, in Admin (the customer). It has
 seven steps:
