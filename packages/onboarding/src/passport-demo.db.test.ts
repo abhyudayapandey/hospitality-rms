@@ -8,7 +8,9 @@ import { readCustomerDir } from './dir';
 // The Passport Hotel pilot demo (docs/onboarding/demo/passport-hotel, written by
 // scripts/passport-demo.ts): it loads with no problems and no warnings, as a test customer,
 // with what the pitch shows: a demo presenter, one person per job role, the bar team on the
-// lobby Mini Bar's store, 27 rooms with minibars and a past week of activity.
+// lobby Mini Bar's store, 27 rooms with minibars and a past week of activity. The console's
+// path runs as platform_loader, as the production worker does: a function the loader calls
+// that the role may not run fails here, not on production.
 
 afterAll(closePools);
 vi.setConfig({ testTimeout: 300_000 });
@@ -29,6 +31,7 @@ describe('the Passport Hotel demo', () => {
     await inRolledBackTx(async (c) => {
       const exists = await c.query(`select 1 from core.tenant where code = 'PASSPORT-TEST'`);
       if (exists.rowCount) return; // loaded here already (a local database), nothing to show
+      await c.query('set local role platform_loader');
       const made = await createCustomer(
         c,
         {
@@ -39,9 +42,9 @@ describe('the Passport Hotel demo', () => {
           timezone: 'Asia/Kolkata',
           isTest: true,
           owner: {
-            displayName: 'Vikram Desai',
+            displayName: 'Ashesh Sajnani',
             email: null,
-            username: 'passport.owner',
+            username: 'test.ashesh-sajnani',
             loginType: 'username',
           },
         },
@@ -90,6 +93,13 @@ describe('the Passport Hotel demo', () => {
       expect((await loadCustomer(c, files, { nested: true })).ok).toBe(true);
       const again = await loadCustomer(c, files, { nested: true, dryRun: true });
       expect(Object.entries(again.counts).filter(([, x]) => x.created || x.updated)).toEqual([]);
+      await c.query('reset role');
+      // file 42's checks the front desk added to the bill are marked so
+      const charged = await c.query(
+        `select 1 from ops.minibar_check k join core.tenant t on t.id = k.tenant_id
+          where t.code = 'PASSPORT-TEST' and k.charged_by is not null`,
+      );
+      expect(charged.rowCount).toBeGreaterThan(0);
     });
   });
 
