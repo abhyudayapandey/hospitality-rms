@@ -1,6 +1,6 @@
 # 069 — Compliance: a licence register, a compliance calendar, and "What they buy"
 
-Status: accepted · 2026-10-07 · migration 20261124100000
+Status: accepted · 2026-10-07 · migration 20261124100000 · who does a job and the tabs: ADR 073
 
 The SOPs keep two things on paper that the app did not (`docs/templates-and-cover.md`
 section 7): the outlet's licences with their expiry dates, and the jobs the law or the

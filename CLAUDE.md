@@ -169,6 +169,9 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   14 before a job); documents under `compliance/` never expire. It is the first card on Home,
   above everything (`ops.compliance_attention`): red rows for expired or overdue, amber for
   what is coming, one green line when all is clear; never one of the five "Do these first".
+  A regular job's `owner_role` answers for it (at the outlet; told when due and when done) and
+  its optional `doer_role` does it and gets the To do item; whoever has a compliance To do may
+  hand it to someone there. The screen's tabs: Needs action, Licences, Regular jobs (ADR 073).
   The wizard's "What they buy" step lists every bundle, the usual ones ticked; bundles are
   bought, extras are what is there.
 - A hotel's pool, spa and gym are extras with the SOP's people and checks; breakfast is the

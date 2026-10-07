@@ -29,7 +29,8 @@ past week, the licences and their numbers.
   purchase orders (one arriving today), the Layover's closing count, rosters for next week,
   clock-ins (a few late, one no-show), checklists, tasks, two repairs, 53 minibar checks
   (some still to charge), two events at Jet Lag, six licences (the bar licence expires in 25
-  days) and the compliance calendar (pest control overdue).
+  days) and the regular jobs, which the GM answers for and each department head does (pest
+  control, the Executive Housekeeper's, overdue).
 - **Rooms**: 101–109, 201–209, 301–306 and the pool terraces P-10 to P-12; Passport Deluxe
   rooms have the Standard minibar, suites and terraces the Suite one.
 - `pos-sale-by-item.csv`: the cashier's end-of-day POS file, imported live in the pitch.
