@@ -469,7 +469,7 @@ export const ROLES: readonly RoleDef[] = [
     code: 'FRONT_OFFICE_MANAGER',
     title: 'Front Office Manager',
     home: 'FRONT-OFFICE',
-    duties: [D],
+    duties: [D, 'CHECKS_MINIBARS'],
     sops: ['H'],
   },
   {
@@ -477,7 +477,7 @@ export const ROLES: readonly RoleDef[] = [
     title: 'Front Desk Executive',
     alsoCalled: ['Guest Service Associate'],
     home: 'FRONT-OFFICE',
-    duties: [W],
+    duties: [W, 'CHECKS_MINIBARS'],
     sops: ['H'],
   },
   {
@@ -517,7 +517,7 @@ export const ROLES: readonly RoleDef[] = [
     code: 'EXECUTIVE_HOUSEKEEPER',
     title: 'Executive Housekeeper',
     home: 'HOUSEKEEPING',
-    duties: [D, 'KEEPS_DEPARTMENT_STORE'],
+    duties: [D, 'KEEPS_DEPARTMENT_STORE', 'CHECKS_MINIBARS'],
     sops: ['H'],
   },
   {
@@ -525,7 +525,7 @@ export const ROLES: readonly RoleDef[] = [
     title: 'Housekeeping Supervisor',
     alsoCalled: ['Floor Supervisor'],
     home: 'HOUSEKEEPING',
-    duties: [L, 'USES_DEPARTMENT_STORE', W],
+    duties: [L, 'USES_DEPARTMENT_STORE', W, 'CHECKS_MINIBARS'],
     sops: ['H'],
   },
   {
@@ -539,7 +539,7 @@ export const ROLES: readonly RoleDef[] = [
     code: 'ROOM_ATTENDANT',
     title: 'Room Attendant',
     home: 'HOUSEKEEPING',
-    duties: [W],
+    duties: [W, 'CHECKS_MINIBARS'],
     sops: ['H'],
   },
   {

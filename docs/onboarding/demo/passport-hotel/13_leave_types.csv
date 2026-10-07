@@ -1,0 +1,4 @@
+leave_type_code,name,annual_days,balance_tracked
+CASUAL_LEAVE,Casual leave,12,yes
+SICK_LEAVE,Sick leave,12,yes
+EARNED_LEAVE,Earned leave,18,yes

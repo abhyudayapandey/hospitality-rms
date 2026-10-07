@@ -133,6 +133,12 @@ export const DUTIES: readonly DutyDef[] = [
     atAnotherDepartment: true,
   },
   {
+    code: 'CHECKS_MINIBARS',
+    name: "Checks the rooms' minibars",
+    does: "Checks and refills the rooms' minibars, and marks what was added to the guest's bill",
+    grants: [{ group: 'MINIBAR_KEEPER', scope: 'whole_outlet' }],
+  },
+  {
     code: 'LEADS_SHIFT',
     name: 'Leads the shift',
     does: "Gives out the department's tasks and sees its attendance",

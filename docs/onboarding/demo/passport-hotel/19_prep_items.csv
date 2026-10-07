@@ -1,0 +1,10 @@
+prep_item_code,name,prep_type,unit,batch_yield,shelf_life_hours
+SUGAR-SYRUP,Sugar syrup,house_mixer,ml,1000,336
+TEPACHE-LIQUEUR,Pineapple tepache liqueur,house_mixer,ml,1000,240
+THECHA-SALT,Green chilli thecha salt,house_mixer,g,250,336
+COLD-BREW,Cold brew coffee,house_mixer,ml,1000,72
+MUSKMELON-SHRUB,Muskmelon shrub,house_mixer,ml,750,168
+HIBISCUS-SYRUP,Hibiscus syrup,house_mixer,ml,750,240
+RECHEADO-MASALA,Recheado masala,kitchen_prep,g,1000,336
+XACUTI-MASALA,Xacuti masala,kitchen_prep,g,1000,120
+GOAN-CURRY-BASE,Goan coconut curry base,kitchen_prep,ml,3000,72

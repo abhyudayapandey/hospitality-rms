@@ -45,6 +45,24 @@ export default async function MePage() {
           </ul>
         </section>
       ))}
+      {shell.user.canShowAs && (
+        <section aria-label="Demo" className="space-y-2">
+          <h2 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Demo</h2>
+          <Link
+            href="/show-as"
+            data-testid="me-show-as"
+            className="flex min-h-14 items-center gap-3 rounded-xl bg-white p-3 text-sm font-medium shadow-sm ring-1 ring-slate-200"
+          >
+            <Icon name="people" className="size-7 text-brand-700" />
+            <span>
+              Show the app as someone
+              <span className="block text-xs font-normal text-slate-500">
+                See any person&apos;s screens, for a demo
+              </span>
+            </span>
+          </Link>
+        </section>
+      )}
       <div className="flex justify-center">
         <SignOutButton />
       </div>

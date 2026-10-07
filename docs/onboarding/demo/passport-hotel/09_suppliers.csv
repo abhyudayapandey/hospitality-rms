@@ -1,0 +1,9 @@
+supplier_code,name,lead_time_days,contact_email,contact_phone
+SUP-PRODUCE,Mapusa Market Produce (demo),1,produce@demo-supplier.example,+91 98220 10001
+SUP-SEAFOOD,Chapora Fresh Catch (demo),1,catch@demo-supplier.example,+91 98220 10002
+SUP-MEAT,Assagao Meats & Chouriço (demo),1,meats@demo-supplier.example,+91 98220 10003
+SUP-DAIRY,Siolim Dairy & Eggs (demo),1,dairy@demo-supplier.example,+91 98220 10004
+SUP-POI,Village Poder – poi & pao (demo),1,poder@demo-supplier.example,+91 98220 10005
+SUP-GROCERY,Mapusa Wholesale Grocers (demo),2,grocery@demo-supplier.example,+91 98220 10006
+SUP-SPIRITS,Coastal Wines & Spirits (demo),2,spirits@demo-supplier.example,+91 98220 10007
+SUP-HOTEL,Konkan Hotel Supplies (demo),3,hotel@demo-supplier.example,+91 98220 10008

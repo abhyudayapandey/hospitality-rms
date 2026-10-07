@@ -42,6 +42,11 @@ export const ERROR_MESSAGES = {
   NOT_ON_MENU: "One of those dishes isn't on today's menu here. Refresh and pick again.",
   BRIEFING_EMPTY: 'Write something, or pick the dishes that are off today.',
   BRIEFING_TOO_LONG: 'Keep the briefing to 1,000 characters.',
+  // show as someone, for demos (ADR 071)
+  PRESENTING: "You're showing the app as someone else. Go back to yourself to do that.",
+  NOT_A_TEST_CUSTOMER: 'Only a test company can have a demo presenter.',
+  // the rooms' minibars (ADR 072)
+  NO_MINIBAR: 'This room has no minibar.',
   // R-4, PO-4 (ADR 031, 032)
   INVALID_SETTING:
     'Check the values: targets are 0 to 100%, popularity 10 to 100%, overtime 1× to 3×.',

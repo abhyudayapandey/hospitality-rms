@@ -7,6 +7,7 @@ import {
   type Db,
   type Tx,
 } from '@outlet-ops/db';
+import { showAsClaim } from './auth/show-as';
 
 // The web app's only path to Postgres (CLAUDE.md AWS overrides): every request runs
 // inside withUser(userId, fn) as app_rw, so RLS and the RPCs see the caller.
@@ -22,8 +23,15 @@ function db(): Db {
   return globalForDb.__ooDb;
 }
 
-export function withUser<T>(userId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
-  return dbWithUser(db(), userId, fn);
+export async function withUser<T>(userId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  // a demo presenter showing the app as this person (ADR 071): the database checks it
+  const claim = await showAsClaim();
+  return dbWithUser(
+    db(),
+    userId,
+    fn,
+    claim && claim.targetId === userId ? { presentedBy: claim.presenterId } : {},
+  );
 }
 
 /**

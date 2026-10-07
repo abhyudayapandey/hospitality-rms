@@ -61,6 +61,8 @@ export const DOMAINS: readonly DomainDef[] = [
   // today's briefing note for the outlet's shift (ADR 070): written at a department or the
   // outlet; everyone who works at the outlet reads it through ops.my_briefing()
   { code: 'BRIEFING', tree: 'org' },
+  // the rooms' minibars (ADR 072): checked and refilled from a store, charged to the guest
+  { code: 'MINIBAR', tree: 'org' },
   { code: 'AI_RECOMMENDATIONS', tree: 'org' },
   { code: 'DERIVED_STOCK_LEVELS', tree: 'org' },
   { code: 'DERIVED_STOCK_ADJUSTMENTS', tree: 'org' },
@@ -175,6 +177,13 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: { BRIEFING: m },
   },
   {
+    // checks and refills the rooms' minibars, and marks what was charged to the guest (ADR 072)
+    code: 'MINIBAR_KEEPER',
+    name: 'Minibar Keeper',
+    kind: 'role',
+    grants: { MINIBAR: m },
+  },
+  {
     // plans events (with their item and staff needs) for the whole outlet (ADR 016)
     code: 'EVENT_PLANNER',
     name: 'Event Planner',
@@ -273,6 +282,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       CHECKLIST_TEMPLATES: m,
       MAINTENANCE: m,
       BRIEFING: m,
+      MINIBAR: m,
       LABOUR_COST: v,
       // the licences and the compliance calendar (ADR 069)
       COMPLIANCE: m,
@@ -302,6 +312,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       MAINTENANCE: v,
       LABOUR_COST: v,
       COMPLIANCE: v,
+      MINIBAR: v,
     },
   },
   {

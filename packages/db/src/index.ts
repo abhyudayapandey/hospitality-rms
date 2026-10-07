@@ -19,9 +19,16 @@ export function createDb(connectionString: string): Db {
  * transaction only, so RLS (via core.current_user_id()) sees the caller.
  * Every request from the app goes through this.
  */
-export async function withUser<T>(db: Db, userId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+export async function withUser<T>(
+  db: Db,
+  userId: string,
+  fn: (tx: Tx) => Promise<T>,
+  opts: { presentedBy?: string } = {},
+): Promise<T> {
   return db.transaction().execute(async (tx) => {
     await sql`select set_config('app.user_id', ${userId}, true)`.execute(tx);
+    // shown as this person by a demo presenter (ADR 071): the database checks it may be
+    if (opts.presentedBy) await sql`select core.presented_by(${opts.presentedBy})`.execute(tx);
     return fn(tx);
   });
 }

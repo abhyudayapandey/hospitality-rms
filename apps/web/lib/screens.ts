@@ -40,6 +40,7 @@ export type ScreenKey =
   | 'sales'
   | 'posImport'
   | 'briefing'
+  | 'minibar'
   | 'roster'
   | 'events'
   | 'reports'
@@ -242,6 +243,15 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     icon: 'clipboard',
     section: 'work',
     show: (i) => can(i, 'BRIEFING', 'modify'),
+  },
+  {
+    // the rooms' minibars (ADR 072): housekeeping and front office check and charge them
+    key: 'minibar',
+    href: '/minibar',
+    label: 'Minibars',
+    icon: 'bed',
+    section: 'work',
+    show: (i) => can(i, 'MINIBAR'),
   },
   {
     key: 'problem',

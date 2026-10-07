@@ -179,6 +179,7 @@ class Loader {
     if (this.report.issues.length) return;
     await this.stockReach();
     await this.stock();
+    await this.minibars();
     await this.menu();
     await this.leave();
     await this.payRates();
@@ -194,6 +195,7 @@ class Loader {
       await this.purchases();
       await this.attendance();
       await this.transfers();
+      await this.minibarChecks();
     }
     this.step('');
     this.report.access = await this.preview();
@@ -574,6 +576,15 @@ class Loader {
           message: 'test_rule passwords are only for test customers (is_test in file 00)',
         });
       }
+      // demo presenters show the app as anyone: test customers only (ADR 071)
+      for (const u of this.b.users.filter((x) => x.demo_presenter)) {
+        this.report.issues.push({
+          file: FILES.users.file,
+          row: u.line,
+          column: 'demo_presenter',
+          message: 'a demo presenter is only for test customers (is_test in file 00)',
+        });
+      }
       if (this.report.issues.length) return;
     }
     for (const u of this.b.users) {
@@ -597,6 +608,11 @@ class Loader {
         )
       ).rows[0]!.id;
       this.users.set(u.username, user);
+      await this.c.query(
+        `update core.app_user set demo_presenter = $2
+          where id = $1 and demo_presenter is distinct from $2`,
+        [user, u.demo_presenter],
+      );
       await this.upsert(
         'workers',
         `insert into hr.worker (tenant_id, owner_user_id, org_node_id, role_code, employment_type,
@@ -757,6 +773,157 @@ class Loader {
         ],
       );
       await nobody(FILES.complianceCalendar.file, j.line, 'owner_role', j.place_code, j.owner_role);
+    }
+  }
+
+  /**
+   * Files 41 and 40 (ADR 072): minibar sets, then rooms. Keyed by outlet and name or number;
+   * a set's items are as the file lists them (an item no longer listed leaves the set), and a
+   * later load never removes a set or a room.
+   */
+  private async minibars() {
+    const sets = new Map<string, string>();
+    const listed = new Map<string, string[]>();
+    for (const l of this.b.minibarSets) {
+      this.step(FILES.minibarSets.file, l.line);
+      const outlet = this.nodes.get(l.outlet_code)!;
+      const key = `${l.outlet_code} ${l.set_name.toLowerCase()}`;
+      let set = sets.get(key);
+      if (!set) {
+        await this.upsert(
+          'minibar sets',
+          `with cur as (select id from ops.minibar_set
+                         where tenant_id = $1 and org_node_id = $2 and lower(name) = lower($3)
+                           and archived_at is null),
+                upd as (update ops.minibar_set s set name = $3, store_id = $4
+                          where s.id = (select id from cur)
+                            and (s.name, s.store_id) is distinct from ($3, $4::uuid)
+                         returning s.id, false as inserted),
+                ins as (insert into ops.minibar_set (tenant_id, org_node_id, name, store_id)
+                        select $1, $2, $3, $4 where not exists (select 1 from cur)
+                        returning id, true as inserted)
+           select * from upd union all select * from ins`,
+          [this.tenant, outlet, l.set_name, this.nodes.get(l.store_node_code)],
+        );
+        set = (
+          await this.c.query<{ id: string }>(
+            `select id from ops.minibar_set where tenant_id = $1 and org_node_id = $2
+                and lower(name) = lower($3) and archived_at is null`,
+            [this.tenant, outlet, l.set_name],
+          )
+        ).rows[0]!.id;
+        sets.set(key, set);
+      }
+      const items = listed.get(set) ?? [];
+      const item = this.items.get(l.item_code)!;
+      items.push(item);
+      listed.set(set, items);
+      await this.upsert(
+        'minibar items',
+        `insert into ops.minibar_set_line (tenant_id, org_node_id, set_id, item_id, par, price,
+                                           position)
+         values ($1, $2, $3, $4, $5, $6, $7)
+         on conflict (set_id, item_id) do update
+            set par = excluded.par, price = excluded.price, position = excluded.position
+          where (ops.minibar_set_line.par, ops.minibar_set_line.price,
+                 ops.minibar_set_line.position)
+                is distinct from (excluded.par, excluded.price, excluded.position)
+         returning id, xmax = 0 as inserted`,
+        [this.tenant, outlet, set, item, l.par, l.price_inr, items.length],
+      );
+    }
+    for (const [set, items] of listed) {
+      await this.c.query(
+        `delete from ops.minibar_set_line where set_id = $1 and not (item_id = any ($2))`,
+        [set, items],
+      );
+    }
+    for (const r of this.b.rooms) {
+      this.step(FILES.rooms.file, r.line);
+      const outlet = this.nodes.get(r.outlet_code)!;
+      const set = r.minibar_set
+        ? (sets.get(`${r.outlet_code} ${r.minibar_set.toLowerCase()}`) ??
+          (
+            await this.c.query<{ id: string }>(
+              `select id from ops.minibar_set where tenant_id = $1 and org_node_id = $2
+                  and lower(name) = lower($3) and archived_at is null`,
+              [this.tenant, outlet, r.minibar_set],
+            )
+          ).rows[0]?.id ??
+          null)
+        : null;
+      await this.upsert(
+        'rooms',
+        `with cur as (select id from ops.room
+                       where tenant_id = $1 and org_node_id = $2 and lower(number) = lower($3)
+                         and archived_at is null),
+              upd as (update ops.room r set number = $3, floor = $4, room_type = $5,
+                             minibar_set_id = $6
+                        where r.id = (select id from cur)
+                          and (r.number, r.floor, r.room_type, r.minibar_set_id)
+                              is distinct from ($3, $4, $5, $6::uuid)
+                       returning r.id, false as inserted),
+              ins as (insert into ops.room (tenant_id, org_node_id, number, floor, room_type,
+                                            minibar_set_id)
+                      select $1, $2, $3, $4, $5, $6 where not exists (select 1 from cur)
+                      returning id, true as inserted)
+         select * from upd union all select * from ins`,
+        [this.tenant, outlet, r.room_number, r.floor ?? null, r.room_type ?? null, set],
+      );
+    }
+  }
+
+  /**
+   * File 42 (test customers only, ADR 072): minibar checks of the past week, made at their
+   * time as the person named (ops.record_test_minibar_check), then marked added to the bill
+   * by whoever the file says. Once per customer: later loads report them unchanged.
+   */
+  private async minibarChecks() {
+    const checks = new Map<string, Bundle['minibarChecks']>();
+    for (const c of this.b.minibarChecks) {
+      const k = `${c.outlet_code} ${c.room_number} ${c.day} ${c.time}`;
+      checks.set(k, [...(checks.get(k) ?? []), c]);
+    }
+    for (const [k, lines] of checks) {
+      const first = lines[0]!;
+      this.step(FILES.minibarChecks.file, first.line);
+      const key = `test-data ${k}`;
+      const done = await this.c.query(
+        `select 1 from ops.minibar_check where tenant_id = $1 and idempotency_key = $2`,
+        [this.tenant, key],
+      );
+      if (!done.rowCount) {
+        const room = (
+          await this.c.query<{ id: string }>(
+            `select id from ops.room where tenant_id = $1 and org_node_id = $2
+                and lower(number) = lower($3) and archived_at is null`,
+            [this.tenant, this.nodes.get(first.outlet_code), first.room_number],
+          )
+        ).rows[0]!.id;
+        const id = await this.as(first.checked_by, async () => {
+          const r = await this.c.query<{ id: string }>(
+            `select ops.record_test_minibar_check($1, $2,
+                      ($3::date + $4::time) at time zone $5, $6) as id`,
+            [
+              room,
+              JSON.stringify(
+                lines.map((l) => ({ item_id: this.items.get(l.item_code), left: l.left })),
+              ),
+              this.day(first.day),
+              first.time,
+              this.timezoneOf(first.outlet_code),
+              key,
+            ],
+          );
+          return r.rows[0]!.id;
+        });
+        if (first.charged_by) {
+          await this.as(first.charged_by, () =>
+            this.c.query(`select ops.mark_minibar_charged($1)`, [id]),
+          );
+        }
+      }
+      this.count('minibar checks', !done.rowCount);
     }
   }
 

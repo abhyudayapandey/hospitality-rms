@@ -1,0 +1,14 @@
+order_ref,store_node_code,supplier_code,item_code,quantity,unit_cost_inr,ordered_day,ordered_by,approved_by,received_day,received_quantity,received_by
+PO-1,PASSPORT-ASSAGAO-KITCHEN-STORE,SUP-SEAFOOD,PRAWNS,8,640,-6,passport.chef,passport.gm,-5,8,passport.sous-chef
+PO-1,PASSPORT-ASSAGAO-KITCHEN-STORE,SUP-SEAFOOD,KINGFISH,6,900,-6,passport.chef,passport.gm,-5,5.4,passport.sous-chef
+PO-1,PASSPORT-ASSAGAO-KITCHEN-STORE,SUP-SEAFOOD,SQUID,4,420,-6,passport.chef,passport.gm,-5,4,passport.sous-chef
+PO-2,PASSPORT-ASSAGAO-KITCHEN-STORE,SUP-PRODUCE,ONIONS,20,34,-4,passport.chef,passport.gm,-3,20,passport.cdp
+PO-2,PASSPORT-ASSAGAO-KITCHEN-STORE,SUP-PRODUCE,TOMATOES,15,42,-4,passport.chef,passport.gm,-3,15,passport.cdp
+PO-2,PASSPORT-ASSAGAO-KITCHEN-STORE,SUP-PRODUCE,LIMES,100,4,-4,passport.chef,passport.gm,-3,100,passport.cdp
+PO-3,PASSPORT-ASSAGAO-MAIN-STORE,SUP-SPIRITS,FENI-750ML,24,650,-5,passport.store-keeper,passport.gm,-3,24,passport.receiving
+PO-3,PASSPORT-ASSAGAO-MAIN-STORE,SUP-SPIRITS,TEQUILA-750ML,12,3200,-5,passport.store-keeper,passport.gm,-3,10,passport.receiving
+PO-3,PASSPORT-ASSAGAO-MAIN-STORE,SUP-SPIRITS,LAGER-330ML,240,88,-5,passport.store-keeper,passport.gm,-3,240,passport.receiving
+PO-4,PASSPORT-ASSAGAO-HOUSEKEEPING-STORE,SUP-HOTEL,SHAMPOO-30ML,300,18,-3,passport.executive-housekeeper,passport.gm,-1,300,passport.housekeeping-supervisor
+PO-4,PASSPORT-ASSAGAO-HOUSEKEEPING-STORE,SUP-HOTEL,POOL-CHLORINE,20,180,-3,passport.executive-housekeeper,passport.gm,-1,20,passport.housekeeping-supervisor
+PO-5,PASSPORT-ASSAGAO-MAIN-STORE,SUP-GROCERY,CASHEWS-100G,40,140,-1,passport.store-keeper,passport.gm,,,
+PO-5,PASSPORT-ASSAGAO-MAIN-STORE,SUP-GROCERY,WATER-1L,240,20,-1,passport.store-keeper,passport.gm,,,

@@ -1,0 +1,81 @@
+item_code,name,category,base_unit,is_perishable,standard_unit_cost_inr,preferred_supplier_code
+KINGFISH,Kingfish (surmai),Seafood,kg,yes,900,SUP-SEAFOOD
+PRAWNS,"Prawns, medium",Seafood,kg,yes,650,SUP-SEAFOOD
+CLAMS,Clams (tisreo),Seafood,kg,yes,220,SUP-SEAFOOD
+SQUID,Squid,Seafood,kg,yes,420,SUP-SEAFOOD
+CHICKEN,"Chicken, curry cut",Meat,kg,yes,260,SUP-MEAT
+PORK-BELLY,Pork belly,Meat,kg,yes,480,SUP-MEAT
+CHOURICO,Goan chouriço,Meat,kg,yes,900,SUP-MEAT
+EGGS,Eggs,Dairy & eggs,each,yes,7,SUP-DAIRY
+BUTTER,Butter,Dairy & eggs,kg,yes,520,SUP-DAIRY
+MILK,Milk,Dairy & eggs,l,yes,60,SUP-DAIRY
+CHEESE,Cheddar cheese,Dairy & eggs,kg,yes,650,SUP-DAIRY
+POI,Poi (Goan bread),Bakery,each,yes,8,SUP-POI
+PAO,Pao,Bakery,each,yes,6,SUP-POI
+SANDWICH-BREAD,"Sandwich bread, slice",Bakery,each,yes,3,SUP-POI
+ONIONS,Onions,Produce,kg,yes,35,SUP-PRODUCE
+TOMATOES,Tomatoes,Produce,kg,yes,40,SUP-PRODUCE
+POTATOES,Potatoes,Produce,kg,yes,30,SUP-PRODUCE
+GREEN-CHILLIES,Green chillies,Produce,kg,yes,80,SUP-PRODUCE
+GINGER,Ginger,Produce,kg,yes,120,SUP-PRODUCE
+GARLIC,Garlic,Produce,kg,yes,160,SUP-PRODUCE
+CORIANDER,Coriander leaves,Produce,kg,yes,120,SUP-PRODUCE
+MINT,Mint leaves,Produce,kg,yes,200,SUP-PRODUCE
+LIMES,Limes,Produce,each,yes,4,SUP-PRODUCE
+COCONUT,"Coconut, fresh",Produce,each,yes,35,SUP-PRODUCE
+PINEAPPLE,Pineapple,Produce,kg,yes,60,SUP-PRODUCE
+MUSKMELON,Muskmelon,Produce,kg,yes,50,SUP-PRODUCE
+RED-RICE,Goan red rice (ukde),Grocery,kg,no,90,SUP-GROCERY
+FLOUR,Flour (maida),Grocery,kg,no,45,SUP-GROCERY
+SEMOLINA,Semolina (rava),Grocery,kg,no,50,SUP-GROCERY
+SUGAR,Sugar,Grocery,kg,no,45,SUP-GROCERY
+JAGGERY,Palm jaggery,Grocery,kg,no,160,SUP-GROCERY
+COCONUT-MILK,Coconut milk,Grocery,l,no,180,SUP-GROCERY
+OIL,Sunflower oil,Grocery,l,no,150,SUP-GROCERY
+COCONUT-OIL,Coconut oil,Grocery,l,no,260,SUP-GROCERY
+TODDY-VINEGAR,Toddy vinegar,Grocery,l,no,120,SUP-GROCERY
+KOKUM,"Kokum, dried",Grocery,kg,no,300,SUP-GROCERY
+TAMARIND,Tamarind,Grocery,kg,no,140,SUP-GROCERY
+KASHMIRI-CHILLI,"Kashmiri chilli, dried",Spices,kg,no,650,SUP-GROCERY
+CUMIN,Cumin,Spices,kg,no,450,SUP-GROCERY
+TURMERIC,Turmeric,Spices,kg,no,260,SUP-GROCERY
+BLACK-PEPPER,Black pepper,Spices,kg,no,900,SUP-GROCERY
+CINNAMON,Cinnamon,Spices,kg,no,800,SUP-GROCERY
+CLOVES,Cloves,Spices,kg,no,1400,SUP-GROCERY
+SALT,Salt,Grocery,kg,no,20,SUP-GROCERY
+FRIES,"French fries, frozen",Grocery,kg,yes,140,SUP-GROCERY
+NACHOS,Nacho chips,Grocery,kg,no,300,SUP-GROCERY
+ESPRESSO-BEANS,Espresso beans,Grocery,kg,no,1400,SUP-GROCERY
+HIBISCUS,"Hibiscus, dried",Grocery,kg,no,600,SUP-GROCERY
+ICE,Ice,Bar,kg,yes,15,SUP-GROCERY
+FENI-750ML,Cashew feni 750ml,Spirits,bottle,no,650,SUP-SPIRITS
+TEQUILA-750ML,Tequila blanco 750ml,Spirits,bottle,no,3200,SUP-SPIRITS
+GIN-750ML,Indian craft gin 750ml,Spirits,bottle,no,1800,SUP-SPIRITS
+VODKA-750ML,Vodka 750ml,Spirits,bottle,no,1500,SUP-SPIRITS
+WHITE-RUM-750ML,White rum 750ml,Spirits,bottle,no,800,SUP-SPIRITS
+DARK-RUM-750ML,Dark rum 750ml,Spirits,bottle,no,700,SUP-SPIRITS
+BOURBON-750ML,Bourbon 750ml,Spirits,bottle,no,3500,SUP-SPIRITS
+COFFEE-LIQUEUR-750ML,Coffee liqueur 750ml,Spirits,bottle,no,1600,SUP-SPIRITS
+VERMOUTH-750ML,Sweet vermouth 750ml,Spirits,bottle,no,1400,SUP-SPIRITS
+APERITIF-750ML,Bitter aperitif 750ml,Spirits,bottle,no,1800,SUP-SPIRITS
+BITTERS-200ML,Aromatic bitters 200ml,Spirits,bottle,no,1100,SUP-SPIRITS
+LAGER-330ML,Lager 330ml,Beer,bottle,no,90,SUP-SPIRITS
+CRAFT-BEER-330ML,Goan craft beer 330ml,Beer,can,no,160,SUP-SPIRITS
+RED-WINE-750ML,Red wine 750ml,Wine,bottle,no,900,SUP-SPIRITS
+WHITE-WINE-750ML,White wine 750ml,Wine,bottle,no,900,SUP-SPIRITS
+TONIC-200ML,Tonic water 200ml,Mixers,can,no,45,SUP-SPIRITS
+SODA-750ML,Soda 750ml,Mixers,bottle,no,25,SUP-SPIRITS
+COLA-300ML,Cola 300ml,Mixers,can,no,35,SUP-SPIRITS
+WATER-1L,Mineral water 1l,Minibar,bottle,no,20,SUP-GROCERY
+CASHEWS-100G,Goan cashews 100g,Minibar,pack,no,140,SUP-GROCERY
+CHIPS-PACK,Banana chips pack,Minibar,pack,no,40,SUP-GROCERY
+CHOCOLATE-BAR,Chocolate bar,Minibar,each,no,80,SUP-GROCERY
+FENI-NIP-180ML,Feni nip 180ml,Minibar,bottle,no,170,SUP-SPIRITS
+BATH-TOWEL,Bath towel,Linen,each,no,450,SUP-HOTEL
+POOL-TOWEL,Pool towel,Linen,each,no,380,SUP-HOTEL
+BEDSHEET-KING,"Bedsheet, king",Linen,each,no,900,SUP-HOTEL
+SHAMPOO-30ML,Shampoo 30ml,Amenities,each,no,18,SUP-HOTEL
+SOAP-40G,Soap bar 40g,Amenities,each,no,14,SUP-HOTEL
+DENTAL-KIT,Dental kit,Amenities,each,no,22,SUP-HOTEL
+TOILET-ROLL,Toilet roll,Amenities,each,no,25,SUP-HOTEL
+POOL-CHLORINE,Pool chlorine granules,Pool,kg,no,180,SUP-HOTEL

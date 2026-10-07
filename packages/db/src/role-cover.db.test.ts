@@ -175,7 +175,11 @@ describe('cover and access', () => {
       await cover(c, BAR, 'HOUSEKEEPING_SUPERVISOR', 'BARTENDER');
       const covered = (await grants(c, 'test.bartender.3.0')).filter((x) => x.includes('covers'));
       expect(covered).toContain(`SUPERVISOR@${BAR}-BAR covers Housekeeping Supervisor`);
-      for (const x of covered) expect(x).toMatch(new RegExp(`@${BAR}-BAR[ -]`));
+      // an outlet-wide duty stays at the outlet (the rooms' minibars, ADR 072)
+      expect(covered).toContain(`MINIBAR_KEEPER@${BAR} covers Housekeeping Supervisor`);
+      for (const x of covered.filter((y) => !y.startsWith('MINIBAR_KEEPER@'))) {
+        expect(x).toMatch(new RegExp(`@${BAR}-BAR[ -]`));
+      }
     });
   });
 });

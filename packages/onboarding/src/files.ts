@@ -411,7 +411,10 @@ export const FILES = {
       employment_type: z.enum(['full_time', 'part_time', 'casual']),
       joined_on: optDate,
       password_mode: optional,
+      // a test customer's demo presenter, who may show the app as anyone (ADR 071)
+      demo_presenter: optYesNo,
     }),
+    optional: ['demo_presenter'],
   },
   extraAccess: {
     file: '08_role_assignments_extra.csv',
@@ -893,6 +896,51 @@ export const FILES = {
         }),
     }),
     optional: ['from_library'],
+  },
+  // The rooms' minibars (ADR 072). File 41: each minibar set of an outlet, one row per item,
+  // with its par and the price charged to the guest, refilled from one store of the outlet.
+  // Keyed by outlet and set name; a set's items are as the file lists them.
+  minibarSets: {
+    file: '41_minibar_sets.csv',
+    required: false,
+    schema: z.object({
+      outlet_code: code,
+      set_name: text,
+      store_node_code: code,
+      item_code: code,
+      par: num.refine((v) => v > 0, 'must be more than 0'),
+      price_inr: num.refine((v) => v >= 0, 'must not be negative'),
+    }),
+  },
+  // File 40: a hotel's rooms, each with its minibar set (blank: no minibar). Keyed by outlet
+  // and room number; a later load corrects a room and never removes one.
+  rooms: {
+    file: '40_rooms.csv',
+    required: false,
+    schema: z.object({
+      outlet_code: code,
+      room_number: z.string().regex(/^[A-Za-z0-9-]{1,20}$/, 'must be like 101 or G-02'),
+      floor: optional,
+      room_type: optional,
+      minibar_set: optional,
+    }),
+  },
+  // File 42 (test customers only): minibar checks of the past week, one row per item counted.
+  minibarChecks: {
+    file: '42_minibar_checks_TEST_DATA_ONLY.csv',
+    required: false,
+    testOnly: true,
+    schema: z.object({
+      outlet_code: code,
+      room_number: text,
+      day: dayOffset,
+      time,
+      item_code: code,
+      left: num.refine((v) => v >= 0, 'must not be negative'),
+      checked_by: text,
+      // added to the guest's bill, by whom (blank: still to charge)
+      charged_by: optional,
+    }),
   },
 } as const;
 
