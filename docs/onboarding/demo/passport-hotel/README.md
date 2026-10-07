@@ -20,7 +20,7 @@ past week, the licences and their numbers.
   Bar (lobby)** and the Housekeeping Store, which also refills the in-room minibars. The bar
   team runs both bars' stores (the Mini Bar through file 08).
 - **One person per job role**: 37 people, plus **Demo Presenter**, who may show the app as
-  anyone (`demo_presenter` in file 07, ADR 071). The owner is Vikram Desai, the GM Anjali
+  anyone (`demo_presenter` in file 07, ADR 071). The owner is Ashesh Sajnani, the GM Anjali
   Fernandes. Usernames are `passport.<role>`, e.g. `passport.gm`, `passport.bar-manager`.
 - **Menus**: Mini Bar signatures and classics, Layover cocktails, beer and wine, breakfast
   (Ros omelette with poi), Layover's kitchen, in-room dining, pool snacks: 34 dishes, each
@@ -59,7 +59,9 @@ The Deploy that carries ADRs 071 and 072 must be out first (the minibar files an
 
 It holds 40 files.
 
-**2. Create the customer**: `/platform` → **New customer**:
+**2. Create the customer**: on `/platform`, not the green **Set up a new customer** button
+(that is the set-up wizard, ADR 064, which has no customer code and only email owners) but
+the link under it, **New customer: the company and its owner only**:
 
 | Field               | Value                               |
 | ------------------- | ----------------------------------- |
@@ -68,7 +70,7 @@ It holds 40 files.
 | Country / Currency  | `India` / `INR`                     |
 | Time zone           | `Asia/Kolkata`                      |
 | Test customer       | ticked                              |
-| Owner name          | `Vikram Desai`                      |
+| Owner name          | `Ashesh Sajnani`                    |
 | Owner signs in with | Username and password (no email)    |
 | Owner username      | `passport.owner` (type it yourself) |
 
@@ -86,7 +88,8 @@ purchase orders 5, attendance sessions 138. **Apply**, then a second dry run sho
 changes.
 
 **5. Logins (the printed sheet)**: the customer's page → **Logins** → tick **Set passwords
-by the Test<Role>!12 rule** → **Create 38 username logins** → **Print the login sheet** (and
+by the Test<Role>!12 rule** → **Create 39 username logins** (the 38 imported
+people and the owner) → **Print the login sheet** (and
 download the CSV once, if you want a copy; nothing keeps the passwords). Each person's
 password is `Test` + their job title without spaces + `!12`:
 
@@ -98,7 +101,7 @@ password is `Test` + their job title without spaces + `!12`:
 | Savio Dias, Room Attendant         | `passport.room-attendant` | `TestRoomAttendant!12`  |
 | Kunal Sawant, Cashier              | `passport.cashier`        | `TestCashier!12`        |
 
-The owner, `passport.owner`, already has the login made when the customer was created.
+The owner, Ashesh Sajnani, signs in as `passport.owner` with `TestAccountOwner!12`.
 
 **6. Check**: sign in at the app as `passport.presenter`. Me shows **Show the app as
 someone**; pick Anjali Fernandes: Home shows Compliance (pest control overdue, the bar

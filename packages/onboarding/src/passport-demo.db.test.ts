@@ -39,7 +39,7 @@ describe('the Passport Hotel demo', () => {
           timezone: 'Asia/Kolkata',
           isTest: true,
           owner: {
-            displayName: 'Vikram Desai',
+            displayName: 'Ashesh Sajnani',
             email: null,
             username: 'passport.owner',
             loginType: 'username',

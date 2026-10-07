@@ -155,7 +155,7 @@ const P = (user: string, name: string, role: string, dept: string | null, pay: n
   pay,
 });
 const PEOPLE: Person[] = [
-  P('owner', 'Vikram Desai', 'ACCOUNT_OWNER', '(company)', 250000),
+  P('owner', 'Ashesh Sajnani', 'ACCOUNT_OWNER', '(company)', 250000),
   P('presenter', 'Demo Presenter', 'ACCOUNT_OWNER', '(company)', 1),
   P('gm', 'Anjali Fernandes', 'GENERAL_MANAGER', null, 160000),
   P('front-office-manager', "Rohan D'Souza", 'FRONT_OFFICE_MANAGER', 'FRONT-OFFICE', 65000),
