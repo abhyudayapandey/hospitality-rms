@@ -2335,3 +2335,14 @@ bucket. Test data changed: Test Company is re-imported.
 6. Check the set-up wizard: **Set up a new customer** → a name → Outlets → Next. "What they
    buy" lists every bundle, the usual ones ticked and Compliance unticked under "Also
    available". Throw the set-up away afterwards.
+
+## Releasing Compliance first on Home (ADR 069 addendum)
+
+One migration, `20261125100000_compliance_attention` (the rows of Home's Compliance card). No
+stack change and nothing to re-import.
+
+1. Merge, then **Deploy** as usual (it runs the migration). `cdk diff` shows nothing.
+2. Check as **Test General Manager 1.0**: the first thing on Home is the Compliance card, red,
+   "2 need action", with Pest control service and FSSAI licence; "Do these first" no longer
+   mentions compliance. As **Test Bar Manager 3.0**: one green line, "Compliance: all
+   licences valid, nothing overdue". As **Test Bar Manager** (Solo Bar): no card.

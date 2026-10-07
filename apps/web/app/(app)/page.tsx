@@ -16,7 +16,7 @@ import {
   type TodayNumbers,
 } from '@/lib/today';
 import type { MyTask } from '@/lib/tasks';
-import { clockable, doFirst, shiftLine, todaysTasks } from '@/lib/today-view';
+import { clockable, complianceCard, doFirst, shiftLine, todaysTasks } from '@/lib/today-view';
 import { listHref, stockHref } from '@/lib/stock-view';
 import { countDueText } from '@/lib/stock-hub';
 import { InboxItem } from './inbox/inbox-item';
@@ -63,6 +63,8 @@ export default async function Home() {
       <h1 className="text-xl font-semibold" data-testid="today">
         {formatLongDay(now, tz)}
       </h1>
+
+      <ComplianceCard card={complianceCard(today.compliance)} />
 
       <FirstRun profile={today.profile} />
 
@@ -183,7 +185,6 @@ export default async function Home() {
                 attention: today.attention,
                 overdueTasks: today.tasks.filter((x) => x.overdue).length,
                 toAssign: today.approvals.toAssign,
-                compliance: today.compliance,
                 openSlotsHref: today.openSlotsHref,
                 canOrder: shell.domains.get('PURCHASE_ORDERS') === 'modify',
               })
@@ -439,6 +440,77 @@ function Approvals({ today }: { today: Today }) {
 
 const TONE_CHIP = { bad: 'bg-rose-50 text-rose-700', warn: 'bg-amber-50 text-amber-800' } as const;
 const TONE_DOT = { bad: 'bg-rose-600', warn: 'bg-amber-500' } as const;
+
+/**
+ * Compliance first (ADR 069): above everything, because a lapsed licence or a missed
+ * inspection can close the outlet. Each row opens what it is about; nothing to do is one
+ * green line for those who keep it.
+ */
+function ComplianceCard({ card: c }: { card: ReturnType<typeof complianceCard> }) {
+  if (!c) return null;
+  if (c.rows.length === 0) {
+    return (
+      <Link
+        href={c.href}
+        data-testid="compliance-card"
+        data-tone={c.tone}
+        className={`flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium ${
+          c.tone === 'ok' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'
+        }`}
+      >
+        <Icon name="shield" className="size-4 shrink-0" />
+        <span className="flex-1">
+          Compliance: {c.title.charAt(0).toLowerCase() + c.title.slice(1)}
+        </span>
+      </Link>
+    );
+  }
+  const tone = c.tone === 'bad' ? 'bad' : 'warn';
+  return (
+    <section
+      aria-label="Compliance"
+      data-testid="compliance-card"
+      data-tone={c.tone}
+      className={`block rounded-2xl bg-white p-4 shadow-sm ring-2 ${tone === 'bad' ? 'ring-rose-300' : 'ring-amber-300'}`}
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className={`${cardTitle} flex items-center gap-1.5`}>
+          <Icon name="shield" className="size-4" />
+          Compliance
+        </h2>
+        <Link
+          href={c.href}
+          className={`text-sm font-semibold ${TONE_CHIP[tone]} rounded-full px-3 py-1`}
+        >
+          {c.title}
+        </Link>
+      </div>
+      <ul className="mt-2 divide-y divide-slate-100">
+        {c.rows.map((r) => (
+          <li key={r.key} data-tone={r.tone} data-testid="compliance-row">
+            <Link href={r.href} className="flex min-h-13 items-center gap-3 py-2">
+              <span aria-hidden className={`size-2.5 shrink-0 rounded-full ${TONE_DOT[r.tone]}`} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold">{r.name}</span>
+                <span className="block truncate text-xs text-slate-500">{r.place}</span>
+              </span>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${TONE_CHIP[r.tone]}`}
+              >
+                {r.when}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {c.more > 0 && (
+        <Link href={c.href} className="mt-1 block text-sm text-slate-700 underline">
+          {c.more} more
+        </Link>
+      )}
+    </section>
+  );
+}
 
 /** Do these first (UX-8): at most five lines, each with the one thing to do about it. */
 function DoFirst({ items }: { items: ReturnType<typeof doFirst> }) {

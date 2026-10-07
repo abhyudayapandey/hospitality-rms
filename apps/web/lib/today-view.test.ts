@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   clockable,
+  complianceCard,
+  COMPLIANCE_CARD_ROWS,
   doFirst,
   attentionGroups,
   currentShift,
   shiftLine,
   todaysTasks,
+  type ComplianceRow,
   type PlaceDepartment,
 } from './today-view';
 
@@ -269,25 +272,6 @@ describe('doFirst: the ranked list (UX-8)', () => {
     ).toBe('See');
   });
 
-  it('licences expiring and compliance jobs overdue open Compliance on their tab, All outlets (ADR 069)', () => {
-    const d = doFirst({
-      attention: null,
-      overdueTasks: 0,
-      toAssign: 0,
-      compliance: { expiring: 2, overdue: 1 },
-    });
-    expect(d.map((x) => [x.key, x.text, x.action, x.href, x.tone])).toEqual([
-      [
-        'complianceOverdue',
-        'compliance job overdue',
-        'Open',
-        '/compliance?all=1&tab=overdue',
-        'bad',
-      ],
-      ['licences', 'licences expiring', 'Renew', '/compliance?all=1&tab=expiring', 'warn'],
-    ]);
-  });
-
   it('nothing to do: an empty list', () => {
     expect(doFirst({ attention: null, overdueTasks: 0, toAssign: 0 })).toEqual([]);
   });
@@ -341,5 +325,82 @@ describe('every count that spans places opens its screen with All chosen (ADR 04
       ['repairs', 'open repair', 'Assign'],
       ['toAssign', 'expired items to assign', 'Assign'],
     ]);
+  });
+});
+
+describe('Compliance first on Home (ADR 069)', () => {
+  const row = (over: Partial<ComplianceRow>): ComplianceRow => ({
+    kind: 'licence',
+    id: 'l1',
+    task_id: null,
+    place_name: 'Hotel 1.0',
+    name: 'FSSAI licence',
+    days_left: 30,
+    own: false,
+    ...over,
+  });
+
+  it('nothing for a company without it, or for someone with nothing of theirs', () => {
+    expect(complianceCard(null)).toBeNull();
+    expect(complianceCard({ keeps: false, recorded: 0, rows: [] })).toBeNull();
+  });
+
+  it('a keeper with nothing to do gets one green line; with nothing recorded, an amber one', () => {
+    expect(complianceCard({ keeps: true, recorded: 4, rows: [] })).toMatchObject({
+      tone: 'ok',
+      title: 'All licences valid, nothing overdue',
+      href: '/compliance?all=1',
+    });
+    expect(complianceCard({ keeps: true, recorded: 0, rows: [] })).toMatchObject({
+      tone: 'empty',
+      title: 'No licences recorded yet',
+    });
+  });
+
+  it('expired and overdue in red, what is coming in amber; each row opens what it is about', () => {
+    const c = complianceCard({
+      keeps: true,
+      recorded: 6,
+      rows: [
+        row({ kind: 'job', id: 'j1', name: 'Pest control service', days_left: -3 }),
+        row({ days_left: -1 }),
+        row({ id: 'l2', name: 'Fire NOC', days_left: 45 }),
+      ],
+    })!;
+    expect(c.tone).toBe('bad');
+    expect(c.title).toBe('3 need action');
+    expect(c.href).toBe('/compliance?all=1&tab=overdue');
+    expect(c.rows.map((r) => [r.tone, r.name, r.when, r.href])).toEqual([
+      ['bad', 'Pest control service', 'Overdue 3 days', '/compliance/calendar/j1'],
+      ['bad', 'FSSAI licence', 'Expired 1 day ago', '/compliance/licences/l1'],
+      ['warn', 'Fire NOC', 'Expires in 45 days', '/compliance/licences/l2'],
+    ]);
+  });
+
+  it('licences only: amber, and See all opens Expiring', () => {
+    const c = complianceCard({ keeps: true, recorded: 1, rows: [row({})] })!;
+    expect([c.tone, c.title, c.href]).toEqual([
+      'warn',
+      '1 needs action',
+      '/compliance?all=1&tab=expiring',
+    ]);
+  });
+
+  it("someone's own reminder opens their To do item; they see no more than theirs", () => {
+    const c = complianceCard({
+      keeps: false,
+      recorded: 0,
+      rows: [row({ kind: 'job', id: 'j9', task_id: 't9', own: true, days_left: 10 })],
+    })!;
+    expect(c.rows[0]!.href).toBe('/tasks/t9');
+    expect(c.rows[0]!.when).toBe('Due in 10 days');
+    expect(c.href).toBe('/inbox');
+  });
+
+  it('five rows, then how many more', () => {
+    const rows = Array.from({ length: 7 }, (_, i) => row({ id: `l${i}`, days_left: i }));
+    const c = complianceCard({ keeps: true, recorded: 7, rows })!;
+    expect(c.rows).toHaveLength(COMPLIANCE_CARD_ROWS);
+    expect(c.more).toBe(2);
   });
 });

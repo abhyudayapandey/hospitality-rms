@@ -242,6 +242,16 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     show: (i) => can(i, 'MAINTENANCE'),
   },
   {
+    // licences and the compliance calendar (ADR 069), where Compliance is in the plan;
+    // first in Team: what can close the outlet comes before everything else
+    key: 'compliance',
+    href: '/compliance',
+    label: 'Compliance',
+    icon: 'shield',
+    section: 'team',
+    show: (i) => can(i, 'COMPLIANCE'),
+  },
+  {
     // the Team side of Roster: roster builders, and people above outlet level
     key: 'roster',
     href: '/roster',
@@ -249,15 +259,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     icon: 'calendar',
     section: 'team',
     show: (i) => can(i, 'ROSTER', 'modify') || (!i.atWork && can(i, 'ROSTER')),
-  },
-  {
-    // licences and the compliance calendar (ADR 069), where Compliance is in the plan
-    key: 'compliance',
-    href: '/compliance',
-    label: 'Compliance',
-    icon: 'shield',
-    section: 'team',
-    show: (i) => can(i, 'COMPLIANCE'),
   },
   {
     key: 'events',

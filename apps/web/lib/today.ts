@@ -26,6 +26,8 @@ import {
   currentShift,
   type AttentionCount,
   type AttentionGroup,
+  type ComplianceInput,
+  type ComplianceRow,
   type PlaceDepartment,
 } from './today-view';
 
@@ -114,8 +116,8 @@ export interface Today {
   /** dishes to sell first today at their outlet (INV-12, ADR 040) */
   push: PushDish[];
   targets: Record<TargetKey, number>;
-  /** licences expiring within 90 days and compliance jobs overdue, where they see them (ADR 069) */
-  compliance: { expiring: number; overdue: number };
+  /** Home's Compliance card (ADR 069): null when the company hasn't it or it isn't theirs */
+  compliance: ComplianceInput | null;
 }
 
 /** Approvals shown on Home; the rest are one tap away. */
@@ -143,13 +145,24 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     const inbox = await inboxEntries(tx);
     // expired items waiting to be given to someone; repairs waiting are the repairs count
     const assign = lead ? (await toAssign(tx)).filter((x) => x.kind === 'expiry').length : 0;
-    // the same counts the Compliance screen's tabs show (ops.compliance_counts, ADR 069)
-    const compliance = shell.domains.has('COMPLIANCE')
-      ? (
-          await sql<{ expiring: number; overdue: number }>`
-            select expiring, overdue from ops.compliance_counts(null)`.execute(tx)
-        ).rows[0]!
-      : { expiring: 0, overdue: 0 };
+    // Compliance first (ADR 069): the rows behind the Expiring tab and the calendar jobs due
+    // within 14 days, plus the reminders that are theirs (ops.compliance_attention)
+    let compliance: ComplianceInput | null = null;
+    if (shell.modules.has('compliance')) {
+      const keeps = shell.domains.has('COMPLIANCE');
+      const rows = (
+        await sql<ComplianceRow>`
+          select kind, id, task_id, place_name, name, days_left, own
+            from ops.compliance_attention()`.execute(tx)
+      ).rows;
+      const recorded = keeps
+        ? (
+            await sql<{ n: number }>`
+              select licences + items as n from ops.compliance_counts(null)`.execute(tx)
+          ).rows[0]!.n
+        : 0;
+      if (keeps || rows.length > 0) compliance = { keeps, recorded, rows };
+    }
 
     let attention: AttentionGroup[] | null = null;
     let openSlotsHref: string | null = null;
