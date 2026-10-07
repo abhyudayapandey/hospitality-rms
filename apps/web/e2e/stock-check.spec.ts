@@ -101,14 +101,12 @@ test('a different count shows the difference and cannot be finished without a ph
   await clearOpenChecks(HOTEL_KITCHEN);
 });
 
-test('a bar check counts bottles and tenths (the Stock Verifier of the solo bar)', async ({
-  page,
-}) => {
+test('a bar check counts bottles and tenths (the Accountant of the solo bar)', async ({ page }) => {
   await clearOpenChecks(SOLO_BAR);
   const store = await placeId(SOLO_BAR);
   const item = await anItem(SOLO_BAR, true);
 
-  await signInAs(page, 'Test Stock Verifier');
+  await signInAs(page, 'Test Accountant');
   await page.goto(`/stock/check?node=${store}`);
   await page.getByRole('button', { name: /^Start a bar check/ }).click();
   await page.waitForURL(/\/stock\/check\/[0-9a-f-]{36}/);

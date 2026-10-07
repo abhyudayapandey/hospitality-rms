@@ -15,6 +15,7 @@ import {
   readDraft,
   roleQuestions,
   stepOfFile,
+  warningsInWords,
   whoDoesWhat,
   type SetupDraft,
 } from './setup-draft';
@@ -59,6 +60,32 @@ describe('the set-up draft', () => {
       'BLUE-BEAN-BANDRA-CAFE',
       'BLUE-BEAN-BANDRA-CAFE-2',
     ]);
+    // an outlet named like its company is not BLUE-BEAN-BLUE-BEAN
+    d.outlets[0]!.name = 'Blue Bean';
+    d.outlets[1]!.name = 'Blue Bean Bandra';
+    expect([...outletCodes(d).values()]).toEqual(['BLUE-BEAN-MAIN', 'BLUE-BEAN-BANDRA']);
+  });
+
+  it("says the dry run's warnings with names, never codes", () => {
+    const d = cafe();
+    d.people.push({ name: 'Ravi Kumar', email: '', role: 'BARISTA', outlet: 'a' });
+    const outlet = outletCodes(d).get('a')!;
+    const ravi = logins(d)[0]!.username;
+    const said = warningsInWords(d, [
+      `nobody at ${outlet} is a HEAD_COOK yet, so nobody does KITCHEN_STEWARD's work`,
+      `nobody at ${outlet} is a HEAD_COOK yet, so nobody does KITCHEN_STEWARD's work`,
+      `${ravi}: LEAVE (manager_approval) at ${outlet} has no approver but them: their request would fail (NO_APPROVER)`,
+      `blue-bean.owner: LEAVE (hr_approval, manager_approval) at BLUE-BEAN has no approver but them: approved at the top of the chain (account owner)`,
+      `blue-bean.owner: SHIFT_SWAP (manager_approval) at BLUE-BEAN has no approver but them: approved at the top of the chain (account owner)`,
+      `blue-bean.owner: STORE_KEEPER at ${outlet} also reaches 1 other stock location through the places below it: X. Add "(this store only)" if they work at ${outlet} only`,
+    ]);
+    expect(said).toEqual([
+      "nobody at Bandra Café is a Head Cook yet, so nobody does Kitchen Steward's work",
+      'Asha Rao: Store Keeper at Bandra Café also reaches 1 other stock location through the places below it: X',
+      "Ravi Kumar's own leave requests have nobody above them to approve: they will be refused until someone above them is set up",
+      "Asha Rao's own leave and shift swap requests have nobody above them to approve: they go through at once, as the account owner",
+    ]);
+    expect(said.join(' ')).not.toMatch(/[A-Z]+_[A-Z]+|BLUE-BEAN|blue-bean/);
   });
 
   it('says what is missing, at the screen to fix it on', () => {

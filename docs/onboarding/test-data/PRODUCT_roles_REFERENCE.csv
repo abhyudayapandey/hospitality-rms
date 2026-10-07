@@ -64,8 +64,7 @@ LAUNDRY_MANAGER,Laundry Manager,,leads_shift,HOUSEKEEPING,LEADS_SHIFT; USES_DEPA
 ROOM_ATTENDANT,Room Attendant,,works,HOUSEKEEPING,WORKS_SHIFTS,,Hotel
 PUBLIC_AREA_ATTENDANT,Public Area Attendant,,works,HOUSEKEEPING,WORKS_SHIFTS,,Hotel
 LAUNDRY_ATTENDANT,Laundry Attendant,,works,HOUSEKEEPING,WORKS_SHIFTS; USES_DEPARTMENT_STORE,,Hotel
-STORE_MANAGER,Store Manager,,runs_department,STORES-TEAM,RUNS_DEPARTMENT; KEEPS_MAIN_STORE; SEES_OUTLET_STOCK,,Hotel
-PURCHASE_MANAGER,Purchase Manager,Purchase Executive; Purchase Officer,leads_shift,STORES-TEAM,KEEPS_MAIN_STORE; SEES_OUTLET_STOCK; WORKS_SHIFTS,,Restaurant; Hotel
+PURCHASE_MANAGER,Purchase Manager,Store Manager; Stores Manager; Purchase Executive; Purchase Officer,runs_department,STORES-TEAM,RUNS_DEPARTMENT; KEEPS_MAIN_STORE; SEES_OUTLET_STOCK,,Restaurant; Hotel
 STORE_KEEPER,Store Keeper,Storekeeper,leads_shift,STORES-TEAM,KEEPS_MAIN_STORE; WORKS_SHIFTS,,Restaurant; Cloud kitchen; Hotel
 RECEIVING_CLERK,Receiving Clerk,,works,STORES-TEAM,USES_MAIN_STORE; WORKS_SHIFTS,,Hotel
 CHIEF_ENGINEER,Chief Engineer,,runs_department,ENGINEERING,RUNS_DEPARTMENT,,Hotel
@@ -75,9 +74,8 @@ SECURITY_SUPERVISOR,Security Supervisor,Security Manager; Security Head,runs_dep
 SECURITY_GUARD,Security Guard,Bouncer,works,SECURITY,WORKS_SHIFTS,,Hotel; Bar
 HR_EXECUTIVE,HR Executive,,works,ADMIN-FINANCE,RUNS_OUTLET_HR; WORKS_SHIFTS,,Hotel
 COST_CONTROLLER,Cost Controller,,works,ADMIN-FINANCE,CONTROLS_COSTS; WORKS_SHIFTS,,Hotel
-STOCK_VERIFIER,Stock Verifier,,works,(outlet),VERIFIES_STOCK_CHECKS,,(the app)
 FINANCIAL_CONTROLLER,Financial Controller,,runs_department,ADMIN-FINANCE,RUNS_DEPARTMENT; CONTROLS_COSTS,,Hotel
-ACCOUNTANT,Accountant,Excise Clerk,works,ADMIN-FINANCE,WORKS_SHIFTS,,Restaurant; Bar; Cloud kitchen; Hotel
+ACCOUNTANT,Accountant,Excise Clerk; Stock Verifier,works,ADMIN-FINANCE,WORKS_SHIFTS,bar_pub: VERIFIES_STOCK_CHECKS,Restaurant; Bar; Cloud kitchen; Hotel
 INCOME_AUDITOR,Income Auditor,,works,ADMIN-FINANCE,WORKS_SHIFTS,,Hotel
 GENERAL_CASHIER,General Cashier,,works,ADMIN-FINANCE,WORKS_SHIFTS,,Hotel
 HR_MANAGER,HR Manager,,runs_department,HR,RUNS_DEPARTMENT; RUNS_OUTLET_HR,,Hotel

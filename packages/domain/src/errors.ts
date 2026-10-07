@@ -86,7 +86,7 @@ export const ERROR_MESSAGES = {
   INVALID_SETUP: 'Something in this set-up needs fixing first: see the list on Who does what.',
   INVALID_UPLOAD: 'That upload is not stored for this customer. Upload the files again.',
   UPLOAD_EMPTY: 'Choose a zip file or the CSV files to upload.',
-  UPLOAD_TOO_LARGE: 'That upload is too large (5 MB, 40 files and 25 MB unpacked at most).',
+  UPLOAD_TOO_LARGE: 'That upload is too large (5 MB, 50 files and 25 MB unpacked at most).',
   UPLOAD_TYPE: 'Upload one zip file, or the CSV files themselves.',
   UPLOAD_UNSAFE_PATH: 'The zip has file names that point outside its folder.',
   UPLOAD_FOLDERS: 'Put all the CSV files in one folder of the zip.',

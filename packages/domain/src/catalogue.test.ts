@@ -21,11 +21,14 @@ describe('role catalogue', () => {
 
   it('keeps the SOP roles apart from the roles whose codes were taken first', () => {
     const byCode = new Map(ROLES.map((r) => [r.code, r]));
-    // a hotel's Store Manager heads Stores; a QSR's runs the outlet
-    expect(byCode.get('STORE_MANAGER')).toMatchObject({
-      title: 'Store Manager',
+    // a hotel's Store Manager is the SOP's Purchase Manager, heading Stores; a QSR's runs
+    // the outlet
+    expect(byCode.get('STORE_MANAGER')).toBeUndefined();
+    expect(byCode.get('PURCHASE_MANAGER')).toMatchObject({
+      alsoCalled: expect.arrayContaining(['Store Manager']) as string[],
       home: 'STORES-TEAM',
     });
+    expect(levelOf(byCode.get('PURCHASE_MANAGER')!.duties)).toBe('runs_department');
     expect(byCode.get('QSR_STORE_MANAGER')).toMatchObject({
       title: 'Store Manager',
       home: '(outlet)',

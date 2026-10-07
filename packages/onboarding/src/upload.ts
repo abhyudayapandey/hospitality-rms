@@ -11,7 +11,7 @@ import { parseCsv } from './csv';
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 export const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
-export const MAX_FILES = 40;
+export const MAX_FILES = 50;
 
 /** 00_customer.csv, 07_users.csv, ... (99_access_preview_GENERATED.csv too: ignored later). */
 const ONBOARDING_FILE = /^\d\d_[a-z0-9_]+\.csv$/i;

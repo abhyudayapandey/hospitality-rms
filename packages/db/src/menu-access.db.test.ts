@@ -75,9 +75,9 @@ describe('recipes are read only where they are made or sold', () => {
         'test.room-attendant.1.0',
         'test.front-desk-executive.1.0',
         'test.security-guard.1.0',
-        // guest house staff hold STAFF on the outlet itself, linked to its only store
+        // guest house staff hold STAFF on the outlet itself, linked to its only store (its
+        // Front Desk Executive covers the Store Keeper, ADR 066, so reads what a keeper does)
         'test.room-attendant.2.0',
-        'test.front-desk-executive.2.0',
         'test.security-guard.2.0',
       ]) {
         for (const t of ['inv.recipe', 'inv.recipe_line', 'inv.prep_procedure', 'menu.menu_item']) {

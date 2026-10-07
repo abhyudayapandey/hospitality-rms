@@ -8,4 +8,4 @@ test.solo.server,Test Server,SERVER,TEST-SOLO-BAR-FLOOR-SERVICE,username,,full_t
 test.solo.server-b,Test Server B,SERVER,TEST-SOLO-BAR-FLOOR-SERVICE,username,,full_time,2024-06-10,test_rule
 test.solo.head-cook,Test Head Cook,HEAD_COOK,TEST-SOLO-BAR-KITCHEN,username,,full_time,2024-06-10,test_rule
 test.solo.cook,Test Cook,COOK,TEST-SOLO-BAR-KITCHEN,username,,full_time,2025-02-01,test_rule
-test.solo.stock-verifier,Test Stock Verifier,STOCK_VERIFIER,TEST-SOLO-BAR,username,,full_time,2025-02-01,test_rule
+test.solo.accountant,Test Accountant,ACCOUNTANT,TEST-SOLO-BAR,username,,full_time,2025-02-01,test_rule

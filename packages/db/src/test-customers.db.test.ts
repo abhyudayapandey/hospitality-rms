@@ -61,13 +61,13 @@ describe('outlet shapes', () => {
       ]);
       expect(await stockPlaces(c, 'test.store-keeper.1.0')).toEqual(['TEST-HOTEL-1.0-MAIN-STORE']);
       // the store manager keeps the main store and sees every store of the outlet
-      expect(await stockPlaces(c, 'test.store-manager.1.0')).toEqual(stores);
-      expect(await can(c, 'test.store-manager.1.0', 'PURCHASE_ORDERS', 'modify', stores[3]!)).toBe(
-        true,
-      );
-      expect(await can(c, 'test.store-manager.1.0', 'PURCHASE_ORDERS', 'modify', stores[2]!)).toBe(
-        false,
-      );
+      expect(await stockPlaces(c, 'test.purchase-manager.1.0')).toEqual(stores);
+      expect(
+        await can(c, 'test.purchase-manager.1.0', 'PURCHASE_ORDERS', 'modify', stores[3]!),
+      ).toBe(true);
+      expect(
+        await can(c, 'test.purchase-manager.1.0', 'PURCHASE_ORDERS', 'modify', stores[2]!),
+      ).toBe(false);
       // the F&B manager heads the Restaurant, Bar and Banquets, not the Kitchen
       const fb = 'test.fandb-manager.1.0';
       expect(await can(c, fb, 'ROSTER', 'modify', 'TEST-HOTEL-1.0-BANQUETS')).toBe(true);
