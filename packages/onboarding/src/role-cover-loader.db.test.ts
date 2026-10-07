@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { closePools, inRolledBackTx } from '@outlet-ops/db/test-helpers';
+import { attemptAs, closePools, inRolledBackTx, loadSeedIds } from '@outlet-ops/db/test-helpers';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { loadCustomer, type AccessRow } from './apply';
 import { readCustomerDir } from './dir';
@@ -102,6 +102,75 @@ describe('who covers it (file 37)', () => {
       ).toEqual([
         'TEST-HOTEL-1.1 has 1 HOUSEKEEPING_SUPERVISOR: they and every FRONT_DESK_EXECUTIVE there will share its work',
       ]);
+    });
+  });
+
+  it('warns before changing or removing a cover set in Admin since the last import (ADR 065)', async () => {
+    await inRolledBackTx(async (c) => {
+      const ids = await loadSeedIds();
+      const files = withCover([
+        'TEST-GUEST-HOUSE-2.0,STORE_KEEPER,covered_by,FRONT_DESK_EXECUTIVE',
+        'TEST-BAR-3.0,COOK,not_done,',
+      ]);
+      expect((await loadCustomer(c, files, { nested: true })).issues).toEqual([]);
+      // Admin → Who does what: one changed, one removed, one added, by the Account Owner
+      const owner = ids.user('test.account-owner');
+      for (const [outlet, role, answer, by] of [
+        ['TEST-GUEST-HOUSE-2.0', 'STORE_KEEPER', 'covered_by', 'GENERAL_MANAGER'],
+        ['TEST-BAR-3.0', 'COOK', 'have', null],
+        ['TEST-HOTEL-1.1', 'SOUS_CHEF', 'not_done', null],
+      ] as const) {
+        const r = await attemptAs(c, owner, 'select core.set_role_cover($1, $2, $3, $4)', [
+          ids.node(outlet),
+          role,
+          answer,
+          by,
+        ]);
+        expect(r.error).toBeUndefined();
+      }
+      const when = (
+        await c.query<{ t: string }>(
+          `select to_char(now() at time zone 'Asia/Kolkata', 'DD Mon YYYY HH24:MI') t`,
+        )
+      ).rows[0]!.t;
+      const setInApp = (w: { message: string }) => w.message.includes('set in the app');
+
+      const back = await loadCustomer(c, files, { nested: true });
+      expect(back.issues).toEqual([]);
+      expect(back.warnings.filter(setInApp)).toEqual([
+        {
+          file: '37_role_cover.csv',
+          row: 3,
+          column: 'job_role_code',
+          message:
+            `TEST-BAR-3.0 COOK: set in the app by Test Account Owner on ${when} Asia/Kolkata ` +
+            `to "We have it"; this import makes it "We don't do this"`,
+        },
+        {
+          file: '37_role_cover.csv',
+          row: 2,
+          column: 'job_role_code',
+          message:
+            `TEST-GUEST-HOUSE-2.0 STORE_KEEPER: set in the app by Test Account Owner on ${when} ` +
+            'Asia/Kolkata to "Someone else does it: GENERAL_MANAGER"; this import makes it ' +
+            '"Someone else does it: FRONT_DESK_EXECUTIVE"',
+        },
+        {
+          file: '37_role_cover.csv',
+          message:
+            `TEST-HOTEL-1.1 SOUS_CHEF: set in the app by Test Account Owner on ${when} ` +
+            `Asia/Kolkata to "We don't do this"; this import makes it "We have it"`,
+        },
+      ]);
+      // the file is the whole truth again, and the next import has nothing to warn about
+      const { rows } = await c.query<{ n: number }>(
+        `select count(*)::int n from hr.role_cover c
+          where c.archived_at is null and c.set_in_app_by is not null`,
+      );
+      expect(rows[0]!.n).toBe(0);
+      expect((await loadCustomer(c, files, { nested: true })).warnings.filter(setInApp)).toEqual(
+        [],
+      );
     });
   });
 });

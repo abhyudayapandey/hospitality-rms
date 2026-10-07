@@ -88,6 +88,12 @@ export default async function AdminPage() {
             People ({people})
           </Link>
           <Link
+            href="/admin/cover"
+            className="flex min-h-12 items-center justify-center rounded-lg font-medium ring-1 ring-slate-300"
+          >
+            Who does what
+          </Link>
+          <Link
             href="/admin/audit"
             className="flex min-h-12 items-center justify-center rounded-lg font-medium ring-1 ring-slate-300"
           >

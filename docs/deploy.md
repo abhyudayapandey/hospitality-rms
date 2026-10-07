@@ -2227,3 +2227,17 @@ There is no stack change and nothing to re-import.
    **Check everything**, then **Looks right: apply and send logins**. **Create 1 username login**
    and **Print the login sheet** show their login ID and one-time password.
 3. The demo can be suspended from the console home afterwards.
+
+## Releasing Admin → Who does what (ADR 065)
+
+One migration (`20261120100000_who_does_what`): two columns on `hr.role_cover` and the
+Admin and console functions. No stack change, nothing to re-import, and nobody's access
+changes until someone saves a cover.
+
+1. Merge, then **Deploy** as usual. `cdk diff` shows nothing.
+2. Check, in the app: sign in as the Account Owner, open Admin → Who does what. "All
+   outlets" says each role's own people do its work everywhere; choosing Test Hotel & Bar
+   1.1 lists its roles, General Manager near the top. Open Sous Chef, choose "Someone else
+   does it: Executive Chef": the preview names Test Executive Chef 1.1. Don't save (or save,
+   then set it back to "We have it").
+3. Sign in as the General Manager 1.0: Who does what shows Test Hotel & Bar 1.0 only.

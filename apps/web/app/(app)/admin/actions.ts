@@ -326,3 +326,59 @@ export async function archiveCustomGroup(code: string): Promise<ActionResult<nul
     return null;
   });
 }
+
+// ---------------------------------------------------------------------------
+// Who does what (ADR 065): who covers a job role at an outlet. core.preview_role_cover runs
+// the save and rolls it back, so what the screen says is what Save does; core.set_role_cover
+// checks user administration of the outlet, the rules of file 37 and, through
+// core.sync_job_role_access, your own access, rank and approvals. Saving the same answer
+// again changes nothing, so a repeated tap is harmless.
+
+export type CoverAnswerInput = 'have' | 'covered_by' | 'not_done';
+
+export interface CoverResult {
+  changed: boolean;
+  applied?: number;
+  pending?: number;
+  people?: { user_id: string; name: string; waiting: number }[];
+  tasks_returned?: number;
+  tasks_given?: number;
+  tasks_open?: number;
+}
+
+export interface CoverPreview {
+  errors: { code: string; detail: string | null }[];
+  result?: CoverResult;
+}
+
+export async function previewRoleCover(
+  outlet: string,
+  role: string,
+  answer: CoverAnswerInput,
+  by: string | null,
+): Promise<ActionResult<CoverPreview>> {
+  return run('preview_role_cover', async (tx) => {
+    const r = await sql<{ r: CoverPreview }>`
+      select core.preview_role_cover(${outlet}::uuid, ${role}, ${answer}, ${by}) as r`.execute(tx);
+    return r.rows[0]!.r;
+  });
+}
+
+export async function setRoleCover(c: {
+  outlet: string;
+  role: string;
+  answer: CoverAnswerInput;
+  by: string | null;
+  idempotencyKey?: string;
+}): Promise<ActionResult<CoverResult>> {
+  const r = await run('set_role_cover', async (tx) => {
+    const x = await sql<{ r: CoverResult }>`
+      select core.set_role_cover(${c.outlet}::uuid, ${c.role}, ${c.answer}, ${c.by}) as r`.execute(
+      tx,
+    );
+    return x.rows[0]!.r;
+  });
+  // access and the To do list change with it
+  if (r.ok) revalidatePath('/', 'layout');
+  return r;
+}

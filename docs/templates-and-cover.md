@@ -103,7 +103,7 @@ ranges allow for findings from the full test runs.
 - **Customer changes.** A customer may rename a title (e.g. "Head Chef" for Executive Chef)
   without changing its duties.
 
-### Step 3. Templates and the starter library. 5–7 days
+### Step 3. Templates and the starter library. 5–7 days — built (ADR 062)
 
 - **Outlet templates.** Restaurant / Café, Bar / Pub, QSR, Cloud kitchen and Hotel (full or
   small). Each lists:
@@ -171,7 +171,7 @@ seven steps:
   and runs the same dry run and apply. Every check we have today still applies.
 - **Saving.** A half-finished set-up is saved and can be resumed.
 
-### Step 6. Changing it after go-live. 3–4 days
+### Step 6. Changing it after go-live. 3–4 days — built (ADR 065)
 
 - **Admin → Who does what.** The same role answers, editable by the Account Owner or a user
   admin. The common cases:

@@ -150,6 +150,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   covered by a role it has, or not done. Cover adds the covered role's grants inside
   `core.derive_job_role_access`, so every way access is applied picks it up; covered job-role
   tasks go to one coverer on duty (`ops.give_covered_task`). Only exceptions are stored.
+  After go-live, Admin → Who does what (ADR 065, `core.set_role_cover`) changes them with the
+  same checks; access is re-synced at once through `core.sync_job_role_access`.
 - Outlet formats are the SOPs' (`restaurant`, `bar_pub`, `qsr`, `cloud_kitchen`, `hotel`; ADR 062).
   Outlet templates, tiles, extras and the starter checklist library are product code
   (`packages/domain/src/templates.ts`, `checklists.ts`). An outlet from a template is added to
