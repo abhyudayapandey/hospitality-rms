@@ -23,8 +23,8 @@ export interface PeopleContext {
   nodes: Place[];
   node: Place | null;
   tz: string;
-  /** People tabs beyond domain checks (audit #10, #13). */
-  tabs: { personal: boolean; exceptions: boolean };
+  /** People tabs beyond domain checks (audit #10, #13; swaps SW-4). */
+  tabs: { personal: boolean; exceptions: boolean; swapsManagersOnly: boolean };
   can(domain: string, access?: 'view' | 'modify'): boolean;
 }
 
@@ -58,7 +58,11 @@ export async function peopleContext(
     nodes,
     node,
     tz: node?.timezone ?? home?.timezone ?? DEFAULT_TZ,
-    tabs: { personal: shell.home?.at_workplace ?? false, exceptions },
+    tabs: {
+      personal: shell.home?.at_workplace ?? false,
+      exceptions,
+      swapsManagersOnly: shell.swapsManagersOnly,
+    },
     can(domain, access = 'view') {
       const a = shell.domains.get(domain);
       return a !== undefined && (access === 'view' || a === 'modify');

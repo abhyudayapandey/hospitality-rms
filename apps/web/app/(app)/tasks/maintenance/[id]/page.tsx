@@ -54,6 +54,12 @@ export default async function MaintenanceRequestPage({
               ? `done${r.done_at ? ` ${formatWhen(r.done_at)}` : ''}`
               : `${r.status === 'in_progress' ? 'in progress' : 'assigned'} with ${r.assigned_to_name}`}
         </p>
+        {r.assigned_at && r.assigned_to_name && (
+          <p className="text-sm text-slate-600" data-testid="repair-given">
+            Given to {r.assigned_to_name}
+            {r.assigned_by_name && ` by ${r.assigned_by_name}`} {formatWhen(r.assigned_at)}
+          </p>
+        )}
         {r.description && <p className="text-sm whitespace-pre-line">{r.description}</p>}
         {r.photo_key && <p className="text-xs text-slate-500">Photo added</p>}
         {r.done_note && <p className="text-sm">Fix: {r.done_note}</p>}

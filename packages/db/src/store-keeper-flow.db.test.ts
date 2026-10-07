@@ -353,10 +353,21 @@ describe('send stock', () => {
       ).toMatch(/INVALID_ASSIGNEE/);
       await call(c, CHEF, `select ops.reassign_task($1, $2)`, [task, ids.user(COMMIS)]);
       expect(await assignee()).toBe(ids.user(COMMIS));
+      // the head still follows it, with who has it (ADR 074)
+      expect(
+        await rows(c, CHEF, `select assignee_name from ops.my_handed_on() where id = $1`, [task]),
+      ).toEqual([{ assignee_name: 'Test Commis 1.0' }]);
+      expect(await error(c, CHEF, `select ops.task_detail($1)`, [task])).toBeUndefined();
       await call(c, COMMIS, `select ops.receive_sent($1, $2::jsonb)`, [
         task,
         JSON.stringify([{ item_id: item, qty: 2 }]),
       ]);
+      // and is told it was received
+      const done = await c.query(
+        `select 1 from ops.notification where owner_user_id = $1 and kind = 'task_done'`,
+        [ids.user(CHEF)],
+      );
+      expect(done.rowCount).toBe(1);
     });
   });
 

@@ -74,6 +74,10 @@ describe.each(CUSTOMERS)('loading %s', (customer) => {
   });
 });
 
+// The load day the loader counts from: the business day at the test outlets (04:00 to
+// 04:00, ADR 046), not the calendar date, which differs from it after midnight there.
+const BUSINESS_DAY = `((now() at time zone 'Asia/Kolkata') - interval '4 hours')::date`;
+
 describe('the prep list (file 32) after the past week was loaded on an earlier day', () => {
   // production loaded files 26 to 28 before file 32 existed (ADR 020)
   it('is created from that day and linked to the batches already there', async () => {
@@ -110,7 +114,7 @@ describe('the prep list (file 32) after the past week was loaded on an earlier d
       }>(
         `select t.title, t.status,
                 (select count(*)::int from inv.production p where p.task_id = t.id) as batches,
-                (now()::date - (t.due_at at time zone 'Asia/Kolkata')::date) as days
+                (${BUSINESS_DAY} - (t.due_at at time zone 'Asia/Kolkata')::date) as days
            from ops.task t
           where t.tenant_id = $1 and t.kind = 'prep'
             and t.delivery_node_id <> (select id from core.hierarchy_node
@@ -172,8 +176,8 @@ describe('rows for a store new to files 26 and 32, after the past week was loade
       );
       // file 26: days -2 and -1 from today, each made against its prep list
       const day = async (n: number) =>
-        (await c.query<{ d: string }>(`select (current_date + $1::int)::text as d`, [n])).rows[0]!
-          .d;
+        (await c.query<{ d: string }>(`select (${BUSINESS_DAY} + $1::int)::text as d`, [n]))
+          .rows[0]!.d;
       expect(rows.map((x) => [x.k.split(' ')[1], x.linked])).toEqual([
         [await day(-2), true],
         [await day(-1), true],

@@ -16,11 +16,14 @@ afterAll(closePools);
 
 const n = (v: string | null | undefined) => (v === null || v === undefined ? null : Number(v));
 
-/** The 7 days ending on the day of the Hotel 1.0 Bar Store closing count (the load day). */
+/**
+ * The 7 days ending on the day of the Hotel 1.0 Bar Store closing count (the load day): its
+ * business day (04:00 to 04:00, ADR 046), as the loader counts it, not its calendar date.
+ */
 async function window(c: PoolClient): Promise<{ from: string; to: string; from28: string }> {
   const { rows } = await c.query<{ from: string; to: string; from28: string }>(
     `select (d - 6)::text as from, d::text as to, (d - 27)::text as from28
-       from (select (max(submitted_at) at time zone 'Asia/Kolkata')::date as d
+       from (select rpt.business_date(max(submitted_at), 'Asia/Kolkata') as d
                from inv.stock_count where delivery_node_id = $1 and status = 'submitted') x`,
     [ids.node('TEST-HOTEL-1.0-BAR-STORE')],
   );

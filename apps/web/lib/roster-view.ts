@@ -34,6 +34,8 @@ export interface TabAccess {
   personal: boolean;
   /** resolves attendance exceptions somewhere */
   exceptions: boolean;
+  /** the company keeps swaps for those who change the roster (SW-4, ADR 035, 074) */
+  swapsManagersOnly?: boolean;
 }
 
 /**
@@ -51,7 +53,10 @@ export function peopleTabs(a: TabAccess): Record<Side, PeopleTabDef[]> {
       case '/roster/clock':
         return a.personal && a.can('ATTENDANCE', 'modify');
       case '/roster/swaps':
-        return a.personal && a.can('SHIFT_SWAPS');
+        // with swaps for management only, staff have no Swaps tab (SW-4)
+        return (
+          a.personal && a.can('SHIFT_SWAPS') && (!a.swapsManagersOnly || a.can('ROSTER', 'modify'))
+        );
       default:
         return a.can('LEAVE');
     }

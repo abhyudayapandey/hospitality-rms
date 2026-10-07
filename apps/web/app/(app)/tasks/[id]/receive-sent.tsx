@@ -120,7 +120,7 @@ export function SentLines({ lines }: { lines: SentLine[] }) {
   );
 }
 
-/** The head passes the delivery to someone in the team. */
+/** Give the task to someone at its place, or take it back (ADR 051, 073, 074). */
 export function ReassignTask({
   task,
   people,

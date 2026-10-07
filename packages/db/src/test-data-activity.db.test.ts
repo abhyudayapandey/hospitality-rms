@@ -32,11 +32,14 @@ interface Cost {
   actual_pct: string;
 }
 
-/** The window: the 7 days ending on the day of the Hotel 1.0 Bar Store closing count. */
+/**
+ * The window: the 7 days ending on the day of the Hotel 1.0 Bar Store closing count, its
+ * business day (04:00 to 04:00, ADR 046), as the loader counts the test data's days.
+ */
 async function window(c: PoolClient): Promise<{ from: string; to: string }> {
   const { rows } = await c.query<{ from: string; to: string }>(
-    `select ((max(submitted_at) at time zone 'Asia/Kolkata')::date - 6)::text as from,
-            ((max(submitted_at) at time zone 'Asia/Kolkata')::date)::text as to
+    `select (rpt.business_date(max(submitted_at), 'Asia/Kolkata') - 6)::text as from,
+            rpt.business_date(max(submitted_at), 'Asia/Kolkata')::text as to
        from inv.stock_count where delivery_node_id = $1 and status = 'submitted'`,
     [ids.node('TEST-HOTEL-1.0-BAR-STORE')],
   );

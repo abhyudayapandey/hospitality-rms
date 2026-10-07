@@ -11,6 +11,8 @@ export interface ScreenInput extends NavInput {
   access: ReadonlyMap<string, 'view' | 'modify'>;
   /** works at an outlet: has shifts, a clock and swaps of their own (audit #13) */
   atWork: boolean;
+  /** the company keeps swaps for those who change the roster (SW-4, ADR 035, 074) */
+  swapsManagersOnly?: boolean;
 }
 
 export type ScreenSection = 'mine' | 'work' | 'team';
@@ -94,7 +96,9 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     label: 'Swaps',
     icon: 'swap',
     section: 'mine',
-    show: (i) => i.atWork && can(i, 'SHIFT_SWAPS'),
+    // with swaps for management only, staff never see Swaps (the database refuses them too)
+    show: (i) =>
+      i.atWork && can(i, 'SHIFT_SWAPS') && (!i.swapsManagersOnly || can(i, 'ROSTER', 'modify')),
   },
   {
     key: 'myWeek',

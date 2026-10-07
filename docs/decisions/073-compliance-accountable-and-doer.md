@@ -1,6 +1,6 @@
 # 073 — Compliance: who answers for a regular job and who does it; Needs action first
 
-Status: accepted · 2026-10-07 · migration 20261129100000
+Status: accepted · 2026-10-07 · migration 20261129100000 · who sees a handed-on task: ADR 074
 
 ADR 069 gave each calendar job one role, "whose job it is": that role got the To do item 14
 days before it was due and marked it done. In a hotel the General Manager answers for pest
@@ -34,8 +34,8 @@ GM didn't know where to look, and "Calendar" didn't say what was in it.
    "Calendar" is now "Regular jobs" in the words; the screens' paths stay.
 4. **File 39** takes an optional `doer_role`. The set-up wizard (ADR 064) makes the outlet's
    manager accountable for every job and its kitchen head or chief engineer (or whoever
-   covers them, ADR 061) the doer, else the manager. Test Company's file 39 is unchanged
-   (the GM does the pest control); the Passport demo's GM answers for every job, each done by
+   covers them, ADR 061) the doer, else the manager. Test Company's file 39 was unchanged
+   (the GM did the pest control; since ADR 074 its Executive Housekeeper does it); the Passport demo's GM answers for every job, each done by
    the head it belongs to.
 
 ## Consequences

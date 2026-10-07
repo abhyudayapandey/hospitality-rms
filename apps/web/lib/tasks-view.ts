@@ -37,6 +37,41 @@ export function groupTasks<T extends TaskRow>(
   return out;
 }
 
+/**
+ * Who has one of my tasks (ADR 074): "You" (and from whom, when someone gave it to me), or
+ * before anyone has taken it, the job role's or the shift's.
+ */
+export function myTaskWho(t: {
+  taken: boolean;
+  assign_mode: string;
+  assigned_by_name: string | null;
+}): string {
+  if (t.taken) return t.assigned_by_name ? `You, from ${t.assigned_by_name}` : 'You';
+  return t.assign_mode === 'on_shift'
+    ? 'Whoever is on shift'
+    : 'Your job role: the first to start takes it';
+}
+
+/** Who has a task on a manager's list: "You" when it is theirs, else the name or the pool. */
+export function teamWho(
+  t: { assignee_user_id: string | null; assignee_name: string | null; pool: string | null },
+  me: string,
+): string | null {
+  if (t.assignee_user_id === me) return 'You';
+  return t.assignee_name ?? t.pool;
+}
+
+/**
+ * It was already overdue when it reached whoever has it (ADR 074): their lateness counts from
+ * when they got it, not from the due date.
+ */
+export function overdueWhenGiven(t: {
+  due_at: Date | string;
+  given?: Date | string | null;
+}): boolean {
+  return !!t.given && new Date(t.given).getTime() > new Date(t.due_at).getTime();
+}
+
 export type Schedule =
   | { kind: 'daily'; times: string[] }
   | { kind: 'weekly'; weekdays: number[]; times: string[] }

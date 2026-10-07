@@ -66,6 +66,21 @@ describe('screens', () => {
     expect(here).not.toContain('roster');
   });
 
+  it('swaps for management only (SW-4): no Swaps for staff, Swaps for roster builders', () => {
+    const staff = screensFor(input([['SHIFT_SWAPS', 'modify']], { swapsManagersOnly: true }));
+    expect(staff.map((s) => s.key)).not.toContain('swaps');
+    const lead = screensFor(
+      input(
+        [
+          ['SHIFT_SWAPS', 'modify'],
+          ['ROSTER', 'modify'],
+        ],
+        { swapsManagersOnly: true },
+      ),
+    );
+    expect(lead.map((s) => s.key)).toContain('swaps');
+  });
+
   it('stock screens follow stock access; recipes without menu costs', () => {
     const keeper = screensFor(
       input(

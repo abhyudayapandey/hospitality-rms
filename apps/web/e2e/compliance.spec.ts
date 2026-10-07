@@ -60,7 +60,7 @@ test('the tabs: Needs action, Licences, Regular jobs; each job says who does it'
   await page.waitForURL(/tab=jobs/);
   await expect(
     page.getByTestId('job').filter({ hasText: 'Pest control service' }).getByTestId('job-people'),
-  ).toHaveText('Done by the General Manager');
+  ).toHaveText('Done by the Executive Housekeeper · the General Manager answers for it');
 });
 
 test('the GM hands the pest control To do to the assistant GM (ADR 073)', async ({ page }) => {
@@ -84,6 +84,7 @@ test('the GM hands the pest control To do to the assistant GM (ADR 073)', async 
       'With Test Assistant General Manager 1.0',
     );
   } finally {
+    await asMigrator(`delete from ops.task_handover where task_id = $1`, [t!.id]);
     await asMigrator(
       `update ops.task set assignee_user_id = null, assign_mode = 'job_role', assigned_by = $2
         where id = $1`,

@@ -119,9 +119,17 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
                       <span className="min-w-0">
                         <span className="block truncate font-medium">{r.title}</span>
                         <span className="block truncate text-xs text-slate-500">
-                          {r.place_name} · {formatWhen(r.created_at)}
-                          {r.assigned_to_name && ` · ${r.assigned_to_name}`}
+                          {r.place_name} · reported {formatWhen(r.created_at)}
                         </span>
+                        {r.assigned_to_name && (
+                          <span
+                            className="block truncate text-xs text-slate-500"
+                            data-testid="repair-who"
+                          >
+                            {r.assigned_to === user.id ? 'You' : r.assigned_to_name}
+                            {r.assigned_at && ` · given ${formatWhen(r.assigned_at)}`}
+                          </span>
+                        )}
                       </span>
                       <span
                         className={`shrink-0 text-xs ${r.status === 'done' ? 'text-emerald-700' : 'text-slate-600'}`}

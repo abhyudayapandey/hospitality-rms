@@ -172,6 +172,13 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   A regular job's `owner_role` answers for it (at the outlet; told when due and when done) and
   its optional `doer_role` does it and gets the To do item; whoever has a compliance To do may
   hand it to someone there. The screen's tabs: Needs action, Licences, Regular jobs (ADR 073).
+- Handing a task on (ADR 074): a task is seen, and given to someone else, by its place's
+  managers, the head of the department where whoever has it works (wherever it sits), and
+  whoever handed it on (`ops.sees_task`, `ops.may_hand_on`); every assignment is recorded
+  (`ops.task_handover`, by a trigger) with `ops.task.assigned_at`. Every task list says who
+  has it ("You" for one's own), since when, and when it is due; "overdue when given" when it
+  reached them late; "Given to others" on To do and Home until it is done. `ops.can_work`
+  is never null. With swaps for management only, staff see no Swaps tab at all.
   The wizard's "What they buy" step lists every bundle, the usual ones ticked; bundles are
   bought, extras are what is there.
 - A hotel's pool, spa and gym are extras with the SOP's people and checks; breakfast is the
