@@ -2368,3 +2368,25 @@ stack change and nothing to re-import.
    "2 need action", with Pest control service and FSSAI licence; "Do these first" no longer
    mentions compliance. As **Test Bar Manager 3.0**: one green line, "Compliance: all
    licences valid, nothing overdue". As **Test Bar Manager** (Solo Bar): no card.
+
+## Releasing room minibars, show as someone, and the Passport Hotel demo (ADRs 071, 072)
+
+Two migrations: `20261127100000_show_as` (the demo presenter, `core.show_as_log`,
+`audit.log.presented_by`, the refusals while presenting) and `20261127110000_minibar` (rooms,
+minibar sets and checks). The product sync in Deploy adds the MINIBAR domain and the Minibar
+Keeper group to every customer and gives the outlet managers MINIBAR. Test data changed (Test
+Company's file 06 gives the minibar duty to its housekeeping and front office roles; files 40
+and 41 add Hotel 1.0's rooms and minibar). No stack change.
+
+1. Merge, then **Deploy** (it runs both migrations and the product sync). `cdk diff` shows
+   nothing.
+2. Re-import **Test Company** (45 files now): no problems, the same owner warnings; job role
+   access 5 new, minibar sets 1, minibar items 3, rooms 5; the rest unchanged. Apply, then a
+   second dry run shows no changes. Test Solo Bar Co. has nothing to re-import.
+3. Check: sign in as **Test Room Attendant 1.0**. Me → **Minibars**: 5 rooms; open room 101,
+   **All there: nothing used**, change Test Cola 300ml to 1, **Save and refill**: "₹120.00 to
+   add to the guest's bill". As **Test Front Desk Executive 1.0**, Minibars → To charge → room
+   101 → **Added to the bill**.
+4. Load the Passport Hotel demo for the pitch: `docs/onboarding/demo/passport-hotel/README.md`
+   (refresh its dates, build the zip, create `PASSPORT-TEST`, Compliance on, import, the login
+   sheet). Then sign in as `passport.presenter`: Me → **Show the app as someone**.

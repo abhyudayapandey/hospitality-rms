@@ -1,0 +1,41 @@
+# Passport Hotel: the pitch, screen by screen
+
+For the GM of Passport Hotel, Assagao (27 keys; Mini Bar in the lobby, Layover on the roof,
+Jet Lag for events, the rooftop pool). About 25 minutes on one phone. You sign in once as
+**Demo Presenter** and switch persona from **Me → Show the app as someone**; the amber
+banner on every screen says whose app it is, with **Switch** and **Back to Demo**.
+
+Rehearse it once the day before: the screens here are from the loaded demo, but a button's exact words may differ slightly. Before you start (5 minutes): the customer is loaded (README), Compliance is in its plan,
+you are signed in as Demo Presenter on the phone, and the POS file
+`pos-sale-by-item.csv` is on the phone (or in its downloads).
+
+| #   | Show as                               | Open                                                | Show and say                                                                                                                                                                                                                                                                                                       | Min |
+| --- | ------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --- |
+| 1   | **Anjali Fernandes**, General Manager | Home                                                | "This is your morning." Compliance first: pest control overdue, the bar licence expiring in 25 days. Expiring items, Push today, the department list (kitchen 3 items running low, 1 open repair in housekeeping). "Every line opens the list behind it." Sales show ₹0 for today: the cashier imports them at #8. | 3   |
+| 2   | **Avinash Kamat**, Executive Chef     | Home → **Write today's briefing**                   | Write "Kingfish is in, push the rava fry; Table 4 nut allergy", mark **Pork vindalho** off today, share. "Everyone at the hotel sees it on Home." Then Menu → **Prawns recheado**: its recipe and cost, the recheado masala batch.                                                                                 | 3   |
+| 3   | **Dylan Coutinho**, Bar Manager       | Menu → **Hot Girl Club**                            | Your signature, costed to the paisa: feni, tequila, the tepache liqueur and thecha salt they batch themselves. Then Stock: the **Layover** and the **Mini Bar (lobby)** each with their own par; the Mini Bar's count sheet goes shelf by shelf (back bar, garnish fridge…).                                       | 3   |
+| 4   | **Ryan Mascarenhas**, Head Bartender  | Stock → Place: **Mini Bar (lobby)** → **Transfers** | Ask the Main Store for 2 tequila and 6 feni for tonight: items and quantities only.                                                                                                                                                                                                                                | 2   |
+| 5   | **Mahesh Talaulikar**, Store Keeper   | Home → **Receive**, then **Send**                   | Yesterday's grocery order (cashews, water) arrives: count what came, the amount paid per item, a bill photo. Then send the head bartender's request to the Mini Bar. "Every bottle is in the ledger: out of the Main Store, into the bar."                                                                         | 3   |
+| 6   | **Savio Dias**, Room Attendant        | Me → **Minibars** → a room                          | Room 104 checks out: **All there**, then 1 beer and 1 cashews gone. "Saved: ₹600 to add to the guest's bill; the minibar is refilled from the housekeeping store." The room list shows today's checks.                                                                                                             | 2   |
+| 7   | **Sneha Naik**, Front Desk Executive  | Me → **Minibars** → **To charge**                   | Each room's charge with what was taken; **Added to the bill**. The **Sold** tab: what the minibars sold this week and what it cost.                                                                                                                                                                                | 2   |
+| 8   | **Kunal Sawant**, Cashier             | Home → **Import sales**                             | The POS's end-of-day file (`pos-sale-by-item.csv`): every line matched to a dish. Back as the GM later, today's sales and food cost appear.                                                                                                                                                                        | 2   |
+| 9   | **Nikhil Kerkar**, Pool Attendant     | Tasks                                               | The pool water test (pH, chlorine) at 08:00, 12:00 and 16:00 and the morning safety check, from the hotel's SOPs. A reading out of range is flagged.                                                                                                                                                               | 1   |
+| 10  | **Prakash Chodankar**, Chief Engineer | Tasks → the repairs                                 | "Room 204: AC not cooling", reported by the front desk last night, assigned to Vinay. The pool pump noise is still to assign: assign it.                                                                                                                                                                           | 1   |
+| 11  | **Gail Lobo**, Banquet Manager        | Events                                              | The feni & gin tasting and the sangeet at **Jet Lag**: covers, the stock they need and the staff to roster.                                                                                                                                                                                                        | 1   |
+| 12  | **Neha Sardesai**, Accountant         | Me → **Compliance**                                 | The licences: excise bar licence expiring in 25 days; renew it with a photo of the new licence.                                                                                                                                                                                                                    | 1   |
+| 13  | **Anjali Fernandes**, General Manager | Home, then **Reports**                              | Today's sales are in now (#8). Reports: cost of sales and food/drinks cost against target, labour cost by department from the clock-ins, stock and purchasing; every figure opens what is behind it.                                                                                                               | 3   |
+| 14  | Back to Demo                          | —                                                   | The pilot: their own menu and people loaded in a day; everyone signs in on their own phone with a login ID; it runs on any phone, no app store.                                                                                                                                                                    | 1   |
+
+If something goes wrong on a screen, **Switch** to the next person and carry on; every
+persona can also sign in directly with their login ID and the sheet's password.
+
+## Questions the GM may ask
+
+- **Our real menu?** Everything except the five Mini Bar signatures is invented for the
+  demo; theirs is loaded from their files or their POS item list.
+- **Excise register?** Next on the plan, from the same stock ledger: the daily bar stock
+  register in bottles and pegs, printable.
+- **Our POS?** The import reads the POS's end-of-day "sale by item" export; a direct
+  connection can follow.
+- **Guests' bills?** Front office adds the minibar charge to the bill by hand today; a link
+  to the PMS can follow.

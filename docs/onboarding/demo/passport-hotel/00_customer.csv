@@ -1,0 +1,2 @@
+customer_code,company_name,country,currency,default_timezone,is_test,swaps_managers_only
+PASSPORT-TEST,[TEST] Passport Hotel,India,INR,Asia/Kolkata,yes,yes

@@ -95,6 +95,8 @@ const FRONTLINE = new Set([
   'EVENT_PLANNER',
   'CASHIER',
   'BRIEFING_WRITER',
+  // checks the rooms' minibars (ADR 072): their own rooms, no one else's work
+  'MINIBAR_KEEPER',
 ]);
 
 export type NavProfile = 'outlet' | 'department' | 'store' | 'cost' | 'frontline' | 'office';

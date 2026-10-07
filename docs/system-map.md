@@ -40,9 +40,10 @@ the Kitchen Store.
 
 ### What is not modelled
 
-Hotel **rooms**, **tables** and **guests**. Housekeeping works through tasks and
-checklists at the Housekeeping department. Room-level work would need a PMS link (see
-`docs/reporting.md` gaps).
+**Tables** and **guests**, and rooms beyond their minibars: a hotel's rooms are listed (file 40)
+only so their minibars can be checked and charged (ADR 072). Housekeeping otherwise works
+through tasks and checklists at the Housekeeping department. Room status, folios and stays would
+need a PMS link (see `docs/reporting.md` gaps).
 
 ## 2. People
 
@@ -252,6 +253,18 @@ Today's briefing) by the heads of kitchen and service departments (the duty "Wri
 briefing", group BRIEFING_WRITER) at their department, by the outlet's managers at the outlet
 or any department, and by whoever covers a writer. One note per place and part of the day;
 saving again edits it, "Take down" archives it. No module: it comes with every plan.
+
+**Minibars** (ADR 072). A hotel's rooms (file 40), each with a minibar set (file 41: items, par,
+price, the store it refills from). Me → Minibars: Rooms (when each was last checked), To charge
+(what front office still has to add to bills, "Added to the bill") and Sold (7 or 30 days).
+Checking a room counts what is left; what is missing is charged and refilled from the store as
+a consumption. Housekeeping and front office hold the duty "Checks the rooms' minibars"
+(MINIBAR_KEEPER at the outlet); the outlet's managers too; area managers see.
+
+**Show as someone** (ADR 071), test customers only. A demo presenter (file 07) opens Me → Show
+the app as someone and picks a person of their company; every screen is then theirs, under an
+amber banner with Switch and Back to. The database checks it on every request, audit rows say
+who presented, and nothing touches a login meanwhile.
 
 ### Approval processes (To do list)
 

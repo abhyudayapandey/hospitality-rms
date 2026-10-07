@@ -395,6 +395,7 @@ export function validateBundle(b: Bundle): Issue[] {
   validateMenu(b, add, { items, org, dlv, placed });
   validateActivity(b, add, { items, org, dlv, placed }, users);
   validateTasks(b, add, { items, org, dlv, placed }, users, roles);
+  validateMinibars(b, add, { items, org, dlv, placed }, users);
   return issues;
 }
 
@@ -859,6 +860,120 @@ interface Known {
 }
 
 /** Recipe lines grouped by what they are for (`prep CODE` or `menu CODE`). */
+/**
+ * Files 40 to 42 (ADR 072): a minibar set refills from a store of its outlet that holds each
+ * of its items (file 11); a room's set is one of its outlet's; a check counts every item of
+ * its room's set once, as people in file 07.
+ */
+function validateMinibars(
+  b: Bundle,
+  add: Add,
+  k: Known,
+  users: Map<string, Bundle['users'][number]>,
+): void {
+  const f = (key: keyof typeof FILES) => FILES[key].file;
+  const outlet = (file: string, line: number, code: string) => {
+    const o = k.org.get(code);
+    if (!o) add(file, line, 'outlet_code', `${code} is not in ${f('orgNodes')}`);
+    else if (o.kind !== 'outlet') add(file, line, 'outlet_code', `${code} is not an outlet`);
+  };
+  const sets = new Map<string, { store: string; items: Set<string> }>();
+  for (const l of b.minibarSets) {
+    const file = f('minibarSets');
+    outlet(file, l.line, l.outlet_code);
+    const key = `${l.outlet_code} ${l.set_name.toLowerCase()}`;
+    const set = sets.get(key) ?? { store: l.store_node_code, items: new Set<string>() };
+    sets.set(key, set);
+    if (set.store !== l.store_node_code) {
+      add(file, l.line, 'store_node_code', `${l.set_name} refills from ${set.store} above`);
+    }
+    const d = k.dlv.get(l.store_node_code);
+    if (!d) {
+      add(file, l.line, 'store_node_code', `${l.store_node_code} is not in ${f('deliveryNodes')}`);
+    } else if (!d.holds_stock || !storeOfOutlet(b, k, l.store_node_code, l.outlet_code)) {
+      add(
+        file,
+        l.line,
+        'store_node_code',
+        `${l.store_node_code} is not a store of ${l.outlet_code}`,
+      );
+    }
+    if (!k.items.has(l.item_code)) {
+      add(file, l.line, 'item_code', `${l.item_code} is not in ${f('items')}`);
+    } else if (!k.placed.has(`${l.item_code} ${l.store_node_code}`)) {
+      add(
+        file,
+        l.line,
+        'item_code',
+        `${l.item_code} is not kept at ${l.store_node_code} in ${f('itemLocations')}`,
+      );
+    }
+    if (set.items.has(l.item_code))
+      add(file, l.line, 'item_code', `is listed twice in ${l.set_name}`);
+    set.items.add(l.item_code);
+  }
+  const rooms = new Map<string, string | undefined>();
+  for (const r of b.rooms) {
+    const file = f('rooms');
+    outlet(file, r.line, r.outlet_code);
+    const key = `${r.outlet_code} ${r.room_number.toLowerCase()}`;
+    if (rooms.has(key)) add(file, r.line, 'room_number', `is listed twice for ${r.outlet_code}`);
+    const set = r.minibar_set && `${r.outlet_code} ${r.minibar_set.toLowerCase()}`;
+    if (set && !sets.has(set)) {
+      add(
+        file,
+        r.line,
+        'minibar_set',
+        `${r.minibar_set} is not a set of ${r.outlet_code} in ${f('minibarSets')}`,
+      );
+    }
+    rooms.set(key, set);
+  }
+  const counted = new Map<string, Set<string>>();
+  for (const c of b.minibarChecks) {
+    const file = f('minibarChecks');
+    const set = rooms.get(`${c.outlet_code} ${c.room_number.toLowerCase()}`);
+    if (set === undefined) {
+      add(
+        file,
+        c.line,
+        'room_number',
+        `${c.room_number} at ${c.outlet_code} has no minibar in ${f('rooms')}`,
+      );
+      continue;
+    }
+    if (!sets.get(set)?.items.has(c.item_code)) {
+      add(file, c.line, 'item_code', `${c.item_code} is not in room ${c.room_number}'s minibar`);
+    }
+    if (c.day > 0) add(file, c.line, 'day', 'must be today or a past day, like -1');
+    if (!users.has(c.checked_by))
+      add(file, c.line, 'checked_by', `${c.checked_by} is not in ${f('users')}`);
+    if (c.charged_by && !users.has(c.charged_by)) {
+      add(file, c.line, 'charged_by', `${c.charged_by} is not in ${f('users')}`);
+    }
+    const key = `${c.outlet_code} ${c.room_number} ${c.day} ${c.time}`;
+    const items = counted.get(key) ?? new Set<string>();
+    if (items.has(c.item_code)) add(file, c.line, 'item_code', 'is counted twice in this check');
+    items.add(c.item_code);
+    counted.set(key, items);
+  }
+  for (const [key, items] of counted) {
+    const [o, room] = key.split(' ');
+    const set = sets.get(rooms.get(`${o} ${room!.toLowerCase()}`) ?? '');
+    if (set && items.size !== set.items.size) {
+      const line = b.minibarChecks.find(
+        (c) => `${c.outlet_code} ${c.room_number} ${c.day} ${c.time}` === key,
+      )!.line;
+      add(
+        f('minibarChecks'),
+        line,
+        'item_code',
+        `the check of room ${room} must count every item of its minibar`,
+      );
+    }
+  }
+}
+
 function recipeGroups(b: Bundle): Map<string, Bundle['recipes']> {
   const groups = new Map<string, Bundle['recipes']>();
   for (const r of b.recipes) {

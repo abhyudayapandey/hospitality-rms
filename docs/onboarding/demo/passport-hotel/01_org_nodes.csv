@@ -1,0 +1,14 @@
+node_code,name,kind,parent_code,timezone,outlet_format,department_type
+PASSPORT-TEST,[TEST] Passport Hotel,company,,,,
+PASSPORT-ASSAGAO,"Passport Hotel, Assagao",outlet,PASSPORT-TEST,Asia/Kolkata,hotel,
+PASSPORT-ASSAGAO-FRONT-OFFICE,Front Office,department,PASSPORT-ASSAGAO,Asia/Kolkata,,other
+PASSPORT-ASSAGAO-HOUSEKEEPING,Housekeeping,department,PASSPORT-ASSAGAO,Asia/Kolkata,,housekeeping
+PASSPORT-ASSAGAO-KITCHEN,Kitchen,department,PASSPORT-ASSAGAO,Asia/Kolkata,,kitchen
+PASSPORT-ASSAGAO-RESTAURANT,Restaurant,department,PASSPORT-ASSAGAO,Asia/Kolkata,,service
+PASSPORT-ASSAGAO-BAR,Bar (Layover & Mini Bar),department,PASSPORT-ASSAGAO,Asia/Kolkata,,service
+PASSPORT-ASSAGAO-IN-ROOM-DINING,In-Room Dining,department,PASSPORT-ASSAGAO,Asia/Kolkata,,service
+PASSPORT-ASSAGAO-BANQUETS,"Sales, Events & Banquets",department,PASSPORT-ASSAGAO,Asia/Kolkata,,service
+PASSPORT-ASSAGAO-CASHIER,Cashier,department,PASSPORT-ASSAGAO,Asia/Kolkata,,other
+PASSPORT-ASSAGAO-ENGINEERING,Engineering & Maintenance,department,PASSPORT-ASSAGAO,Asia/Kolkata,,other
+PASSPORT-ASSAGAO-STORES-TEAM,Purchase & Stores,department,PASSPORT-ASSAGAO,Asia/Kolkata,,other
+PASSPORT-ASSAGAO-ADMIN-FINANCE,Admin & Finance,department,PASSPORT-ASSAGAO,Asia/Kolkata,,other

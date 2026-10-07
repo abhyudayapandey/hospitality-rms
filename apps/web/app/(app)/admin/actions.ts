@@ -103,6 +103,8 @@ export async function createPerson(p: NewPerson): Promise<ActionResult<Created>>
 export async function createLogin(
   userId: string,
 ): Promise<ActionResult<{ temporaryPassword: string | null }>> {
+  // no Cognito login made while showing the app as someone (ADR 071)
+  if ((await requireUser()).presentedBy) return failure(new Error('PRESENTING'));
   const target = await run('login_admin_target', async (tx) => {
     const r = await sql<{ username: string; email: string | null; login_type: string }>`
       select username, email, login_type from core.admin_user(${userId}::uuid)`.execute(tx);
@@ -132,6 +134,7 @@ export async function createLogin(
 
 export async function resetPassword(userId: string): Promise<ActionResult<string>> {
   const me = await requireUser();
+  if (me.presentedBy) return failure(new Error('PRESENTING'));
   if (!(await withinLimit(`reset:${me.id}`, LIMITS.passwordReset))) {
     return failure(new Error('RATE_LIMITED'));
   }

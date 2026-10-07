@@ -32,6 +32,8 @@ export async function changeOwnPassword(input: {
     return failure(err);
   }
   const me = await requireUser();
+  // never someone else's login while showing the app as them (ADR 071)
+  if (me.presentedBy) return fail('PRESENTING');
   if (input.next !== input.confirm) return fail('PASSWORDS_DIFFER');
   if (passwordProblems(input.next).length) return fail('PASSWORD_POLICY');
   if (!(await withinLimit(`pwchange:${me.id}`, LIMITS.passwordChange))) {
@@ -68,6 +70,7 @@ export async function signOutEverywhere(): Promise<ActionResult<string>> {
     return failure(err);
   }
   const me = await requireUser();
+  if (me.presentedBy) return fail('PRESENTING');
   let login: string | null;
   try {
     login = await withUser(me.id, async (tx) => {

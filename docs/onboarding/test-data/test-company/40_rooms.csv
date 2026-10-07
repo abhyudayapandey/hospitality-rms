@@ -1,0 +1,6 @@
+outlet_code,room_number,floor,room_type,minibar_set
+TEST-HOTEL-1.0,101,1,Deluxe,Standard
+TEST-HOTEL-1.0,102,1,Deluxe,Standard
+TEST-HOTEL-1.0,103,1,Deluxe,Standard
+TEST-HOTEL-1.0,201,2,Suite,Standard
+TEST-HOTEL-1.0,202,2,Suite,

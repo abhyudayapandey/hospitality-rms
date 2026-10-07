@@ -177,6 +177,13 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 - Today's briefing (ADR 070, `ops.briefing`): one note per place and part of the business day,
   written by the BRIEFING_WRITER duty or the outlet's managers, read on Home through
   `ops.my_briefing` by everyone at the outlet; "Off today" dishes come from the outlet's menu.
+- Show as someone (ADR 071): a test customer's demo presenter (file 07 `demo_presenter`) sees the
+  app as anyone in their company; the database checks it on every request (`core.presented_by`),
+  audit rows carry `presented_by`, and nothing touches a login meanwhile (`PRESENTING`).
+- Room minibars (ADR 072, files 40 to 42): rooms with a minibar set (par, price, a store); a check
+  charges what is missing and refills it from the store as a `consumption`; front office marks it
+  on the bill. The duty `CHECKS_MINIBARS`. The Passport Hotel pilot demo is
+  `docs/onboarding/demo/passport-hotel`, written by `pnpm --filter @outlet-ops/onboarding passport-demo`.
 - The service worker shows "Can't reach Outlet Ops" after 10 s and caches nothing; Cognito calls
   give up after 5 s, and Cognito not answering never signs anyone out (ADR 063). Caddy speaks
   HTTP/1.1 and HTTP/2 only (the security group has no UDP 443) and logs each request.

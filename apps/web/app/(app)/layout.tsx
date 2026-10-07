@@ -4,6 +4,7 @@ import { BottomNav } from '@/components/bottom-nav';
 import { Icon } from '@/components/icon';
 import { ActionSync } from '@/components/action-sync';
 import { PunchSync } from '@/components/punch-sync';
+import { ShowAsBanner } from '@/components/show-as-banner';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { NavProgress } from '@/components/nav-progress';
 import { VersionCheck } from '@/components/version-check';
@@ -80,6 +81,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <ThemeToggle />
         </div>
       </header>
+      {shell.user.presentedBy && (
+        <ShowAsBanner name={shell.user.name} presenter={shell.user.presentedBy.name} />
+      )}
       <Suspense fallback={null}>
         <NavProgress />
       </Suspense>
