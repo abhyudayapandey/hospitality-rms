@@ -55,7 +55,10 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'TASKS', tree: 'org' },
   { code: 'CHECKLIST_TEMPLATES', tree: 'org' },
   { code: 'MAINTENANCE', tree: 'org' },
-  // today's briefing note for the outlet's shift (ADR 069): written at a department or the
+  // licences and the compliance calendar (ADR 069), at the outlet or one of its departments:
+  // the company's legal records, so the Account Owner may see them too (admin)
+  { code: 'COMPLIANCE', tree: 'org', admin: true },
+  // today's briefing note for the outlet's shift (ADR 070): written at a department or the
   // outlet; everyone who works at the outlet reads it through ops.my_briefing()
   { code: 'BRIEFING', tree: 'org' },
   { code: 'AI_RECOMMENDATIONS', tree: 'org' },
@@ -165,7 +168,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: { POS_IMPORT: m },
   },
   {
-    // writes today's briefing note for the shift at their department (ADR 069)
+    // writes today's briefing note for the shift at their department (ADR 070)
     code: 'BRIEFING_WRITER',
     name: 'Briefing Writer',
     kind: 'role',
@@ -271,6 +274,8 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       MAINTENANCE: m,
       BRIEFING: m,
       LABOUR_COST: v,
+      // the licences and the compliance calendar (ADR 069)
+      COMPLIANCE: m,
     },
   },
   {
@@ -296,6 +301,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       CHECKLIST_TEMPLATES: v,
       MAINTENANCE: v,
       LABOUR_COST: v,
+      COMPLIANCE: v,
     },
   },
   {
@@ -315,6 +321,14 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     },
   },
   { code: 'SUPPLY_VIEWER', name: 'Supply Viewer', kind: 'role', grants: { STOCK_LEVELS: v } },
+  // keeps the licences and the compliance calendar for someone other than the manager (an
+  // accountant, an admin executive; ADR 069)
+  {
+    code: 'COMPLIANCE_KEEPER',
+    name: 'Compliance Keeper',
+    kind: 'role',
+    grants: { COMPLIANCE: m },
+  },
   {
     code: 'HR_ADMIN',
     name: 'HR Admin',
@@ -348,6 +362,8 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       SECURITY_ROLES: v,
       WF_CONFIG: v,
       REPORTS: v,
+      // every outlet's licences and compliance calendar, read-only (ADR 069)
+      COMPLIANCE: v,
     },
   },
   {

@@ -40,6 +40,11 @@ export const MODULES = [
     what: 'Report a problem; engineering assigns and fixes it.',
   },
   {
+    code: 'compliance',
+    name: 'Compliance',
+    what: 'Licences with their renewals, and the compliance calendar with proof.',
+  },
+  {
     code: 'menu_sales',
     name: 'Menu and sales',
     what: 'Menu costs and prices, daily sales and variance. Off: no sales figures in reports.',

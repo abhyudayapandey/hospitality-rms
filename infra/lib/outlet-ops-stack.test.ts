@@ -537,9 +537,13 @@ describe('wastage photos (ADR 006)', () => {
     expect(rules).toContainEqual(
       expect.objectContaining({ Prefix: 'selfies/', ExpirationInDays: 731, Status: 'Enabled' }),
     );
+    // licences and compliance proof are never expired by the bucket (ADR 069)
+    expect(
+      rules.filter((r) => typeof r.Prefix !== 'string' || r.Prefix.startsWith('compliance')),
+    ).toEqual([]);
   });
 
-  it('lets the instance role put and get wastage/*, onboarding/*, tasks/*, stockcheck/*, selfies/*, items/* and bills/* in the photo bucket, nothing else', () => {
+  it('lets the instance role put and get wastage/*, onboarding/*, tasks/*, stockcheck/*, selfies/*, items/*, bills/* and compliance/* in the photo bucket, nothing else', () => {
     const { id } = photoBucket();
     const st = statements('InstanceRole').filter((s) => JSON.stringify(s.Resource).includes(id));
     expect(st.map((s) => [s.Sid, actions(s).sort()])).toEqual([
@@ -550,6 +554,7 @@ describe('wastage photos (ADR 006)', () => {
       ['ClockSelfies', ['s3:GetObject', 's3:PutObject']],
       ['ItemPhotos', ['s3:GetObject', 's3:PutObject']],
       ['VendorBills', ['s3:GetObject', 's3:PutObject']],
+      ['ComplianceDocuments', ['s3:GetObject', 's3:PutObject']],
     ]);
     expect(JSON.stringify(st[0]!.Resource)).toContain('/wastage/*');
     expect(JSON.stringify(st[1]!.Resource)).toContain('/onboarding/*');
@@ -558,6 +563,7 @@ describe('wastage photos (ADR 006)', () => {
     expect(JSON.stringify(st[4]!.Resource)).toContain('/selfies/*');
     expect(JSON.stringify(st[5]!.Resource)).toContain('/items/*');
     expect(JSON.stringify(st[6]!.Resource)).toContain('/bills/*');
+    expect(JSON.stringify(st[7]!.Resource)).toContain('/compliance/*');
     // no list or delete: the lifecycle rule removes old uploads
     expect(st.flatMap(actions)).not.toContain('s3:DeleteObject');
   });

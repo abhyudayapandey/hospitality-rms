@@ -1,6 +1,6 @@
 # 058 — One catalogue, outlet templates and "who covers it"
 
-Status: accepted · 2026-10-06 (direction) · built 2026-10-07: Steps 1 to 8 and the final pass (ADRs 059 to 069)
+Status: accepted · 2026-10-06 (direction) · built 2026-10-07: Steps 1 to 8 and the final pass (ADRs 059 to 068 and 070)
 
 The plan is `docs/templates-and-cover.md`; the SOP manuals and the comparison it comes from
 are in `docs/sop/`. This ADR records the decisions it rests on.

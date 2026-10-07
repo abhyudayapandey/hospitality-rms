@@ -1,5 +1,5 @@
 -- migrate:up
--- Today's briefing note (ADR 069): a short note for the outlet's shift from the head chef or a
+-- Today's briefing note (ADR 070): a short note for the outlet's shift from the head chef or a
 -- manager, the SOPs' pre-shift briefing (specials, dishes that are off, guests to know about,
 -- targets). It shows on Home for everyone who works at the outlet that business day (the
 -- 04:00 cut in the outlet's time zone, ops.tz_of), for the whole day, or for lunch (until

@@ -36,6 +36,7 @@ export type ScreenKey =
   | 'orders'
   | 'transfers'
   | 'bills'
+  | 'compliance'
   | 'sales'
   | 'posImport'
   | 'briefing'
@@ -234,7 +235,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     show: (i) => can(i, 'POS_IMPORT', 'modify'),
   },
   {
-    // today's note for the shift (ADR 069): its writers; everyone reads it on Home
+    // today's note for the shift (ADR 070): its writers; everyone reads it on Home
     key: 'briefing',
     href: '/briefing',
     label: "Today's briefing",
@@ -258,6 +259,15 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     icon: 'calendar',
     section: 'team',
     show: (i) => can(i, 'ROSTER', 'modify') || (!i.atWork && can(i, 'ROSTER')),
+  },
+  {
+    // licences and the compliance calendar (ADR 069), where Compliance is in the plan
+    key: 'compliance',
+    href: '/compliance',
+    label: 'Compliance',
+    icon: 'shield',
+    section: 'team',
+    show: (i) => can(i, 'COMPLIANCE'),
   },
   {
     key: 'events',

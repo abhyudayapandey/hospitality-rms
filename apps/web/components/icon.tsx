@@ -53,6 +53,8 @@ const PATHS = {
   bill: ['M6 3h12v18l-3-2-3 2-3-2-3 2z', 'M9 7h6M9 11h6M9 15h3'],
   upload: ['M12 16V4M6 10l6-6 6 6M4 20h16'],
   fire: ['M12 3c1 4 6 6 6 11a6 6 0 0 1-12 0c0-3 2-5 3-7 1 2 2 3 3 3 0-3-1-5 0-7z'],
+  // a certificate with its seal: licences and compliance (ADR 069)
+  shield: ['M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z', 'M9 12l2 2 4-4'],
   star: ['M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z'],
 } as const;
 

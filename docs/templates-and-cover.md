@@ -220,28 +220,30 @@ seven steps:
   and Go live puts the ticked ones in the plan.
 - **Scope.** Pricing itself is outside this plan.
 
-### Final pass. 2–3 days — built (with ADR 069)
+### Final pass. 2–3 days — built (with ADR 070)
 
 - **Every template through the wizard** (`apps/web/e2e/setup-templates.spec.ts`, 380 px, the
   real screens and worker). One company with all seven tiles (Restaurant only, Restaurant +
   Bar, Bar / Pub, Café, Quick service, Delivery-only kitchen, Hotel / Resort) and each extra
   used once (bar, banquets, brewery, delivery, central kitchen, and the hotel's pool, spa
   and gym) goes through the check and
-  live. The review lists "who does what" for every outlet and ticks the three bundles; the
+  live. "What they buy" ticks the three bundles and offers Compliance unticked; the review
+  lists "who does what" for every outlet and what they buy; the
   check has no problems and its warnings carry no codes; the loaded outlets have the
   template's format, departments and starter checklists, and every extra its department or
   site. The café's own walk (resume, cover, paste, par, a bundle left out) stays in
   `setup-wizard.spec.ts`.
 - **A café, a bar and a hotel from nothing, timed** (the same spec, which appends its
   numbers to `apps/web/test-results/setup-timings.jsonl`). The shortest path: the company,
-  one outlet from its tile, the template's departments, roles and stock as offered, three
+  one outlet from its tile, the bundles as ticked, the template's departments, roles and
+  stock as offered, three
   people pasted, check, go live.
 
   | Set-up | Taps | Fields typed | Screens | Check | Go live | In all |
   | ------ | ---- | ------------ | ------- | ----- | ------- | ------ |
-  | Café   | 13   | 6            | 2.3 s   | 9.3 s | 5.2 s   | 16.6 s |
-  | Bar    | 13   | 6            | 2.1 s   | 9.4 s | 5.2 s   | 16.6 s |
-  | Hotel  | 13   | 6            | 2.1 s   | 9.7 s | 5.6 s   | 17.4 s |
+  | Café   | 14   | 6            | 2.3 s   | 9.4 s | 5.2 s   | 16.9 s |
+  | Bar    | 14   | 6            | 2.3 s   | 9.5 s | 5.5 s   | 17.3 s |
+  | Hotel  | 14   | 6            | 2.4 s   | 9.6 s | 5.5 s   | 17.5 s |
 
   Machine time, on a laptop with the worker run at once; it is not a person's time. On the
   instance the worker runs on its timer, so check and go live each wait up to a minute more.
@@ -258,7 +260,7 @@ seven steps:
 - The "RLS equivalence (all users)" workflow ran on this PR's head (the briefing adds a
   group).
 - ADRs and docs final: Steps 1 and 2 marked built, section 8's questions marked decided,
-  today's briefing built (ADR 069).
+  today's briefing built (ADR 070).
 
 ## 5. Totals
 
@@ -325,10 +327,10 @@ These are separate decisions, each sized separately if wanted.
   days.
 - **Head-office roles that see across outlets.** Ops head, QA, Supply Chain head, Training.
   About 3–4 build days once Step 2 exists, because they are duties at the company level.
-- **The gaps in table 2 of the SOP comparison.** Licence register, longer compliance
-  calendar, audits, incidents, POS, PMS.
+- **The gaps in table 2 of the SOP comparison.** Audits, incidents, POS, PMS. (The licence
+  register and the compliance calendar are built: ADR 070, the Compliance bundle.)
 - **Rostering one person in two jobs.** Open question 7. Cover doesn't need it.
-- **Today's briefing note (agreed 6 Oct; built with the final pass, ADR 069).**
+- **Today's briefing note (agreed 6 Oct; built with the final pass, ADR 070).**
   - **What.** A short note for the shift from the head chef or a manager: specials, 86'd
     dishes, VIPs and allergies, targets. This is the restaurant SOP's pre-shift briefing
     (R day plan 11:30 and 18:30; H FB-01; Q ST-01).

@@ -163,10 +163,15 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   get a login ID on a printed sheet; everyone sets their own password at first sign-in.
 - Bundles (ADR 067, `bundles.ts`) are what a customer buys; only the platform admin changes the
   plan (`platform.set_bundle`), modules switch inside it (`NOT_IN_PLAN`), templates switch nothing.
+- Compliance (ADR 069) is a bundle out of the plan until the platform admin adds it: licences
+  (`ops.licence`, renewed by a job role, GM by default) and calendar jobs (`ops.compliance_item`,
+  not checklists). Reminders are To do items from `ops.compliance_tick` (90 days before expiry,
+  14 before a job); documents under `compliance/` never expire. The wizard's "What they buy"
+  step lists every bundle, the usual ones ticked; bundles are bought, extras are what is there.
 - A hotel's pool, spa and gym are extras with the SOP's people and checks; breakfast is the
   restaurant's (ADR 068). A library checklist's copy is offered a newer library version on its
   screen and changes only when its editor takes it (`ops.use_library_version`).
-- Today's briefing (ADR 069, `ops.briefing`): one note per place and part of the business day,
+- Today's briefing (ADR 070, `ops.briefing`): one note per place and part of the business day,
   written by the BRIEFING_WRITER duty or the outlet's managers, read on Home through
   `ops.my_briefing` by everyone at the outlet; "Off today" dishes come from the outlet's menu.
 - The service worker shows "Can't reach Outlet Ops" after 10 s and caches nothing; Cognito calls
@@ -262,6 +267,9 @@ not at all; the purchasing and stock figures are pinned by `packages/db/src/cost
 File 37 is who covers it (ADR 061, 066): Guest House 2.0's Front Desk covers its Store Keeper,
 the Solo Bar's Kitchen Steward is not done. The test customers' roles are the SOPs', and
 `test-customers-templates.test.ts` checks every test outlet against its template.
+Files 38 and 39 are licences and the compliance calendar (any customer, ADR 069); Test Company
+has Compliance in its plan from `seed/dev/002_compliance_plan.sql`, Hotel 1.0's FSSAI licence
+expired and its pest control overdue, pinned by `packages/db/src/compliance.db.test.ts`.
 File 34 is pay rates (any customer); files 35 and 36 (test customers only, ADR 030) load a
 past week of attendance and two central kitchen transfers; the labour, People and central
 kitchen figures are pinned by `packages/db/src/labour-reports.db.test.ts`.

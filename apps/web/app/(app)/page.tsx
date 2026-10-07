@@ -192,6 +192,7 @@ export default async function Home() {
                 attention: today.attention,
                 overdueTasks: today.tasks.filter((x) => x.overdue).length,
                 toAssign: today.approvals.toAssign,
+                compliance: today.compliance,
                 openSlotsHref: today.openSlotsHref,
                 canOrder: shell.domains.get('PURCHASE_ORDERS') === 'modify',
               })
@@ -254,7 +255,7 @@ function PosCard({ pos, tz }: { pos: NonNullable<Today['pos']>; tz: string }) {
   );
 }
 
-// Today's briefing (ADR 069): the outlet's notes for the shift, the outlet's own first, then
+// Today's briefing (ADR 070): the outlet's notes for the shift, the outlet's own first, then
 // its departments'. Its writers get a link to write or edit theirs.
 function Briefing({
   briefing,

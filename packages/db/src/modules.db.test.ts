@@ -24,6 +24,7 @@ afterAll(closePools);
 
 const ALL = [
   'checklists',
+  'compliance',
   'events',
   'leave',
   'maintenance',
@@ -47,14 +48,14 @@ const setModule = (c: PoolClient, who: string, code: string, on: boolean) =>
   attemptAs(c, ids.user(who), 'select core.set_module($1, $2)', [code, on]);
 
 describe('which modules a company has', () => {
-  it("the database lists the eight modules (the app's list is pinned in the loader test)", async () => {
+  it("the database lists the nine modules (the app's list is pinned in the loader test)", async () => {
     await inRolledBackTx(async (c) => {
       const { rows } = await c.query<{ codes: string[] }>('select core.module_codes() as codes');
       expect([...rows[0]!.codes].sort()).toEqual(ALL);
     });
   });
 
-  it('every module is on unless the company turned it off', async () => {
+  it('every module in the plan is on unless the company turned it off', async () => {
     await inRolledBackTx(async (c) => {
       const m = await modules(c, 'test.server.3.0');
       expect(Object.keys(m).sort()).toEqual(ALL);
@@ -67,7 +68,8 @@ describe('which modules a company has', () => {
       const solo = await modules(c, 'test.solo.server');
       expect(solo.events).toBe(false);
       expect(solo.swaps).toBe(false);
-      expect(ALL.filter((k) => !solo[k])).toEqual(['events', 'swaps']);
+      // and Compliance is not in its plan (ADR 069)
+      expect(ALL.filter((k) => !solo[k])).toEqual(['compliance', 'events', 'swaps']);
       expect((await modules(c, 'test.general-manager.1.0')).events).toBe(true);
     });
   });

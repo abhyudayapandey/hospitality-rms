@@ -44,6 +44,8 @@ export const PHOTO_PREFIXES = [
   'selfies',
   // vendor bills (BIL-1, BIL-2, ADR 050): money data, kept 7 years
   'bills',
+  // licences and compliance proof (ADR 069): kept as long as the register, never expired
+  'compliance',
 ] as const;
 export type PhotoPrefix = (typeof PHOTO_PREFIXES)[number];
 
@@ -81,10 +83,11 @@ export async function presignUpload(
   nodeId: string,
   contentType: PhotoType | BillFileType,
 ): Promise<UploadTarget> {
-  if (contentType === 'application/pdf' && prefix !== 'bills') {
+  const documents = prefix === 'bills' || prefix === 'compliance';
+  if (contentType === 'application/pdf' && !documents) {
     throw new Error('INVALID_PHOTO');
   }
-  const max = prefix === 'bills' ? MAX_BILL_BYTES : MAX_PHOTO_BYTES;
+  const max = documents ? MAX_BILL_BYTES : MAX_PHOTO_BYTES;
   const key = `${prefix}/${tenantId}/${nodeId}/${randomUUID()}.${BILL_TYPES[contentType]}`;
   const { url, fields } = await createPresignedPost(client, {
     Bucket: bucket,

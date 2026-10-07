@@ -15,6 +15,7 @@ export const MODULE_DOMAINS: Readonly<Record<ModuleCode, readonly string[]>> = {
   prep_lists: [],
   checklists: ['CHECKLIST_TEMPLATES'],
   maintenance: ['MAINTENANCE'],
+  compliance: ['COMPLIANCE'],
   menu_sales: ['MENU', 'DERIVED_MENU', 'SALES', 'DERIVED_SALES', 'POS_IMPORT'],
 };
 

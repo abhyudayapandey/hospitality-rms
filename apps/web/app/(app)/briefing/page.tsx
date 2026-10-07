@@ -8,7 +8,7 @@ import { isUuid, param, type SearchParams } from '@/lib/params';
 import { loadShell } from '@/lib/shell';
 import { BriefingForm } from './briefing-form';
 
-// Today's briefing (ADR 069): the note for the outlet's shift, written by the heads of
+// Today's briefing (ADR 070): the note for the outlet's shift, written by the heads of
 // kitchen and service departments and the outlet's managers. One note per place and part of
 // the day; saving again edits it. Everyone at the outlet reads it on Home.
 export default async function BriefingPage({ searchParams }: { searchParams: SearchParams }) {

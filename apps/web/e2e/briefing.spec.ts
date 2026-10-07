@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { asMigrator, signInAs } from './helpers';
 
-// Today's briefing (ADR 069) at 380 px. The Head Cook writes the kitchen's note from Home,
+// Today's briefing (ADR 070) at 380 px. The Head Cook writes the kitchen's note from Home,
 // with a dish that is off; a server at the same outlet reads it on Home and cannot edit it;
 // someone at another outlet sees nothing of it. Who may write and read is proved in
 // packages/db/src/briefing.db.test.ts (the person covering a writer included). The notes

@@ -300,6 +300,15 @@ export class OutletOpsStack extends Stack {
     );
     role.addToPolicy(
       new iam.PolicyStatement({
+        // licences and compliance proof (ADR 069): photos and PDFs, as bills; no lifecycle
+        // rule, since a licence's document is kept as long as the register keeps the licence
+        sid: 'ComplianceDocuments',
+        actions: ['s3:PutObject', 's3:GetObject'],
+        resources: [photoBucket.arnForObjects('compliance/*')],
+      }),
+    );
+    role.addToPolicy(
+      new iam.PolicyStatement({
         sid: 'ListBackups',
         actions: ['s3:ListBucket'],
         resources: [backupBucket.bucketArn],

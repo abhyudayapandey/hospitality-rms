@@ -10,7 +10,7 @@ import {
   type SeedIds,
 } from '../test/helpers';
 
-// Today's briefing note (ADR 069). Written at a department by whoever holds the duty "Writes
+// Today's briefing note (ADR 070). Written at a department by whoever holds the duty "Writes
 // the shift briefing" (BRIEFING_WRITER: the heads of kitchen and service departments), at
 // the outlet or any of its departments by its managers (OUTLET_MANAGER), and by a person
 // covering a writer (ADR 061). Read on Home by everyone who works at the outlet, for the

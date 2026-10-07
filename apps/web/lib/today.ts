@@ -114,9 +114,11 @@ export interface Today {
   pos: PosToday | null;
   /** dishes to sell first today at their outlet (INV-12, ADR 040) */
   push: PushDish[];
-  /** today's briefing at their outlet (ADR 069); null when they work at none */
+  /** today's briefing at their outlet (ADR 070); null when they work at none */
   briefing: MyBriefing | null;
   targets: Record<TargetKey, number>;
+  /** licences expiring within 90 days and compliance jobs overdue, where they see them (ADR 070) */
+  compliance: { expiring: number; overdue: number };
 }
 
 /** Approvals shown on Home; the rest are one tap away. */
@@ -144,6 +146,13 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     const inbox = await inboxEntries(tx);
     // expired items waiting to be given to someone; repairs waiting are the repairs count
     const assign = lead ? (await toAssign(tx)).filter((x) => x.kind === 'expiry').length : 0;
+    // the same counts the Compliance screen's tabs show (ops.compliance_counts, ADR 070)
+    const compliance = shell.domains.has('COMPLIANCE')
+      ? (
+          await sql<{ expiring: number; overdue: number }>`
+            select expiring, overdue from ops.compliance_counts(null)`.execute(tx)
+        ).rows[0]!
+      : { expiring: 0, overdue: 0 };
 
     let attention: AttentionGroup[] | null = null;
     let openSlotsHref: string | null = null;
@@ -286,7 +295,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     }
     // Push today: the function decides who sees it (service teams and the outlet's managers)
     const push = atWork ? await myPushToday(tx) : [];
-    // today's briefing: everyone who works at the outlet reads it (ADR 069)
+    // today's briefing: everyone who works at the outlet reads it (ADR 070)
     const briefing = atWork ? await myBriefing(tx) : null;
 
     let numbers: TodayNumbers | null = null;
@@ -328,6 +337,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       tasks,
       repairs,
       approvals: { shown: inbox.slice(0, HOME_APPROVALS), total: inbox.length, toAssign: assign },
+      compliance,
       attention,
       openSlotsHref,
       numbers,

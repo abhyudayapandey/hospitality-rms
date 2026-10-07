@@ -6,7 +6,7 @@ import { requireUser } from '@/lib/auth/server';
 import { sql, withUser, type Tx } from '@/lib/db';
 import type { BriefingPart } from '@/lib/briefing';
 
-// Today's briefing note (ADR 069). Each write is one ops.* SECURITY DEFINER function, which
+// Today's briefing note (ADR 070). Each write is one ops.* SECURITY DEFINER function, which
 // checks BRIEFING modify at the place and raises stable codes (rule 2).
 
 async function run<T>(label: string, fn: (tx: Tx) => Promise<T>): Promise<ActionResult<T>> {

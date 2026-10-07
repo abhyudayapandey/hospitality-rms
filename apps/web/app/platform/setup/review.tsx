@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import type { ImportReport } from '@outlet-ops/onboarding/upload';
-import { ALWAYS_ON } from '@outlet-ops/domain';
 import {
   STEP_TITLE,
   draftBundles,
@@ -11,7 +10,6 @@ import {
   type DraftProblem,
   type SetupDraft,
 } from '@outlet-ops/onboarding/templates';
-import { secondaryButton } from '@/components/messages';
 import { sql, withPlatformAdmin } from '@/lib/db';
 import { requirePlatformAdmin } from '@/lib/platform/server';
 import { ImportReportView } from '../jobs/[id]/import-report';
@@ -134,7 +132,7 @@ export async function ReviewStep({
         .
       </p>
 
-      <Bundles id={id} draft={draft} locked={stage.kind === 'live' || stage.kind === 'busy'} />
+      <Bundles id={id} draft={draft} />
 
       <section
         className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200"
@@ -209,55 +207,19 @@ export async function ReviewStep({
   );
 }
 
-/**
- * What the customer buys (ADR 067): the bundles its outlets use, ticked by default. Go live
- * puts the ticked ones in its plan; an unticked one stays off until the console turns it on.
- */
-function Bundles({ id, draft, locked }: { id: string; draft: SetupDraft; locked: boolean }) {
+/** What the customer buys (ADR 067, 069), chosen on screen 3; Go live puts it in the plan. */
+function Bundles({ id, draft }: { id: string; draft: SetupDraft }) {
   const bundles = draftBundles(draft);
-  if (!bundles.length) return null;
+  const on = bundles.filter((b) => b.ticked);
   return (
-    <form
-      method="post"
-      action={`/platform/setup/${id}/save`}
-      className="space-y-2"
-      aria-label="What they buy"
-      data-testid="bundles"
-    >
-      <input type="hidden" name="step" value="review" />
-      <input type="hidden" name="bundles" value="1" />
+    <section className="space-y-1 text-sm" aria-label="What they buy" data-testid="bundles">
       <h2 className="font-semibold">What they buy</h2>
-      <p className="text-sm text-slate-600">
-        Their outlets use these. Untick one they aren&apos;t buying: it stays off. {ALWAYS_ON}
+      <p>
+        {on.length ? on.map((b) => b.name).join(', ') : 'Nothing beyond what every plan has'}.{' '}
+        <Link href={`/platform/setup/${id}/bundles`} className="underline">
+          Change
+        </Link>
       </p>
-      <fieldset disabled={locked} className="space-y-2">
-        <legend className="sr-only">Bundles</legend>
-        {bundles.map((b) => (
-          <label
-            key={b.code}
-            className="flex min-h-12 items-start gap-3 rounded-lg bg-white p-3 ring-1 ring-slate-200"
-          >
-            <input
-              type="checkbox"
-              name="bundle"
-              value={b.code}
-              defaultChecked={b.ticked}
-              className="mt-1 size-5"
-            />
-            <span>
-              <span className="block font-medium">{b.name}</span>
-              <span className="block text-sm text-slate-600">
-                Used for {b.uses.join(', ')}. {b.includes}
-              </span>
-            </span>
-          </label>
-        ))}
-      </fieldset>
-      {!locked && (
-        <button type="submit" name="go" value="stay" className={secondaryButton}>
-          Save what they buy
-        </button>
-      )}
-    </form>
+    </section>
   );
 }

@@ -38,7 +38,7 @@ export const ERROR_MESSAGES = {
   // selling by bundle (ADR 067)
   NOT_IN_PLAN: 'Not in your plan. Ask Outlet Ops to add it.',
   INVALID_BUNDLE: "That bundle doesn't exist.",
-  // today's briefing note (ADR 069)
+  // today's briefing note (ADR 070)
   NOT_ON_MENU: "One of those dishes isn't on today's menu here. Refresh and pick again.",
   BRIEFING_EMPTY: 'Write something, or pick the dishes that are off today.',
   BRIEFING_TOO_LONG: 'Keep the briefing to 1,000 characters.',
@@ -137,6 +137,9 @@ export const ERROR_MESSAGES = {
   INVALID_DUE: 'Add when it is due.',
   INVALID_PRIORITY: 'Pick low, normal or high.',
   INVALID_TITLE: 'Add a name or a short description.',
+  INVALID_REASON: 'Say why, in a few words.',
+  // compliance (ADR 069)
+  DOCUMENT_NEEDED: 'Add the document: a photo or PDF of the licence, report or certificate.',
   INVALID_STEP: 'That step is done by recording the wastage or the batch.',
   INVALID_VALUE: 'Fill in this step before saving it.',
   STEPS_INCOMPLETE: 'Finish every step first.',

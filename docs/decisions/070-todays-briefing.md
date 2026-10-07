@@ -1,6 +1,6 @@
-# 069 — Today's briefing note
+# 070 — Today's briefing note
 
-Status: accepted · 2026-10-07 · migration 20261124100000
+Status: accepted · 2026-10-07 · migration 20261125100000
 
 The pre-shift briefing of the SOPs (Restaurant day plan 11:30 and 18:30, Hotel FB-01, QSR
 ST-01): a short note from the head chef or a manager for everyone on the shift. Agreed on 6 Oct

@@ -6,8 +6,9 @@ import { asMigrator, runPlatformWorker, signInPlatform } from './helpers';
 // The final pass of docs/templates-and-cover.md at 380 px, through the real wizard screens and
 // the real worker (ADR 064):
 // 1. every tile in one company, each extra used once, through the check and live: the
-//    review's bundles and "who does what", warnings in words, then the outlets' formats,
-//    departments and starter checklists as loaded;
+//    bundles they use ticked on "What they buy" (Compliance offered, unticked), "who does
+//    what" on the review, warnings in words, then the outlets' formats, departments and
+//    starter checklists as loaded;
 // 2. a café, a bar and a hotel set up from nothing, timed: taps, fields typed and seconds per
 //    step, appended to test-results/setup-timings.jsonl (docs/templates-and-cover.md has the
 //    table). The café's own walk (resume, cover, paste, par, bundles) is setup-wizard.spec.ts.
@@ -97,6 +98,22 @@ async function addOutlets(w: Walk, outlets: OutletSpec[]) {
   w.step('outlets');
 }
 
+/** What they buy (ADR 067, 069): the bundles their outlets use come ticked. */
+async function bundles(w: Walk, usual: string[]) {
+  const page = w.page;
+  const ticked = page.getByTestId('bundles-usual');
+  for (const b of usual) {
+    await expect(ticked.getByRole('checkbox', { name: new RegExp(b) })).toBeChecked();
+  }
+  await expect(
+    page.getByTestId('bundles-more').getByRole('checkbox', { name: /Compliance/ }),
+  ).not.toBeChecked();
+  await w.next();
+  w.step('bundles');
+}
+
+const USUAL = ['Stock & cost', 'People & roster', 'Tasks & food safety'];
+
 /** Departments, roles and stock as the template offers them; people pasted. */
 async function defaults(w: Walk, people: string) {
   const page = w.page;
@@ -166,6 +183,7 @@ test('every tile and extra, in one company, to live', async ({ page }) => {
     },
   ];
   await addOutlets(w, outlets);
+  await bundles(w, USUAL);
   await defaults(
     w,
     [
@@ -175,12 +193,9 @@ test('every tile and extra, in one company, to live', async ({ page }) => {
     ].join('\n'),
   );
 
-  // the review: who does what for each outlet, and every bundle they use, ticked
+  // the review: who does what for each outlet, and what they buy as chosen
   for (const o of outlets) await expect(page.getByTestId(`who-${o.name}`)).toBeVisible();
-  const buys = page.getByRole('form', { name: 'What they buy' });
-  for (const b of ['Stock & cost', 'People & roster', 'Tasks & food safety']) {
-    await expect(buys.getByRole('checkbox', { name: new RegExp(b) })).toBeChecked();
-  }
+  await expect(page.getByTestId('bundles')).toContainText(USUAL.join(', '));
   await checkAndGoLive(w);
 
   // as loaded: each outlet's format, its departments and its starter checklists
@@ -250,6 +265,7 @@ for (const t of [
     const w = new Walk(page);
     await startCompany(w, `Timed ${t.kind} ${s}`, code);
     await addOutlets(w, [{ tile: t.tile, name: t.name }]);
+    await bundles(w, USUAL);
     await defaults(
       w,
       [

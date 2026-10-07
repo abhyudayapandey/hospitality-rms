@@ -26,12 +26,26 @@ export const BUNDLES = [
     includes: 'Includes tasks.',
     modules: ['checklists', 'maintenance'],
   },
+  // the first bundle out of a plan unless the platform admin puts it in (ADR 069)
+  {
+    code: 'compliance',
+    name: 'Compliance',
+    includes: 'Includes licences and their renewals, and the compliance calendar.',
+    modules: ['compliance'],
+    outByDefault: true,
+  },
 ] as const satisfies readonly {
   code: string;
   name: string;
   includes: string;
   modules: readonly ModuleCode[];
+  outByDefault?: boolean;
 }[];
+
+/** Whether a bundle is in a plan that doesn't say (core.bundle_default). */
+export function inPlanByDefault(b: { code: string }): boolean {
+  return !('outByDefault' in b && b.outByDefault === true);
+}
 
 export type BundleCode = (typeof BUNDLES)[number]['code'];
 export type Bundle = (typeof BUNDLES)[number];

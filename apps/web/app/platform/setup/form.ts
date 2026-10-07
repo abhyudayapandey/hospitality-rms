@@ -169,12 +169,13 @@ export function applyForm(
       }
     }
   }
-  if (step === 'review' && f.has('bundles')) {
-    // what the customer buys (ADR 067): the bundles left unticked stay out of the plan
+  if (step === 'bundles') {
+    // what the customer buys (ADR 067, 069): a usual bundle left unticked stays out of the plan;
+    // one the outlets don't usually use (Compliance) is in only when ticked
     const ticked = new Set(all(f, 'bundle'));
-    d.bundlesOff = draftBundles(d)
-      .map((b) => b.code)
-      .filter((b) => !ticked.has(b));
+    const bundles = draftBundles(d);
+    d.bundlesOff = bundles.filter((b) => b.usual && !ticked.has(b.code)).map((b) => b.code);
+    d.bundlesOn = bundles.filter((b) => !b.usual && ticked.has(b.code)).map((b) => b.code);
   }
   return { draft: d, notes };
 }

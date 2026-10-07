@@ -101,6 +101,12 @@ export const DUTIES: readonly DutyDef[] = [
     grants: [{ group: 'COST_CONTROLLER', scope: 'outlet_stores' }],
   },
   {
+    code: 'KEEPS_COMPLIANCE',
+    name: 'Keeps the licences and compliance calendar',
+    does: "Adds and renews the outlet's licences and keeps its compliance calendar (ADR 069)",
+    grants: [{ group: 'COMPLIANCE_KEEPER', scope: 'whole_outlet' }],
+  },
+  {
     code: 'VERIFIES_STOCK_CHECKS',
     name: 'Verifies stock checks',
     does: "Verifies the differences found in the outlet's stock checks",

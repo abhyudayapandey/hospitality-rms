@@ -1,7 +1,7 @@
 import 'server-only';
 import { sql, type Tx } from './db';
 
-// Today's briefing note (ADR 069): read through ops.* SECURITY DEFINER functions, which
+// Today's briefing note (ADR 070): read through ops.* SECURITY DEFINER functions, which
 // decide who may read or write (rule 2). Words and dish names only.
 
 export type BriefingPart = 'day' | 'lunch' | 'dinner';
