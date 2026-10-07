@@ -96,7 +96,7 @@ export function UsernameLogins({
 
   return (
     <form
-      aria-label="Create username logins"
+      aria-label="Create their sign-ins"
       className="space-y-2"
       onSubmit={(e) => {
         e.preventDefault();
@@ -126,11 +126,12 @@ export function UsernameLogins({
             className="mt-1 h-5 w-5"
           />
           <span>
-            Set passwords by the Test&lt;Role&gt;!12 rule (e.g. TestBarManager!12), kept at sign-in.{' '}
+            Use the demo passwords (Test + their role + !12, e.g. TestBarManager!12), kept at
+            sign-in.{' '}
             {isTest ? (
-              <span className="text-slate-500">Test customers only.</span>
+              <span className="text-slate-500">Demo customers only.</span>
             ) : (
-              <span className="text-slate-500">Only for test customers; this one isn’t.</span>
+              <span className="text-slate-500">Only for demo customers; this one isn’t.</span>
             )}
           </span>
         </label>
@@ -140,14 +141,14 @@ export function UsernameLogins({
         disabled={!hydrated || pending || waiting === 0 || suspended}
         className={primaryButton}
       >
-        Create {waiting} username login{waiting === 1 ? '' : 's'}
+        Create {waiting} sign-in{waiting === 1 ? '' : 's'}
       </button>
       <ErrorBox message={error} />
       {batch && batch.created.length > 0 && (
         <div className="space-y-2 rounded-lg bg-amber-50 p-3 text-sm" data-testid="created-logins">
           <p className="font-medium">
-            {batch.created.length} login{batch.created.length === 1 ? '' : 's'} created. Copy or
-            download the passwords now: they are not shown again.
+            {batch.created.length} sign-in{batch.created.length === 1 ? '' : 's'} created. Print the
+            sheet or download the passwords now: they are not shown again.
           </p>
           <table className="w-full">
             <tbody>
@@ -184,7 +185,7 @@ export function UsernameLogins({
         <ul className="text-sm text-slate-600">
           {batch.skipped.map((s) => (
             <li key={s.username}>
-              {s.username}: skipped, {s.reason}
+              {s.username}: not created, {s.reason}
             </li>
           ))}
         </ul>
@@ -212,9 +213,9 @@ export function SendInvites({
   if (jobId) {
     return (
       <p className="text-sm">
-        Invitations are queued.{' '}
+        Invitations are on their way.{' '}
         <a href={`/platform/jobs/${jobId}`} className="underline">
-          Follow the job
+          See how far they’ve got
         </a>
       </p>
     );
@@ -231,7 +232,11 @@ export function SendInvites({
             const r = await requestInvites(tenantId);
             if (!r.ok) setError(r.message);
             else {
-              setStatus(r.data ? 'Invitations queued.' : 'Nobody is waiting for an invitation.');
+              setStatus(
+                r.data
+                  ? 'Invitations are on their way.'
+                  : 'Everyone with an email is already invited.',
+              );
               router.refresh();
             }
           })

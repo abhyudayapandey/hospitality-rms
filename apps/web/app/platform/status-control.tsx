@@ -6,7 +6,7 @@ import { ErrorBox, inputClass } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { setCustomerStatus } from './actions';
 
-/** Suspend (every session and sign-in of the customer ends) or reactivate, with a reason. */
+/** Pause (every session and sign-in of the customer ends) or resume, with a reason. */
 export function StatusControl({
   tenantId,
   status,
@@ -24,7 +24,7 @@ export function StatusControl({
   const next = status === 'active' ? 'suspended' : 'active';
   return (
     <form
-      aria-label={`${status === 'active' ? 'Suspend' : 'Reactivate'} ${name}`}
+      aria-label={`${status === 'active' ? 'Pause' : 'Resume'} ${name}`}
       className="flex gap-2"
       onSubmit={(e) => {
         e.preventDefault();
@@ -42,8 +42,8 @@ export function StatusControl({
       <input
         value={reason}
         onChange={(e) => setReason(e.target.value)}
-        placeholder="Reason"
-        aria-label="Reason"
+        placeholder="Why (kept in the record)"
+        aria-label="Why"
         required
         maxLength={300}
         className={`${inputClass} min-h-11 text-sm`}
@@ -53,7 +53,7 @@ export function StatusControl({
         disabled={!hydrated || pending}
         className="min-h-11 shrink-0 rounded-lg px-3 text-sm font-medium ring-1 ring-slate-300 disabled:opacity-50"
       >
-        {status === 'active' ? 'Suspend' : 'Reactivate'}
+        {status === 'active' ? 'Pause' : 'Resume'}
       </button>
       <ErrorBox message={error} />
     </form>

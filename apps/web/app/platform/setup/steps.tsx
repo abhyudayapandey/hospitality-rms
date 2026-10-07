@@ -350,7 +350,7 @@ export function BundlesStep({ id, draft }: { id: string; draft: SetupDraft }) {
         <span className="block font-medium">{b.name}</span>
         <span className="block text-sm text-slate-600">
           {b.uses.length > 0 && `Used for ${b.uses.join(', ')}. `}
-          {b.includes}
+          {b.adds}
         </span>
       </span>
     </label>

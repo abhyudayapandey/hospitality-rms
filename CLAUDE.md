@@ -194,6 +194,10 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   charges what is missing and refills it from the store as a `consumption`; front office marks it
   on the bill. The duty `CHECKS_MINIBARS`. The Passport Hotel pilot demo is
   `docs/onboarding/demo/passport-hotel`, written by `pnpm --filter @outlet-ops/onboarding passport-demo`.
+- The team console (`/platform`, ADR 075) is for Outlet Ops staff and speaks as plainly as the
+  app: no codes, job kinds, table names or raw states (`app/platform/parts.ts` has the words);
+  one main action first, other tools last on their own rows; pausing a customer is on its
+  page behind a tap; Add an outlet makes its code from the name.
 - The service worker shows "Can't reach Outlet Ops" after 10 s and caches nothing; Cognito calls
   give up after 5 s, and Cognito not answering never signs anyone out (ADR 063). Caddy speaks
   HTTP/1.1 and HTTP/2 only (the security group has no UDP 443) and logs each request.

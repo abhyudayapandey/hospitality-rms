@@ -11,33 +11,34 @@ export const BUNDLES = [
   {
     code: 'stock_cost',
     name: 'Stock & cost',
-    includes: 'Includes stock, orders, bills and recipes.',
+    adds: 'Adds production and prep lists, the menu with its costs, and sales.',
     modules: ['production', 'prep_lists', 'menu_sales'],
   },
   {
     code: 'people_roster',
     name: 'People & roster',
-    includes: 'Includes the roster and clock-in.',
+    adds: 'Adds leave, shift swaps and events.',
     modules: ['leave', 'swaps', 'events'],
   },
   {
     code: 'tasks_food_safety',
     name: 'Tasks & food safety',
-    includes: 'Includes tasks.',
+    adds: 'Adds food safety and cleaning checklists, and repairs.',
     modules: ['checklists', 'maintenance'],
   },
   // the first bundle out of a plan unless the platform admin puts it in (ADR 069)
   {
     code: 'compliance',
     name: 'Compliance',
-    includes: 'Includes licences and their renewals, and the compliance calendar.',
+    adds: 'Adds the licence register with renewal reminders, and the compliance calendar (pest control, fire drills, inspections).',
     modules: ['compliance'],
     outByDefault: true,
   },
 ] as const satisfies readonly {
   code: string;
   name: string;
-  includes: string;
+  /** what it adds to every plan's stock, orders, roster and tasks, in plain words */
+  adds: string;
   modules: readonly ModuleCode[];
   outByDefault?: boolean;
 }[];

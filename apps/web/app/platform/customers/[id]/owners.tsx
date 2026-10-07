@@ -71,16 +71,21 @@ function OwnerRow({
   const [error, setError] = useState<string | null>(null);
   return (
     <li className="space-y-2 p-3" data-owner={owner.username}>
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span>
-          <span className="font-medium">{owner.username}</span>{' '}
-          <span className="text-slate-500">{owner.display_name}</span>
-        </span>
-        <span className="text-slate-600">
-          {owner.login_type} · {owner.status} · {owner.has_login ? 'has a login' : 'no login'} ·{' '}
-          {owner.last_sign_in_at ? 'has signed in' : 'never signed in'} · created{' '}
-          {new Date(owner.created_at).toISOString().slice(0, 16).replace('T', ' ')} UTC
-        </span>
+      <div className="space-y-0.5">
+        <p className="font-medium">{owner.display_name}</p>
+        <p className="text-slate-600" data-testid="owner-line">
+          {owner.login_type === 'email'
+            ? `Signs in with their email (${owner.username})`
+            : `Signs in with the login ID ${owner.username}`}
+          {owner.status !== 'active' && ' · no longer active'}
+        </p>
+        <p className="text-slate-600">
+          {!owner.has_login
+            ? 'Their sign-in isn’t created yet'
+            : owner.last_sign_in_at
+              ? `Last signed in ${new Date(owner.last_sign_in_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
+              : 'Hasn’t signed in yet'}
+        </p>
       </div>
       {removable && !open && (
         <button type="button" className={secondaryButton} onClick={() => setOpen(true)}>

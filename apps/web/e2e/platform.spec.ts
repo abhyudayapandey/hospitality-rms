@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { baseUrl, runPlatformWorker, signInAs, signInPlatform } from './helpers';
 
-// The Platform Admin console (ADR 012) through its real screens, with a signed platform
+// The team console (ADR 012, 075) through its real screens, with a signed platform
 // cookie (the platform pool is not configured in e2e).
 
 test('platform and customer sessions never cross', async ({ page }) => {
@@ -11,7 +11,7 @@ test('platform and customer sessions never cross', async ({ page }) => {
 
   await signInPlatform(page);
   await page.goto('/platform');
-  await expect(page.getByRole('heading', { name: 'Customers' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Customers', exact: true })).toBeVisible();
   await page.goto('/');
   await expect(page).toHaveURL(/\/login/);
 });
@@ -20,31 +20,31 @@ test('create a customer: queued, created by the worker, owner invited', async ({
   const code = `E2E-${Date.now().toString(36).toUpperCase()}`;
   await signInPlatform(page);
   await page.goto('/platform');
-  await page.getByRole('link', { name: 'New customer' }).click();
+  await page.getByRole('link', { name: /Add a customer from their files/ }).click();
   const form = page.getByRole('form', { name: 'New customer' });
-  await expect(form.getByRole('button', { name: 'Create customer' })).toBeEnabled();
+  await expect(form.getByRole('button', { name: 'Create the customer' })).toBeEnabled();
   await form.getByLabel('Company name').fill(`E2E Hotels ${code}`);
-  await form.getByLabel('Customer code').fill(code);
+  await form.getByLabel('Their code').fill(code);
   await form.getByLabel('Owner name').fill('Asha Rao');
   // no silent default: the suggestion is a button, and the field starts empty
-  await expect(form.getByLabel('Owner username', { exact: true })).toHaveValue('');
+  await expect(form.getByLabel("Owner's login ID")).toHaveValue('');
   await form.getByRole('button', { name: `Use suggested: ${code.toLowerCase()}.owner` }).click();
   await form.getByLabel('Owner email').fill(`${code.toLowerCase()}@example.test`);
-  await form.getByRole('button', { name: 'Create customer' }).click();
+  await form.getByRole('button', { name: 'Create the customer' }).click();
   // the check before creating: the owner's username and sign-in type, large
   const check = page.getByRole('dialog', { name: 'Confirm the first account owner' });
   await expect(check.getByTestId('confirm-owner-username')).toHaveText(
     `${code.toLowerCase()}.owner`,
   );
   await expect(check.getByTestId('confirm-owner-login')).toHaveText(
-    `Email login: invitation to ${code.toLowerCase()}@example.test`,
+    `Signs in with email: an invitation goes to ${code.toLowerCase()}@example.test`,
   );
   await check.getByRole('button', { name: 'Confirm and create' }).click();
   await page.waitForURL(/\/platform\/jobs\/[0-9a-f-]{36}/);
-  await expect(page.getByTestId('job-status')).toHaveText('queued');
+  await expect(page.getByTestId('job-status')).toHaveText('Waiting to start');
 
   runPlatformWorker();
-  await expect(page.getByTestId('job-status')).toHaveText('done'); // the page polls
+  await expect(page.getByTestId('job-status')).toHaveText('Finished'); // the page polls
   await page.getByRole('button', { name: "Send the owner's invitation" }).click();
   await expect(page.getByRole('status')).toHaveText(
     `Invitation sent to ${code.toLowerCase()}@example.test.`,
@@ -52,11 +52,11 @@ test('create a customer: queued, created by the worker, owner invited', async ({
 
   await page.goto('/platform');
   const row = page.locator(`[data-code="${code}"]`);
-  await expect(row.getByTestId('customer-status')).toHaveText('active');
-  await expect(row).toContainText('1 active people');
+  await expect(row.getByTestId('customer-status')).toHaveText('Active');
+  await expect(row).toContainText('1 person · nobody has signed in yet');
 });
 
-test('suspending a customer signs its people out; reactivating lets them back in', async ({
+test('pausing a customer signs its people out; resuming lets them back in', async ({
   page,
   browser,
 }) => {
@@ -66,9 +66,15 @@ test('suspending a customer signs its people out; reactivating lets them back in
   await signInPlatform(page);
   await page.goto('/platform');
   const solo = page.locator('[data-code="TEST-SOLO-COMPANY"]');
-  await solo.getByLabel('Reason').fill('e2e: unpaid invoice');
-  await solo.getByRole('button', { name: 'Suspend' }).click();
-  await expect(solo.getByTestId('customer-status')).toHaveText('suspended');
+  // pausing is not on the list: it is on the customer's page, behind a tap
+  await expect(solo.getByRole('button')).toHaveCount(0);
+  await solo.getByRole('link').click();
+  await page.waitForURL(/\/platform\/customers\//);
+  await page.getByText('Pause this customer').click();
+  const pause = page.getByRole('form', { name: 'Pause Test Solo Bar Co.' });
+  await pause.getByLabel('Why').fill('e2e: unpaid invoice');
+  await pause.getByRole('button', { name: 'Pause' }).click();
+  await expect(page.getByTestId('customer-line')).toContainText('Paused');
 
   await staff.goto('/');
   await expect(staff).toHaveURL(/\/login\?reason=expired/);
@@ -76,12 +82,43 @@ test('suspending a customer signs its people out; reactivating lets them back in
   const other = await browser.newPage();
   await signInAs(other, 'Test Account Owner');
 
-  await solo.getByLabel('Reason').fill('e2e: paid');
-  await solo.getByRole('button', { name: 'Reactivate' }).click();
-  await expect(solo.getByTestId('customer-status')).toHaveText('active');
+  await page.getByText('Resume this customer').click();
+  const resume = page.getByRole('form', { name: 'Resume Test Solo Bar Co.' });
+  await resume.getByLabel('Why').fill('e2e: paid');
+  await resume.getByRole('button', { name: 'Resume' }).click();
+  await expect(page.getByTestId('customer-line')).toContainText('Active');
   await signInAs(staff, 'Test Head Bartender');
   await staff.close();
   await other.close();
+});
+
+test('the customers page at 380 px: one main action, the list, then the other tools apart', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 380, height: 900 });
+  await signInPlatform(page);
+  await page.goto('/platform');
+  await expect(page.getByText('Customers never see this')).toBeVisible();
+  const main = page.getByRole('button', { name: 'Set up a new customer' });
+  const list = page.getByTestId('customers');
+  const tools = page.getByRole('region', { name: 'Other tools' });
+  // each tool its own row, never run together on one line
+  const kinds = tools.getByRole('link', { name: /Kinds of outlet/ });
+  const files = tools.getByRole('link', { name: /Add a customer from their files/ });
+  await expect(kinds).toBeVisible();
+  await expect(files).toBeVisible();
+  const y = async (l: typeof main) => (await l.boundingBox())!.y;
+  expect(await y(main)).toBeLessThan(await y(list));
+  expect(await y(list)).toBeLessThan(await y(kinds));
+  expect((await y(kinds)) + (await kinds.boundingBox())!.height).toBeLessThanOrEqual(
+    await y(files),
+  );
+  // names and words, no codes or raw states
+  await expect(list).not.toContainText('TEST-COMPANY');
+  await expect(list).not.toContainText('active');
+  await expect(
+    list.locator('[data-code="TEST-COMPANY"]').getByTestId('customer-status'),
+  ).toHaveText('Active');
 });
 
 // The platform cookie is SameSite=Strict. Coming back from the Cognito hosted UI is a
@@ -120,6 +157,6 @@ test('returning from the hosted UI (another site) lands signed in', async ({ pag
   await signInPlatform(page);
   // Through the continue page: signed in.
   await signInThere('/platform/auth/continue');
-  await expect(page.getByRole('heading', { name: 'Customers' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Customers', exact: true })).toBeVisible();
   expect(new URL(page.url()).pathname).toBe('/platform');
 });

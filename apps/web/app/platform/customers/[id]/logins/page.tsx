@@ -53,13 +53,14 @@ export default async function LoginsPage({ params }: { params: Promise<{ id: str
       <Link href={`/platform/customers/${id}`} className="text-sm text-slate-600">
         ← {customer.name}
       </Link>
-      <h1 className="text-xl font-semibold">Logins · {customer.code}</h1>
+      <h1 className="text-xl font-semibold">Sign-ins for their people</h1>
 
       <section className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
-        <h2 className="font-semibold">Username logins</h2>
+        <h2 className="font-semibold">People without an email</h2>
         <p className="text-sm text-slate-600" data-testid="username-summary">
-          {byUsername.length - usernameWaiting} of {byUsername.length} have a login;{' '}
-          {usernameWaiting} waiting. These are not limited: they send no email.
+          They sign in with a login ID and a one-time password you print for their manager.{' '}
+          {byUsername.length - usernameWaiting} of {byUsername.length} are ready; {usernameWaiting}{' '}
+          still need one.
         </p>
         <UsernameLogins
           tenantId={id}
@@ -71,18 +72,16 @@ export default async function LoginsPage({ params }: { params: Promise<{ id: str
       </section>
 
       <section className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
-        <h2 className="font-semibold">Email invitations</h2>
+        <h2 className="font-semibold">People with an email</h2>
         <p className="text-sm text-slate-600">
-          Cognito sends the customer pool’s email with its default sender, which allows about 50
-          messages a day for all customers together, sign-in codes included. Invitations use at most{' '}
-          {invites.daily_limit} of them a day and go out in batches; the rest wait and go
-          automatically when the allowance frees up, so a large customer takes more than one day.
-          Username logins aren’t limited.
+          They get an email invitation and set their own password. At most {invites.daily_limit}{' '}
+          invitations go out a day, for all customers together (our email service&apos;s limit); the
+          rest go by themselves over the next days.
         </p>
         <p className="text-sm" data-testid="invite-summary">
-          {invites.invited} invited, {invites.waiting} waiting · {invites.sent_last_day} of{' '}
+          {invites.invited} invited, {invites.waiting} still to send · {invites.sent_last_day} of{' '}
           {invites.daily_limit} sent in the last 24 hours
-          {invites.next_batch_at ? ` · next batch after ${formatWhen(invites.next_batch_at)}` : ''}
+          {invites.next_batch_at ? ` · the next go after ${formatWhen(invites.next_batch_at)}` : ''}
         </p>
         {inviteBusy && <InvitePoller />}
         <SendInvites
@@ -103,15 +102,19 @@ export default async function LoginsPage({ params }: { params: Promise<{ id: str
               data-username={p.username}
             >
               <span>
-                {p.display_name} <span className="text-slate-500">{p.username}</span>
+                {p.display_name}
+                <span className="block text-xs text-slate-500">
+                  {p.login_type === 'email' ? p.username : `login ID ${p.username}`}
+                </span>
               </span>
               <span className="text-right text-slate-600">
-                {p.login_type === 'email' ? 'email' : 'username'} ·{' '}
                 {p.has_login
                   ? p.invited_at
                     ? `invited ${formatWhen(p.invited_at)}`
-                    : 'has a login'
-                  : 'no login yet'}
+                    : 'ready'
+                  : p.login_type === 'email'
+                    ? 'not invited yet'
+                    : 'needs a password'}
               </span>
             </li>
           ))}

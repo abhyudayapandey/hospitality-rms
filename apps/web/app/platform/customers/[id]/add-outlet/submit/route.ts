@@ -9,7 +9,7 @@ import { requirePlatformAdmin } from '@/lib/platform/server';
 import { requireSameOrigin } from '@/lib/security/same-origin';
 import { choiceFrom, type Search } from '../choice';
 
-// "Add and dry run" (ADR 062): the customer's current files with the outlet added are stored
+// "Add and check" (ADR 062): the customer's current files with the outlet added are stored
 // like an upload and go through the same dry run, report and apply as any import (ADR 013).
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -39,7 +39,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   try {
     const files = await withPlatformAdmin(admin, (tx) => currentFiles(tx, tenantId));
-    if (!files) return again("This customer's setup files aren't known yet: import them first.");
+    if (!files) {
+      return again(
+        "We don't have this customer's set-up on file yet. Upload their files first (Update from their files).",
+      );
+    }
     const customerFile = Object.keys(files).find((f) => f.startsWith('00_'))!;
     const customer = parseCsv(files[customerFile]!).rows[0]!.values;
     const timezone = customer['default_timezone'] || 'Asia/Kolkata';
@@ -50,7 +54,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         tx,
         tenantId,
         customer['customer_code']!,
-        `Add outlet ${String(q.code ?? '').toUpperCase()}`,
+        `Add outlet ${String(q.name ?? '')}`,
         merged,
       ),
     );

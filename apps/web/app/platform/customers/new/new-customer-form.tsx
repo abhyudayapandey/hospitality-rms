@@ -55,7 +55,7 @@ export function NewCustomerForm() {
       }}
     >
       {field('Company name', 'name', { required: true })}
-      {field('Customer code', 'code', {
+      {field('Their code (as in their file 00)', 'code', {
         required: true,
         pattern: '[A-Z0-9][A-Z0-9\\-]{1,39}',
         title: 'Capital letters, digits and dashes',
@@ -71,7 +71,7 @@ export function NewCustomerForm() {
           checked={f.isTest}
           onChange={(e) => update({ ...f, isTest: e.target.checked })}
         />
-        Test customer (set now, cannot be changed later)
+        A demo or test company (can't be changed later)
       </label>
       <fieldset className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
         <legend className="px-1 text-sm font-semibold">First account owner</legend>
@@ -86,12 +86,12 @@ export function NewCustomerForm() {
             className={inputClass}
           >
             <option value="email">Email (they get an invitation)</option>
-            <option value="username">Username and password (no email)</option>
+            <option value="username">A login ID and password (no email)</option>
           </select>
         </label>
         <div className="space-y-1">
           <label className="block text-sm font-medium">
-            Owner username
+            Owner's login ID (as in their people file, 07)
             <input
               value={f.ownerUsername}
               onChange={(e) => update({ ...f, ownerUsername: e.target.value.toLowerCase() })}
@@ -102,8 +102,8 @@ export function NewCustomerForm() {
               className={inputClass}
             />
           </label>
-          <p className="text-sm font-medium text-amber-900">
-            Importing files? Enter the owner’s username from their 07_users.csv.
+          <p className="text-sm text-slate-600">
+            Use the same login ID their people file gives the owner, so the upload finds them.
           </p>
           {f.code && (
             <button
@@ -120,13 +120,13 @@ export function NewCustomerForm() {
         <p className="text-xs text-slate-500">
           {f.ownerLoginType === 'email'
             ? 'They get an email invitation and sign in with a code sent to that address.'
-            : 'No email is sent. Create their login on the customer’s Logins page after the import.'}
+            : 'No email is sent. Create their sign-in on Sign-ins for their people after the upload.'}
         </p>
       </fieldset>
       <ErrorBox message={error} />
       {!confirming ? (
         <button type="submit" disabled={!hydrated || pending} className={primaryButton}>
-          Create customer
+          Create the customer
         </button>
       ) : (
         <div
@@ -143,8 +143,8 @@ export function NewCustomerForm() {
           </p>
           <p className="text-xl font-semibold" data-testid="confirm-owner-login">
             {f.ownerLoginType === 'email'
-              ? `Email login: invitation to ${f.ownerEmail}`
-              : 'Username and password: no email is sent'}
+              ? `Signs in with email: an invitation goes to ${f.ownerEmail}`
+              : 'Signs in with a login ID and password: no email is sent'}
           </p>
           <p className="text-sm">
             If you will import this customer’s files, this must be the owner’s username in their
