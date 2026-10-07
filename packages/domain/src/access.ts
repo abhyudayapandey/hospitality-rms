@@ -58,6 +58,9 @@ export const DOMAINS: readonly DomainDef[] = [
   // licences and the compliance calendar (ADR 069), at the outlet or one of its departments:
   // the company's legal records, so the Account Owner may see them too (admin)
   { code: 'COMPLIANCE', tree: 'org', admin: true },
+  // today's briefing note for the outlet's shift (ADR 070): written at a department or the
+  // outlet; everyone who works at the outlet reads it through ops.my_briefing()
+  { code: 'BRIEFING', tree: 'org' },
   { code: 'AI_RECOMMENDATIONS', tree: 'org' },
   { code: 'DERIVED_STOCK_LEVELS', tree: 'org' },
   { code: 'DERIVED_STOCK_ADJUSTMENTS', tree: 'org' },
@@ -165,6 +168,13 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: { POS_IMPORT: m },
   },
   {
+    // writes today's briefing note for the shift at their department (ADR 070)
+    code: 'BRIEFING_WRITER',
+    name: 'Briefing Writer',
+    kind: 'role',
+    grants: { BRIEFING: m },
+  },
+  {
     // plans events (with their item and staff needs) for the whole outlet (ADR 016)
     code: 'EVENT_PLANNER',
     name: 'Event Planner',
@@ -262,6 +272,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       TASKS: m,
       CHECKLIST_TEMPLATES: m,
       MAINTENANCE: m,
+      BRIEFING: m,
       LABOUR_COST: v,
       // the licences and the compliance calendar (ADR 069)
       COMPLIANCE: m,

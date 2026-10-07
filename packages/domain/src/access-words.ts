@@ -31,6 +31,7 @@ export const DOMAIN_WORDS: Readonly<Record<string, string>> = {
   COMPLIANCE: 'licences and the compliance calendar',
   CHECKLIST_TEMPLATES: 'checklists',
   MAINTENANCE: 'maintenance requests',
+  BRIEFING: "today's briefing note",
   AI_RECOMMENDATIONS: 'AI suggestions',
   DERIVED_STOCK_LEVELS: 'stock levels of linked stores',
   DERIVED_STOCK_ADJUSTMENTS: 'stock counts of linked stores',

@@ -66,7 +66,7 @@ A licence that lapses closes the outlet; a job not done fails the next inspectio
 - `pnpm db:seed` runs the tasks job once, so the FSSAI renewal and the pest control service
   are on the General Manager's To do list after a seed.
 
-## Addendum: Compliance first on Home (migration 20261125100000)
+## Addendum: Compliance first on Home (migration 20261126100000)
 
 A lapsed licence or a missed inspection can close the outlet, so compliance is never one of
 Home's five "Do these first" lines, where it could be crowded out. It is its own card, **the
