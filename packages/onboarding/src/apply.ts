@@ -631,6 +631,7 @@ class Loader {
     }
 
     await this.roleCover();
+    await this.compliance();
 
     // every job-role scope must resolve for every person
     for (const u of this.b.users) {
@@ -646,6 +647,116 @@ class Loader {
           message: `${u.job_role_code} at ${u.home_node_code}: ${r.error}`,
         });
       }
+    }
+  }
+
+  /**
+   * Files 38 and 39 (ADR 069): the licence register and the compliance calendar. Keyed by place
+   * and name, so a later load corrects a row and never removes one (the app archives them);
+   * documents and what was done are the app's. A role nobody holds there is a warning: its
+   * reminders would reach nobody until someone is.
+   */
+  private async compliance() {
+    const nobody = async (
+      file: string,
+      line: number,
+      column: string,
+      place: string,
+      role: string,
+    ) => {
+      const { rows } = await this.c.query<{ ok: boolean }>(
+        `select exists (select 1 from hr.worker w
+                          join core.hierarchy_node h on h.id = w.org_node_id
+                          join core.hierarchy_node n on n.id = $2
+                         where w.tenant_id = $1 and w.status = 'active' and w.role_code = $3
+                           and h.path operator(extensions.<@)
+                               (select o.path from core.hierarchy_node o
+                                 where o.id = coalesce(core.nearest(n.id, array['outlet', 'site']), n.id)))
+                as ok`,
+        [this.tenant, this.nodes.get(place), role],
+      );
+      if (!rows[0]!.ok) {
+        this.report.warnings.push({
+          file,
+          row: line,
+          column,
+          message: `nobody at ${place} is a ${role} yet, so its reminders reach nobody`,
+        });
+      }
+    };
+    for (const l of this.b.licences) {
+      this.step(FILES.licences.file, l.line);
+      const node = this.nodes.get(l.place_code);
+      await this.upsert(
+        'licences',
+        `with cur as (select id from ops.licence
+                       where tenant_id = $1 and org_node_id = $2 and lower(name) = lower($4)
+                         and archived_at is null),
+              upd as (update ops.licence l
+                         set kind = $3, number = $5, authority = $6, issued_on = $7,
+                             expires_on = $8, renewal_role = $9,
+                             noticed = case when l.expires_on is distinct from $8 then null
+                                            else l.noticed end
+                        where l.id = (select id from cur)
+                          and (l.kind, l.number, l.authority, l.issued_on, l.expires_on,
+                               l.renewal_role)
+                              is distinct from ($3, $5, $6, $7::date, $8::date, $9)
+                       returning l.id, false as inserted),
+              ins as (insert into ops.licence (tenant_id, org_node_id, kind, name, number,
+                                               authority, issued_on, expires_on, renewal_role)
+                      select $1, $2, $3, $4, $5, $6, $7, $8, $9
+                       where not exists (select 1 from cur)
+                      returning id, true as inserted)
+         select * from upd union all select * from ins`,
+        [
+          this.tenant,
+          node,
+          l.kind,
+          l.name,
+          l.number ?? null,
+          l.authority ?? null,
+          l.issued_on ?? null,
+          l.expires_on ?? null,
+          l.renewal_role,
+        ],
+      );
+      await nobody(FILES.licences.file, l.line, 'renewal_role', l.place_code, l.renewal_role);
+    }
+    for (const j of this.b.complianceCalendar) {
+      this.step(FILES.complianceCalendar.file, j.line);
+      await this.upsert(
+        'compliance jobs',
+        `with cur as (select id from ops.compliance_item
+                       where tenant_id = $1 and org_node_id = $2 and lower(name) = lower($3)
+                         and archived_at is null),
+              upd as (update ops.compliance_item i
+                         set every_months = $4, next_due = $5, owner_role = $6,
+                             needs_proof = $7, library_code = $8, library_version = $9
+                        where i.id = (select id from cur)
+                          and (i.every_months, i.next_due, i.owner_role, i.needs_proof,
+                               i.library_code, i.library_version)
+                              is distinct from ($4::int, $5::date, $6, $7::boolean, $8, $9::int)
+                       returning i.id, false as inserted),
+              ins as (insert into ops.compliance_item (tenant_id, org_node_id, name, every_months,
+                                                       next_due, owner_role, needs_proof,
+                                                       library_code, library_version)
+                      select $1, $2, $3, $4, $5, $6, $7, $8, $9
+                       where not exists (select 1 from cur)
+                      returning id, true as inserted)
+         select * from upd union all select * from ins`,
+        [
+          this.tenant,
+          this.nodes.get(j.place_code),
+          j.name,
+          j.every_months,
+          j.next_due,
+          j.owner_role,
+          j.needs_proof,
+          j.from_library?.code ?? null,
+          j.from_library?.version ?? null,
+        ],
+      );
+      await nobody(FILES.complianceCalendar.file, j.line, 'owner_role', j.place_code, j.owner_role);
     }
   }
 

@@ -70,6 +70,15 @@ export function presignBillUpload(
   return presignUpload(s3(), bucket(), 'bills', tenantId, nodeId, contentType);
 }
 
+/** A presigned POST for one licence or compliance document (photo or PDF) at an outlet (ADR 069). */
+export function presignComplianceUpload(
+  tenantId: string,
+  outletId: string,
+  contentType: BillFileType,
+): Promise<UploadTarget> {
+  return presignUpload(s3(), bucket(), 'compliance', tenantId, outletId, contentType);
+}
+
 /** Copies a photo to another key in the bucket (a routine task photo kept for 400 days). */
 export async function copyPhoto(from: string, to: string): Promise<void> {
   await s3().send(

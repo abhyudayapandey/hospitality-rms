@@ -2310,3 +2310,28 @@ and nothing to re-import.
    Departments, Restaurant says "includes breakfast; untick if no meals are served". Then
    **Throw away this set-up** → **Yes, throw it away**: it is gone from Set-ups in progress.
 4. The "newer version" note shows nowhere yet: every library checklist is at version 1.
+
+## Releasing compliance: licences, the compliance calendar and "What they buy" (ADR 069)
+
+One migration, `20261124100000_compliance` (the Compliance bundle, out of every plan until
+added; licences, calendar jobs and their reminders; the wizard's "What they buy" step). **A
+stack change**: the instance role may put and get documents under `compliance/` in the photo
+bucket. Test data changed: Test Company is re-imported.
+
+1. Merge, then `cd infra && pnpm cdk diff`. It shows one IAM change only: a statement
+   `ComplianceDocuments` (`s3:PutObject`, `s3:GetObject` on `.../compliance/*`) in the
+   instance role's policy. No lifecycle rule changes. Stop if anything says replace.
+2. `pnpm cdk deploy`, then **Deploy** as usual (it runs the migration).
+3. In the console → **Test Company** → Bundles → **Compliance** → On.
+4. Re-import Test Company (43 files): no problems, the same 2 owner warnings; licences 3 new;
+   compliance jobs 3 new; the rest unchanged. Apply, then a second dry run shows no changes.
+   Test Solo Bar Co. has nothing to re-import.
+5. Wait for the tasks job (5 minutes), then check as **Test General Manager 1.0**: Home's "Do
+   these first" says "1 compliance job overdue" and "1 licence expiring"; each opens
+   Compliance on its tab. The To do list has "Renew: FSSAI licence" and the pest control
+   service. Renew the FSSAI licence with a photo of any document and a later expiry: the old
+   one shows under History. As **Test Bar Manager** (Solo Bar), `/compliance` says
+   "Compliance isn't part of your company's plan".
+6. Check the set-up wizard: **Set up a new customer** → a name → Outlets → Next. "What they
+   buy" lists every bundle, the usual ones ticked and Compliance unticked under "Also
+   available". Throw the set-up away afterwards.

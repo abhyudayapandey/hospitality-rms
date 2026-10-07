@@ -7,7 +7,7 @@ import type { Schedule, StepInput } from './tasks-view';
 
 export interface MyTask {
   id: string;
-  kind: 'one_off' | 'checklist' | 'prep' | 'expiry' | 'receive';
+  kind: 'one_off' | 'checklist' | 'prep' | 'expiry' | 'receive' | 'licence' | 'compliance';
   title: string;
   org_node_id: string;
   place_name: string;

@@ -28,6 +28,7 @@ export const DOMAIN_WORDS: Readonly<Record<string, string>> = {
   EVENTS: 'events',
   SHIFT_SWAPS: 'shift swaps',
   TASKS: 'tasks',
+  COMPLIANCE: 'licences and the compliance calendar',
   CHECKLIST_TEMPLATES: 'checklists',
   MAINTENANCE: 'maintenance requests',
   AI_RECOMMENDATIONS: 'AI suggestions',

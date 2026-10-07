@@ -55,19 +55,21 @@ const setBundle = (c: PoolClient, admin: string, tenant: string, bundle: string,
   ]);
 
 describe('existing customers keep what they have', () => {
-  it('every bundle is in the plan, and the modules are as file 00 left them', async () => {
+  it('every bundle but Compliance is in the plan, and the modules are as file 00 left them', async () => {
     await inRolledBackTx(async (c) => {
+      // Compliance is out of the plan unless the platform admin adds it (ADR 069); the dev
+      // seed adds it for Test Company
       const all = { people_roster: true, stock_cost: true, tasks_food_safety: true };
-      expect(await plan(c, 'test.server.3.0')).toEqual(all);
-      expect(await plan(c, 'test.solo.server')).toEqual(all);
+      expect(await plan(c, 'test.server.3.0')).toEqual({ ...all, compliance: true });
+      expect(await plan(c, 'test.solo.server')).toEqual({ ...all, compliance: false });
       const solo = await modules(c, 'test.solo.server');
-      expect(Object.keys(solo).filter((k) => !solo[k])).toEqual(['events', 'swaps']);
+      expect(Object.keys(solo).filter((k) => !solo[k])).toEqual(['compliance', 'events', 'swaps']);
       const company = await modules(c, 'test.server.3.0');
       expect(Object.values(company).every(Boolean)).toBe(true);
-      const { rows } = await c.query<{ n: number }>(
-        `select count(*)::int as n from core.tenant where settings ? 'bundles'`,
+      const { rows } = await c.query<{ code: string; bundles: unknown }>(
+        `select code, settings -> 'bundles' as bundles from core.tenant where settings ? 'bundles'`,
       );
-      expect(rows[0]!.n).toBe(0);
+      expect(rows).toEqual([{ code: 'TEST-COMPANY', bundles: { compliance: true } }]);
     });
   });
 });
@@ -112,7 +114,13 @@ describe('only a platform admin changes the plan', () => {
         ids.tenant('TEST-SOLO-COMPANY'),
       ]);
       expect(r.error).toBeUndefined();
-      expect(r.rows).toHaveLength(8);
+      expect(r.rows).toHaveLength(9);
+      expect(r.rows!.find((m) => m.bundle === 'compliance')).toEqual({
+        bundle: 'compliance',
+        module: 'compliance',
+        in_plan: false,
+        is_on: false,
+      });
       expect(r.rows!.filter((m) => m.bundle === 'people_roster')).toEqual([
         { bundle: 'people_roster', module: 'events', in_plan: true, is_on: false },
         { bundle: 'people_roster', module: 'leave', in_plan: true, is_on: true },
@@ -140,6 +148,7 @@ describe('only a platform admin changes the plan', () => {
         people_roster: true,
         stock_cost: true,
         tasks_food_safety: false,
+        compliance: true,
       });
       const m = await modules(c, 'test.technician.1.0');
       expect(m.checklists).toBe(false);

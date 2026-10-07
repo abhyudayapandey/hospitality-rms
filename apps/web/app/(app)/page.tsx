@@ -183,6 +183,7 @@ export default async function Home() {
                 attention: today.attention,
                 overdueTasks: today.tasks.filter((x) => x.overdue).length,
                 toAssign: today.approvals.toAssign,
+                compliance: today.compliance,
                 openSlotsHref: today.openSlotsHref,
                 canOrder: shell.domains.get('PURCHASE_ORDERS') === 'modify',
               })

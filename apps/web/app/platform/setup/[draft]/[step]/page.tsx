@@ -7,6 +7,7 @@ import { requirePlatformAdmin } from '@/lib/platform/server';
 import { jobState, loadDraft } from '../../draft';
 import { isStep } from '../../form';
 import {
+  BundlesStep,
   CompanyStep,
   DepartmentsStep,
   OutletsStep,
@@ -113,6 +114,7 @@ export default async function SetupStepPage({
           saved={list(q.saved)[0] ?? ''}
         />
       )}
+      {step === 'bundles' && <BundlesStep id={id} draft={draft} />}
       {step === 'departments' && <DepartmentsStep id={id} draft={draft} />}
       {step === 'roles' && <RolesStep id={id} draft={draft} />}
       {step === 'people' && <PeopleStep id={id} draft={draft} />}

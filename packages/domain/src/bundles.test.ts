@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  inPlanByDefault,
   BUNDLES,
   bundleOf,
   bundleState,
@@ -34,7 +35,12 @@ describe('bundles (ADR 067)', () => {
       'Stock & cost',
       'People & roster',
       'Tasks & food safety',
+      'Compliance',
     ]);
+  });
+
+  it('every bundle is in a plan that does not say, but Compliance (ADR 069)', () => {
+    expect(BUNDLES.filter((b) => !inPlanByDefault(b)).map((b) => b.code)).toEqual(['compliance']);
   });
 
   it('events go with people; production and prep lists with stock', () => {
