@@ -166,6 +166,9 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 - A hotel's pool, spa and gym are extras with the SOP's people and checks; breakfast is the
   restaurant's (ADR 068). A library checklist's copy is offered a newer library version on its
   screen and changes only when its editor takes it (`ops.use_library_version`).
+- Today's briefing (ADR 069, `ops.briefing`): one note per place and part of the business day,
+  written by the BRIEFING_WRITER duty or the outlet's managers, read on Home through
+  `ops.my_briefing` by everyone at the outlet; "Off today" dishes come from the outlet's menu.
 - The service worker shows "Can't reach Outlet Ops" after 10 s and caches nothing; Cognito calls
   give up after 5 s, and Cognito not answering never signs anyone out (ADR 063). Caddy speaks
   HTTP/1.1 and HTTP/2 only (the security group has no UDP 443) and logs each request.

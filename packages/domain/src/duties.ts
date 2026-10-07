@@ -120,6 +120,13 @@ export const DUTIES: readonly DutyDef[] = [
     atAnotherDepartment: true,
   },
   {
+    code: 'WRITES_SHIFT_BRIEFING',
+    name: 'Writes the shift briefing',
+    does: "Writes today's note for the outlet's shift: specials, dishes that are off, guests to know about, targets",
+    grants: [{ group: 'BRIEFING_WRITER', scope: 'home_department' }],
+    atAnotherDepartment: true,
+  },
+  {
     code: 'LEADS_SHIFT',
     name: 'Leads the shift',
     does: "Gives out the department's tasks and sees its attendance",

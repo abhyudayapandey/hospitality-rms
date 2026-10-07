@@ -1,6 +1,6 @@
 # Plan: one catalogue, outlet templates, "who covers it"
 
-Status: agreed direction, 6 Oct 2026. The decisions are in ADR 058
+Status: built, 7 Oct 2026. Steps 1 to 8 and the final pass are done; the decisions are in ADR 058
 (`docs/decisions/058-catalogue-templates-and-cover.md`). The SOP manuals and the comparison
 this plan comes from are in `docs/sop/`.
 
@@ -59,7 +59,7 @@ Effort is in **build days**: my working days to build, test (lint, typecheck, un
 the RLS equivalence check) and document one step. Your review and deploy time is extra. The
 ranges allow for findings from the full test runs.
 
-### Step 1. Duty catalogue (the foundation). 6–8 days
+### Step 1. Duty catalogue (the foundation). 6–8 days — built (ADR 059)
 
 - **What it is.** A list of about 40 duties in `packages/domain`, product code like the
   access groups. Each duty is three things:
@@ -87,7 +87,7 @@ ranges allow for findings from the full test runs.
 - **Risk.** It is the highest-risk step, because it touches the access derivation everyone
   depends on. That is why it ships alone.
 
-### Step 2. Role and department catalogue. 3–4 days
+### Step 2. Role and department catalogue. 3–4 days — built (ADR 060)
 
 - **What it is.** About 90 roles, covering everyone in the six SOPs, each with a level (does
   the work / leads a shift / runs a department / runs the outlet / above the outlet), a
@@ -220,12 +220,45 @@ seven steps:
   and Go live puts the ticked ones in the plan.
 - **Scope.** Pricing itself is outside this plan.
 
-### Final pass. 2–3 days
+### Final pass. 2–3 days — built (with ADR 069)
 
-- An e2e walk at 380 px through the wizard for each template.
-- A fresh set-up of a café, a bar and a hotel from nothing, timed.
-- The "RLS equivalence (all users)" workflow.
-- ADR and docs final.
+- **Every template through the wizard** (`apps/web/e2e/setup-templates.spec.ts`, 380 px, the
+  real screens and worker). One company with all seven tiles (Restaurant only, Restaurant +
+  Bar, Bar / Pub, Café, Quick service, Delivery-only kitchen, Hotel / Resort) and each extra
+  used once (bar, banquets, brewery, delivery, central kitchen, and the hotel's pool, spa
+  and gym) goes through the check and
+  live. The review lists "who does what" for every outlet and ticks the three bundles; the
+  check has no problems and its warnings carry no codes; the loaded outlets have the
+  template's format, departments and starter checklists, and every extra its department or
+  site. The café's own walk (resume, cover, paste, par, a bundle left out) stays in
+  `setup-wizard.spec.ts`.
+- **A café, a bar and a hotel from nothing, timed** (the same spec, which appends its
+  numbers to `apps/web/test-results/setup-timings.jsonl`). The shortest path: the company,
+  one outlet from its tile, the template's departments, roles and stock as offered, three
+  people pasted, check, go live.
+
+  | Set-up | Taps | Fields typed | Screens | Check | Go live | In all |
+  | ------ | ---- | ------------ | ------- | ----- | ------- | ------ |
+  | Café   | 13   | 6            | 2.3 s   | 9.3 s | 5.2 s   | 16.6 s |
+  | Bar    | 13   | 6            | 2.1 s   | 9.4 s | 5.2 s   | 16.6 s |
+  | Hotel  | 13   | 6            | 2.1 s   | 9.7 s | 5.6 s   | 17.4 s |
+
+  Machine time, on a laptop with the worker run at once; it is not a person's time. On the
+  instance the worker runs on its timer, so check and go live each wait up to a minute more.
+  What a person adds is reading and typing: the company, the outlet's name, the people
+  (or a pasted sheet), par for the stock they know, and any cover. The tap count is the same
+  for every template, so a hotel is not more work in the wizard; it is more people and more
+  stock.
+
+- **Timing one yourself.** In the console on production: Set up a new customer, tick "A
+  demo or test company", and note the time. Fill it in as a customer would (their real
+  people and par if you have them), press Check everything, then Looks right. Note the
+  time at "Live". The goal (section 1) is under an hour for a small outlet and a day for a
+  hotel.
+- The "RLS equivalence (all users)" workflow ran on this PR's head (the briefing adds a
+  group).
+- ADRs and docs final: Steps 1 and 2 marked built, section 8's questions marked decided,
+  today's briefing built (ADR 069).
 
 ## 5. Totals
 
@@ -295,7 +328,7 @@ These are separate decisions, each sized separately if wanted.
 - **The gaps in table 2 of the SOP comparison.** Licence register, longer compliance
   calendar, audits, incidents, POS, PMS.
 - **Rostering one person in two jobs.** Open question 7. Cover doesn't need it.
-- **Today's briefing note (agreed 6 Oct; separate item, 2–3 build days).**
+- **Today's briefing note (agreed 6 Oct; built with the final pass, ADR 069).**
   - **What.** A short note for the shift from the head chef or a manager: specials, 86'd
     dishes, VIPs and allergies, targets. This is the restaurant SOP's pre-shift briefing
     (R day plan 11:30 and 18:30; H FB-01; Q ST-01).
@@ -313,15 +346,14 @@ These are separate decisions, each sized separately if wanted.
   - **Order.** It can ship before or after the plan. Built before Step 1, its author is the
     TASKS modify right at the department; Step 1 then turns that into the duty.
 
-## 8. Questions for you
+## 8. Questions, decided
 
-1. **Templates.** Are five templates plus add-ons right, or do you want Café separate from
-   Restaurant? (They differ only in starter checklists.)
-2. **Who answers the role questions at set-up?** Us in the console (recommended for the
-   pilot), or the customer's owner in Admin from day one?
-3. **"We don't do this".** Should it switch the duty off silently, or always keep a
-   fallback to the GM? I recommend a fallback to the GM for approvals and alerts, and
-   switching off for checklists.
-4. **The first cut or the whole plan?** The first cut gets a pilot running sooner. The rest
-   follows.
-5. **Bundle names.** Are the four bundle names right for how you plan to sell?
+1. **Templates.** Five formats plus add-ons; Café and Restaurant are one template with a café
+   view, picked from tiles (decided 6 Oct, ADR 062).
+2. **Who answers the role questions at set-up?** Us, in the platform console's set-up wizard
+   (ADR 064). After go-live the owner changes them in Admin → Who does what (ADR 065).
+3. **"We don't do this".** It stops the role's checklists only; its approvals and alerts
+   still go up to the department head, then the GM (decided 6 Oct, ADR 061).
+4. **The first cut or the whole plan?** The whole plan, step by step, each its own PR.
+5. **Bundle names.** Stock & cost, People & roster, Tasks & food safety; reports come with
+   every plan (Step 8, ADR 067).

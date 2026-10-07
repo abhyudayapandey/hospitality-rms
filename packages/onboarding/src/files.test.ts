@@ -180,7 +180,7 @@ describe('job roles from the catalogue', () => {
           `${r.outlet_format} ${r.usual_department} ${r.default_duties.map((a) => a.duty).join(',')}`,
       ),
     ).toEqual([
-      'any BAR RUNS_DEPARTMENT,KEEPS_DEPARTMENT_STORE',
+      'any BAR RUNS_DEPARTMENT,KEEPS_DEPARTMENT_STORE,WRITES_SHIFT_BRIEFING',
       'bar_pub (outlet) RUNS_OUTLET,RUNS_OUTLET',
     ]);
   });

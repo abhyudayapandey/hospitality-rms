@@ -55,6 +55,9 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'TASKS', tree: 'org' },
   { code: 'CHECKLIST_TEMPLATES', tree: 'org' },
   { code: 'MAINTENANCE', tree: 'org' },
+  // today's briefing note for the outlet's shift (ADR 069): written at a department or the
+  // outlet; everyone who works at the outlet reads it through ops.my_briefing()
+  { code: 'BRIEFING', tree: 'org' },
   { code: 'AI_RECOMMENDATIONS', tree: 'org' },
   { code: 'DERIVED_STOCK_LEVELS', tree: 'org' },
   { code: 'DERIVED_STOCK_ADJUSTMENTS', tree: 'org' },
@@ -162,6 +165,13 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: { POS_IMPORT: m },
   },
   {
+    // writes today's briefing note for the shift at their department (ADR 069)
+    code: 'BRIEFING_WRITER',
+    name: 'Briefing Writer',
+    kind: 'role',
+    grants: { BRIEFING: m },
+  },
+  {
     // plans events (with their item and staff needs) for the whole outlet (ADR 016)
     code: 'EVENT_PLANNER',
     name: 'Event Planner',
@@ -259,6 +269,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       TASKS: m,
       CHECKLIST_TEMPLATES: m,
       MAINTENANCE: m,
+      BRIEFING: m,
       LABOUR_COST: v,
     },
   },

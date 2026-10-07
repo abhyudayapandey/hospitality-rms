@@ -38,6 +38,10 @@ export const ERROR_MESSAGES = {
   // selling by bundle (ADR 067)
   NOT_IN_PLAN: 'Not in your plan. Ask Outlet Ops to add it.',
   INVALID_BUNDLE: "That bundle doesn't exist.",
+  // today's briefing note (ADR 069)
+  NOT_ON_MENU: "One of those dishes isn't on today's menu here. Refresh and pick again.",
+  BRIEFING_EMPTY: 'Write something, or pick the dishes that are off today.',
+  BRIEFING_TOO_LONG: 'Keep the briefing to 1,000 characters.',
   // R-4, PO-4 (ADR 031, 032)
   INVALID_SETTING:
     'Check the values: targets are 0 to 100%, popularity 10 to 100%, overtime 1× to 3×.',
