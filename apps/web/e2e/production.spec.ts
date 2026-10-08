@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { placeId, signInAs } from './helpers';
+import { asMigrator, placeId, signInAs } from './helpers';
 
 // Production, daily sales and variance (ADR 015).
 
@@ -10,7 +10,7 @@ test('the sous chef (the kitchen’s lead) records a batch on Make; its label sa
   await signInAs(page, 'Test Sous Chef 1.0');
   await page.goto(`/stock/production?node=${kitchen}`);
   const main = page.locator('main');
-  await expect(main.getByRole('heading', { name: 'Make' })).toBeVisible();
+  await expect(main.getByRole('heading', { name: 'Make', exact: true })).toBeVisible();
   await expect(main.getByRole('link', { name: 'Give out what to make' })).toBeVisible();
   await main.getByRole('link', { name: 'Ginger Garlic Paste' }).click();
   await expect(main.getByRole('heading', { name: 'Ginger Garlic Paste' })).toBeVisible();
@@ -37,16 +37,34 @@ test('a commis makes what he was given: from the task, with its ingredients and 
   page,
 }) => {
   const kitchen = await placeId('TEST-HOTEL-1.0-KITCHEN-STORE');
+  // his lead gives him Ginger Garlic Paste to make (as the Prep list does)
+  const [task] = await asMigrator<{ id: string }>(
+    `insert into ops.task (tenant_id, org_node_id, delivery_node_id, kind, title, due_at,
+                           assign_mode, assignee_user_id, item_id, target_qty)
+     select n.tenant_id, ops.team_of_store(n.id), n.id, 'prep', 'Make Ginger Garlic Paste',
+            now() + interval '3 hours', 'person', u.id, i.id, 500
+       from core.hierarchy_node n
+       join core.app_user u on u.username = 'test.commis.1.0'
+       join inv.item i on i.tenant_id = n.tenant_id and i.sku = 'GINGER-GARLIC-PASTE'
+      where n.code = 'TEST-HOTEL-1.0-KITCHEN-STORE'
+     returning id`,
+    [],
+  );
+  await asMigrator(
+    `insert into ops.task_step (tenant_id, task_id, org_node_id, position, label, kind)
+     select tenant_id, id, org_node_id, 1, 'Record the batch', 'batch' from ops.task where id = $1`,
+    [task!.id],
+  );
   await signInAs(page, 'Test Commis 1.0');
   await page.goto(`/stock/production?node=${kitchen}`);
   const main = page.locator('main');
-  // no picker and no form: only what he was given (file 32: Mint Chutney for the commis)
+  // no picker and no form: only what he was given
   await expect(main.getByRole('button', { name: 'Record batch' })).toHaveCount(0);
-  await main.getByTestId('make-task').filter({ hasText: 'Mint Chutney' }).first().click();
-  await expect(page.getByTestId('task-title')).toContainText('Mint Chutney');
-  await expect(page.getByTestId('prep-ingredients')).toContainText('Mint');
+  await main.getByTestId('make-task').filter({ hasText: 'Ginger Garlic Paste' }).first().click();
+  await expect(page.getByTestId('task-title')).toContainText('Ginger Garlic Paste');
+  await expect(page.getByTestId('prep-ingredients')).toContainText('Ginger');
   await expect(page.getByTestId('prep-method')).toBeVisible();
-  await main.getByRole('textbox', { name: 'Record the batch' }).fill('1000');
+  await main.getByRole('textbox', { name: 'Record the batch' }).fill('500');
   await main.getByRole('button', { name: 'Record the batch' }).click();
   await expect(page.getByTestId('task-status')).toHaveText(/^Done/);
   await page.getByTestId('task-label-link').first().click();

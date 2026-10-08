@@ -103,7 +103,7 @@ test('a commis sees only the Kitchen Store on Make, and no other stock screen', 
   await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Kitchen Store');
   await expect.poll(() => viewingOptions(page)).toEqual([]);
   const main = page.locator('main');
-  await expect(main.getByRole('heading', { name: 'Make' })).toBeVisible();
+  await expect(main.getByRole('heading', { name: 'Make', exact: true })).toBeVisible();
   // production only: no stock tabs; an expired batch is reported to the lead, not wasted
   await expect(page.getByRole('navigation', { name: 'Stock tabs' })).toHaveCount(0);
   await expect(main.getByRole('link', { name: /record the wastage/ })).toHaveCount(0);
