@@ -73,6 +73,7 @@ describe('the Passport Hotel demo', () => {
         sales: n('sales days'),
         orders: n('purchase orders'),
         attendance: n('attendance sessions'),
+        checklists: n('checklists'),
       }).toEqual({
         org: [12, 1],
         delivery: [7, 0],
@@ -89,6 +90,7 @@ describe('the Passport Hotel demo', () => {
         sales: [7, 0],
         orders: [5, 0],
         attendance: [138, 0],
+        checklists: [28, 0],
       });
       expect((await loadCustomer(c, files, { nested: true })).ok).toBe(true);
       const again = await loadCustomer(c, files, { nested: true, dryRun: true });
@@ -176,6 +178,35 @@ describe('the Passport Hotel demo', () => {
         r.counts[e]!.created + r.counts[e]!.updated + r.counts[e]!.unchanged;
       expect(all('sales days')).toBe(7);
       expect(all('licences')).toBe(6);
+      // everyone who works shifts has a daily checklist of their own role's (ADR 075); only
+      // the managers, the office and the store keeper (receiving and sending is his day) have
+      // none
+      const without = await c.query<{ role_code: string }>(
+        `select distinct w.role_code from hr.worker w
+          where w.tenant_id = $1 and w.status = 'active'
+            and not exists (select 1 from ops.checklist_template t
+                             where t.tenant_id = w.tenant_id and t.archived_at is null
+                               and t.assign ->> 'role' = w.role_code)
+          order by 1`,
+        [tenant.id],
+      );
+      expect(without.rows.map((x) => x.role_code)).toEqual([
+        'ACCOUNTANT',
+        'ACCOUNT_OWNER',
+        'BANQUET_MANAGER',
+        'BAR_MANAGER',
+        'CHIEF_ENGINEER',
+        'COST_CONTROLLER',
+        'EXECUTIVE_CHEF',
+        'EXECUTIVE_HOUSEKEEPER',
+        'FRONT_OFFICE_MANAGER',
+        'GENERAL_MANAGER',
+        'HR_EXECUTIVE',
+        'PURCHASE_MANAGER',
+        'RESTAURANT_MANAGER',
+        'SALES_MANAGER',
+        'STORE_KEEPER',
+      ]);
     });
   });
 });

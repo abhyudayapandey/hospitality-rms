@@ -1,4 +1,5 @@
 import { DEFAULT_TZ, localDate, localToday } from './dates';
+import { formatWhen } from './format';
 
 // Presentation helpers for tasks and checklists (ADR 020), free of server-only so unit
 // tests can run them. Rules (who may do what) stay in SQL.
@@ -50,6 +51,29 @@ export function myTaskWho(t: {
   return t.assign_mode === 'on_shift'
     ? 'Whoever is on shift'
     : 'Your job role: the first to start takes it';
+}
+
+/**
+ * Who did a done task, and when (ADR 075): "Done by you, today, 10:42 am", or the name of
+ * whoever in the job role did it. Null for a task still to do.
+ */
+export function doneBy(
+  t: { status: string; completed_at: Date | string | null; done_by_name: string | null },
+  now: Date = new Date(),
+): string | null {
+  if (t.status !== 'done' || !t.completed_at) return null;
+  return `Done by ${t.done_by_name ?? 'you'}, ${formatWhen(t.completed_at, now)}`;
+}
+
+/**
+ * Done this business day or the one before (the 04:00 day in India, as the To do list keeps
+ * done tasks, ADR 075): how long a done repair stays on its technician's list.
+ */
+export function doneLately(at: Date | string | null, now: Date = new Date()): boolean {
+  if (!at) return false;
+  const day = (d: Date) => localDate(new Date(d.getTime() - 4 * 3_600_000), DEFAULT_TZ);
+  const yesterday = localDate(new Date(now.getTime() - 28 * 3_600_000), DEFAULT_TZ);
+  return day(new Date(at)) >= yesterday;
 }
 
 /** Who has a task on a manager's list: "You" when it is theirs, else the name or the pool. */

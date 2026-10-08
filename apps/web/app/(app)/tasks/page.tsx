@@ -6,25 +6,37 @@ import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { maintenanceList, myHandedOn, myTasks, taskTabs } from '@/lib/tasks';
-import { GROUP_TITLES, groupTasks, myTaskWho, type TaskGroup } from '@/lib/tasks-view';
+import {
+  GROUP_TITLES,
+  doneBy,
+  doneLately,
+  groupTasks,
+  myTaskWho,
+  type TaskGroup,
+} from '@/lib/tasks-view';
 import { TaskList } from './task-list';
 
 // My tasks (ADR 020): one-off tasks, checklist rounds, prep and expired batches that are
 // mine or my job role's or my shift's, overdue first; and maintenance assigned to me. Each
 // says who has it and when it reached them; what I gave to someone else stays in view under
-// "Given to others" until it is done (ADR 074).
+// "Given to others" (ADR 074). What is done stays, under Done, saying who did it and when,
+// that business day and the next (ADR 075).
 export default async function MyTasksPage() {
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
     const tasks = (await myTasks(tx)).map((t) => ({
       ...t,
-      who: myTaskWho(t),
-      given: t.assigned_at,
+      who: doneBy(t) ?? myTaskWho(t),
+      given: t.status === 'done' ? null : t.assigned_at,
     }));
     const given = await myHandedOn(tx);
     const tabs = await taskTabs(tx);
     const fixes = tabs.maintenance
-      ? (await maintenanceList(tx)).filter((r) => r.assigned_to === user.id && r.status !== 'done')
+      ? (await maintenanceList(tx))
+          .filter(
+            (r) => r.assigned_to === user.id && (r.status !== 'done' || doneLately(r.done_at)),
+          )
+          .sort((a, b) => Number(a.status === 'done') - Number(b.status === 'done'))
       : [];
     return { tasks, given, tabs, fixes };
   });
@@ -51,14 +63,27 @@ export default async function MyTasksPage() {
                   <span className="min-w-0">
                     <span className="block truncate font-medium">{r.title}</span>
                     <span className="block truncate text-xs text-slate-500">{r.place_name}</span>
-                    {r.assigned_at && (
-                      <span className="block truncate text-xs text-slate-500">
-                        You{r.assigned_by_name && `, from ${r.assigned_by_name}`} · given{' '}
-                        {formatWhen(r.assigned_at)}
+                    {r.status === 'done' && r.done_at ? (
+                      <span
+                        className="block truncate text-xs text-slate-500"
+                        data-testid="repair-done"
+                      >
+                        Done by you, {formatWhen(r.done_at)}
                       </span>
+                    ) : (
+                      r.assigned_at && (
+                        <span className="block truncate text-xs text-slate-500">
+                          You{r.assigned_by_name && `, from ${r.assigned_by_name}`} · given{' '}
+                          {formatWhen(r.assigned_at)}
+                        </span>
+                      )
                     )}
                   </span>
-                  <span className="text-xs text-slate-600">{r.status.replace('_', ' ')}</span>
+                  <span
+                    className={`text-xs ${r.status === 'done' ? 'text-emerald-700' : 'text-slate-600'}`}
+                  >
+                    {r.status.replace('_', ' ')}
+                  </span>
                 </Link>
               </li>
             ))}
@@ -88,8 +113,8 @@ export default async function MyTasksPage() {
               priority: 'normal',
               steps_total: 0,
               steps_done: 0,
-              who: t.assignee_name,
-              given: t.assigned_at,
+              who: doneBy(t) ?? t.assignee_name,
+              given: t.status === 'done' ? null : t.assigned_at,
             }))}
             testId="tasks-given"
           />

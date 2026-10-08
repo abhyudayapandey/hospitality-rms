@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   describeSchedule,
+  doneBy,
+  doneLately,
   groupTasks,
   myTaskWho,
   outOfRange,
@@ -131,5 +133,26 @@ describe('who has a task and when it reached them (ADR 074)', () => {
     expect(overdueWhenGiven({ due_at: due, given: '2026-10-07T13:10:00Z' })).toBe(true);
     expect(overdueWhenGiven({ due_at: due, given: '2026-10-01T09:00:00Z' })).toBe(false);
     expect(overdueWhenGiven({ due_at: due, given: null })).toBe(false);
+  });
+});
+
+describe('done stays in view (ADR 075)', () => {
+  const now = new Date('2026-10-08T06:00:00Z'); // 11:30 in India
+  it('says who did it and when', () => {
+    const at = new Date('2026-10-08T05:12:00Z');
+    expect(doneBy({ status: 'done', completed_at: at, done_by_name: null }, now)).toBe(
+      'Done by you, today, 10:42 am',
+    );
+    expect(doneBy({ status: 'done', completed_at: at, done_by_name: 'Rohan Naik' }, now)).toBe(
+      'Done by Rohan Naik, today, 10:42 am',
+    );
+    expect(doneBy({ status: 'open', completed_at: null, done_by_name: null }, now)).toBeNull();
+  });
+  it('a done repair stays for its business day and the next (04:00 in India)', () => {
+    expect(doneLately('2026-10-08T01:00:00Z', now)).toBe(true); // today 06:30
+    expect(doneLately('2026-10-07T00:00:00Z', now)).toBe(true); // yesterday 05:30
+    expect(doneLately('2026-10-06T23:00:00Z', now)).toBe(true); // 04:30 on the 7th
+    expect(doneLately('2026-10-06T20:00:00Z', now)).toBe(false); // 01:30 on the 7th: the 6th's day
+    expect(doneLately(null, now)).toBe(false);
   });
 });

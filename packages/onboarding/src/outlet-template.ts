@@ -49,7 +49,14 @@ export interface OutletPlan {
   /** Departments the template offers that are off (shown unticked). */
   offered: { code: string; name: string; alsoIn?: View; note?: string }[];
   roles: { code: string; title: string; department: string }[];
-  checklists: { code: string; name: string; department: string; version: number }[];
+  /** `assignTo` as file 29 has it: the first of its SOP roles there, else whoever is on shift. */
+  checklists: {
+    code: string;
+    name: string;
+    department: string;
+    version: number;
+    assignTo: string;
+  }[];
   items: StarterItem[];
   modules: string[];
   centralKitchen: boolean;
@@ -134,7 +141,15 @@ export function planOutlet(choice: OutletChoice): OutletPlan {
     const lib = CHECKLIST_BY_CODE.get(c.code)!;
     const at = c.department ?? lib.department;
     if (!wanted(c, at) || !on.has(at) || checklists.has(c.code)) return;
-    checklists.set(c.code, { code: c.code, name: lib.name, department: at, version: lib.version });
+    // to the first of its SOP roles that works in that department here (ADR 075)
+    const doer = lib.roles.find((r) => roles.get(r)?.department === at);
+    checklists.set(c.code, {
+      code: c.code,
+      name: lib.name,
+      department: at,
+      version: lib.version,
+      assignTo: doer ? `role:${doer}` : 'on_shift',
+    });
   };
   t.checklists.forEach(addChecklist);
   extras.forEach((e) => (e.checklists ?? []).forEach(addChecklist));
@@ -413,7 +428,7 @@ export function addOutlet(
     jobRoles.rows.push({ job_role_code: r, outlet_format: 'any' });
   }
 
-  // starter checklists, copied from the library, to whoever is on shift
+  // starter checklists, copied from the library, to the role that does each (ADR 075)
   if (plan.checklists.length) {
     const lists = table('checklistTemplates', [
       'template_code',
@@ -438,7 +453,7 @@ export function addOutlet(
           place_code: deptCode(code, c.department),
           name: lib.name,
           schedule: lib.schedule,
-          assign_to: 'on_shift',
+          assign_to: c.assignTo,
           step: String(i + 1),
           step_label: s.label,
           step_kind: s.kind,

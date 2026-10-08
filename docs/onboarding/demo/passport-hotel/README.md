@@ -27,10 +27,14 @@ past week, the licences and their numbers.
   cold brew, recheado and xacuti masalas…).
 - **The last week** (counted from the day it is imported): sales, prep batches, five
   purchase orders (one arriving today), the Layover's closing count, rosters for next week,
-  clock-ins (a few late, one no-show), checklists, tasks, two repairs, 53 minibar checks
+  clock-ins (a few late, one no-show), tasks, two repairs, 53 minibar checks
   (some still to charge), two events at Jet Lag, six licences (the bar licence expires in 25
   days) and the regular jobs, which the GM answers for and each department head does (pest
   control, the Executive Housekeeper's, overdue).
+- **Daily checklists** for everyone who works shifts (28, most of them from the SOP
+  library): the server's section set-up, the room attendant's rooms and turndown, the
+  steward's kitchen closing, the technician's plant round… each on that person's To do list
+  every day, with no roster needed.
 - **Rooms**: 101–109, 201–209, 301–306 and the pool terraces P-10 to P-12; Passport Deluxe
   rooms have the Standard minibar, suites and terraces the Suite one.
 - `pos-sale-by-item.csv`: the cashier's end-of-day POS file, imported live in the pitch.
@@ -86,7 +90,7 @@ Enter:
 should report no problems and no warnings, with (new): org places 12 / 1 changed (the
 company root), delivery places 7, links 5, job roles 38, users 38, workers 38 / 1 changed (the owner's), items 80, item
 locations 134, menu items 34, rooms 27, minibar sets 2, minibar checks 53, sales days 7,
-purchase orders 5, attendance sessions 138. **Apply**, then a second dry run shows no
+purchase orders 5, attendance sessions 138, checklists 28. **Apply**, then a second dry run shows no
 changes.
 
 **5. Logins (the printed sheet)**: the customer's page → **Logins** → tick **Set passwords

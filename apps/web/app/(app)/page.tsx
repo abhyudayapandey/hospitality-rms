@@ -18,6 +18,7 @@ import {
   type TodayNumbers,
 } from '@/lib/today';
 import type { MyTask } from '@/lib/tasks';
+import { doneBy } from '@/lib/tasks-view';
 import { clockable, complianceCard, doFirst, shiftLine, todaysTasks } from '@/lib/today-view';
 import { listHref, stockHref } from '@/lib/stock-view';
 import { countDueText } from '@/lib/stock-hub';
@@ -353,7 +354,10 @@ function PushToday({ push, tz }: { push: Today['push']; tz: string }) {
   );
 }
 
-/** What they gave to someone else and still follow (ADR 074): who has it, since when. */
+/**
+ * What they gave to someone else and still follow (ADR 074): who has it, since when; once
+ * done, who did it and when, that day and the next (ADR 075).
+ */
 function HandedOnCard({ tasks }: { tasks: Today['handedOn'] }) {
   return (
     <section aria-label="Given to others" className={card} data-testid="handed-on">
@@ -365,16 +369,28 @@ function HandedOnCard({ tasks }: { tasks: Today['handedOn'] }) {
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{t.title}</span>
                 <span className="block truncate text-sm text-slate-500" data-testid="handed-on-who">
-                  {t.assignee_name ?? 'Not taken yet'}
-                  {t.assigned_at && ` · given ${formatWhen(t.assigned_at)}`}
+                  {doneBy(t) ?? (
+                    <>
+                      {t.assignee_name ?? 'Not taken yet'}
+                      {t.assigned_at && ` · given ${formatWhen(t.assigned_at)}`}
+                    </>
+                  )}
                 </span>
               </span>
               <span
                 className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                  t.overdue ? 'bg-rose-50 text-rose-800' : 'bg-slate-100 text-slate-700'
+                  t.status === 'done'
+                    ? 'bg-emerald-50 text-emerald-800'
+                    : t.overdue
+                      ? 'bg-rose-50 text-rose-800'
+                      : 'bg-slate-100 text-slate-700'
                 }`}
               >
-                {t.overdue ? 'Overdue' : `Due ${formatWhen(t.due_at)}`}
+                {t.status === 'done'
+                  ? 'Done'
+                  : t.overdue
+                    ? 'Overdue'
+                    : `Due ${formatWhen(t.due_at)}`}
               </span>
             </Link>
           </li>

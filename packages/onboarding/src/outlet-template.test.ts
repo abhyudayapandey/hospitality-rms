@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CHECKLIST_BY_CODE, CHECKLISTS, levelOf, ROLE_BY_CODE, TILES } from '@outlet-ops/domain';
 import { planOutlet, type OutletChoice } from './outlet-template';
 
 // The plan an outlet's choices give (ADR 062), before it becomes files.
@@ -100,5 +101,68 @@ describe('the plan for an outlet', () => {
   it('banquets switch the Events module on', () => {
     expect(planOutlet(choice('hotel')).modules).not.toContain('events');
     expect(planOutlet(choice('hotel', { extras: ['banquets'] })).modules).toContain('events');
+  });
+});
+
+// Every role's daily work (ADR 075): each library checklist goes to the first of its SOP
+// roles that works in its department at the outlet, and every role that works shifts in
+// an operational department has a checklist of its own every day, whatever is ticked.
+describe('who does each starter checklist', () => {
+  const OFFICE = new Set(['ADMIN-FINANCE', 'HR', 'IT', 'SALES-MARKETING']);
+  const plans = TILES.flatMap((t) => {
+    const extras = t.offers.filter((x) => x !== 'central_kitchen');
+    const base = planOutlet(choice(t.code, { extras: [...(t.with ?? [])] }));
+    const every = [...base.departments, ...base.offered].map((d) => d.code);
+    return [
+      { name: `${t.code}`, plan: base },
+      {
+        name: `${t.code} with every extra and department`,
+        plan: planOutlet(choice(t.code, { extras, departments: every })),
+      },
+    ];
+  });
+
+  it.each(plans)('$name: every role that works shifts has a daily checklist', ({ plan }) => {
+    const missing = plan.roles
+      .filter((r) => !r.department.startsWith('(') && !OFFICE.has(r.department))
+      .filter((r) => levelOf(ROLE_BY_CODE.get(r.code)!.duties) === 'works')
+      .filter(
+        (r) =>
+          !plan.checklists.some(
+            (c) =>
+              c.assignTo === `role:${r.code}` &&
+              !CHECKLIST_BY_CODE.get(c.code)!.schedule.startsWith('weekly'),
+          ),
+      )
+      .map((r) => r.code);
+    expect(missing).toEqual([]);
+  });
+
+  it('a hotel: the server-steward sets the dining room, the room attendant cleans rooms', () => {
+    const p = planOutlet(choice('hotel'));
+    const to = (code: string) => p.checklists.find((c) => c.code === code)?.assignTo;
+    expect(to('RESTAURANT-OPENING')).toBe('role:STEWARD');
+    expect(to('PRE-SHIFT-BRIEFING')).toBe('role:CAPTAIN');
+    expect(to('ROOM-CLEANING')).toBe('role:ROOM_ATTENDANT');
+    expect(to('LOBBY-WASHROOM')).toBe('role:PUBLIC_AREA_ATTENDANT');
+    expect(to('KITCHEN-OPENING')).toBe('role:COMMIS');
+  });
+
+  it('with none of its roles in that department, whoever is on shift does it', () => {
+    // a café's receiving check is in its kitchen, where there is no store keeper
+    const p = planOutlet(choice('cafe'));
+    expect(p.checklists.find((c) => c.code === 'RECEIVING-CHECK')).toMatchObject({
+      department: 'KITCHEN',
+      assignTo: 'on_shift',
+    });
+    // and a café's kitchen opens with its cook (it has no commis)
+    expect(p.checklists.find((c) => c.code === 'KITCHEN-OPENING')?.assignTo).toBe('role:COOK');
+  });
+
+  it('every library checklist names catalogue roles that do it', () => {
+    for (const c of CHECKLISTS) {
+      expect(c.roles.length, c.code).toBeGreaterThan(0);
+      for (const r of c.roles) expect(ROLE_BY_CODE.has(r), `${c.code}: ${r}`).toBe(true);
+    }
   });
 });
