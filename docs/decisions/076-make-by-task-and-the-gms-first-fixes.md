@@ -69,6 +69,6 @@ making things in the kitchen and the bar should work (3, 9, 10, 15, 16).
   portions; their linen is durable. Passport's bar stores are named "Bar · Layover (rooftop)"
   and "Bar · Mini Bar (lobby)" and both link to the bar department.
 - Re-import Passport after deploying: file 02, 03, 08, 10, 19 and 29 changed.
-- Not in this decision (later PRs): menu photos (2), shift tiles and patterns (4), icons and
+- Not in this decision (later PRs, briefed in `docs/backlog/gm-feedback-round-1.md`): menu photos (2), shift tiles and patterns (4), icons and
   photos on tasks (5, 6), dish recipes with sub-recipes (8), direct issue on receiving (14),
   the minibar's refill and billing tasks (20), pack-size icons on count rows (21).
