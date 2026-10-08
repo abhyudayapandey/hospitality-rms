@@ -4,6 +4,7 @@ import { FirstRun } from '@/components/first-run';
 import { ExpiryBanner } from '@/components/expiry-banner';
 import { Icon, type IconName } from '@/components/icon';
 import { businessDate, formatDay, formatLongDay, formatTime } from '@/lib/dates';
+import { formatWhen } from '@/lib/format';
 import { compare, formatMeasure, MEASURES, trendHref, type MeasureRow } from '@/lib/reports';
 import { PART_WORDS } from '@/lib/briefing';
 import { homeTiles } from '@/lib/screens';
@@ -123,6 +124,8 @@ export default async function Home() {
         today.repairs.length > 0) && (
         <NextTask tasks={tasks} repairs={today.repairs} tz={tz} frontline={frontline} />
       )}
+
+      {today.handedOn.length > 0 && <HandedOnCard tasks={today.handedOn} />}
 
       {tiles.length > 0 && (
         <nav aria-label="My jobs" className="grid grid-cols-2 gap-3" data-testid="tiles">
@@ -346,6 +349,42 @@ function PushToday({ push, tz }: { push: Today['push']; tz: string }) {
         ))}
       </ul>
       {dishes.length > 8 && <p className="text-sm text-slate-500">and {dishes.length - 8} more</p>}
+    </section>
+  );
+}
+
+/** What they gave to someone else and still follow (ADR 074): who has it, since when. */
+function HandedOnCard({ tasks }: { tasks: Today['handedOn'] }) {
+  return (
+    <section aria-label="Given to others" className={card} data-testid="handed-on">
+      <h2 className={cardTitle}>Given to others</h2>
+      <ul className="mt-2 divide-y divide-slate-100">
+        {tasks.slice(0, 3).map((t) => (
+          <li key={t.id}>
+            <Link href={`/tasks/${t.id}`} className="flex items-center gap-3 py-2">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-semibold">{t.title}</span>
+                <span className="block truncate text-sm text-slate-500" data-testid="handed-on-who">
+                  {t.assignee_name ?? 'Not taken yet'}
+                  {t.assigned_at && ` · given ${formatWhen(t.assigned_at)}`}
+                </span>
+              </span>
+              <span
+                className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  t.overdue ? 'bg-rose-50 text-rose-800' : 'bg-slate-100 text-slate-700'
+                }`}
+              >
+                {t.overdue ? 'Overdue' : `Due ${formatWhen(t.due_at)}`}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {tasks.length > 3 && (
+        <Link href="/tasks" className="mt-2 block text-sm font-medium text-brand-700">
+          {tasks.length - 3} more given to others
+        </Link>
+      )}
     </section>
   );
 }

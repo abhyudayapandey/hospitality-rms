@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { formatWhen } from '@/lib/format';
-import { progress } from '@/lib/tasks-view';
+import { overdueWhenGiven, progress } from '@/lib/tasks-view';
 
 export interface ListedTask {
   id: string;
@@ -12,8 +12,10 @@ export interface ListedTask {
   overdue: boolean;
   steps_total: number;
   steps_done: number;
-  /** who it is with, on team lists */
+  /** who has it ("You" when it is the reader's own; null: nobody has taken it yet) */
   who?: string | null;
+  /** when it reached them (ADR 074) */
+  given?: Date | null;
   /** the job role whose work it is, when it came to me by cover (ADR 061) */
   covering?: string | null;
   flagged?: number;
@@ -60,8 +62,14 @@ export function TaskList({ tasks, testId }: { tasks: ListedTask[]; testId?: stri
                 )}
                 <span className="block truncate text-xs text-slate-500">
                   {t.place_name} · due {formatWhen(t.due_at)}
-                  {t.who !== undefined && ` · ${t.who ?? 'not taken yet'}`}
                 </span>
+                {(t.who !== undefined || t.given) && (
+                  <span className="block truncate text-xs text-slate-500" data-testid="task-who">
+                    {t.who !== undefined ? (t.who ?? 'Not taken yet') : ''}
+                    {t.who !== undefined && t.given ? ' · ' : ''}
+                    {t.given && `given ${formatWhen(t.given)}`}
+                  </span>
+                )}
               </span>
               <span className="shrink-0 text-right text-xs tabular-nums">
                 <span
@@ -73,7 +81,11 @@ export function TaskList({ tasks, testId }: { tasks: ListedTask[]; testId?: stri
                         : 'text-slate-600'
                   }
                 >
-                  {t.overdue ? 'overdue' : (STATUS[t.status] ?? t.status)}
+                  {t.overdue
+                    ? overdueWhenGiven(t)
+                      ? 'overdue when given'
+                      : 'overdue'
+                    : (STATUS[t.status] ?? t.status)}
                 </span>
                 {t.steps_total > 1 && <span className="block text-slate-500">{p.text}</span>}
                 {(t.flagged ?? 0) > 0 && (

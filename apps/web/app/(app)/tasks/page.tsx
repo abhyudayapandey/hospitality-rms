@@ -4,21 +4,29 @@ import { TasksHeader } from '@/components/tasks-header';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
-import { maintenanceList, myTasks, taskTabs } from '@/lib/tasks';
-import { GROUP_TITLES, groupTasks, type TaskGroup } from '@/lib/tasks-view';
+import { formatWhen } from '@/lib/format';
+import { maintenanceList, myHandedOn, myTasks, taskTabs } from '@/lib/tasks';
+import { GROUP_TITLES, groupTasks, myTaskWho, type TaskGroup } from '@/lib/tasks-view';
 import { TaskList } from './task-list';
 
 // My tasks (ADR 020): one-off tasks, checklist rounds, prep and expired batches that are
-// mine or my job role's or my shift's, overdue first; and maintenance assigned to me.
+// mine or my job role's or my shift's, overdue first; and maintenance assigned to me. Each
+// says who has it and when it reached them; what I gave to someone else stays in view under
+// "Given to others" until it is done (ADR 074).
 export default async function MyTasksPage() {
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
-    const tasks = await myTasks(tx);
+    const tasks = (await myTasks(tx)).map((t) => ({
+      ...t,
+      who: myTaskWho(t),
+      given: t.assigned_at,
+    }));
+    const given = await myHandedOn(tx);
     const tabs = await taskTabs(tx);
     const fixes = tabs.maintenance
       ? (await maintenanceList(tx)).filter((r) => r.assigned_to === user.id && r.status !== 'done')
       : [];
-    return { tasks, tabs, fixes };
+    return { tasks, given, tabs, fixes };
   });
   const groups = groupTasks(data.tasks);
   const order: TaskGroup[] = ['overdue', 'today', 'upcoming', 'done'];
@@ -43,6 +51,12 @@ export default async function MyTasksPage() {
                   <span className="min-w-0">
                     <span className="block truncate font-medium">{r.title}</span>
                     <span className="block truncate text-xs text-slate-500">{r.place_name}</span>
+                    {r.assigned_at && (
+                      <span className="block truncate text-xs text-slate-500">
+                        You{r.assigned_by_name && `, from ${r.assigned_by_name}`} · given{' '}
+                        {formatWhen(r.assigned_at)}
+                      </span>
+                    )}
                   </span>
                   <span className="text-xs text-slate-600">{r.status.replace('_', ' ')}</span>
                 </Link>
@@ -51,21 +65,35 @@ export default async function MyTasksPage() {
           </ul>
         </section>
       )}
-      {data.tasks.length === 0 ? (
-        <Empty>No tasks for you right now.</Empty>
-      ) : (
-        order
-          .filter((g) => groups[g].length > 0)
-          .map((g) => (
-            <section key={g} className="space-y-2">
-              <h2
-                className={`text-sm font-semibold ${g === 'overdue' ? 'text-rose-700' : 'text-slate-500'}`}
-              >
-                {GROUP_TITLES[g]}
-              </h2>
-              <TaskList tasks={groups[g]} testId={`tasks-${g}`} />
-            </section>
-          ))
+      {data.tasks.length === 0
+        ? data.given.length === 0 && <Empty>No tasks for you right now.</Empty>
+        : order
+            .filter((g) => groups[g].length > 0)
+            .map((g) => (
+              <section key={g} className="space-y-2">
+                <h2
+                  className={`text-sm font-semibold ${g === 'overdue' ? 'text-rose-700' : 'text-slate-500'}`}
+                >
+                  {GROUP_TITLES[g]}
+                </h2>
+                <TaskList tasks={groups[g]} testId={`tasks-${g}`} />
+              </section>
+            ))}
+      {data.given.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold text-slate-500">Given to others</h2>
+          <TaskList
+            tasks={data.given.map((t) => ({
+              ...t,
+              priority: 'normal',
+              steps_total: 0,
+              steps_done: 0,
+              who: t.assignee_name,
+              given: t.assigned_at,
+            }))}
+            testId="tasks-given"
+          />
+        </section>
       )}
       {/* the list first, then what to do (ADR 051) */}
       <div className="grid grid-cols-2 gap-2">

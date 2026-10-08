@@ -154,12 +154,21 @@ export async function receiveSent(
   });
 }
 
-/** The department head passes a delivery to receive to someone in the team (ADR 051). */
+/**
+ * Gives a task that is to do to someone at its place, or takes it back: its managers, the
+ * head of its people's department, whoever handed it on, and the one with a compliance To
+ * do (ADR 051, 073, 074). The database decides who may.
+ */
 export async function reassignTask(task: string, user: string): Promise<ActionResult<null>> {
-  return run('reassign_task', async (tx) => {
+  const r = await run('reassign_task', async (tx) => {
     await sql`select ops.reassign_task(${task}::uuid, ${user}::uuid)`.execute(tx);
     return null;
   });
+  if (r.ok) {
+    revalidatePath('/');
+    revalidatePath('/compliance', 'layout');
+  }
+  return r;
 }
 
 export async function assignExpiry(

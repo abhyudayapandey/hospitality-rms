@@ -20,7 +20,7 @@ import type { TargetKey } from './settings';
 import { companySettings } from './settings-data';
 import { countDue, type CountDue } from './stock-hub';
 import type { Shell } from './shell';
-import { myTasks, toAssign, type MyTask } from './tasks';
+import { myHandedOn, myTasks, toAssign, type HandedOn, type MyTask } from './tasks';
 import { listHref } from './stock-view';
 import {
   attentionGroups,
@@ -103,6 +103,8 @@ export interface Today {
   shift: MyShift | null;
   punch: OpenPunch | null;
   tasks: MyTask[];
+  /** what they gave to someone else that is still to do (ADR 074) */
+  handedOn: HandedOn[];
   repairs: MyRepair[];
   /** the first few requests waiting for them, and how many in all */
   approvals: { shown: InboxEntry[]; total: number; toAssign: number };
@@ -137,6 +139,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       atWork && shell.domains.has('ROSTER') ? await myShifts(tx, addDays(today, -1), 2) : [];
     const punch = atWork ? await openPunch(tx) : null;
     const tasks = shell.domains.has('TASKS') ? await myTasks(tx) : [];
+    const handedOn = await myHandedOn(tx);
     // repairs given to them (the technician's work): with the module on
     const repairs = (
       await sql<MyRepair>`
@@ -348,6 +351,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       shift: currentShift(shifts, now),
       punch,
       tasks,
+      handedOn,
       repairs,
       approvals: { shown: inbox.slice(0, HOME_APPROVALS), total: inbox.length, toAssign: assign },
       compliance,

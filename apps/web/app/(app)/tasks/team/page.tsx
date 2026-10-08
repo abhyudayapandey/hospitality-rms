@@ -7,11 +7,13 @@ import { withUser } from '@/lib/db';
 import { placesFor } from '@/lib/places';
 import type { SearchParams } from '@/lib/params';
 import { completion, taskTabs, teamTasks, type Completion } from '@/lib/tasks';
+import { teamWho } from '@/lib/tasks-view';
 import { TaskList } from '../task-list';
 
-// Team tasks (ADR 020): today's tasks at the place and below, with who has them and their
-// progress; anything overdue from the past week; and completion per department this week
-// and last week (tasks due so far, done, and done on time).
+// Team tasks (ADR 020): today's tasks at the place and below (and those its people have,
+// wherever they sit), with who has them ("You" for the manager's own), when it reached
+// them and their progress (ADR 074); anything overdue from the past week; and completion
+// per department this week and last week (tasks due so far, done, and done on time).
 export default async function TeamTasksPage({ searchParams }: { searchParams: SearchParams }) {
   const { places, place } = await placesFor('tasks', searchParams);
   const user = await requireUser();
@@ -27,7 +29,7 @@ export default async function TeamTasksPage({ searchParams }: { searchParams: Se
   const todays = data.tasks.filter((t) => !t.overdue && localDate(t.due_at, tz) === today);
   const overdue = data.tasks.filter((t) => t.overdue);
   const listed = (ts: typeof data.tasks) =>
-    ts.map((t) => ({ ...t, who: t.assignee_name ?? t.pool, flagged: t.flagged }));
+    ts.map((t) => ({ ...t, who: teamWho(t, user.id), given: t.assigned_at, flagged: t.flagged }));
 
   return (
     <div className="space-y-4">

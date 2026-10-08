@@ -157,3 +157,13 @@ describe('groupByTime', () => {
     expect(groupByTime([])).toEqual([]);
   });
 });
+
+describe('swaps for management only (SW-4, ADR 074)', () => {
+  it('a server has no Swaps tab when the company keeps swaps for managers; a manager does', () => {
+    const only = (a: TabAccess): TabAccess => ({ ...a, swapsManagersOnly: true });
+    expect(hrefs(peopleTabs(only(SERVER)).me)).not.toContain('/roster/swaps');
+    expect(hrefs(peopleTabs(only(MANAGER)).me)).toContain('/roster/swaps');
+    // with the setting off, staff swap among themselves
+    expect(hrefs(peopleTabs(SERVER).me)).toContain('/roster/swaps');
+  });
+});

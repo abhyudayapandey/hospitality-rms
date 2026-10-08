@@ -21,6 +21,9 @@ export interface MyTask {
   overdue: boolean;
   /** the job role whose work this is, when it came to me by cover (ADR 061) */
   covering: string | null;
+  /** when it reached me (or my job role), and who gave it to me if someone did (ADR 074) */
+  assigned_at: Date | null;
+  assigned_by_name: string | null;
 }
 
 export async function myTasks(tx: Tx): Promise<MyTask[]> {
@@ -60,6 +63,9 @@ export interface TaskDetail {
   assignee_user_id: string | null;
   assignee_name: string | null;
   assigned_by_name: string | null;
+  /** when it reached whoever has it (or its job role) (ADR 074) */
+  assigned_at: string | null;
+  job_role_name: string | null;
   reported_by_name: string | null;
   item: { sku: string; name: string; unit: string } | null;
   target_qty: number | null;
@@ -70,7 +76,21 @@ export interface TaskDetail {
   completed_at: string | null;
   can_work: boolean;
   can_manage: boolean;
+  /** may give it to someone else or take it back (ADR 073, 074) */
+  can_hand_on: boolean;
+  /** each time it reached someone, oldest first */
+  handovers: Handover[];
   steps: TaskStep[];
+}
+
+export interface Handover {
+  at: string;
+  from_name: string | null;
+  to_name: string;
+  /** null: given by the app (a covered role's task) */
+  by_name: string | null;
+  /** they took it themselves (the first to start a job role's task) */
+  took: boolean;
 }
 
 export async function taskDetail(tx: Tx, id: string): Promise<TaskDetail> {
@@ -92,11 +112,41 @@ export interface TeamTask {
   steps_done: number;
   flagged: number;
   overdue: boolean;
+  assignee_user_id: string | null;
+  assigned_at: Date | null;
+  assigned_by_name: string | null;
 }
 
 export async function teamTasks(tx: Tx, node: string, from: string, to: string) {
   return (
     await sql<TeamTask>`select * from ops.team_tasks(${node}::uuid, ${from}::date, ${to}::date)`.execute(
+      tx,
+    )
+  ).rows;
+}
+
+/** What I gave to someone else that is still to do (ADR 074). */
+export interface HandedOn {
+  id: string;
+  kind: string;
+  title: string;
+  place_name: string;
+  due_at: Date;
+  status: string;
+  assignee_name: string | null;
+  assigned_at: Date | null;
+  overdue: boolean;
+}
+
+export async function myHandedOn(tx: Tx): Promise<HandedOn[]> {
+  return (await sql<HandedOn>`select * from ops.my_handed_on()`.execute(tx)).rows;
+}
+
+/** Who a task can be given to: everyone who works at its place (ops.hand_on_people). */
+export async function handOnPeople(tx: Tx, task: string): Promise<Person[]> {
+  return (
+    await sql<Person>`
+      select user_id::text, name, job_role, place_name from ops.hand_on_people(${task}::uuid)`.execute(
       tx,
     )
   ).rows;
@@ -191,6 +241,8 @@ export interface Maintenance {
   done_at: Date | null;
   /** where the problem is (org_node_id is the node that handles it) */
   place_node_id: string;
+  assigned_at: Date | null;
+  assigned_by_name: string | null;
 }
 
 /** Requests the person reads: their own, their department's queue, assigned or managed. */

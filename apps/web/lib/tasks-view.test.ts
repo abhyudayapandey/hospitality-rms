@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   describeSchedule,
   groupTasks,
+  myTaskWho,
   outOfRange,
+  overdueWhenGiven,
   parseSteps,
   progress,
   stepsText,
+  teamWho,
 } from './tasks-view';
 
 describe('my tasks grouping', () => {
@@ -97,5 +100,36 @@ describe('steps editor', () => {
     expect(outOfRange(3)).toBe(false);
     expect(progress(3, 4)).toEqual({ text: '3 of 4', pct: 75 });
     expect(progress(0, 0)).toEqual({ text: '0 of 0', pct: 0 });
+  });
+});
+
+describe('who has a task and when it reached them (ADR 074)', () => {
+  it('my tasks: mine, from whom, or my job role or shift before anyone takes it', () => {
+    expect(myTaskWho({ taken: true, assign_mode: 'person', assigned_by_name: null })).toBe('You');
+    expect(
+      myTaskWho({ taken: true, assign_mode: 'person', assigned_by_name: 'Maria Rodrigues' }),
+    ).toBe('You, from Maria Rodrigues');
+    expect(myTaskWho({ taken: false, assign_mode: 'job_role', assigned_by_name: null })).toBe(
+      'Your job role: the first to start takes it',
+    );
+    expect(myTaskWho({ taken: false, assign_mode: 'on_shift', assigned_by_name: null })).toBe(
+      'Whoever is on shift',
+    );
+  });
+
+  it("a manager's list: You for their own, else the name, else the job role", () => {
+    const row = { assignee_user_id: 'u1', assignee_name: 'Pooja Gaonkar', pool: null };
+    expect(teamWho(row, 'u1')).toBe('You');
+    expect(teamWho(row, 'u2')).toBe('Pooja Gaonkar');
+    expect(
+      teamWho({ assignee_user_id: null, assignee_name: null, pool: 'Executive Housekeeper' }, 'u1'),
+    ).toBe('Executive Housekeeper');
+  });
+
+  it('overdue when given: it reached them after it was due', () => {
+    const due = '2026-10-05T04:30:00Z';
+    expect(overdueWhenGiven({ due_at: due, given: '2026-10-07T13:10:00Z' })).toBe(true);
+    expect(overdueWhenGiven({ due_at: due, given: '2026-10-01T09:00:00Z' })).toBe(false);
+    expect(overdueWhenGiven({ due_at: due, given: null })).toBe(false);
   });
 });

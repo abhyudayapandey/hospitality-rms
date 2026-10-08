@@ -1,6 +1,7 @@
 import 'server-only';
 import { daysWords } from '@outlet-ops/domain';
 import { sql, type Tx } from './db';
+import { formatWhen } from './format';
 
 // The licence register and the compliance calendar (ADR 069). Every read is one ops.*
 // function that checks COMPLIANCE (or the reminder's task) in SQL; nothing is decided here.
@@ -44,6 +45,8 @@ export interface JobRow {
   with_name: string | null;
   /** its outlet, where its accountable role is chosen from */
   outlet_id: string;
+  /** when the open To do item reached whoever has it (ADR 074) */
+  with_since: Date | null;
 }
 
 export interface ComplianceCounts {
@@ -80,7 +83,7 @@ export async function complianceJobs(tx: Tx, node: string | null): Promise<JobRo
     await sql<JobRow>`
       select id, org_node_id, place_name, name, every_months, next_due::text, days_left,
              owner_role, owner_role_name, needs_proof, last_done::text, last_files, open_task,
-             doer_role, doer_role_name, with_name, outlet_id
+             doer_role, doer_role_name, with_name, outlet_id, with_since
         from ops.compliance_items(${node}::uuid)`.execute(tx)
   ).rows;
 }
@@ -156,22 +159,6 @@ export async function complianceTask(tx: Tx, task: string): Promise<ComplianceTa
   );
 }
 
-export interface HandOnPerson {
-  user_id: string;
-  name: string;
-  job_role: string | null;
-  place_name: string;
-}
-
-/** Who a licence renewal or a regular job's To do item may be given to: anyone at its place. */
-export async function handOnPeople(tx: Tx, task: string): Promise<HandOnPerson[]> {
-  return (
-    await sql<HandOnPerson>`
-      select user_id, name, job_role, place_name
-        from ops.hand_on_people(${task}::uuid)`.execute(tx)
-  ).rows;
-}
-
 /** Needs action: licences within 90 days, jobs within 14 (Home's card), red first. */
 export function needsAction(
   lic: LicenceRow[],
@@ -198,10 +185,11 @@ export function needsAction(
 
 /** Who answers for a regular job and who does it, in words. */
 export function jobPeople(
-  j: Pick<JobRow, 'owner_role_name' | 'doer_role_name' | 'with_name'>,
+  j: Pick<JobRow, 'owner_role_name' | 'doer_role_name' | 'with_name' | 'with_since'>,
 ): string {
   const by = j.doer_role_name ?? j.owner_role_name;
-  return `Done by the ${by}${j.with_name ? ` (with ${j.with_name})` : ''}${
+  const since = j.with_since ? ` since ${formatWhen(j.with_since)}` : '';
+  return `Done by the ${by}${j.with_name ? ` (with ${j.with_name}${since})` : ''}${
     j.doer_role_name ? ` · the ${j.owner_role_name} answers for it` : ''
   }`;
 }
