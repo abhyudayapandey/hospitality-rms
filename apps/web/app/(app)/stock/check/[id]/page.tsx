@@ -26,7 +26,7 @@ export default async function StockCheckSheetPage({
     const l = c.rows[0]
       ? await sql<SheetLine>`
           select item_id, name, unit, shelf, area, counted_qty, full_units, tenths,
-                 pack_unit, pack_size, photo_key
+                 pack_unit, pack_size, photo_key, count_limit
             from inv.stock_check_sheet(${id}::uuid)`.execute(tx)
       : { rows: [] as SheetLine[] };
     return { check: c.rows[0], lines: l.rows };

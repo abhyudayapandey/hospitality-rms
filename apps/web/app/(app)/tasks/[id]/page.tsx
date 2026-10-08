@@ -5,6 +5,7 @@ import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { formatQty } from '@/lib/inventory';
 import { photosEnabled } from '@/lib/photos';
+import { prepTaskRecipe, type PrepRecipe } from '@/lib/production';
 import {
   assignablePeople,
   handOnPeople,
@@ -29,8 +30,9 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   let people: Person[];
   let sent: SentLine[];
   let about: ComplianceTaskRow | null;
+  let recipe: PrepRecipe | null;
   try {
-    ({ task, people, sent, about } = await withUser(user.id, async (tx) => {
+    ({ task, people, sent, about, recipe } = await withUser(user.id, async (tx) => {
       const t = await taskDetail(tx, id);
       // a reported expired batch: the lead gives the discard to someone there
       const p =
@@ -51,7 +53,9 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       // a licence's renewal or a compliance job (ADR 069): what it is about
       const c =
         t.kind === 'licence' || t.kind === 'compliance' ? await complianceTask(tx, id) : null;
-      return { task: t, people: p, sent: lines, about: c };
+      // something to make (ADR 076): its ingredients for this quantity, method and batches
+      const r = t.kind === 'prep' ? await prepTaskRecipe(tx, id) : null;
+      return { task: t, people: p, sent: lines, about: c, recipe: r };
     }));
   } catch (err) {
     return (
@@ -107,6 +111,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
             Reported. The department head will give it to someone to discard.
           </p>
         ))}
+      {recipe && <MakeIt recipe={recipe} unit={task.item?.unit ?? ''} open={open} />}
       {about ? (
         <ComplianceWork task={task} about={about} />
       ) : task.kind === 'receive' ? (
@@ -172,6 +177,76 @@ function ComplianceWork({ task, about }: { task: TaskDetail; about: ComplianceTa
             />
           )
         ))}
+    </div>
+  );
+}
+
+/** What to make it from (ADR 076): the ingredients for the task's quantity and the method,
+ * then a label for each batch made for it. */
+function MakeIt({ recipe, unit, open }: { recipe: PrepRecipe; unit: string; open: boolean }) {
+  return (
+    <div className="space-y-3">
+      {open && recipe.ingredients.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold text-slate-500">Ingredients for this batch</h2>
+          <ul
+            className="divide-y divide-slate-100 rounded-xl bg-white text-sm ring-1 ring-slate-200"
+            data-testid="prep-ingredients"
+          >
+            {recipe.ingredients.map((l, i) => (
+              <li key={i} className="flex justify-between gap-2 px-4 py-2">
+                <span>{l.name}</span>
+                <span className="tabular-nums">{formatQty(String(l.qty), l.unit)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {open && recipe.method.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold text-slate-500">Method</h2>
+          <ol
+            className="space-y-2 rounded-xl bg-white p-4 text-sm ring-1 ring-slate-200"
+            data-testid="prep-method"
+          >
+            {recipe.method.map((m) => (
+              <li key={m.step} className="flex gap-3">
+                <span className="font-semibold tabular-nums">{m.step}.</span>
+                <span>
+                  {m.instruction}
+                  {m.minutes ? (
+                    <span className="block text-xs text-slate-500">about {m.minutes} min</span>
+                  ) : null}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+      {recipe.batches.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold text-slate-500">Made for this task</h2>
+          <ul className="divide-y divide-slate-100 rounded-xl bg-white text-sm ring-1 ring-slate-200">
+            {recipe.batches.map((b) => (
+              <li
+                key={b.production_id}
+                className="flex items-center justify-between gap-2 px-4 py-2"
+              >
+                <span>
+                  batch {b.batch_no ?? '–'} · {formatQty(String(b.qty), unit)}
+                </span>
+                <Link
+                  href={`/stock/production/label/${b.production_id}`}
+                  className="flex min-h-11 items-center underline"
+                  data-testid="task-label-link"
+                >
+                  Print its label
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

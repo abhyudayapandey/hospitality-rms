@@ -12,3 +12,4 @@ export * from './checklists';
 export * from './templates';
 export * from './cover';
 export * from './compliance';
+export * from './food-label';

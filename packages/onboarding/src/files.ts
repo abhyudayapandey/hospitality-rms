@@ -8,6 +8,9 @@ import {
   ROLE_BY_CODE,
   SCOPE_WORDS,
   expandDuty,
+  ALLERGENS,
+  FOOD_TYPES,
+  parseAllergens,
 } from '@outlet-ops/domain';
 import { CsvError, parseCsv } from './csv';
 
@@ -450,7 +453,13 @@ export const FILES = {
       is_perishable: yesNo,
       standard_unit_cost_inr: num.refine((v) => v >= 0, 'must not be negative'),
       preferred_supplier_code: optCode,
+      // ADR 076: durable things (linen, equipment) are not stock that moves; blank: consumable
+      item_type: z.union([
+        z.literal('').transform(() => 'consumable' as const),
+        z.enum(['consumable', 'durable'], 'must be consumable or durable'),
+      ]),
     }),
+    optional: ['item_type'],
   },
   itemLocations: {
     file: '11_item_locations.csv',
@@ -570,7 +579,23 @@ export const FILES = {
       unit: recipeUnit,
       batch_yield: num.refine((v) => v > 0, 'must be more than 0'),
       shelf_life_hours: int.refine((v) => v > 0, 'must be more than 0'),
+      // ADR 076, for the batch label (FSSAI): veg or non-veg, allergens, portions a batch makes
+      food_type: z.union([
+        z.literal('').transform(() => undefined),
+        z.enum(FOOD_TYPES, 'must be veg, non_veg or egg'),
+      ]),
+      allergens: z.string().transform((v, ctx) => {
+        const r = parseAllergens(v);
+        if ('ok' in r) return r.ok;
+        ctx.addIssue({
+          code: 'custom',
+          message: `"${r.bad}" is not an allergen FSSAI lists (${ALLERGENS.join('; ')})`,
+        });
+        return z.NEVER;
+      }),
+      batch_portions: optNum.refine((v) => v === undefined || v > 0, 'must be more than 0'),
     }),
+    optional: ['food_type', 'allergens', 'batch_portions'],
   },
   prepLocations: {
     file: '20_prep_locations.csv',

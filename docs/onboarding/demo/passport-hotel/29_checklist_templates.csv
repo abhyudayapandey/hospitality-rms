@@ -61,10 +61,10 @@ KITCHEN-CLOSING,PASSPORT-ASSAGAO-KITCHEN,Kitchen closing,daily 23:00,role:KITCHE
 KITCHEN-CLOSING,PASSPORT-ASSAGAO-KITCHEN,Kitchen closing,daily 23:00,role:KITCHEN_STEWARD,3,Floor and drains cleaned,tick,,,,no,KITCHEN-CLOSING@1
 KITCHEN-CLOSING,PASSPORT-ASSAGAO-KITCHEN,Kitchen closing,daily 23:00,role:KITCHEN_STEWARD,4,Waste out,tick,,,,no,KITCHEN-CLOSING@1
 KITCHEN-CLOSING,PASSPORT-ASSAGAO-KITCHEN,Kitchen closing,daily 23:00,role:KITCHEN_STEWARD,5,Walk-in chiller at close,number,0,5,°C,no,KITCHEN-CLOSING@1
-BAR-RESTOCK,PASSPORT-ASSAGAO-BAR,Bar back restock,daily 16:00 21:00,role:BAR_BACK,1,"Ice wells filled (scoop, never a glass)",tick,,,,no,BAR-RESTOCK@1
-BAR-RESTOCK,PASSPORT-ASSAGAO-BAR,Bar back restock,daily 16:00 21:00,role:BAR_BACK,2,Glasses washed and racked,tick,,,,no,BAR-RESTOCK@1
-BAR-RESTOCK,PASSPORT-ASSAGAO-BAR,Bar back restock,daily 16:00 21:00,role:BAR_BACK,3,"Fridges restocked, oldest at the front",tick,,,,no,BAR-RESTOCK@1
-BAR-RESTOCK,PASSPORT-ASSAGAO-BAR,Bar back restock,daily 16:00 21:00,role:BAR_BACK,4,Empties cleared and counted,tick,,,,no,BAR-RESTOCK@1
+BAR-RESTOCK,PASSPORT-ASSAGAO-BAR,Bar back restock,daily 16:00 21:00,role:BAR_BACK,1,"Ice wells filled (scoop, never a glass)",tick,,,,no,BAR-RESTOCK@2
+BAR-RESTOCK,PASSPORT-ASSAGAO-BAR,Bar back restock,daily 16:00 21:00,role:BAR_BACK,2,Glasses washed and racked,tick,,,,no,BAR-RESTOCK@2
+BAR-RESTOCK,PASSPORT-ASSAGAO-BAR,Bar back restock,daily 16:00 21:00,role:BAR_BACK,3,"Fridges restocked: first in, first out",tick,,,,no,BAR-RESTOCK@2
+BAR-RESTOCK,PASSPORT-ASSAGAO-BAR,Bar back restock,daily 16:00 21:00,role:BAR_BACK,4,Empties cleared and counted,tick,,,,no,BAR-RESTOCK@2
 BAR-CLOSING,PASSPORT-ASSAGAO-BAR,Bar closing,daily 01:30,role:HEAD_BARTENDER,1,Bottles capped and wiped,tick,,,,no,BAR-CLOSING@1
 BAR-CLOSING,PASSPORT-ASSAGAO-BAR,Bar closing,daily 01:30,role:HEAD_BARTENDER,2,"Bar top, sinks and mats cleaned",tick,,,,no,BAR-CLOSING@1
 BAR-CLOSING,PASSPORT-ASSAGAO-BAR,Bar closing,daily 01:30,role:HEAD_BARTENDER,3,Cash counted and handed over,tick,,,,no,BAR-CLOSING@1

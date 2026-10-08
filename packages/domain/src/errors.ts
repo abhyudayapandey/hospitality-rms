@@ -24,6 +24,10 @@ export const ERROR_MESSAGES = {
   CHECK_LOCKED:
     'The counts are locked now that the differences are showing. Add photos, then finish.',
   CHECK_FINISHED: 'This stock check is already finished.',
+  COUNT_TOO_HIGH:
+    "That's far more than this store ever holds of it. Check the number and count again.",
+  MAKE_BY_TASK:
+    'Make what you were given: open it in Tasks and record the batch there. Your lead gives out what to make.',
   CHECK_NOT_REVIEWED: 'Look over the differences before finishing the stock check.',
   INVALID_TIME: "That time isn't right. Check the phone's clock and try again.",
   LEDGER_APPEND_ONLY: 'Stock history cannot be changed. Record a correcting movement instead.',

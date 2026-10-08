@@ -1,11 +1,11 @@
-prep_item_code,name,prep_type,unit,batch_yield,shelf_life_hours
-MAKHANI-GRAVY,Makhani Gravy,kitchen_prep,g,4000,72
-ONION-TOMATO-MASALA,Onion Tomato Masala,kitchen_prep,g,3200,72
-GINGER-GARLIC-PASTE,Ginger Garlic Paste,kitchen_prep,g,1000,168
-MINT-CHUTNEY,Mint Chutney,kitchen_prep,g,500,48
-STEAMED-RICE,Steamed Basmati Rice,kitchen_prep,g,2500,8
-SUGAR-SYRUP,Sugar Syrup (house mixer),house_mixer,ml,800,336
-SOUR-MIX,Sour Mix (house mixer),house_mixer,ml,900,72
-NEGRONI-BATCH,Negroni (pre-batched),batched_cocktail,ml,2000,336
-OLD-FASHIONED-BATCH,Old Fashioned (pre-batched),batched_cocktail,ml,1500,336
-HOUSE-SANGRIA-BATCH,House Sangria (pre-batched),batched_cocktail,ml,3750,48
+prep_item_code,name,prep_type,unit,batch_yield,shelf_life_hours,food_type,allergens,batch_portions
+MAKHANI-GRAVY,Makhani Gravy,kitchen_prep,g,4000,72,veg,milk,25
+ONION-TOMATO-MASALA,Onion Tomato Masala,kitchen_prep,g,3200,72,veg,,20
+GINGER-GARLIC-PASTE,Ginger Garlic Paste,kitchen_prep,g,1000,168,veg,,
+MINT-CHUTNEY,Mint Chutney,kitchen_prep,g,500,48,veg,,20
+STEAMED-RICE,Steamed Basmati Rice,kitchen_prep,g,2500,8,veg,,16
+SUGAR-SYRUP,Sugar Syrup (house mixer),house_mixer,ml,800,336,veg,,
+SOUR-MIX,Sour Mix (house mixer),house_mixer,ml,900,72,veg,,
+NEGRONI-BATCH,Negroni (pre-batched),batched_cocktail,ml,2000,336,veg,sulphites,22
+OLD-FASHIONED-BATCH,Old Fashioned (pre-batched),batched_cocktail,ml,1500,336,veg,,25
+HOUSE-SANGRIA-BATCH,House Sangria (pre-batched),batched_cocktail,ml,3750,48,veg,sulphites,25

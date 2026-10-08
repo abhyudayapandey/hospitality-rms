@@ -33,6 +33,8 @@ export interface SheetLine {
   pack_unit: string | null;
   pack_size: string | null;
   photo_key: string | null;
+  /** five times the most the store usually holds (ADR 076): a count above it is a slip */
+  count_limit: string | null;
 }
 
 interface Entry {
@@ -148,6 +150,12 @@ export function CheckSheet({
     if (counted === null) return;
     if (Number.isNaN(counted)) {
       setError(`Check the count for ${l.name}: zero or more.`);
+      return;
+    }
+    if (!bar && l.count_limit !== null && counted > Number(l.count_limit)) {
+      setError(
+        `${formatQty(counted, l.unit)} of ${l.name} is far more than this store ever holds. Check the number and count again.`,
+      );
       return;
     }
     setError(null);

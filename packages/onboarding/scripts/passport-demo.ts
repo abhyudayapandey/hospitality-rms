@@ -115,8 +115,8 @@ csv(
     [SUPPLY, 'Passport Hotel – Supply Point', 'outlet', NET, TZ, 'no', 'no'],
     [MAIN, 'Main Store', 'store', SUPPLY, TZ, 'yes', 'yes'],
     [KS, 'Kitchen Store', 'store', SUPPLY, TZ, 'yes', 'no'],
-    [LAYOVER, 'Layover Bar (rooftop)', 'store', SUPPLY, TZ, 'yes', 'no'],
-    [LOBBY, 'Mini Bar (lobby)', 'store', SUPPLY, TZ, 'yes', 'no'],
+    [LAYOVER, 'Bar · Layover (rooftop)', 'store', SUPPLY, TZ, 'yes', 'no'],
+    [LOBBY, 'Bar · Mini Bar (lobby)', 'store', SUPPLY, TZ, 'yes', 'no'],
     [HK, 'Housekeeping Store (with the in-room minibars)', 'store', SUPPLY, TZ, 'yes', 'no'],
   ],
 );
@@ -127,7 +127,8 @@ csv(
     [H, SUPPLY, 'The hotel and its supply point'],
     [D('STORES-TEAM'), MAIN, 'Purchase & Stores runs the Main Store'],
     [D('KITCHEN'), KS, 'The kitchen uses the Kitchen Store'],
-    [D('BAR'), LAYOVER, 'The bar team runs Layover; the Mini Bar is given in file 08'],
+    [D('BAR'), LAYOVER, 'The bar is one department in two places: Layover on the roof'],
+    [D('BAR'), LOBBY, 'and the Mini Bar in the lobby'],
     [D('HOUSEKEEPING'), HK, 'Housekeeping keeps its store and the in-room minibars'],
   ],
 );
@@ -244,19 +245,7 @@ csv(
 csv(
   '08_role_assignments_extra.csv',
   ['username', 'access_group', 'node_code', 'include_descendants', 'reason'],
-  [
-    [U('gm'), 'USER_ADMIN', H, 'true', 'The GM adds people and resets their passwords'],
-    [U('bar-manager'), 'STORE_KEEPER', LOBBY, 'true', 'The bar team also runs the lobby Mini Bar'],
-    [
-      U('head-bartender'),
-      'STORE_KEEPER',
-      LOBBY,
-      'true',
-      'The bar team also runs the lobby Mini Bar',
-    ],
-    [U('bartender'), 'STOCK_USER', LOBBY, 'true', 'Works the lobby Mini Bar'],
-    [U('bar-back'), 'STOCK_USER', LOBBY, 'true', 'Restocks the lobby Mini Bar'],
-  ],
+  [[U('gm'), 'USER_ADMIN', H, 'true', 'The GM adds people and resets their passwords']],
 );
 csv(
   '37_role_cover.csv',
@@ -496,8 +485,19 @@ csv(
     'is_perishable',
     'standard_unit_cost_inr',
     'preferred_supplier_code',
+    'item_type',
   ],
-  ITEMS.map((i) => [i.code, i.name, i.cat, i.unit, i.perishable ? 'yes' : 'no', i.cost, i.sup]),
+  ITEMS.map((i) => [
+    i.code,
+    i.name,
+    i.cat,
+    i.unit,
+    i.perishable ? 'yes' : 'no',
+    i.cost,
+    i.sup,
+    // linen is kept and laundered, not used up (ADR 076)
+    i.cat === 'Linen' ? 'durable' : 'consumable',
+  ]),
 );
 csv(
   '18_item_unit_conversions.csv',
@@ -684,6 +684,8 @@ interface Prep {
   unit: 'g' | 'ml';
   yield: number;
   life: number;
+  /** for the batch label (ADR 076): every one here is vegetarian, none has an allergen */
+  portions: number;
   at: string[];
   par: number;
   lines: Line[];
@@ -697,6 +699,7 @@ const PREPS: Prep[] = [
     unit: 'ml',
     yield: 1000,
     life: 336,
+    portions: 50,
     at: [LAYOVER, LOBBY],
     par: 1500,
     lines: [['SUGAR', 650, 'g']],
@@ -709,6 +712,7 @@ const PREPS: Prep[] = [
     unit: 'ml',
     yield: 1000,
     life: 240,
+    portions: 33,
     at: [LAYOVER, LOBBY],
     par: 1000,
     lines: [
@@ -729,6 +733,7 @@ const PREPS: Prep[] = [
     unit: 'g',
     yield: 250,
     life: 336,
+    portions: 125,
     at: [LAYOVER, LOBBY],
     par: 250,
     lines: [
@@ -745,6 +750,7 @@ const PREPS: Prep[] = [
     unit: 'ml',
     yield: 1000,
     life: 72,
+    portions: 16,
     at: [LAYOVER, LOBBY],
     par: 1000,
     lines: [['ESPRESSO-BEANS', 120, 'g']],
@@ -757,6 +763,7 @@ const PREPS: Prep[] = [
     unit: 'ml',
     yield: 750,
     life: 168,
+    portions: 25,
     at: [LAYOVER, LOBBY],
     par: 750,
     lines: [
@@ -773,6 +780,7 @@ const PREPS: Prep[] = [
     unit: 'ml',
     yield: 750,
     life: 240,
+    portions: 37,
     at: [LAYOVER, LOBBY],
     par: 750,
     lines: [
@@ -788,6 +796,7 @@ const PREPS: Prep[] = [
     unit: 'g',
     yield: 1000,
     life: 336,
+    portions: 50,
     at: [KS],
     par: 1000,
     lines: [
@@ -813,6 +822,7 @@ const PREPS: Prep[] = [
     unit: 'g',
     yield: 1000,
     life: 120,
+    portions: 40,
     at: [KS],
     par: 1000,
     lines: [
@@ -837,6 +847,7 @@ const PREPS: Prep[] = [
     unit: 'ml',
     yield: 3000,
     life: 72,
+    portions: 20,
     at: [KS],
     par: 3000,
     lines: [
@@ -858,8 +869,18 @@ const PREPS: Prep[] = [
 const PREP = new Map(PREPS.map((p) => [p.code, p]));
 csv(
   '19_prep_items.csv',
-  ['prep_item_code', 'name', 'prep_type', 'unit', 'batch_yield', 'shelf_life_hours'],
-  PREPS.map((p) => [p.code, p.name, p.type, p.unit, p.yield, p.life]),
+  [
+    'prep_item_code',
+    'name',
+    'prep_type',
+    'unit',
+    'batch_yield',
+    'shelf_life_hours',
+    'food_type',
+    'allergens',
+    'batch_portions',
+  ],
+  PREPS.map((p) => [p.code, p.name, p.type, p.unit, p.yield, p.life, 'veg', '', p.portions]),
 );
 csv(
   '20_prep_locations.csv',

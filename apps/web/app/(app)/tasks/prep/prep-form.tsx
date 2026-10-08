@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { Icon } from '@/components/icon';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
 import { localToInstant, localToday } from '@/lib/dates';
 import type { JobRole, Person, PrepSuggestion } from '@/lib/tasks';
@@ -36,6 +37,10 @@ export function PrepForm({
       lines.map((l) => [l.item_id, n(l.suggested) > 0 ? String(n(l.suggested)) : '']),
     ),
   );
+  // ticked: made today (ADR 076); what is short of par starts ticked
+  const [on, setOn] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(lines.map((l) => [l.item_id, n(l.suggested) > 0])),
+  );
   const [time, setTime] = useState('11:00');
   const [assign, setAssign] = useState<Assign>(
     roles[0] ? { mode: 'job_role', role: roles[0].code } : { mode: 'on_shift' },
@@ -44,6 +49,7 @@ export function PrepForm({
   const [done, setDone] = useState<string | null>(null);
 
   const chosen = lines
+    .filter((l) => on[l.item_id])
     .map((l) => ({ item_id: l.item_id, qty: Number(qty[l.item_id] ?? '') }))
     .filter((l) => Number.isFinite(l.qty) && l.qty > 0);
 
@@ -51,7 +57,7 @@ export function PrepForm({
     start(async () => {
       setError(null);
       setDone(null);
-      if (chosen.length === 0) return setError('Enter how much to make of at least one item.');
+      if (chosen.length === 0) return setError('Tick at least one item and say how much to make.');
       const r = await createPrepTasks({
         store,
         lines: chosen,
@@ -71,35 +77,54 @@ export function PrepForm({
         submit();
       }}
     >
-      <ul
-        data-testid="prep-lines"
-        className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
-      >
-        {lines.map((l) => (
-          <li key={l.item_id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <span className="min-w-0 text-sm">
-              <span className="block font-medium">{l.name}</span>
-              <span className="block text-xs text-slate-500">
-                par {q(l.par, l.unit)} · on hand {q(l.on_hand, l.unit)}
-                {n(l.event_need) > 0 && ` · events ${q(l.event_need, l.unit)}`}
-                {n(l.open_tasks) > 0 && ` · in prep ${q(l.open_tasks, l.unit)}`}
+      <ul data-testid="prep-lines" className="space-y-2">
+        {lines.map((l) => {
+          const ticked = Boolean(on[l.item_id]);
+          return (
+            <li
+              key={l.item_id}
+              data-testid="prep-line"
+              className={`flex items-center gap-3 rounded-xl bg-white p-3 ring-1 ${
+                ticked ? 'ring-brand-600' : 'ring-slate-200'
+              }`}
+            >
+              {canCreate && (
+                <input
+                  type="checkbox"
+                  aria-label={`Make ${l.name} today`}
+                  checked={ticked}
+                  onChange={(e) => setOn({ ...on, [l.item_id]: e.target.checked })}
+                  className="size-6 shrink-0 accent-brand-700"
+                />
+              )}
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                <Icon name={l.unit === 'ml' || l.unit === 'l' ? 'glass' : 'pot'} />
               </span>
-            </span>
-            {canCreate ? (
-              <input
-                inputMode="decimal"
-                aria-label={`Make ${l.name} (${l.unit})`}
-                value={qty[l.item_id] ?? ''}
-                onChange={(e) => setQty({ ...qty, [l.item_id]: e.target.value })}
-                className={`${inputClass} w-24 text-right`}
-              />
-            ) : (
-              <span className="text-sm tabular-nums">
-                {n(l.suggested)} {l.unit}
+              <span className="min-w-0 flex-1 text-sm">
+                <span className="block font-medium">{l.name}</span>
+                <span className="block text-xs text-slate-500">
+                  par {q(l.par, l.unit)} · on hand {q(l.on_hand, l.unit)}
+                  {n(l.event_need) > 0 && ` · events ${q(l.event_need, l.unit)}`}
+                  {n(l.open_tasks) > 0 && ` · in prep ${q(l.open_tasks, l.unit)}`}
+                </span>
               </span>
-            )}
-          </li>
-        ))}
+              {canCreate ? (
+                <input
+                  inputMode="decimal"
+                  aria-label={`Make ${l.name} (${l.unit})`}
+                  value={qty[l.item_id] ?? ''}
+                  disabled={!ticked}
+                  onChange={(e) => setQty({ ...qty, [l.item_id]: e.target.value })}
+                  className={`${inputClass} w-24 text-right disabled:opacity-50`}
+                />
+              ) : (
+                <span className="text-sm tabular-nums">
+                  {n(l.suggested)} {l.unit}
+                </span>
+              )}
+            </li>
+          );
+        })}
       </ul>
       {canCreate && (
         <div className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">

@@ -3,6 +3,6 @@ PASSPORT-SUPPLY-NETWORK,Passport Hotel – Supply Network,network,,,no,no
 PASSPORT-ASSAGAO-SUPPLY,Passport Hotel – Supply Point,outlet,PASSPORT-SUPPLY-NETWORK,Asia/Kolkata,no,no
 PASSPORT-ASSAGAO-MAIN-STORE,Main Store,store,PASSPORT-ASSAGAO-SUPPLY,Asia/Kolkata,yes,yes
 PASSPORT-ASSAGAO-KITCHEN-STORE,Kitchen Store,store,PASSPORT-ASSAGAO-SUPPLY,Asia/Kolkata,yes,no
-PASSPORT-ASSAGAO-LAYOVER-BAR-STORE,Layover Bar (rooftop),store,PASSPORT-ASSAGAO-SUPPLY,Asia/Kolkata,yes,no
-PASSPORT-ASSAGAO-MINI-BAR-STORE,Mini Bar (lobby),store,PASSPORT-ASSAGAO-SUPPLY,Asia/Kolkata,yes,no
+PASSPORT-ASSAGAO-LAYOVER-BAR-STORE,Bar · Layover (rooftop),store,PASSPORT-ASSAGAO-SUPPLY,Asia/Kolkata,yes,no
+PASSPORT-ASSAGAO-MINI-BAR-STORE,Bar · Mini Bar (lobby),store,PASSPORT-ASSAGAO-SUPPLY,Asia/Kolkata,yes,no
 PASSPORT-ASSAGAO-HOUSEKEEPING-STORE,Housekeeping Store (with the in-room minibars),store,PASSPORT-ASSAGAO-SUPPLY,Asia/Kolkata,yes,no

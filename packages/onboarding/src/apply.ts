@@ -1450,18 +1450,20 @@ class Loader {
       await this.upsert(
         'items',
         `insert into inv.item (tenant_id, sku, name, category, base_uom, is_perishable,
-                               standard_unit_cost, preferred_supplier_id)
-         values ($1, $2, $3, $4, $5, $6, $7, $8)
+                               standard_unit_cost, preferred_supplier_id, durable)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          on conflict (tenant_id, sku) do update
             set name = excluded.name, category = excluded.category, base_uom = excluded.base_uom,
                 is_perishable = excluded.is_perishable,
                 standard_unit_cost = excluded.standard_unit_cost,
-                preferred_supplier_id = excluded.preferred_supplier_id, archived_at = null
+                preferred_supplier_id = excluded.preferred_supplier_id,
+                durable = excluded.durable, archived_at = null
           where (inv.item.name, inv.item.category, inv.item.base_uom, inv.item.is_perishable,
-                 inv.item.standard_unit_cost, inv.item.preferred_supplier_id, inv.item.archived_at)
+                 inv.item.standard_unit_cost, inv.item.preferred_supplier_id, inv.item.durable,
+                 inv.item.archived_at)
                 is distinct from (excluded.name, excluded.category, excluded.base_uom,
                                   excluded.is_perishable, excluded.standard_unit_cost,
-                                  excluded.preferred_supplier_id, null)
+                                  excluded.preferred_supplier_id, excluded.durable, null)
          returning id, xmax = 0 as inserted`,
         [
           this.tenant,
@@ -1472,6 +1474,7 @@ class Loader {
           i.is_perishable,
           i.standard_unit_cost_inr,
           supplier(i.preferred_supplier_code),
+          i.item_type === 'durable',
         ],
       );
       this.items.set(
@@ -1585,16 +1588,21 @@ class Loader {
       await this.upsert(
         'prep items',
         `insert into inv.item (tenant_id, sku, name, category, base_uom, is_perishable, kind,
-                               prep_type, shelf_life_hours)
-         values ($1, $2, $3, $4, $5, true, 'prep', $6, $7)
+                               prep_type, shelf_life_hours, food_type, allergens, batch_portions)
+         values ($1, $2, $3, $4, $5, true, 'prep', $6, $7, $8, $9, $10)
          on conflict (tenant_id, sku) do update
             set name = excluded.name, category = excluded.category, base_uom = excluded.base_uom,
                 kind = 'prep', prep_type = excluded.prep_type,
-                shelf_life_hours = excluded.shelf_life_hours, archived_at = null
+                shelf_life_hours = excluded.shelf_life_hours, food_type = excluded.food_type,
+                allergens = excluded.allergens, batch_portions = excluded.batch_portions,
+                archived_at = null
           where (inv.item.name, inv.item.category, inv.item.base_uom, inv.item.kind,
-                 inv.item.prep_type, inv.item.shelf_life_hours, inv.item.archived_at)
+                 inv.item.prep_type, inv.item.shelf_life_hours, inv.item.food_type,
+                 inv.item.allergens, inv.item.batch_portions, inv.item.archived_at)
                 is distinct from (excluded.name, excluded.category, excluded.base_uom, 'prep',
-                                  excluded.prep_type, excluded.shelf_life_hours, null)
+                                  excluded.prep_type, excluded.shelf_life_hours,
+                                  excluded.food_type, excluded.allergens, excluded.batch_portions,
+                                  null)
          returning id, xmax = 0 as inserted`,
         [
           this.tenant,
@@ -1604,6 +1612,9 @@ class Loader {
           p.unit,
           p.prep_type,
           p.shelf_life_hours,
+          p.food_type ?? null,
+          p.allergens,
+          p.batch_portions ?? null,
         ],
       );
       this.items.set(

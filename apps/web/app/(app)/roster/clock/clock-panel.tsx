@@ -70,9 +70,10 @@ export function ClockPanel({
 
   // The clock-in selfie (ATT-7, ADR 045): the camera opens when "Clock in" is tapped, the
   // punch follows the photo. A phone with no camera clocks in without one and is flagged.
-  const camera = useRef<HTMLInputElement>(null);
+  // It is the live front camera, taken here: never a photo from the gallery (ADR 076).
+  const [shooting, setShooting] = useState(false);
 
-  const punch = (photo: File | null) =>
+  const punch = (photo: Blob | null) =>
     start(async () => {
       setError(null);
       const clientTs = new Date().toISOString(); // the moment of the tap
@@ -155,30 +156,35 @@ export function ClockPanel({
           </p>
         )}
       </div>
-      <input
-        ref={camera}
-        type="file"
-        accept="image/*"
-        capture="user"
-        className="sr-only"
-        tabIndex={-1}
-        aria-label="Selfie"
-        data-testid="selfie-input"
-        onChange={(e) => {
-          const f = e.target.files?.[0] ?? null;
-          e.target.value = ''; // the same photo can be chosen again
-          if (f) punch(f);
-        }}
-      />
-      <button
-        type="button"
-        disabled={!hydrated || pending}
-        onClick={() => (action === 'in' ? camera.current?.click() : punch(null))}
-        className={`${primaryButton} min-h-16 text-lg`}
-      >
-        {pending ? 'Working…' : inSince ? 'Clock out' : 'Clock in with a selfie'}
-      </button>
-      {action === 'in' && (
+      {shooting ? (
+        <SelfieCamera
+          onPhoto={(b) => {
+            setShooting(false);
+            punch(b);
+          }}
+          onCancel={() => setShooting(false)}
+          onFail={() => {
+            setShooting(false);
+            setError(
+              'The camera did not open. Allow the camera for Outlet Ops and try again, or clock in without a selfie (your manager will check it).',
+            );
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          disabled={!hydrated || pending}
+          onClick={() => {
+            setError(null);
+            if (action === 'in') setShooting(true);
+            else punch(null);
+          }}
+          className={`${primaryButton} min-h-16 text-lg`}
+        >
+          {pending ? 'Working…' : inSince ? 'Clock out' : 'Clock in with a selfie'}
+        </button>
+      )}
+      {action === 'in' && !shooting && (
         <button
           type="button"
           disabled={pending}
@@ -194,6 +200,86 @@ export function ClockPanel({
       <p className="text-xs text-slate-500">
         Your location is used only to check you are at the outlet. It is kept for 90 days.
       </p>
+    </div>
+  );
+}
+
+/** The front camera, live: the person looks at it and takes the photo here (ADR 076). */
+function SelfieCamera({
+  onPhoto,
+  onCancel,
+  onFail,
+}: {
+  onPhoto: (photo: Blob) => void;
+  onCancel: () => void;
+  onFail: () => void;
+}) {
+  const video = useRef<HTMLVideoElement>(null);
+  const [ready, setReady] = useState(false);
+  // the camera opens once, whatever the parent does meanwhile
+  const fail = useRef(onFail);
+  useEffect(() => {
+    fail.current = onFail;
+  }, [onFail]);
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    let gone = false;
+    void (async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user' },
+          audio: false,
+        });
+        if (gone) return stream.getTracks().forEach((t) => t.stop());
+        if (video.current) {
+          video.current.srcObject = stream;
+          await video.current.play();
+        }
+      } catch {
+        if (!gone) fail.current();
+      }
+    })();
+    return () => {
+      gone = true;
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
+  const take = () => {
+    const v = video.current;
+    if (!v || !v.videoWidth) return;
+    const c = document.createElement('canvas');
+    c.width = v.videoWidth;
+    c.height = v.videoHeight;
+    c.getContext('2d')?.drawImage(v, 0, 0);
+    c.toBlob((b) => (b ? onPhoto(b) : onFail()), 'image/jpeg', 0.8);
+  };
+
+  return (
+    <div className="space-y-2" data-testid="selfie-camera">
+      <video
+        ref={video}
+        playsInline
+        muted
+        onLoadedData={() => setReady(true)}
+        className="aspect-[3/4] w-full -scale-x-100 rounded-xl bg-slate-900 object-cover"
+        aria-label="Camera"
+      />
+      <button
+        type="button"
+        disabled={!ready}
+        onClick={take}
+        className={`${primaryButton} min-h-16 text-lg`}
+      >
+        Take photo and clock in
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        className="min-h-11 w-full text-sm text-slate-600 underline"
+      >
+        Cancel
+      </button>
     </div>
   );
 }

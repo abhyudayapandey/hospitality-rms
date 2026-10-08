@@ -1,6 +1,2 @@
 username,access_group,node_code,include_descendants,reason
 passport.gm,USER_ADMIN,PASSPORT-ASSAGAO,true,The GM adds people and resets their passwords
-passport.bar-manager,STORE_KEEPER,PASSPORT-ASSAGAO-MINI-BAR-STORE,true,The bar team also runs the lobby Mini Bar
-passport.head-bartender,STORE_KEEPER,PASSPORT-ASSAGAO-MINI-BAR-STORE,true,The bar team also runs the lobby Mini Bar
-passport.bartender,STOCK_USER,PASSPORT-ASSAGAO-MINI-BAR-STORE,true,Works the lobby Mini Bar
-passport.bar-back,STOCK_USER,PASSPORT-ASSAGAO-MINI-BAR-STORE,true,Restocks the lobby Mini Bar
