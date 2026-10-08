@@ -30,15 +30,11 @@ test('a selfie taken at clock-in goes with the punch; with no storage it is flag
   // the page is live once its button is (ADR 055)
   await expect(page.getByRole('button', { name: 'Clock in with a selfie' })).toBeEnabled();
 
-  // the camera input takes the photo (a file here), and the punch follows it
-  await page.getByTestId('selfie-input').setInputFiles({
-    name: 'selfie.jpg',
-    mimeType: 'image/jpeg',
-    buffer: Buffer.from(
-      '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=',
-      'base64',
-    ),
-  });
+  // the live camera opens (a fake one here; never the gallery), and the punch follows the photo
+  await page.getByRole('button', { name: 'Clock in with a selfie' }).click();
+  await expect(page.getByTestId('selfie-camera')).toBeVisible();
+  await expect(page.locator('input[type=file]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Take photo and clock in' }).click();
   await expect(page.getByTestId('clock-state')).toContainText('Clocked in since');
   await expect(page.getByRole('status')).toContainText('Clocked in at');
   // no photo storage here: the punch went through and was flagged

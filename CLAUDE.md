@@ -186,6 +186,14 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   and the next, saying who did it (`ops.done_lately`); its job role's people may open it.
   The wizard's "What they buy" step lists every bundle, the usual ones ticked; bundles are
   bought, extras are what is there.
+- Making is given, not chosen (ADR 076): the lead of a store's making (`inv.leads_making`)
+  records batches from Make and gives out prep tasks; anyone else gets `MAKE_BY_TASK` there
+  and makes what they were given, on its task (ingredients scaled, method, `ops.prep_task_recipe`).
+  A batch has an FSSAI label (`inv.batch_label`, file 19 `food_type`, `allergens`,
+  `batch_portions`). Durable items (file 10 `item_type`) stay out of "not moved" and days on
+  hand; a `department_store` duty reaches every store linked to the department; counts above
+  `inv.count_limit` are `COUNT_TOO_HIGH`; leave is department head, then GM; the clock-in
+  selfie is the live camera only.
 - A hotel's pool, spa and gym are extras with the SOP's people and checks; breakfast is the
   restaurant's (ADR 068). A library checklist's copy is offered a newer library version on its
   screen and changes only when its editor takes it (`ops.use_library_version`).

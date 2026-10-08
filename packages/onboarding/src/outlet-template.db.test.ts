@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { TILES, type ExtraCode } from '@outlet-ops/domain';
+import { CHECKLISTS, TILES, type ExtraCode } from '@outlet-ops/domain';
 import { closePools, inRolledBackTx } from '@outlet-ops/db/test-helpers';
 import type { PoolClient } from 'pg';
 import { afterAll, describe, expect, it, vi } from 'vitest';
@@ -64,7 +64,9 @@ async function check(c: PoolClient, ch: OutletChoice, base: AccessRow[]) {
     lists.map((l) => l.library_code),
     ch.tile,
   ).toEqual(plan.checklists.map((x) => x.code).sort());
-  expect(lists.every((l) => l.library_version === 1)).toBe(true);
+  // each copy is of the library's current version
+  const current = new Map(CHECKLISTS.map((l) => [l.code, l.version]));
+  expect(lists.every((l) => l.library_version === current.get(l.library_code))).toBe(true);
   await c.query('select * from ops.tasks_tick(now())');
   const { rows: rounds } = await c.query<{ n: number }>(
     `select count(*)::int n from ops.task t join core.hierarchy_node n on n.id = t.org_node_id

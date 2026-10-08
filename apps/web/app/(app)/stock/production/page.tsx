@@ -4,7 +4,9 @@ import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatQty, param, supplyContext, type SearchParams } from '@/lib/inventory';
-import { batches, madeHere, productionPlan } from '@/lib/production';
+import { allergenText, FoodMark } from '@/components/food-mark';
+import { formatWhen } from '@/lib/format';
+import { batches, leadsMaking, madeHere, myMakeTasks, productionPlan } from '@/lib/production';
 import { shelfLifeText, useByText } from '@/lib/shelf-life';
 import { ProductionForm } from './production-form';
 import { ReportExpired } from './report-expired';
@@ -16,6 +18,9 @@ import { inputQty } from '@/lib/qty';
 // who gives the discard (and a remake) to someone (ADR 020).
 // The places are the stores where the person records production and something is made
 // (stock users there, or PRODUCTION_TEAM through their department, ADR 016).
+// Making is given, not chosen (ADR 076): the lead records any batch here and gives out what
+// to make from the Prep list; everyone else sees what they were given, each opening its task
+// (ingredients, method, the batch and its label). The newest batch is first, with its label.
 export default async function ProductionPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await supplyContext(searchParams, 'production');
   if (!ctx.node || ctx.node.derived) return <NoSupplyAccess />;
@@ -24,11 +29,13 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
   const user = await requireUser();
   const node = ctx.node.id;
   const data = await withUser(user.id, async (tx) => {
-    const items = await madeHere(tx, node).catch(() => []);
+    const lead = await leadsMaking(tx, node);
+    const given = await myMakeTasks(tx, node);
+    const items = lead ? await madeHere(tx, node) : [];
     const chosen = items.find((i) => i.item_id === param(sp, 'item')) ?? items[0];
     const plan = chosen ? await productionPlan(tx, node, chosen.item_id) : [];
-    const held = await batches(tx, node).catch(() => []);
-    return { items, chosen, plan, held };
+    const held = await batches(tx, node);
+    return { lead, given, items, chosen, plan, held };
   });
   const expired = data.held.filter((b) => b.expired);
 
@@ -66,45 +73,88 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
           </ul>
         </section>
       )}
-      {data.items.length === 0 || !data.chosen ? (
-        <Empty>Nothing is made at this store.</Empty>
-      ) : (
-        <>
-          {data.items.length > 1 && (
-            <nav aria-label="Prep item" className="-mx-4 overflow-x-auto px-4">
-              <ul className="flex gap-2">
-                {data.items.map((i) => (
-                  <li key={i.item_id}>
-                    <Link
-                      href={`/stock/production?node=${node}&item=${i.item_id}`}
-                      aria-current={i.item_id === data.chosen!.item_id ? 'true' : undefined}
-                      className={`flex min-h-11 items-center rounded-full px-4 text-sm whitespace-nowrap ${
-                        i.item_id === data.chosen!.item_id
-                          ? 'bg-slate-200 font-semibold'
-                          : 'ring-1 ring-slate-300'
-                      }`}
+      <section className="space-y-2" data-testid="given">
+        <h2 className="text-sm font-semibold text-slate-500">
+          {data.lead ? 'Given to you to make' : 'What you were given to make'}
+        </h2>
+        {data.given.length === 0 ? (
+          <Empty>
+            {data.lead
+              ? 'Nothing given to you. Give out what to make from the Prep list.'
+              : 'Nothing to make yet. Your lead gives it to you, and it shows here and in your To do list.'}
+          </Empty>
+        ) : (
+          <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
+            {data.given.map((t) => (
+              <li key={t.task_id}>
+                <Link
+                  href={`/tasks/${t.task_id}`}
+                  data-testid="make-task"
+                  className="flex min-h-14 items-center justify-between gap-2 px-4 py-3 text-sm"
+                >
+                  <span>
+                    <span className="block font-medium">{t.name}</span>
+                    <span
+                      className={`text-xs ${t.overdue ? 'font-semibold text-rose-700' : 'text-slate-500'}`}
                     >
-                      {i.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          )}
-          <ProductionForm
-            key={data.chosen.item_id}
-            node={node}
-            item={data.chosen}
-            shelfLife={shelfLifeText(data.plan[0]?.shelf_life_hours ?? null)}
-            plan={data.plan.map((l) => ({
-              ingredient_id: l.ingredient_id,
-              name: l.name,
-              qty: Number(l.qty),
-              unit: l.unit,
-            }))}
-          />
-        </>
-      )}
+                      {t.overdue ? 'overdue, ' : ''}due {formatWhen(t.due_at)}
+                    </span>
+                  </span>
+                  {t.target_qty !== null && (
+                    <span className="tabular-nums">{formatQty(t.target_qty, t.unit)}</span>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      {data.lead &&
+        (data.items.length === 0 || !data.chosen ? (
+          <Empty>Nothing is made at this store.</Empty>
+        ) : (
+          <section className="space-y-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold text-slate-500">Record a batch yourself</h2>
+              <Link href={`/tasks/prep?node=${node}`} className="text-sm underline">
+                Give out what to make
+              </Link>
+            </div>
+            {data.items.length > 1 && (
+              <nav aria-label="Prep item" className="-mx-4 overflow-x-auto px-4">
+                <ul className="flex gap-2">
+                  {data.items.map((i) => (
+                    <li key={i.item_id}>
+                      <Link
+                        href={`/stock/production?node=${node}&item=${i.item_id}`}
+                        aria-current={i.item_id === data.chosen!.item_id ? 'true' : undefined}
+                        className={`flex min-h-11 items-center rounded-full px-4 text-sm whitespace-nowrap ${
+                          i.item_id === data.chosen!.item_id
+                            ? 'bg-slate-200 font-semibold'
+                            : 'ring-1 ring-slate-300'
+                        }`}
+                      >
+                        {i.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            )}
+            <ProductionForm
+              key={data.chosen.item_id}
+              node={node}
+              item={data.chosen}
+              shelfLife={shelfLifeText(data.plan[0]?.shelf_life_hours ?? null)}
+              plan={data.plan.map((l) => ({
+                ingredient_id: l.ingredient_id,
+                name: l.name,
+                qty: Number(l.qty),
+                unit: l.unit,
+              }))}
+            />
+          </section>
+        ))}
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-slate-500">Batches here</h2>
         {data.held.length === 0 ? (
@@ -117,11 +167,29 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
                 data-testid="batch"
                 className="flex justify-between gap-2 px-4 py-3 text-sm"
               >
-                <span>
-                  <span className="block font-medium">{b.name}</span>
-                  <span className="text-xs text-slate-500">
-                    batch {b.batch_no ?? '–'} · {useByText(b.expires_at)}
+                <span className="min-w-0">
+                  <span className="flex items-center gap-2 font-medium">
+                    <FoodMark type={b.food_type} />
+                    {b.name}
                   </span>
+                  <span className="block text-xs text-slate-500">
+                    batch {b.batch_no ?? '–'} · {useByText(b.expires_at)}
+                    {b.made_by && ` · made by ${b.made_by}`}
+                  </span>
+                  {allergenText(b.allergens) && (
+                    <span className="block text-xs text-slate-500">
+                      {allergenText(b.allergens)}
+                    </span>
+                  )}
+                  {b.production_id && (
+                    <Link
+                      href={`/stock/production/label/${b.production_id}`}
+                      className="text-xs underline"
+                      data-testid="label-link"
+                    >
+                      Label
+                    </Link>
+                  )}
                 </span>
                 <span
                   className={`text-right tabular-nums ${b.expired ? 'font-semibold text-amber-800' : ''}`}

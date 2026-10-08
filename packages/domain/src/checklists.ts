@@ -606,7 +606,7 @@ export const CHECKLISTS: readonly LibraryChecklist[] = [
   },
   {
     code: 'BAR-RESTOCK',
-    version: 1,
+    version: 2,
     name: 'Bar back restock',
     does: 'Ice, glasses, fridges and empties before and during service.',
     department: 'BAR',
@@ -615,7 +615,7 @@ export const CHECKLISTS: readonly LibraryChecklist[] = [
     steps: [
       tick('Ice wells filled (scoop, never a glass)'),
       tick('Glasses washed and racked'),
-      tick('Fridges restocked, oldest at the front'),
+      tick('Fridges restocked: first in, first out'),
       tick('Empties cleared and counted'),
     ],
     from: 'Bar SOP bar operations',

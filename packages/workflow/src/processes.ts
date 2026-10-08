@@ -95,9 +95,9 @@ export const TRANSFER: ProcessDef = {
   slaHours: 24,
 };
 
-// The person's department head first, falling back up the tree (ADR 009). The HR step is
-// a customer setting (leave_hr_approval, on unless turned off); when the same person
-// already approved the first step, it is skipped (same_approver).
+// The person's department head, then the GM (ADR 076): a department head's own leave goes
+// to the GM only, since the first step falls up to the GM and the same approver is not
+// asked twice (same_approver). The HR step (leave_hr_approval) is no longer part of it.
 export const LEAVE: ProcessDef = {
   type: 'LEAVE',
   subject: 'hr.leave_request',
@@ -111,11 +111,10 @@ export const LEAVE: ProcessDef = {
       fallback: ['OUTLET_MANAGER', 'AREA_MANAGER'],
     },
     {
-      step: 'hr_approval',
-      group: 'OUTLET_HR',
+      step: 'gm_approval',
+      group: 'OUTLET_MANAGER',
       scope: 'nearest_ancestor',
-      fallback: ['HR_ADMIN'],
-      when: { setting: 'leave_hr_approval' },
+      fallback: ['AREA_MANAGER'],
     },
   ],
   onApproved: 'hr.leave.apply',

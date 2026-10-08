@@ -65,45 +65,49 @@ async function inbox(c: PoolClient, who: string): Promise<string[]> {
   );
 }
 
-describe('leave goes to the department head first, falling back up the tree', () => {
-  it('full hotel: the department head, then the outlet HR executive', async () => {
+describe('leave goes to the department head, then the GM (ADR 076)', () => {
+  it('full hotel: the department head, then the general manager', async () => {
     await inRolledBackTx(async (c) => {
       const r = await leave(c, 'test.room-attendant.1.0');
       expect(await route(c, r)).toEqual([
         { step: 'manager_approval', state: 'pending', grp: 'DEPARTMENT_HEAD', skip: null },
-        { step: 'hr_approval', state: 'waiting', grp: 'OUTLET_HR', skip: null },
+        { step: 'gm_approval', state: 'waiting', grp: 'OUTLET_MANAGER', skip: null },
       ]);
       expect(await inbox(c, 'test.executive-housekeeper.1.0')).toContain(r);
       expect(await inbox(c, 'test.general-manager.1.0')).not.toContain(r);
       await as(c, 'test.executive-housekeeper.1.0', `select wf.act($1, 'approve')`, [r]);
-      expect(await inbox(c, 'test.hr-executive.1.0')).toContain(r);
-      expect(await inbox(c, 'test.hr-executive.1.1')).not.toContain(r);
+      expect(await inbox(c, 'test.general-manager.1.0')).toContain(r);
+      expect(await inbox(c, 'test.general-manager.1.1')).not.toContain(r);
+      await as(c, 'test.general-manager.1.0', `select wf.act($1, 'approve')`, [r]);
+      const state = await c.query<{ state: string }>('select state from wf.request where id = $1', [
+        r,
+      ]);
+      expect(state.rows[0]!.state).toBe('approved');
     });
   });
 
-  it('small hotel: no departments, so the general manager; HR falls back to HR admin', async () => {
+  it('a department head’s own leave goes to the GM only', async () => {
+    await inRolledBackTx(async (c) => {
+      const r = await leave(c, 'test.executive-housekeeper.1.0');
+      expect((await route(c, r)).map((s) => s.grp)).toEqual(['OUTLET_MANAGER', 'OUTLET_MANAGER']);
+      expect(await inbox(c, 'test.general-manager.1.0')).toContain(r);
+      await as(c, 'test.general-manager.1.0', `select wf.act($1, 'approve')`, [r]);
+      expect((await route(c, r)).map((s) => [s.state, s.skip])).toEqual([
+        ['approved', null],
+        ['skipped', 'same_approver'],
+      ]);
+    });
+  });
+
+  it('small hotel: no departments, so the general manager, once', async () => {
     await inRolledBackTx(async (c) => {
       const r = await leave(c, 'test.room-attendant.2.0');
       expect(await route(c, r)).toEqual([
         { step: 'manager_approval', state: 'pending', grp: 'OUTLET_MANAGER', skip: null },
-        { step: 'hr_approval', state: 'waiting', grp: 'HR_ADMIN', skip: null },
+        { step: 'gm_approval', state: 'waiting', grp: 'OUTLET_MANAGER', skip: null },
       ]);
       expect(await inbox(c, 'test.general-manager.2.0')).toContain(r);
-    });
-  });
-
-  it('the HR step is a customer setting (on unless turned off)', async () => {
-    await inRolledBackTx(async (c) => {
-      await c.query(
-        `update core.tenant set settings = settings || '{"leave_hr_approval": false}'
-          where code = 'TEST-COMPANY'`,
-      );
-      const r = await leave(c, 'test.room-attendant.1.0');
-      expect((await route(c, r)).map((s) => [s.step, s.state, s.skip])).toEqual([
-        ['manager_approval', 'pending', null],
-        ['hr_approval', 'skipped', 'condition'],
-      ]);
-      await as(c, 'test.executive-housekeeper.1.0', `select wf.act($1, 'approve')`, [r]);
+      await as(c, 'test.general-manager.2.0', `select wf.act($1, 'approve')`, [r]);
       const state = await c.query<{ state: string }>('select state from wf.request where id = $1', [
         r,
       ]);
@@ -113,12 +117,12 @@ describe('leave goes to the department head first, falling back up the tree', ()
 });
 
 describe('the account owner is the final approver', () => {
-  it('Solo Bar: no HR people, so the owner approves the HR step', async () => {
+  it('Solo Bar: the head cook, then the bar manager as its GM', async () => {
     await inRolledBackTx(async (c) => {
       const r = await leave(c, 'test.solo.cook', 'TEST-SOLO-COMPANY');
       expect(await route(c, r)).toEqual([
         { step: 'manager_approval', state: 'pending', grp: 'DEPARTMENT_HEAD', skip: null },
-        { step: 'hr_approval', state: 'waiting', grp: 'ACCOUNT_OWNER', skip: null },
+        { step: 'gm_approval', state: 'waiting', grp: 'OUTLET_MANAGER', skip: null },
       ]);
       await as(c, 'test.solo.head-cook', `select wf.act($1, 'approve')`, [r]);
       expect(await inbox(c, 'test.solo.bar-manager')).toContain(r);
@@ -130,12 +134,12 @@ describe('the account owner is the final approver', () => {
     });
   });
 
-  it('Solo Bar: when the owner approves as manager, the HR step is skipped (same approver)', async () => {
+  it('Solo Bar: a department head’s leave is approved once by the GM (same approver)', async () => {
     await inRolledBackTx(async (c) => {
       // the floor manager heads Floor Service, so their own leave goes to the outlet
-      // manager: the owner, who is also the final approver of the HR step
+      // manager, who is also the GM step's approver: asked once
       const r = await leave(c, 'test.solo.floor-manager', 'TEST-SOLO-COMPANY');
-      expect((await route(c, r)).map((s) => s.grp)).toEqual(['OUTLET_MANAGER', 'ACCOUNT_OWNER']);
+      expect((await route(c, r)).map((s) => s.grp)).toEqual(['OUTLET_MANAGER', 'OUTLET_MANAGER']);
       await as(c, 'test.solo.bar-manager', `select wf.act($1, 'approve')`, [r]);
       expect((await route(c, r)).map((s) => [s.state, s.skip])).toEqual([
         ['approved', null],
@@ -152,7 +156,7 @@ describe('the account owner is the final approver', () => {
         ]);
         expect(rows, customer).toEqual([]);
       }
-      // without its owner, the solo bar's HR step (among others) has no one left
+      // without its owner, nobody is above the solo bar's GM (among others)
       await c.query('alter table core.role_assignment disable trigger last_account_owner');
       await c.query(
         `update core.role_assignment ra set effective_from = date '2020-01-01',
@@ -167,8 +171,8 @@ describe('the account owner is the final approver', () => {
       );
       expect(rows).toContainEqual({
         process_type: 'LEAVE',
-        step: 'hr_approval',
-        node_code: 'TEST-SOLO-BAR-KITCHEN',
+        step: 'gm_approval',
+        node_code: 'TEST-SOLO-COMPANY',
       });
       expect(rows).toContainEqual({
         process_type: 'ROLE_CHANGE',
@@ -182,23 +186,23 @@ describe('the account owner is the final approver', () => {
 describe('pending-inbox visibility and decision summaries', () => {
   it('an approver without data access reads the subject only while it waits for them', async () => {
     await inRolledBackTx(async (c) => {
-      const r = await leave(c, 'test.solo.cook', 'TEST-SOLO-COMPANY');
-      const leaveRow = (
-        await c.query<{ id: string }>('select subject_id as id from wf.request where id = $1', [r])
-      ).rows[0]!.id;
-      // Test Company's account owner holds no LEAVE rights and is not the approver here;
-      // the solo owner will be, at the HR step
-      const sees = async (who: string) =>
-        (await as(c, who, 'select id from hr.leave_request where id = $1', [leaveRow])).length;
+      // an account owner by rights sees no leave: without the bar manager's outlet role, the
+      // GM step falls to the owner, who sees this one row while it waits for them
       const owner = 'test.solo.bar-manager';
-      await as(c, 'test.solo.head-cook', `select wf.act($1, 'approve')`, [r]);
-
-      // an account owner by rights sees no leave; as the pending approver, this one row
       await c.query(
         `delete from core.role_assignment ra using core.security_group g
           where g.id = ra.group_id and g.code = 'OUTLET_MANAGER' and ra.user_id = $1`,
         [ids.user(owner)],
       );
+      const r = await leave(c, 'test.solo.cook', 'TEST-SOLO-COMPANY');
+      const leaveRow = (
+        await c.query<{ id: string }>('select subject_id as id from wf.request where id = $1', [r])
+      ).rows[0]!.id;
+      // Test Company's account owner holds no LEAVE rights and is not the approver here
+      const sees = async (who: string) =>
+        (await as(c, who, 'select id from hr.leave_request where id = $1', [leaveRow])).length;
+      expect(await sees(owner)).toBe(0);
+      await as(c, 'test.solo.head-cook', `select wf.act($1, 'approve')`, [r]);
       expect(await sees(owner)).toBe(1);
       const [pending] = await as<{ s: Record<string, unknown> }>(
         c,

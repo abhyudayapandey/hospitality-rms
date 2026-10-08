@@ -16,9 +16,9 @@ past week, the licences and their numbers.
   Bar (Layover on the roof and the Mini Bar in the lobby); In-Room Dining; Sales, Events &
   Banquets (with Jet Lag); Cashier; Engineering & Maintenance; Purchase & Stores; Admin &
   Finance.
-- **Stores**: the Main Store (Purchase & Stores), the Kitchen Store, **Layover Bar**, **Mini
-  Bar (lobby)** and the Housekeeping Store, which also refills the in-room minibars. The bar
-  team runs both bars' stores (the Mini Bar through file 08).
+- **Stores**: the Main Store (Purchase & Stores), the Kitchen Store, **Bar · Layover
+  (rooftop)**, **Bar · Mini Bar (lobby)** and the Housekeeping Store, which also refills the in-room minibars. The bar
+  team runs both bars' stores: one department in two places (ADR 076).
 - **One person per job role**: 37 people, plus **Demo Presenter**, who may show the app as
   anyone (`demo_presenter` in file 07, ADR 071). The owner is Ashesh Sajnani (`test.ashesh-sajnani`), the GM Sainath. Usernames are `passport.<role>`, e.g. `passport.gm`, `passport.bar-manager`.
 - **Menus**: Mini Bar signatures and classics, Layover cocktails, beer and wine, breakfast
@@ -88,7 +88,7 @@ Enter:
 
 **4. Import**: **Import setup files** → `passport-hotel.zip` → **Upload and dry run**. It
 should report no problems and no warnings, with (new): org places 12 / 1 changed (the
-company root), delivery places 7, links 5, job roles 38, users 38, workers 38 / 1 changed (the owner's), items 80, item
+company root), delivery places 7, links 6, job roles 38, users 38, workers 38 / 1 changed (the owner's), items 80, item
 locations 134, menu items 34, rooms 27, minibar sets 2, minibar checks 53, sales days 7,
 purchase orders 5, attendance sessions 138, checklists 28. **Apply**, then a second dry run shows no
 changes.

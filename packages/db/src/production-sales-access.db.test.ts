@@ -81,10 +81,19 @@ const sell = async (
 describe('production', () => {
   it('is recorded by stock users at a store that makes the item, nowhere else', async () => {
     await inRolledBackTx(async (c) => {
-      // a chef de partie (stock user at the hotel kitchen) makes ginger garlic paste there
-      const own = await produce(
+      // the sous chef (who leads the hotel kitchen's making) makes ginger garlic paste there;
+      // a chef de partie (a stock user there) makes what he is given, on its task (ADR 076)
+      const given = await produce(
         c,
         'test.chef-de-partie.1.0',
+        'TEST-HOTEL-1.0-KITCHEN-STORE',
+        'GINGER-GARLIC-PASTE',
+        1000,
+      );
+      expect(given.error).toMatch(/MAKE_BY_TASK/);
+      const own = await produce(
+        c,
+        'test.sous-chef.1.0',
         'TEST-HOTEL-1.0-KITCHEN-STORE',
         'GINGER-GARLIC-PASTE',
         1000,
@@ -92,7 +101,7 @@ describe('production', () => {
       expect(own.error).toBeUndefined();
       const ok = await produce(
         c,
-        'test.central-kitchen-chef',
+        'test.central-kitchen-manager',
         'TEST-CENTRAL-KITCHEN-STORE',
         'MAKHANI-GRAVY',
         4000,
@@ -137,7 +146,7 @@ describe('production', () => {
       // a hundred batches need far more tomatoes than the store holds
       const r = await produce(
         c,
-        'test.central-kitchen-chef',
+        'test.central-kitchen-manager',
         'TEST-CENTRAL-KITCHEN-STORE',
         'MAKHANI-GRAVY',
         400_000,
@@ -152,7 +161,7 @@ describe('production', () => {
     await inRolledBackTx(async (c) => {
       const a = await produce(
         c,
-        'test.central-kitchen-chef',
+        'test.central-kitchen-manager',
         'TEST-CENTRAL-KITCHEN-STORE',
         'MAKHANI-GRAVY',
         4000,
@@ -160,7 +169,7 @@ describe('production', () => {
       );
       const b = await produce(
         c,
-        'test.central-kitchen-chef',
+        'test.central-kitchen-manager',
         'TEST-CENTRAL-KITCHEN-STORE',
         'MAKHANI-GRAVY',
         4000,
@@ -171,11 +180,11 @@ describe('production', () => {
     });
   });
 
-  it('batches are read with stock access at the store only', async () => {
+  it('batches are read with stock access at the store, or by whoever records batches there', async () => {
     await inRolledBackTx(async (c) => {
       await produce(
         c,
-        'test.central-kitchen-chef',
+        'test.central-kitchen-manager',
         'TEST-CENTRAL-KITCHEN-STORE',
         'MAKHANI-GRAVY',
         4000,

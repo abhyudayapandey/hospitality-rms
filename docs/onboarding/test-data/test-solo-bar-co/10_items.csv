@@ -1,50 +1,50 @@
-item_code,name,category,base_unit,is_perishable,standard_unit_cost_inr,preferred_supplier_code
-TOMATOES,Test Tomatoes,Produce,kg,yes,40,SUPPLIER-FOOD
-ONIONS,Test Onions,Produce,kg,yes,35,SUPPLIER-FOOD
-POTATOES,Test Potatoes,Produce,kg,yes,30,SUPPLIER-FOOD
-GARLIC,Test Garlic,Produce,kg,yes,180,SUPPLIER-FOOD
-GINGER,Test Ginger,Produce,kg,yes,120,SUPPLIER-FOOD
-GREEN-CHILLIES,Test Green Chillies,Produce,kg,yes,80,SUPPLIER-FOOD
-CORIANDER,Test Coriander,Produce,kg,yes,100,SUPPLIER-FOOD
-LEMONS,Test Lemons,Produce,each,yes,5,SUPPLIER-BEVERAGES
-MINT-LEAVES,Test Mint Leaves,Produce,kg,yes,120,SUPPLIER-BEVERAGES
-PANEER,Test Paneer,Dairy,kg,yes,380,SUPPLIER-FOOD
-MILK,Test Milk,Dairy,l,yes,60,SUPPLIER-FOOD
-BUTTER,Test Butter,Dairy,kg,yes,520,SUPPLIER-FOOD
-FRESH-CREAM,Test Fresh Cream,Dairy,l,yes,220,SUPPLIER-FOOD
-EGGS,Test Eggs,Dairy,each,yes,7,SUPPLIER-FOOD
-CHICKEN-BREAST,Test Chicken Breast,Meat,kg,yes,320,SUPPLIER-FOOD
-CHICKEN-CURRY-CUT,Test Chicken Curry Cut,Meat,kg,yes,240,SUPPLIER-FOOD
-MUTTON,Test Mutton,Meat,kg,yes,780,SUPPLIER-FOOD
-SUGAR,Test Sugar,Dry Grocery,kg,no,48,SUPPLIER-BEVERAGES
-VODKA-750ML,Test Vodka 750ml,Liquor,bottle,no,1400,SUPPLIER-BEVERAGES
-GIN-750ML,Test Gin 750ml,Liquor,bottle,no,1800,SUPPLIER-BEVERAGES
-DARK-RUM-750ML,Test Dark Rum 750ml,Liquor,bottle,no,900,SUPPLIER-BEVERAGES
-WHITE-RUM-750ML,Test White Rum 750ml,Liquor,bottle,no,950,SUPPLIER-BEVERAGES
-BLENDED-WHISKY-750ML,Test Blended Whisky 750ml,Liquor,bottle,no,1600,SUPPLIER-BEVERAGES
-SINGLE-MALT-750ML,Test Single Malt 750ml,Liquor,bottle,no,5200,SUPPLIER-BEVERAGES
-TEQUILA-750ML,Test Tequila 750ml,Liquor,bottle,no,3200,SUPPLIER-BEVERAGES
-RED-WINE-750ML,Test Red Wine 750ml,Wine,bottle,no,1100,SUPPLIER-BEVERAGES
-WHITE-WINE-750ML,Test White Wine 750ml,Wine,bottle,no,1050,SUPPLIER-BEVERAGES
-LAGER-BEER-330ML,Test Lager Beer 330ml,Beer,bottle,no,110,SUPPLIER-BEVERAGES
-LAGER-BEER-650ML,Test Lager Beer 650ml,Beer,bottle,no,180,SUPPLIER-BEVERAGES
-TONIC-WATER-300ML,Test Tonic Water 300ml,Mixers,can,no,60,SUPPLIER-BEVERAGES
-SODA-750ML,Test Soda 750ml,Mixers,bottle,no,30,SUPPLIER-BEVERAGES
-COLA-300ML,Test Cola 300ml,Mixers,can,no,40,SUPPLIER-BEVERAGES
-ORANGE-JUICE,Test Orange Juice,Mixers,l,yes,120,SUPPLIER-BEVERAGES
-CRANBERRY-JUICE,Test Cranberry Juice,Mixers,l,no,180,SUPPLIER-BEVERAGES
-ICE-CUBES,Test Ice Cubes,Bar Consumables,kg,yes,15,SUPPLIER-BEVERAGES
-COCKTAIL-NAPKINS-PACK-OF-100,Test Cocktail Napkins (Pack of 100),Bar Consumables,pack,no,90,SUPPLIER-BEVERAGES
-CURD,Test Curd,Dairy,kg,yes,90,SUPPLIER-FOOD
-CAMPARI-750ML,Test Campari 750ml,Liquor,bottle,no,2400,SUPPLIER-BEVERAGES
-SWEET-VERMOUTH-750ML,Test Sweet Vermouth 750ml,Liquor,bottle,no,1500,SUPPLIER-BEVERAGES
-TRIPLE-SEC-750ML,Test Triple Sec 750ml,Liquor,bottle,no,1300,SUPPLIER-BEVERAGES
-COFFEE-LIQUEUR-750ML,Test Coffee Liqueur 750ml,Liquor,bottle,no,1700,SUPPLIER-BEVERAGES
-ANGOSTURA-BITTERS-200ML,Test Angostura Bitters 200ml,Bar Consumables,bottle,no,1200,SUPPLIER-BEVERAGES
-COFFEE-BEANS,Test Coffee Beans,Bar Consumables,kg,no,1100,SUPPLIER-FOOD
-SUNFLOWER-OIL,Test Sunflower Oil,Dry Grocery,l,no,160,SUPPLIER-FOOD
-SALT,Test Salt,Dry Grocery,kg,no,25,SUPPLIER-FOOD
-RED-CHILLI-POWDER,Test Red Chilli Powder,Dry Grocery,kg,no,350,SUPPLIER-FOOD
-GARAM-MASALA,Test Garam Masala,Dry Grocery,kg,no,900,SUPPLIER-FOOD
-TURMERIC-POWDER,Test Turmeric Powder,Dry Grocery,kg,no,300,SUPPLIER-FOOD
-TOMATO-KETCHUP,Test Tomato Ketchup,Dry Grocery,kg,no,140,SUPPLIER-FOOD
+item_code,name,category,base_unit,is_perishable,standard_unit_cost_inr,preferred_supplier_code,item_type
+TOMATOES,Test Tomatoes,Produce,kg,yes,40,SUPPLIER-FOOD,
+ONIONS,Test Onions,Produce,kg,yes,35,SUPPLIER-FOOD,
+POTATOES,Test Potatoes,Produce,kg,yes,30,SUPPLIER-FOOD,
+GARLIC,Test Garlic,Produce,kg,yes,180,SUPPLIER-FOOD,
+GINGER,Test Ginger,Produce,kg,yes,120,SUPPLIER-FOOD,
+GREEN-CHILLIES,Test Green Chillies,Produce,kg,yes,80,SUPPLIER-FOOD,
+CORIANDER,Test Coriander,Produce,kg,yes,100,SUPPLIER-FOOD,
+LEMONS,Test Lemons,Produce,each,yes,5,SUPPLIER-BEVERAGES,
+MINT-LEAVES,Test Mint Leaves,Produce,kg,yes,120,SUPPLIER-BEVERAGES,
+PANEER,Test Paneer,Dairy,kg,yes,380,SUPPLIER-FOOD,
+MILK,Test Milk,Dairy,l,yes,60,SUPPLIER-FOOD,
+BUTTER,Test Butter,Dairy,kg,yes,520,SUPPLIER-FOOD,
+FRESH-CREAM,Test Fresh Cream,Dairy,l,yes,220,SUPPLIER-FOOD,
+EGGS,Test Eggs,Dairy,each,yes,7,SUPPLIER-FOOD,
+CHICKEN-BREAST,Test Chicken Breast,Meat,kg,yes,320,SUPPLIER-FOOD,
+CHICKEN-CURRY-CUT,Test Chicken Curry Cut,Meat,kg,yes,240,SUPPLIER-FOOD,
+MUTTON,Test Mutton,Meat,kg,yes,780,SUPPLIER-FOOD,
+SUGAR,Test Sugar,Dry Grocery,kg,no,48,SUPPLIER-BEVERAGES,
+VODKA-750ML,Test Vodka 750ml,Liquor,bottle,no,1400,SUPPLIER-BEVERAGES,
+GIN-750ML,Test Gin 750ml,Liquor,bottle,no,1800,SUPPLIER-BEVERAGES,
+DARK-RUM-750ML,Test Dark Rum 750ml,Liquor,bottle,no,900,SUPPLIER-BEVERAGES,
+WHITE-RUM-750ML,Test White Rum 750ml,Liquor,bottle,no,950,SUPPLIER-BEVERAGES,
+BLENDED-WHISKY-750ML,Test Blended Whisky 750ml,Liquor,bottle,no,1600,SUPPLIER-BEVERAGES,
+SINGLE-MALT-750ML,Test Single Malt 750ml,Liquor,bottle,no,5200,SUPPLIER-BEVERAGES,
+TEQUILA-750ML,Test Tequila 750ml,Liquor,bottle,no,3200,SUPPLIER-BEVERAGES,
+RED-WINE-750ML,Test Red Wine 750ml,Wine,bottle,no,1100,SUPPLIER-BEVERAGES,
+WHITE-WINE-750ML,Test White Wine 750ml,Wine,bottle,no,1050,SUPPLIER-BEVERAGES,
+LAGER-BEER-330ML,Test Lager Beer 330ml,Beer,bottle,no,110,SUPPLIER-BEVERAGES,
+LAGER-BEER-650ML,Test Lager Beer 650ml,Beer,bottle,no,180,SUPPLIER-BEVERAGES,
+TONIC-WATER-300ML,Test Tonic Water 300ml,Mixers,can,no,60,SUPPLIER-BEVERAGES,
+SODA-750ML,Test Soda 750ml,Mixers,bottle,no,30,SUPPLIER-BEVERAGES,
+COLA-300ML,Test Cola 300ml,Mixers,can,no,40,SUPPLIER-BEVERAGES,
+ORANGE-JUICE,Test Orange Juice,Mixers,l,yes,120,SUPPLIER-BEVERAGES,
+CRANBERRY-JUICE,Test Cranberry Juice,Mixers,l,no,180,SUPPLIER-BEVERAGES,
+ICE-CUBES,Test Ice Cubes,Bar Consumables,kg,yes,15,SUPPLIER-BEVERAGES,
+COCKTAIL-NAPKINS-PACK-OF-100,Test Cocktail Napkins (Pack of 100),Bar Consumables,pack,no,90,SUPPLIER-BEVERAGES,
+CURD,Test Curd,Dairy,kg,yes,90,SUPPLIER-FOOD,
+CAMPARI-750ML,Test Campari 750ml,Liquor,bottle,no,2400,SUPPLIER-BEVERAGES,
+SWEET-VERMOUTH-750ML,Test Sweet Vermouth 750ml,Liquor,bottle,no,1500,SUPPLIER-BEVERAGES,
+TRIPLE-SEC-750ML,Test Triple Sec 750ml,Liquor,bottle,no,1300,SUPPLIER-BEVERAGES,
+COFFEE-LIQUEUR-750ML,Test Coffee Liqueur 750ml,Liquor,bottle,no,1700,SUPPLIER-BEVERAGES,
+ANGOSTURA-BITTERS-200ML,Test Angostura Bitters 200ml,Bar Consumables,bottle,no,1200,SUPPLIER-BEVERAGES,
+COFFEE-BEANS,Test Coffee Beans,Bar Consumables,kg,no,1100,SUPPLIER-FOOD,
+SUNFLOWER-OIL,Test Sunflower Oil,Dry Grocery,l,no,160,SUPPLIER-FOOD,
+SALT,Test Salt,Dry Grocery,kg,no,25,SUPPLIER-FOOD,
+RED-CHILLI-POWDER,Test Red Chilli Powder,Dry Grocery,kg,no,350,SUPPLIER-FOOD,
+GARAM-MASALA,Test Garam Masala,Dry Grocery,kg,no,900,SUPPLIER-FOOD,
+TURMERIC-POWDER,Test Turmeric Powder,Dry Grocery,kg,no,300,SUPPLIER-FOOD,
+TOMATO-KETCHUP,Test Tomato Ketchup,Dry Grocery,kg,no,140,SUPPLIER-FOOD,

@@ -4,12 +4,16 @@ import { sql, type Tx } from './db';
 // Today's briefing note (ADR 070): read through ops.* SECURITY DEFINER functions, which
 // decide who may read or write (rule 2). Words and dish names only.
 
-export type BriefingPart = 'day' | 'lunch' | 'dinner';
+// The parts of the business day (ADR 076): breakfast from the 04:00 cut, lunch from 11:00,
+// dinner from 16:00, late night from 23:00 (ops.briefing_part_now).
+export type BriefingPart = 'day' | 'breakfast' | 'lunch' | 'dinner' | 'late_night';
 
 export const PART_WORDS: Readonly<Record<BriefingPart, string>> = {
   day: 'Whole day',
+  breakfast: 'Breakfast',
   lunch: 'Lunch',
   dinner: 'Dinner',
+  late_night: 'Late night',
 };
 
 /** One note on Home: the outlet's own first, then its departments. */

@@ -81,14 +81,14 @@ describe('process definitions', () => {
     ).toThrow();
   });
 
-  it('ends every step chain with the account owner; leave starts at the department head', () => {
+  it('ends every step chain with the account owner; leave goes to the department head, then the GM', () => {
     for (const d of PROCESS_DEFS) {
       for (const st of d.steps)
         expect(chainGroups(st).at(-1), `${d.type} ${st.step}`).toBe(FINAL_APPROVER);
     }
     expect(LEAVE.steps.map(chainGroups)).toEqual([
       ['DEPARTMENT_HEAD', 'OUTLET_MANAGER', 'AREA_MANAGER', 'ACCOUNT_OWNER'],
-      ['OUTLET_HR', 'HR_ADMIN', 'ACCOUNT_OWNER'],
+      ['OUTLET_MANAGER', 'AREA_MANAGER', 'ACCOUNT_OWNER'],
     ]);
   });
 });

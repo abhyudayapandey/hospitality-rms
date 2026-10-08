@@ -1,4 +1,5 @@
 import 'server-only';
+import type { Allergen, FoodType } from '@outlet-ops/domain';
 import { sql, type Tx } from './db';
 
 // Reads for the production, sales and variance screens (ADR 015). Each function checks the
@@ -47,11 +48,78 @@ export interface Batch {
   qty: string;
   remaining: string;
   expired: boolean;
+  /** the batch's production, for its label (ADR 076); null for an opening batch */
+  production_id: string | null;
+  made_by: string | null;
+  food_type: FoodType | null;
+  allergens: Allergen[];
+  batch_portions: string | null;
 }
 
 export async function batches(tx: Tx, store: string): Promise<Batch[]> {
   const r = await sql<Batch>`select * from inv.batches(${store}::uuid)`.execute(tx);
   return r.rows;
+}
+
+/** Whether the caller leads the making at a store: records any batch straight from Make and
+ * gives out what to make; everyone else makes what they were given (ADR 076). */
+export async function leadsMaking(tx: Tx, store: string): Promise<boolean> {
+  const r = await sql<{ lead: boolean }>`select inv.leads_making(${store}::uuid) as lead`.execute(
+    tx,
+  );
+  return r.rows[0]?.lead ?? false;
+}
+
+export interface MakeTask {
+  task_id: string;
+  item_id: string;
+  name: string;
+  unit: string;
+  target_qty: string | null;
+  due_at: Date;
+  overdue: boolean;
+}
+
+/** Open prep tasks at a store the caller may work on (theirs, their job role's or shift's). */
+export async function myMakeTasks(tx: Tx, store: string): Promise<MakeTask[]> {
+  const r = await sql<MakeTask>`select * from inv.my_make_tasks(${store}::uuid)`.execute(tx);
+  return r.rows;
+}
+
+export interface BatchLabel {
+  production_id: string;
+  name: string;
+  batch_no: string | null;
+  made_at: Date;
+  expires_at: Date | null;
+  qty: string;
+  unit: string;
+  food_type: FoodType | null;
+  allergens: Allergen[];
+  batch_portions: string | null;
+  made_by: string | null;
+  store: string;
+  tz: string;
+}
+
+/** One batch's FSSAI label (ADR 076), for whoever sees the store's batches or made it. */
+export async function batchLabel(tx: Tx, production: string): Promise<BatchLabel | null> {
+  const r = await sql<BatchLabel>`select * from inv.batch_label(${production}::uuid)`.execute(tx);
+  return r.rows[0] ?? null;
+}
+
+export interface PrepRecipe {
+  batch_yield: number;
+  ingredients: { name: string; qty: number; unit: string }[];
+  method: { step: number; instruction: string; minutes: number | null }[];
+  batches: { production_id: string; batch_no: string | null; qty: number }[];
+}
+
+/** A prep task's ingredients, scaled to what it asks for, and its method (ADR 076). */
+export async function prepTaskRecipe(tx: Tx, task: string): Promise<PrepRecipe | null> {
+  const r = await sql<{ r: PrepRecipe | null }>`
+    select ops.prep_task_recipe(${task}::uuid) as r`.execute(tx);
+  return r.rows[0]?.r ?? null;
 }
 
 export interface SalesPlace {

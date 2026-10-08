@@ -25,7 +25,6 @@ const OLIVIA = 'test.bar-manager.3.0';
 const ARIA = 'test.area-manager';
 const HUGO = 'test.central-kitchen-manager';
 const CK_KEEPER = 'test.central-kitchen-store-keeper'; // runs the central kitchen store
-const HARPER = 'test.hr-admin';
 const SAM = 'test.server.3.0';
 const CASEY = 'test.cook.3.0';
 const AGENT = 'ai-agent';
@@ -357,7 +356,12 @@ describe('purchase order routing', () => {
           scope: 'TEST-AREA-MUMBAI',
           grp: 'AREA_MANAGER',
         },
-        { step: 'hr_approval', state: 'waiting', scope: 'TEST-COMPANY', grp: 'HR_ADMIN' },
+        {
+          step: 'gm_approval',
+          state: 'waiting',
+          scope: 'TEST-AREA-MUMBAI',
+          grp: 'AREA_MANAGER',
+        },
       ]);
       const adj = await submitOk(c, OLIVIA, {
         process: 'STOCK_ADJUSTMENT',
@@ -708,7 +712,7 @@ describe('escalation', () => {
           scope: 'TEST-BAR-3.0-FLOOR-SERVICE',
           grp: 'DEPARTMENT_HEAD',
         },
-        { step: 'hr_approval', state: 'waiting', scope: 'TEST-COMPANY', grp: 'HR_ADMIN' },
+        { step: 'gm_approval', state: 'waiting', scope: 'TEST-BAR-3.0', grp: 'OUTLET_MANAGER' },
       ]);
       expect(await inbox(c, FLOOR)).toContain(id);
       const none = await c.query('select * from wf.overdue_steps() where request_id = $1', [id]);
@@ -739,7 +743,8 @@ describe('escalation', () => {
       await c.query('select wf.escalate_overdue()');
       expect((await steps(c, id))[0]).toMatchObject({ grp: 'AREA_MANAGER' });
       expect(await actOk(c, ARIA, id, 'approve')).toBe('in_approval');
-      expect(await inbox(c, HARPER)).toContain(id);
+      // then the GM step (ADR 076): the outlet manager
+      expect(await inbox(c, OLIVIA)).toContain(id);
     });
   });
 

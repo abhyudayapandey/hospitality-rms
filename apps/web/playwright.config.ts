@@ -15,6 +15,8 @@ try {
 const prodPort = Number(process.env.E2E_PORT ?? 3100);
 const devPort = Number(process.env.E2E_DEV_PORT ?? 3101);
 const executablePath = process.env.PW_CHROMIUM_PATH; // local override for a preinstalled browser
+// clock-in takes the selfie from the live camera (ADR 076): a fake one, allowed without asking
+const cameraArgs = ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'];
 
 export default defineConfig({
   testDir: './e2e',
@@ -27,7 +29,8 @@ export default defineConfig({
   use: {
     trace: 'retain-on-failure',
     ...devices['Pixel 7'], // mobile-first (412 px wide)
-    ...(executablePath ? { launchOptions: { executablePath } } : {}),
+    launchOptions: { args: cameraArgs, ...(executablePath ? { executablePath } : {}) },
+    permissions: ['camera'],
   },
   projects: [
     {

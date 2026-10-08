@@ -15,8 +15,10 @@ import { saveBriefing, takeDownBriefing } from './actions';
 
 const PARTS: readonly { part: BriefingPart; label: string; hint: string }[] = [
   { part: 'day', label: 'Whole day', hint: 'Shows all day' },
-  { part: 'lunch', label: 'Lunch', hint: 'Shows until 4 pm' },
-  { part: 'dinner', label: 'Dinner', hint: 'Shows from 4 pm' },
+  { part: 'breakfast', label: 'Breakfast', hint: 'Shows from 4 am until 11 am' },
+  { part: 'lunch', label: 'Lunch', hint: 'Shows from 11 am until 4 pm' },
+  { part: 'dinner', label: 'Dinner', hint: 'Shows from 4 pm until 11 pm' },
+  { part: 'late_night', label: 'Late night', hint: 'Shows from 11 pm until 4 am' },
 ];
 
 const MAX = 1000;

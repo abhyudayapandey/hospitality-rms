@@ -157,8 +157,8 @@ test('manager builds and publishes; approved leave drops the shift after both ap
   await page.getByRole('button', { name: 'Approve' }).click();
   await expect(page.getByRole('status')).toHaveText('Approved');
 
-  // then HR
-  await signInAs(page, 'Test HR Admin');
+  // then the GM (ADR 076): the bar's outlet manager
+  await signInAs(page, 'Test Bar Manager 3.0');
   await page.goto('/inbox');
   await page
     .getByTestId('inbox-item')

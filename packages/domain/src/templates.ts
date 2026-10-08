@@ -49,6 +49,8 @@ export interface StarterItem {
   /** The department whose store keeps it (the Main Store, for STORES-TEAM). */
   department: string;
   view?: View;
+  /** Kept, not used up: linen, equipment (ADR 076). */
+  durable?: true;
 }
 
 export interface OutletTemplate {
@@ -367,7 +369,10 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       ...KITCHEN_ITEMS,
       item('TOILET-ROLLS', 'Toilet rolls', 'Guest Amenities', 'each', false, 'HOUSEKEEPING'),
       item('SHAMPOO-SACHETS', 'Shampoo sachets', 'Guest Amenities', 'each', false, 'HOUSEKEEPING'),
-      item('BED-SHEETS', 'Bed sheets', 'Linen', 'each', false, 'HOUSEKEEPING'),
+      {
+        ...item('BED-SHEETS', 'Bed sheets', 'Linen', 'each', false, 'HOUSEKEEPING'),
+        durable: true,
+      },
       item('FLOOR-CLEANER', 'Floor cleaner', 'Cleaning', 'l', false, 'STORES-TEAM'),
     ],
     modules: [

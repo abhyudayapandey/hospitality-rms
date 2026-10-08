@@ -477,6 +477,7 @@ export function addOutlet(
       'is_perishable',
       'standard_unit_cost_inr',
       'preferred_supplier_code',
+      'item_type',
     ]);
     const placed = table('itemLocations', [
       'item_code',
@@ -499,6 +500,8 @@ export function addOutlet(
           base_unit: i.unit,
           is_perishable: i.perishable ? 'yes' : 'no',
           standard_unit_cost_inr: '0',
+          // linen and the like are kept, not used up (ADR 076)
+          item_type: i.durable ? 'durable' : 'consumable',
         });
       }
       placed.rows.push({
