@@ -34,7 +34,8 @@ test('two-leg transfer: requested, sent by the central kitchen store keeper, rec
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'Test Bar 3.0 – Kitchen Store asked Test Central Kitchen – Store',
   );
-  await expect(page.getByTestId('transfer-kind')).toHaveText('Stock request');
+  // a department's store asking another place is a request for material (ADR 044)
+  await expect(page.getByTestId('transfer-kind')).toHaveText('Request for material');
 
   await signInAs(page, 'Test Central Kitchen Store Keeper');
   await page.goto('/inbox');
