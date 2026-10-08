@@ -48,6 +48,7 @@ making things in the kitchen and the bar should work (3, 9, 10, 15, 16).
    every store linked to the department (`core.derive_job_role_access_at`), not one picked
    at random. The Passport bar is one department with the rooftop bar and the lobby Mini
    Bar; file 08's extra grants for the Mini Bar are gone.
+   (Since ADR 077 Passport's bar has one store; the rule stays for departments with two.)
 10. **A count far above what a store holds is refused** (17): more than five times the most it
     usually holds (its par, what it should have, its largest delivery in 90 days;
     `inv.count_limit`) is `COUNT_TOO_HIGH`, on the phone before it is sent and in the

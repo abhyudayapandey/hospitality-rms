@@ -22,12 +22,19 @@ test('two-leg transfer: requested, sent by the central kitchen store keeper, rec
   const from = page.getByRole('combobox', { name: 'From' });
   // the outlet's other store comes first, then the central kitchen
   await expect(from).toHaveValue(await placeId('TEST-BAR-3.0-BAR-STORE'));
+  // the list is what the chosen store keeps (ADR 077): the bar keeps no potatoes
+  await expect(page.getByRole('textbox', { name: 'Request Test Potatoes' })).toHaveCount(0);
   await from.selectOption(ck);
   await page.getByRole('textbox', { name: 'Request Test Potatoes' }).fill('4');
   await page.getByRole('button', { name: 'Request 1 item' }).click();
   await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
   await expect(page.getByTestId('transfer-progress')).toHaveText('waiting to be sent');
+  // who asked comes first
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    'Test Bar 3.0 – Kitchen Store asked Test Central Kitchen – Store',
+  );
+  await expect(page.getByTestId('transfer-kind')).toHaveText('Stock request');
 
   await signInAs(page, 'Test Central Kitchen Store Keeper');
   await page.goto('/inbox');

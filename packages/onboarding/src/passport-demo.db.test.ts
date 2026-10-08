@@ -7,8 +7,8 @@ import { readCustomerDir } from './dir';
 
 // The Passport Hotel pilot demo (docs/onboarding/demo/passport-hotel, written by
 // scripts/passport-demo.ts): it loads with no problems and no warnings, as a test customer,
-// with what the pitch shows: a demo presenter, one person per job role, the bar team on the
-// lobby Mini Bar's store, 27 rooms with minibars and a past week of activity. The console's
+// with what the pitch shows: a demo presenter, one person per job role, one bar store for
+// the roof and the lobby, 27 rooms with minibars and a past week of activity. The console's
 // path runs as platform_loader, as the production worker does: a function the loader calls
 // that the role may not run fails here, not on production.
 
@@ -76,13 +76,13 @@ describe('the Passport Hotel demo', () => {
         checklists: n('checklists'),
       }).toEqual({
         org: [12, 1],
-        delivery: [7, 0],
-        links: [6, 0],
+        delivery: [6, 0],
+        links: [5, 0],
         roles: [38, 0],
         users: [38, 0],
         workers: [38, 1],
         items: [80, 0],
-        locations: [134, 0],
+        locations: [109, 0],
         menu: [34, 0],
         rooms: [27, 0],
         sets: [2, 0],
@@ -165,14 +165,11 @@ describe('the Passport Hotel demo', () => {
           `select count(*)::int n from ops.minibar_check where tenant_id = $1 and charged_at is null`,
         ),
       ).toBeGreaterThan(0);
-      // the bar is one department in two places: its manager keeps both stores (ADR 076)
+      // the bar is one department with one store for the roof and the lobby (ADR 077)
       const bar = r.access.filter((a) => a.username === 'passport.bar-manager');
-      expect(bar.map((a) => a.node_code)).toEqual(
-        expect.arrayContaining([
-          'PASSPORT-ASSAGAO-MINI-BAR-STORE',
-          'PASSPORT-ASSAGAO-LAYOVER-BAR-STORE',
-        ]),
-      );
+      expect(
+        new Set(bar.filter((a) => a.node_code.endsWith('-STORE')).map((a) => a.node_code)),
+      ).toEqual(new Set(['PASSPORT-ASSAGAO-LAYOVER-BAR-STORE']));
       // new, or already there from an earlier load
       const all = (e: string) =>
         r.counts[e]!.created + r.counts[e]!.updated + r.counts[e]!.unchanged;

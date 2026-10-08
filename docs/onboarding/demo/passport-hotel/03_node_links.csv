@@ -2,6 +2,5 @@ org_node_code,delivery_node_code,note
 PASSPORT-ASSAGAO,PASSPORT-ASSAGAO-SUPPLY,The hotel and its supply point
 PASSPORT-ASSAGAO-STORES-TEAM,PASSPORT-ASSAGAO-MAIN-STORE,Purchase & Stores runs the Main Store
 PASSPORT-ASSAGAO-KITCHEN,PASSPORT-ASSAGAO-KITCHEN-STORE,The kitchen uses the Kitchen Store
-PASSPORT-ASSAGAO-BAR,PASSPORT-ASSAGAO-LAYOVER-BAR-STORE,The bar is one department in two places: Layover on the roof
-PASSPORT-ASSAGAO-BAR,PASSPORT-ASSAGAO-MINI-BAR-STORE,and the Mini Bar in the lobby
+PASSPORT-ASSAGAO-BAR,PASSPORT-ASSAGAO-LAYOVER-BAR-STORE,The bar keeps one store for Layover on the roof and the Mini Bar in the lobby
 PASSPORT-ASSAGAO-HOUSEKEEPING,PASSPORT-ASSAGAO-HOUSEKEEPING-STORE,Housekeeping keeps its store and the in-room minibars
