@@ -4,7 +4,7 @@ import { readCustomerDir } from '@outlet-ops/onboarding';
 import { zipFiles } from '@outlet-ops/onboarding/upload';
 import { asMigrator, runPlatformWorker, signInPlatform } from './helpers';
 
-// Uploading a customer's files and their sign-ins in the team console (ADR 013, 075), through the real screens and
+// Uploading a customer's files and their sign-ins in the team console (ADR 013, 077), through the real screens and
 // the real worker (platform_loader), with a signed platform cookie.
 
 const testData = (dir: string) =>

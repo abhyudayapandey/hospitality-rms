@@ -79,6 +79,45 @@ export async function assignShift(
   });
 }
 
+/**
+ * A tile (ADR 082): one person on one shift type for a day, or Off (template null). Every
+ * roster rule runs again; `accept` names the warnings the manager saw (ADR 019).
+ */
+export async function setDayShift(
+  worker: string,
+  day: string,
+  template: string | null,
+  accept: string[] = [],
+): Promise<ActionResult<null>> {
+  return run('set_day_shift', async (tx) => {
+    await sql`
+      select hr.set_day_shift(${worker}::uuid, ${day}::date, ${template}::uuid,
+                              ${accept}::text[])`.execute(tx);
+    return null;
+  });
+}
+
+export interface RepeatResult {
+  added: number;
+  skipped: { name: string; day: string; code: string; detail: string | null }[];
+}
+
+/** "Repeat this pattern" (ADR 082): a week's assignments onto the same weekdays. */
+export async function repeatPattern(
+  node: string,
+  week: string,
+  from: string,
+  to: string,
+): Promise<ActionResult<RepeatResult>> {
+  return run('repeat_pattern', async (tx) => {
+    const r = await sql<{ r: RepeatResult }>`
+      select hr.repeat_pattern(${node}::uuid, ${week}::date, ${from}::date, ${to}::date) as r`.execute(
+      tx,
+    );
+    return r.rows[0]!.r;
+  });
+}
+
 export async function unassignShift(assignment: string): Promise<ActionResult<null>> {
   return run('unassign', async (tx) => {
     await sql`select hr.unassign(${assignment}::uuid)`.execute(tx);

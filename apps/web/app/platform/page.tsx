@@ -26,7 +26,7 @@ interface Job {
 }
 
 // ADM-4: set up a customer first; then every customer with its state, people and last sign-in
-// (pausing one is on its own page, ADR 075); recent activity; the other tools last.
+// (pausing one is on its own page, ADR 077); recent activity; the other tools last.
 // Customer metadata only: a platform request cannot read customer data (ADR 012).
 export default async function PlatformHome() {
   const admin = await requirePlatformAdmin();

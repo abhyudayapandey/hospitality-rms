@@ -1,7 +1,16 @@
 import { strToU8, zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { readCustomerDir } from './dir';
-import { MAX_UPLOAD_BYTES, readUpload, UploadError, zipFiles, type UploadPart } from './upload';
+import {
+  checkDishPhotos,
+  MAX_DISH_PHOTO_BYTES,
+  MAX_UPLOAD_BYTES,
+  photoTypeOf,
+  readUpload,
+  UploadError,
+  zipFiles,
+  type UploadPart,
+} from './upload';
 import { DirUploadStore, uploadKey } from './upload-store';
 
 // The console's upload reader (ADR 013): a zip or the CSV files, only the numbered
@@ -104,6 +113,46 @@ describe('readUpload', () => {
     const bomb = zipSync({ '00_customer.csv': new Uint8Array(11 * 1024 * 1024).fill(65) });
     expect(bomb.length).toBeLessThan(MAX_UPLOAD_BYTES);
     expect(code(() => readUpload(zip('x.zip', bomb)))).toBe('UPLOAD_TOO_LARGE');
+  });
+
+  describe('dish photos in photos/menu (ADR 078)', () => {
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 1]);
+
+    it('keeps them beside the files, in the same folder or none', () => {
+      for (const folder of ['', 'company']) {
+        const r = readUpload(
+          zip('x.zip', zipFiles(company, folder, { 'BUTTER-CHICKEN.jpg': jpeg, 'DAL.png': png })),
+        );
+        expect(Object.keys(r.photos).sort()).toEqual(['BUTTER-CHICKEN.jpg', 'DAL.png']);
+        expect(r.files['00_customer.csv']).toBeDefined();
+      }
+    });
+
+    it('refuses a photo elsewhere, one that is not a picture, too large, or twice', () => {
+      const elsewhere = zipSync({
+        ...Object.fromEntries(Object.entries(company).map(([n, c]) => [`a/${n}`, strToU8(c)])),
+        'b/photos/menu/DAL.jpg': jpeg,
+      });
+      expect(code(() => readUpload(zip('x.zip', elsewhere)))).toBe('UPLOAD_FOLDERS');
+      const fake = zipFiles(company, '', { 'DAL.jpg': strToU8('<html>') });
+      expect(code(() => readUpload(zip('x.zip', fake)))).toBe('UPLOAD_PHOTO');
+      const big = new Uint8Array(MAX_DISH_PHOTO_BYTES + 1);
+      big.set(jpeg);
+      expect(code(() => readUpload(zip('x.zip', zipFiles(company, '', { 'DAL.jpg': big }))))).toBe(
+        'UPLOAD_TOO_LARGE',
+      );
+      const twice = zipFiles(company, '', { 'DAL.jpg': jpeg, 'dal.png': png });
+      expect(code(() => readUpload(zip('x.zip', twice)))).toBe('UPLOAD_DUPLICATE');
+    });
+
+    it('reads a picture by its first bytes, never its name', () => {
+      expect(photoTypeOf(jpeg)).toBe('image/jpeg');
+      expect(photoTypeOf(png)).toBe('image/png');
+      expect(photoTypeOf(strToU8('RIFF0000WEBPVP8 '))).toBe('image/webp');
+      expect(photoTypeOf(strToU8('GIF89a........'))).toBeNull();
+      expect(() => checkDishPhotos({ 'not a code!.jpg': jpeg })).toThrow(UploadError);
+    });
   });
 
   it('needs UTF-8 and a file 00', () => {

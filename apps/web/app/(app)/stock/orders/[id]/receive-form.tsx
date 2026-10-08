@@ -15,6 +15,10 @@ export interface ReceiveLine {
   base_uom: string;
   ordered: string;
   received: string;
+  /** where it goes by default when a department asked (ADR 080) */
+  receive_to?: 'store' | 'department';
+  /** the Main Store keeps this item, so it may stay there */
+  desk_keeps?: boolean;
 }
 
 const left = (l: ReceiveLine) => Math.max(0, Number(l.ordered) - Number(l.received));
@@ -30,16 +34,29 @@ export function ReceiveForm({
   po,
   lines,
   billHere,
+  department = null,
 }: {
   po: string;
   lines: ReceiveLine[];
   /** the bill can be attached now (the order names its supplier) */
   billHere: boolean;
+  /** the department that asked, when the Main Store ordered for it (ADR 080) */
+  department?: string | null;
 }) {
   const router = useRouter();
   const open = lines.filter((l) => left(l) > 0);
   const [qty, setQty] = useState<Record<string, string>>({});
   const [amount, setAmount] = useState<Record<string, string>>({});
+  // where each line goes (the item's default, ADR 080) and its expiry, if any
+  const [dest, setDest] = useState<Record<string, 'store' | 'department'>>(() =>
+    Object.fromEntries(
+      lines.map((l) => [
+        l.item_id,
+        l.desk_keeps === false ? 'department' : (l.receive_to ?? 'store'),
+      ]),
+    ),
+  );
+  const [expiry, setExpiry] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<BillFile[]>([]);
   const [billNo, setBillNo] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -73,7 +90,13 @@ export function ReceiveForm({
       }
       const r = await receiveGoods(
         po,
-        payload.map(({ item_id, qty, amount }) => ({ item_id, qty, amount })),
+        payload.map(({ item_id, qty, amount }) => ({
+          item_id,
+          qty,
+          amount,
+          ...(department && { to: dest[item_id] ?? 'store' }),
+          ...(expiry[item_id] && { expires_on: expiry[item_id] }),
+        })),
         files.length > 0
           ? { files: files.map((f) => f.key), bill_no: billNo.trim() || null }
           : null,
@@ -94,6 +117,7 @@ export function ReceiveForm({
       );
       setQty({});
       setAmount({});
+      setExpiry({});
       setFiles([]);
       setKey(crypto.randomUUID());
       router.refresh();
@@ -155,6 +179,48 @@ export function ReceiveForm({
                   />
                 </label>
               </div>
+              {department && (
+                <fieldset className="space-y-1" data-testid="receive-dest">
+                  <legend className="text-xs text-slate-600">Where it goes</legend>
+                  {l.desk_keeps === false ? (
+                    <p className="text-sm" data-testid="receive-dest-fixed">
+                      Straight to {department} (the Main Store does not keep it)
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {(['store', 'department'] as const).map((d) => (
+                        <label
+                          key={d}
+                          className={`flex min-h-11 items-center justify-center rounded-lg px-2 text-center text-sm ring-1 ${
+                            dest[l.item_id] === d
+                              ? 'bg-brand-700 font-semibold text-white ring-brand-700'
+                              : 'ring-slate-300'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            className="sr-only"
+                            name={`dest-${l.item_id}`}
+                            checked={dest[l.item_id] === d}
+                            onChange={() => setDest((v) => ({ ...v, [l.item_id]: d }))}
+                          />
+                          {d === 'store' ? 'Into the store' : `To ${department}`}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </fieldset>
+              )}
+              <label className="block space-y-1">
+                <span className="text-xs text-slate-600">Expiry date (optional)</span>
+                <input
+                  type="date"
+                  aria-label={`Expiry ${l.name}`}
+                  value={expiry[l.item_id] ?? ''}
+                  onChange={(e) => setExpiry((v) => ({ ...v, [l.item_id]: e.target.value }))}
+                  className={inputClass}
+                />
+              </label>
               {Number(qty[l.item_id]) > 0 && Number(amount[l.item_id]) > 0 && (
                 <p className="text-right text-xs text-slate-500" data-testid="unit-price">
                   = {formatMoney(Number(amount[l.item_id]) / Number(qty[l.item_id]))} per{' '}

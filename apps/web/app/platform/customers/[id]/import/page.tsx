@@ -33,9 +33,9 @@ export default async function ImportPage({
       </Link>
       <h1 className="text-xl font-semibold">Update from their files</h1>
       <p className="text-sm text-slate-600">
-        Upload {customer.name}&apos;s set-up files: one zip, or the CSV files themselves (5 MB at
-        most). We check them first and show you what would change. Nothing changes until you
-        confirm.
+        Upload {customer.name}&apos;s set-up files: one zip, or the CSV files themselves (25 MB at
+        most). Dish photos go in the zip&apos;s photos/menu folder, each named after its dish. We
+        check them first and show you what would change. Nothing changes until you confirm.
       </p>
       <ErrorBox message={error && isErrorCode(error) ? messageFor(error) : null} />
       <form

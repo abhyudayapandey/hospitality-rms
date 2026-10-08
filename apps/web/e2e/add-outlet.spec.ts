@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { asMigrator, runPlatformWorker, signInPlatform } from './helpers';
 
-// An outlet from a template in the team console (ADR 062, 075), through the real
+// An outlet from a template in the team console (ADR 062, 077), through the real
 // screens and the real worker: a new customer, then "Café" with delivery orders; the review
 // says what it adds, and the check and load add it; its codes come from its name.
 

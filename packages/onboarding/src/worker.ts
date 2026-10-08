@@ -6,8 +6,8 @@ import { newCustomerFrom, type CreatePayload } from './customer-files';
 export { newCustomerFrom } from './customer-files';
 import { inviteSender, type InviteSender } from './invites';
 import type { ImportReport, InviteProgress } from './report';
-import { readUpload, UploadError } from './upload';
-import { uploadStore, type UploadStore } from './upload-store';
+import { checkDishPhotos, readUpload, UploadError } from './upload';
+import { photosFromStore, photoStore, uploadStore, type UploadStore } from './upload-store';
 
 // The platform worker (ADR 012, 013): claims queued platform jobs and runs them. It
 // connects as platform_loader, which can write customer data but has no DDL rights and
@@ -150,6 +150,7 @@ async function runImport(
   const stored = await (opts.store ?? uploadStore()).get(key);
   let files: Record<string, string>;
   let customerCode: string;
+  const photos = photosFromStore(stored.photos);
   try {
     // the same checks as at upload: only the onboarding files, and file 00 names this customer
     ({ files, customerCode } = readUpload(
@@ -158,6 +159,7 @@ async function runImport(
         bytes: new TextEncoder().encode(content),
       })),
     ));
+    checkDishPhotos(photos);
   } catch (err) {
     if (err instanceof UploadError) return { result: null, error: err.code };
     throw err;
@@ -171,6 +173,8 @@ async function runImport(
   const report = await loadCustomer(client, files, {
     ...opts,
     dryRun: job.kind === 'import_dry_run',
+    photos,
+    putPhoto: opts.putPhoto ?? photoStore(),
   });
   const result = importReport(report, Object.keys(files));
   return {

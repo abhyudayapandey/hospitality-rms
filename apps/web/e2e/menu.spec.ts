@@ -31,6 +31,9 @@ test('a commis reads kitchen recipes and procedures, with no costs and no bar re
   await page.locator('[data-code="GINGER-GARLIC-PASTE"] a').click();
   await expect(page.getByTestId('recipe-name')).toHaveText('Ginger Garlic Paste');
   await expect(page.getByTestId('batch')).toContainText('1,000 g');
+  // the method is the Recipe tab (ADR 078)
+  await expect(page.getByTestId('step')).toHaveCount(0);
+  await page.getByTestId('tab-recipe').click();
   await expect(page.getByTestId('step').first()).toBeVisible();
   await expect(page.getByTestId('line-cost')).toHaveCount(0);
   await expect(main).not.toContainText('₹');
@@ -100,4 +103,25 @@ test('a standalone bar’s manager changes a recipe from tomorrow', async ({ pag
     [tomorrow()],
   );
   expect(rows[0]!.n).toBe(1);
+});
+
+test("a dish: Ingredients, where a prep item opens its own recipe, and Recipe, the dish's method", async ({
+  page,
+}) => {
+  // ADR 078: Test Company's Butter Chicken has a method in file 24; its makhani gravy is a
+  // prep item. The GM reads both; no ₹ on the Recipe tab.
+  await signInAs(page, 'Test General Manager 1.0');
+  await page.goto('/menu/recipes');
+  await page.locator('[data-code="BUTTER-CHICKEN"] a').click();
+  await expect(page.getByTestId('recipe-name')).toHaveText('Butter Chicken');
+  await expect(page.getByTestId('tab-ingredients')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('recipe-line')).toHaveCount(5);
+  await page.getByTestId('tab-recipe').click();
+  await expect(page.getByTestId('step')).toHaveCount(3);
+  await expect(page.getByTestId('step').first()).toContainText('Warm 200 g makhani gravy');
+  await page.getByTestId('tab-ingredients').click();
+  await page.getByTestId('sub-recipe').filter({ hasText: 'Makhani Gravy' }).click();
+  await expect(page.getByTestId('recipe-name')).toHaveText('Makhani Gravy');
+  await expect(page.getByTestId('tab-recipe')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('step').first()).toContainText('Blanch, peel');
 });

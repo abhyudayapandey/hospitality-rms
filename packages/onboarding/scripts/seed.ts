@@ -2,7 +2,8 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import pg from 'pg';
 import { loadCustomer } from '../src/apply';
-import { readCustomerDir } from '../src/dir';
+import { readCustomerDir, readCustomerPhotos } from '../src/dir';
+import { photoStore } from '../src/upload-store';
 
 // `pnpm db:seed`: loads the two test customers (docs/onboarding/test-data) with the
 // onboarding loader, exactly as the Platform Admin console will, then applies
@@ -24,7 +25,11 @@ const client = new pg.Client({ connectionString: url });
 await client.connect();
 try {
   for (const customer of ['test-company', 'test-solo-bar-co']) {
-    const r = await loadCustomer(client, readCustomerDir(join(data, customer)));
+    const dir = join(data, customer);
+    const r = await loadCustomer(client, readCustomerDir(dir), {
+      photos: readCustomerPhotos(dir),
+      putPhoto: photoStore(),
+    });
     if (!r.applied) {
       for (const i of r.issues) {
         console.error(

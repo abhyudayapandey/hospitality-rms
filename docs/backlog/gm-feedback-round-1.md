@@ -5,6 +5,10 @@ The Passport Hotel's GM walked the app as each role and sent 22 notes (2026-10-0
 Item 22 (how is perishable cost worked out) needed no change: every receipt moves the item's
 cost to the weighted moving average (`inv.ledger_apply`).
 
+**Done:** items 2 and 8 (ADR 078), 5, 6 and 21 (ADR 079), 14 (ADR 080), 20 (ADR 081) and 4
+(ADR 082), in one PR; panzer is the late evening or overnight shift (the product owner's answer).
+The rest of this file is the brief as it was given.
+
 This file is the brief for the rest. Each item is meant to be one PR, planned first as
 CLAUDE.md asks. Start from `master` **after ADR 076's PR is merged**: several items touch
 the same screens (the task page, the prep list, the count sheet).

@@ -1,7 +1,7 @@
 import type { ImportReport } from '@outlet-ops/onboarding/upload';
 import { countLabel } from '../../parts';
 
-// What an upload of a customer's files changes (ADR 013, 075): per kind of thing, as people
+// What an upload of a customer's files changes (ADR 013, 077): per kind of thing, as people
 // say it; every problem with its file, row and column (to find it in the file); and what is
 // worth a look.
 

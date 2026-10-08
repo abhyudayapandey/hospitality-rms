@@ -29,7 +29,7 @@ export function isBillFileType(t: string): t is BillFileType {
 }
 
 /**
- * Where photos live. The bucket's lifecycle keeps tasks/routine/ 90 days and tasks/keep/
+ * Where photos live. The bucket's lifecycle keeps tasks/routine/ 30 days (ADR 079) and tasks/keep/
  * (flagged readings, maintenance) 400 days (ADR 020); items/ (item photos, ADR 034) as long
  * as the item, under items/<tenant>/<item>/.
  */

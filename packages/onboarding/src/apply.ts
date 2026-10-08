@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { syncProcessDefs, syncProductAccess } from '@outlet-ops/workflow';
 import {
   BUNDLE_CODES,
@@ -17,6 +18,7 @@ import {
   type Bundle,
   type Issue,
 } from './files';
+import { checkDishPhotos, UploadError } from './upload';
 import { menuWarnings, validateBundle } from './validate';
 
 // Loads one customer's onboarding files (ADR 009): validate, then write everything in one
@@ -65,6 +67,10 @@ export interface LoadOptions {
    * BEGIN/COMMIT. Otherwise the loader owns the transaction on a dedicated client.
    */
   nested?: boolean;
+  /** Dish photos from the upload's photos/menu/ folder: file name -> bytes (ADR 078). */
+  photos?: Record<string, Uint8Array>;
+  /** Stores one photo under its key; called only when the load is applied, before COMMIT. */
+  putPhoto?: (key: string, bytes: Uint8Array, contentType: string) => Promise<void>;
 }
 
 /** Validates the files without touching the database. */
@@ -88,6 +94,17 @@ export async function loadCustomer(
     access: [],
   };
   if (issues.length) return report;
+  let photos: ReturnType<typeof checkDishPhotos>;
+  try {
+    photos = checkDishPhotos(opts.photos ?? {});
+  } catch (e) {
+    if (!(e instanceof UploadError)) throw e;
+    report.issues.push({ file: 'photos/menu', message: e.detail ?? e.code });
+    return report;
+  }
+  if (photos.size && !opts.putPhoto && !opts.dryRun) {
+    throw new Error('dish photos need somewhere to be stored (putPhoto)');
+  }
 
   const begin = opts.nested ? 'savepoint onboarding' : 'begin';
   const rollback = opts.nested ? 'rollback to savepoint onboarding' : 'rollback';
@@ -96,11 +113,17 @@ export async function loadCustomer(
   const at = { file: '', row: undefined as number | undefined };
   try {
     const l = new Loader(client, bundle, report, at);
+    l.photos = photos;
     // file 37 is authoritative only when it is uploaded: a re-import without it keeps covers
     l.coverFile = Object.keys(files).some((f) => f.split('/').pop()!.startsWith('37_'));
     await l.run();
     report.ok = report.issues.length === 0;
     if (report.ok && !opts.dryRun) {
+      // the photos go to the bucket last, so a refused load stores none
+      for (const p of l.photosToStore) {
+        at.file = `photos/menu/${p.name}`;
+        await opts.putPhoto!(p.key, p.bytes, p.type);
+      }
       await client.query(commit);
       report.applied = true;
     } else {
@@ -136,6 +159,9 @@ class Loader {
   private coverOutlets = new Set<string>();
   /** Whether file 37 was uploaded (ADR 061). */
   coverFile = false;
+  /** The upload's dish photos, by dish code (ADR 078), and the ones to store if applied. */
+  photos: ReturnType<typeof checkDishPhotos> = new Map();
+  photosToStore: { name: string; key: string; bytes: Uint8Array; type: string }[] = [];
   private suppliers = new Map<string, string>();
   private items = new Map<string, string>();
   private leaveTypes = new Map<string, string>();
@@ -1450,20 +1476,21 @@ class Loader {
       await this.upsert(
         'items',
         `insert into inv.item (tenant_id, sku, name, category, base_uom, is_perishable,
-                               standard_unit_cost, preferred_supplier_id, durable)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                               standard_unit_cost, preferred_supplier_id, durable, receive_to)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          on conflict (tenant_id, sku) do update
             set name = excluded.name, category = excluded.category, base_uom = excluded.base_uom,
                 is_perishable = excluded.is_perishable,
                 standard_unit_cost = excluded.standard_unit_cost,
                 preferred_supplier_id = excluded.preferred_supplier_id,
-                durable = excluded.durable, archived_at = null
+                durable = excluded.durable, receive_to = excluded.receive_to, archived_at = null
           where (inv.item.name, inv.item.category, inv.item.base_uom, inv.item.is_perishable,
                  inv.item.standard_unit_cost, inv.item.preferred_supplier_id, inv.item.durable,
-                 inv.item.archived_at)
+                 inv.item.receive_to, inv.item.archived_at)
                 is distinct from (excluded.name, excluded.category, excluded.base_uom,
                                   excluded.is_perishable, excluded.standard_unit_cost,
-                                  excluded.preferred_supplier_id, excluded.durable, null)
+                                  excluded.preferred_supplier_id, excluded.durable,
+                                  excluded.receive_to, null)
          returning id, xmax = 0 as inserted`,
         [
           this.tenant,
@@ -1475,6 +1502,7 @@ class Loader {
           i.standard_unit_cost_inr,
           supplier(i.preferred_supplier_code),
           i.item_type === 'durable',
+          i.receive_to,
         ],
       );
       this.items.set(
@@ -1675,6 +1703,8 @@ class Loader {
         ).rows[0]!.id,
       );
     }
+
+    await this.dishPhotos(menuItems);
 
     const cu = this.b.customer[0]!;
     for (const o of this.b.menuOutlets) {
@@ -1882,6 +1912,21 @@ class Loader {
 
     for (const p of this.b.prepProcedures) {
       this.step(FILES.prepProcedures.file, p.line);
+      if (p.recipe_for_kind === 'menu') {
+        // a dish's method (ADR 078)
+        await this.upsert(
+          'dish methods',
+          `insert into inv.prep_procedure (tenant_id, menu_item_id, step, instruction, minutes)
+           values ($1, $2, $3, $4, $5)
+           on conflict (tenant_id, menu_item_id, step) where menu_item_id is not null do update
+              set instruction = excluded.instruction, minutes = excluded.minutes
+            where (inv.prep_procedure.instruction, inv.prep_procedure.minutes)
+                  is distinct from (excluded.instruction, excluded.minutes)
+           returning id, xmax = 0 as inserted`,
+          [this.tenant, menuItems.get(p.prep_item_code), p.step, p.instruction, p.minutes ?? null],
+        );
+        continue;
+      }
       await this.upsert(
         'prep procedures',
         `insert into inv.prep_procedure (tenant_id, prep_item_id, step, instruction, minutes)
@@ -1893,6 +1938,55 @@ class Loader {
          returning id, xmax = 0 as inserted`,
         [this.tenant, this.items.get(p.prep_item_code), p.step, p.instruction, p.minutes ?? null],
       );
+    }
+  }
+
+  /**
+   * The dishes' photos (ADR 078): each named by a dish in file 22 or already loaded. Its key
+   * comes from its content, so the same picture again changes nothing; a new one replaces
+   * the dish's photo (the old file stays in the bucket, as an item photo's does).
+   */
+  private async dishPhotos(menuItems: Map<string, string>) {
+    const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' } as const;
+    for (const [code, p] of this.photos) {
+      this.step(`photos/menu/${p.name}`);
+      const dish =
+        menuItems.get(code) ??
+        (
+          await this.c.query<{ id: string }>(
+            'select id from menu.menu_item where tenant_id = $1 and code = $2',
+            [this.tenant, code],
+          )
+        ).rows[0]?.id;
+      if (!dish) {
+        this.report.issues.push({
+          file: `photos/menu/${p.name}`,
+          message: `no dish ${code} in ${FILES.menuItems.file}`,
+        });
+        continue;
+      }
+      const h = createHash('sha256').update(p.bytes).digest('hex');
+      const uuid = `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+      const key = `items/${this.tenant}/${dish}/${uuid}.${ext[p.type]}`;
+      const counts = (this.report.counts['dish photos'] ??= {
+        created: 0,
+        updated: 0,
+        unchanged: 0,
+      });
+      const r = await this.c.query<{ before: string | null }>(
+        `update menu.menu_item m set photo_key = $2
+           from (select photo_key as before from menu.menu_item where id = $1) b
+          where m.id = $1 and m.photo_key is distinct from $2
+          returning b.before`,
+        [dish, key],
+      );
+      if (!r.rows[0]) {
+        counts.unchanged++;
+        continue;
+      }
+      if (r.rows[0].before) counts.updated++;
+      else counts.created++;
+      this.photosToStore.push({ name: p.name, key, bytes: p.bytes, type: p.type });
     }
   }
 
@@ -1981,16 +2075,23 @@ class Loader {
       await this.upsert(
         'shift templates',
         `insert into hr.shift_template (tenant_id, org_node_id, name, role_code, start_time,
-                                        end_time, headcount, weekdays)
-         values ($1, $2, $3, $4, $5, $6, $7, $8)
+                                        end_time, headcount, weekdays, shift_type, first_end,
+                                        second_start, break_minutes)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          on conflict (tenant_id, org_node_id, name, role_code) do update
             set start_time = excluded.start_time, end_time = excluded.end_time,
-                headcount = excluded.headcount, weekdays = excluded.weekdays, archived_at = null
+                headcount = excluded.headcount, weekdays = excluded.weekdays,
+                shift_type = excluded.shift_type, first_end = excluded.first_end,
+                second_start = excluded.second_start, break_minutes = excluded.break_minutes,
+                archived_at = null
           where (hr.shift_template.start_time, hr.shift_template.end_time,
                  hr.shift_template.headcount, hr.shift_template.weekdays,
+                 hr.shift_template.shift_type, hr.shift_template.first_end,
+                 hr.shift_template.second_start, hr.shift_template.break_minutes,
                  hr.shift_template.archived_at)
                 is distinct from (excluded.start_time, excluded.end_time, excluded.headcount,
-                                  excluded.weekdays, null)
+                                  excluded.weekdays, excluded.shift_type, excluded.first_end,
+                                  excluded.second_start, excluded.break_minutes, null)
          returning id, xmax = 0 as inserted`,
         [
           this.tenant,
@@ -2001,6 +2102,10 @@ class Loader {
           t.end_time,
           t.headcount,
           t.days,
+          t.shift_type,
+          t.first_end ?? null,
+          t.second_start ?? null,
+          t.break_minutes,
         ],
       );
     }
@@ -2614,6 +2719,7 @@ class Loader {
             ...(r.max !== undefined && { max: r.max }),
             ...(r.unit !== undefined && { unit: r.unit }),
             ...(r.photo_required && { photo_required: true }),
+            ...(r.step_icon && { icon: r.step_icon }),
           })),
       );
       const schedule = JSON.stringify(first.schedule);

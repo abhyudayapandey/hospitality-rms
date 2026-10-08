@@ -9,6 +9,8 @@ import {
   secondaryButton,
   StatusBox,
 } from '@/components/messages';
+import { stepIcon } from '@outlet-ops/domain';
+import { Icon } from '@/components/icon';
 import { PhotoField } from '@/components/photo-field';
 import { useHydrated } from '@/lib/use-hydrated';
 import type { Person, TaskDetail, TaskStep } from '@/lib/tasks';
@@ -98,7 +100,16 @@ export function TaskWork({
             }`}
           >
             <p className="flex items-start justify-between gap-2">
-              <span className={`font-medium ${focus && s.id === current?.id ? 'text-lg' : ''}`}>
+              <span
+                className={`flex items-center gap-2 font-medium ${focus && s.id === current?.id ? 'text-lg' : ''}`}
+              >
+                <span
+                  data-testid="step-icon"
+                  data-icon={stepIcon(s.label, s.kind, s.icon)}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"
+                >
+                  <Icon name={stepIcon(s.label, s.kind, s.icon)} className="size-7" />
+                </span>
                 {s.label}
               </span>
               {s.done_at && <span className="text-xs text-emerald-700">✓ done</span>}
@@ -225,7 +236,7 @@ function StepInputs({
         photoKey={photoKey}
         onChange={setPhotoKey}
         getUploadUrl={purpose === 'task' ? getTaskUploadUrl : getDiscardUploadUrl}
-        label={step.label}
+        label={needsPhoto ? step.label : `${step.label}: a photo (optional)`}
       />
     ) : needsPhoto ? (
       <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
@@ -264,7 +275,8 @@ function StepInputs({
           className={`${inputClass} min-h-20 py-2`}
         />
       )}
-      {(needsPhoto || step.kind === 'number') && step.kind !== 'discard' && photoField('task')}
+      {/* any step may take a photo (ADR 079); some need one */}
+      {step.kind !== 'discard' && step.kind !== 'batch' && photoField('task')}
       {step.kind === 'discard' && (
         <>
           <p className="text-xs text-slate-600">

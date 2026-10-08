@@ -4,6 +4,13 @@ import { revalidatePath } from 'next/cache';
 import { failure, type ActionResult } from '@outlet-ops/domain';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser, type Tx } from '@/lib/db';
+import {
+  isPhotoType,
+  MAX_PHOTO_BYTES,
+  photosEnabled,
+  presignPhotoUpload,
+  type UploadTarget,
+} from '@/lib/photos';
 import { requireModule } from '@/lib/modules-server';
 
 // Menu and recipe edits (ADR 014). Each calls one SECURITY DEFINER function that checks
@@ -147,5 +154,48 @@ export async function repostPos(importId: string): Promise<ActionResult<PosResul
       tx,
     );
     return r.rows[0]!.r;
+  });
+}
+
+// --- a dish's photo (ADR 078) ------------------------------------------------------------
+
+/**
+ * One presigned POST for a dish's photo, after menu.can_edit_dish() says the caller may
+ * change the dish (rule 2). The key is items/<tenant>/<dish>/<uuid>, the only shape
+ * menu.set_dish_photo accepts.
+ */
+export async function getDishUploadUrl(
+  dish: string,
+  contentType: string,
+  size: number,
+): Promise<ActionResult<UploadTarget>> {
+  if (!photosEnabled()) return { ok: false, code: 'INVALID_PHOTO', message: 'Photos are off.' };
+  if (!isPhotoType(contentType) || size < 1 || size > MAX_PHOTO_BYTES) {
+    return failure(new Error('INVALID_PHOTO'));
+  }
+  const user = await requireUser();
+  try {
+    const tenant = await withUser(user.id, async (tx) => {
+      const r = await sql<{ ok: boolean; tenant: string | null }>`
+        select menu.can_edit_dish(${dish}::uuid) as ok, core.my_tenant() as tenant`.execute(tx);
+      if (!r.rows[0]?.ok || !r.rows[0].tenant) throw new Error('NOT_AUTHORISED');
+      return r.rows[0].tenant;
+    });
+    return { ok: true, data: await presignPhotoUpload('items', tenant, dish, contentType) };
+  } catch (err) {
+    const f = failure(err);
+    if (f.code === 'UNEXPECTED') console.error('dish photo presign failed', err);
+    return f;
+  }
+}
+
+/** Sets (or with null clears) the dish's photo; menu.set_dish_photo checks who and the key. */
+export async function setDishPhoto(
+  dish: string,
+  photoKey: string | null,
+): Promise<ActionResult<null>> {
+  return run('set_dish_photo', async (tx) => {
+    await sql`select menu.set_dish_photo(${dish}::uuid, ${photoKey})`.execute(tx);
+    return null;
   });
 }

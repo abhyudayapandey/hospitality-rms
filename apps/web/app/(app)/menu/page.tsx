@@ -5,7 +5,9 @@ import { PlaceSwitcher } from '@/components/place-switcher';
 import { withUser } from '@/lib/db';
 import { formatMoney } from '@/lib/format';
 import { param, type SearchParams } from '@/lib/inventory';
-import { highCost, myRecipes, outletCosting } from '@/lib/menu';
+import { highCost, myRecipes, outletCosting, recipePhotoKeys } from '@/lib/menu';
+import { itemPhotoUrls } from '@/lib/photos';
+import { ItemThumb } from '@/components/item-thumb';
 import { placesFor } from '@/lib/places';
 import { salesPlaces } from '@/lib/production';
 import { MenuTabs, RecipeList } from './parts';
@@ -23,10 +25,12 @@ export default async function MenuPage({ searchParams }: { searchParams: SearchP
     ? (ctx.places.find((p) => p.id === param(sp, 'outlet')) ?? ctx.place)
     : null;
   const data = await withUser(ctx.shell.user.id, async (tx) => {
-    if (!place) return { recipes: await myRecipes(tx), rows: [], outlet: null };
+    const photos = await itemPhotoUrls(await recipePhotoKeys(tx));
+    if (!place) return { recipes: await myRecipes(tx), rows: [], outlet: null, photos };
     const recipes = await myRecipes(tx);
     return {
       recipes,
+      photos,
       rows: await outletCosting(tx, place.id),
       outlet: { outlet_id: place.id, outlet_name: place.name },
       sales: await salesPlaces(tx),
@@ -38,7 +42,7 @@ export default async function MenuPage({ searchParams }: { searchParams: SearchP
       <div className="space-y-4">
         <BackLink />
         <h1 className="text-xl font-semibold">Recipes</h1>
-        <RecipeList recipes={data.recipes} />
+        <RecipeList recipes={data.recipes} photos={data.photos} />
       </div>
     );
   }
@@ -83,7 +87,8 @@ export default async function MenuPage({ searchParams }: { searchParams: SearchP
                         }
                         className="flex min-h-14 items-center justify-between gap-3 px-4 py-2"
                       >
-                        <span className="min-w-0">
+                        <ItemThumb category="meat" src={data.photos.get(r.menu_item_id)} />
+                        <span className="min-w-0 flex-1">
                           <span className="block truncate font-medium">{r.name}</span>
                           <span className="text-xs text-slate-500">
                             {formatMoney(r.price, r.currency)} · cost{' '}

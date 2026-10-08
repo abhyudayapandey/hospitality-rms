@@ -2,7 +2,7 @@ export * from './apply';
 export * from './csv';
 export * from './files';
 export * from './validate';
-export { readCustomerDir } from './dir';
+export { readCustomerDir, readCustomerPhotos } from './dir';
 export * from './create';
 export * from './worker';
 export * from './invites';

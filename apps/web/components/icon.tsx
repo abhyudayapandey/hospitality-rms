@@ -56,6 +56,51 @@ const PATHS = {
   // a certificate with its seal: licences and compliance (ADR 069)
   shield: ['M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z', 'M9 12l2 2 4-4'],
   star: ['M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z'],
+  // hospitality pictograms for tasks and their steps (ADR 079), the same weight and style
+  bottle: [
+    'M10 3h4v4l1.5 2.5V20a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1V9.5L10 7z',
+    'M8.5 13h7',
+    'M3 21h18',
+  ],
+  // a small bottle: a nip or a miniature beside the full bottle on the count sheet (ADR 079)
+  nip: ['M10.5 8h3v2.5l1 1.5V20a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1v-8l1-1.5z', 'M3 21h18'],
+  thermometer: ['M10 4a2 2 0 0 1 4 0v10.5a4 4 0 1 1-4 0z', 'M12 9v8', 'circle:12,17.5,1.5'],
+  mop: ['M12 3v11', 'M7 21l1.5-7h7L17 21', 'M10 21v-3M14 21v-3'],
+  broom: ['M18 3l-6.5 9', 'M8 12.5l5 3.5-2 5H5z', 'M8 21l1.5-3M11.5 21l.5-2'],
+  handwash: [
+    'M4 14h4l3 2h4a1.5 1.5 0 0 1 0 3H9',
+    'M4 20h12l5-4a1.5 1.5 0 0 0-2-2l-3 2',
+    'M15 3c1.5 2 2.5 3.2 2.5 4.5a2.5 2.5 0 0 1-5 0C12.5 6.2 13.5 5 15 3z',
+  ],
+  fridge: ['rect:6,2,12,20,2', 'M6 9h12', 'M9 5v2M9 12v4'],
+  oil: ['M12 3c3 4 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 3-7 6-11z', 'M9 15a3 3 0 0 0 3 3'],
+  towel: ['M6 3h12v15H6z', 'M6 18l2 3h12l-2-3', 'M6 8h12M6 12h12'],
+  ice: ['rect:4,8,7,7,1.5', 'rect:13,8,7,7,1.5', 'rect:8.5,3,7,5,1.5', 'M7 18v3M17 18v2'],
+  knife: ['M4 20l9-9', 'M13 11c2-4 5-7 7-8 0 3-2 7-5 10z', 'M7 17l-2-2'],
+  extinguisher: [
+    'M9 8h6a2 2 0 0 1 2 2v10a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V10a2 2 0 0 1 2-2z',
+    'M12 8V5h3l3-2',
+    'M10 13h4',
+  ],
+  spray: [
+    'M8 9h6v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1z',
+    'M9 9V6h4l2 1',
+    'M17 4h.01M19 6h.01M17 8h.01M20 3h.01',
+  ],
+  lock: ['rect:5,11,14,10,2', 'M8 11V7a4 4 0 0 1 8 0v4', 'M12 15v2'],
+  bulb: ['M9 18h6M10 21h4', 'M8 14a6 6 0 1 1 8 0c-1 1-1 2-1 4H9c0-2 0-3-1-4z'],
+  tap: [
+    'M4 9h9a3 3 0 0 1 3 3v2',
+    'M8 9V6h3v3',
+    'M6 6h7',
+    'M16 18c.8 1 1.5 1.6 1.5 2.3a1.5 1.5 0 0 1-3 0c0-.7.7-1.3 1.5-2.3z',
+  ],
+  pool: [
+    'M3 17c2 0 2-1.5 4.5-1.5S10 17 12 17s2-1.5 4.5-1.5S19 17 21 17',
+    'M3 21c2 0 2-1.5 4.5-1.5S10 21 12 21s2-1.5 4.5-1.5S19 21 21 21',
+    'M8 14V5a2 2 0 0 1 4 0M14 14V5a2 2 0 0 1 4 0M8 9h6',
+  ],
+  dumbbell: ['M3 10v4M21 10v4', 'rect:5,7,3,10,1', 'rect:16,7,3,10,1', 'M8 12h8'],
 } as const;
 
 export type IconName = keyof typeof PATHS;

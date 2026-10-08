@@ -11,6 +11,8 @@ import {
   ALLERGENS,
   FOOD_TYPES,
   parseAllergens,
+  isTaskIcon,
+  TASK_ICONS,
 } from '@outlet-ops/domain';
 import { CsvError, parseCsv } from './csv';
 
@@ -458,8 +460,13 @@ export const FILES = {
         z.literal('').transform(() => 'consumable' as const),
         z.enum(['consumable', 'durable'], 'must be consumable or durable'),
       ]),
+      // ADR 080: where a delivery for a department goes by default; blank: into the store
+      receive_to: z.union([
+        z.literal('').transform(() => 'store' as const),
+        z.enum(['store', 'department'], 'must be store or department'),
+      ]),
     }),
-    optional: ['item_type'],
+    optional: ['item_type', 'receive_to'],
   },
   itemLocations: {
     file: '11_item_locations.csv',
@@ -541,7 +548,21 @@ export const FILES = {
       job_role_code: text,
       headcount: int.refine((v) => v >= 1 && v <= 50, 'must be 1 to 50'),
       days,
+      // ADR 082: straight (one block), split (two blocks: start to first_end, second_start to
+      // end) or panzer (the late or overnight shift, about 18:00-19:00 to 03:00-04:00)
+      shift_type: z.union([
+        z.literal('').transform(() => 'straight' as const),
+        z.enum(['straight', 'split', 'panzer'], 'must be straight, split or panzer'),
+      ]),
+      first_end: z.union([z.literal('').transform(() => undefined), time]),
+      second_start: z.union([z.literal('').transform(() => undefined), time]),
+      // unpaid minutes inside the shift (a meal break), as well as a split's gap
+      break_minutes: z.union([
+        z.literal('').transform(() => 0),
+        int.refine((v) => v >= 0 && v <= 240, 'must be 0 to 240'),
+      ]),
     }),
+    optional: ['shift_type', 'first_end', 'second_start', 'break_minutes'],
   },
   events: {
     file: '17_events_TEST_DATA_ONLY.csv',
@@ -653,11 +674,17 @@ export const FILES = {
     file: '24_prep_procedures.csv',
     required: false,
     schema: z.object({
+      // a prep item's code, or a dish's (file 22) when recipe_for_kind is menu (ADR 078)
       prep_item_code: code,
+      recipe_for_kind: z.union([
+        z.literal('').transform(() => 'prep' as const),
+        z.enum(['prep', 'menu'], 'must be prep or menu'),
+      ]),
       step: int.refine((v) => v >= 1, 'must be 1 or more'),
       instruction: text,
       minutes: optNum.refine((v) => v === undefined || v >= 0, 'must not be negative'),
     }),
+    optional: ['recipe_for_kind'],
   },
   // Test-only activity (ADR 017): refused for a customer that isn't a test customer. Dates
   // are offsets from the load date, so the data is always recent.
@@ -732,6 +759,16 @@ export const FILES = {
       max: optNum,
       unit: optional,
       photo_required: optYesNo,
+      // ADR 079: optional, the step's picture (TASK_ICONS); blank: picked from its words
+      step_icon: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          if (v === '') return undefined;
+          if (isTaskIcon(v)) return v;
+          ctx.addIssue({ code: 'custom', message: `must be one of ${TASK_ICONS.join(', ')}` });
+          return z.NEVER;
+        }),
       // ADR 062: optional, `CHILLER-LOG@1` for a copy of a library checklist
       from_library: z
         .string()
@@ -744,7 +781,7 @@ export const FILES = {
           return z.NEVER;
         }),
     }),
-    optional: ['from_library'],
+    optional: ['step_icon', 'from_library'],
   },
   // Test-only tasks (ADR 020): one-off tasks, open maintenance requests and prep lists.
   tasks: {

@@ -1,9 +1,9 @@
-template_code,place_code,name,schedule,assign_to,step,step_label,step_kind,min,max,unit,photo_required
-SOLO-KITCHEN-OPENING,TEST-SOLO-BAR-KITCHEN,Kitchen opening,daily 12:00,role:COOK,1,Chiller temperature,number,0,5,°C,no
-SOLO-KITCHEN-OPENING,TEST-SOLO-BAR-KITCHEN,Kitchen opening,daily 12:00,role:COOK,2,Date labels checked,tick,,,,no
-SOLO-KITCHEN-CLOSING,TEST-SOLO-BAR-KITCHEN,Kitchen closing,daily 23:30,on_shift,1,Gas and burners off,tick,,,,yes
-SOLO-KITCHEN-CLOSING,TEST-SOLO-BAR-KITCHEN,Kitchen closing,daily 23:30,on_shift,2,Chiller temperature,number,0,5,°C,no
-SOLO-BAR-SETUP,TEST-SOLO-BAR-BAR,Bar setup,daily 18:00,role:BARTENDER,1,Ice well filled,tick,,,,no
-SOLO-BAR-SETUP,TEST-SOLO-BAR-BAR,Bar setup,daily 18:00,role:BARTENDER,2,Garnishes cut and dated,tick,,,,no
-SOLO-BAR-CLOSING,TEST-SOLO-BAR-BAR,Bar closing,daily 01:30,on_shift,1,Open bottles capped and stored,tick,,,,no
-SOLO-BAR-CLOSING,TEST-SOLO-BAR-BAR,Bar closing,daily 01:30,on_shift,2,Cash drawer counted,number,,,INR,no
+template_code,place_code,name,schedule,assign_to,step,step_label,step_kind,min,max,unit,photo_required,step_icon
+SOLO-KITCHEN-OPENING,TEST-SOLO-BAR-KITCHEN,Kitchen opening,daily 12:00,role:COOK,1,Chiller temperature,number,0,5,°C,no,
+SOLO-KITCHEN-OPENING,TEST-SOLO-BAR-KITCHEN,Kitchen opening,daily 12:00,role:COOK,2,Date labels checked,tick,,,,no,
+SOLO-KITCHEN-CLOSING,TEST-SOLO-BAR-KITCHEN,Kitchen closing,daily 23:30,on_shift,1,Gas and burners off,tick,,,,yes,
+SOLO-KITCHEN-CLOSING,TEST-SOLO-BAR-KITCHEN,Kitchen closing,daily 23:30,on_shift,2,Chiller temperature,number,0,5,°C,no,
+SOLO-BAR-SETUP,TEST-SOLO-BAR-BAR,Bar setup,daily 18:00,role:BARTENDER,1,Ice well filled,tick,,,,no,
+SOLO-BAR-SETUP,TEST-SOLO-BAR-BAR,Bar setup,daily 18:00,role:BARTENDER,2,Garnishes cut and dated,tick,,,,no,
+SOLO-BAR-CLOSING,TEST-SOLO-BAR-BAR,Bar closing,daily 01:30,on_shift,1,Open bottles capped and stored,tick,,,,no,
+SOLO-BAR-CLOSING,TEST-SOLO-BAR-BAR,Bar closing,daily 01:30,on_shift,2,Cash drawer counted,number,,,INR,no,

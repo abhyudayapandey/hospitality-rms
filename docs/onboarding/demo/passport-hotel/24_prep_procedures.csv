@@ -1,14 +1,21 @@
-prep_item_code,step,instruction,minutes
-SUGAR-SYRUP,1,Dissolve the sugar in 500 ml of hot water; cool and bottle.,15
-TEPACHE-LIQUEUR,1,Ferment pineapple skins and cores with jaggery and cinnamon for 3 days.,20
-TEPACHE-LIQUEUR,2,"Strain, fortify with feni and bottle.",15
-THECHA-SALT,1,Pound chillies and garlic to a coarse thecha; dry with the salt at low heat.,30
-COLD-BREW,1,Coarse-grind the beans; steep in cold water for 16 hours; strain.,10
-MUSKMELON-SHRUB,1,Macerate melon with sugar overnight; strain and add toddy vinegar.,20
-HIBISCUS-SYRUP,1,Steep hibiscus in hot water; strain and dissolve the sugar.,20
-RECHEADO-MASALA,1,Soak the chillies in the vinegar for 2 hours.,10
-RECHEADO-MASALA,2,"Grind everything to a smooth, thick paste; jar and refrigerate.",20
-XACUTI-MASALA,1,Roast grated coconut and onions until deep brown.,25
-XACUTI-MASALA,2,Roast the spices; grind everything with water to a paste.,20
-GOAN-CURRY-BASE,1,Sweat onions in coconut oil; add tomatoes and the ground chilli and turmeric.,20
-GOAN-CURRY-BASE,2,Add coconut milk and kokum; simmer without boiling.,25
+prep_item_code,recipe_for_kind,step,instruction,minutes
+SUGAR-SYRUP,prep,1,Dissolve the sugar in 500 ml of hot water; cool and bottle.,15
+TEPACHE-LIQUEUR,prep,1,Ferment pineapple skins and cores with jaggery and cinnamon for 3 days.,20
+TEPACHE-LIQUEUR,prep,2,"Strain, fortify with feni and bottle.",15
+THECHA-SALT,prep,1,Pound chillies and garlic to a coarse thecha; dry with the salt at low heat.,30
+COLD-BREW,prep,1,Coarse-grind the beans; steep in cold water for 16 hours; strain.,10
+MUSKMELON-SHRUB,prep,1,Macerate melon with sugar overnight; strain and add toddy vinegar.,20
+HIBISCUS-SYRUP,prep,1,Steep hibiscus in hot water; strain and dissolve the sugar.,20
+RECHEADO-MASALA,prep,1,Soak the chillies in the vinegar for 2 hours.,10
+RECHEADO-MASALA,prep,2,"Grind everything to a smooth, thick paste; jar and refrigerate.",20
+XACUTI-MASALA,prep,1,Roast grated coconut and onions until deep brown.,25
+XACUTI-MASALA,prep,2,Roast the spices; grind everything with water to a paste.,20
+GOAN-CURRY-BASE,prep,1,Sweat onions in coconut oil; add tomatoes and the ground chilli and turmeric.,20
+GOAN-CURRY-BASE,prep,2,Add coconut milk and kokum; simmer without boiling.,25
+PASSPORT-DE-PICANTE,menu,1,Muddle the pineapple and green chillies in the shaker.,1
+PASSPORT-DE-PICANTE,menu,2,"Add tequila, sugar syrup and the juice of the lime; fill with ice and shake hard.",1
+PASSPORT-DE-PICANTE,menu,3,Double strain into a chilled glass over fresh ice; garnish with a chilli.,1
+MADAME-ROSITA,menu,1,Build gin and hibiscus syrup over ice in a highball.,1
+MADAME-ROSITA,menu,2,"Squeeze in the lime, top with soda and stir once.",1
+ROS-OMELETTE,menu,1,"Whisk two eggs with onion, chilli and coriander; cook a thin omelette.",4
+ROS-OMELETTE,menu,2,Ladle the hot ros over the omelette; serve with two poi.,2

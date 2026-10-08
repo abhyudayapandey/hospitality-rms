@@ -511,16 +511,25 @@ describe('wastage photos (ADR 006)', () => {
     );
   });
 
-  it('expires routine task photos after 90 days and kept ones after 400 (ADR 020)', () => {
+  it('expires routine task photos after 30 days and kept ones after 400 (ADR 020, 079)', () => {
     const { props } = photoBucket();
     const rules = (props.LifecycleConfiguration as { Rules: Record<string, unknown>[] }).Rules;
     expect(rules).toContainEqual(
       expect.objectContaining({
         Prefix: 'tasks/routine/',
-        ExpirationInDays: 90,
+        ExpirationInDays: 30,
         Status: 'Enabled',
       }),
     );
+    // the 30-day rule is on tasks/routine/ alone: no other prefix starts with it, and items,
+    // bills, compliance, stock check proof and selfies keep their own rules or none
+    const prefixes = rules.map((r) => String(r.Prefix));
+    for (const p of ['items/', 'bills/', 'compliance/', 'stockcheck/', 'selfies/']) {
+      expect(prefixes.filter((x) => x.startsWith('tasks/')).some((x) => p.startsWith(x))).toBe(
+        false,
+      );
+    }
+    expect(prefixes.filter((x) => x === 'tasks/routine/')).toHaveLength(1);
     expect(rules).toContainEqual(
       expect.objectContaining({ Prefix: 'tasks/keep/', ExpirationInDays: 400, Status: 'Enabled' }),
     );
