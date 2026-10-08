@@ -77,7 +77,7 @@ describe('the sole owner’s own requests', () => {
       };
       expect(await steps(c, req.id)).toEqual([
         { step: 'manager_approval', ...top },
-        { step: 'hr_approval', ...top },
+        { step: 'gm_approval', ...top },
       ]);
       // in the access audit, with the note
       const audit = await attemptAs<{ action: string; person: string; note: string }>(

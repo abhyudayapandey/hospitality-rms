@@ -77,7 +77,7 @@ describe('the Passport Hotel demo', () => {
       }).toEqual({
         org: [12, 1],
         delivery: [7, 0],
-        links: [5, 0],
+        links: [6, 0],
         roles: [38, 0],
         users: [38, 0],
         workers: [38, 1],
@@ -165,7 +165,7 @@ describe('the Passport Hotel demo', () => {
           `select count(*)::int n from ops.minibar_check where tenant_id = $1 and charged_at is null`,
         ),
       ).toBeGreaterThan(0);
-      // the bar manager keeps the lobby Mini Bar's store as well as Layover's
+      // the bar is one department in two places: its manager keeps both stores (ADR 076)
       const bar = r.access.filter((a) => a.username === 'passport.bar-manager');
       expect(bar.map((a) => a.node_code)).toEqual(
         expect.arrayContaining([

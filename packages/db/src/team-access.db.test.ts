@@ -52,8 +52,27 @@ async function produce(c: PoolClient, user: string, store: string, item: string,
   return attemptAs<{ id: string }>(c, ids.user(user), PRODUCE, [ids.node(store), prep, 100]);
 }
 
+/** A prep task for the person at the store (as their lead gives it, ADR 076). */
+async function giveTask(c: PoolClient, user: string, store: string, prep: string) {
+  const { rows } = await c.query<{ id: string }>(
+    `insert into ops.task (tenant_id, org_node_id, delivery_node_id, kind, title, due_at,
+                           assign_mode, assignee_user_id, item_id, target_qty)
+     select n.tenant_id, coalesce(ops.team_of_store(n.id), n.parent_id), n.id, 'prep', 'Make it',
+            now() + interval '2 hours', 'person', $2, $3, 100
+       from core.hierarchy_node n where n.id = $1
+     returning id`,
+    [ids.node(store), ids.user(user), prep],
+  );
+  await c.query(
+    `insert into ops.task_step (tenant_id, task_id, org_node_id, position, label, kind)
+     select tenant_id, id, org_node_id, 1, 'Record the batch', 'batch' from ops.task where id = $1`,
+    [rows[0]!.id],
+  );
+  return rows[0]!.id;
+}
+
 describe('PRODUCTION_TEAM: production at the department store, nothing else', () => {
-  it('commis, cook, bartender and central kitchen commis record batches made at their store', async () => {
+  it('commis, cook, bartender and central kitchen commis make what they are given at their store', async () => {
     await inRolledBackTx(async (c) => {
       const cases: [string, string, string, string?][] = [
         ['test.commis.1.0', 'TEST-HOTEL-1.0-KITCHEN-STORE', 'GINGER-GARLIC-PASTE'],
@@ -65,15 +84,22 @@ describe('PRODUCTION_TEAM: production at the department store, nothing else', ()
         ['test.solo.bartender', 'TEST-SOLO-BAR-BAR-STORE', 'SUGAR-SYRUP', 'TEST-SOLO-COMPANY'],
       ];
       for (const [user, store, item, tenant] of cases) {
+        // not straight from Make: that is their lead's (ADR 076)
         const r = await produce(c, user, store, item, tenant);
-        expect(r.error, `${user} ${item} at ${store}`).toBeUndefined();
+        expect(r.error, `${user} ${item} at ${store}`).toBe('MAKE_BY_TASK');
+        // given it, they record it on the task
+        const task = await giveTask(c, user, store, await sku(c, item, tenant));
+        const made = await attemptAs(c, ids.user(user), 'select ops.record_task_batch($1, 100)', [
+          task,
+        ]);
+        expect(made.error, `${user} ${item} at ${store}`).toBeUndefined();
       }
     });
   });
 
   it('only items made there: a received prep item is NOT_MADE_HERE', async () => {
     await inRolledBackTx(async (c) => {
-      const r = await attemptAs(c, ids.user('test.commis.1.0'), PRODUCE, [
+      const r = await attemptAs(c, ids.user('test.sous-chef.1.0'), PRODUCE, [
         ids.node('TEST-HOTEL-1.0-KITCHEN-STORE'),
         await sku(c, 'MAKHANI-GRAVY'),
         100,
@@ -134,7 +160,15 @@ describe('PRODUCTION_TEAM: production at the department store, nothing else', ()
         'select sku from inv.made_here($1)',
         [store],
       );
-      expect(made.rows!.map((r) => r.sku).sort()).toEqual([
+      // what he was given (file 32's open Mint Chutney); his lead sees all three (ADR 076)
+      expect(made.rows!.map((r) => r.sku)).toEqual(['MINT-CHUTNEY']);
+      const all = await attemptAs<{ sku: string }>(
+        c,
+        ids.user('test.sous-chef.1.0'),
+        'select sku from inv.made_here($1)',
+        [store],
+      );
+      expect(all.rows!.map((r) => r.sku).sort()).toEqual([
         'GINGER-GARLIC-PASTE',
         'MINT-CHUTNEY',
         'STEAMED-RICE',

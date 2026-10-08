@@ -25,7 +25,8 @@ beforeAll(async () => {
 afterAll(closePools);
 
 const CK = 'TEST-CENTRAL-KITCHEN-STORE';
-const CK_CHEF = 'test.central-kitchen-chef';
+// the central kitchen's lead (ADR 076): records batches straight from Make
+const CK_CHEF = 'test.central-kitchen-manager';
 const GM = 'test.general-manager.1.0';
 
 async function item(c: PoolClient, sku: string): Promise<string> {

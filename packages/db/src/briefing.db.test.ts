@@ -311,7 +311,7 @@ describe('who reads it', () => {
     });
   });
 
-  it('lunch shows until 16:00 and dinner from 16:00, in the outlet time zone', async () => {
+  it('breakfast from 04:00, lunch from 11:00, dinner from 16:00, late night from 23:00 (outlet time)', async () => {
     await inRolledBackTx(async (c) => {
       const part = async (local: string) =>
         (
@@ -320,13 +320,25 @@ describe('who reads it', () => {
             [ids.node(BAR), local],
           )
         ).rows[0]!.p;
-      expect(await part('2026-10-07 04:00')).toBe('lunch');
+      // ADR 076: breakfast and late night as well
+      expect(await part('2026-10-07 04:00')).toBe('breakfast');
+      expect(await part('2026-10-07 10:59')).toBe('breakfast');
+      expect(await part('2026-10-07 11:00')).toBe('lunch');
       expect(await part('2026-10-07 15:59')).toBe('lunch');
       expect(await part('2026-10-07 16:00')).toBe('dinner');
-      expect(await part('2026-10-08 03:59')).toBe('dinner');
+      expect(await part('2026-10-07 22:59')).toBe('dinner');
+      expect(await part('2026-10-07 23:00')).toBe('late_night');
+      expect(await part('2026-10-08 03:59')).toBe('late_night');
 
-      await save(c, 'test.head-cook.3.0', `${BAR}-KITCHEN`, 'lunch', 'Lunch note');
-      await save(c, 'test.head-cook.3.0', `${BAR}-KITCHEN`, 'dinner', 'Dinner note');
+      const notes: Record<string, string> = {
+        breakfast: 'Breakfast note',
+        lunch: 'Lunch note',
+        dinner: 'Dinner note',
+        late_night: 'Late night note',
+      };
+      for (const [p, body] of Object.entries(notes)) {
+        await save(c, 'test.head-cook.3.0', `${BAR}-KITCHEN`, p, body);
+      }
       await save(c, 'test.head-cook.3.0', `${BAR}-KITCHEN`, 'day', 'All day');
       const now = await part(
         (
@@ -338,7 +350,7 @@ describe('who reads it', () => {
       );
       expect((await home(c, 'test.server.3.0')).map((n) => n.body)).toEqual([
         'All day',
-        now === 'lunch' ? 'Lunch note' : 'Dinner note',
+        notes[now],
       ]);
     });
   });

@@ -110,7 +110,10 @@ test('a commis sees only the Kitchen Store on Make, and no other stock screen', 
   await expect(page.getByTestId('expired').getByRole('button', { name: 'Report' })).not.toHaveCount(
     0,
   );
-  await expect(main.getByRole('link', { name: 'Mint Chutney' })).toBeVisible();
+  // what he was given to make, not a picker (ADR 076)
+  await expect(main.getByTestId('make-task').filter({ hasText: 'Mint Chutney' })).not.toHaveCount(
+    0,
+  );
 });
 
 test('an area manager sees outlets on Menu', async ({ page }) => {

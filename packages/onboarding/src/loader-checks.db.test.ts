@@ -300,7 +300,7 @@ describe('approvers (ADR 009)', () => {
   it('rejects a structure where some process would have no approver, listing each case', async () => {
     await inRolledBackTx(async (c) => {
       // without file 08 the solo bar has no account owner: nobody approves the owner-only
-      // steps (the HR step, role changes), and nobody above the bar manager
+      // steps (role changes), and nobody above the bar manager (leave's GM step, ADR 076)
       // (loaded as a new customer: the existing one keeps its owner, guardrail (d); with
       // its own usernames, since logins are unique across customers, ADR 011)
       const copy = Object.fromEntries(
@@ -322,9 +322,9 @@ describe('approvers (ADR 009)', () => {
       expect(r.applied).toBe(false);
       expect(r.issues).toContainEqual({
         file: '01_org_nodes.csv',
-        row: 6,
+        row: 2,
         column: 'node_code',
-        message: 'LEAVE hr_approval: nobody can approve at TEST-SOLO-BAR-KITCHEN (NO_APPROVER)',
+        message: 'LEAVE gm_approval: nobody can approve at TEST-SOLO-COMPANY (NO_APPROVER)',
       });
       expect(r.issues).toContainEqual({
         file: '01_org_nodes.csv',
@@ -423,7 +423,7 @@ describe('people whose own requests nobody else could approve (ADR 010)', () => 
       expect(leave).toMatchObject({ file: '07_users.csv', column: 'username' });
       expect(leave?.row).toBeGreaterThan(1);
       expect(leave?.message).toBe(
-        'test.solo.bar-manager: LEAVE (hr_approval, manager_approval) at TEST-SOLO-BAR ' +
+        'test.solo.bar-manager: LEAVE (gm_approval, manager_approval) at TEST-SOLO-BAR ' +
           'has no approver but them: approved at the top of the chain (account owner)',
       );
       expect(new Set(solo.warnings.map((w) => w.message.split(':')[0]))).toEqual(
@@ -436,7 +436,7 @@ describe('people whose own requests nobody else could approve (ADR 010)', () => 
       });
       expect(company.ok).toBe(true);
       expect(company.warnings.map((w) => w.message)).toEqual([
-        'test.account-owner: LEAVE (manager_approval) at TEST-COMPANY has no approver but them: ' +
+        'test.account-owner: LEAVE (gm_approval, manager_approval) at TEST-COMPANY has no approver but them: ' +
           'approved at the top of the chain (account owner)',
         'test.account-owner: SHIFT_SWAP (manager_approval) at TEST-COMPANY has no approver ' +
           'but them: approved at the top of the chain (account owner)',

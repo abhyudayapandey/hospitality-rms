@@ -175,7 +175,6 @@ async function one<T>(c: PoolClient, sql: string, params: unknown[] = []): Promi
 
 const SAM = () => ids.user('test.server.3.0');
 const OLIVIA = () => ids.user('test.bar-manager.3.0');
-const HARPER = () => ids.user('test.hr-admin');
 // Floor Service's department head: first approver of its people's leave and swaps (ADR 009)
 const FLOOR = () => ids.user('test.floor-manager.3.0');
 const OWEN = () => ids.user('test.account-owner');
@@ -184,7 +183,7 @@ const SASHA = () => ids.user('test.security-admin');
 
 // ---------------------------------------------------------------------------
 describe('LEAVE', () => {
-  it('request -> department head -> HR -> apply: balance used, shifts dropped, roster blocked', async () => {
+  it('request -> department head -> GM -> apply: balance used, shifts dropped, roster blocked', async () => {
     await inRolledBackTx(async (c) => {
       const f = await fixture(c);
       const wed = await shift(c, f, 2);
@@ -226,9 +225,9 @@ describe('LEAVE', () => {
       expect(bal).toEqual({ pending_days: '2.0', available_days: '10.0' });
 
       await as(c, FLOOR(), `select wf.act($1, 'approve')`, [req]);
-      // no Outlet HR at Test Bar 3.0: the HR step falls back to the company HR admin
-      expect(await inbox(c, HARPER())).toContain(req);
-      await as(c, HARPER(), `select wf.act($1, 'approve')`, [req]);
+      // then the GM (ADR 076): the outlet manager
+      expect(await inbox(c, OLIVIA())).toContain(req);
+      await as(c, OLIVIA(), `select wf.act($1, 'approve')`, [req]);
       await execute(c, req);
 
       expect(
