@@ -22,7 +22,7 @@ test('two-leg transfer: requested, sent by the central kitchen store keeper, rec
   const from = page.getByRole('combobox', { name: 'From' });
   // the outlet's other store comes first, then the central kitchen
   await expect(from).toHaveValue(await placeId('TEST-BAR-3.0-BAR-STORE'));
-  // the list is what the chosen store keeps (ADR 077): the bar keeps no potatoes
+  // the list is what the chosen store keeps (ADR 083): the bar keeps no potatoes
   await expect(page.getByRole('textbox', { name: 'Request Test Potatoes' })).toHaveCount(0);
   await from.selectOption(ck);
   await page.getByRole('textbox', { name: 'Request Test Potatoes' }).fill('4');

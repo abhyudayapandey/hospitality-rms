@@ -168,7 +168,7 @@ export interface ItemOption {
   avg_cost: string;
   /** Kitchen & Bar or Housekeeping, where the list is grouped (ADR 051 addendum) */
   item_group?: string | null;
-  /** par at the asking store (stock requests, ADR 077) */
+  /** par at the asking store (stock requests, ADR 083) */
   par_level?: string;
 }
 

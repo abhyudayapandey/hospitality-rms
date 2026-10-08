@@ -21,7 +21,7 @@ export default async function NewTransferPage({ searchParams }: { searchParams: 
         ? asked
         : (sources[0]?.id ?? null);
     // what the chosen store keeps that this one uses; from the Main Store, what it may give
-    // (ADR 051, 077)
+    // (ADR 051, 083)
     const items = (
       await sql<ItemOption>`
         select item_id::text, name, base_uom, on_hand::text, avg_cost::text, item_group,

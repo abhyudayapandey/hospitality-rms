@@ -19,7 +19,7 @@ past week, the licences and their numbers.
 - **Stores**: the Main Store (Purchase & Stores), the Kitchen Store, the **Bar** and the
   Housekeeping Store, which also refills the in-room minibars. The bar is one department with
   one store for Layover on the roof and the Mini Bar in the lobby, so everyone asks "Bar"
-  (ADR 077).
+  (ADR 083).
 - **One person per job role**: 37 people, plus **Demo Presenter**, who may show the app as
   anyone (`demo_presenter` in file 07, ADR 071). The owner is Ashesh Sajnani (`test.ashesh-sajnani`), the GM Sainath. Usernames are `passport.<role>`, e.g. `passport.gm`, `passport.bar-manager`.
 - **Menus**: Mini Bar signatures and classics, Layover cocktails, beer and wine, breakfast
@@ -94,7 +94,7 @@ locations 109, menu items 34, rooms 27, minibar sets 2, minibar checks 53, sales
 purchase orders 5, attendance sessions 138, checklists 28. **Apply**, then a second dry run shows no
 changes.
 
-A Passport loaded before ADR 077 has two bar stores. Its re-import retires the Mini Bar (lobby)
+A Passport loaded before ADR 083 has two bar stores. Its re-import retires the Mini Bar (lobby)
 store, renames the other "Bar" and moves the Mini Bar's 7 dishes to it: a warning says the
 Mini Bar store is retired and its stock counted out (a test customer only). A stock request
 or order still open at the Mini Bar stops the import until it is finished or withdrawn.

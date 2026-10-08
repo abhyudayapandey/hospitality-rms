@@ -104,7 +104,7 @@ const NET = 'PASSPORT-SUPPLY-NETWORK';
 const SUPPLY = D('SUPPLY');
 const MAIN = D('MAIN-STORE');
 const KS = D('KITCHEN-STORE');
-// one store for the bar, serving Layover on the roof and the Mini Bar in the lobby (ADR 077);
+// one store for the bar, serving Layover on the roof and the Mini Bar in the lobby (ADR 083);
 // its code is from when they were two
 const BAR_STORE = D('LAYOVER-BAR-STORE');
 const HK = D('HOUSEKEEPING-STORE');

@@ -165,7 +165,7 @@ describe('the Passport Hotel demo', () => {
           `select count(*)::int n from ops.minibar_check where tenant_id = $1 and charged_at is null`,
         ),
       ).toBeGreaterThan(0);
-      // the bar is one department with one store for the roof and the lobby (ADR 077)
+      // the bar is one department with one store for the roof and the lobby (ADR 083)
       const bar = r.access.filter((a) => a.username === 'passport.bar-manager');
       expect(
         new Set(bar.filter((a) => a.node_code.endsWith('-STORE')).map((a) => a.node_code)),

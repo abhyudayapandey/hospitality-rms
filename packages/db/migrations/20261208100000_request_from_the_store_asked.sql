@@ -1,6 +1,6 @@
 -- migrate:up
 
--- ADR 077: asking another store for stock lists what that store keeps. From the Main Store,
+-- ADR 083: asking another store for stock lists what that store keeps. From the Main Store,
 -- what it may give (inv.sendable_items, as before); from any other store, the items both
 -- stores keep (a store asks only for what it uses). No source, nothing. Each line says what
 -- the asking store has and its par there (ADR 053); never what the other store has, which

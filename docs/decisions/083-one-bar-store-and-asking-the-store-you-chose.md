@@ -1,6 +1,6 @@
-# 077 — One store for the bar, retiring a store, and asking the store you chose
+# 083 — One store for the bar, retiring a store, and asking the store you chose
 
-Status: accepted · 2026-10-08 · migration 20261203100000
+Status: accepted · 2026-10-08 · migration 20261208100000
 
 The Passport Hotel's GM, after ADR 076 went live, as the bar manager and the executive
 housekeeper:

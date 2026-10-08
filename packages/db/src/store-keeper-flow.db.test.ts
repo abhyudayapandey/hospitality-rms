@@ -502,7 +502,7 @@ describe('what the Main Store can give (ADR 051 addendum)', () => {
     });
   });
 
-  // ADR 077: asking a store lists what that store keeps, not the asker's own list
+  // ADR 083: asking a store lists what that store keeps, not the asker's own list
   it('asking another store lists only what both stores keep, with what is here and its par', async () => {
     await inRolledBackTx(async (c) => {
       const HK_HEAD = 'test.executive-housekeeper.1.0';

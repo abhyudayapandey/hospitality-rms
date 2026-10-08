@@ -73,7 +73,7 @@ export default async function TransferPage({
       )}
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <div className="flex items-baseline justify-between gap-2">
-          {/* who asked first, then whom (ADR 077); a store's own send names the sender */}
+          {/* who asked first, then whom (ADR 083); a store's own send names the sender */}
           <div>
             <p className="text-xs font-medium text-slate-500" data-testid="transfer-kind">
               {t.kind === 'rfm'

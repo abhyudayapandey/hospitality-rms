@@ -6,7 +6,7 @@ import { loadCustomer } from './apply';
 import { createCustomer, customerBundle } from './create';
 import { readCustomerDir } from './dir';
 
-// A store no longer in file 02 is retired (ADR 077): archived with its items and links, never
+// A store no longer in file 02 is retired (ADR 083): archived with its items and links, never
 // deleted. It must be empty and have nothing open; at a test customer what is left on its
 // shelves is counted out instead, so a demo can be re-imported as it is.
 

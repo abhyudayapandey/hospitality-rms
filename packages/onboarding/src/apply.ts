@@ -498,7 +498,7 @@ class Loader {
   }
 
   /**
-   * A store no longer in file 02 is retired (ADR 077): archived with its item places, and no
+   * A store no longer in file 02 is retired (ADR 083): archived with its item places, and no
    * longer linked to any department, so access re-derived below stops reaching it. It must have
    * no stock request or order open, and hold no stock; at a test customer what is left is
    * counted out (a count adjustment in the ledger) so a demo can be loaded again as it is. An
