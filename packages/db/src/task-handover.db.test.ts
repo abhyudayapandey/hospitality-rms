@@ -225,8 +225,14 @@ describe('the Passport case: a compliance job at the hotel, done by a department
       expect(await notes(c, GM, 'compliance_done', 'Pest control')).toHaveLength(1);
       expect(await notes(c, GM, 'task_done', 'Pest control')).toEqual([]);
       expect(await notes(c, RA, 'task_done', 'Pest control')).toEqual([]);
-      // and it leaves "Given to others"
-      expect(await handedOn(c, EH)).toEqual([]);
+      // and it stays under "Given to others", marked done (ADR 075)
+      expect(
+        await ok<{ status: string; done_by_name: string }>(
+          c,
+          EH,
+          `select status, done_by_name from ops.my_handed_on()`,
+        ),
+      ).toEqual([{ status: 'done', done_by_name: 'Test Room Attendant 1.0' }]);
     });
   });
 });

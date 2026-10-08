@@ -138,7 +138,10 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     const shifts =
       atWork && shell.domains.has('ROSTER') ? await myShifts(tx, addDays(today, -1), 2) : [];
     const punch = atWork ? await openPunch(tx) : null;
-    const tasks = shell.domains.has('TASKS') ? await myTasks(tx) : [];
+    // what is still to do (a done task stays on the To do list, not on Home, ADR 075)
+    const tasks = shell.domains.has('TASKS')
+      ? (await myTasks(tx)).filter((t) => t.status !== 'done')
+      : [];
     const handedOn = await myHandedOn(tx);
     // repairs given to them (the technician's work): with the module on
     const repairs = (

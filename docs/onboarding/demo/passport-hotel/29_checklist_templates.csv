@@ -25,3 +25,79 @@ FRONT-OFFICE-HANDOVER,PASSPORT-ASSAGAO-FRONT-OFFICE,Front office handover,daily 
 JET-LAG-SETUP,PASSPORT-ASSAGAO-BANQUETS,Jet Lag event set-up,daily 16:00,role:BANQUET_CAPTAIN,1,Room set to the event sheet,tick,,,,no,
 JET-LAG-SETUP,PASSPORT-ASSAGAO-BANQUETS,Jet Lag event set-up,daily 16:00,role:BANQUET_CAPTAIN,2,Sound and lights tested,tick,,,,no,
 JET-LAG-SETUP,PASSPORT-ASSAGAO-BANQUETS,Jet Lag event set-up,daily 16:00,role:BANQUET_CAPTAIN,3,Set-up photo,photo,,,,no,
+SECTION-SETUP,PASSPORT-ASSAGAO-RESTAURANT,Section set-up and side work,daily 11:00 18:00,role:SERVER,1,"Tables wiped, level and set",tick,,,,no,SECTION-SETUP@1
+SECTION-SETUP,PASSPORT-ASSAGAO-RESTAURANT,Section set-up and side work,daily 11:00 18:00,role:SERVER,2,Cutlery and glasses polished,tick,,,,no,SECTION-SETUP@1
+SECTION-SETUP,PASSPORT-ASSAGAO-RESTAURANT,Section set-up and side work,daily 11:00 18:00,role:SERVER,3,Condiments filled and in date,tick,,,,no,SECTION-SETUP@1
+SECTION-SETUP,PASSPORT-ASSAGAO-RESTAURANT,Section set-up and side work,daily 11:00 18:00,role:SERVER,4,Menus clean and current,tick,,,,no,SECTION-SETUP@1
+SECTION-SETUP,PASSPORT-ASSAGAO-RESTAURANT,Section set-up and side work,daily 11:00 18:00,role:SERVER,5,"Side station stocked (napkins, water, cutlery, bill folders)",tick,,,,no,SECTION-SETUP@1
+RESTAURANT-OPENING,PASSPORT-ASSAGAO-RESTAURANT,Restaurant opening,daily 07:00 12:00 19:00,role:SERVER,1,Tables set and clean,tick,,,,no,RESTAURANT-OPENING@1
+RESTAURANT-OPENING,PASSPORT-ASSAGAO-RESTAURANT,Restaurant opening,daily 07:00 12:00 19:00,role:SERVER,2,"Menus clean, specials updated",tick,,,,no,RESTAURANT-OPENING@1
+RESTAURANT-OPENING,PASSPORT-ASSAGAO-RESTAURANT,Restaurant opening,daily 07:00 12:00 19:00,role:SERVER,3,"Lights, music and air-con on",tick,,,,no,RESTAURANT-OPENING@1
+RESTAURANT-OPENING,PASSPORT-ASSAGAO-RESTAURANT,Restaurant opening,daily 07:00 12:00 19:00,role:SERVER,4,Entrance and washroom checked,tick,,,,no,RESTAURANT-OPENING@1
+HOST-BOOKINGS,PASSPORT-ASSAGAO-RESTAURANT,Today's bookings and floor plan,daily 11:00 18:00,role:HOST,1,Bookings for the service read,tick,,,,no,
+HOST-BOOKINGS,PASSPORT-ASSAGAO-RESTAURANT,Today's bookings and floor plan,daily 11:00 18:00,role:HOST,2,Allergies and occasions passed to the captain,tick,,,,no,
+HOST-BOOKINGS,PASSPORT-ASSAGAO-RESTAURANT,Today's bookings and floor plan,daily 11:00 18:00,role:HOST,3,Floor plan set (window tables for the sunset),tick,,,,no,
+HOST-BOOKINGS,PASSPORT-ASSAGAO-RESTAURANT,Today's bookings and floor plan,daily 11:00 18:00,role:HOST,4,Walk-in waitlist and phone ready,tick,,,,no,
+PRE-SHIFT-BRIEFING,PASSPORT-ASSAGAO-RESTAURANT,Pre-shift briefing,daily 11:45 18:30,role:CAPTAIN,1,Specials and dishes out of stock told,tick,,,,no,PRE-SHIFT-BRIEFING@1
+PRE-SHIFT-BRIEFING,PASSPORT-ASSAGAO-RESTAURANT,Pre-shift briefing,daily 11:45 18:30,role:CAPTAIN,2,"Bookings, VIPs and allergies told",tick,,,,no,PRE-SHIFT-BRIEFING@1
+PRE-SHIFT-BRIEFING,PASSPORT-ASSAGAO-RESTAURANT,Pre-shift briefing,daily 11:45 18:30,role:CAPTAIN,3,Grooming checked,tick,,,,no,PRE-SHIFT-BRIEFING@1
+RESTAURANT-CLOSING,PASSPORT-ASSAGAO-RESTAURANT,Restaurant closing,daily 23:30,role:CAPTAIN,1,Tables cleared and wiped,tick,,,,no,RESTAURANT-CLOSING@1
+RESTAURANT-CLOSING,PASSPORT-ASSAGAO-RESTAURANT,Restaurant closing,daily 23:30,role:CAPTAIN,2,Side stations restocked,tick,,,,no,RESTAURANT-CLOSING@1
+RESTAURANT-CLOSING,PASSPORT-ASSAGAO-RESTAURANT,Restaurant closing,daily 23:30,role:CAPTAIN,3,Cash counted and handed over,tick,,,,no,RESTAURANT-CLOSING@1
+RESTAURANT-CLOSING,PASSPORT-ASSAGAO-RESTAURANT,Restaurant closing,daily 23:30,role:CAPTAIN,4,Doors and windows locked,tick,,,,no,RESTAURANT-CLOSING@1
+CASHIER-CLOSE,PASSPORT-ASSAGAO-CASHIER,Cash and card close,daily 23:00,role:CASHIER,1,All bills closed; Z-report run,tick,,,,no,CASHIER-CLOSE@1
+CASHIER-CLOSE,PASSPORT-ASSAGAO-CASHIER,Cash and card close,daily 23:00,role:CASHIER,2,Cash counted against the report,tick,,,,no,CASHIER-CLOSE@1
+CASHIER-CLOSE,PASSPORT-ASSAGAO-CASHIER,Cash and card close,daily 23:00,role:CASHIER,3,Card and UPI terminals settled,tick,,,,no,CASHIER-CLOSE@1
+CASHIER-CLOSE,PASSPORT-ASSAGAO-CASHIER,Cash and card close,daily 23:00,role:CASHIER,4,"Difference (₹, 0 if none)",number,,,₹,no,CASHIER-CLOSE@1
+CASHIER-CLOSE,PASSPORT-ASSAGAO-CASHIER,Cash and card close,daily 23:00,role:CASHIER,5,Float counted and handed over,tick,,,,no,CASHIER-CLOSE@1
+IRD-TRAYS,PASSPORT-ASSAGAO-IN-ROOM-DINING,Tray collection,every 2h 10:00-22:00,role:IRD_ORDER_TAKER,1,Guest floors walked,tick,,,,no,IRD-TRAYS@1
+IRD-TRAYS,PASSPORT-ASSAGAO-IN-ROOM-DINING,Tray collection,every 2h 10:00-22:00,role:IRD_ORDER_TAKER,2,Trays and trolleys collected,tick,,,,no,IRD-TRAYS@1
+IRD-TRAYS,PASSPORT-ASSAGAO-IN-ROOM-DINING,Tray collection,every 2h 10:00-22:00,role:IRD_ORDER_TAKER,3,Corridors clear,tick,,,,no,IRD-TRAYS@1
+CHILLER-LOG,PASSPORT-ASSAGAO-KITCHEN,Chiller and freezer log,daily 10:00 16:00,role:CHEF_DE_PARTIE,1,Chiller,number,0,5,°C,no,CHILLER-LOG@1
+CHILLER-LOG,PASSPORT-ASSAGAO-KITCHEN,Chiller and freezer log,daily 10:00 16:00,role:CHEF_DE_PARTIE,2,Freezer,number,-25,-18,°C,no,CHILLER-LOG@1
+HOT-HOLDING,PASSPORT-ASSAGAO-KITCHEN,Hot holding,every 2h 12:00-22:00,role:SOUS_CHEF,1,Hot-held food,number,63,100,°C,no,HOT-HOLDING@1
+KITCHEN-CLOSING,PASSPORT-ASSAGAO-KITCHEN,Kitchen closing,daily 23:00,role:KITCHEN_STEWARD,1,"Food covered, labelled and dated",tick,,,,no,KITCHEN-CLOSING@1
+KITCHEN-CLOSING,PASSPORT-ASSAGAO-KITCHEN,Kitchen closing,daily 23:00,role:KITCHEN_STEWARD,2,Gas valves off,tick,,,,no,KITCHEN-CLOSING@1
+KITCHEN-CLOSING,PASSPORT-ASSAGAO-KITCHEN,Kitchen closing,daily 23:00,role:KITCHEN_STEWARD,3,Floor and drains cleaned,tick,,,,no,KITCHEN-CLOSING@1
+KITCHEN-CLOSING,PASSPORT-ASSAGAO-KITCHEN,Kitchen closing,daily 23:00,role:KITCHEN_STEWARD,4,Waste out,tick,,,,no,KITCHEN-CLOSING@1
+KITCHEN-CLOSING,PASSPORT-ASSAGAO-KITCHEN,Kitchen closing,daily 23:00,role:KITCHEN_STEWARD,5,Walk-in chiller at close,number,0,5,°C,no,KITCHEN-CLOSING@1
+BAR-RESTOCK,PASSPORT-ASSAGAO-BAR,Bar back restock,daily 16:00 21:00,role:BAR_BACK,1,"Ice wells filled (scoop, never a glass)",tick,,,,no,BAR-RESTOCK@1
+BAR-RESTOCK,PASSPORT-ASSAGAO-BAR,Bar back restock,daily 16:00 21:00,role:BAR_BACK,2,Glasses washed and racked,tick,,,,no,BAR-RESTOCK@1
+BAR-RESTOCK,PASSPORT-ASSAGAO-BAR,Bar back restock,daily 16:00 21:00,role:BAR_BACK,3,"Fridges restocked, oldest at the front",tick,,,,no,BAR-RESTOCK@1
+BAR-RESTOCK,PASSPORT-ASSAGAO-BAR,Bar back restock,daily 16:00 21:00,role:BAR_BACK,4,Empties cleared and counted,tick,,,,no,BAR-RESTOCK@1
+BAR-CLOSING,PASSPORT-ASSAGAO-BAR,Bar closing,daily 01:30,role:HEAD_BARTENDER,1,Bottles capped and wiped,tick,,,,no,BAR-CLOSING@1
+BAR-CLOSING,PASSPORT-ASSAGAO-BAR,Bar closing,daily 01:30,role:HEAD_BARTENDER,2,"Bar top, sinks and mats cleaned",tick,,,,no,BAR-CLOSING@1
+BAR-CLOSING,PASSPORT-ASSAGAO-BAR,Bar closing,daily 01:30,role:HEAD_BARTENDER,3,Cash counted and handed over,tick,,,,no,BAR-CLOSING@1
+BAR-CLOSING,PASSPORT-ASSAGAO-BAR,Bar closing,daily 01:30,role:HEAD_BARTENDER,4,Anything poured but not billed?,text,,,,no,BAR-CLOSING@1
+BANQUET-SETUP,PASSPORT-ASSAGAO-BANQUETS,Banquet mise en place,daily 15:00,role:BANQUET_SERVER,1,"Crockery, cutlery and glasses polished and counted",tick,,,,no,BANQUET-SETUP@1
+BANQUET-SETUP,PASSPORT-ASSAGAO-BANQUETS,Banquet mise en place,daily 15:00,role:BANQUET_SERVER,2,Linen ready,tick,,,,no,BANQUET-SETUP@1
+BANQUET-SETUP,PASSPORT-ASSAGAO-BANQUETS,Banquet mise en place,daily 15:00,role:BANQUET_SERVER,3,Chafing dishes and fuel ready,tick,,,,no,BANQUET-SETUP@1
+BANQUET-SETUP,PASSPORT-ASSAGAO-BANQUETS,Banquet mise en place,daily 15:00,role:BANQUET_SERVER,4,"Sample containers labelled (150 g of each dish, 72 hours)",tick,,,,no,BANQUET-SETUP@1
+BELL-DESK,PASSPORT-ASSAGAO-FRONT-OFFICE,Bell desk and luggage room,daily 08:00 20:00,role:BELL_CAPTAIN,1,Luggage room locked,tick,,,,no,BELL-DESK@1
+BELL-DESK,PASSPORT-ASSAGAO-FRONT-OFFICE,Bell desk and luggage room,daily 08:00 20:00,role:BELL_CAPTAIN,2,Every stored bag tagged and in the log,tick,,,,no,BELL-DESK@1
+BELL-DESK,PASSPORT-ASSAGAO-FRONT-OFFICE,Bell desk and luggage room,daily 08:00 20:00,role:BELL_CAPTAIN,3,Trolleys clean and ready,tick,,,,no,BELL-DESK@1
+BELL-DESK,PASSPORT-ASSAGAO-FRONT-OFFICE,Bell desk and luggage room,daily 08:00 20:00,role:BELL_CAPTAIN,4,Today's arrivals and departures read,tick,,,,no,BELL-DESK@1
+ROOM-CLEANING,PASSPORT-ASSAGAO-HOUSEKEEPING,Rooms cleaned,daily 09:00,role:ROOM_ATTENDANT,1,Trolley stocked; master key signed out,tick,,,,no,ROOM-CLEANING@1
+ROOM-CLEANING,PASSPORT-ASSAGAO-HOUSEKEEPING,Rooms cleaned,daily 09:00,role:ROOM_ATTENDANT,2,Departures cleaned,number,0,,rooms,no,ROOM-CLEANING@1
+ROOM-CLEANING,PASSPORT-ASSAGAO-HOUSEKEEPING,Rooms cleaned,daily 09:00,role:ROOM_ATTENDANT,3,Stayovers serviced,number,0,,rooms,no,ROOM-CLEANING@1
+ROOM-CLEANING,PASSPORT-ASSAGAO-HOUSEKEEPING,Rooms cleaned,daily 09:00,role:ROOM_ATTENDANT,4,"Each cleaned room set to ""clean, awaiting inspection""",tick,,,,no,ROOM-CLEANING@1
+ROOM-CLEANING,PASSPORT-ASSAGAO-HOUSEKEEPING,Rooms cleaned,daily 09:00,role:ROOM_ATTENDANT,5,Lost property handed in; defects reported in Maintenance,tick,,,,no,ROOM-CLEANING@1
+TURNDOWN,PASSPORT-ASSAGAO-HOUSEKEEPING,Turndown service,daily 18:30,role:ROOM_ATTENDANT,1,"Curtains closed, bed turned down",tick,,,,no,TURNDOWN@1
+TURNDOWN,PASSPORT-ASSAGAO-HOUSEKEEPING,Turndown service,daily 18:30,role:ROOM_ATTENDANT,2,Bedside mat and slippers placed,tick,,,,no,TURNDOWN@1
+TURNDOWN,PASSPORT-ASSAGAO-HOUSEKEEPING,Turndown service,daily 18:30,role:ROOM_ATTENDANT,3,Water and towels replenished,tick,,,,no,TURNDOWN@1
+TURNDOWN,PASSPORT-ASSAGAO-HOUSEKEEPING,Turndown service,daily 18:30,role:ROOM_ATTENDANT,4,Night light set,tick,,,,no,TURNDOWN@1
+LOBBY-WASHROOM,PASSPORT-ASSAGAO-HOUSEKEEPING,Lobby washroom,every 2h 08:00-22:00,role:PUBLIC_AREA_ATTENDANT,1,Clean and dry,tick,,,,no,LOBBY-WASHROOM@1
+LOBBY-WASHROOM,PASSPORT-ASSAGAO-HOUSEKEEPING,Lobby washroom,every 2h 08:00-22:00,role:PUBLIC_AREA_ATTENDANT,2,"Soap, paper and towels stocked",tick,,,,no,LOBBY-WASHROOM@1
+LAUNDRY-ROUND,PASSPORT-ASSAGAO-HOUSEKEEPING,Laundry round,daily 09:00,role:LAUNDRY_ATTENDANT,1,Soiled linen from the floors,number,0,,pieces,no,LAUNDRY-ROUND@1
+LAUNDRY-ROUND,PASSPORT-ASSAGAO-HOUSEKEEPING,Laundry round,daily 09:00,role:LAUNDRY_ATTENDANT,2,Count matches the floors (or the difference reported),tick,,,,no,LAUNDRY-ROUND@1
+LAUNDRY-ROUND,PASSPORT-ASSAGAO-HOUSEKEEPING,Laundry round,daily 09:00,role:LAUNDRY_ATTENDANT,3,Sorted; stains pre-treated,tick,,,,no,LAUNDRY-ROUND@1
+LAUNDRY-ROUND,PASSPORT-ASSAGAO-HOUSEKEEPING,Laundry round,daily 09:00,role:LAUNDRY_ATTENDANT,4,Wash temperatures to the chemical chart,tick,,,,no,LAUNDRY-ROUND@1
+LAUNDRY-ROUND,PASSPORT-ASSAGAO-HOUSEKEEPING,Laundry round,daily 09:00,role:LAUNDRY_ATTENDANT,5,Guest laundry returned within 8 hours,tick,,,,no,LAUNDRY-ROUND@1
+RECEIVING-CHECK,PASSPORT-ASSAGAO-STORES-TEAM,Receiving check,daily 09:00,role:RECEIVING_CLERK,1,Chilled goods on arrival,number,0,5,°C,no,RECEIVING-CHECK@1
+RECEIVING-CHECK,PASSPORT-ASSAGAO-STORES-TEAM,Receiving check,daily 09:00,role:RECEIVING_CLERK,2,Use-by dates checked,tick,,,,no,RECEIVING-CHECK@1
+RECEIVING-CHECK,PASSPORT-ASSAGAO-STORES-TEAM,Receiving check,daily 09:00,role:RECEIVING_CLERK,3,Packaging intact,tick,,,,no,RECEIVING-CHECK@1
+PLANT-ROUND,PASSPORT-ASSAGAO-ENGINEERING,Daily plant round,daily 08:00,role:TECHNICIAN,1,Electricity meter,number,0,,kWh,no,PLANT-ROUND@1
+PLANT-ROUND,PASSPORT-ASSAGAO-ENGINEERING,Daily plant round,daily 08:00,role:TECHNICIAN,2,Water treatment and RO output normal,tick,,,,no,PLANT-ROUND@1
+PLANT-ROUND,PASSPORT-ASSAGAO-ENGINEERING,Daily plant round,daily 08:00,role:TECHNICIAN,3,Hot water at a guest outlet,number,50,70,°C,no,PLANT-ROUND@1
+PLANT-ROUND,PASSPORT-ASSAGAO-ENGINEERING,Daily plant round,daily 08:00,role:TECHNICIAN,4,Diesel within the licensed stock,tick,,,,no,PLANT-ROUND@1
+PLANT-ROUND,PASSPORT-ASSAGAO-ENGINEERING,Daily plant round,daily 08:00,role:TECHNICIAN,5,Fire alarm panel normal,tick,,,,no,PLANT-ROUND@1

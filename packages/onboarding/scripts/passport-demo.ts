@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { CHECKLIST_BY_CODE } from '@outlet-ops/domain';
 
 // The Passport Hotel pilot demo: a test customer, "[TEST] Passport Hotel", Assagao, Goa (27
 // keys). Writes its onboarding files to docs/onboarding/demo/passport-hotel, ready to zip and
@@ -1853,18 +1854,34 @@ csv(
 type Step = [
   label: string,
   kind: 'tick' | 'number' | 'text' | 'photo',
-  min?: number,
-  max?: number,
-  unit?: string,
+  min?: number | undefined,
+  max?: number | undefined,
+  unit?: string | undefined,
+  photo?: boolean | undefined,
 ];
-const LISTS: [
+type List = [
   code: string,
   place: string,
   name: string,
   schedule: string,
   assign: string,
   steps: Step[],
-][] = [
+  fromLibrary?: string,
+];
+/** A copy of the SOP library's checklist (ADR 075), for the role that does it here. */
+const fromLibrary = (code: string, dept: string, assign: string, schedule?: string): List => {
+  const lib = CHECKLIST_BY_CODE.get(code)!;
+  return [
+    code,
+    D(dept),
+    lib.name,
+    schedule ?? lib.schedule,
+    assign,
+    lib.steps.map((x) => [x.label, x.kind, x.min, x.max, x.unit, x.photo]),
+    `${lib.code}@${lib.version}`,
+  ];
+};
+const LISTS: List[] = [
   [
     'KITCHEN-OPENING',
     D('KITCHEN'),
@@ -1963,6 +1980,40 @@ const LISTS: [
       ['Set-up photo', 'photo'],
     ],
   ],
+  // every role's daily work from the SOP library (ADR 075): the people who work shifts each
+  // have their own, so their To do list has today's on it without a roster
+  fromLibrary('SECTION-SETUP', 'RESTAURANT', 'role:SERVER'),
+  fromLibrary('RESTAURANT-OPENING', 'RESTAURANT', 'role:SERVER', 'daily 07:00 12:00 19:00'),
+  [
+    'HOST-BOOKINGS',
+    D('RESTAURANT'),
+    "Today's bookings and floor plan",
+    'daily 11:00 18:00',
+    'role:HOST',
+    [
+      ['Bookings for the service read', 'tick'],
+      ['Allergies and occasions passed to the captain', 'tick'],
+      ['Floor plan set (window tables for the sunset)', 'tick'],
+      ['Walk-in waitlist and phone ready', 'tick'],
+    ],
+  ],
+  fromLibrary('PRE-SHIFT-BRIEFING', 'RESTAURANT', 'role:CAPTAIN'),
+  fromLibrary('RESTAURANT-CLOSING', 'RESTAURANT', 'role:CAPTAIN'),
+  fromLibrary('CASHIER-CLOSE', 'CASHIER', 'role:CASHIER'),
+  fromLibrary('IRD-TRAYS', 'IN-ROOM-DINING', 'role:IRD_ORDER_TAKER'),
+  fromLibrary('CHILLER-LOG', 'KITCHEN', 'role:CHEF_DE_PARTIE'),
+  fromLibrary('HOT-HOLDING', 'KITCHEN', 'role:SOUS_CHEF'),
+  fromLibrary('KITCHEN-CLOSING', 'KITCHEN', 'role:KITCHEN_STEWARD'),
+  fromLibrary('BAR-RESTOCK', 'BAR', 'role:BAR_BACK'),
+  fromLibrary('BAR-CLOSING', 'BAR', 'role:HEAD_BARTENDER', 'daily 01:30'),
+  fromLibrary('BANQUET-SETUP', 'BANQUETS', 'role:BANQUET_SERVER'),
+  fromLibrary('BELL-DESK', 'FRONT-OFFICE', 'role:BELL_CAPTAIN'),
+  fromLibrary('ROOM-CLEANING', 'HOUSEKEEPING', 'role:ROOM_ATTENDANT'),
+  fromLibrary('TURNDOWN', 'HOUSEKEEPING', 'role:ROOM_ATTENDANT'),
+  fromLibrary('LOBBY-WASHROOM', 'HOUSEKEEPING', 'role:PUBLIC_AREA_ATTENDANT'),
+  fromLibrary('LAUNDRY-ROUND', 'HOUSEKEEPING', 'role:LAUNDRY_ATTENDANT'),
+  fromLibrary('RECEIVING-CHECK', 'STORES-TEAM', 'role:RECEIVING_CLERK'),
+  fromLibrary('PLANT-ROUND', 'ENGINEERING', 'role:TECHNICIAN'),
 ];
 csv(
   '29_checklist_templates.csv',
@@ -1981,8 +2032,8 @@ csv(
     'photo_required',
     'from_library',
   ],
-  LISTS.flatMap(([code, place, name, schedule, assign, steps]) =>
-    steps.map(([label, kind, min, max, unit], i) => [
+  LISTS.flatMap(([code, place, name, schedule, assign, steps, lib]) =>
+    steps.map(([label, kind, min, max, unit, photo], i) => [
       code,
       place,
       name,
@@ -1994,8 +2045,8 @@ csv(
       min ?? '',
       max ?? '',
       unit ?? '',
-      'no',
-      '',
+      photo ? 'yes' : 'no',
+      lib ?? '',
     ]),
   ),
 );

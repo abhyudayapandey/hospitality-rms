@@ -134,6 +134,9 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       { code: 'WASHROOM-ROUND', department: 'COUNTER', view: 'cafe' },
       { code: 'RECEIVING-CHECK', view: 'restaurant' },
       { code: 'RECEIVING-CHECK', department: 'KITCHEN', view: 'cafe' },
+      { code: 'SECTION-SETUP', view: 'restaurant' },
+      { code: 'CASHIER-CLOSE', view: 'restaurant' },
+      { code: 'CASHIER-CLOSE', department: 'COUNTER', view: 'cafe' },
     ],
     items: [
       ...KITCHEN_ITEMS,
@@ -188,6 +191,10 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       { code: 'CHILLER-LOG' },
       { code: 'CLEANING-SCHEDULE' },
       { code: 'WASHROOM-ROUND', department: 'FLOOR-SERVICE' },
+      { code: 'BAR-RESTOCK' },
+      { code: 'SECTION-SETUP', department: 'FLOOR-SERVICE' },
+      { code: 'CASHIER-CLOSE', department: 'FLOOR-SERVICE' },
+      { code: 'SECURITY-PATROL' },
     ],
     items: [...BAR_ITEMS, ...KITCHEN_ITEMS],
     modules: [
@@ -223,6 +230,7 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       { code: 'FRYER-OIL' },
       { code: 'CLEANING-SCHEDULE' },
       { code: 'WASHROOM-ROUND', department: 'COUNTER' },
+      { code: 'CREW-STATIONS' },
     ],
     items: KITCHEN_ITEMS,
     modules: [
@@ -257,6 +265,7 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       { code: 'CLEANING-SCHEDULE' },
       { code: 'DELIVERY-PACKING' },
       { code: 'RECEIVING-CHECK' },
+      { code: 'PLATFORMS-ONLINE' },
     ],
     items: [
       ...KITCHEN_ITEMS,
@@ -345,6 +354,14 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       { code: 'RESTAURANT-CLOSING' },
       { code: 'PRE-SHIFT-BRIEFING' },
       { code: 'RECEIVING-CHECK' },
+      { code: 'SECTION-SETUP' },
+      { code: 'BELL-DESK' },
+      { code: 'ROOM-CLEANING' },
+      { code: 'TURNDOWN' },
+      { code: 'LAUNDRY-ROUND' },
+      { code: 'IRD-TRAYS' },
+      { code: 'PLANT-ROUND' },
+      { code: 'SECURITY-PATROL' },
     ],
     items: [
       ...KITCHEN_ITEMS,
@@ -398,7 +415,12 @@ export const EXTRAS: readonly Extra[] = [
       { code: 'BARTENDER' },
       { code: 'BAR_BACK' },
     ],
-    checklists: [{ code: 'BAR-SETUP' }, { code: 'BAR-CLOSING' }, { code: 'BEER-LINE-CLEAN' }],
+    checklists: [
+      { code: 'BAR-SETUP' },
+      { code: 'BAR-CLOSING' },
+      { code: 'BEER-LINE-CLEAN' },
+      { code: 'BAR-RESTOCK' },
+    ],
     items: BAR_ITEMS,
   },
   {
@@ -407,6 +429,7 @@ export const EXTRAS: readonly Extra[] = [
     does: 'Functions and parties: a Banquets department and the Events module.',
     departments: ['BANQUETS'],
     roles: [{ code: 'BANQUET_MANAGER' }, { code: 'BANQUET_CAPTAIN' }, { code: 'BANQUET_SERVER' }],
+    checklists: [{ code: 'BANQUET-SETUP' }],
     modules: ['events'],
   },
   {
@@ -455,7 +478,7 @@ export const EXTRAS: readonly Extra[] = [
     does: 'Spa Manager, therapists and the spa opening hygiene check.',
     departments: ['SPA-RECREATION'],
     roles: [{ code: 'SPA_MANAGER' }, { code: 'THERAPIST' }, { code: 'SPA_RECEPTIONIST' }],
-    checklists: [{ code: 'SPA-OPENING' }],
+    checklists: [{ code: 'SPA-OPENING' }, { code: 'SPA-DESK' }],
   },
   {
     code: 'gym',
@@ -566,6 +589,9 @@ export function checkTemplates(): void {
     for (const c of t.checklists) {
       const lib = CHECKLIST_BY_CODE.get(c.code);
       if (!lib) throw new Error(`${where}: ${c.code} is not in the checklist library`);
+      for (const r of lib.roles) {
+        if (!ROLE_BY_CODE.has(r)) throw new Error(`${where}: ${c.code} names ${r}, not a role`);
+      }
       const at = c.department ?? lib.department;
       if (!depts.has(at)) throw new Error(`${where}: ${c.code} goes in ${at}, not a department`);
     }

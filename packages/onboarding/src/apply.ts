@@ -1,6 +1,7 @@
 import { syncProcessDefs, syncProductAccess } from '@outlet-ops/workflow';
 import {
   BUNDLE_CODES,
+  CHECKLIST_BY_CODE,
   coverWarnings,
   missingBundleNotes,
   MODULE_CODES,
@@ -2605,10 +2606,16 @@ class Loader {
           })),
       );
       const schedule = JSON.stringify(first.schedule);
-      // the rules the app's checklist editor applies
+      // the rules the app's checklist editor applies; but a library copy may go to one of the
+      // SOP roles that does it before anyone holds that role there (ADR 075): a new outlet
+      // from a template has its checklists before its people
+      const own =
+        first.assign_to.mode === 'job_role' &&
+        !!first.from_library &&
+        !!CHECKLIST_BY_CODE.get(first.from_library.code)?.roles.includes(first.assign_to.role);
       await this.c.query(
         `select ops.check_schedule($1), ops.check_steps($2), ops.check_assign($3, $4)`,
-        [schedule, steps, node, assign],
+        [schedule, steps, node, own ? JSON.stringify({ mode: 'on_shift' }) : assign],
       );
       // a library copy records its source (ADR 062); blank keeps what was recorded
       const lib = first.from_library;

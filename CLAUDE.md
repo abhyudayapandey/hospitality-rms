@@ -177,8 +177,13 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   whoever handed it on (`ops.sees_task`, `ops.may_hand_on`); every assignment is recorded
   (`ops.task_handover`, by a trigger) with `ops.task.assigned_at`. Every task list says who
   has it ("You" for one's own), since when, and when it is due; "overdue when given" when it
-  reached them late; "Given to others" on To do and Home until it is done. `ops.can_work`
+  reached them late; "Given to others" on To do and Home (done ones too, ADR 075). `ops.can_work`
   is never null. With swaps for management only, staff see no Swaps tab at all.
+- Every role's day (ADR 075): a library checklist names the SOP roles that do it (`roles`);
+  an outlet's copy goes to the first that works in its department there, else to whoever is
+  on shift, and every shift role in every template has a daily one (`outlet-template.test.ts`).
+  A done task stays under Done (and under "Given to others", marked done) that business day
+  and the next, saying who did it (`ops.done_lately`); its job role's people may open it.
   The wizard's "What they buy" step lists every bundle, the usual ones ticked; bundles are
   bought, extras are what is there.
 - A hotel's pool, spa and gym are extras with the SOP's people and checks; breakfast is the

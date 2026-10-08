@@ -266,7 +266,15 @@ export default async function AddOutletPage({
             </div>
             <div>
               <dt className="font-medium">Starter checklists</dt>
-              <dd>{plan.checklists.map((c) => c.name).join(', ') || 'none'}</dd>
+              <dd>
+                {plan.checklists
+                  .map((c) => {
+                    // who does it (ADR 075): its role here, else whoever is on shift
+                    const role = plan.roles.find((r) => `role:${r.code}` === c.assignTo);
+                    return `${c.name} (${role ? role.title : 'whoever is on shift'})`;
+                  })
+                  .join(', ') || 'none'}
+              </dd>
             </div>
             <div>
               <dt className="font-medium">Starter items</dt>

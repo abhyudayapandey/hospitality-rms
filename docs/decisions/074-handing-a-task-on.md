@@ -1,6 +1,7 @@
 # 074 — Handing a task on: who keeps it in view, and when it was given
 
-Status: accepted · 2026-10-07 · migration 20261130100000
+Status: accepted · 2026-10-07 · migration 20261130100000 · point 5 changed by ADR 075 (done
+ones stay, marked done, that day and the next)
 
 At the Passport Hotel the Executive Housekeeper gave the pest control reminder (a job at the
 hotel itself, ADR 073) to her housekeeping supervisor. The task went to the supervisor, and

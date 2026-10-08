@@ -24,6 +24,9 @@ export interface MyTask {
   /** when it reached me (or my job role), and who gave it to me if someone did (ADR 074) */
   assigned_at: Date | null;
   assigned_by_name: string | null;
+  /** when it was done, and who did it when it was someone else (ADR 075) */
+  completed_at: Date | null;
+  done_by_name: string | null;
 }
 
 export async function myTasks(tx: Tx): Promise<MyTask[]> {
@@ -125,7 +128,7 @@ export async function teamTasks(tx: Tx, node: string, from: string, to: string) 
   ).rows;
 }
 
-/** What I gave to someone else that is still to do (ADR 074). */
+/** What I gave to someone else: still to do, or done today or yesterday (ADR 074, 075). */
 export interface HandedOn {
   id: string;
   kind: string;
@@ -136,6 +139,8 @@ export interface HandedOn {
   assignee_name: string | null;
   assigned_at: Date | null;
   overdue: boolean;
+  completed_at: Date | null;
+  done_by_name: string | null;
 }
 
 export async function myHandedOn(tx: Tx): Promise<HandedOn[]> {
