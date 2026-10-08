@@ -236,7 +236,7 @@ export function outletPlan(draft: SetupDraft, o: DraftOutlet): OutletPlan {
 export function draftBundles(draft: SetupDraft): {
   code: BundleCode;
   name: string;
-  includes: string;
+  adds: string;
   uses: string[];
   /** its outlets use it: ticked unless unticked; the rest unticked unless ticked */
   usual: boolean;
@@ -256,7 +256,7 @@ export function draftBundles(draft: SetupDraft): {
     return {
       code: b.code,
       name: b.name,
-      includes: b.includes,
+      adds: b.adds,
       uses: MODULES.filter(
         (m) => modules.has(m.code) && (b.modules as readonly string[]).includes(m.code),
       ).map((m) => m.name),

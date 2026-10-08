@@ -29,7 +29,7 @@ describe('bundles (ADR 067)', () => {
   it('bundles are named in words, never codes, and say what comes with them', () => {
     for (const b of BUNDLES) {
       expect(b.name).not.toMatch(/_/);
-      expect(b.includes).toMatch(/^Includes .+\.$/);
+      expect(b.adds).toMatch(/^Adds .+\.$/);
     }
     expect(BUNDLES.map((b) => b.name)).toEqual([
       'Stock & cost',

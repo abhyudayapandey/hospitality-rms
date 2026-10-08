@@ -31,15 +31,15 @@ export default async function ImportPage({
       <Link href={`/platform/customers/${id}`} className="text-sm text-slate-600">
         ← {customer.name}
       </Link>
-      <h1 className="text-xl font-semibold">Import setup files</h1>
+      <h1 className="text-xl font-semibold">Update from their files</h1>
       <p className="text-sm text-slate-600">
-        The onboarding files for <strong>{customer.code}</strong>: one zip, or the CSV files
-        themselves (5 MB at most). Only the numbered files (00_customer.csv to 17_…) are read; file
-        00 must name {customer.code}. You get a dry run first; nothing changes until you apply it.
+        Upload {customer.name}&apos;s set-up files: one zip, or the CSV files themselves (5 MB at
+        most). We check them first and show you what would change. Nothing changes until you
+        confirm.
       </p>
       <ErrorBox message={error && isErrorCode(error) ? messageFor(error) : null} />
       <form
-        aria-label="Import setup files"
+        aria-label="Upload their files"
         action={`/platform/customers/${id}/import/upload`}
         method="post"
         encType="multipart/form-data"
@@ -57,7 +57,7 @@ export default async function ImportPage({
           />
         </label>
         <button type="submit" className={primaryButton}>
-          Upload and dry run
+          Upload and check
         </button>
       </form>
     </>

@@ -1,9 +1,9 @@
 const REASONS: Record<string, string> = {
-  idle: 'Your platform session ended after 30 minutes without activity.',
-  absolute: 'Platform sessions last at most 8 hours. Sign in again.',
-  invalid: 'Sign in to the platform console.',
+  idle: 'You were signed out after 30 minutes without activity.',
+  absolute: 'You were signed out after 8 hours. Sign in again.',
+  invalid: 'Sign in to the team console.',
   cognito: 'Platform sign-in failed or is not configured.',
-  not_platform_admin: 'That account is not a platform admin.',
+  not_platform_admin: 'That account isn’t on the Outlet Ops team.',
   rate_limited: 'Too many sign-in attempts from here. Wait a few minutes and try again.',
 };
 
@@ -16,7 +16,7 @@ export default async function PlatformSignIn({
   const { reason } = await searchParams;
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Platform console</h1>
+      <h1 className="text-xl font-semibold">Team console</h1>
       {reason && (
         <p role="status" className="rounded-lg bg-slate-100 p-3 text-sm">
           {REASONS[reason] ?? REASONS.invalid}
@@ -29,7 +29,7 @@ export default async function PlatformSignIn({
         Sign in
       </a>
       <p className="text-sm text-slate-600">
-        For platform admins only. You need your password and your authenticator app.
+        For the Outlet Ops team only. You need your password and your authenticator app.
       </p>
     </div>
   );

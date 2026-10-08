@@ -12,15 +12,7 @@ export function JobPoller() {
   return null;
 }
 
-export function InviteOwner({
-  jobId,
-  email,
-  username,
-}: {
-  jobId: string;
-  email: string;
-  username: string;
-}) {
+export function InviteOwner({ jobId, email }: { jobId: string; email: string }) {
   const hydrated = useHydrated();
   const [pending, start] = useTransition();
   const [status, setStatus] = useState<string | null>(null);
@@ -28,7 +20,8 @@ export function InviteOwner({
   return (
     <div className="space-y-2">
       <p className="text-sm">
-        The customer is created. Their first account owner is <strong>{username}</strong> ({email}).
+        The customer is created. Their first account owner is <strong>{email}</strong>; they sign in
+        with that email.
       </p>
       <button
         type="button"
@@ -51,7 +44,7 @@ export function InviteOwner({
   );
 }
 
-/** Apply after a successful dry run: a new job that loads the same upload. */
+/** Load after a clean check: a new job that loads the same upload. */
 export function ApplyImport({ dryRunJobId }: { dryRunJobId: string }) {
   const router = useRouter();
   const hydrated = useHydrated();
@@ -72,10 +65,10 @@ export function ApplyImport({ dryRunJobId }: { dryRunJobId: string }) {
           })
         }
       >
-        Apply
+        Load these changes
       </button>
       <p className="text-xs text-slate-500">
-        Applying is safe to repeat: rows that are already loaded stay as they are.
+        Safe to repeat: anything already loaded stays as it is.
       </p>
       <ErrorBox message={error} />
     </div>

@@ -2390,3 +2390,15 @@ and 41 add Hotel 1.0's rooms and minibar). No stack change.
 4. Load the Passport Hotel demo for the pitch: `docs/onboarding/demo/passport-hotel/README.md`
    (refresh its dates, build the zip, create `PASSPORT-TEST`, Compliance on, import, the login
    sheet). Then sign in as `passport.presenter`: Me → **Show the app as someone**.
+
+## Releasing the team console in plain words (ADR 075)
+
+No migration, no stack change, nothing to re-import. The console's words and layout change;
+in this runbook, "Import setup files" is now **Update from their files**, "Upload and dry
+run" is **Upload and check**, "Apply" is **Load these changes**, "Logins" is **Sign-ins for
+their people**, and suspending is **Pause this customer** at the bottom of a customer's page.
+
+1. Merge, then **Deploy** as usual.
+2. Check in the console at phone width: Customers shows one main button, the customers with
+   no codes, and "Other tools" last, each on its own row. On Test Company: What they buy says
+   what each plan adds; Add an outlet asks for no code.

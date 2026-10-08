@@ -33,8 +33,8 @@ export function Bundles({
 }) {
   const on = new Set(modules.filter((m) => m.is_on).map((m) => m.module));
   return (
-    <section className="space-y-2" aria-label="Bundles">
-      <h2 className="font-semibold">Bundles</h2>
+    <section className="space-y-2" aria-label="What they buy">
+      <h2 className="font-semibold">What they buy</h2>
       <p className="text-sm text-slate-600">{ALWAYS_ON}</p>
       <ul
         className="divide-y divide-slate-200 rounded-xl bg-white text-sm ring-1 ring-slate-200"
@@ -52,13 +52,13 @@ export function Bundles({
             >
               <span className="min-w-0">
                 <span className="block font-medium">{b.name}</span>
-                <span className="block" data-testid="bundle-state">
-                  {BUNDLE_STATE_WORDS[state]}
-                  {inPlan && state !== 'on' && ` · the customer turned ${list(off)} off`}
-                </span>
-                <span className="block text-xs text-slate-500">
-                  {b.modules.map(nameOf).join(', ')}. {b.includes}
-                </span>
+                <span className="block text-xs text-slate-500">{b.adds}</span>
+                {/* the switch says On or Off; only a part the customer turned off needs words */}
+                {inPlan && state !== 'on' && (
+                  <span className="block text-amber-800" data-testid="bundle-state">
+                    {BUNDLE_STATE_WORDS[state]} · the customer turned {list(off)} off
+                  </span>
+                )}
               </span>
               <BundleSwitch
                 tenantId={tenantId}

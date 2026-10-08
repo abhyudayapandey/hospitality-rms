@@ -54,7 +54,7 @@ export default async function ModulesPage() {
                   {inPlan ? 'On' : 'Not in your plan'}
                 </span>
               </div>
-              <p className="text-xs text-slate-500">{b.includes}</p>
+              <p className="text-xs text-slate-500">{b.adds}</p>
               <ul className="divide-y divide-slate-200 rounded-xl bg-white ring-1 ring-slate-200">
                 {b.modules.map((code) => {
                   const m = MODULES.find((x) => x.code === code)!;

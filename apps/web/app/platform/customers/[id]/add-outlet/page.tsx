@@ -58,7 +58,7 @@ export default async function AddOutletPage({
       <>
         {back}
         <h1 className="text-xl font-semibold">Add an outlet</h1>
-        <ErrorBox message="This customer's setup files aren't known yet: import them first." />
+        <ErrorBox message="We don't have this customer's set-up on file yet, so an outlet can't be added here. Upload their files first (Update from their files)." />
       </>
     );
   }
@@ -96,7 +96,7 @@ export default async function AddOutletPage({
   const choice = choiceFrom(q, timezone);
   let plan: OutletPlan | null = null;
   let error: string | null = one(q.error) || null;
-  const review = one(q.review) === '1' && choice.name && choice.code && choice.parentCode;
+  const review = one(q.review) === '1' && choice.name && choice.parentCode;
   try {
     plan = review
       ? addOutlet(files, choice).plan
@@ -135,16 +135,6 @@ export default async function AddOutletPage({
             required
             defaultValue={choice.name}
             placeholder="Bandra Café"
-            className={field}
-          />
-        </label>
-        <label className="block text-sm font-medium">
-          Short code (letters, digits and dashes)
-          <input
-            name="code"
-            required
-            defaultValue={choice.code}
-            placeholder={`${customer.code}-CAFE-1`}
             className={field}
           />
         </label>
@@ -248,9 +238,7 @@ export default async function AddOutletPage({
           className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200"
           data-testid="review"
         >
-          <h2 className="text-lg font-semibold">
-            {choice.name} ({choice.code}) adds
-          </h2>
+          <h2 className="text-lg font-semibold">{choice.name} adds</h2>
           <dl className="space-y-2 text-sm">
             <div>
               <dt className="font-medium">Departments and stores</dt>
@@ -290,8 +278,8 @@ export default async function AddOutletPage({
             </ul>
           )}
           <p className="text-sm text-slate-600">
-            Next: a dry run of the customer&apos;s files with this outlet added. Nothing changes
-            until you apply it. People are added afterwards, in file 07 or in the app.
+            Next: we check the customer&apos;s files with this outlet added. Nothing changes until
+            you load it. Its people are added afterwards, by their files or in the app.
           </p>
           <form method="post" action={`/platform/customers/${id}/add-outlet/submit`}>
             <input type="hidden" name="tile" value={choice.tile} />
@@ -304,11 +292,10 @@ export default async function AddOutletPage({
               <input key={d.code} type="hidden" name="dept" value={d.code} />
             ))}
             <input type="hidden" name="name" value={choice.name} />
-            <input type="hidden" name="code" value={choice.code} />
             <input type="hidden" name="under" value={choice.parentCode} />
             <input type="hidden" name="items" value={choice.items === false ? 'no' : 'yes'} />
             <button type="submit" className={primaryButton}>
-              Add and dry run
+              Add and check
             </button>
           </form>
         </section>

@@ -25,7 +25,7 @@ function stageOf(row: DraftRow, jobs: Jobs, blocked: boolean): Stage {
   if (applied) {
     if (applied.status === 'done') return { kind: 'live' };
     if (applied.status === 'failed') return { kind: 'failed', message: applied.error ?? '' };
-    return { kind: 'busy', label: 'Applying…' };
+    return { kind: 'busy', label: 'Loading everything…' };
   }
   if (blocked) return { kind: 'blocked' };
   if (!row.create_job) return { kind: 'ready' };
@@ -126,7 +126,7 @@ export async function ReviewStep({
       ))}
 
       <p className="text-sm" data-testid="logins-plan">
-        Logins: the owner and {byEmail} {byEmail === 1 ? 'person' : 'people'} by email
+        Sign-ins: the owner and {byEmail} {byEmail === 1 ? 'person' : 'people'} by email
         {people.length - byEmail > 0 &&
           `; ${people.length - byEmail} with a login ID on a printed sheet`}
         .

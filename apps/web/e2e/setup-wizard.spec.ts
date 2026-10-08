@@ -149,7 +149,7 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
 
   // the printed sheet: login IDs and one-time passwords, made in the browser
   const ids = page.getByTestId('login-ids');
-  await ids.getByRole('button', { name: 'Create 2 username logins' }).click();
+  await ids.getByRole('button', { name: 'Create 2 sign-ins' }).click();
   const [sheet] = await Promise.all([
     page.waitForEvent('popup'),
     ids.getByRole('button', { name: 'Print the login sheet' }).click(),

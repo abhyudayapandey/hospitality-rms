@@ -24,7 +24,9 @@ test('the platform admin takes a bundle out of the plan; the owner sees it read-
     await page.goto(`/platform/customers/${id}`);
     const card = page.getByTestId('bundles');
     const row = (b: string) => card.locator(`[data-bundle="${b}"]`);
-    await expect(row('stock_cost').getByTestId('bundle-state')).toHaveText('On');
+    // the switch says On; words only for a part the customer turned off
+    await expect(row('stock_cost').getByRole('switch')).toHaveText('On');
+    await expect(row('stock_cost').getByTestId('bundle-state')).toHaveCount(0);
     // file 00 turns Swaps and Events off: worked out from the modules
     await expect(row('people_roster').getByTestId('bundle-state')).toHaveText(
       'Partly on · the customer turned Shift swaps and Events off',
@@ -41,7 +43,7 @@ test('the platform admin takes a bundle out of the plan; the owner sees it read-
     await tasks.click();
     await confirm.getByRole('button', { name: 'Turn off' }).click();
     await expect(tasks).toHaveText('Off');
-    await expect(row('tasks_food_safety').getByTestId('bundle-state')).toHaveText('Off');
+    await expect(row('tasks_food_safety').getByTestId('bundle-state')).toHaveCount(0);
 
     // the owner: read-only, "Not in your plan", no switch for its modules
     const owner = await browser.newPage({ viewport: { width: 380, height: 900 } });
@@ -72,7 +74,7 @@ test('the platform admin takes a bundle out of the plan; the owner sees it read-
     // back in the plan: on again, for the owner too
     await tasks.click();
     await expect(tasks).toHaveText('On');
-    await expect(row('tasks_food_safety').getByTestId('bundle-state')).toHaveText('On');
+    await expect(row('tasks_food_safety').getByTestId('bundle-state')).toHaveCount(0);
     await owner.reload();
     await expect(section.getByTestId('bundle-state')).toHaveText('On');
     await expect(section.getByRole('switch', { name: 'Maintenance' })).toHaveText('On');

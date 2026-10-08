@@ -20,7 +20,7 @@ export default async function TemplatesPage() {
       <Link href="/platform" className="text-sm text-slate-600">
         ← Customers
       </Link>
-      <h1 className="text-xl font-semibold">Outlet templates</h1>
+      <h1 className="text-xl font-semibold">Kinds of outlet</h1>
       <p className="text-sm text-slate-600">
         What a new outlet starts with. Everything can be changed when it is added, and later.
       </p>

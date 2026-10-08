@@ -187,10 +187,6 @@ export function addOutlet(
   choice: OutletChoice,
 ): { files: Record<string, string>; plan: OutletPlan } {
   const plan = planOutlet(choice);
-  const code = choice.code.trim().toUpperCase();
-  if (!/^[A-Z0-9][A-Z0-9.-]*$/.test(code)) {
-    throw new TemplateError('The outlet code may use letters, digits, dots and dashes only');
-  }
   const tables = new Map<string, { name: string; header: string[]; rows: Rows }>();
   const table = (key: keyof typeof FILES, header: string[]) => {
     const file = FILES[key].file;
@@ -229,6 +225,28 @@ export function addOutlet(
   ]);
   const links = table('nodeLinks', ['org_node_code', 'delivery_node_code', 'note']);
   const taken = new Set([...org.rows, ...dlv.rows].map((r) => r['node_code']));
+  // the code comes from the name unless one is given (people who onboard never see a code)
+  let code = choice.code.trim().toUpperCase();
+  if (!code) {
+    const cust = customer['customer_code']!.toUpperCase();
+    const named = choice.name
+      .normalize('NFKD')
+      .replace(/[^A-Za-z0-9 ]+/g, ' ')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w.toUpperCase())
+      .join('-')
+      .slice(0, 24)
+      .replace(/-+$/, '');
+    const base = `${cust}-${named || 'OUTLET'}`;
+    const used = (c: string) => [...taken].some((t) => t === c || !!t?.startsWith(`${c}-`));
+    code = base;
+    for (let n = 2; used(code); n++) code = `${base}-${n}`;
+  }
+  if (!/^[A-Z0-9][A-Z0-9.-]*$/.test(code)) {
+    throw new TemplateError('The outlet code may use letters, digits, dots and dashes only');
+  }
   if (!org.rows.some((r) => r['node_code'] === choice.parentCode)) {
     throw new TemplateError(`${choice.parentCode} is not a place of this customer`);
   }
