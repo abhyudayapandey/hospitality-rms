@@ -142,7 +142,7 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
   await expect(warnings).toContainText("Asha Rao's own");
   await expect(warnings).not.toContainText(/[A-Z]{2,}_[A-Z]|wiz-/i);
   await expect(page.getByTestId('check-warnings')).toContainText(
-    "Bandra Café uses Leave and Shift swaps, part of People & roster, which isn't on for this customer",
+    "Bandra Café uses Roster, Clock-in, Salaries & labour cost, Leave and Shift swaps, part of People, which isn't on for this customer",
   );
   await page.getByRole('button', { name: 'Looks right: apply and send logins' }).click();
   await workerUntil(page, 'live');

@@ -54,7 +54,9 @@ customer's plan. The plan for this and the next three PRs is `docs/plans/buildin
 
 One check where every access decision is already made (rule 2) gives every block the same
 "off" without touching its tables, policies or functions, and a block added later gets it by
-listing its domains. The cost is one read of the customer's settings per call, by primary key.
+listing its domains. The cost is one read of the customer's settings per call, by primary key:
+measured locally, 20,000 calls take 8.4 to 8.7 s against 7.0 to 7.7 s for the grants alone
+(about 0.06 ms a call). RLS calls `core.can` once per place per query (ADR 007), not per row.
 
 ## Tests
 
