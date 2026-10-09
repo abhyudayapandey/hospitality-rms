@@ -20,7 +20,7 @@ import {
 import { overdueWhenGiven } from '@/lib/tasks-view';
 import { complianceTask, dayWords, type ComplianceTaskRow } from '@/lib/compliance';
 import { DoneForm, RenewForm } from '../../compliance/act-forms';
-import { AssignExpiry, CancelTask, SignOffWork, TaskWork } from './task-work';
+import { AcknowledgeHandover, AssignExpiry, CancelTask, SignOffWork, TaskWork } from './task-work';
 import { AddTaskPhoto } from './task-photos';
 import { MinibarTask, type MinibarTaskCheck } from './minibar-task';
 import { ReassignTask, ReceiveSent, SentLines, type SentLine } from './receive-sent';
@@ -192,6 +192,16 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         />
       ) : about ? (
         <ComplianceWork task={task} about={about} />
+      ) : task.kind === 'handover' ? (
+        <>
+          {task.handover_from && (
+            <p className="text-sm text-slate-600" data-testid="handover-from">
+              From {task.handover_from.by} at {task.handover_from.place},{' '}
+              {formatWhen(task.handover_from.at)}
+            </p>
+          )}
+          {open && task.can_work && <AcknowledgeHandover task={task.id} />}
+        </>
       ) : task.kind === 'sign_off' ? (
         <>
           <TaskWork task={task} canWork={false} photos={false} />

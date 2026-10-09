@@ -44,6 +44,7 @@ export type ScreenKey =
   | 'briefing'
   | 'minibar'
   | 'rooms'
+  | 'logbook'
   | 'roster'
   | 'events'
   | 'reports'
@@ -266,6 +267,15 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     icon: 'bed',
     section: 'work',
     show: (i) => can(i, 'ROOMS'),
+  },
+  {
+    // handovers to the next shift and logs (ADR 089): wherever people keep a logbook
+    key: 'logbook',
+    href: '/logbook',
+    label: 'Logbook',
+    icon: 'book',
+    section: 'work',
+    show: (i) => can(i, 'LOGBOOK'),
   },
   {
     key: 'problem',

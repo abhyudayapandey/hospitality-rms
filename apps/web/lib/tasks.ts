@@ -17,7 +17,8 @@ export interface MyTask {
     | 'compliance'
     | 'minibar_refill'
     | 'minibar_bill'
-    | 'sign_off';
+    | 'sign_off'
+    | 'handover';
   title: string;
   org_node_id: string;
   place_name: string;
@@ -121,6 +122,8 @@ export interface TaskDetail {
   sign_off_task: { id: string; status: string; assignee_name: string | null } | null;
   /** may set the status of the rooms on its grid (ADR 088) */
   can_set_room_status: boolean;
+  /** a handover (ADR 089): where and who it came from */
+  handover_from: { place: string; by: string; at: string } | null;
   /** a sign-off: the round it checks and who did it */
   signs_off: string | null;
   signs_off_title: string | null;

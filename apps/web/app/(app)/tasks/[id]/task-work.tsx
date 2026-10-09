@@ -17,6 +17,7 @@ import type { Person, TaskDetail, TaskStep } from '@/lib/tasks';
 import { outOfRange } from '@/lib/tasks-view';
 import { roomStatusName } from '@/lib/rooms-view';
 import { RoomStatusPicker } from '../../rooms/status-picker';
+import { acknowledgeHandover } from '../../logbook/actions';
 import {
   assignExpiry,
   cancelTask,
@@ -610,6 +611,33 @@ export function SignOffWork({ task }: { task: TaskDetail }) {
           Send back
         </button>
       </details>
+    </section>
+  );
+}
+
+/** A handover (ADR 089): whoever it is for reads it and acknowledges it. */
+export function AcknowledgeHandover({ task }: { task: string }) {
+  const router = useRouter();
+  const hydrated = useHydrated();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <section className="space-y-2">
+      <ErrorBox message={error} />
+      <button
+        type="button"
+        disabled={!hydrated || pending}
+        className={primaryButton}
+        onClick={() =>
+          start(async () => {
+            const r = await acknowledgeHandover(task);
+            if (!r.ok) setError(r.message);
+            else router.refresh();
+          })
+        }
+      >
+        I&apos;ve read it
+      </button>
     </section>
   );
 }
