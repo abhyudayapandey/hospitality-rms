@@ -236,11 +236,11 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   again); "Repeat this pattern" (`hr.repeat_pattern`) leaves out and lists what a rule refuses.
 - Every item line shows a picture of the thing itself (ADR 084): `ItemThumb` with the item's name,
   matched in `packages/domain/src/pictures.ts` (English, Hindi and Konkani words; the name, then
-  its category); the SVGs are `apps/web/public/pictures` (Fluent Emoji, MIT, and drawn ones),
-  written by `pnpm --filter @outlet-ops/web pictures`. A new list or form that names items shows
-  them; a new kind of item gets its words in the catalogue (the dry run lists those with none).
-  Recipes and prep tasks say how many portions they make; a task's photos sit above the button
-  that finishes it.
+  its category), shown as a real photo from our own library (`apps/web/lib/picture-photos.ts`,
+  `apps/web/public/pictures`; never emoji or drawings), else the line icon for its kind. A new
+  list or form that names items shows them; a new kind of item gets its words in the catalogue
+  (the dry run lists those with none). Recipes and prep tasks say how many portions they make;
+  a task's photos sit above the button that finishes it.
 - The service worker shows "Can't reach Outlet Ops" after 10 s and caches nothing; Cognito calls
   give up after 5 s, and Cognito not answering never signs anyone out (ADR 063). Caddy speaks
   HTTP/1.1 and HTTP/2 only (the security group has no UDP 443) and logs each request.
@@ -280,7 +280,6 @@ pnpm --filter @outlet-ops/workflow reports-rebuild     the report tables only
 pnpm --filter @outlet-ops/workflow tasks-tick          checklist rounds 24 h ahead, reminders and
                                                       escalation (the 5-minute timer, ADR 020);
                                                       the morning expiry alert (ADR 040)
-pnpm --filter @outlet-ops/web pictures                the item pictures from the catalogue (ADR 084)
 pnpm --filter @outlet-ops/web e2e                     build, then Playwright vs the standalone server
                                                       (+ dev-only pages vs next dev; seeded DB)
 pnpm --filter @outlet-ops/web check:prod-dev-auth     prod build: dev login must be 404

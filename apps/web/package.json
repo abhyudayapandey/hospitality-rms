@@ -9,8 +9,7 @@
     "start": "bash scripts/start-standalone.sh",
     "typecheck": "next typegen && tsc --noEmit",
     "e2e": "env -u DEV_AUTH_STUB next build && playwright test",
-    "check:prod-dev-auth": "bash scripts/check-prod-dev-auth.sh",
-    "pictures": "tsx scripts/pictures/build.ts"
+    "check:prod-dev-auth": "bash scripts/check-prod-dev-auth.sh"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1143.0",

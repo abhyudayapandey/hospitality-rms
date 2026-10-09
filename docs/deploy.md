@@ -2432,7 +2432,7 @@ Preview and apply the stack first; nothing else in AWS changes.
 ## Releasing the pictures of every item (ADR 084)
 
 One migration (20261209100000: portions on recipes and prep tasks), run by the Deploy workflow.
-No stack change: the pictures are static files in the release (`apps/web/public/pictures`).
+No stack change.
 
 1. Merge.
 2. No `cdk diff` or `cdk deploy`.
@@ -2450,5 +2450,5 @@ No stack change: the pictures are static files in the release (`apps/web/public/
    - **A prep task** (a commis): each ingredient's picture, "Makes about N portions", and Photos
      above Record the batch.
    - **A recipe** (Menu): "Batch makes … · about N portions", a picture by each ingredient.
-   - **Stock, counts, orders, receiving, requests, wastage**: a picture on every line; dark items
-     (peppercorns, rum) read on their light tile in the dark theme.
+   - **Stock, counts, orders, receiving, requests, wastage**: an icon on every line, as before;
+     the real photos come with the photo library.

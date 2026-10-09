@@ -1,8 +1,0 @@
-<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M14 3h4v5.2c3.6 1 6 4.3 6 8.3v10.5c0 1.1-.9 2-2 2H10c-1.1 0-2-.9-2-2V16.5c0-4 2.4-7.3 6-8.3z" fill="#D9F0FF"/>
-<clipPath id="b"><path d="M14 3h4v5.2c3.6 1 6 4.3 6 8.3v10.5c0 1.1-.9 2-2 2H10c-1.1 0-2-.9-2-2V16.5c0-4 2.4-7.3 6-8.3z"/></clipPath><rect x="0" y="13" width="32" height="32" fill="#A85C12" clip-path="url(#b)"/>
-<rect x="13.75" y="2" width="4.5" height="2.5" rx=".6" fill="#1F2A44"/>
-<rect x="8.5" y="16" width="15" height="9" rx="1" fill="#1F2A44"/>
-<g transform="translate(0 4.5)"><g transform="translate(10.5 10.5) scale(0.34)"><path d="M16 29V9" stroke="#C68A36" stroke-width="1.4"/><ellipse cx="13.4" cy="11" rx="1.6" ry="2.6" fill="#E8B04B" transform="rotate(-35 13.4 11)"/><ellipse cx="18.6" cy="11" rx="1.6" ry="2.6" fill="#E8B04B" transform="rotate(35 18.6 11)"/><ellipse cx="13.4" cy="15" rx="1.6" ry="2.6" fill="#E8B04B" transform="rotate(-35 13.4 15)"/><ellipse cx="18.6" cy="15" rx="1.6" ry="2.6" fill="#E8B04B" transform="rotate(35 18.6 15)"/><ellipse cx="13.4" cy="19" rx="1.6" ry="2.6" fill="#E8B04B" transform="rotate(-35 13.4 19)"/><ellipse cx="18.6" cy="19" rx="1.6" ry="2.6" fill="#E8B04B" transform="rotate(35 18.6 19)"/><ellipse cx="13.4" cy="23" rx="1.6" ry="2.6" fill="#E8B04B" transform="rotate(-35 13.4 23)"/><ellipse cx="18.6" cy="23" rx="1.6" ry="2.6" fill="#E8B04B" transform="rotate(35 18.6 23)"/><ellipse cx="16" cy="7.5" rx="1.5" ry="2.6" fill="#E8B04B"/></g></g>
-<path d="M9.5 26.2v3" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="1.2" stroke-linecap="round"/>
-</svg>

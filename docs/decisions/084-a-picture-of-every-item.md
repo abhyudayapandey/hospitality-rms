@@ -26,22 +26,19 @@ executive chef:
    dry run lists every such item as a warning, so the words grow with each customer. There is
    no per-item picture column: matching at display keeps every screen, every customer and every
    item added later in step, with no backfill.
-2. **The pictures are files.** `apps/web/public/pictures/<key>.svg`, 32 × 32, flat. Microsoft's
-   **Fluent Emoji** (MIT licence, the licence beside them) where it has the thing: 89 pictures,
-   among them garlic, onion, ginger, tomato, coconut, eggs, butter, fish, prawns, rice, ice.
-   The rest (161) are **drawn for us in the same style** where no emoji set has them: the
-   Indian spices and seeds, each dal, the flours, kokum, tamarind, jaggery, ghee, paneer, a
-   bottle shape per spirit, feni, cleaning chemicals, linen and amenities. `pnpm --filter
-@outlet-ops/web pictures` fetches and draws them (`apps/web/scripts/pictures`); a test keeps
-   the files and the catalogue one for one. No dependency is added. The browser keeps them for a
-   day.
-3. **Shown big, on a light tile in both themes** (`ItemThumb`, palette tokens `tile` and
-   `tile-edge`), so a peppercorn or a dark rum bottle reads as well as an egg; an item's own
-   photo still comes first. On every list and form that names items: stock, the item, counts and
-   stock checks, orders, receiving, requests, sending, transfers, wastage, Make and batches, the
-   prep list, a prep task's ingredients, recipes and their ingredients, the menu, sales, the
-   minibar, events and the reports' item lists. A dropdown cannot hold pictures, so the chosen
-   item's picture stands beside it.
+2. **Real photos, not drawings.** Each picture is shown as a real photo of the thing itself,
+   cut out on a plain light tile, from a library we keep (`apps/web/lib/picture-photos.ts`,
+   files in `apps/web/public/pictures`), the same for every customer; customers never supply
+   them. Emoji and drawn pictures were tried and turned down: they read as childish. Until the
+   library has a key's photo, the line shows the app's own line icon for the item's kind
+   (produce, drinks, linen, prep, meat and dairy, else a box), as before this decision; an
+   item's own photo (ADR 034) still comes first. The library's photos come in their own change.
+3. **Shown big** (`ItemThumb`; photos on the palette's `tile` and `tile-edge`), on every list
+   and form that names items: stock, the item, counts and stock checks, orders, receiving,
+   requests, sending, transfers, wastage, Make and batches, the prep list, a prep task's
+   ingredients, recipes and their ingredients, the menu, sales, the minibar, events and the
+   reports' item lists. A dropdown cannot hold pictures, so the chosen item's picture stands
+   beside it.
 4. **Portions per batch.** A recipe shows "Batch makes 500 g · about 20 portions"
    (file 19 `batch_portions`, ADR 076; `inv.my_recipes` returns it), and a prep task "Makes
    about 10 portions" for its quantity (`ops.prep_task_recipe`'s `portions`).
