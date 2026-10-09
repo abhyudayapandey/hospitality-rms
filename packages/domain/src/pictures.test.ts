@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchPicture, PICTURE_KEYS, PICTURES, pictureFor } from './pictures';
+import { matchPicture, PICTURE_KEYS, PICTURES, pictureFor, pictureOf } from './pictures';
 
 describe('the picture catalogue (ADR 084)', () => {
   it('has one picture per key, each with words', () => {
@@ -62,9 +62,23 @@ describe('the picture catalogue (ADR 084)', () => {
       ['Bedsheet, king', 'Linen', 'bedsheet'],
       ['Test Hand Towel', 'Linen', 'hand-towel'],
       ['Poi (Goan bread)', 'Bakery', 'poi'],
+      ['Old Monk Dark Rum 750ml', 'Spirits', 'old-monk'],
+      ['Glenfiddich 12 Year Old 700 ml', 'Spirits', 'glenfiddich'],
+      ["Jack Daniel's Tennessee Whiskey", 'Spirits', 'jack-daniels'],
+      ['Kingfisher Premium Lager 650ml', 'Beer', 'kingfisher'],
+      ['Thums Up 300ml', 'Mixers', 'thums-up'],
+      ['Harpic Toilet Cleaner 1l', 'Cleaning', 'harpic'],
+      ['Amul Butter 500g', 'Dairy', 'amul-butter'],
     ];
     for (const [name, category, key] of cases) {
       expect([name, pictureFor(name, category)]).toEqual([name, key]);
+    }
+  });
+
+  it("names each brand's kind, a picture in the catalogue", () => {
+    const keys = new Set(PICTURE_KEYS);
+    for (const p of PICTURES.filter((x) => x.kind)) {
+      expect([p.key, keys.has(p.kind!) && !pictureOf(p.kind!)!.kind]).toEqual([p.key, true]);
     }
   });
 

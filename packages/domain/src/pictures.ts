@@ -32,6 +32,8 @@ export interface Picture {
   group: PictureGroup;
   /** the words in an item's name that mean this picture: lower case, one to three words */
   words: readonly string[];
+  /** a branded product's generic picture (Old Monk is a dark rum): shown until it has its own */
+  kind?: string;
 }
 
 const p = (key: string, label: string, group: PictureGroup, words: readonly string[]): Picture => ({
@@ -41,7 +43,7 @@ const p = (key: string, label: string, group: PictureGroup, words: readonly stri
   words,
 });
 
-export const PICTURES: readonly Picture[] = [
+const ITEMS: readonly Picture[] = [
   // vegetables
   p('onion', 'Onion', 'vegetable', [
     'onion',
@@ -710,7 +712,6 @@ export const PICTURES: readonly Picture[] = [
     'chili sauce',
     'hot sauce',
     'sriracha',
-    'tabasco',
     'schezwan sauce',
   ]),
   p('mayonnaise', 'Mayonnaise', 'pantry', [
@@ -879,7 +880,6 @@ export const PICTURES: readonly Picture[] = [
     'water',
     'mineral water',
     'drinking water',
-    'bisleri',
     'packaged water',
     'water bottle',
   ]),
@@ -887,13 +887,9 @@ export const PICTURES: readonly Picture[] = [
   p('tonic', 'Tonic water', 'drink', ['tonic', 'tonic water', 'indian tonic']),
   p('cola', 'Cola', 'drink', [
     'cola',
-    'coke',
-    'pepsi',
-    'thums up',
     'soft drink',
     'soft drinks',
     'lemonade',
-    'sprite',
     'ginger ale',
     'ginger beer',
   ]),
@@ -937,7 +933,6 @@ export const PICTURES: readonly Picture[] = [
     'stout',
     'pilsner',
     'wheat beer',
-    'kingfisher',
     'draught',
     'draft beer',
   ]),
@@ -970,44 +965,24 @@ export const PICTURES: readonly Picture[] = [
   p('whisky', 'Whisky', 'bar', ['whisky', 'whiskey', 'blended whisky', 'scotch', 'blended scotch']),
   p('single-malt', 'Single malt', 'bar', ['single malt', 'malt whisky', 'malt']),
   p('bourbon', 'Bourbon', 'bar', ['bourbon', 'rye', 'rye whiskey', 'tennessee']),
-  p('dark-rum', 'Dark rum', 'bar', ['dark rum', 'rum', 'old monk', 'spiced rum', 'gold rum']),
-  p('white-rum', 'White rum', 'bar', ['white rum', 'light rum', 'bacardi', 'silver rum']),
+  p('dark-rum', 'Dark rum', 'bar', ['dark rum', 'rum', 'spiced rum', 'gold rum']),
+  p('white-rum', 'White rum', 'bar', ['white rum', 'light rum', 'silver rum']),
   p('tequila', 'Tequila', 'bar', ['tequila', 'tequila blanco', 'mezcal', 'reposado']),
   p('brandy', 'Brandy', 'bar', ['brandy', 'cognac']),
   p('feni', 'Feni', 'bar', ['feni', 'fenny', 'cashew feni', 'coconut feni', 'urrak', 'urak']),
   p('feni-nip', 'Small bottle (nip)', 'bar', ['nip', 'nips', 'miniature', 'mini bottle']),
-  p('liqueur', 'Liqueur', 'bar', [
-    'liqueur',
-    'liqueurs',
-    'amaretto',
-    'baileys',
-    'irish cream',
-    'schnapps',
-  ]),
-  p('coffee-liqueur', 'Coffee liqueur', 'bar', ['coffee liqueur', 'kahlua']),
+  p('liqueur', 'Liqueur', 'bar', ['liqueur', 'liqueurs', 'amaretto', 'irish cream', 'schnapps']),
+  p('coffee-liqueur', 'Coffee liqueur', 'bar', ['coffee liqueur']),
   p('triple-sec', 'Orange liqueur', 'bar', [
     'triple sec',
-    'cointreau',
     'curacao',
     'blue curacao',
     'orange liqueur',
     'grand marnier',
   ]),
-  p('vermouth', 'Vermouth', 'bar', [
-    'vermouth',
-    'sweet vermouth',
-    'dry vermouth',
-    'martini rosso',
-    'martini bianco',
-  ]),
-  p('aperitif', 'Red bitter aperitif', 'bar', [
-    'campari',
-    'aperol',
-    'aperitif',
-    'bitter aperitif',
-    'aperitivo',
-  ]),
-  p('bitters', 'Bitters', 'bar', ['bitters', 'angostura', 'aromatic bitters', 'orange bitters']),
+  p('vermouth', 'Vermouth', 'bar', ['vermouth', 'sweet vermouth', 'dry vermouth']),
+  p('aperitif', 'Red bitter aperitif', 'bar', ['aperitif', 'bitter aperitif', 'aperitivo']),
+  p('bitters', 'Bitters', 'bar', ['bitters', 'aromatic bitters', 'orange bitters']),
   p('sake', 'Sake', 'bar', ['sake', 'soju']),
   p('cocktail', 'Cocktail', 'bar', [
     'cocktail',
@@ -1143,7 +1118,6 @@ export const PICTURES: readonly Picture[] = [
     'floor cleaning',
     'phenyl',
     'phenol',
-    'lizol',
     'surface cleaner',
     'multi surface',
     'disinfectant',
@@ -1151,23 +1125,16 @@ export const PICTURES: readonly Picture[] = [
   ]),
   p('glass-cleaner', 'Glass cleaner spray', 'cleaning', [
     'glass cleaner',
-    'colin',
     'window cleaner',
     'spray cleaner',
     'sanitiser spray',
     'sanitizer spray',
   ]),
-  p('toilet-cleaner', 'Toilet cleaner', 'cleaning', [
-    'toilet cleaner',
-    'harpic',
-    'bowl cleaner',
-    'acid',
-  ]),
+  p('toilet-cleaner', 'Toilet cleaner', 'cleaning', ['toilet cleaner', 'bowl cleaner', 'acid']),
   p('dish-wash', 'Dishwash liquid', 'cleaning', [
     'dishwash',
     'dish wash',
     'dishwashing',
-    'vim',
     'pril',
     'washing up liquid',
     'rinse aid',
@@ -1178,7 +1145,6 @@ export const PICTURES: readonly Picture[] = [
     'laundry',
     'washing powder',
     'surf',
-    'ariel',
     'bleach',
     'fabric softener',
     'starch',
@@ -1208,7 +1174,6 @@ export const PICTURES: readonly Picture[] = [
     'sponges',
     'scrubber',
     'scrub pad',
-    'scotch brite',
     'steel wool',
   ]),
   p('gloves', 'Gloves', 'cleaning', [
@@ -1343,6 +1308,149 @@ export const PICTURES: readonly Picture[] = [
   p('linen', 'Linen', 'room', ['linen', 'linens']),
 ];
 
+const GROUP_OF = new Map(ITEMS.map((x) => [x.key, x.group]));
+const b = (key: string, label: string, kind: string, words: readonly string[]): Picture => ({
+  key,
+  label,
+  group: GROUP_OF.get(kind) ?? 'general',
+  words,
+  kind,
+});
+
+/**
+ * Branded products found in Indian hotels, bars and kitchens. A brand in an item's name wins
+ * over every other word ("Old Monk Dark Rum" is Old Monk), and until the library has its photo
+ * it shows its kind's.
+ */
+const BRANDS: readonly Picture[] = [
+  b('johnnie-walker-red', 'Johnnie Walker Red Label', 'whisky', [
+    'johnnie walker red',
+    'jw red',
+    'red label whisky',
+  ]),
+  b('johnnie-walker-black', 'Johnnie Walker Black Label', 'whisky', [
+    'johnnie walker black',
+    'jw black',
+    'black label',
+  ]),
+  b('jameson', 'Jameson Irish whiskey', 'whisky', ['jameson']),
+  b('jack-daniels', "Jack Daniel's", 'bourbon', ['jack daniel', 'jack daniels', "jack daniel's"]),
+  b('jim-beam', 'Jim Beam', 'bourbon', ['jim beam']),
+  b('glenfiddich', 'Glenfiddich', 'single-malt', ['glenfiddich']),
+  b('glenlivet', 'The Glenlivet', 'single-malt', ['glenlivet']),
+  b('chivas-regal', 'Chivas Regal', 'whisky', ['chivas', 'chivas regal']),
+  b('teachers', "Teacher's", 'whisky', ["teacher's", 'teachers highland']),
+  b('black-dog', 'Black Dog', 'whisky', ['black dog']),
+  b('blenders-pride', 'Blenders Pride', 'whisky', ['blenders pride', "blender's pride"]),
+  b('royal-stag', 'Royal Stag', 'whisky', ['royal stag']),
+  b('mcdowells', "McDowell's No.1", 'whisky', ['mcdowell', 'mcdowells', "mcdowell's"]),
+  b('officers-choice', "Officer's Choice", 'whisky', ["officer's choice", 'officers choice']),
+  b('amrut', 'Amrut', 'single-malt', ['amrut']),
+  b('paul-john', 'Paul John', 'single-malt', ['paul john']),
+  b('ballantines', "Ballantine's", 'whisky', ['ballantine', 'ballantines', "ballantine's"]),
+  b('jw-double-black', 'Johnnie Walker Double Black', 'whisky', ['double black']),
+  b('old-monk', 'Old Monk', 'dark-rum', ['old monk']),
+  b('bacardi', 'Bacardi', 'white-rum', ['bacardi']),
+  b('captain-morgan', 'Captain Morgan', 'dark-rum', ['captain morgan']),
+  b('malibu', 'Malibu', 'liqueur', ['malibu']),
+  b('havana-club', 'Havana Club', 'white-rum', ['havana club']),
+  b('smirnoff', 'Smirnoff', 'vodka', ['smirnoff']),
+  b('absolut', 'Absolut', 'vodka', ['absolut']),
+  b('magic-moments', 'Magic Moments', 'vodka', ['magic moments']),
+  b('grey-goose', 'Grey Goose', 'vodka', ['grey goose']),
+  b('ketel-one', 'Ketel One', 'vodka', ['ketel one']),
+  b('bombay-sapphire', 'Bombay Sapphire', 'gin', ['bombay sapphire']),
+  b('beefeater', 'Beefeater', 'gin', ['beefeater']),
+  b('tanqueray', 'Tanqueray', 'gin', ['tanqueray']),
+  b('gordons', "Gordon's", 'gin', ["gordon's", 'gordons']),
+  b('hendricks', "Hendrick's", 'gin', ["hendrick's", 'hendricks']),
+  b('jose-cuervo', 'Jose Cuervo', 'tequila', ['cuervo', 'jose cuervo']),
+  b('patron', 'Patrón', 'tequila', ['patron']),
+  b('hennessy', 'Hennessy', 'brandy', ['hennessy']),
+  b('remy-martin', 'Rémy Martin', 'brandy', ['remy martin']),
+  b('honey-bee', 'Honey Bee brandy', 'brandy', ['honey bee']),
+  b('mansion-house', 'Mansion House', 'brandy', ['mansion house']),
+  b('kahlua', 'Kahlúa', 'coffee-liqueur', ['kahlua']),
+  b('baileys', 'Baileys', 'liqueur', ['baileys', "bailey's"]),
+  b('cointreau', 'Cointreau', 'triple-sec', ['cointreau']),
+  b('jagermeister', 'Jägermeister', 'liqueur', ['jagermeister', 'jager']),
+  b('campari', 'Campari', 'aperitif', ['campari']),
+  b('aperol', 'Aperol', 'aperitif', ['aperol']),
+  b('martini', 'Martini vermouth', 'vermouth', [
+    'martini rosso',
+    'martini bianco',
+    'martini extra dry',
+  ]),
+  b('angostura', 'Angostura bitters', 'bitters', ['angostura']),
+  b('kingfisher', 'Kingfisher', 'beer', ['kingfisher']),
+  b('budweiser', 'Budweiser', 'beer', ['budweiser']),
+  b('heineken', 'Heineken', 'beer', ['heineken']),
+  b('corona', 'Corona', 'beer', ['corona']),
+  b('tuborg', 'Tuborg', 'beer', ['tuborg']),
+  b('carlsberg', 'Carlsberg', 'beer', ['carlsberg']),
+  b('bira', 'Bira 91', 'beer', ['bira']),
+  b('hoegaarden', 'Hoegaarden', 'beer', ['hoegaarden']),
+  b('guinness', 'Guinness', 'beer', ['guinness']),
+  b('stella-artois', 'Stella Artois', 'beer', ['stella artois', 'stella']),
+  b('sula', 'Sula', 'red-wine', ['sula']),
+  b('jacobs-creek', "Jacob's Creek", 'red-wine', ["jacob's creek", 'jacobs creek']),
+  b('moet', 'Moët & Chandon', 'sparkling-wine', ['moet', 'moet chandon']),
+  b('coca-cola', 'Coca-Cola', 'cola', ['coca cola', 'coke']),
+  b('thums-up', 'Thums Up', 'cola', ['thums up']),
+  b('pepsi', 'Pepsi', 'cola', ['pepsi']),
+  b('sprite', 'Sprite', 'soda', ['sprite']),
+  b('fanta', 'Fanta', 'soda', ['fanta']),
+  b('seven-up', '7UP', 'soda', ['7up', '7 up', 'seven up']),
+  b('limca', 'Limca', 'soda', ['limca']),
+  b('mountain-dew', 'Mountain Dew', 'soda', ['mountain dew']),
+  b('schweppes', 'Schweppes', 'tonic', ['schweppes']),
+  b('red-bull', 'Red Bull', 'soda', ['red bull']),
+  b('bisleri', 'Bisleri', 'water', ['bisleri']),
+  b('kinley', 'Kinley', 'water', ['kinley']),
+  b('aquafina', 'Aquafina', 'water', ['aquafina']),
+  b('tropicana', 'Tropicana', 'orange-juice', ['tropicana']),
+  b('amul-butter', 'Amul butter', 'butter', ['amul butter']),
+  b('amul-cheese', 'Amul cheese', 'cheese', ['amul cheese']),
+  b('maggi', 'Maggi', 'pasta', ['maggi']),
+  b('tata-salt', 'Tata Salt', 'salt', ['tata salt']),
+  b('heinz-ketchup', 'Heinz ketchup', 'ketchup', ['heinz']),
+  b('kissan', 'Kissan', 'ketchup', ['kissan']),
+  b('nutella', 'Nutella', 'chocolate', ['nutella']),
+  b('nescafe', 'Nescafé', 'coffee', ['nescafe']),
+  b('tabasco', 'Tabasco', 'chilli-sauce', ['tabasco']),
+  b('hellmanns', "Hellmann's", 'mayonnaise', ["hellmann's", 'hellmanns']),
+  b('kikkoman', 'Kikkoman', 'soy-sauce', ['kikkoman']),
+  b('lays', "Lay's", 'chips', ["lay's", 'lays']),
+  b('pringles', 'Pringles', 'chips', ['pringles']),
+  b('kitkat', 'KitKat', 'chocolate', ['kitkat', 'kit kat']),
+  b('cadbury-dairy-milk', 'Cadbury Dairy Milk', 'chocolate', ['dairy milk', 'cadbury']),
+  b('toblerone', 'Toblerone', 'chocolate', ['toblerone']),
+  b('oreo', 'Oreo', 'cookie', ['oreo']),
+  b('tetley', 'Tetley', 'tea', ['tetley']),
+  b('lipton', 'Lipton', 'tea', ['lipton']),
+  b('twinings', 'Twinings', 'tea', ['twinings']),
+  b('harpic', 'Harpic', 'toilet-cleaner', ['harpic']),
+  b('lizol', 'Lizol', 'floor-cleaner', ['lizol']),
+  b('colin', 'Colin', 'glass-cleaner', ['colin']),
+  b('vim', 'Vim', 'dish-wash', ['vim']),
+  b('dettol', 'Dettol', 'hand-wash', ['dettol']),
+  b('surf-excel', 'Surf Excel', 'detergent', ['surf excel']),
+  b('ariel', 'Ariel', 'detergent', ['ariel']),
+  b('domex', 'Domex', 'toilet-cleaner', ['domex']),
+  b('colgate', 'Colgate', 'dental-kit', ['colgate']),
+  b('dove', 'Dove', 'soap', ['dove']),
+  b('lux', 'Lux', 'soap', ['lux']),
+  b('lifebuoy', 'Lifebuoy', 'soap', ['lifebuoy']),
+  b('head-and-shoulders', 'Head & Shoulders', 'shampoo', [
+    'head and shoulders',
+    'head & shoulders',
+  ]),
+  b('scotch-brite', 'Scotch-Brite', 'sponge', ['scotch brite']),
+  b('gillette', 'Gillette', 'shaving-kit', ['gillette']),
+];
+
+export const PICTURES: readonly Picture[] = [...ITEMS, ...BRANDS];
+
 /** Pictures that only ever stand in for a category: never "specific". */
 const CATEGORY_KEYS = new Set([
   'vegetables',
@@ -1386,9 +1494,12 @@ function tokens(s: string): string[] {
 }
 
 // every phrase, its picture and its length in words; longer phrases are tried first
-const PHRASES: readonly { words: readonly string[]; key: string }[] = PICTURES.flatMap((x) =>
-  x.words.map((w) => ({ words: tokens(w), key: x.key })),
-).sort((a, b) => b.words.length - a.words.length);
+const phrases = (list: readonly Picture[]) =>
+  list
+    .flatMap((x) => x.words.map((w) => ({ words: tokens(w), key: x.key })))
+    .sort((a, b) => b.words.length - a.words.length);
+const PHRASES = phrases(ITEMS);
+const BRAND_PHRASES = phrases(BRANDS);
 
 /** a word or its plural: "box" is in "Delivery boxes", "berry" in "berries" */
 const same = (t: string, w: string) =>
@@ -1398,11 +1509,14 @@ const same = (t: string, w: string) =>
  * The best picture in some words: the longest phrase wins; between phrases as long, the one
  * further right (the thing itself usually comes last: "coconut curry base" is a curry base).
  */
-function bestIn(text: string): string | null {
+function bestIn(
+  text: string,
+  list: readonly { words: readonly string[]; key: string }[] = PHRASES,
+): string | null {
   const t = tokens(text);
   if (t.length === 0) return null;
   let best: { key: string; len: number; end: number } | null = null;
-  for (const ph of PHRASES) {
+  for (const ph of list) {
     if (best && ph.words.length < best.len) break;
     for (let i = 0; i + ph.words.length <= t.length; i++) {
       if (ph.words.every((w, j) => same(t[i + j]!, w))) {
@@ -1423,11 +1537,14 @@ export interface PictureMatch {
 }
 
 /**
- * An item's picture from its name, then its category. The name's head (before a comma or a
- * bracket) decides first, so "Chicken, curry cut" is chicken and "Refined Flour (Maida)" is
- * maida; then what is in brackets, then after the comma; then the category.
+ * An item's picture from its name, then its category. A brand anywhere in the name decides
+ * first ("Old Monk Dark Rum 750ml" is Old Monk). Then the name's head (before a comma or a
+ * bracket), so "Chicken, curry cut" is chicken and "Refined Flour (Maida)" is maida; then what
+ * is in brackets, then after the comma; then the category.
  */
 export function matchPicture(name: string, category?: string | null): PictureMatch {
+  const brand = bestIn(name, BRAND_PHRASES);
+  if (brand) return { key: brand, specific: true };
   const head = name.split(/[,(]/)[0] ?? name;
   const bracket = /\(([^)]*)\)/.exec(name)?.[1] ?? '';
   const tail = name.includes(',') ? name.slice(name.indexOf(',') + 1) : '';
