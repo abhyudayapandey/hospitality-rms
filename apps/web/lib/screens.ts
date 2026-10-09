@@ -43,6 +43,7 @@ export type ScreenKey =
   | 'posImport'
   | 'briefing'
   | 'minibar'
+  | 'rooms'
   | 'roster'
   | 'events'
   | 'reports'
@@ -256,6 +257,15 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     icon: 'bed',
     section: 'work',
     show: (i) => can(i, 'MINIBAR'),
+  },
+  {
+    // each room's status (ADR 088): front office and housekeeping
+    key: 'rooms',
+    href: '/rooms',
+    label: 'Rooms',
+    icon: 'bed',
+    section: 'work',
+    show: (i) => can(i, 'ROOMS'),
   },
   {
     key: 'problem',

@@ -75,7 +75,17 @@ export async function createTask(input: {
 export async function completeStep(
   task: string,
   step: string,
-  value: { done?: boolean; number?: number; text?: string; photo_key?: string | null },
+  value: {
+    done?: boolean;
+    number?: number;
+    text?: string;
+    photo_key?: string | null;
+    /** what was done about a reading out of its range (ADR 088) */
+    action?: string;
+    /** the food probed, and whether out-of-date food was thrown away, where the step asks */
+    food?: string;
+    thrown?: boolean;
+  },
 ): Promise<ActionResult<{ flagged: boolean }>> {
   const r = await run('complete_step', async (tx) => {
     const x = await sql<{ r: { flagged: boolean } }>`

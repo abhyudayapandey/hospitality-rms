@@ -832,8 +832,50 @@ export const FILES = {
           });
           return z.NEVER;
         }),
+      // ADR 088: optional, the same on every row of a checklist: `rooms` (each room of its
+      // outlet, file 40) or named areas `Lobby; Pool deck`; blank: once
+      for_each: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          if (v === '') return undefined;
+          if (v === 'rooms') return { rooms: true as const };
+          const areas = v
+            .split(';')
+            .map((a) => a.trim())
+            .filter(Boolean);
+          if (
+            areas.length >= 1 &&
+            areas.length <= 60 &&
+            areas.every((a) => a.length <= 60) &&
+            new Set(areas.map((a) => a.toLowerCase())).size === areas.length
+          ) {
+            return { areas };
+          }
+          ctx.addIssue({
+            code: 'custom',
+            message: 'must be rooms, or 1 to 60 different areas separated by ";"',
+          });
+          return z.NEVER;
+        }),
+      // ADR 088: optional, what else a step asks: `food` (which food was probed, readings
+      // only) and `thrown` (whether out-of-date food was thrown away), separated by ";"
+      step_asks: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          const asks = v
+            .split(';')
+            .map((a) => a.trim())
+            .filter(Boolean);
+          if (asks.every((a) => a === 'food' || a === 'thrown')) {
+            return { food: asks.includes('food'), thrown: asks.includes('thrown') };
+          }
+          ctx.addIssue({ code: 'custom', message: 'must be blank, food, thrown or food; thrown' });
+          return z.NEVER;
+        }),
     }),
-    optional: ['step_icon', 'from_library', 'days', 'sign_off'],
+    optional: ['step_icon', 'from_library', 'days', 'sign_off', 'for_each', 'step_asks'],
   },
   // Test-only tasks (ADR 020): one-off tasks, open maintenance requests and prep lists.
   tasks: {

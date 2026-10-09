@@ -40,6 +40,10 @@ test('the executive chef gives the commis a task; an out-of-range reading is fla
   await main(page).getByRole('link', { name: title }).click();
   await main(page).getByRole('textbox', { name: 'Blast chiller' }).fill('9');
   await expect(main(page)).toContainText('Outside 0 to 5 °C');
+  // what was done about it, before it is saved (ADR 088)
+  await main(page).getByRole('button', { name: 'Save' }).click();
+  await expect(main(page).getByRole('alert')).toContainText('Say what you did about it.');
+  await main(page).getByLabel('What did you do about it?').fill('Moved it to the walk-in');
   await main(page).getByRole('button', { name: 'Save' }).click();
   await expect(main(page).getByRole('status')).toHaveText(
     'Outside the range: your lead has been told.',

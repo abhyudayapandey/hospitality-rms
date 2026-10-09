@@ -2847,6 +2847,8 @@ class Loader {
             ...(r.photo_required && { photo_required: true }),
             ...(r.step_icon && { icon: r.step_icon }),
             ...(r.days && { days: r.days }),
+            ...(r.step_asks.food && { food: true }),
+            ...(r.step_asks.thrown && { thrown: true }),
           })),
       );
       const schedule = JSON.stringify(first.schedule);
@@ -2857,9 +2859,11 @@ class Loader {
         first.assign_to.mode === 'job_role' &&
         !!first.from_library &&
         !!CHECKLIST_BY_CODE.get(first.from_library.code)?.roles.includes(first.assign_to.role);
+      const forEach = first.for_each ? JSON.stringify(first.for_each) : null;
       await this.c.query(
-        `select ops.check_schedule($1), ops.check_steps($2), ops.check_assign($3, $4)`,
-        [schedule, steps, node, own ? JSON.stringify({ mode: 'on_shift' }) : assign],
+        `select ops.check_schedule($1), ops.check_steps($2), ops.check_assign($3, $4),
+                ops.check_for_each($5)`,
+        [schedule, steps, node, own ? JSON.stringify({ mode: 'on_shift' }) : assign, forEach],
       );
       // a library copy records its source (ADR 062); blank keeps what was recorded
       const lib = first.from_library;
@@ -2867,21 +2871,21 @@ class Loader {
         'checklists',
         `insert into ops.checklist_template as t (tenant_id, org_node_id, code, name, schedule,
                                                  assign, steps, library_code, library_version,
-                                                 sign_off)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                                                 sign_off, for_each)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          on conflict (tenant_id, code) where code is not null do update
             set org_node_id = excluded.org_node_id, name = excluded.name,
                 schedule = excluded.schedule, assign = excluded.assign, steps = excluded.steps,
                 library_code = coalesce(excluded.library_code, t.library_code),
                 library_version = coalesce(excluded.library_version, t.library_version),
-                sign_off = excluded.sign_off, archived_at = null
+                sign_off = excluded.sign_off, for_each = excluded.for_each, archived_at = null
           where (t.org_node_id, t.name, t.schedule, t.assign, t.steps, t.library_code,
-                 t.library_version, t.sign_off, t.archived_at)
+                 t.library_version, t.sign_off, t.for_each, t.archived_at)
                 is distinct from (excluded.org_node_id, excluded.name, excluded.schedule,
                                   excluded.assign, excluded.steps,
                                   coalesce(excluded.library_code, t.library_code),
                                   coalesce(excluded.library_version, t.library_version),
-                                  excluded.sign_off, null)
+                                  excluded.sign_off, excluded.for_each, null)
          returning id, xmax = 0 as inserted`,
         [
           this.tenant,
@@ -2894,6 +2898,7 @@ class Loader {
           lib?.code ?? null,
           lib?.version ?? null,
           first.sign_off,
+          forEach,
         ],
       );
     }

@@ -29,19 +29,29 @@ afterAll(closePools);
 const ALL = [
   'stock',
   'buying',
+  'breakage',
+  'shelf_life',
   'recipes',
   'production',
   'prep_lists',
   'menu_sales',
+  'excise',
   'roster',
   'clock_in',
   'pay',
   'leave',
   'swaps',
+  'training',
   'checklists',
   'maintenance',
   'briefing',
+  'logbook',
+  'registers',
+  'utilities',
+  'audits',
   'minibars',
+  'rooms',
+  'linen',
   'events',
   'compliance',
 ];
@@ -115,7 +125,9 @@ describe('which blocks a customer has', () => {
       expect(offFor(await modules(c, 'test.solo.server'))).toEqual([
         'compliance',
         'events',
+        'linen',
         'minibars',
+        'rooms',
         'swaps',
       ]);
       const all = {
@@ -134,12 +146,16 @@ describe('which blocks a customer has', () => {
     await inRolledBackTx(async (c) => {
       await switchFor(c, 'stock', false);
       expect(offFor(await modules(c, 'test.commis.1.0'))).toEqual([
+        'breakage',
         'buying',
+        'excise',
+        'linen',
         'menu_sales',
         'minibars',
         'prep_lists',
         'production',
         'recipes',
+        'shelf_life',
         'stock',
       ]);
       await switchFor(c, 'stock', true);
@@ -271,9 +287,13 @@ describe('only a platform admin changes blocks and bundles', () => {
         { changed: true },
       ]);
       expect(offFor(await modules(c, 'test.server.3.0'))).toEqual([
+        'audits',
         'briefing',
         'checklists',
+        'logbook',
         'maintenance',
+        'registers',
+        'utilities',
       ]);
       const solo = ids.tenant('TEST-SOLO-COMPANY');
       expect((await setBundle(c, admin, solo, 'events_compliance', false)).error).toBeUndefined();

@@ -308,7 +308,12 @@ describe('working through a checklist', () => {
           [task, steps[i], JSON.stringify(value)],
         );
       expect((await step({ number: 3 })).rows![0]!.r.flagged).toBe(false);
-      expect((await step({ number: 9, photo_key: photo(KITCHEN) })).rows![0]!.r.flagged).toBe(true);
+      // out of range: what was done about it first (ADR 088)
+      expect((await step({ number: 9, photo_key: photo(KITCHEN) })).error).toMatch(/ACTION_NEEDED/);
+      expect(
+        (await step({ number: 9, photo_key: photo(KITCHEN), action: 'Moved stock to fridge 2' }))
+          .rows![0]!.r.flagged,
+      ).toBe(true);
       expect(await notes(c, 'test.executive-chef.1.0', 'task_flagged')).toEqual([
         'Closing checks: Walk-in is 9 °C',
       ]);

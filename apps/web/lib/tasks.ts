@@ -60,6 +60,17 @@ export interface TaskStep {
   flagged: boolean;
   done_at: string | null;
   done_by_name: string | null;
+  /** a reading out of range: what was done about it; the food probed and whether out-of-date
+   * food was thrown away, where the step asks (ADR 088) */
+  action_text: string | null;
+  food_text: string | null;
+  thrown_away: boolean | null;
+  asks_food: boolean;
+  asks_thrown: boolean;
+  /** a round for each room or area: its row, the room and its status (ADR 088) */
+  grid_row: string | null;
+  room_id: string | null;
+  room_status: string | null;
   /** who signed the round off, when it needed it (ADR 087) */
   checked_at: string | null;
   checked_by_name: string | null;
@@ -108,6 +119,8 @@ export interface TaskDetail {
   sent_back_note: string | null;
   sent_back_at: string | null;
   sign_off_task: { id: string; status: string; assignee_name: string | null } | null;
+  /** may set the status of the rooms on its grid (ADR 088) */
+  can_set_room_status: boolean;
   /** a sign-off: the round it checks and who did it */
   signs_off: string | null;
   signs_off_title: string | null;

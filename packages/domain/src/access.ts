@@ -63,6 +63,29 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'BRIEFING', tree: 'org' },
   // the rooms' minibars (ADR 072): checked and refilled from a store, charged to the guest
   { code: 'MINIBAR', tree: 'org' },
+  // ADR 087 to 096, each its own block (ADR 085):
+  // broken crockery, cutlery, glassware and linen, recorded where it broke; every department
+  // head at the outlet reads the outlet's log (ops.breakage_log)
+  { code: 'BREAKAGE', tree: 'org' },
+  // opened packs and their use-by, at the store
+  { code: 'SHELF_LIFE', tree: 'delivery' },
+  // the bar register, FLR, transport permits and free stock, at the store
+  { code: 'EXCISE', tree: 'delivery' },
+  // training sessions, attendance, scores and induction; the SOP library (read by everyone at
+  // the outlet through ops.my_sops)
+  { code: 'TRAINING', tree: 'org' },
+  // handovers and logs; whoever a handover is for acknowledges it, wherever they work
+  { code: 'LOGBOOK', tree: 'org' },
+  // lost and found, incidents, visitors, vehicles, staff in and out, keys, fire equipment
+  { code: 'REGISTERS', tree: 'org' },
+  // meters and their readings
+  { code: 'UTILITIES', tree: 'org' },
+  // scored audits and taste panels: their scores and trend
+  { code: 'AUDITS', tree: 'org' },
+  // room status, what is in each room, breakfast by room
+  { code: 'ROOMS', tree: 'org' },
+  // linen par and exchanges with the laundry, uniforms issued
+  { code: 'LINEN', tree: 'org' },
   { code: 'AI_RECOMMENDATIONS', tree: 'org' },
   { code: 'DERIVED_STOCK_LEVELS', tree: 'org' },
   { code: 'DERIVED_STOCK_ADJUSTMENTS', tree: 'org' },
@@ -111,13 +134,23 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       NOTIFICATIONS: v,
       TASKS: m,
       MAINTENANCE: m,
+      TRAINING: v,
     },
   },
   {
     code: 'STAFF',
     name: 'Staff',
     kind: 'role',
-    grants: { ROSTER: v, EVENTS: v, RECIPES_TEAM: v, MAINTENANCE: v },
+    grants: {
+      ROSTER: v,
+      EVENTS: v,
+      RECIPES_TEAM: v,
+      MAINTENANCE: v,
+      LOGBOOK: m,
+      REGISTERS: m,
+      BREAKAGE: m,
+      LINEN: m,
+    },
   },
   {
     code: 'SUPERVISOR',
@@ -130,6 +163,13 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       RECIPES_TEAM: v,
       TASKS: m,
       CHECKLIST_TEMPLATES: v,
+      LOGBOOK: m,
+      REGISTERS: m,
+      BREAKAGE: m,
+      LINEN: m,
+      UTILITIES: v,
+      AUDITS: v,
+      TRAINING: v,
     },
   },
   {
@@ -152,6 +192,13 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       TASKS: m,
       CHECKLIST_TEMPLATES: m,
       MAINTENANCE: m,
+      LOGBOOK: m,
+      REGISTERS: m,
+      BREAKAGE: m,
+      LINEN: m,
+      UTILITIES: m,
+      AUDITS: m,
+      TRAINING: m,
     },
   },
   {
@@ -177,11 +224,12 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: { BRIEFING: m },
   },
   {
-    // checks and refills the rooms' minibars, and marks what was charged to the guest (ADR 072)
+    // checks and refills the rooms' minibars, and marks what was charged to the guest (ADR 072);
+    // keeps each room's status and contents (ADR 088, 094)
     code: 'MINIBAR_KEEPER',
     name: 'Minibar Keeper',
     kind: 'role',
-    grants: { MINIBAR: m },
+    grants: { MINIBAR: m, ROOMS: m },
   },
   {
     // plans events (with their item and staff needs) for the whole outlet (ADR 016)
@@ -202,6 +250,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       PURCHASE_ORDERS: v,
       RECIPES: v,
       PRODUCTION: m,
+      SHELF_LIFE: m,
     },
   },
   {
@@ -218,6 +267,8 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       AI_RECOMMENDATIONS: v,
       RECIPES: v,
       PRODUCTION: m,
+      SHELF_LIFE: m,
+      EXCISE: m,
     },
   },
   {
@@ -235,6 +286,8 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       MENU: v,
       PRODUCTION: v,
       SALES: m,
+      SHELF_LIFE: v,
+      EXCISE: v,
     },
   },
   {
@@ -249,7 +302,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     code: 'OUTLET_HR',
     name: 'Outlet HR',
     kind: 'role',
-    grants: { WORKERS: m, LEAVE: m, ROSTER: v, ATTENDANCE: v, ATTENDANCE_SELFIES: v },
+    grants: { WORKERS: m, LEAVE: m, ROSTER: v, ATTENDANCE: v, ATTENDANCE_SELFIES: v, TRAINING: m },
   },
   {
     code: 'OUTLET_MANAGER',
@@ -286,6 +339,16 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       LABOUR_COST: v,
       // the licences and the compliance calendar (ADR 069)
       COMPLIANCE: m,
+      BREAKAGE: m,
+      SHELF_LIFE: m,
+      EXCISE: m,
+      TRAINING: m,
+      LOGBOOK: m,
+      REGISTERS: m,
+      UTILITIES: m,
+      AUDITS: m,
+      ROOMS: m,
+      LINEN: m,
     },
   },
   {
@@ -313,6 +376,14 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       LABOUR_COST: v,
       COMPLIANCE: v,
       MINIBAR: v,
+      BREAKAGE: v,
+      TRAINING: v,
+      LOGBOOK: v,
+      REGISTERS: v,
+      UTILITIES: v,
+      AUDITS: v,
+      ROOMS: v,
+      LINEN: v,
     },
   },
   {
@@ -329,6 +400,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       RECIPES: v,
       MENU: v,
       PRODUCTION: m,
+      SHELF_LIFE: m,
     },
   },
   { code: 'SUPPLY_VIEWER', name: 'Supply Viewer', kind: 'role', grants: { STOCK_LEVELS: v } },
@@ -353,6 +425,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       ATTENDANCE_SELFIES: v,
       WF_CONFIG: v,
       LABOUR_COST: v,
+      TRAINING: m,
     },
   },
   {
