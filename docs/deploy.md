@@ -2438,7 +2438,12 @@ No stack change: the pictures are static files in the release (`apps/web/public/
 2. No `cdk diff` or `cdk deploy`.
 3. **Deploy** as usual.
 4. Re-import the Passport demo: the tepache is now a prep task (file 32), the bar's one-off task
-   (file 30) is gone, and the files are re-dated. Test customers: nothing to re-import.
+   (file 30) is gone, and the files are re-dated. Test customers: nothing to re-import. Over the
+   files of #95 the dry run shows: workers 39 changed, licences 6 changed, compliance jobs 5
+   changed, events 2 new, prep tasks 1 new; no problems or warnings. After Apply, a second dry run
+   shows no changes. An import never removes a task, so the old one-off "Batch tepache for the
+   weekend" stays open: as `passport.bar-manager`, open it and use "Cancel this task" ("Now a prep
+   task").
 5. Check, at 380 px:
    - **Prep list** (the executive chef): each row has the item's picture, its name on one line,
      par and on hand, then "Make" and the quantity.
