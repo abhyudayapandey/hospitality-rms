@@ -24,7 +24,7 @@ no cost, with no contract, and without asking outlets to supply them.
    yet shows its kind's photo, else its kind's line icon.
 4. **Picked by eye, built by a script.** The photo for each key is chosen by a person and
    recorded in `apps/web/scripts/photos/library.json` (key → Commons file). `pnpm --filter
-@outlet-ops/web photos` downloads each at 500 px, paced as Commons asks, flattens it on
+@outlet-ops/web photos` downloads each at 330 px (a size Commons keeps rendered), paced as Commons asks, flattens it on
    white, trims the background, fits it in a 320 px square and writes WebP, then regenerates
    `picture-photos.ts` and `picture-credits.ts` (author, licence, link). A key left out of
    `library.json` shows its kind or its line icon; nothing breaks.

@@ -56,7 +56,7 @@ const plain = (s: string | undefined) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-/** Licence, author and a 500 px rendition of each file, 50 files a request. */
+/** Licence, author and a 330 px rendition of each file (a size Commons keeps rendered), 50 files a request. */
 async function infos(titles: string[]): Promise<Map<string, Info>> {
   const out = new Map<string, Info>();
   for (let i = 0; i < titles.length; i += 50) {
@@ -66,7 +66,7 @@ async function infos(titles: string[]): Promise<Map<string, Info>> {
       titles: batch.join('|'),
       prop: 'imageinfo',
       iiprop: 'url|extmetadata',
-      iiurlwidth: '500',
+      iiurlwidth: '330',
       format: 'json',
       formatversion: '2',
     });
@@ -120,7 +120,7 @@ async function bytesOf(info: Info): Promise<Buffer> {
   if (!res.ok) throw new Error(`${info.title}: ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
   writeFileSync(cached, buf);
-  await sleep(12_000); // Commons limits how fast one client may download
+  await sleep(5_000); // Commons limits how fast one client may download
   return buf;
 }
 
