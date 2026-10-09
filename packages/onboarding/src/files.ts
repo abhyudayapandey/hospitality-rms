@@ -1101,6 +1101,26 @@ export const FILES = {
       charged_by: optional,
     }),
   },
+  // Meters (ADR 091): electricity, gas, water and diesel meters at a place (the outlet or a
+  // department, usually Engineering), the job role that reads them and when each day. Keyed by
+  // meter_code; a later load corrects one.
+  meters: {
+    file: '43_meters.csv',
+    required: false,
+    schema: z.object({
+      place_code: code,
+      meter_code: code,
+      name: text,
+      kind: z.enum(
+        ['electricity', 'gas', 'water', 'diesel', 'other'],
+        'must be electricity, gas, water, diesel or other',
+      ),
+      unit: text,
+      read_by: code,
+      read_at: z.union([z.literal('').transform(() => '09:00'), time]),
+    }),
+    optional: ['read_at'],
+  },
   // Registers (ADR 090): which are kept, and by which job roles (blank: anyone who keeps
   // registers where it is written). A register not listed keeps the default: lost and found
   // and incidents everywhere, the rest at hotels.

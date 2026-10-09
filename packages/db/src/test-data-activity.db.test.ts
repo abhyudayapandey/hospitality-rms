@@ -279,7 +279,7 @@ describe('Test Company tasks (files 29 to 32): the README figures', () => {
           group by tn.code order by tn.code`,
       );
       expect(rows.map((r) => [r.customer, r.templates])).toEqual([
-        ['TEST-COMPANY', 19],
+        ['TEST-COMPANY', 20],
         ['TEST-SOLO-COMPANY', 4],
       ]);
       for (const r of rows) expect(r.upcoming, r.customer).toBeGreaterThan(0);

@@ -216,6 +216,7 @@ class Loader {
     await this.checklists();
     await this.notDoneChecklists();
     await this.registers();
+    await this.meters();
     if (this.isTest) {
       await this.shifts();
       await this.pastWeek();
@@ -2900,6 +2901,74 @@ class Loader {
           lib?.version ?? null,
           first.sign_off,
           forEach,
+        ],
+      );
+    }
+  }
+
+  /**
+   * File 43 (ADR 091): the meters, and for each place, role and time the daily reading round
+   * (a checklist of the Utilities block, a reading step per meter), kept by this file.
+   */
+  private async meters() {
+    const rounds = new Map<string, Bundle['meters']>();
+    for (const m of this.b.meters) {
+      this.step(FILES.meters.file, m.line);
+      await this.upsert(
+        'meters',
+        `insert into ops.meter as t (tenant_id, org_node_id, code, name, kind, unit)
+         values ($1, $2, $3, $4, $5, $6)
+         on conflict (tenant_id, code) do update
+            set org_node_id = excluded.org_node_id, name = excluded.name, kind = excluded.kind,
+                unit = excluded.unit, archived_at = null
+          where (t.org_node_id, t.name, t.kind, t.unit, t.archived_at)
+                is distinct from (excluded.org_node_id, excluded.name, excluded.kind,
+                                  excluded.unit, null)
+         returning id, xmax = 0 as inserted`,
+        [this.tenant, this.nodes.get(m.place_code), m.meter_code, m.name, m.kind, m.unit],
+      );
+      const key = `${m.place_code}|${m.read_by}|${m.read_at}`;
+      rounds.set(key, [...(rounds.get(key) ?? []), m]);
+    }
+    for (const [key, meters] of rounds) {
+      const [place, role, at] = key.split('|') as [string, string, string];
+      const ids = await this.c.query<{ id: string; code: string }>(
+        `select id, code from ops.meter where tenant_id = $1 and code = any ($2)`,
+        [this.tenant, meters.map((m) => m.meter_code)],
+      );
+      const idOf = new Map(ids.rows.map((r) => [r.code, r.id]));
+      const steps = JSON.stringify(
+        [...meters]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((m) => ({
+            label: m.name,
+            kind: 'number',
+            min: 0,
+            unit: m.unit,
+            meter: idOf.get(m.meter_code),
+          })),
+      );
+      const schedule = JSON.stringify({ kind: 'daily', times: [at] });
+      const assign = JSON.stringify({ mode: 'job_role', role });
+      await this.upsert(
+        'checklists',
+        `insert into ops.checklist_template as t (tenant_id, org_node_id, code, name, schedule,
+                                                 assign, steps, module)
+         values ($1, $2, $3, 'Meter readings', $4, $5, $6, 'utilities')
+         on conflict (tenant_id, code) where code is not null do update
+            set org_node_id = excluded.org_node_id, schedule = excluded.schedule,
+                assign = excluded.assign, steps = excluded.steps, archived_at = null
+          where (t.org_node_id, t.schedule, t.assign, t.steps, t.archived_at)
+                is distinct from (excluded.org_node_id, excluded.schedule, excluded.assign,
+                                  excluded.steps, null)
+         returning id, xmax = 0 as inserted`,
+        [
+          this.tenant,
+          this.nodes.get(place),
+          `METERS-${place}-${role}-${at.replace(':', '')}`,
+          schedule,
+          assign,
+          steps,
         ],
       );
     }

@@ -196,6 +196,7 @@ export const MODULES = [
     name: 'Utilities',
     what: 'Daily meter readings (electricity, gas, water, diesel) and what was used.',
     bundle: 'daily_work',
+    needs: ['checklists'],
     domains: ['UTILITIES'],
   },
   {

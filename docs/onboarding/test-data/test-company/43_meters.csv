@@ -1,0 +1,5 @@
+place_code,meter_code,name,kind,unit,read_by,read_at
+TEST-HOTEL-1.0-ENGINEERING,HOTEL-1.0-EB-MAIN,Electricity main,electricity,kWh,TECHNICIAN,09:00
+TEST-HOTEL-1.0-ENGINEERING,HOTEL-1.0-PNG,Kitchen gas,gas,SCM,TECHNICIAN,09:00
+TEST-HOTEL-1.0-ENGINEERING,HOTEL-1.0-WATER,Water inlet,water,kL,TECHNICIAN,09:00
+TEST-HOTEL-1.0-ENGINEERING,HOTEL-1.0-DG,Generator diesel,diesel,L,TECHNICIAN,09:00

@@ -6,7 +6,7 @@
 --   Stock & buying   breakage, shelf_life (each needs stock)
 --   Kitchen & bar    excise (needs stock; for outlets that serve alcohol)
 --   People           training
---   Daily work       logbook, registers, utilities, audits (needs checklists)
+--   Daily work       logbook, registers, utilities and audits (each needs checklists)
 --   Hotel            rooms, linen (needs stock)
 --
 -- Each is on by default, like every block but Compliance: a customer whose plan has the bundle
@@ -71,6 +71,7 @@ as $$
            when 'clock_in' then array['roster']
            when 'pay' then array['roster']
            when 'swaps' then array['roster']
+           when 'utilities' then array['checklists']
            when 'audits' then array['checklists']
            when 'minibars' then array['stock']
            when 'linen' then array['stock']

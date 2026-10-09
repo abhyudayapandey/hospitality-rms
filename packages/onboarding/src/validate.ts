@@ -513,6 +513,19 @@ function validateTasks(
     }
   }
 
+  // file 43 (ADR 091): meters at places, read by a job role
+  const meterCodes = new Set<string>();
+  for (const m of b.meters) {
+    place(f('meters'), m.line, 'place_code', m.place_code);
+    if (meterCodes.has(m.meter_code)) {
+      add(f('meters'), m.line, 'meter_code', `${m.meter_code} is listed twice`);
+    }
+    meterCodes.add(m.meter_code);
+    if (!roles.has(m.read_by)) {
+      add(f('meters'), m.line, 'read_by', `${m.read_by} is not in ${f('jobRoles')}`);
+    }
+  }
+
   // file 45 (ADR 090): each register once; its roles are job roles of file 06
   const registers = new Set<string>();
   for (const r of b.registers) {
