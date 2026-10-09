@@ -6,6 +6,7 @@
 // The files are committed; the app only serves them. Every file on Commons is under a free
 // licence; we keep the licence and author of each.
 
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -107,11 +108,8 @@ async function infos(titles: string[]): Promise<Map<string, Info>> {
 
 async function bytesOf(info: Info): Promise<Buffer> {
   mkdirSync(CACHE, { recursive: true });
-  // the same name the picking script gives a download (Python's quote(url, safe=''))
-  const name = encodeURIComponent(info.thumb).replace(
-    /[!'()*]/g,
-    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
-  );
+  // the same name the picking script gives a download: the URL's SHA-1
+  const name = createHash('sha1').update(info.thumb).digest('hex');
   const cached = join(CACHE, name);
   if (existsSync(cached)) return readFileSync(cached);
   const res = await get(info.thumb);
