@@ -5,49 +5,56 @@ import { BaseSequencer, type TestSpecification } from 'vitest/node';
 // each shard the same number of files, so one shard can get all the slow ones. Here each
 // file goes to the shard with the least expected time so far, slowest first. The weights
 // are seconds per file on CI, two workers a shard: the "DB test times" step of each db job
-// prints them ready to paste (print-times.mjs; 2026-10-05). Re-measure when one shard runs
+// prints them ready to paste (print-times.mjs; 2026-10-09). Re-measure when one shard runs
 // much longer than the other; local timings differ too much to use. Any other file counts as
 // DEFAULT. Stale weights only make the shards less even, never skip a file. No file should
 // take much more than a quarter of the total: a file runs on one worker, so the slowest file
 // sets the floor (ADR 052 split reports-refusals and the loader tests in two for this).
 export const WEIGHTS: Readonly<Record<string, number>> = {
-  'packages/onboarding/src/loader-checks.db.test.ts': 217,
-  'packages/onboarding/src/loader.db.test.ts': 150,
-  // ADR 057, measured locally (130 s): re-measure on CI with the rest
-  'packages/db/src/reports-reconcile.db.test.ts': 145,
-  'packages/db/src/reports-refusals-2.db.test.ts': 141,
-  'packages/db/src/reports-refusals-1.db.test.ts': 140,
-  'packages/db/src/rls-equivalence.db.test.ts': 134,
-  'packages/onboarding/src/menu.db.test.ts': 109,
-  // ADR 059, four loads of Test Company (14 s locally): re-measure on CI with the rest
-  'packages/onboarding/src/duties-loader.db.test.ts': 75,
-  // ADR 065 added three loads: re-measure on CI with the rest
-  'packages/onboarding/src/role-cover-loader.db.test.ts': 130,
-  'packages/onboarding/src/import.db.test.ts': 72,
-  'packages/db/src/reports-access.db.test.ts': 68,
-  'packages/onboarding/src/derived.db.test.ts': 53,
-  'packages/db/src/labour-cost.db.test.ts': 28,
-  'packages/db/src/workflow.db.test.ts': 14,
-  'packages/onboarding/src/create.db.test.ts': 12,
-  // ADR 064, 14 loads of a new customer (10 s locally): re-measure on CI with the rest
-  'packages/onboarding/src/setup-draft.db.test.ts': 20,
-  'packages/db/src/workforce-flows.db.test.ts': 11,
+  'packages/db/src/rls-equivalence.db.test.ts': 286,
+  'packages/onboarding/src/loader-checks.db.test.ts': 252,
+  'packages/onboarding/src/setup-draft.db.test.ts': 146,
+  'packages/db/src/reports-refusals-2.db.test.ts': 142,
+  // a load per outlet template; it timed out shard 1 before it had a weight (2026-10-09,
+  // 144 s alone locally, like setup-draft): re-measure on CI with the rest
+  'packages/onboarding/src/outlet-template.db.test.ts': 140,
+  'packages/onboarding/src/menu.db.test.ts': 132,
+  'packages/db/src/reports-refusals-1.db.test.ts': 107,
+  'packages/db/src/reports-reconcile.db.test.ts': 90,
+  'packages/onboarding/src/import.db.test.ts': 87,
+  'packages/db/src/task-handover.db.test.ts': 73,
+  'packages/onboarding/src/retire-store.db.test.ts': 73,
+  'packages/onboarding/src/derived.db.test.ts': 61,
+  'packages/db/src/reports-access.db.test.ts': 49,
+  'packages/db/src/menu-access.db.test.ts': 40,
+  'packages/db/src/labour-cost.db.test.ts': 33,
+  'packages/db/src/tenant-isolation.db.test.ts': 32,
+  'packages/onboarding/src/loader.db.test.ts': 31,
+  'packages/onboarding/src/role-cover-loader.db.test.ts': 29,
+  'packages/onboarding/src/passport-demo.db.test.ts': 25,
+  'packages/onboarding/src/duties-loader.db.test.ts': 19,
+  'packages/onboarding/src/create.db.test.ts': 11,
+  'packages/onboarding/src/dish-photos.db.test.ts': 11,
+  'packages/db/src/dish-photos-methods.db.test.ts': 10,
+  'packages/db/src/role-cover.db.test.ts': 9,
   'packages/db/src/screen-places.db.test.ts': 9,
-  'packages/db/src/expiry.db.test.ts': 8,
   'packages/db/src/user-admin.db.test.ts': 8,
-  'packages/db/src/approval-chains.db.test.ts': 6,
-  'packages/db/src/po5-rfm.db.test.ts': 6,
-  'packages/db/src/access-groups.db.test.ts': 5,
-  'packages/db/src/inventory-perf.db.test.ts': 5,
-  'packages/db/src/menu-access.db.test.ts': 5,
-  'packages/db/src/attendance.db.test.ts': 4,
+  'packages/db/src/workforce-flows.db.test.ts': 8,
+  'packages/db/src/access-groups.db.test.ts': 7,
+  'packages/db/src/expiry.db.test.ts': 6,
+  'packages/db/src/who-does-what.db.test.ts': 6,
+  'packages/db/src/po5-rfm.db.test.ts': 5,
+  'packages/db/src/selfie-device.db.test.ts': 5,
+  'packages/db/src/test-customers.db.test.ts': 5,
+  'packages/db/src/workflow.db.test.ts': 5,
+  'packages/db/src/inventory-perf.db.test.ts': 4,
   'packages/db/src/inventory.db.test.ts': 4,
-  'packages/db/src/po-send.db.test.ts': 4,
+  'packages/db/src/measure-trends.db.test.ts': 4,
   'packages/db/src/pos-import.db.test.ts': 4,
-  'packages/db/src/profile.db.test.ts': 4,
   'packages/db/src/report-breakdowns.db.test.ts': 4,
   'packages/db/src/rostering.db.test.ts': 4,
-  'packages/db/src/selfie-device.db.test.ts': 4,
+  'packages/db/src/tasks-access.db.test.ts': 4,
+  'packages/db/src/workforce-schema.db.test.ts': 4,
 };
 const DEFAULT = 3;
 
