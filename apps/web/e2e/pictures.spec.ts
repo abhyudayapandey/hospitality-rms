@@ -107,3 +107,24 @@ test('every stock line is matched to the picture of the thing itself', async ({ 
   expect(keys).toContain('garlic');
   expect(keys.filter((k) => k === 'box')).toEqual([]);
 });
+
+test('an item shows a real photo from our library, and Profile credits it (ADR 085)', async ({
+  page,
+}) => {
+  const store = await placeId('TEST-HOTEL-1.0-KITCHEN-STORE');
+  await signInAs(page, 'Test Executive Chef 1.0');
+  await page.goto(`/stock?node=${store}`);
+  const garlic = page.locator('[data-testid="item-picture"][data-picture="garlic"] img').first();
+  await expect(garlic).toHaveAttribute('src', '/pictures/garlic.webp');
+  await expect
+    .poll(() => garlic.evaluate((img) => (img as HTMLImageElement).naturalWidth))
+    .toBeGreaterThan(0);
+
+  await page.goto('/profile');
+  await page.getByRole('link', { name: 'Picture credits' }).click();
+  const row = page.locator('main li').filter({ hasText: 'Garlic' }).first();
+  await expect(row.getByRole('link', { name: /Commons|source/i }).first()).toHaveAttribute(
+    'href',
+    /^https:\/\/commons\.wikimedia\.org\//,
+  );
+});

@@ -102,7 +102,10 @@ async function infos(titles: string[]): Promise<Map<string, Info>> {
         page: ii.descriptionurl,
         licence: plain(md.LicenseShortName?.value) || 'see source',
         licenceUrl: plain(md.LicenseUrl?.value),
-        author: plain(md.Artist?.value) || plain(md.Credit?.value) || 'Wikimedia Commons',
+        author: (plain(md.Artist?.value) || plain(md.Credit?.value) || 'Wikimedia Commons').replace(
+          /^No machine-readable author provided\. (.+) assumed \(based on copyright claims\)\.$/,
+          '$1',
+        ),
       });
     }
     await sleep(1000);
@@ -112,8 +115,8 @@ async function infos(titles: string[]): Promise<Map<string, Info>> {
 
 async function bytesOf(info: Info): Promise<Buffer> {
   mkdirSync(CACHE, { recursive: true });
-  // the same name the picking script gives a download: the URL's SHA-1
-  const name = createHash('sha1').update(info.thumb).digest('hex');
+  // one file per Commons file and width, whatever URL it came from
+  const name = createHash('sha1').update(`${info.title}@330`).digest('hex');
   const cached = join(CACHE, name);
   if (existsSync(cached)) return readFileSync(cached);
   const res = await get(info.thumb);

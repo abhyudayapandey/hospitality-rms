@@ -2,7 +2,7 @@ import { BackLink } from '@/components/back-link';
 import { ItemThumb } from '@/components/item-thumb';
 import { PICTURE_CREDITS } from '@/lib/picture-credits';
 
-// Who took each photo in the item picture library (ADR 084), with its licence and source, as
+// Who took each photo in our photo library (ADR 085), with its licence and source, as
 // the photos' free licences ask. Static: the same for everyone.
 
 export default function PictureCreditsPage() {
