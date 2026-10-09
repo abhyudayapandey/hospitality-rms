@@ -1,3 +1,4 @@
+import type { TaskIcon } from './task-icons';
 // The starter checklist library (ADR 062), taken from the SOP manuals in docs/sop/. An outlet
 // made from a template gets its own copy of each checklist its departments use, recording
 // which library checklist and version it came from; the outlet owns its copy, and a later
@@ -13,6 +14,8 @@ export interface LibraryStep {
   max?: number;
   unit?: string;
   photo?: boolean;
+  /** Its picture (ADR 079), where its words would not pick the right one (stepIcon). */
+  icon?: TaskIcon;
 }
 
 export interface LibraryChecklist {
@@ -113,7 +116,7 @@ export const CHECKLISTS: readonly LibraryChecklist[] = [
     schedule: 'daily 11:00',
     steps: [
       tick('Oil colour and smell OK'),
-      tick('Changed if not OK'),
+      { ...tick('Changed if not OK'), icon: 'oil' },
       { label: 'Photo of the oil', kind: 'photo' },
     ],
     from: 'QSR SOP kitchen; Restaurant SOP kitchen',
@@ -208,7 +211,7 @@ export const CHECKLISTS: readonly LibraryChecklist[] = [
     schedule: 'daily 21:30',
     steps: [
       tick('Coffee machine back-flushed and cleaned'),
-      tick('Display emptied; leftovers logged'),
+      { ...tick('Display emptied; leftovers logged'), icon: 'trash' },
       tick('Cash counted and handed over'),
     ],
     from: 'Restaurant SOP (café service); QSR SOP store closing',
@@ -680,5 +683,6 @@ export function libraryStepsJson(lib: LibraryChecklist) {
     ...(s.max !== undefined && { max: s.max }),
     ...(s.unit !== undefined && { unit: s.unit }),
     ...(s.photo && { photo_required: true }),
+    ...(s.icon && { icon: s.icon }),
   }));
 }

@@ -120,12 +120,19 @@ describe('recipes are read only where they are made or sold', () => {
       // inv.item is stock catalogue (it carries standard costs): a commis has no stock access
       expect(procs.rows!.every((r) => r.sku === null)).toBe(true);
       const n = await count(c, 'test.commis.1.0', 'inv.prep_procedure');
+      // and the methods of the dishes the commis reads (ADR 078)
+      const dishes = [...(await readable(c, 'test.commis.1.0'))];
       const expected = await c.query<{ n: number }>(
-        `select count(*)::int as n from inv.prep_procedure p join inv.item i on i.id = p.prep_item_id
-          join core.tenant t on t.id = p.tenant_id
-         where t.code = 'TEST-COMPANY'
-           and i.sku in ('GINGER-GARLIC-PASTE', 'MINT-CHUTNEY', 'STEAMED-RICE')`,
+        `select count(*)::int as n from inv.prep_procedure p
+           left join inv.item i on i.id = p.prep_item_id
+           left join menu.menu_item m on m.id = p.menu_item_id
+           join core.tenant t on t.id = p.tenant_id
+          where t.code = 'TEST-COMPANY'
+            and (i.sku in ('GINGER-GARLIC-PASTE', 'MINT-CHUTNEY', 'STEAMED-RICE')
+                 or m.code = any($1::text[]))`,
+        [dishes],
       );
+      expect(expected.rows[0]!.n).toBeGreaterThan(10);
       expect(n).toBe(expected.rows[0]!.n);
       const lines = await count(c, 'test.bartender.1.0', 'inv.recipe_line');
       const visible = await readable(c, 'test.bartender.1.0');

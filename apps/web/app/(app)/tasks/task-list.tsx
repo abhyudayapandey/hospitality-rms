@@ -1,10 +1,14 @@
 import Link from 'next/link';
+import { taskIcon } from '@outlet-ops/domain';
+import { Icon } from '@/components/icon';
 import { formatWhen } from '@/lib/format';
 import { overdueWhenGiven, progress } from '@/lib/tasks-view';
 
 export interface ListedTask {
   id: string;
   title: string;
+  /** for its picture (ADR 079) */
+  kind?: string;
   place_name: string;
   due_at: Date;
   priority: string;
@@ -43,7 +47,14 @@ export function TaskList({ tasks, testId }: { tasks: ListedTask[]; testId?: stri
               href={`/tasks/${t.id}`}
               className="flex min-h-14 items-center justify-between gap-3 px-4 py-3"
             >
-              <span className="min-w-0">
+              <span
+                className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"
+                data-testid="task-icon"
+                data-icon={taskIcon(t.title, t.kind ?? 'one_off')}
+              >
+                <Icon name={taskIcon(t.title, t.kind ?? 'one_off')} className="size-7" />
+              </span>
+              <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">
                   {t.priority === 'high' && (
                     <span className="mr-1 text-rose-700" aria-label="High priority">

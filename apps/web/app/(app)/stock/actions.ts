@@ -189,6 +189,10 @@ export interface ReceivedLine {
   item_id: string;
   qty: number;
   amount: number;
+  /** into the store or to the department that asked (ADR 080) */
+  to?: 'store' | 'department';
+  /** the expiry date, YYYY-MM-DD, if it has one */
+  expires_on?: string;
 }
 
 /**
@@ -205,7 +209,14 @@ export async function receiveGoods(
   return run('receive_goods', async (tx) => {
     const clean = lines
       .filter((l) => Number.isFinite(l.qty) && Number.isFinite(l.amount))
-      .map((l) => ({ item_id: l.item_id, qty: l.qty, amount: l.amount }));
+      .map((l) => ({
+        item_id: l.item_id,
+        qty: l.qty,
+        amount: l.amount,
+        ...(l.to && { to: l.to }),
+        ...(l.expires_on &&
+          /^\d{4}-\d{2}-\d{2}$/.test(l.expires_on) && { expires_on: l.expires_on }),
+      }));
     const r = await sql<{ id: string }>`
       select inv.receive_goods(${po}::uuid, ${json(clean)}::jsonb, ${idempotencyKey}) as id`.execute(
       tx,

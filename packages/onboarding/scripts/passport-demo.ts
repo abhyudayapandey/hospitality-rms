@@ -489,6 +489,7 @@ csv(
     'standard_unit_cost_inr',
     'preferred_supplier_code',
     'item_type',
+    'receive_to',
   ],
   ITEMS.map((i) => [
     i.code,
@@ -500,6 +501,8 @@ csv(
     i.sup,
     // linen is kept and laundered, not used up (ADR 076)
     i.cat === 'Linen' ? 'durable' : 'consumable',
+    // fresh food goes straight to the kitchen that asked for it (ADR 080)
+    ['Seafood', 'Meat', 'Dairy & eggs', 'Produce', 'Bakery'].includes(i.cat) ? 'department' : '',
   ]),
 );
 csv(
@@ -873,10 +876,40 @@ csv(
   ['prep_item_code', 'store_node_code', 'made_here', 'par_level'],
   PREPS.flatMap((p) => p.at.map((s) => [p.code, s, 'yes', p.par])),
 );
+// a dish's method (ADR 078): the signatures and the breakfast favourite
+const DISH_METHODS: [string, [string, number][]][] = [
+  [
+    'PASSPORT-DE-PICANTE',
+    [
+      ['Muddle the pineapple and green chillies in the shaker.', 1],
+      ['Add tequila, sugar syrup and the juice of the lime; fill with ice and shake hard.', 1],
+      ['Double strain into a chilled glass over fresh ice; garnish with a chilli.', 1],
+    ],
+  ],
+  [
+    'MADAME-ROSITA',
+    [
+      ['Build gin and hibiscus syrup over ice in a highball.', 1],
+      ['Squeeze in the lime, top with soda and stir once.', 1],
+    ],
+  ],
+  [
+    'ROS-OMELETTE',
+    [
+      ['Whisk two eggs with onion, chilli and coriander; cook a thin omelette.', 4],
+      ['Ladle the hot ros over the omelette; serve with two poi.', 2],
+    ],
+  ],
+];
 csv(
   '24_prep_procedures.csv',
-  ['prep_item_code', 'step', 'instruction', 'minutes'],
-  PREPS.flatMap((p) => p.steps.map(([t, m], i) => [p.code, i + 1, t, m])),
+  ['prep_item_code', 'recipe_for_kind', 'step', 'instruction', 'minutes'],
+  [
+    ...PREPS.flatMap((p) => p.steps.map(([t, m], i) => [p.code, 'prep', i + 1, t, m])),
+    ...DISH_METHODS.flatMap(([code, steps]) =>
+      steps.map(([t, m], i) => [code, 'menu', i + 1, t, m]),
+    ),
+  ],
 );
 
 interface Dish {
@@ -1796,8 +1829,36 @@ for (const [user, dept, shift, start, end] of SHIFTS) {
   const k = `${dept} ${shift} ${roleOf(user)}`;
   const t = templates.get(k);
   if (t) t[5] = (t[5] as number) + 1;
-  else templates.set(k, [D(dept), shift, start, end, roleOf(user), 1, 'Mon-Sun']);
+  else templates.set(k, [D(dept), shift, start, end, roleOf(user), 1, 'Mon-Sun', '', '', '', '']);
 }
+// the shift types the hotel works besides straight ones (ADR 082): a split for the
+// restaurant's lunch and dinner, and the bar's panzer on the busy nights
+templates.set('RESTAURANT Split', [
+  D('RESTAURANT'),
+  'Split',
+  '11:00',
+  '23:00',
+  roleOf('server'),
+  1,
+  'Mon-Sun',
+  'split',
+  '15:00',
+  '18:00',
+  '',
+]);
+templates.set('BAR Panzer', [
+  D('BAR'),
+  'Panzer',
+  '19:00',
+  '03:00',
+  roleOf('bartender'),
+  1,
+  'Fri-Sat',
+  'panzer',
+  '',
+  '',
+  30,
+]);
 csv(
   '16_shift_templates.csv',
   [
@@ -1808,6 +1869,10 @@ csv(
     'job_role_code',
     'headcount',
     'days',
+    'shift_type',
+    'first_end',
+    'second_start',
+    'break_minutes',
   ],
   [...templates.values()],
 );

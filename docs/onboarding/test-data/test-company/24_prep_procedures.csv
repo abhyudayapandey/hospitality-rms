@@ -1,25 +1,30 @@
-prep_item_code,step,instruction,minutes
-MAKHANI-GRAVY,1,"Blanch, peel and roughly chop the tomatoes.",15
-MAKHANI-GRAVY,2,Cook tomatoes with garlic and ginger until soft; blend smooth and strain.,40
-MAKHANI-GRAVY,3,"Simmer the purée with butter, chilli powder, salt and sugar until thick.",30
-MAKHANI-GRAVY,4,"Finish with cream and garam masala; cool, label with batch time and chill.",15
-ONION-TOMATO-MASALA,1,Slice onions; chop tomatoes; crush ginger and garlic.,20
-ONION-TOMATO-MASALA,2,Fry onions in oil until deep golden.,25
-ONION-TOMATO-MASALA,3,"Add ginger, garlic, spices and salt; cook out.",10
-ONION-TOMATO-MASALA,4,"Add tomatoes; cook until oil separates; cool, label and chill.",30
-GINGER-GARLIC-PASTE,1,Peel ginger and garlic.,20
-GINGER-GARLIC-PASTE,2,"Blend with oil to a smooth paste; store airtight, labelled.",10
-MINT-CHUTNEY,1,Pick and wash mint and coriander.,15
-MINT-CHUTNEY,2,"Blend with chillies, lemon juice and salt; chill.",10
-STEAMED-RICE,1,Wash and soak rice for 20 minutes.,25
-STEAMED-RICE,2,"Boil, drain and rest covered; hold hot, discard after 8 hours.",25
-SUGAR-SYRUP,1,Dissolve sugar in 500 ml hot water.,10
-SUGAR-SYRUP,2,"Cool, bottle, label with date; refrigerate.",5
-SOUR-MIX,1,Juice the lemons and strain.,15
-SOUR-MIX,2,"Mix with sugar syrup; bottle, label, refrigerate.",5
-NEGRONI-BATCH,1,"Combine gin, Campari and vermouth with 200 ml chilled water for dilution.",5
-NEGRONI-BATCH,2,"Bottle in 500 ml bottles, label with batch time; refrigerate.",10
-OLD-FASHIONED-BATCH,1,"Combine whisky, syrup and bitters with 135 ml water.",5
-OLD-FASHIONED-BATCH,2,"Bottle, label and refrigerate.",5
-HOUSE-SANGRIA-BATCH,1,Slice lemons; combine all ingredients in a dispenser.,10
-HOUSE-SANGRIA-BATCH,2,Chill at least 2 hours; discard after 48 hours.,5
+prep_item_code,recipe_for_kind,step,instruction,minutes
+MAKHANI-GRAVY,prep,1,"Blanch, peel and roughly chop the tomatoes.",15
+MAKHANI-GRAVY,prep,2,Cook tomatoes with garlic and ginger until soft; blend smooth and strain.,40
+MAKHANI-GRAVY,prep,3,"Simmer the purée with butter, chilli powder, salt and sugar until thick.",30
+MAKHANI-GRAVY,prep,4,"Finish with cream and garam masala; cool, label with batch time and chill.",15
+ONION-TOMATO-MASALA,prep,1,Slice onions; chop tomatoes; crush ginger and garlic.,20
+ONION-TOMATO-MASALA,prep,2,Fry onions in oil until deep golden.,25
+ONION-TOMATO-MASALA,prep,3,"Add ginger, garlic, spices and salt; cook out.",10
+ONION-TOMATO-MASALA,prep,4,"Add tomatoes; cook until oil separates; cool, label and chill.",30
+GINGER-GARLIC-PASTE,prep,1,Peel ginger and garlic.,20
+GINGER-GARLIC-PASTE,prep,2,"Blend with oil to a smooth paste; store airtight, labelled.",10
+MINT-CHUTNEY,prep,1,Pick and wash mint and coriander.,15
+MINT-CHUTNEY,prep,2,"Blend with chillies, lemon juice and salt; chill.",10
+STEAMED-RICE,prep,1,Wash and soak rice for 20 minutes.,25
+STEAMED-RICE,prep,2,"Boil, drain and rest covered; hold hot, discard after 8 hours.",25
+SUGAR-SYRUP,prep,1,Dissolve sugar in 500 ml hot water.,10
+SUGAR-SYRUP,prep,2,"Cool, bottle, label with date; refrigerate.",5
+SOUR-MIX,prep,1,Juice the lemons and strain.,15
+SOUR-MIX,prep,2,"Mix with sugar syrup; bottle, label, refrigerate.",5
+NEGRONI-BATCH,prep,1,"Combine gin, Campari and vermouth with 200 ml chilled water for dilution.",5
+NEGRONI-BATCH,prep,2,"Bottle in 500 ml bottles, label with batch time; refrigerate.",10
+OLD-FASHIONED-BATCH,prep,1,"Combine whisky, syrup and bitters with 135 ml water.",5
+OLD-FASHIONED-BATCH,prep,2,"Bottle, label and refrigerate.",5
+HOUSE-SANGRIA-BATCH,prep,1,Slice lemons; combine all ingredients in a dispenser.,10
+HOUSE-SANGRIA-BATCH,prep,2,Chill at least 2 hours; discard after 48 hours.,5
+BUTTER-CHICKEN,menu,1,Warm 200 g makhani gravy in a pan.,3
+BUTTER-CHICKEN,menu,2,Add the cooked chicken; simmer until hot through.,5
+BUTTER-CHICKEN,menu,3,Finish with cream and butter; garnish with coriander.,1
+PANEER-BUTTER-MASALA,menu,1,Warm the makhani gravy; add the paneer cubes.,4
+PANEER-BUTTER-MASALA,menu,2,Finish with cream; serve hot.,1

@@ -148,9 +148,10 @@ export class OutletOpsStack extends Stack {
         { prefix: 'wastage/', expiration: Duration.days(400) },
         // onboarding uploads (ADR 013): kept between a dry run and its apply, then gone
         { prefix: 'onboarding/', expiration: Duration.days(30) },
-        // task photos (ADR 020): routine checklist photos 90 days; flagged steps and
-        // maintenance requests 400 days (the app copies a flagged photo to keep/)
-        { prefix: 'tasks/routine/', expiration: Duration.days(90) },
+        // task photos (ADR 020, 079): routine task and step photos 30 days (the nightly job
+        // clears their keys at the same age); flagged steps and maintenance requests 400 days
+        // (the app copies a flagged photo to keep/)
+        { prefix: 'tasks/routine/', expiration: Duration.days(30) },
         { prefix: 'tasks/keep/', expiration: Duration.days(400) },
         // stock check proof photos (ADR 043) and vendor bills (ADR 050): money data, kept
         // 7 years (NFR Data retention)

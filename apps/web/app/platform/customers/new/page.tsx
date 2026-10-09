@@ -4,7 +4,7 @@ import { NewCustomerForm } from './new-customer-form';
 
 // ADM-2: a customer whose files are already filled in: the company and its first account
 // owner here, then their files on Update from their files. The usual way is the set-up
-// (ADR 064); this is the other tool (ADR 075).
+// (ADR 064); this is the other tool (ADR 077).
 export default async function NewCustomerPage() {
   await requirePlatformAdmin();
   return (

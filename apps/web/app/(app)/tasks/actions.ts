@@ -98,6 +98,14 @@ export async function completeStep(
   return r;
 }
 
+/** A photo of the task itself (ADR 079): three at most, while it is to do. */
+export async function addTaskPhoto(task: string, photoKey: string): Promise<ActionResult<null>> {
+  return run('add_task_photo', async (tx) => {
+    await sql`select ops.add_task_photo(${task}::uuid, ${photoKey})`.execute(tx);
+    return null;
+  });
+}
+
 export async function completeTask(task: string, note: string): Promise<ActionResult<null>> {
   return run('complete_task', async (tx) => {
     await sql`select ops.complete_task(${task}::uuid, ${note})`.execute(tx);

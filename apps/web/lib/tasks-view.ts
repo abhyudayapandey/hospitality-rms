@@ -124,6 +124,8 @@ export interface StepInput {
   max?: number | null;
   unit?: string | null;
   photo_required?: boolean;
+  /** its picture when chosen (ADR 079); none: picked from its words */
+  icon?: string | null;
 }
 
 /**

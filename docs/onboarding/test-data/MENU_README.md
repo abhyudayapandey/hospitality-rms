@@ -34,7 +34,7 @@ Selling a menu item uses up its recipe from the store in file 23.
 | `21_recipes.csv`                | Recipe lines for prep items and menu items: ingredient, quantity in the recipe unit, and trim loss % (the part thrown away while preparing, e.g. prawn shells)                                                                                                  |
 | `22_menu_items.csv`             | What is sold: name, menu (Food/Bar), category, serving                                                                                                                                                                                                          |
 | `23_menu_outlets.csv`           | Which outlet sells which menu item, the price before tax, and the store its ingredients come from; optional `pos_code`, the item's code on the outlet's POS for the POS import (ADR 039)                                                                        |
-| `24_prep_procedures.csv`        | Method steps and minutes for each prep item                                                                                                                                                                                                                     |
+| `24_prep_procedures.csv`        | Method steps and minutes for each prep item, and for a dish with `recipe_for_kind` = `menu` (ADR 078)                                                                                                                                                           |
 | `98_prep_costing_GENERATED.csv` | Generated, not filled: cost of one batch and cost per g/ml of each prep item                                                                                                                                                                                    |
 | `98_menu_costing_GENERATED.csv` | Generated, not filled: cost per serve and cost % for every menu item at every outlet                                                                                                                                                                            |
 
@@ -53,3 +53,6 @@ Cost of a line = quantity ÷ (1 − trim loss %) × cost per recipe unit.
 Cost per recipe unit of a raw item = standard unit cost ÷ recipe units per stock unit.
 Cost per unit of a prep item = total cost of its batch ÷ batch yield.
 Water used for dilution or syrups is free and not listed.
+
+A dish's photo goes in the zip's `photos/menu/<dish code>.jpg` (or `.png`, `.webp`), 2 MB at most;
+the dry run lists it under "dish photos" and nothing is stored until it is applied (ADR 078).

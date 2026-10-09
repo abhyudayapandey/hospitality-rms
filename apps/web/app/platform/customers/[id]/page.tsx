@@ -16,7 +16,7 @@ interface Job {
 }
 
 // One customer (metadata only, ADR 012): add an outlet, their people's sign-ins, update from
-// their files; what they buy (ADR 067); account owners; history; pausing last (ADR 075).
+// their files; what they buy (ADR 067); account owners; history; pausing last (ADR 077).
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();

@@ -209,13 +209,31 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   app as anyone in their company; the database checks it on every request (`core.presented_by`),
   audit rows carry `presented_by`, and nothing touches a login meanwhile (`PRESENTING`).
 - Room minibars (ADR 072, files 40 to 42): rooms with a minibar set (par, price, a store); a check
-  charges what is missing and refills it from the store as a `consumption`; front office marks it
-  on the bill. The duty `CHECKS_MINIBARS`. The Passport Hotel pilot demo is
+  charges what is missing; its refill (for whoever checked) and its bill (for the front desk on
+  shift) are To do items, and the stock leaves the store as a `consumption` when the refill is
+  done (ADR 081, `ops.refill_minibar`); front office marks it on the bill, which closes the bill
+  task and tells housekeeping. The duty `CHECKS_MINIBARS`. The Passport Hotel pilot demo is
   `docs/onboarding/demo/passport-hotel`, written by `pnpm --filter @outlet-ops/onboarding passport-demo`.
-- The team console (`/platform`, ADR 075) is for Outlet Ops staff and speaks as plainly as the
+- The team console (`/platform`, ADR 077) is for Outlet Ops staff and speaks as plainly as the
   app: no codes, job kinds, table names or raw states (`app/platform/parts.ts` has the words);
   one main action first, other tools last on their own rows; pausing a customer is on its
   page behind a tap; Add an outlet makes its code from the name.
+- A dish has a photo (`menu.set_dish_photo`, under `items/`, whoever may change its recipe) and a
+  method (file 24 `recipe_for_kind` = menu); its page has Ingredients and Recipe tabs, and a prep
+  item among the ingredients opens its own recipe (ADR 078). Dish photos come in the import zip's
+  `photos/menu/<dish code>.jpg`, checked in the dry run and stored only when applied.
+- Every task and step has a picture (ADR 079): a step may name one (`step_icon`, the library, the
+  checklist editor), else `stepIcon` picks it from its words; the database takes only
+  `ops.task_icon_names` (= `TASK_ICONS`). Any step takes a photo, a task up to three
+  (`ops.task_photo`); routine task photos are cleared after 30 days (`ops.purge_task_photos` and
+  the `tasks/routine/` rule), kept readings and maintenance 400. Count rows show their pack.
+- Receiving a department's order (ADR 080): per line into the Main Store or straight to the
+  department (a receipt plus an `issue` transfer, ledger inserts only), the default from file 10
+  `receive_to`; an optional expiry date per line makes a dated batch.
+- Shift types (ADR 082, file 16): straight, split (one shift, its gap a break: two clock-in pairs,
+  one shift, hours without breaks) and panzer (evening to early morning, one block). The roster
+  by person (`view=people`): a tile per shift type and Off (`hr.set_day_shift`, every rule runs
+  again); "Repeat this pattern" (`hr.repeat_pattern`) leaves out and lists what a rule refuses.
 - The service worker shows "Can't reach Outlet Ops" after 10 s and caches nothing; Cognito calls
   give up after 5 s, and Cognito not answering never signs anyone out (ADR 063). Caddy speaks
   HTTP/1.1 and HTTP/2 only (the security group has no UDP 443) and logs each request.
@@ -312,6 +330,9 @@ the Solo Bar's Kitchen Steward is not done. The test customers' roles are the SO
 Files 38 and 39 are licences and the compliance calendar (any customer, ADR 069); Test Company
 has Compliance in its plan from `seed/dev/002_compliance_plan.sql`, Hotel 1.0's FSSAI licence
 expired and its pest control overdue, pinned by `packages/db/src/compliance.db.test.ts`.
+File 10 `receive_to`, file 16 shift types, file 24 dish methods, file 29 `step_icon` and the
+zip's `photos/menu/` are ADR 078 to 082 (test-data README, "GM round 1"); Test Company's Hotel
+1.0 has a Split and a Panzer shift, pinned by `roster-tiles.db.test.ts`.
 File 34 is pay rates (any customer); files 35 and 36 (test customers only, ADR 030) load a
 past week of attendance and two central kitchen transfers; the labour, People and central
 kitchen figures are pinned by `packages/db/src/labour-reports.db.test.ts`.

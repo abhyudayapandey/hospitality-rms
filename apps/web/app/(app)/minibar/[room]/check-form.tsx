@@ -56,7 +56,7 @@ export function CheckForm({ room, items }: { room: string; items: Item[] }) {
       setLeft({});
       setStatus(
         charge > 0
-          ? `Saved. ${formatMoney(charge)} to add to the guest's bill; the minibar is refilled.`
+          ? `Saved. ${formatMoney(charge)} to add to the guest's bill. Refill it from your To do list.`
           : 'Saved. Nothing was used.',
       );
       router.refresh();
@@ -107,7 +107,7 @@ export function CheckForm({ room, items }: { room: string; items: Item[] }) {
       <ErrorBox message={error} />
       <StatusBox message={status} />
       <button type="submit" disabled={!hydrated || pending} className={primaryButton}>
-        Save and refill
+        Save
       </button>
     </form>
   );

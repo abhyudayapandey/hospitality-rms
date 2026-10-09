@@ -37,6 +37,18 @@ export async function checkMinibar(input: {
 export async function markMinibarCharged(id: string): Promise<ActionResult<null>> {
   return run('mark_minibar_charged', async (tx) => {
     await sql`select ops.mark_minibar_charged(${id}::uuid)`.execute(tx);
+    // the billing task closes with it (ADR 081)
+    revalidatePath('/tasks', 'layout');
     return null;
+  });
+}
+
+/** The room is refilled (ADR 081): the stock leaves the store; the refill task is done. */
+export async function refillMinibar(task: string): Promise<ActionResult<{ short: boolean }>> {
+  return run('refill_minibar', async (tx) => {
+    const r = await sql<{ short: boolean }>`
+      select ops.refill_minibar(${task}::uuid) as short`.execute(tx);
+    revalidatePath('/tasks', 'layout');
+    return { short: r.rows[0]!.short };
   });
 }
