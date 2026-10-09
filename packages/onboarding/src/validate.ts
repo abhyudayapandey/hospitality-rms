@@ -521,7 +521,8 @@ function validateTasks(
     }
     registers.add(r.register);
     for (const role of r.roles) {
-      if (!roles.has(role)) add(f('registers'), r.line, 'roles', `${role} is not in ${f('jobRoles')}`);
+      if (!roles.has(role))
+        add(f('registers'), r.line, 'roles', `${role} is not in ${f('jobRoles')}`);
     }
   }
 
