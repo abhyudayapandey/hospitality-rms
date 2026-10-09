@@ -123,6 +123,18 @@ export default async function OrderPage({
                       where id = ${id}::uuid and created_by = core.current_user_id()) as mine`.execute(
       tx,
     );
+    // where each line goes by default when the Main Store receives it for a department (ADR 080)
+    const dests =
+      canPlace && facts.rows[0]?.via_desk
+        ? (
+            await sql<{
+              item_id: string;
+              receive_to: 'store' | 'department';
+              desk_keeps: boolean;
+              department: string | null;
+            }>`select * from inv.receive_defaults(${id}::uuid)`.execute(tx)
+          ).rows
+        : [];
     const closed = await sql<{ closed_at: Date; closed_by: string | null; reason: string }>`
       select * from inv.po_closed(${id}::uuid)`.execute(tx);
     const sends =
@@ -161,6 +173,7 @@ export default async function OrderPage({
       mine: facts.rows[0]?.mine ?? false,
       closed: closed.rows[0] ?? null,
       lines: lines.rows,
+      dests,
       suppliers,
       sends: sends.rows,
       bills: bills.rows,
@@ -309,7 +322,15 @@ export default async function OrderPage({
           </ul>
         )
       ) : canReceive ? (
-        <ReceiveForm po={po.id} lines={lines} billHere={po.supplier_id !== null} />
+        <ReceiveForm
+          po={po.id}
+          lines={lines.map((l) => {
+            const d = data.dests.find((x) => x.item_id === l.item_id);
+            return d ? { ...l, receive_to: d.receive_to, desk_keeps: d.desk_keeps } : l;
+          })}
+          billHere={po.supplier_id !== null}
+          department={data.dests[0]?.department ?? null}
+        />
       ) : (
         <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
           {lines.map((l) => (

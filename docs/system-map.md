@@ -204,7 +204,9 @@ until it is received. The department is told when it is ordered and when it is r
 **The Main Store keeper** (ADR 051). Orders is one list: the Main Store's own orders and the
 departments' requests the keeper orders and receives, with tabs To order, To receive and
 Received whose counts match their lists. Receiving fills nothing in: what arrived and the amount
-paid for each item (required), and optionally the bill; without a bill the order says **Bill
+paid for each item (required), for a department's order where each line goes (into the Main
+Store, or straight to the department, from the item's default; ADR 080), an expiry date if it has
+one, and optionally the bill; without a bill the order says **Bill
 missing** to the GM, the department head and the keeper. **Send stock** gives stock to a
 department's store: it leaves the Main Store at once, the person on shift there (else the head,
 who can assign it on) gets a task to confirm what arrived, and a shortfall is posted as transit
@@ -257,9 +259,11 @@ saving again edits it, "Take down" archives it. No module: it comes with every p
 **Minibars** (ADR 072). A hotel's rooms (file 40), each with a minibar set (file 41: items, par,
 price, the store it refills from). Me → Minibars: Rooms (when each was last checked), To charge
 (what front office still has to add to bills, "Added to the bill") and Sold (7 or 30 days).
-Checking a room counts what is left; what is missing is charged and refilled from the store as
-a consumption. Housekeeping and front office hold the duty "Checks the rooms' minibars"
-(MINIBAR_KEEPER at the outlet); the outlet's managers too; area managers see.
+Checking a room counts what is left; what is missing is charged. The refill is a To do item for
+whoever checked ("Refilled" takes the stock from the store as a consumption) and the bill one for
+the front desk on shift ("Added to the bill" closes it and tells housekeeping; ADR 081).
+Housekeeping and front office hold the duty "Checks the rooms' minibars" (MINIBAR_KEEPER at the
+outlet); the outlet's managers too; area managers see.
 
 **Show as someone** (ADR 071), test customers only. A demo presenter (file 07) opens Me → Show
 the app as someone and picks a person of their company; every screen is then theirs, under an

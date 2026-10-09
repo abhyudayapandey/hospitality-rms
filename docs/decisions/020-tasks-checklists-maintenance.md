@@ -128,11 +128,11 @@ not. So a discard above the limit is submitted in the name of the person who ass
 
 Task photos go to the same private bucket under new prefixes.
 
-| Prefix           | What                                                      | Kept     |
-| ---------------- | --------------------------------------------------------- | -------- |
-| `tasks/routine/` | step photos                                               | 90 days  |
-| `tasks/keep/`    | a flagged step's photo (copied), maintenance photos       | 400 days |
-| `wastage/`       | the discard of an expired batch (as all wastage, ADR 006) | as now   |
+| Prefix           | What                                                      | Kept                        |
+| ---------------- | --------------------------------------------------------- | --------------------------- |
+| `tasks/routine/` | step photos (and a task's own photos, ADR 079)            | 30 days (90 before ADR 079) |
+| `tasks/keep/`    | a flagged step's photo (copied), maintenance photos       | 400 days                    |
+| `wastage/`       | the discard of an expired batch (as all wastage, ADR 006) | as now                      |
 
 - **Presigning.** The server presigns an upload only after `ops.can_upload_photo(purpose,
 node)` says the person works on a task there, a request there, or the discard.

@@ -11,6 +11,8 @@ import { departmentSections } from '@/lib/department-groups';
 import type { PlaceDepartment } from '@/lib/today-view';
 import { dayStrip, groupByTime, pickDay } from '@/lib/roster-view';
 import { RemoveButton, WeekActions, type TemplateWindow } from './week-actions';
+import { PeopleTiles, RepeatPattern } from './people-tiles';
+import { rosterDay, type RosterDay } from '@/lib/roster-tiles';
 import { jobTitles } from '@/lib/job-titles';
 
 // The manager's week: build from templates, assign, publish. Mobile-first: a day strip
@@ -50,15 +52,25 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
   const window = canEdit && !all ? await templateWindow(user.id, node.id, monday) : null;
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const list = param(sp, 'view') === 'list';
+  // by person (ADR 082): a row each, a tile per shift type and Off; one department at a time
+  const byPerson = param(sp, 'view') === 'people' && !all;
   const day = pickDay(days, param(sp, 'day'), localToday(ctx.tz));
+  const tiles: RosterDay | null = byPerson
+    ? await withUser(user.id, (tx) => rosterDay(tx, node.id, day))
+    : null;
   const base = `/roster/week?node=${node.id}${all ? '&all=1' : ''}`;
-  const link = (week: string) => `${base}&week=${week}${list ? '&view=list' : ''}`;
+  const viewQ = list ? '&view=list' : byPerson ? '&view=people' : '';
+  const link = (week: string) => `${base}&week=${week}${viewQ}`;
   const now = new Date();
   const editable = (s: RosterShift) => canEdit && new Date(s.start_at) > now;
 
   const timeGroups = (rows: RosterShift[]) =>
     groupByTime(rows).map((g) => {
-      const span = formatSpan(g.start_at, g.end_at, ctx.tz);
+      // a split shift reads as its two blocks (ADR 082)
+      const split = g.shifts.every((x) => x.split_end_at && x.split_start_at) ? g.shifts[0] : null;
+      const span = split
+        ? `${formatSpan(g.start_at, split.split_end_at!, ctx.tz)} · ${formatSpan(split.split_start_at!, g.end_at, ctx.tz)}`
+        : formatSpan(g.start_at, g.end_at, ctx.tz);
       return (
         <section
           key={g.key}
@@ -117,15 +129,59 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
         <p className="text-sm text-slate-600" data-testid="week-summary">
           {shifts.length} shifts · {drafts} draft · {open} open slot{open === 1 ? '' : 's'}
         </p>
-        <Link
-          href={list ? `${base}&week=${monday}&day=${day}` : `${base}&week=${monday}&view=list`}
-          className="flex min-h-11 shrink-0 items-center px-2 text-sm text-slate-700 underline"
-        >
-          {list ? 'Day view' : 'List view'}
-        </Link>
+        <span className="flex shrink-0 items-center gap-3 text-sm">
+          {!all && (
+            <Link
+              href={
+                byPerson
+                  ? `${base}&week=${monday}&day=${day}`
+                  : `${base}&week=${monday}&day=${day}&view=people`
+              }
+              className="flex min-h-11 items-center text-slate-700 underline"
+              data-testid="view-people"
+            >
+              {byPerson ? 'By shift' : 'By person'}
+            </Link>
+          )}
+          <Link
+            href={list ? `${base}&week=${monday}&day=${day}` : `${base}&week=${monday}&view=list`}
+            className="flex min-h-11 items-center text-slate-700 underline"
+          >
+            {list ? 'Day view' : 'List view'}
+          </Link>
+        </span>
       </div>
       {window && <WeekActions node={node.id} monday={monday} drafts={drafts} window={window} />}
-      {shifts.length === 0 ? (
+      {byPerson && tiles ? (
+        <>
+          <nav aria-label="Days" className="grid grid-cols-7 gap-1">
+            {days.map((d, i) => (
+              <Link
+                key={d}
+                href={`${base}&week=${monday}&day=${d}&view=people`}
+                aria-current={d === day ? 'date' : undefined}
+                data-testid="day-chip"
+                className={`flex min-h-14 flex-col items-center justify-center rounded-lg text-xs ${
+                  d === day
+                    ? 'bg-brand-700 text-white'
+                    : 'bg-white text-slate-700 ring-1 ring-slate-200'
+                }`}
+              >
+                <span>{WEEKDAYS[i]}</span>
+                <span className="text-base font-semibold tabular-nums">{Number(d.slice(8))}</span>
+              </Link>
+            ))}
+          </nav>
+          <h2 className="text-sm font-semibold text-slate-700">{formatDay(day)}</h2>
+          <PeopleTiles
+            day={day}
+            types={tiles.types}
+            people={tiles.people}
+            canEdit={canEdit && day >= localToday(ctx.tz)}
+          />
+          {canEdit && <RepeatPattern node={node.id} monday={monday} />}
+        </>
+      ) : shifts.length === 0 ? (
         <Empty>No shifts this week yet.{canEdit ? ' Add them from the templates.' : ''}</Empty>
       ) : list ? (
         (() => {

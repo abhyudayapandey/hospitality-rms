@@ -357,6 +357,47 @@ export function validateBundle(b: Bundle): Issue[] {
     }
     if (t.start_time === t.end_time)
       add(f('shiftTemplates'), t.line, 'end_time', 'must differ from the start');
+    // the shapes of a shift type (ADR 082); times as HH:MM compare as text
+    const blocks = t.first_end !== undefined || t.second_start !== undefined;
+    if (t.shift_type === 'split') {
+      if (t.first_end === undefined || t.second_start === undefined) {
+        add(
+          f('shiftTemplates'),
+          t.line,
+          'first_end',
+          'a split shift needs first_end and second_start',
+        );
+      } else if (!(
+        t.start_time < t.first_end &&
+        t.first_end < t.second_start &&
+        t.second_start < t.end_time
+      )) {
+        add(
+          f('shiftTemplates'),
+          t.line,
+          'second_start',
+          'a split shift runs start_time to first_end, then second_start to end_time, in one day',
+        );
+      }
+    } else if (blocks) {
+      add(f('shiftTemplates'), t.line, 'first_end', 'only a split shift has two blocks');
+    }
+    if (
+      t.shift_type === 'panzer' &&
+      !(
+        t.start_time >= '17:00' &&
+        t.start_time <= '21:00' &&
+        t.end_time >= '01:00' &&
+        t.end_time <= '05:00'
+      )
+    ) {
+      add(
+        f('shiftTemplates'),
+        t.line,
+        'shift_type',
+        'a panzer shift starts in the evening (17:00 to 21:00) and ends the next morning (01:00 to 05:00)',
+      );
+    }
   }
 
   // events
@@ -1281,15 +1322,15 @@ function validateMenu(b: Bundle, add: Add, k: Known): void {
 
   const procs = new Set<string>();
   for (const p of b.prepProcedures) {
-    if (!prep.has(p.prep_item_code)) {
+    if (p.recipe_for_kind === 'menu' ? !menu.has(p.prep_item_code) : !prep.has(p.prep_item_code)) {
       add(
         f('prepProcedures'),
         p.line,
         'prep_item_code',
-        `${p.prep_item_code} is not in ${f('prepItems')}`,
+        `${p.prep_item_code} is not in ${f(p.recipe_for_kind === 'menu' ? 'menuItems' : 'prepItems')}`,
       );
     }
-    const key = `${p.prep_item_code} ${p.step}`;
+    const key = `${p.recipe_for_kind} ${p.prep_item_code} ${p.step}`;
     if (procs.has(key)) add(f('prepProcedures'), p.line, 'step', `step ${p.step} is listed twice`);
     procs.add(key);
   }

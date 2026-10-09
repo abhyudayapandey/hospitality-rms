@@ -122,3 +122,32 @@ export async function ingredientOptions(tx: Tx): Promise<IngredientOption[]> {
 export function highCost(menu: string, pct: string | null): boolean {
   return pct !== null && Number(pct) > (menu === 'Bar' ? 30 : 35);
 }
+
+// --- a dish's photo, its method and its sub-recipes (ADR 078) --------------------------
+
+/** The photos of the recipes the person may read, by subject (dish or prep item). */
+export async function recipePhotoKeys(tx: Tx): Promise<{ item_id: string; photo_key: string }[]> {
+  const r = await sql<{ item_id: string; photo_key: string }>`
+    select subject_id as item_id, photo_key from inv.recipe_photos()`.execute(tx);
+  return r.rows;
+}
+
+/** A readable recipe's method, a prep item's or a dish's. */
+export async function recipeMethod(tx: Tx, recipe: string): Promise<Step[]> {
+  const r = await sql<Step>`
+    select step, instruction, minutes from inv.recipe_method(${recipe}::uuid)`.execute(tx);
+  return r.rows;
+}
+
+/** Which lines are prep items with a recipe the person may open: line -> recipe. */
+export async function subRecipes(tx: Tx, recipe: string): Promise<Map<number, string>> {
+  const r = await sql<{ line_no: number; recipe_id: string }>`
+    select line_no, recipe_id from inv.sub_recipes(${recipe}::uuid)`.execute(tx);
+  return new Map(r.rows.map((x) => [x.line_no, x.recipe_id]));
+}
+
+export async function canEditDish(tx: Tx, menuItem: string): Promise<boolean> {
+  const r = await sql<{ ok: boolean }>`
+    select menu.can_edit_dish(${menuItem}::uuid) as ok`.execute(tx);
+  return r.rows[0]?.ok ?? false;
+}

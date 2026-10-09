@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ItemThumb } from '@/components/item-thumb';
 import { Empty } from '@/components/messages';
 import { formatQty } from '@/lib/inventory';
 import type { RecipeRow } from '@/lib/menu';
@@ -47,7 +48,14 @@ export function MenuTabs({
 }
 
 /** Recipes the person may read, grouped: prep first, then the menu. No costs. */
-export function RecipeList({ recipes }: { recipes: RecipeRow[] }) {
+export function RecipeList({
+  recipes,
+  photos = new Map(),
+}: {
+  recipes: RecipeRow[];
+  /** each dish's or prep item's photo (a short-lived URL, ADR 078) */
+  photos?: Map<string, string>;
+}) {
   if (recipes.length === 0) {
     return <Empty>No recipes are made or sold where you work.</Empty>;
   }
@@ -69,7 +77,13 @@ export function RecipeList({ recipes }: { recipes: RecipeRow[] }) {
                     href={`/menu/recipes/${r.recipe_id}`}
                     className="flex min-h-14 items-center justify-between gap-3 px-4 py-2"
                   >
-                    <span className="min-w-0 truncate font-medium">{r.name}</span>
+                    <span className="flex min-w-0 items-center gap-3">
+                      <ItemThumb
+                        category={r.kind === 'menu' ? 'meat' : 'prep'}
+                        src={photos.get(r.subject_id)}
+                      />
+                      <span className="min-w-0 truncate font-medium">{r.name}</span>
+                    </span>
                     {r.kind === 'prep' && (
                       <span className="shrink-0 text-right text-xs text-slate-500">
                         batch {formatQty(r.batch_yield!, r.unit!)}

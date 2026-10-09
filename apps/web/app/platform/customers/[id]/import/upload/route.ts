@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { errorCodeOf } from '@outlet-ops/domain';
 import {
   MAX_UPLOAD_BYTES,
+  photosToStore,
   readUpload,
   UploadError,
   uploadKey,
@@ -16,7 +17,8 @@ import { requireSameOrigin } from '@/lib/security/same-origin';
 // Uploading a customer's onboarding files (ADR 013): a plain multipart form post, so it
 // works without JavaScript. The request must come from the console (same origin) with a
 // platform session; its size is checked before it is read. The files are checked (only
-// the numbered onboarding files, sizes, paths, file 00 names this customer), stored under
+// the numbered onboarding files and the dishes' photos (ADR 078), sizes, paths, file 00
+// names this customer), stored under
 // onboarding/<customer>/, and a dry run is queued. The browser then follows the job.
 
 const back = (tenantId: string, code: string) =>
@@ -51,13 +53,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const parts = await Promise.all(
       uploads.map(async (f) => ({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })),
     );
-    const { files, customerCode } = readUpload(parts);
+    const { files, customerCode, photos } = readUpload(parts);
     if (customerCode !== customer.code) return back(tenantId, 'CUSTOMER_MISMATCH');
 
     const hash = createHash('sha256');
     for (const p of parts) hash.update(p.bytes);
     const key = uploadKey(tenantId, randomUUID());
-    await uploadStore().put(key, { files });
+    await uploadStore().put(key, { files, photos: photosToStore(photos) });
     const upload = {
       key,
       name: parts.length === 1 ? parts[0]!.name : `${parts.length} files`,

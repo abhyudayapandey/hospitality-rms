@@ -31,7 +31,8 @@ lines: [{item, unit_cost?}]}`: the supplier is optional (it is stored when named
    opens "To receive", due on the date. Receiving tells the department "received" or "part
    received".
 6. **Receiving** can be done by the order desk for the other stores' orders (stock posts at the
-   request's own store); only ordered requests can be received.
+   request's own store; since ADR 080 the keeper chooses per line between the Main Store and a
+   direct issue to the department); only ordered requests can be received.
 7. Orders that already name a supplier (`inv.create_po`, and every order before this) are
    ordered when released, as before.
 

@@ -1,7 +1,8 @@
 import { join, resolve } from 'node:path';
 import pg from 'pg';
 import { loadCustomer } from '../src/apply';
-import { readCustomerDir } from '../src/dir';
+import { readCustomerDir, readCustomerPhotos } from '../src/dir';
+import { photoStore } from '../src/upload-store';
 
 // Loads one customer's onboarding folder (ADR 009). A dry run unless --apply:
 //   pnpm --filter @outlet-ops/onboarding load <folder> [--apply]
@@ -23,7 +24,11 @@ await client.connect();
 try {
   // relative to where pnpm was run from, not the package
   const dir = resolve(process.env.INIT_CWD ?? process.cwd(), folder);
-  const r = await loadCustomer(client, readCustomerDir(dir), { dryRun: !apply });
+  const r = await loadCustomer(client, readCustomerDir(dir), {
+    dryRun: !apply,
+    photos: readCustomerPhotos(dir),
+    putPhoto: photoStore(),
+  });
   for (const i of r.issues) {
     console.error(
       `${i.file}${i.row ? `:${i.row}` : ''}${i.column ? ` ${i.column}` : ''}: ${i.message}`,

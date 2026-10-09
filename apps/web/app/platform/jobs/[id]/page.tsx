@@ -22,7 +22,7 @@ interface Job {
 }
 
 // One piece of background work (creating a customer, checking or loading their files,
-// sending invitations), refreshed every 2 s until it has finished; in words (ADR 075).
+// sending invitations), refreshed every 2 s until it has finished; in words (ADR 077).
 export default async function JobPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();

@@ -61,6 +61,10 @@ export const ERROR_MESSAGES = {
   SHIFT_STARTED: 'That shift has already started, so it can no longer be changed.',
   SHIFT_OVERLAP: 'They are already on a shift at that time.',
   REST_RULE: 'That leaves too little rest between their shifts.',
+  PAST_DAY: 'That day has passed. Change today or a day ahead.',
+  INVALID_RANGE: 'Pick dates from tomorrow, after the week you copy, eight weeks at most.',
+  EXPIRY_PASSED: 'That expiry date has passed. Check the date on the pack.',
+  TOO_MANY_PHOTOS: 'A task keeps three photos at most.',
   WEEKLY_HOURS_CAP: 'That would take them over the weekly hours limit.',
   LEAVE_CONFLICT: 'They are on approved leave that day.',
   ROLE_MISMATCH: "Their role doesn't match this shift.",
@@ -99,13 +103,16 @@ export const ERROR_MESSAGES = {
   INVALID_SETUP: 'Something in this set-up needs fixing first: see the list on Who does what.',
   INVALID_UPLOAD: 'That upload is not stored for this customer. Upload the files again.',
   UPLOAD_EMPTY: 'Choose a zip file or the CSV files to upload.',
-  UPLOAD_TOO_LARGE: 'That upload is too large (5 MB, 50 files and 25 MB unpacked at most).',
+  UPLOAD_TOO_LARGE:
+    'That upload is too large (25 MB, 50 files, 300 dish photos and 40 MB unpacked at most).',
   UPLOAD_TYPE: 'Upload one zip file, or the CSV files themselves.',
   UPLOAD_UNSAFE_PATH: 'The zip has file names that point outside its folder.',
   UPLOAD_FOLDERS: 'Put all the CSV files in one folder of the zip.',
   UPLOAD_DUPLICATE: 'The same file is in the upload twice.',
   UPLOAD_NOT_UTF8: 'Save the CSV files as UTF-8 and upload them again.',
   UPLOAD_NO_CUSTOMER_FILE: 'The upload needs 00_customer.csv.',
+  UPLOAD_PHOTO:
+    "A dish photo in photos/menu is named after its dish's code and is a JPEG, PNG or WebP of 2 MB at most.",
   LAST_ACCOUNT_OWNER: 'The organisation must keep at least one active Account Owner.',
   JOB_ROLE_SCOPE: "This job role's default access doesn't fit the person's place.",
   // who covers it (file 37, Admin → Who does what; ADR 061, 065)

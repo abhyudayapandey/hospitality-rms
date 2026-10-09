@@ -7,7 +7,16 @@ import type { Schedule, StepInput } from './tasks-view';
 
 export interface MyTask {
   id: string;
-  kind: 'one_off' | 'checklist' | 'prep' | 'expiry' | 'receive' | 'licence' | 'compliance';
+  kind:
+    | 'one_off'
+    | 'checklist'
+    | 'prep'
+    | 'expiry'
+    | 'receive'
+    | 'licence'
+    | 'compliance'
+    | 'minibar_refill'
+    | 'minibar_bill';
   title: string;
   org_node_id: string;
   place_name: string;
@@ -45,6 +54,8 @@ export interface TaskStep {
   value_num: number | null;
   value_text: string | null;
   photo_key: string | null;
+  /** the picture it names (ADR 079); null: picked from its words (stepIcon) */
+  icon: string | null;
   flagged: boolean;
   done_at: string | null;
   done_by_name: string | null;
@@ -347,4 +358,21 @@ export async function expiredWastage(tx: Tx, store: string, from: string, to: st
     await sql<ExpiredLine>`
       select * from inv.expired_wastage(${store}::uuid, ${from}::date, ${to}::date)`.execute(tx)
   ).rows;
+}
+
+// --- a task's own photos, kept 30 days (ADR 079) --------------------------------------
+
+export interface TaskPhoto {
+  id: string;
+  photo_key: string | null;
+  taken_by_name: string;
+  taken_at: string;
+}
+
+export async function taskPhotos(tx: Tx, task: string): Promise<TaskPhoto[]> {
+  const r = await sql<TaskPhoto>`
+    select id, photo_key, taken_by_name, taken_at::text from ops.task_photos(${task}::uuid)`.execute(
+    tx,
+  );
+  return r.rows;
 }

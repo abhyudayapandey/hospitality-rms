@@ -136,7 +136,7 @@ describe('who sees and checks minibars', () => {
 });
 
 describe('checking a room', () => {
-  it('charges what was used and refills it from the store', async () => {
+  it('charges what was used; the stock leaves the store when the refill is done (ADR 081)', async () => {
     await inRolledBackTx(async (c) => {
       const r101 = await room(c, '101');
       const beer = await onHand(c, 'LAGER-BEER-330ML');
@@ -155,6 +155,13 @@ describe('checking a room', () => {
       ).rows;
       // one beer at 250 and two tonics at 120
       expect(check).toEqual({ charge: '490.00', short: false, charged_at: null });
+      // nothing has left the store yet: the attendant refills it from their refill task
+      expect(await onHand(c, 'LAGER-BEER-330ML')).toBe(beer);
+      const refill = await c.query<{ id: string }>(
+        `select id from ops.task where minibar_check_id = $1 and kind = 'minibar_refill'`,
+        [id],
+      );
+      await ok(c, ATTENDANT, 'select ops.refill_minibar($1)', [refill.rows[0]!.id]);
       expect(await onHand(c, 'LAGER-BEER-330ML')).toBe(beer - 1);
       expect(await onHand(c, 'TONIC-WATER-300ML')).toBe(tonic - 2);
       const ledger = await c.query<{ n: number }>(
@@ -231,6 +238,17 @@ describe('checking a room', () => {
           await lines(c, 2, 2, 0),
         ])
       )[0]!.id;
+      const task = await c.query<{ id: string }>(
+        `select id from ops.task where minibar_check_id = $1 and kind = 'minibar_refill'`,
+        [id],
+      );
+      const [refilled] = await ok<{ short: boolean }>(
+        c,
+        ATTENDANT,
+        'select ops.refill_minibar($1) as short',
+        [task.rows[0]!.id],
+      );
+      expect(refilled!.short).toBe(true);
       const line = await c.query<{ used: string; refilled: string }>(
         `select used_qty::text used, refilled_qty::text refilled from ops.minibar_check_line
           where check_id = $1 and item_id = $2`,
@@ -333,6 +351,111 @@ describe('charging and the usage report', () => {
       ).rejects.toThrow(/NOT_A_TEST_CUSTOMER/);
       await c.query('rollback to savepoint real');
       await c.query('reset role');
+    });
+  });
+});
+
+describe('the refill and the bill are tasks (ADR 081)', () => {
+  async function checkRoom(c: PoolClient, number: string) {
+    return (
+      await ok<{ id: string }>(c, ATTENDANT, 'select ops.check_minibar($1, $2) as id', [
+        await room(c, number),
+        await lines(c, 1, 2, 2),
+      ])
+    )[0]!.id;
+  }
+  const tasks = async (c: PoolClient, check: string) =>
+    (
+      await c.query<{
+        id: string;
+        kind: string;
+        title: string;
+        status: string;
+        assignee_user_id: string | null;
+        job_role_code: string | null;
+      }>(
+        `select id, kind, title, status, assignee_user_id, job_role_code from ops.task
+          where minibar_check_id = $1 order by kind desc`,
+        [check],
+      )
+    ).rows;
+
+  it('a check that found something used: a refill for the attendant, a bill for the front desk', async () => {
+    await inRolledBackTx(async (c) => {
+      const id = await checkRoom(c, '101');
+      const [refill, bill] = await tasks(c, id);
+      expect(refill).toMatchObject({
+        kind: 'minibar_refill',
+        title: 'Refill minibar, room 101',
+        status: 'open',
+        assignee_user_id: ids.user(ATTENDANT),
+      });
+      expect(bill).toMatchObject({ kind: 'minibar_bill', status: 'open' });
+      expect(bill!.title).toBe('Bill room 101: 1 Test Lager Beer 330ml');
+      // with nobody on shift at the front desk now, it is the Front Desk Executives' job
+      expect(bill!.assignee_user_id ?? bill!.job_role_code).toBeTruthy();
+      // the front desk sees the bill on its list; the attendant's refill is theirs
+      const fd = await ok<{ id: string }>(c, FRONT_DESK, 'select id from ops.my_tasks()');
+      expect(fd.map((t) => t.id)).toContain(bill!.id);
+      // nothing used, nothing to do
+      const none = (
+        await ok<{ id: string }>(c, ATTENDANT, 'select ops.check_minibar($1, $2) as id', [
+          await room(c, '103'),
+          await lines(c, 2, 2, 2),
+        ])
+      )[0]!.id;
+      expect(await tasks(c, none)).toEqual([]);
+    });
+  });
+
+  it('marked added to the bill: the bill task is done and housekeeping is told', async () => {
+    await inRolledBackTx(async (c) => {
+      const id = await checkRoom(c, '101');
+      await ok(c, FRONT_DESK, 'select ops.mark_minibar_charged($1)', [id]);
+      const [refill, bill] = await tasks(c, id);
+      expect(bill!.status).toBe('done');
+      expect(refill!.status).toBe('open');
+      const told = await c.query<{ user_id: string; title: string }>(
+        `select owner_user_id as user_id, title from ops.notification where kind = 'minibar_billed'
+          and link = $1`,
+        [`/tasks/${refill!.id}`],
+      );
+      expect(told.rows.map((r) => r.user_id)).toContain(ids.user(ATTENDANT));
+      expect(told.rows[0]!.title).toBe('Room 101: minibar added to the bill');
+    });
+  });
+
+  it('neither task closes through the generic Done; only its own refill or bill', async () => {
+    await inRolledBackTx(async (c) => {
+      const id = await checkRoom(c, '101');
+      const [refill, bill] = await tasks(c, id);
+      expect(await error(c, ATTENDANT, 'select ops.complete_task($1)', [refill!.id])).toMatch(
+        /INVALID_STATE/,
+      );
+      // only whoever has the refill does it
+      expect(await error(c, FRONT_DESK, 'select ops.refill_minibar($1)', [refill!.id])).toMatch(
+        /NOT_AUTHORISED/,
+      );
+      expect(await error(c, ATTENDANT, 'select ops.refill_minibar($1)', [bill!.id])).toMatch(
+        /INVALID_STATE|NOT_AUTHORISED/,
+      );
+      // nobody outside the minibar duty marks it billed; another company sees nothing
+      for (const who of ['test.commis.1.0', 'test.solo.bar-manager']) {
+        expect(await error(c, who, 'select ops.mark_minibar_charged($1)', [id]), who).toMatch(
+          /NOT_AUTHORISED/,
+        );
+        expect(
+          await error(c, who, 'select * from ops.minibar_task_check($1)', [refill!.id]),
+          who,
+        ).toMatch(/NOT_AUTHORISED/);
+      }
+      const seen = await ok<{ room: string; charge: string }>(
+        c,
+        ATTENDANT,
+        'select room, charge from ops.minibar_task_check($1)',
+        [refill!.id],
+      );
+      expect(seen).toEqual([{ room: '101', charge: '250.00' }]);
     });
   });
 });

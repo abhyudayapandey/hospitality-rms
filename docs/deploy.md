@@ -2391,7 +2391,7 @@ and 41 add Hotel 1.0's rooms and minibar). No stack change.
    (refresh its dates, build the zip, create `PASSPORT-TEST`, Compliance on, import, the login
    sheet). Then sign in as `passport.presenter`: Me → **Show the app as someone**.
 
-## Releasing the team console in plain words (ADR 075)
+## Releasing the team console in plain words (ADR 077)
 
 No migration, no stack change, nothing to re-import. The console's words and layout change;
 in this runbook, "Import setup files" is now **Update from their files**, "Upload and dry
@@ -2402,3 +2402,29 @@ their people**, and suspending is **Pause this customer** at the bottom of a cus
 2. Check in the console at phone width: Customers shows one main button, the customers with
    no codes, and "Other tools" last, each on its own row. On Test Company: What they buy says
    what each plan adds; Add an outlet asks for no code.
+
+## Releasing the GM's first round, the rest (ADRs 078 to 082)
+
+Five migrations (20261203100000 to 20261207100000), run by the Deploy workflow, and one stack
+change: the photo bucket keeps routine task photos 30 days instead of 90 (`tasks/routine/`).
+Preview and apply the stack first; nothing else in AWS changes.
+
+1. Merge.
+2. `cd infra && pnpm cdk diff`. Expect exactly one change, on the photo bucket
+   (`AWS::S3::Bucket`, `LifecycleConfiguration`): the `tasks/routine/` rule's
+   `ExpirationInDays` from 90 to 30. Stop if anything says replace, or other resources change.
+3. `pnpm cdk deploy`, then **Deploy** as usual.
+4. Re-import the Passport demo (files 10, 16, 24 and others re-dated) and, on the test
+   environment, the test customers (files 10, 16, 24, 29 and `photos/menu/`). Zip a customer's
+   folder with its photos: `zip -r customer.zip *.csv photos`.
+5. Check:
+   - **Menu** (a GM): a dish has Ingredients and Recipe tabs; the makhani gravy opens its recipe;
+     whoever may change the dish adds a photo.
+   - **Tasks** (a commis): every step has a picture; any step takes a photo; a task takes three.
+   - **Count** (a bar): each row shows its pack, "750 ml bottle".
+   - **Receive** (the Main Store keeper, a kitchen's order): Into the store or To the kitchen per
+     line, with an expiry date.
+   - **Minibar** (an attendant, then the front desk): the check makes "Refill minibar, room …" and
+     "Bill room …: …" To do items; Refilled takes the stock; Added to the bill closes the bill.
+   - **Roster** (a department head): By person shows a tile per shift type and Off; a Split reads
+     "11:00–15:00 · 18:00–23:00 · 9 h"; Repeat this pattern lists what it left out.

@@ -1,22 +1,27 @@
 import Link from 'next/link';
-import { failure } from '@outlet-ops/domain';
+import { failure, taskIcon } from '@outlet-ops/domain';
+import { Icon } from '@/components/icon';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { formatQty } from '@/lib/inventory';
-import { photosEnabled } from '@/lib/photos';
+import { itemPhotoUrls, photosEnabled } from '@/lib/photos';
 import { prepTaskRecipe, type PrepRecipe } from '@/lib/production';
 import {
   assignablePeople,
   handOnPeople,
   taskDetail,
+  taskPhotos,
   type Person,
   type TaskDetail,
+  type TaskPhoto,
 } from '@/lib/tasks';
 import { overdueWhenGiven } from '@/lib/tasks-view';
 import { complianceTask, dayWords, type ComplianceTaskRow } from '@/lib/compliance';
 import { DoneForm, RenewForm } from '../../compliance/act-forms';
 import { AssignExpiry, CancelTask, TaskWork } from './task-work';
+import { AddTaskPhoto } from './task-photos';
+import { MinibarTask, type MinibarTaskCheck } from './minibar-task';
 import { ReassignTask, ReceiveSent, SentLines, type SentLine } from './receive-sent';
 
 // One task (ADR 020): its steps for whoever works on it, and for task managers there who
@@ -31,32 +36,59 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   let sent: SentLine[];
   let about: ComplianceTaskRow | null;
   let recipe: PrepRecipe | null;
+  let photos: (TaskPhoto & { url: string | null })[];
+  let minibar: MinibarTaskCheck | null;
   try {
-    ({ task, people, sent, about, recipe } = await withUser(user.id, async (tx) => {
-      const t = await taskDetail(tx, id);
-      // a reported expired batch: the lead gives the discard to someone there
-      const p =
-        t.status === 'reported' && t.can_manage
-          ? await assignablePeople(tx, t.org_node_id)
-          : t.can_hand_on
-            ? await handOnPeople(tx, id)
-            : [];
-      // a delivery from the Main Store (ADR 051): what was sent
-      const lines =
-        t.kind === 'receive'
-          ? (
-              await sql<SentLine>`
+    ({ task, people, sent, about, recipe, photos, minibar } = await withUser(
+      user.id,
+      async (tx) => {
+        const t = await taskDetail(tx, id);
+        // the task's own photos, kept 30 days (ADR 079)
+        const ph = await taskPhotos(tx, id);
+        const urls = await itemPhotoUrls(
+          ph.filter((x) => x.photo_key).map((x) => ({ item_id: x.id, photo_key: x.photo_key })),
+        );
+        // a reported expired batch: the lead gives the discard to someone there
+        const p =
+          t.status === 'reported' && t.can_manage
+            ? await assignablePeople(tx, t.org_node_id)
+            : t.can_hand_on
+              ? await handOnPeople(tx, id)
+              : [];
+        // a delivery from the Main Store (ADR 051): what was sent
+        const lines =
+          t.kind === 'receive'
+            ? (
+                await sql<SentLine>`
                 select item_id::text, name, base_uom, sent::text, received::text
                   from ops.sent_lines(${id}::uuid)`.execute(tx)
-            ).rows
-          : [];
-      // a licence's renewal or a compliance job (ADR 069): what it is about
-      const c =
-        t.kind === 'licence' || t.kind === 'compliance' ? await complianceTask(tx, id) : null;
-      // something to make (ADR 076): its ingredients for this quantity, method and batches
-      const r = t.kind === 'prep' ? await prepTaskRecipe(tx, id) : null;
-      return { task: t, people: p, sent: lines, about: c, recipe: r };
-    }));
+              ).rows
+            : [];
+        // a licence's renewal or a compliance job (ADR 069): what it is about
+        const c =
+          t.kind === 'licence' || t.kind === 'compliance' ? await complianceTask(tx, id) : null;
+        // something to make (ADR 076): its ingredients for this quantity, method and batches
+        const r = t.kind === 'prep' ? await prepTaskRecipe(tx, id) : null;
+        // a minibar's refill or bill (ADR 081): the room and what was used
+        const m =
+          t.kind === 'minibar_refill' || t.kind === 'minibar_bill'
+            ? ((
+                await sql<MinibarTaskCheck>`
+                select check_id, room, store, used, charge, charged_at::text, short
+                  from ops.minibar_task_check(${id}::uuid)`.execute(tx)
+              ).rows[0] ?? null)
+            : null;
+        return {
+          task: t,
+          people: p,
+          sent: lines,
+          about: c,
+          recipe: r,
+          minibar: m,
+          photos: ph.map((x) => ({ ...x, url: urls.get(x.id) ?? null })),
+        };
+      },
+    ));
   } catch (err) {
     return (
       <p className="rounded-xl bg-white p-6 text-center text-slate-600 ring-1 ring-slate-200">
@@ -71,7 +103,8 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         Back to tasks
       </Link>
       <header className="space-y-1">
-        <h1 className="text-xl font-semibold" data-testid="task-title">
+        <h1 className="flex items-center gap-2 text-xl font-semibold" data-testid="task-title">
+          <Icon name={taskIcon(task.title, task.kind)} className="size-7 text-brand-700" />
           {task.title}
         </h1>
         <p className="text-sm text-slate-600">
@@ -112,7 +145,15 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
           </p>
         ))}
       {recipe && <MakeIt recipe={recipe} unit={task.item?.unit ?? ''} open={open} />}
-      {about ? (
+      {minibar && (task.kind === 'minibar_refill' || task.kind === 'minibar_bill') ? (
+        <MinibarTask
+          task={task.id}
+          kind={task.kind}
+          check={minibar}
+          canWork={task.can_work}
+          open={open}
+        />
+      ) : about ? (
         <ComplianceWork task={task} about={about} />
       ) : task.kind === 'receive' ? (
         open && task.can_work ? (
@@ -124,6 +165,40 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         (task.steps.length > 0 || task.can_work) && (
           <TaskWork task={task} canWork={task.can_work} photos={photosEnabled()} />
         )
+      )}
+      {(photos.length > 0 || (open && task.can_work && photosEnabled())) && (
+        <section className="space-y-2" data-testid="task-photos">
+          <h2 className="text-sm font-semibold text-slate-500">Photos (kept 30 days)</h2>
+          {photos.length > 0 && (
+            <ul className="grid grid-cols-3 gap-2">
+              {photos.map((p) => (
+                <li
+                  key={p.id}
+                  className="space-y-1 text-xs text-slate-500"
+                  data-testid="task-photo"
+                >
+                  {p.url ? (
+                    // a presigned S3 URL that changes on every page: next/image would cache it
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.url}
+                      alt={`Photo by ${p.taken_by_name}`}
+                      className="aspect-square w-full rounded-lg object-cover ring-1 ring-slate-200"
+                    />
+                  ) : (
+                    <p className="flex aspect-square items-center justify-center rounded-lg bg-slate-100 p-2 text-center">
+                      {p.photo_key ? 'Photo' : 'Removed after 30 days'}
+                    </p>
+                  )}
+                  <span className="block truncate">{p.taken_by_name}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {open && task.can_work && photosEnabled() && photos.length < 3 && (
+            <AddTaskPhoto task={task.id} node={task.org_node_id} />
+          )}
+        </section>
       )}
       {open && task.can_hand_on && (
         <ReassignTask task={task.id} people={people} current={task.assignee_user_id} />

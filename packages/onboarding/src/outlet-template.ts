@@ -443,6 +443,7 @@ export function addOutlet(
       'max',
       'unit',
       'photo_required',
+      'step_icon',
       'from_library',
     ]);
     for (const c of plan.checklists) {
@@ -461,6 +462,7 @@ export function addOutlet(
           max: s.max === undefined ? '' : String(s.max),
           unit: s.unit ?? '',
           photo_required: s.photo ? 'yes' : 'no',
+          step_icon: s.icon ?? '',
           from_library: `${lib.code}@${lib.version}`,
         }),
       );

@@ -164,6 +164,9 @@ export interface RosterShift {
   headcount: number;
   status: 'draft' | 'published' | 'cancelled';
   template_name: string | null;
+  /** a split shift (ADR 082): when its first block ends and its second starts */
+  split_end_at?: Date | null;
+  split_start_at?: Date | null;
   people: { assignment_id: string; worker_id: string; name: string }[];
 }
 
@@ -180,7 +183,7 @@ export async function weekRoster(
   if (nodes.length === 0) return [];
   const r = await sql<RosterShift>`
     select s.id, s.org_node_id::text as org_node_id, s.local_date::text as local_date, s.start_at, s.end_at, s.role_code, s.headcount,
-           s.status, t.name as template_name,
+           s.status, t.name as template_name, s.split_end_at, s.split_start_at,
            coalesce((select json_agg(json_build_object('assignment_id', a.id, 'worker_id', a.worker_id,
                                                        'name', coalesce(d.display_name, 'Worker'))
                                      order by d.display_name)

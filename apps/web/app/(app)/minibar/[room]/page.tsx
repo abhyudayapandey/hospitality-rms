@@ -8,7 +8,7 @@ import { isUuid } from '@/lib/params';
 import { CheckForm } from './check-form';
 
 // Check one room's minibar (ADR 072): count what is left of each item; what is missing is
-// charged and refilled from the store. Then the room's recent checks.
+// charged; the refill and the bill are To do items (ADR 081). Then the room's recent checks.
 export default async function MinibarRoomPage({ params }: { params: Promise<{ room: string }> }) {
   const { room } = await params;
   const user = await requireUser();
@@ -37,8 +37,8 @@ export default async function MinibarRoomPage({ params }: { params: Promise<{ ro
         <h1 className="text-xl font-semibold">Room {first?.number ?? ''} minibar</h1>
         {first && (
           <p className="text-sm text-slate-600">
-            Count what is left. Whatever is missing is charged to the guest and refilled from{' '}
-            {first.store}.
+            Count what is left. Whatever is missing is charged to the guest; refilling it from{' '}
+            {first.store} and adding it to the bill go on the To do list.
           </p>
         )}
       </div>

@@ -1,4 +1,4 @@
-# 075 — The team console speaks plainly
+# 077 — The team console speaks plainly
 
 Status: accepted · 2026-10-07 · no migration
 

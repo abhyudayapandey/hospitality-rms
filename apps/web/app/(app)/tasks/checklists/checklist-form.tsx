@@ -2,6 +2,14 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import {
+  isTaskIcon,
+  stepIcon,
+  TASK_ICON_WORDS,
+  TASK_ICONS,
+  type TaskIcon,
+} from '@outlet-ops/domain';
+import { Icon } from '@/components/icon';
 import { ErrorBox, inputClass, primaryButton, secondaryButton } from '@/components/messages';
 import type { Checklist, JobRole, Person } from '@/lib/tasks';
 import { parseSteps, stepsText, type Schedule } from '@/lib/tasks-view';
@@ -52,6 +60,15 @@ export function ChecklistForm({
           : { mode: 'job_role', role: roles[0]?.code ?? '' },
   );
   const [steps, setSteps] = useState(existing ? stepsText(existing.steps) : '');
+  // each step's picture, by its words, when someone chose one (ADR 079)
+  const [icons, setIcons] = useState<Record<string, TaskIcon>>(() =>
+    Object.fromEntries(
+      (existing?.steps ?? [])
+        .filter((x): x is typeof x & { icon: TaskIcon } => !!x.icon && isTaskIcon(x.icon))
+        .map((x) => [x.label, x.icon]),
+    ),
+  );
+  const preview = parseSteps(steps);
   const [error, setError] = useState<string | null>(null);
 
   const schedule = (): Schedule =>
@@ -72,7 +89,10 @@ export function ChecklistForm({
         name,
         schedule: schedule(),
         assign,
-        steps: parsed,
+        steps: parsed.map((x) => {
+          const icon = icons[x.label];
+          return icon ? { ...x, icon } : x;
+        }),
       });
       if (!r.ok) return setError(r.message);
       router.push(`/tasks/checklists?node=${node}`);
@@ -185,6 +205,46 @@ export function ChecklistForm({
           photo required.
         </span>
       </label>
+      {typeof preview !== 'string' && preview.length > 0 && (
+        <fieldset className="space-y-1" data-testid="step-pictures">
+          <legend className="text-sm font-medium">Each step&apos;s picture</legend>
+          <ul className="space-y-1">
+            {preview.map((x, i) => {
+              const shown = stepIcon(x.label, x.kind, icons[x.label]);
+              return (
+                <li key={`${i}-${x.label}`} className="flex items-center gap-2">
+                  <Icon name={shown} className="size-7 text-brand-700" />
+                  <label className="min-w-0 flex-1">
+                    <span className="block truncate text-sm">{x.label}</span>
+                    <select
+                      aria-label={`Picture for ${x.label}`}
+                      value={icons[x.label] ?? ''}
+                      onChange={(e) =>
+                        setIcons((m) => {
+                          const next = { ...m };
+                          if (isTaskIcon(e.target.value)) next[x.label] = e.target.value;
+                          else delete next[x.label];
+                          return next;
+                        })
+                      }
+                      className={inputClass}
+                    >
+                      <option value="">
+                        From its words ({TASK_ICON_WORDS[stepIcon(x.label, x.kind)]})
+                      </option>
+                      {TASK_ICONS.map((n) => (
+                        <option key={n} value={n}>
+                          {TASK_ICON_WORDS[n]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </fieldset>
+      )}
       <ErrorBox message={error} />
       <button type="submit" disabled={!hydrated || pending} className={primaryButton}>
         {existing ? 'Save checklist' : 'Create checklist'}

@@ -418,3 +418,20 @@ The central kitchen's batches (file 26: 6,400 g on day -2, 3,200 g on day -1) an
   Masala: 11,200 g planned, 9,600 g made.
 - **Purchasing, Hotel 1.1 Kitchen Store:** from the central kitchen ₹328.40 asked for,
   ₹279.14 received, **85.0%**, ₹16.42 lost on the way, 1 line short.
+
+## GM round 1, the rest (ADR 078 to 082)
+
+- **File 10** has an optional `receive_to` (`store` by default, or `department`): where a delivery
+  the Main Store receives for a department goes by default. Test Company's paneer and milk go to
+  the department (ADR 080).
+- **File 16** has optional `shift_type` (`straight` by default, `split`, `panzer`), `first_end` and
+  `second_start` (a split's two blocks) and `break_minutes`. Test Company's Hotel 1.0 restaurant has
+  a Split for stewards (11:00-15:00, 18:00-23:00) and its bar a Panzer for bartenders (19:00-04:00,
+  Fri-Sat, a 30-minute break), pinned by `roster-tiles.db.test.ts` (ADR 082).
+- **File 24** has an optional `recipe_for_kind` (`prep` by default, or `menu`): a dish's method.
+  Test Company's Butter Chicken and Paneer Butter Masala have one (ADR 078).
+- **File 29** has an optional `step_icon`, one of the product's pictograms; Test Company's Hotel
+  1.0 kitchen opening names the fridge for its chiller reading (ADR 079).
+- **`photos/menu/`** beside the files holds dish photos named by the dish's code; Test Company's
+  has `BUTTER-CHICKEN.jpg`. Zip the folder with the files: `cd test-company && zip -r
+../test-company.zip *.csv photos` (ADR 078).

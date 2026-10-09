@@ -1,6 +1,6 @@
 # 072 — The rooms' minibars
 
-Status: accepted · 2026-10-07 · migration 20261127110000
+Status: accepted · 2026-10-07 · migration 20261127110000 · the refill and the bill are tasks, and the stock leaves the store at the refill: ADR 081
 
 A hotel's in-room minibar: Housekeeping checks it at checkout or the daily service, what was
 used is charged to the guest, and it is refilled. Asked for by the Passport Hotel pilot, where

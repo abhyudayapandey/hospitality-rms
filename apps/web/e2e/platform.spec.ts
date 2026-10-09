@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { baseUrl, runPlatformWorker, signInAs, signInPlatform } from './helpers';
 
-// The team console (ADR 012, 075) through its real screens, with a signed platform
+// The team console (ADR 012, 077) through its real screens, with a signed platform
 // cookie (the platform pool is not configured in e2e).
 
 test('platform and customer sessions never cross', async ({ page }) => {

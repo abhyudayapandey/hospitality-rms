@@ -339,12 +339,16 @@ describe('ADR 007 policies are equivalent to per-row core.can()', () => {
               `select id from inv.recipe_line where recipe_id = any ($1::uuid[])`,
               [recipes],
             ),
+            // a prep item's method, or a dish's (ADR 078): whoever reads its recipe
             'inv.prep_procedure': await ids(
               `select p.id from inv.prep_procedure p
                 where p.tenant_id = core.my_tenant()
-                  and p.prep_item_id in (select x from (select distinct prep_item_id as x
-                                                          from inv.prep_procedure) d
-                                          where inv.can_read_prep(x))`,
+                  and (p.prep_item_id in (select x from (select distinct prep_item_id as x
+                                                           from inv.prep_procedure) d
+                                           where inv.can_read_prep(x))
+                       or p.menu_item_id in (select x from (select distinct menu_item_id as x
+                                                              from inv.prep_procedure) d
+                                              where menu.can_read_menu_item(x)))`,
             ),
             'menu.menu_item': await ids(
               `select id from menu.menu_item
