@@ -42,6 +42,17 @@ const num = z
   .transform(Number);
 const optNum = z.union([z.literal('').transform(() => undefined), num]);
 const int = z.string().regex(/^\d+$/, 'must be a whole number').transform(Number);
+const optInt = z.union([z.literal('').transform(() => undefined), int]);
+/** "milk; tree nuts": the allergens FSSAI lists (files 10 and 19, ADR 076). */
+const allergenList = z.string().transform((v, ctx) => {
+  const r = parseAllergens(v);
+  if ('ok' in r) return r.ok;
+  ctx.addIssue({
+    code: 'custom',
+    message: `"${r.bad}" is not an allergen FSSAI lists (${ALLERGENS.join('; ')})`,
+  });
+  return z.NEVER;
+});
 /** A phone number for WhatsApp (PO-4): digits, spaces, brackets and dashes, 8 to 15 digits. */
 const phone = z
   .string()
@@ -514,8 +525,31 @@ export const FILES = {
         [z.literal('').transform(() => false), z.literal('gm').transform(() => true)],
         { message: 'must be blank or gm' },
       ),
+      // ADR 093 (Shelf life & labels): hours it keeps once opened, how it is kept, and for the
+      // opened pack's label veg or non-veg and its allergens (as file 19)
+      open_shelf_life_hours: optInt.refine(
+        (v) => v === undefined || (v >= 1 && v <= 8760),
+        'must be 1 to 8760 hours',
+      ),
+      storage: z.union([
+        z.literal('').transform(() => undefined),
+        z.enum(['dry', 'chilled', 'frozen'], 'must be dry, chilled or frozen'),
+      ]),
+      food_type: z.union([
+        z.literal('').transform(() => undefined),
+        z.enum(FOOD_TYPES, 'must be veg, non_veg or egg'),
+      ]),
+      allergens: allergenList,
     }),
-    optional: ['item_type', 'receive_to', 'discard_approval'],
+    optional: [
+      'item_type',
+      'receive_to',
+      'discard_approval',
+      'open_shelf_life_hours',
+      'storage',
+      'food_type',
+      'allergens',
+    ],
   },
   itemLocations: {
     file: '11_item_locations.csv',
@@ -682,15 +716,7 @@ export const FILES = {
         z.literal('').transform(() => undefined),
         z.enum(FOOD_TYPES, 'must be veg, non_veg or egg'),
       ]),
-      allergens: z.string().transform((v, ctx) => {
-        const r = parseAllergens(v);
-        if ('ok' in r) return r.ok;
-        ctx.addIssue({
-          code: 'custom',
-          message: `"${r.bad}" is not an allergen FSSAI lists (${ALLERGENS.join('; ')})`,
-        });
-        return z.NEVER;
-      }),
+      allergens: allergenList,
       batch_portions: optNum.refine((v) => v === undefined || v > 0, 'must be more than 0'),
     }),
     optional: ['food_type', 'allergens', 'batch_portions'],

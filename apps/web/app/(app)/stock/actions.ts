@@ -451,3 +451,33 @@ export async function setItemPhoto(
     return null;
   });
 }
+
+/** Open a pack (ADR 093): it keeps its shelf life from now; returns it, for its label. */
+export async function openPack(
+  node: string,
+  item: string,
+  qty: number,
+  idempotencyKey: string,
+): Promise<ActionResult<{ id: string }>> {
+  return run('open_pack', async (tx) => {
+    await requireModule(tx, 'shelf_life');
+    const r = await sql<{ id: string }>`
+      select inv.open_pack(${node}::uuid, ${item}::uuid, ${qty}, ${idempotencyKey}) as id`.execute(
+      tx,
+    );
+    return { id: r.rows[0]!.id };
+  });
+}
+
+/** An opened pack used up (nothing leaves the store) or thrown away (expired wastage). */
+export async function closePack(
+  pack: string,
+  thrown: boolean,
+): Promise<ActionResult<{ done: true }>> {
+  return run('close_pack', async (tx) => {
+    await requireModule(tx, 'shelf_life');
+    if (thrown) await sql`select inv.throw_pack(${pack}::uuid)`.execute(tx);
+    else await sql`select inv.finish_pack(${pack}::uuid)`.execute(tx);
+    return { done: true as const };
+  });
+}

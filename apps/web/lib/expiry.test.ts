@@ -12,6 +12,7 @@ const batch = (name: string, at: string, expired: boolean, store = 's1'): Expiry
   expires_at: at,
   remaining: '100',
   expired,
+  pack_id: null,
 });
 
 describe('splitExpiry (INV-12)', () => {

@@ -12,6 +12,8 @@ export interface ExpiryBatch {
   expires_at: string;
   remaining: string;
   expired: boolean;
+  /** an opened pack (ADR 093), not a dated batch */
+  pack_id: string | null;
 }
 
 export type ExpiryShow = 'expiring' | 'expired';

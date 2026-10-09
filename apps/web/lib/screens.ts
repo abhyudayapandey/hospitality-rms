@@ -47,6 +47,7 @@ export type ScreenKey =
   | 'logbook'
   | 'registers'
   | 'utilities'
+  | 'breakage'
   | 'roster'
   | 'events'
   | 'reports'
@@ -296,6 +297,15 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     icon: 'bulb',
     section: 'team',
     show: (i) => can(i, 'UTILITIES'),
+  },
+  {
+    // what broke and what it cost (ADR 093): every department records; heads see the outlet's
+    key: 'breakage',
+    href: '/breakage',
+    label: 'Breakage',
+    icon: 'box',
+    section: 'work',
+    show: (i) => can(i, 'BREAKAGE'),
   },
   {
     key: 'problem',

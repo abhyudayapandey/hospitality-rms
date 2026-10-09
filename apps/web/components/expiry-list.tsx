@@ -5,11 +5,13 @@ import { EXPIRY_TITLE, type ExpiryBatch, type ExpiryShow } from '@/lib/expiry';
 import { formatQty } from '@/lib/inventory';
 import { inputQty } from '@/lib/qty';
 import { ItemThumb } from '@/components/item-thumb';
+import { PackButtons } from '@/components/pack-buttons';
 
 /**
  * The Expiring and Expired tabs of the Stock screen (INV-12, ADR 033): batches expiring
  * within 3 days, soonest first, or expired, most recent first. With "All stores" each line
- * names its store. Expired stock is thrown away through Wastage, which tells the GM (NT-2).
+ * names its store. Expired stock is thrown away through Wastage, which tells the GM (NT-2); an
+ * expired opened pack (ADR 093) is thrown away here, by the same rules.
  */
 export function ExpiryList({
   show,
@@ -36,7 +38,7 @@ export function ExpiryList({
         >
           {rows.map((b) => (
             <li
-              key={`${b.store_id}:${b.item_id}:${b.batch_no}:${b.expires_at}`}
+              key={b.pack_id ?? `${b.store_id}:${b.item_id}:${b.batch_no}:${b.expires_at}`}
               className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
               data-testid="expiry-row"
               data-sku={b.sku}
@@ -52,6 +54,7 @@ export function ExpiryList({
                 <span className="block text-xs text-slate-500">
                   {formatQty(b.remaining, b.unit)} left
                   {b.batch_no ? ` · batch ${b.batch_no}` : ''}
+                  {b.pack_id ? ' · opened pack' : ''}
                 </span>
               </span>
               <span className="shrink-0 text-right">
@@ -63,7 +66,10 @@ export function ExpiryList({
                 <span className="block font-medium tabular-nums" data-testid="use-by">
                   {formatDay(businessDate(b.expires_at))}
                 </span>
-                {show === 'expired' && canDiscard && (
+                {show === 'expired' && canDiscard && b.pack_id && (
+                  <PackButtons pack={b.pack_id} expired />
+                )}
+                {show === 'expired' && canDiscard && !b.pack_id && (
                   <Link
                     href={`/stock/wastage?node=${b.store_id}&item=${b.item_id}&qty=${inputQty(b.remaining)}&reason=expired`}
                     className="mt-1 inline-flex min-h-11 items-center text-sm font-medium underline"

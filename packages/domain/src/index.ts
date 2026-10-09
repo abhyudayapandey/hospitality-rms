@@ -16,3 +16,4 @@ export * from './food-label';
 export * from './task-icons';
 export * from './pictures';
 export * from './registers';
+export * from './shelf-life';

@@ -30,6 +30,7 @@ export type SupplyScreen = Extract<
   | 'orders'
   | 'transfers'
   | 'bills'
+  | 'opened'
   | 'production'
   | 'variance'
 >;
@@ -79,7 +80,7 @@ export interface StockRow {
 export async function expiryList(tx: Tx): Promise<ExpiryBatch[]> {
   const r = await sql<ExpiryBatch>`
     select store_id::text, store, item_id::text, sku, name, unit, batch_no,
-           expires_at::text, remaining::text, expired
+           expires_at::text, remaining::text, expired, pack_id::text
       from inv.expiry_list(3)`.execute(tx);
   return r.rows;
 }
