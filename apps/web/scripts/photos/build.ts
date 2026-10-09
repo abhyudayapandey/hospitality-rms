@@ -56,7 +56,7 @@ const plain = (s: string | undefined) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-/** Licence, author and a 640 px rendition of each file, 50 files a request. */
+/** Licence, author and a 500 px rendition of each file, 50 files a request. */
 async function infos(titles: string[]): Promise<Map<string, Info>> {
   const out = new Map<string, Info>();
   for (let i = 0; i < titles.length; i += 50) {
@@ -66,7 +66,7 @@ async function infos(titles: string[]): Promise<Map<string, Info>> {
       titles: batch.join('|'),
       prop: 'imageinfo',
       iiprop: 'url|extmetadata',
-      iiurlwidth: '640',
+      iiurlwidth: '500',
       format: 'json',
       formatversion: '2',
     });
@@ -107,13 +107,18 @@ async function infos(titles: string[]): Promise<Map<string, Info>> {
 
 async function bytesOf(info: Info): Promise<Buffer> {
   mkdirSync(CACHE, { recursive: true });
-  const cached = join(CACHE, encodeURIComponent(info.thumb));
+  // the same name the picking script gives a download (Python's quote(url, safe=''))
+  const name = encodeURIComponent(info.thumb).replace(
+    /[!'()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  const cached = join(CACHE, name);
   if (existsSync(cached)) return readFileSync(cached);
   const res = await get(info.thumb);
   if (!res.ok) throw new Error(`${info.title}: ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
   writeFileSync(cached, buf);
-  await sleep(300);
+  await sleep(4000); // Commons limits how fast one client may download
   return buf;
 }
 
