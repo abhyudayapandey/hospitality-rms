@@ -1,0 +1,8 @@
+register,on,roles
+lost_found,yes,
+incidents,yes,
+visitors,no,
+vehicles,no,
+staff_movement,no,
+keys,no,
+fire_equipment,no,

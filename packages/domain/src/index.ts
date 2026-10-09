@@ -15,3 +15,4 @@ export * from './compliance';
 export * from './food-label';
 export * from './task-icons';
 export * from './pictures';
+export * from './registers';

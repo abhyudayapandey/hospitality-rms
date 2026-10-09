@@ -513,6 +513,18 @@ function validateTasks(
     }
   }
 
+  // file 45 (ADR 090): each register once; its roles are job roles of file 06
+  const registers = new Set<string>();
+  for (const r of b.registers) {
+    if (registers.has(r.register)) {
+      add(f('registers'), r.line, 'register', `${r.register} is listed twice`);
+    }
+    registers.add(r.register);
+    for (const role of r.roles) {
+      if (!roles.has(role)) add(f('registers'), r.line, 'roles', `${role} is not in ${f('jobRoles')}`);
+    }
+  }
+
   for (const t of b.tasks) {
     place(f('tasks'), t.line, 'place_code', t.place_code);
     assignee(f('tasks'), t.line, t.assign_to);

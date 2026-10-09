@@ -119,6 +119,8 @@ export const ERROR_MESSAGES = {
   INVALID_MODE: "Choose We have it, Someone else does it, or We don't do this.",
   COVER_NOT_OUTLET: 'Who does what is set for a whole outlet or central kitchen.',
   OWN_WORK: 'Someone else signs off your own work.',
+  ACTION_NEEDED: 'It is out of range: say what you did about it.',
+  INVALID_FOR_EACH: 'Run it for every room, or name 1 to 60 different areas.',
   COVER_SELF: "A role can't cover itself. Pick another role.",
   COVER_CHAIN:
     'One of these roles is itself covered or covering. Pick a role the outlet has that covers nothing.',

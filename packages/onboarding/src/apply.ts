@@ -215,6 +215,7 @@ class Loader {
     await this.events();
     await this.checklists();
     await this.notDoneChecklists();
+    await this.registers();
     if (this.isTest) {
       await this.shifts();
       await this.pastWeek();
@@ -2902,6 +2903,20 @@ class Loader {
         ],
       );
     }
+  }
+
+  /** File 45 (ADR 090): which registers are kept, and by which job roles. */
+  private async registers() {
+    if (!this.b.registers.length) return;
+    this.step(FILES.registers.file, this.b.registers[0]!.line);
+    const set = Object.fromEntries(
+      this.b.registers.map((r) => [r.register, { on: r.on, roles: r.roles }]),
+    );
+    await this.c.query(
+      `update core.tenant set settings = settings || jsonb_build_object('registers', $2::jsonb)
+        where id = $1 and settings -> 'registers' is distinct from $2::jsonb`,
+      [this.tenant, JSON.stringify(set)],
+    );
   }
 
   /** Checklists given to a job role that is not done at their outlet: no rounds (ADR 061). */

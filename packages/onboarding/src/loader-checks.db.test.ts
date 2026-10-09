@@ -3,6 +3,7 @@ import {
   DOMAINS,
   inPlanByDefault,
   LEVELS,
+  REGISTERS,
   levelOf,
   MODULE_CODES,
   moduleOfDomain,
@@ -361,6 +362,20 @@ describe('approvers (ADR 009)', () => {
         `select settings as s from core.tenant where code = 'TEST-SOLO-COMPANY'`,
       );
       expect(rows[0]!.s).toMatchObject({ leave_hr_approval: false });
+    });
+  });
+
+  it("each register's required fields and whether it closes are the database's (ADR 090)", async () => {
+    await inRolledBackTx(async (c) => {
+      for (const r of REGISTERS) {
+        const { rows } = await c.query<{ req: string[]; closes: boolean }>(
+          'select ops.register_required($1) as req, ops.register_closes($1) as closes',
+          [r.code],
+        );
+        const fields = r.fields as readonly { key: string; required?: true }[];
+        expect(rows[0]!.req, r.code).toEqual(fields.filter((f) => f.required).map((f) => f.key));
+        expect(rows[0]!.closes, r.code).toBe('close' in r);
+      }
     });
   });
 

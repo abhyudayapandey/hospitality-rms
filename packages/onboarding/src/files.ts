@@ -14,6 +14,7 @@ import {
   parseAllergens,
   isTaskIcon,
   TASK_ICONS,
+  REGISTER_CODES,
 } from '@outlet-ops/domain';
 import { CsvError, parseCsv } from './csv';
 
@@ -1099,6 +1100,30 @@ export const FILES = {
       // added to the guest's bill, by whom (blank: still to charge)
       charged_by: optional,
     }),
+  },
+  // Registers (ADR 090): which are kept, and by which job roles (blank: anyone who keeps
+  // registers where it is written). A register not listed keeps the default: lost and found
+  // and incidents everywhere, the rest at hotels.
+  registers: {
+    file: '45_registers.csv',
+    required: false,
+    schema: z.object({
+      register: z.enum(REGISTER_CODES as [string, ...string[]], {
+        message: `must be one of ${REGISTER_CODES.join(', ')}`,
+      }),
+      on: yesNo,
+      // job role codes separated by ";"
+      roles: z
+        .string()
+        .default('')
+        .transform((v) =>
+          v
+            .split(';')
+            .map((r) => r.trim())
+            .filter(Boolean),
+        ),
+    }),
+    optional: ['roles'],
   },
 } as const;
 
