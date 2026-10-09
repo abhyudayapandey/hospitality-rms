@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { matchPicture, PICTURE_KEYS, PICTURES, pictureFor } from './pictures';
 
-describe('the picture catalogue (ADR 084)', () => {
+describe('the picture catalogue (ADR 085)', () => {
   it('has one picture per key, each with words', () => {
     expect(new Set(PICTURE_KEYS).size).toBe(PICTURE_KEYS.length);
     for (const p of PICTURES) {

@@ -27,8 +27,8 @@ const DEFAULTS = {
 };
 
 // Test Company's file 00 lets its staff swap shifts (swaps_managers_only no), and the dev seed
-// puts Compliance in its plan (ADR 069)
-const TEST_COMPANY = { ...DEFAULTS, swaps_managers_only: false, bundles: { compliance: true } };
+// puts the Hotel bundle in its plan (ADR 085)
+const TEST_COMPANY = { ...DEFAULTS, swaps_managers_only: false, bundles: { hotel: true } };
 
 async function settings(c: PoolClient, who: string): Promise<typeof DEFAULTS> {
   const r = await attemptAs<{ s: typeof DEFAULTS }>(

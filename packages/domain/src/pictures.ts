@@ -1,4 +1,4 @@
-// A picture of the thing itself on every item line (ADR 084), for staff who read little and
+// A picture of the thing itself on every item line (ADR 085), for staff who read little and
 // remember pictures: garlic looks like garlic, cloves like cloves, a vodka bottle like a vodka
 // bottle. Product code, like the duties and the catalogue. An item's picture comes from its
 // name, in English, Hindi or Konkani, else its category; a customer's item that matches nothing

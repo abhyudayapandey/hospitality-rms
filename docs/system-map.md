@@ -237,16 +237,16 @@ rights (Admin → Access groups, Account Owner; or file 05). A group can carry a
 requests and approvals: Test Company's Kitchen Lead (Sous Chef 1.1, Hotel 1.1 kitchen)
 approves like the department head.
 
-**Modules** (ADR 026). Each company can switch off Events, Shift swaps, Leave, Production,
-Prep lists, Checklists, Maintenance, and Menu and sales (Admin → Modules, Account Owner
-only). What is off disappears from the table above for everyone in that company. Test Solo
-Bar Co. has Events and Swaps off.
-The modules are sold in three bundles (ADR 067): Stock & cost (Production, Prep lists, Menu
-and sales), People & roster (Leave, Shift swaps, Events) and Tasks & food safety (Checklists,
-Maintenance); stock, orders, bills, recipes, the roster, clock-in, tasks and reports come with
-every plan. Only the platform admin puts a bundle in or out of a plan (the console customer
-page's Bundles card); Admin → Modules shows the plan read-only, and the Account Owner switches
-single modules only inside it. Both test customers have every bundle.
+**Building blocks** (ADR 026, 067, 085). Every group of functionality is a block a customer has
+or not, sold in bundles: Stock & buying (Stores & stock, Supply requests & orders), Kitchen & bar
+(Recipes & costing, Production, Prep lists, Menu and sales), People (Roster, Clock-in, Salaries &
+labour cost, Leave, Shift swaps), Daily work (Checklists, Maintenance, Today's briefing), Hotel
+(Room minibars; out of a plan unless put in) and Events & compliance (Events, Compliance; off
+unless switched on). Places and people, access, To do, approvals, notifications, Home, Me, Admin
+and reports have no switch. What is off disappears from the table above for everyone in that
+company, and the database refuses it. Only a platform admin switches blocks and bundles, on the
+console's customer page or in file 00; Admin → Your plan shows them read-only. Test Company has
+everything; Test Solo Bar Co. has Events and Swaps off, no Hotel bundle and no Compliance.
 
 **Today's briefing** (ADR 070). A note for the outlet's shift: words, and the dishes that are
 "Off today". It shows on Home, above Push today, for everyone who works at the outlet, for the

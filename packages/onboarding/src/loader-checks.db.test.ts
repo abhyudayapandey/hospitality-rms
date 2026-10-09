@@ -1,4 +1,12 @@
-import { BUNDLES, MODULE_CODES } from '@outlet-ops/domain';
+import {
+  BUNDLES,
+  DOMAINS,
+  inPlanByDefault,
+  MODULE_CODES,
+  moduleOfDomain,
+  needsOf,
+  onByDefault,
+} from '@outlet-ops/domain';
 import { join } from 'node:path';
 import { attemptAs, closePools, inRolledBackTx, loadSeedIds } from '@outlet-ops/db/test-helpers';
 import type { PoolClient } from 'pg';
@@ -354,22 +362,47 @@ describe('approvers (ADR 009)', () => {
     });
   });
 
-  it("the module columns are the database's modules (ADR 026)", async () => {
+  it("the blocks are the database's, in its order, with what each needs and its default (ADR 085)", async () => {
     await inRolledBackTx(async (c) => {
       const { rows } = await c.query<{ codes: string[] }>('select core.module_codes() as codes');
-      expect([...rows[0]!.codes].sort()).toEqual([...MODULE_CODES].sort());
+      expect(rows[0]!.codes).toEqual([...MODULE_CODES]);
+      const m = await c.query<{ m: string; needs: string[]; d: boolean }>(
+        `select m, core.module_needs(m) as needs, core.module_default(m) as d
+           from unnest(core.module_codes()) m`,
+      );
+      expect(Object.fromEntries(m.rows.map((r) => [r.m, [r.needs, r.d]]))).toEqual(
+        Object.fromEntries(MODULE_CODES.map((c) => [c, [[...needsOf(c)], onByDefault(c)]])),
+      );
     });
   });
 
-  it("the bundles and the module each is sold in are the database's (ADR 067)", async () => {
+  it("every access domain's block is the database's; the base has none (ADR 085)", async () => {
+    await inRolledBackTx(async (c) => {
+      const r = await c.query<{ d: string; m: string | null }>(
+        'select d, core.domain_module(d) as m from unnest($1::text[]) d',
+        [DOMAINS.map((d) => d.code)],
+      );
+      expect(Object.fromEntries(r.rows.map((x) => [x.d, x.m]))).toEqual(
+        Object.fromEntries(DOMAINS.map((d) => [d.code, moduleOfDomain(d.code)])),
+      );
+    });
+  });
+
+  it("the bundles, the block each sells and which are in a plan by default are the database's (ADR 067, 085)", async () => {
     await inRolledBackTx(async (c) => {
       const { rows } = await c.query<{ codes: string[] }>('select core.bundle_codes() as codes');
-      expect([...rows[0]!.codes].sort()).toEqual(BUNDLES.map((b) => b.code).sort());
+      expect(rows[0]!.codes).toEqual(BUNDLES.map((b) => b.code));
       const of = await c.query<{ m: string; b: string }>(
         'select m, core.module_bundle(m) as b from unnest(core.module_codes()) m order by m',
       );
       expect(Object.fromEntries(of.rows.map((r) => [r.m, r.b]))).toEqual(
         Object.fromEntries(BUNDLES.flatMap((b) => b.modules.map((m) => [m, b.code]))),
+      );
+      const d = await c.query<{ b: string; d: boolean }>(
+        'select b, core.bundle_default(b) as d from unnest(core.bundle_codes()) b',
+      );
+      expect(Object.fromEntries(d.rows.map((r) => [r.b, r.d]))).toEqual(
+        Object.fromEntries(BUNDLES.map((b) => [b.code, inPlanByDefault(b)])),
       );
     });
   });
@@ -407,6 +440,37 @@ describe('approvers (ADR 009)', () => {
         file: '00_customer.csv',
         column: 'maintenance',
       });
+    });
+  });
+
+  it('Salaries & labour cost off in file 00: the pay rates in file 34 are not loaded, and it says so (ADR 085)', async () => {
+    await inRolledBackTx(async (c) => {
+      // every rate set to a marker: a load that writes rates puts the file's back
+      const rates = async () =>
+        (
+          await c.query<{ n: number }>(
+            `select count(*)::int as n from hr.worker_sensitive s
+               join core.tenant t on t.id = s.tenant_id
+              where t.code = 'TEST-SOLO-COMPANY' and s.pay_rate <> 1.23`,
+          )
+        ).rows[0]!.n;
+      await c.query(
+        `update hr.worker_sensitive s set pay_rate = 1.23 from core.tenant t
+          where t.id = s.tenant_id and t.code = 'TEST-SOLO-COMPANY' and s.pay_rate is not null`,
+      );
+      const [head, row] = solo['00_customer.csv']!.trim().split(/\r?\n/);
+      const noPay = { ...solo, '00_customer.csv': `${head},pay\n${row},no\n` };
+      const r = await loadCustomer(c, noPay, { nested: true });
+      expect(r.issues).toEqual([]);
+      const payNote = r.warnings.find((w) => w.file === '34_pay_rates.csv');
+      expect(payNote?.message).toMatch(
+        /^Salaries & labour cost is off for this customer, so the \d+ pay rate\(s\) in this file are not loaded$/,
+      );
+      expect(await rates()).toBe(0);
+      // back on: they load
+      const withPay = { ...solo, '00_customer.csv': `${head},pay\n${row},yes\n` };
+      expect((await loadCustomer(c, withPay, { nested: true })).issues).toEqual([]);
+      expect(await rates()).toBeGreaterThan(0);
     });
   });
 });

@@ -130,7 +130,7 @@ every user; no customer's blocks change in the migration.
    off hides and refuses; pay off gives materials-only totals, `reports-reconcile` still
    passes); unit tests for the registry; e2e: a platform admin switches a block off and its
    nav item disappears.
-6. **Docs**: ADR 084, CLAUDE.md bullet, `docs/future.md`, system map, deploy notes.
+6. **Docs**: ADR 085, CLAUDE.md bullet, `docs/future.md`, system map, deploy notes.
 
 ---
 

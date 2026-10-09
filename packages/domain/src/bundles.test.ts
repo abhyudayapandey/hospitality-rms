@@ -20,9 +20,13 @@ describe('bundles (ADR 067)', () => {
     expect(new Set(all).size).toBe(all.length);
   });
 
-  it('a module a module needs is in the same bundle, so no bundle depends on another', () => {
+  it('a block may need one in another bundle only when that bundle is Stock & buying', () => {
     for (const m of MODULES) {
-      if ('needs' in m) expect(bundleOf(m.needs).code, m.code).toBe(bundleOf(m.code).code);
+      for (const n of 'needs' in m ? m.needs : []) {
+        if (bundleOf(n).code !== bundleOf(m.code).code) {
+          expect(bundleOf(n).code, `${m.code} needs ${n}`).toBe('stock_buying');
+        }
+      }
     }
   });
 
@@ -32,51 +36,57 @@ describe('bundles (ADR 067)', () => {
       expect(b.adds).toMatch(/^Adds .+\.$/);
     }
     expect(BUNDLES.map((b) => b.name)).toEqual([
-      'Stock & cost',
-      'People & roster',
-      'Tasks & food safety',
-      'Compliance',
+      'Stock & buying',
+      'Kitchen & bar',
+      'People',
+      'Daily work',
+      'Hotel',
+      'Events & compliance',
     ]);
   });
 
-  it('every bundle is in a plan that does not say, but Compliance (ADR 069)', () => {
-    expect(BUNDLES.filter((b) => !inPlanByDefault(b)).map((b) => b.code)).toEqual(['compliance']);
+  it('every bundle is in a plan that does not say, but Hotel (ADR 085)', () => {
+    expect(BUNDLES.filter((b) => !inPlanByDefault(b)).map((b) => b.code)).toEqual(['hotel']);
   });
 
-  it('events go with people; production and prep lists with stock', () => {
-    expect(bundleOf('events').name).toBe('People & roster');
-    expect(bundleOf('production').name).toBe('Stock & cost');
-    expect(bundleOf('prep_lists').name).toBe('Stock & cost');
+  it('salaries and labour cost are part of People; production of Kitchen & bar', () => {
+    expect(bundleOf('pay').name).toBe('People');
+    expect(bundleOf('clock_in').name).toBe('People');
+    expect(bundleOf('production').name).toBe('Kitchen & bar');
+    expect(bundleOf('events').name).toBe('Events & compliance');
+    expect(bundleOf('minibars').name).toBe('Hotel');
   });
 
   it('On, Partly on or Off from the modules that are on', () => {
-    const people = byCode('people_roster');
-    expect(bundleState(people, new Set(['leave', 'swaps', 'events']))).toBe('on');
+    const people = byCode('people');
+    expect(bundleState(people, new Set(['roster', 'clock_in', 'pay', 'leave', 'swaps']))).toBe(
+      'on',
+    );
     expect(bundleState(people, new Set(['leave']))).toBe('partly');
     expect(bundleState(people, new Set(['checklists']))).toBe('off');
   });
 
   it('the bundles a set of modules uses, in order', () => {
     expect(bundlesFor(['checklists', 'menu_sales', 'events']).map((b) => b.code)).toEqual([
-      'stock_cost',
-      'people_roster',
-      'tasks_food_safety',
+      'kitchen_bar',
+      'daily_work',
+      'events_compliance',
     ]);
     expect(bundlesFor([])).toEqual([]);
   });
 
   it("says in words what an outlet uses that isn't in the plan", () => {
     expect(
-      missingBundleNotes(['checklists', 'production'], new Set(['stock_cost', 'people_roster'])),
+      missingBundleNotes(['checklists', 'production'], new Set(['kitchen_bar', 'people'])),
     ).toEqual([
-      "This outlet uses Checklists, part of Tasks & food safety, which isn't on for this customer",
+      "This outlet uses Checklists, part of Daily work, which isn't on for this customer",
     ]);
     expect(missingBundleNotes(['checklists', 'maintenance'], new Set())).toEqual([
-      "This outlet uses Checklists and Maintenance, part of Tasks & food safety, which isn't on for this customer",
+      "This outlet uses Checklists and Maintenance, part of Daily work, which isn't on for this customer",
     ]);
-    expect(missingBundleNotes(['checklists'], new Set(['tasks_food_safety']))).toEqual([]);
+    expect(missingBundleNotes(['checklists'], new Set(['daily_work']))).toEqual([]);
     expect(missingBundleNotes(['events'], new Set(), 'Test Bar 3.0')).toEqual([
-      "Test Bar 3.0 uses Events, part of People & roster, which isn't on for this customer",
+      "Test Bar 3.0 uses Events, part of Events & compliance, which isn't on for this customer",
     ]);
   });
 

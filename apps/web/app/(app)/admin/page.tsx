@@ -110,7 +110,7 @@ export default async function AdminPage() {
             href="/admin/modules"
             className="flex min-h-12 items-center justify-center rounded-lg font-medium ring-1 ring-slate-300"
           >
-            Modules
+            Your plan
           </Link>
           <Link
             href="/admin/settings"

@@ -2452,3 +2452,21 @@ No stack change.
    - **A recipe** (Menu): "Batch makes … · about N portions", a picture by each ingredient.
    - **Stock, counts, orders, receiving, requests, wastage**: an icon on every line, as before;
      the real photos come with the photo library.
+
+## Releasing building blocks (ADR 085)
+
+One migration (20261210100000), run by the Deploy workflow. No stack change.
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual. The migration translates every customer's switches into the new
+   bundles and stops (the Deploy fails) if any part a customer has would go off; nothing is
+   lost. Passport keeps its rooms and minibars (Hotel goes in for customers with rooms) and
+   Compliance (on where it was in the plan).
+4. No re-import.
+5. Check, at 380 px:
+   - **The console** (a platform admin): a customer's page → What they buy: a card per bundle with
+     its switch, and a switch for each part inside it. Turning one off asks first.
+   - **Admin → Your plan** (the account owner): the bundles and parts, read-only, with no switch.
+   - **Passport** (`passport.gm`): Home, Stock, Roster, Clock, Minibars, Compliance and the
+     reports as before.

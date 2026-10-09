@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { closePools, inRolledBackTx } from '@outlet-ops/db/test-helpers';
+import type { PoolClient } from 'pg';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { loadCustomer } from './apply';
 import { createCustomer } from './create';
@@ -26,31 +27,40 @@ const DIR = join(
   'passport-hotel',
 );
 
+const PASSPORT = {
+  code: 'PASSPORT-TEST',
+  name: '[TEST] Passport Hotel',
+  country: 'India',
+  currency: 'INR',
+  timezone: 'Asia/Kolkata',
+  isTest: true,
+  owner: {
+    displayName: 'Ashesh Sajnani',
+    email: null,
+    username: 'test.ashesh-sajnani',
+    loginType: 'username' as const,
+  },
+};
+
+/** The README's step 3, as a platform admin sets it: Hotel in the plan, Compliance on. */
+const plan = (c: PoolClient) =>
+  c.query(
+    `update core.tenant
+        set settings = jsonb_set(jsonb_set(settings, '{bundles}',
+                         coalesce(settings -> 'bundles', '{}') || '{"hotel": true}'),
+                       '{modules}', coalesce(settings -> 'modules', '{}') || '{"compliance": true}')
+      where code = 'PASSPORT-TEST'`,
+  );
+
 describe('the Passport Hotel demo', () => {
   it('imports as the README says: created in the console, dry run, apply, no changes after', async () => {
     await inRolledBackTx(async (c) => {
       const exists = await c.query(`select 1 from core.tenant where code = 'PASSPORT-TEST'`);
       if (exists.rowCount) return; // loaded here already (a local database), nothing to show
       await c.query('set local role platform_loader');
-      const made = await createCustomer(
-        c,
-        {
-          code: 'PASSPORT-TEST',
-          name: '[TEST] Passport Hotel',
-          country: 'India',
-          currency: 'INR',
-          timezone: 'Asia/Kolkata',
-          isTest: true,
-          owner: {
-            displayName: 'Ashesh Sajnani',
-            email: null,
-            username: 'test.ashesh-sajnani',
-            loginType: 'username',
-          },
-        },
-        { nested: true },
-      );
+      const made = await createCustomer(c, PASSPORT, { nested: true });
       expect(made.report.issues).toEqual([]);
+      await plan(c);
       const files = readCustomerDir(DIR);
       const dry = await loadCustomer(c, files, { nested: true, dryRun: true });
       expect(dry.issues).toEqual([]);
@@ -98,13 +108,6 @@ describe('the Passport Hotel demo', () => {
       await c.query('reset role');
       // the GM answers for pest control; the executive housekeeper does it (ADR 073). A
       // reminder made before (on the GM's list) moves to them when the files are loaded again
-      // Compliance in the plan, as the README's step 3
-      await c.query(
-        `update core.tenant
-            set settings = settings || jsonb_build_object('bundles',
-                  coalesce(settings -> 'bundles', '{}') || '{"compliance": true}')
-          where code = 'PASSPORT-TEST'`,
-      );
       await c.query(`select * from ops.compliance_tick()`);
       const pest = `select t.job_role_code from ops.task t
                       join ops.compliance_item i on i.id = t.compliance_item_id
@@ -131,6 +134,12 @@ describe('the Passport Hotel demo', () => {
 
   it('loads clean, with everything the pitch needs', async () => {
     await inRolledBackTx(async (c) => {
+      // created in the console with its plan (the README's steps 2 and 3), then loaded
+      const exists = await c.query(`select 1 from core.tenant where code = 'PASSPORT-TEST'`);
+      if (!exists.rowCount) {
+        await createCustomer(c, PASSPORT, { nested: true });
+        await plan(c);
+      }
       const r = await loadCustomer(c, readCustomerDir(DIR), { nested: true });
       expect(r.issues).toEqual([]);
       expect(r.warnings).toEqual([]);

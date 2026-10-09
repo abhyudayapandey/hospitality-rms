@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { syncProcessDefs, syncProductAccess } from '@outlet-ops/workflow';
 import {
-  BUNDLE_CODES,
+  BUNDLES,
+  inPlanByDefault,
   CHECKLIST_BY_CODE,
   coverWarnings,
   missingBundleNotes,
@@ -1021,6 +1022,19 @@ class Loader {
    * by whoever the file says. Once per customer: later loads report them unchanged.
    */
   private async minibarChecks() {
+    if (this.b.minibarChecks.length === 0) return;
+    // Room minibars off (the Hotel bundle out of the plan, ADR 085): no checks to record
+    const on = await this.c.query<{ on: boolean }>(`select core.module_on($1, 'minibars') as on`, [
+      this.tenant,
+    ]);
+    if (!on.rows[0]?.on) {
+      this.report.warnings.push({
+        file: FILES.minibarChecks.file,
+        message:
+          "Room minibars isn't on for this customer (put the Hotel bundle in its plan), so the minibar checks in this file are not loaded",
+      });
+      return;
+    }
     const checks = new Map<string, Bundle['minibarChecks']>();
     for (const c of this.b.minibarChecks) {
       const k = `${c.outlet_code} ${c.room_number} ${c.day} ${c.time}`;
@@ -1433,7 +1447,10 @@ class Loader {
           [this.tenant],
         )
       ).rows[0]?.b ?? {};
-    const inPlan = new Set<string>(BUNDLE_CODES.filter((b) => plan[b] !== false));
+    // a bundle the plan doesn't name is in it by default, but Hotel (ADR 085)
+    const inPlan = new Set<string>(
+      BUNDLES.filter((b) => plan[b.code] ?? inPlanByDefault(b)).map((b) => b.code),
+    );
     for (const n of outlets) {
       const t = TEMPLATE_BY_FORMAT.get(n.outlet_format!);
       if (!t) continue;
@@ -2635,6 +2652,18 @@ class Loader {
    * file lists change; a rate set in the app for someone not in the file stays.
    */
   private async payRates() {
+    if (this.b.payRates.length === 0) return;
+    // Salaries & labour cost off (ADR 085): no pay is kept for this customer
+    const pay = await this.c.query<{ on: boolean }>(`select core.module_on($1, 'pay') as on`, [
+      this.tenant,
+    ]);
+    if (!pay.rows[0]?.on) {
+      this.report.warnings.push({
+        file: FILES.payRates.file,
+        message: `Salaries & labour cost is off for this customer, so the ${this.b.payRates.length} pay rate(s) in this file are not loaded`,
+      });
+      return;
+    }
     for (const r of this.b.payRates) {
       this.step(FILES.payRates.file, r.line);
       const worker = this.workers.get(r.username);
