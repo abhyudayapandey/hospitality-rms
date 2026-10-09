@@ -21,10 +21,9 @@ const API = 'https://commons.wikimedia.org/w/api.php';
 const SIZE = 320;
 
 /** key -> the Commons file ("File:Garlic.JPG") */
-const library = JSON.parse(readFileSync(join(import.meta.dirname, 'library.json'), 'utf8')) as Record<
-  string,
-  string
->;
+const library = JSON.parse(
+  readFileSync(join(import.meta.dirname, 'library.json'), 'utf8'),
+) as Record<string, string>;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -89,12 +88,17 @@ async function infos(titles: string[]): Promise<Map<string, Info>> {
     for (const n of body.query.normalized ?? []) asked.set(n.to, n.from);
     for (const p of body.query.pages) {
       const ii = p.imageinfo?.[0];
-      if (p.missing || !ii) throw new Error(`not on Commons: ${p.title}`);
+      if (p.missing || !ii) {
+        console.log(`[photos] not on Commons, left out: ${p.title}`);
+        continue;
+      }
       const md = ii.extmetadata;
       out.set(asked.get(p.title) ?? p.title, {
         title: p.title,
         // thumb.wikimedia.org and upload.wikimedia.org serve the same path
-        thumb: ii.thumburl.split('?')[0]!.replace('//thumb.wikimedia.org/', '//upload.wikimedia.org/'),
+        thumb: ii.thumburl
+          .split('?')[0]!
+          .replace('//thumb.wikimedia.org/', '//upload.wikimedia.org/'),
         page: ii.descriptionurl,
         licence: plain(md.LicenseShortName?.value) || 'see source',
         licenceUrl: plain(md.LicenseUrl?.value),
@@ -116,7 +120,7 @@ async function bytesOf(info: Info): Promise<Buffer> {
   if (!res.ok) throw new Error(`${info.title}: ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
   writeFileSync(cached, buf);
-  await sleep(4000); // Commons limits how fast one client may download
+  await sleep(12_000); // Commons limits how fast one client may download
   return buf;
 }
 
@@ -151,7 +155,8 @@ async function main() {
   const photos: [string, string][] = [];
   const credits: string[] = [];
   for (const [key, title] of Object.entries(library).sort(([a], [b]) => a.localeCompare(b))) {
-    const i = info.get(title)!;
+    const i = info.get(title);
+    if (!i) continue;
     writeFileSync(join(OUT, `${key}.webp`), await square(await bytesOf(i)));
     photos.push([key, `${key}.webp`]);
     credits.push(

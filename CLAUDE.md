@@ -241,6 +241,11 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   list or form that names items shows them; a new kind of item gets its words in the catalogue
   (the dry run lists those with none). Recipes and prep tasks say how many portions they make;
   a task's photos sit above the button that finishes it.
+- The photo library (ADR 085) is ours, the same for every customer: freely licensed Wikimedia
+  Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
+  built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in
+  Profile -> Picture credits). Never retailers' or brands' own images. A brand (`kind`) with no
+  photo shows its kind's.
 - The service worker shows "Can't reach Outlet Ops" after 10 s and caches nothing; Cognito calls
   give up after 5 s, and Cognito not answering never signs anyone out (ADR 063). Caddy speaks
   HTTP/1.1 and HTTP/2 only (the security group has no UDP 443) and logs each request.
@@ -280,6 +285,8 @@ pnpm --filter @outlet-ops/workflow reports-rebuild     the report tables only
 pnpm --filter @outlet-ops/workflow tasks-tick          checklist rounds 24 h ahead, reminders and
                                                       escalation (the 5-minute timer, ADR 020);
                                                       the morning expiry alert (ADR 040)
+pnpm --filter @outlet-ops/web photos                  rebuild the photo library from scripts/photos/library.json
+                                                      (NODE_USE_ENV_PROXY=1 behind a proxy; ADR 085)
 pnpm --filter @outlet-ops/web e2e                     build, then Playwright vs the standalone server
                                                       (+ dev-only pages vs next dev; seeded DB)
 pnpm --filter @outlet-ops/web check:prod-dev-auth     prod build: dev login must be 404
