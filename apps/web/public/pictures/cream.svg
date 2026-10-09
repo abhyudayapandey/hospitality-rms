@@ -1,0 +1,7 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M9 11l3-5h8l3 5v17.5c0 .8-.7 1.5-1.5 1.5h-11C9.7 30 9 29.3 9 28.5z" fill="#FFFFFF"/>
+<path d="M12 6h8l3 5H9z" fill="#00A6ED"/>
+<rect x="12" y="3" width="8" height="3" rx=".5" fill="#00A6ED"/>
+<rect x="10.5" y="14" width="11" height="12" rx="1.5" fill="#FFFFFF"/>
+<g transform="translate(10.5 14.5) scale(0.35)"><path d="M8 22c0-8 4-14 8-14s8 6 8 14z" fill="#F4F4F4" stroke="#B4B4B4" stroke-width="1.2"/><path d="M16 8c-1-2 0-4 2-5" stroke="#B4B4B4" stroke-width="1.2"/></g><text x="16" y="24.6" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="4.6" fill="#00A6ED">CREAM</text>
+</svg>

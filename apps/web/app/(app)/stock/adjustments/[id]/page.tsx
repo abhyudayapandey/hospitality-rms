@@ -6,6 +6,7 @@ import { formatMoney, formatWhen } from '@/lib/format';
 import { formatQty, movementLabel } from '@/lib/inventory';
 import { photosEnabled, presignPhotoView, wastageKeyPattern } from '@/lib/photos';
 import { AdjustmentDecision } from './decision';
+import { ItemThumb } from '@/components/item-thumb';
 
 const REASON: Record<string, string> = {
   count_variance: 'Stock count difference',
@@ -96,8 +97,9 @@ export default async function AdjustmentPage({ params }: { params: Promise<{ id:
             className="rounded-xl bg-white p-4 ring-1 ring-slate-200"
             data-testid="adjustment-line"
           >
-            <div className="flex justify-between gap-2">
-              <span>
+            <div className="flex items-center justify-between gap-2">
+              <ItemThumb name={l.name} />
+              <span className="min-w-0 flex-1">
                 <span className="block font-medium">{l.name}</span>
                 <span className="text-xs text-slate-500">
                   {movementLabel(l.movement_type, l.reason)}

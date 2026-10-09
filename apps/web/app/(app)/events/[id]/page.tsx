@@ -10,6 +10,7 @@ import { eventFormOptions } from '../options';
 import { CancelEvent } from './cancel-event';
 import { jobTitles } from '@/lib/job-titles';
 import { formatQty } from '@/lib/qty';
+import { ItemThumb } from '@/components/item-thumb';
 
 export default async function EventPage({
   params,
@@ -46,7 +47,8 @@ export default async function EventPage({
         {e.notes && <p className="mt-1 text-sm">{e.notes}</p>}
         <ul className="mt-3 space-y-1 text-sm" data-testid="event-requirements">
           {e.requirements.map((r, i) => (
-            <li key={i} className="tabular-nums">
+            <li key={i} className="flex items-center gap-3 tabular-nums">
+              {r.kind !== 'role' && <ItemThumb name={r.item_name} size="size-10" />}
               {r.kind === 'role'
                 ? `${r.headcount} × ${title(r.role_code)} · ${formatTime(r.starts_at!, tz)}–${formatTime(r.ends_at!, tz)}`
                 : `${r.item_name ?? 'Item'} · ${formatQty(r.qty ?? 0, r.base_uom ?? '')}`}

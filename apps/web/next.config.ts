@@ -40,6 +40,13 @@ export default function config(phase: string): NextConfig {
           ],
         },
         {
+          // the item pictures (ADR 084): they change only with a release
+          source: '/pictures/:file*',
+          headers: [
+            { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
+          ],
+        },
+        {
           source: '/sw.js',
           headers: [
             { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },

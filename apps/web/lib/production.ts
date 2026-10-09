@@ -110,7 +110,9 @@ export async function batchLabel(tx: Tx, production: string): Promise<BatchLabel
 
 export interface PrepRecipe {
   batch_yield: number;
-  ingredients: { name: string; qty: number; unit: string }[];
+  /** the portions this task's quantity makes (ADR 084), when the item says per batch */
+  portions: number | null;
+  ingredients: { name: string; category: string | null; qty: number; unit: string }[];
   method: { step: number; instruction: string; minutes: number | null }[];
   batches: { production_id: string; batch_no: string | null; qty: number }[];
 }

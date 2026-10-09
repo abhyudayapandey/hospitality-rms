@@ -10,6 +10,7 @@ import { UnusualNote } from '@/components/unusual-note';
 import { byGroup } from '@/lib/item-groups';
 import { requestTransfer } from '../../actions';
 import { formatQty } from '@/lib/qty';
+import { ItemThumb } from '@/components/item-thumb';
 
 export function TransferRequestForm({
   to,
@@ -88,6 +89,7 @@ export function TransferRequestForm({
                   data-filter-row
                   data-filter-text={i.name}
                 >
+                  <ItemThumb name={i.name} />
                   <label htmlFor={`t-${i.item_id}`} className="min-w-0 flex-1 text-sm">
                     <span className="block font-medium">{i.name}</span>
                     <span className="text-xs text-slate-500">

@@ -9,6 +9,10 @@
   --color-brand-600: #2a7368;
   --color-brand-700: #1f5f57;
   --color-brand-800: #184a44;
+  /* the tile behind an item's picture (ADR 084): light and warm in both themes, so a black
+     peppercorn or a dark rum bottle reads as well as a white egg */
+  --color-tile: #f6f1e7;
+  --color-tile-edge: #e6dccb;
 }
 
 /* Dark is the default (ADR 052): the light palette's scales turned over, so every screen's
@@ -84,6 +88,8 @@
   --color-brand-600: oklch(72% 0.09 178);
   --color-brand-700: oklch(78% 0.09 178);
   --color-brand-800: oklch(86% 0.07 178);
+  --color-tile: oklch(91% 0.02 85);
+  --color-tile-edge: oklch(80% 0.03 85);
 }
 
 /* Tap feedback (ADR 055): a pressed look the moment a finger lands, the tapped link dimmed

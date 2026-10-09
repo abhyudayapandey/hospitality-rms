@@ -6,6 +6,7 @@ import { ErrorBox, inputClass, primaryButton, secondaryButton } from '@/componen
 import { addDays, localToInstant } from '@/lib/dates';
 import { saveEvent, type EventRequirementInput } from '../roster/actions';
 import type { EventFormOptions } from './options';
+import { ItemThumb } from '@/components/item-thumb';
 
 export interface EventDraft {
   id: string;
@@ -265,7 +266,11 @@ export function EventForm({
         ) : (
           <>
             {e.items.map((it, i) => (
-              <div key={i} className="grid grid-cols-3 gap-2">
+              <div key={i} className="flex items-center gap-2">
+                <ItemThumb
+                  name={options.items.find((o) => o.id === it.item_id)?.name}
+                  size="size-10"
+                />
                 <select
                   aria-label="Item"
                   value={it.item_id}
@@ -276,7 +281,7 @@ export function EventForm({
                       ),
                     })
                   }
-                  className={`${inputClass} col-span-2`}
+                  className={`${inputClass} min-w-0 flex-1`}
                 >
                   {options.items.map((o) => (
                     <option key={o.id} value={o.id}>
@@ -296,7 +301,7 @@ export function EventForm({
                       items: e.items.map((y, j) => (j === i ? { ...y, qty: x.target.value } : y)),
                     })
                   }
-                  className={inputClass}
+                  className={`${inputClass} max-w-24 text-right`}
                 />
               </div>
             ))}

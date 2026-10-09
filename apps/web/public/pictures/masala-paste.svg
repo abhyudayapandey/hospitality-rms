@@ -1,0 +1,8 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<ellipse cx="16" cy="14.5" rx="12.5" ry="3.8" fill="#B5302A"/>
+<path d="M9 13.5c2-1 4 0 6-1s4-1 6 0 2 1 2 1" stroke="#D9625A" stroke-width="1" fill="none"/><g transform="translate(17 2) scale(0.32)"><path d="M9 24c6-1 13-6 15-14 .5-2-1.5-3.2-3-2-1.5 6-6 11-12 13-1.5.5-1.5 3.2 0 3z" fill="#F8312F"/><path d="M21 8.5c.2-2 1.4-3.3 3-3.8" stroke="#00A35C" stroke-width="1.6" stroke-linecap="round"/><path d="M19.5 9c1.2-1.4 3.6-1.6 5-.4" stroke="#00A35C" stroke-width="2" stroke-linecap="round"/></g><g transform="translate(5 3) scale(0.3)"><path d="M16 6c5 0 8 4 8 9s-3 9-8 9-8-4-8-9 3-9 8-9z" fill="#FFF3D6"/><path d="M16 7v16M12 9c-1 4-1 9 0 13M20 9c1 4 1 9 0 13" stroke="#E6D3A6" stroke-width="1.2"/></g>
+<path d="M3.5 14.5h25c0 7.5-5.6 13-12.5 13S3.5 22 3.5 14.5z" fill="#7D4533"/>
+<path d="M3.6 14.5c.9 1.6 6 2.8 12.4 2.8s11.5-1.2 12.4-2.8" stroke="#000000" stroke-opacity=".12" stroke-width="1"/>
+<path d="M7.5 19.5c1.2 2.4 3.2 4 5.6 4.8" stroke="#FFFFFF" stroke-opacity=".4" stroke-width="1.2" stroke-linecap="round"/>
+<rect x="11" y="26.5" width="10" height="2" rx="1" fill="#7D4533"/>
+</svg>

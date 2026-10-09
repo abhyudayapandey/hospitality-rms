@@ -203,7 +203,11 @@ export default async function StockPage({ searchParams }: { searchParams: Search
                         href={`/stock/items/${r.item_id}?node=${storeOf(r)}`}
                         className="flex min-h-14 items-center justify-between gap-3 px-4 py-2"
                       >
-                        <ItemThumb category={r.category} src={photos.get(r.item_id)} />
+                        <ItemThumb
+                          name={r.name}
+                          category={r.category}
+                          src={photos.get(r.item_id)}
+                        />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-medium">{r.name}</span>
                           {all && (

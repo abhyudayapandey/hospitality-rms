@@ -5,6 +5,7 @@ import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatQty, supplyContext, type SearchParams } from '@/lib/inventory';
 import { CountForm, type CountLine } from './count-form';
+import { ItemThumb } from '@/components/item-thumb';
 
 export default async function CountSheetPage({
   params,
@@ -47,8 +48,14 @@ export default async function CountSheetPage({
         </p>
         <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
           {lines.map((l) => (
-            <li key={l.item_id} className="flex justify-between gap-2 px-4 py-3 text-sm">
-              <span>{l.name}</span>
+            <li
+              key={l.item_id}
+              className="flex items-center justify-between gap-2 px-4 py-3 text-sm"
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <ItemThumb name={l.name} size="size-10" />
+                <span>{l.name}</span>
+              </span>
               <span className="text-right tabular-nums">
                 {l.counted_qty === null ? '—' : formatQty(l.counted_qty, l.base_uom)} ·{' '}
                 {label[(l.outcome ?? 'no_change') as keyof typeof label]}

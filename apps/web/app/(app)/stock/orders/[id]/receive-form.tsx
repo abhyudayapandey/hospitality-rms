@@ -8,6 +8,7 @@ import { formatMoney } from '@/lib/format';
 import { receiveGoods } from '../../actions';
 import { BillFiles, type BillFile } from '../../bills/bill-files';
 import { formatQty } from '@/lib/qty';
+import { ItemThumb } from '@/components/item-thumb';
 
 export interface ReceiveLine {
   item_id: string;
@@ -148,12 +149,15 @@ export function ReceiveForm({
           const earlier = Number(l.received);
           return (
             <li key={l.item_id} className="space-y-2 px-4 py-3" data-testid="receive-line">
-              <p className="text-sm">
-                <span className="block font-medium">{l.name}</span>
-                <span className="text-xs text-slate-500">
-                  {qtyText(Number(l.ordered), l.base_uom)} ordered
-                  {earlier > 0 &&
-                    ` · ${qtyText(earlier, l.base_uom)} came earlier, ${qtyText(left(l), l.base_uom)} to come`}
+              <p className="flex items-center gap-3 text-sm">
+                <ItemThumb name={l.name} />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">{l.name}</span>
+                  <span className="text-xs text-slate-500">
+                    {qtyText(Number(l.ordered), l.base_uom)} ordered
+                    {earlier > 0 &&
+                      ` · ${qtyText(earlier, l.base_uom)} came earlier, ${qtyText(left(l), l.base_uom)} to come`}
+                  </span>
                 </span>
               </p>
               <div className="grid grid-cols-2 gap-3">

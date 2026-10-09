@@ -1,30 +1,25 @@
-import { Icon, type IconName } from './icon';
+import { pictureFor, pictureOf } from '@outlet-ops/domain';
 
-// A picture for each item (UX-6, ADR 034): its photo, or until it has one, a drawn icon
-// for its kind: produce, drinks, linen, prep, meat and dairy; the rest a box. Never decoration alone: the
-// name is always next to it.
-
-const KINDS: readonly [RegExp, IconName][] = [
-  [/produce|veg|fruit|herb|leaf/i, 'leaf'],
-  [/liquor|spirit|wine|beer|mixer|bar|drink|juice|beverage/i, 'glass'],
-  [/linen|amenit|room|housekeep/i, 'bed'],
-  [/prep|sauce|batch|kitchen made/i, 'pot'],
-  [/meat|seafood|fish|poultry|dairy/i, 'plate'],
-];
-
-export function itemIcon(category: string | null | undefined): IconName {
-  return KINDS.find(([re]) => re.test(category ?? ''))?.[1] ?? 'box';
-}
+// A picture on every item line (UX-6, ADR 034, ADR 084): the item's own photo when it has
+// one, else a picture of the thing itself from its name (garlic looks like garlic, cloves like
+// cloves), else its category's. Staff who read little find an item by its picture, so it is
+// big, on a light tile in both themes, and the name is always next to it.
 
 export function ItemThumb({
+  name,
   category,
   src = null,
-  size = 'size-11',
+  size = 'size-12',
+  fallback,
 }: {
-  category: string | null | undefined;
+  /** the item's (or dish's) name: what the picture is matched from */
+  name?: string | null | undefined;
+  category?: string | null | undefined;
   /** the item's own photo (a short-lived URL), when it has one */
   src?: string | null | undefined;
   size?: string;
+  /** the picture when nothing in the name or category matches; a box otherwise */
+  fallback?: string | undefined;
 }) {
   if (src) {
     return (
@@ -37,12 +32,18 @@ export function ItemThumb({
       />
     );
   }
+  let key = pictureFor(name ?? '', category);
+  if (key === 'box' && fallback && pictureOf(fallback)) key = fallback;
   return (
     <span
       aria-hidden
-      className={`${size} flex shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700 ring-1 ring-brand-100`}
+      data-testid="item-picture"
+      data-picture={key}
+      className={`${size} flex shrink-0 items-center justify-center rounded-lg bg-tile p-1 ring-1 ring-tile-edge`}
     >
-      <Icon name={itemIcon(category)} className="size-6" />
+      {/* a static file from public/pictures: the browser keeps it for a day */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={`/pictures/${key}.svg`} alt="" className="size-full" draggable={false} />
     </span>
   );
 }

@@ -17,12 +17,14 @@ export interface RecipeRow {
   shelf_life_hours: number | null;
   version: number;
   effective_from: string;
+  /** portions one batch makes (file 19), for prep items that say */
+  batch_portions: string | null;
 }
 
 export async function myRecipes(tx: Tx): Promise<RecipeRow[]> {
   const r = await sql<RecipeRow>`
     select recipe_id, kind, subject_id, code, name, grp, unit, batch_yield, shelf_life_hours,
-           version, effective_from::text
+           version, effective_from::text, batch_portions
       from inv.my_recipes()`.execute(tx);
   return r.rows;
 }

@@ -12,6 +12,7 @@ import {
 } from '@/components/messages';
 import { actOnRequest } from '@/app/(app)/inbox/actions';
 import { dispatchTransfer, receiveTransfer } from '../../actions';
+import { ItemThumb } from '@/components/item-thumb';
 
 export interface TransferLine {
   item_id: string;
@@ -132,6 +133,7 @@ export function TransferStepForm({
       <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
         {lines.map((l) => (
           <li key={l.item_id} className="flex items-center justify-between gap-3 px-4 py-2">
+            <ItemThumb name={l.name} />
             <label htmlFor={`q-${l.item_id}`} className="min-w-0 flex-1 text-sm">
               <span className="block font-medium">{l.name}</span>
               <span className="text-xs text-slate-500">

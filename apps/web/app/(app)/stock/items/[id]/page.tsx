@@ -45,7 +45,7 @@ export default async function ItemLedgerPage({
       </Link>
       <div className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <div className="flex items-center gap-3">
-          <ItemThumb category={item.category} src={photo} size="size-20" />
+          <ItemThumb name={item.name} category={item.category} src={photo} size="size-20" />
           <div className="min-w-0">
             <h1 className="text-lg font-semibold">{item.name}</h1>
             <p className="text-sm text-slate-600">{item.sku}</p>

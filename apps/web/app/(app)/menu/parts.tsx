@@ -79,7 +79,9 @@ export function RecipeList({
                   >
                     <span className="flex min-w-0 items-center gap-3">
                       <ItemThumb
-                        category={r.kind === 'menu' ? 'meat' : 'prep'}
+                        name={r.name}
+                        category={r.grp}
+                        fallback={r.kind === 'menu' ? 'dish' : 'gravy'}
                         src={photos.get(r.subject_id)}
                       />
                       <span className="min-w-0 truncate font-medium">{r.name}</span>

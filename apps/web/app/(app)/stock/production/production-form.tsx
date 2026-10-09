@@ -6,6 +6,7 @@ import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/mes
 import type { MadeHere } from '@/lib/production';
 import { useHydrated } from '@/lib/use-hydrated';
 import { recordProduction } from '../actions';
+import { ItemThumb } from '@/components/item-thumb';
 
 interface Line {
   ingredient_id: string;
@@ -74,7 +75,10 @@ export function ProductionForm({
         });
       }}
     >
-      <h2 className="font-semibold">{item.name}</h2>
+      <h2 className="flex items-center gap-3 font-semibold">
+        <ItemThumb name={item.name} fallback="gravy" />
+        {item.name}
+      </h2>
       {shelfLife && (
         <p className="text-sm text-slate-600" data-testid="shelf-life">
           {shelfLife}
@@ -96,12 +100,13 @@ export function ProductionForm({
         <legend className="text-sm text-slate-600">Used (change any that differ)</legend>
         {plan.map((l) => (
           <label key={l.ingredient_id} className="flex items-center justify-between gap-3">
-            <span className="min-w-0 truncate text-sm">
+            <ItemThumb name={l.name} size="size-10" />
+            <span className="min-w-0 flex-1 truncate text-sm">
               {l.name} ({l.unit})
             </span>
             <input
               aria-label={`Used ${l.name}`}
-              className={`${inputClass} w-28 text-right`}
+              className={`${inputClass} max-w-28 text-right`}
               inputMode="decimal"
               value={actual[l.ingredient_id] ?? String(round(l.qty * scale, l.unit))}
               onChange={(e) => setActual((a) => ({ ...a, [l.ingredient_id]: e.target.value }))}

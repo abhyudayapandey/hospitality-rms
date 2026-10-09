@@ -14,3 +14,4 @@ export * from './cover';
 export * from './compliance';
 export * from './food-label';
 export * from './task-icons';
+export * from './pictures';

@@ -2138,18 +2138,6 @@ csv(
   ],
   [
     [
-      D('BAR'),
-      'Batch tepache for the weekend',
-      'Three days to ferment: start it today',
-      0,
-      '18:00',
-      'high',
-      `person:${U('bartender')}`,
-      'Pineapple prepped;Jars labelled',
-      U('bar-manager'),
-      '',
-    ],
-    [
       D('HOUSEKEEPING'),
       'Restock minibars on the second floor',
       '',
@@ -2184,6 +2172,24 @@ csv(
       'Floor plan printed;Stage measured',
       U('banquet-manager'),
       '',
+    ],
+  ],
+);
+// The bar's tepache for the weekend (ADR 084): a prep task from the bar's prep list, so it
+// opens with its ingredients for the quantity, its method and Record the batch, like every
+// other thing to make; not a one-off task with free-text steps.
+csv(
+  '32_prep_tasks_TEST_DATA_ONLY.csv',
+  ['store_node_code', 'prep_item_code', 'day', 'due_time', 'quantity', 'assign_to', 'created_by'],
+  [
+    [
+      D('LAYOVER-BAR-STORE'),
+      'TEPACHE-LIQUEUR',
+      0,
+      '18:00',
+      1000,
+      `person:${U('bartender')}`,
+      U('bar-manager'),
     ],
   ],
 );

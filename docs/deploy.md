@@ -2428,3 +2428,22 @@ Preview and apply the stack first; nothing else in AWS changes.
      "Bill room …: …" To do items; Refilled takes the stock; Added to the bill closes the bill.
    - **Roster** (a department head): By person shows a tile per shift type and Off; a Split reads
      "11:00–15:00 · 18:00–23:00 · 9 h"; Repeat this pattern lists what it left out.
+
+## Releasing the pictures of every item (ADR 084)
+
+One migration (20261209100000: portions on recipes and prep tasks), run by the Deploy workflow.
+No stack change: the pictures are static files in the release (`apps/web/public/pictures`).
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual.
+4. Re-import the Passport demo: the tepache is now a prep task (file 32), the bar's one-off task
+   (file 30) is gone, and the files are re-dated. Test customers: nothing to re-import.
+5. Check, at 380 px:
+   - **Prep list** (the executive chef): each row has the item's picture, its name on one line,
+     par and on hand, then "Make" and the quantity.
+   - **A prep task** (a commis): each ingredient's picture, "Makes about N portions", and Photos
+     above Record the batch.
+   - **A recipe** (Menu): "Batch makes … · about N portions", a picture by each ingredient.
+   - **Stock, counts, orders, receiving, requests, wastage**: a picture on every line; dark items
+     (peppercorns, rum) read on their light tile in the dark theme.

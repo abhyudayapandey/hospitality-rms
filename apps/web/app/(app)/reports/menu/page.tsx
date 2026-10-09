@@ -15,6 +15,7 @@ import {
   menuMonths,
   monthsRange,
 } from '@/lib/reports';
+import { ItemThumb } from '@/components/item-thumb';
 
 // Menu engineering (R-2, ADR 028): each dish's margin against its popularity, per menu,
 // sorted into stars, plowhorses, puzzles and dogs, with what to do about each group. The
@@ -125,14 +126,17 @@ function Dish({
     <li className="text-sm" data-testid="dish" data-code={d.code}>
       <Link
         href={`/reports/dish?node=${outlet}&item=${d.menu_item_id}&months=${months}`}
-        className="block px-4 py-3"
+        className="flex items-center gap-3 px-4 py-3"
       >
-        <span className="block font-medium">{d.name}</span>
-        <span className="block text-xs text-slate-600 tabular-nums" data-testid="dish-money">
-          {words.money}
-        </span>
-        <span className="block text-xs text-slate-500 tabular-nums" data-testid="dish-share">
-          {words.share}
+        <ItemThumb name={d.name} fallback="dish" size="size-10" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium">{d.name}</span>
+          <span className="block text-xs text-slate-600 tabular-nums" data-testid="dish-money">
+            {words.money}
+          </span>
+          <span className="block text-xs text-slate-500 tabular-nums" data-testid="dish-share">
+            {words.share}
+          </span>
         </span>
       </Link>
     </li>

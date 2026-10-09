@@ -22,6 +22,7 @@ import { PlaceOrderForm, type PlaceLine } from './place-order-form';
 import { SendCard } from './send-card';
 import { BillForm } from '../../bills/bill-form';
 import { CloseOrder, WithdrawRequest } from './close-order';
+import { ItemThumb } from '@/components/item-thumb';
 
 const CHANNEL = { whatsapp: 'on WhatsApp', email: 'by email', print: 'printed' } as const;
 
@@ -314,8 +315,14 @@ export default async function OrderPage({
         !canPlace && (
           <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
             {lines.map((l) => (
-              <li key={l.item_id} className="flex justify-between gap-2 px-4 py-3 text-sm">
-                <span className="font-medium">{l.name}</span>
+              <li
+                key={l.item_id}
+                className="flex items-center justify-between gap-2 px-4 py-3 text-sm"
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <ItemThumb name={l.name} size="size-10" />
+                  <span className="font-medium">{l.name}</span>
+                </span>
                 <span className="tabular-nums">{formatQty(l.ordered, l.base_uom)}</span>
               </li>
             ))}
@@ -334,8 +341,14 @@ export default async function OrderPage({
       ) : (
         <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
           {lines.map((l) => (
-            <li key={l.item_id} className="flex justify-between gap-2 px-4 py-3 text-sm">
-              <span className="font-medium">{l.name}</span>
+            <li
+              key={l.item_id}
+              className="flex items-center justify-between gap-2 px-4 py-3 text-sm"
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <ItemThumb name={l.name} size="size-10" />
+                <span className="font-medium">{l.name}</span>
+              </span>
               <span className="text-right tabular-nums">
                 {formatQty(l.ordered, l.base_uom)}
                 <span className="block text-xs text-slate-500">

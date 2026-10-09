@@ -9,6 +9,7 @@ import type { ItemOption } from '@/lib/inventory';
 import { PhotoField } from '@/components/photo-field';
 import { ACTION_QUEUE_EVENT, indexedDbActions, type QueuedWastage } from '@/lib/action-queue';
 import { getWastageUploadUrl, recordWastage } from '../actions';
+import { ItemThumb } from '@/components/item-thumb';
 
 const REASONS = [
   ['spoiled', 'Spoiled'],
@@ -112,13 +113,16 @@ export function WastageForm({
     >
       <label className="block space-y-1">
         <span className="text-sm font-medium">Item</span>
-        <select value={itemId} onChange={(e) => setItemId(e.target.value)} className={inputClass}>
-          {items.map((i) => (
-            <option key={i.item_id} value={i.item_id}>
-              {i.name} ({i.base_uom})
-            </option>
-          ))}
-        </select>
+        <span className="flex items-center gap-3">
+          {item && <ItemThumb name={item.name} />}
+          <select value={itemId} onChange={(e) => setItemId(e.target.value)} className={inputClass}>
+            {items.map((i) => (
+              <option key={i.item_id} value={i.item_id}>
+                {i.name} ({i.base_uom})
+              </option>
+            ))}
+          </select>
+        </span>
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="block space-y-1">

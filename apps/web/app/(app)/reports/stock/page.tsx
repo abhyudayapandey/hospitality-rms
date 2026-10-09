@@ -9,6 +9,7 @@ import { formatQty } from '@/lib/inventory';
 import type { SearchParams } from '@/lib/params';
 import { reportPlace, stockItems, stockSummary, type StockItemRow } from '@/lib/report-data';
 import { formatMeasure, trendHref } from '@/lib/reports';
+import { ItemThumb } from '@/components/item-thumb';
 
 // Stock position (R-2, ADR 028): a store's value now and over four weeks, days on hand
 // (value over average daily use) and stock that hasn't moved in 30 days. For the store's
@@ -149,9 +150,10 @@ function itemRow(i: StockItemRow, right: string, all: boolean): FilterListRow {
     node: (
       <Link
         href={`/reports/item?node=${i.store_id}&item=${i.item_id}`}
-        className="flex justify-between gap-2 px-4 py-3"
+        className="flex items-center justify-between gap-2 px-4 py-3"
       >
-        <span className="min-w-0">
+        <ItemThumb name={i.name} size="size-10" />
+        <span className="min-w-0 flex-1">
           <span className="block font-medium">{i.name}</span>
           <span className="block text-xs text-slate-500">
             {all && `${i.store} · `}

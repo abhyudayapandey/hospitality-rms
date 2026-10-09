@@ -6,6 +6,7 @@ import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/mes
 import { copyQuantities, matchesSearch, totalSold } from '@/lib/sales-entry';
 import { useHydrated } from '@/lib/use-hydrated';
 import { postSales } from '../actions';
+import { ItemThumb } from '@/components/item-thumb';
 
 /** Another day's posted quantities, to copy (UX-4). */
 interface Copy {
@@ -130,10 +131,11 @@ export function SalesForm({
                   className="flex items-center justify-between gap-3 px-4 py-2"
                   data-code={r.code}
                 >
-                  <span className="min-w-0 truncate">{r.name}</span>
+                  <ItemThumb name={r.name} fallback="dish" size="size-10" />
+                  <span className="min-w-0 flex-1 truncate">{r.name}</span>
                   <input
                     aria-label={`Sold ${r.name}`}
-                    className={`${inputClass} w-24 text-right`}
+                    className={`${inputClass} max-w-24 text-right`}
                     inputMode="numeric"
                     value={qty[r.menu_item_id] ?? ''}
                     onChange={(e) => setQty((q) => ({ ...q, [r.menu_item_id]: e.target.value }))}

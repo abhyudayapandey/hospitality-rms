@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { failure, taskIcon } from '@outlet-ops/domain';
 import { Icon } from '@/components/icon';
+import { ItemThumb } from '@/components/item-thumb';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
-import { formatWhen } from '@/lib/format';
+import { formatWhen, portionsText } from '@/lib/format';
 import { formatQty } from '@/lib/inventory';
 import { itemPhotoUrls, photosEnabled } from '@/lib/photos';
 import { prepTaskRecipe, type PrepRecipe } from '@/lib/production';
@@ -145,6 +146,41 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
           </p>
         ))}
       {recipe && <MakeIt recipe={recipe} unit={task.item?.unit ?? ''} open={open} />}
+      {/* photos come before the button that finishes the task: they are part of doing it */}
+      {(photos.length > 0 || (open && task.can_work && photosEnabled())) && (
+        <section className="space-y-2" data-testid="task-photos">
+          <h2 className="text-sm font-semibold text-slate-500">Photos</h2>
+          {photos.length > 0 && (
+            <ul className="grid grid-cols-3 gap-2">
+              {photos.map((p) => (
+                <li
+                  key={p.id}
+                  className="space-y-1 text-xs text-slate-500"
+                  data-testid="task-photo"
+                >
+                  {p.url ? (
+                    // a presigned S3 URL that changes on every page: next/image would cache it
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.url}
+                      alt={`Photo by ${p.taken_by_name}`}
+                      className="aspect-square w-full rounded-lg object-cover ring-1 ring-slate-200"
+                    />
+                  ) : (
+                    <p className="flex aspect-square items-center justify-center rounded-lg bg-slate-100 p-2 text-center">
+                      {p.photo_key ? 'Photo' : 'Photo removed'}
+                    </p>
+                  )}
+                  <span className="block truncate">{p.taken_by_name}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {open && task.can_work && photosEnabled() && photos.length < 3 && (
+            <AddTaskPhoto task={task.id} node={task.org_node_id} />
+          )}
+        </section>
+      )}
       {minibar && (task.kind === 'minibar_refill' || task.kind === 'minibar_bill') ? (
         <MinibarTask
           task={task.id}
@@ -165,40 +201,6 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         (task.steps.length > 0 || task.can_work) && (
           <TaskWork task={task} canWork={task.can_work} photos={photosEnabled()} />
         )
-      )}
-      {(photos.length > 0 || (open && task.can_work && photosEnabled())) && (
-        <section className="space-y-2" data-testid="task-photos">
-          <h2 className="text-sm font-semibold text-slate-500">Photos (kept 30 days)</h2>
-          {photos.length > 0 && (
-            <ul className="grid grid-cols-3 gap-2">
-              {photos.map((p) => (
-                <li
-                  key={p.id}
-                  className="space-y-1 text-xs text-slate-500"
-                  data-testid="task-photo"
-                >
-                  {p.url ? (
-                    // a presigned S3 URL that changes on every page: next/image would cache it
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.url}
-                      alt={`Photo by ${p.taken_by_name}`}
-                      className="aspect-square w-full rounded-lg object-cover ring-1 ring-slate-200"
-                    />
-                  ) : (
-                    <p className="flex aspect-square items-center justify-center rounded-lg bg-slate-100 p-2 text-center">
-                      {p.photo_key ? 'Photo' : 'Removed after 30 days'}
-                    </p>
-                  )}
-                  <span className="block truncate">{p.taken_by_name}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {open && task.can_work && photosEnabled() && photos.length < 3 && (
-            <AddTaskPhoto task={task.id} node={task.org_node_id} />
-          )}
-        </section>
       )}
       {open && task.can_hand_on && (
         <ReassignTask task={task.id} people={people} current={task.assignee_user_id} />
@@ -261,6 +263,11 @@ function ComplianceWork({ task, about }: { task: TaskDetail; about: ComplianceTa
 function MakeIt({ recipe, unit, open }: { recipe: PrepRecipe; unit: string; open: boolean }) {
   return (
     <div className="space-y-3">
+      {recipe.portions !== null && (
+        <p className="text-sm text-slate-800" data-testid="prep-portions">
+          Makes about <strong>{portionsText(recipe.portions)}</strong>
+        </p>
+      )}
       {open && recipe.ingredients.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-500">Ingredients for this batch</h2>
@@ -269,9 +276,16 @@ function MakeIt({ recipe, unit, open }: { recipe: PrepRecipe; unit: string; open
             data-testid="prep-ingredients"
           >
             {recipe.ingredients.map((l, i) => (
-              <li key={i} className="flex justify-between gap-2 px-4 py-2">
-                <span>{l.name}</span>
-                <span className="tabular-nums">{formatQty(String(l.qty), l.unit)}</span>
+              <li
+                key={i}
+                className="flex items-center gap-3 px-4 py-2"
+                data-testid="prep-ingredient"
+              >
+                <ItemThumb name={l.name} category={l.category} />
+                <span className="min-w-0 flex-1 text-base">{l.name}</span>
+                <span className="text-base font-semibold tabular-nums">
+                  {formatQty(String(l.qty), l.unit)}
+                </span>
               </li>
             ))}
           </ul>

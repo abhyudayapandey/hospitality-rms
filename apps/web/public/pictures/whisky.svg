@@ -1,0 +1,8 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M14 3h4v4.5h3.5c.8 0 1.5.7 1.5 1.5v18.5c0 1.1-.9 2-2 2H11c-1.1 0-2-.9-2-2V9c0-.8.7-1.5 1.5-1.5H14z" fill="#D9F0FF"/>
+<clipPath id="b"><path d="M14 3h4v4.5h3.5c.8 0 1.5.7 1.5 1.5v18.5c0 1.1-.9 2-2 2H11c-1.1 0-2-.9-2-2V9c0-.8.7-1.5 1.5-1.5H14z"/></clipPath><rect x="0" y="10" width="32" height="32" fill="#C47A1A" clip-path="url(#b)"/>
+<rect x="13.75" y="2" width="4.5" height="2.5" rx=".6" fill="#3F2A20"/>
+<rect x="9.5" y="13" width="13" height="9" rx="1" fill="#FFF3D6"/>
+<g transform="translate(0 1.5)"><text x="16" y="17.6" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="4.6" fill="#7D4533">W</text></g>
+<path d="M10.5 23.2v3" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="1.2" stroke-linecap="round"/>
+</svg>
