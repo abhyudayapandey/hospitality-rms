@@ -143,6 +143,12 @@ export default async function ProfilePage() {
         </p>
         <SignOutEverywhere />
       </section>
+
+      <p className="text-sm">
+        <Link href="/profile/picture-credits" className="text-brand-700 underline">
+          Picture credits
+        </Link>
+      </p>
     </div>
   );
 }

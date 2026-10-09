@@ -74,9 +74,12 @@ test('the prep list gives each name its own line, with its picture', async ({ pa
   await expect(line.getByTestId('item-picture')).toHaveAttribute('data-picture', 'chutney');
   // the name is never squeezed into one word a line by the quantity box
   const name = line.getByText('Mint Chutney', { exact: true });
+  // boundingBox does not wait: measure once it is shown
+  await expect(name).toBeVisible();
   expect((await name.boundingBox())!.width).toBeGreaterThan(80);
   expect((await name.boundingBox())!.height).toBeLessThan(30);
   const box = line.getByRole('textbox', { name: /^Make Mint Chutney/ });
+  await expect(box).toBeVisible();
   expect((await box.boundingBox())!.width).toBeLessThan(140);
 });
 
@@ -106,4 +109,25 @@ test('every stock line is matched to the picture of the thing itself', async ({ 
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-picture')));
   expect(keys).toContain('garlic');
   expect(keys.filter((k) => k === 'box')).toEqual([]);
+});
+
+test('an item shows a real photo from our library, and Profile credits it (ADR 086)', async ({
+  page,
+}) => {
+  const store = await placeId('TEST-HOTEL-1.0-KITCHEN-STORE');
+  await signInAs(page, 'Test Executive Chef 1.0');
+  await page.goto(`/stock?node=${store}`);
+  const garlic = page.locator('[data-testid="item-picture"][data-picture="garlic"] img').first();
+  await expect(garlic).toHaveAttribute('src', '/pictures/garlic.webp');
+  await expect
+    .poll(() => garlic.evaluate((img) => (img as HTMLImageElement).naturalWidth))
+    .toBeGreaterThan(0);
+
+  await page.goto('/profile');
+  await page.getByRole('link', { name: 'Picture credits' }).click();
+  const row = page.locator('main li').filter({ hasText: 'Garlic' }).first();
+  await expect(row.getByRole('link', { name: /Commons|source/i }).first()).toHaveAttribute(
+    'href',
+    /^https:\/\/commons\.wikimedia\.org\//,
+  );
 });

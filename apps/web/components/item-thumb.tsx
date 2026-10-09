@@ -26,6 +26,7 @@ export function ItemThumb({
   src = null,
   size = 'size-12',
   fallback,
+  picture,
 }: {
   /** the item's (or dish's) name: what the picture is matched from */
   name?: string | null | undefined;
@@ -35,6 +36,8 @@ export function ItemThumb({
   size?: string;
   /** the picture when nothing in the name or category matches; a box otherwise */
   fallback?: string | undefined;
+  /** this picture, whatever the name */
+  picture?: string | undefined;
 }) {
   if (src) {
     return (
@@ -47,9 +50,11 @@ export function ItemThumb({
       />
     );
   }
-  let key = pictureFor(name ?? '', category);
+  let key = picture && pictureOf(picture) ? picture : pictureFor(name ?? '', category);
   if (key === 'box' && fallback && pictureOf(fallback)) key = fallback;
-  const photo = PICTURE_PHOTOS.get(key);
+  // a brand with no photo yet shows its kind's: Old Monk shows a dark rum
+  const kind = pictureOf(key)?.kind;
+  const photo = PICTURE_PHOTOS.get(key) ?? (kind ? PICTURE_PHOTOS.get(kind) : undefined);
   if (photo) {
     return (
       <span

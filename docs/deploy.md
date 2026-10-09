@@ -2451,7 +2451,7 @@ No stack change.
      above Record the batch.
    - **A recipe** (Menu): "Batch makes … · about N portions", a picture by each ingredient.
    - **Stock, counts, orders, receiving, requests, wastage**: an icon on every line, as before;
-     the real photos come with the photo library.
+     the real photos come with the photo library (ADR 086).
 
 ## Releasing building blocks (ADR 085)
 
@@ -2470,3 +2470,15 @@ One migration (20261210100000), run by the Deploy workflow. No stack change.
    - **Admin → Your plan** (the account owner): the bundles and parts, read-only, with no switch.
    - **Passport** (`passport.gm`): Home, Stock, Roster, Clock, Minibars, Compliance and the
      reports as before.
+
+## Releasing the photo library (ADR 086)
+
+No migration, no stack change, nothing to re-import: the photos are files in the app.
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual.
+4. Check, at 380 px, as `passport.bar-manager` and a commis:
+   - **Stock**: each item has a real photo cut out on white (garlic, cloves, Old Monk, Kingfisher);
+     an item whose brand has no photo shows its kind (a rum bottle).
+   - **Profile → Picture credits**: every photo with its author, licence and a link to Commons.
