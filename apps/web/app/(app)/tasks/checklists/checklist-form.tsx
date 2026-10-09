@@ -49,6 +49,10 @@ export function ChecklistForm({
   const [every, setEvery] = useState(s0?.kind === 'every_n_hours' ? String(s0.every) : '2');
   const [from, setFrom] = useState(s0?.kind === 'every_n_hours' ? s0.from : '08:00');
   const [to, setTo] = useState(s0?.kind === 'every_n_hours' ? s0.to : '22:00');
+  // ADR 087: days of the month, or the 1st to 4th of a weekday
+  const [monthDays, setMonthDays] = useState(s0?.kind === 'monthly' ? s0.days.join(', ') : '1');
+  const [weekday, setWeekday] = useState(s0?.kind === 'nth_weekday' ? s0.weekday : 1);
+  const [nths, setNths] = useState<number[]>(s0?.kind === 'nth_weekday' ? s0.nths : [1]);
   const a0 = existing?.assign;
   const [assign, setAssign] = useState<Assign>(
     a0?.mode === 'job_role'
@@ -71,12 +75,24 @@ export function ChecklistForm({
   const preview = parseSteps(steps);
   const [error, setError] = useState<string | null>(null);
 
-  const schedule = (): Schedule =>
-    kind === 'daily'
-      ? { kind, times: TIMES(times) }
-      : kind === 'weekly'
-        ? { kind, weekdays: [...days].sort((a, b) => a - b), times: TIMES(times) }
-        : { kind, every: Number(every), from, to };
+  const schedule = (): Schedule => {
+    switch (kind) {
+      case 'daily':
+        return { kind, times: TIMES(times) };
+      case 'weekly':
+        return { kind, weekdays: [...days].sort((a, b) => a - b), times: TIMES(times) };
+      case 'monthly':
+        return {
+          kind,
+          days: [...new Set(TIMES(monthDays).map(Number))].sort((a, b) => a - b),
+          times: TIMES(times),
+        };
+      case 'nth_weekday':
+        return { kind, weekday, nths: [...nths].sort((a, b) => a - b), times: TIMES(times) };
+      case 'every_n_hours':
+        return { kind, every: Number(every), from, to };
+    }
+  };
 
   const save = () =>
     start(async () => {
@@ -127,8 +143,60 @@ export function ChecklistForm({
           <option value="daily">Every day</option>
           <option value="weekly">On some days of the week</option>
           <option value="every_n_hours">Every few hours</option>
+          <option value="monthly">On some days of the month</option>
+          <option value="nth_weekday">On the 1st, 2nd, ... weekday of the month</option>
         </select>
       </label>
+      {kind === 'monthly' && (
+        <label className="block space-y-1">
+          <span className="text-sm font-medium">
+            Days of the month (e.g. 1, 16; the 31st is the last day in a shorter month)
+          </span>
+          <input
+            value={monthDays}
+            onChange={(e) => setMonthDays(e.target.value)}
+            inputMode="numeric"
+            className={inputClass}
+          />
+        </label>
+      )}
+      {kind === 'nth_weekday' && (
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">Which</legend>
+          <div className="grid grid-cols-4 gap-1">
+            {[1, 2, 3, 4].map((n) => (
+              <label
+                key={n}
+                className={`flex min-h-11 items-center justify-center rounded-lg text-xs ring-1 ${
+                  nths.includes(n) ? 'bg-brand-700 text-white ring-brand-700' : 'ring-slate-300'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={nths.includes(n)}
+                  onChange={(e) =>
+                    setNths(e.target.checked ? [...nths, n] : nths.filter((x) => x !== n))
+                  }
+                />
+                {['1st', '2nd', '3rd', '4th'][n - 1]}
+              </label>
+            ))}
+          </div>
+          <select
+            aria-label="Weekday"
+            value={weekday}
+            onChange={(e) => setWeekday(Number(e.target.value))}
+            className={inputClass}
+          >
+            {DAYS.map((d, i) => (
+              <option key={d} value={i + 1}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </fieldset>
+      )}
       {kind === 'weekly' && (
         <fieldset className="space-y-1">
           <legend className="text-sm font-medium">Days</legend>
@@ -202,7 +270,7 @@ export function ChecklistForm({
         />
         <span className="block text-xs text-slate-500">
           After a | add a range like 0-5 °C (readings outside it are flagged), or text, photo, or
-          photo required.
+          photo required. End with | Mon,Thu for a step done only on those days.
         </span>
       </label>
       {typeof preview !== 'string' && preview.length > 0 && (

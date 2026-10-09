@@ -16,7 +16,8 @@ export interface MyTask {
     | 'licence'
     | 'compliance'
     | 'minibar_refill'
-    | 'minibar_bill';
+    | 'minibar_bill'
+    | 'sign_off';
   title: string;
   org_node_id: string;
   place_name: string;
@@ -59,6 +60,9 @@ export interface TaskStep {
   flagged: boolean;
   done_at: string | null;
   done_by_name: string | null;
+  /** who signed the round off, when it needed it (ADR 087) */
+  checked_at: string | null;
+  checked_by_name: string | null;
 }
 
 export interface TaskDetail {
@@ -94,7 +98,20 @@ export interface TaskDetail {
   can_hand_on: boolean;
   /** each time it reached someone, oldest first */
   handovers: Handover[];
+  /** a sign-off's: the round's steps; anything else's: its own */
   steps: TaskStep[];
+  /** a checklist round's sign-off (ADR 087): the rule, who signed it, the latest ask */
+  sign_off_rule: string | null;
+  signed_off_by_name: string | null;
+  signed_off_at: string | null;
+  completed_by_name: string | null;
+  sent_back_note: string | null;
+  sent_back_at: string | null;
+  sign_off_task: { id: string; status: string; assignee_name: string | null } | null;
+  /** a sign-off: the round it checks and who did it */
+  signs_off: string | null;
+  signs_off_title: string | null;
+  signs_off_done_by: string | null;
 }
 
 export interface Handover {

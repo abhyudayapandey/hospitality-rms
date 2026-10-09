@@ -20,7 +20,7 @@ import {
 import { overdueWhenGiven } from '@/lib/tasks-view';
 import { complianceTask, dayWords, type ComplianceTaskRow } from '@/lib/compliance';
 import { DoneForm, RenewForm } from '../../compliance/act-forms';
-import { AssignExpiry, CancelTask, TaskWork } from './task-work';
+import { AssignExpiry, CancelTask, SignOffWork, TaskWork } from './task-work';
 import { AddTaskPhoto } from './task-photos';
 import { MinibarTask, type MinibarTaskCheck } from './minibar-task';
 import { ReassignTask, ReceiveSent, SentLines, type SentLine } from './receive-sent';
@@ -130,6 +130,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         {task.description && (
           <p className="text-sm whitespace-pre-line text-slate-800">{task.description}</p>
         )}
+        <SignOffLine task={task} open={open} />
         {task.kind === 'prep' && task.item && task.target_qty !== null && (
           <p className="text-sm text-slate-800" data-testid="prep-progress">
             Made {formatQty(String(task.made_qty), task.item.unit)} of{' '}
@@ -191,6 +192,11 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         />
       ) : about ? (
         <ComplianceWork task={task} about={about} />
+      ) : task.kind === 'sign_off' ? (
+        <>
+          <TaskWork task={task} canWork={false} photos={false} />
+          {open && task.can_work && <SignOffWork task={task} />}
+        </>
       ) : task.kind === 'receive' ? (
         open && task.can_work ? (
           <ReceiveSent task={task.id} lines={sent} />
@@ -337,6 +343,43 @@ function MakeIt({ recipe, unit, open }: { recipe: PrepRecipe; unit: string; open
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * A checklist round's second signature (ADR 087): what it is waiting for, who signed it off,
+ * or what it was sent back for; a sign-off says whose round it checks.
+ */
+function SignOffLine({ task, open }: { task: TaskDetail; open: boolean }) {
+  if (task.kind === 'sign_off') {
+    return (
+      <p className="text-sm text-slate-800" data-testid="sign-off-about">
+        {task.signs_off_done_by ?? 'Someone'} finished{' '}
+        {task.signs_off && (
+          <Link href={`/tasks/${task.signs_off}`} className="underline">
+            {task.signs_off_title}
+          </Link>
+        )}
+        . Check each step, then sign it off or send it back.
+      </p>
+    );
+  }
+  if (open && task.sent_back_note) {
+    return (
+      <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900" data-testid="sent-back">
+        Sent back to redo: {task.sent_back_note}
+      </p>
+    );
+  }
+  if (task.status !== 'done' || !task.sign_off_rule || task.sign_off_rule === 'none') return null;
+  return (
+    <p className="text-sm text-slate-800" data-testid="sign-off-status">
+      {task.signed_off_by_name
+        ? `Signed off by ${task.signed_off_by_name}${task.signed_off_at ? ` ${formatWhen(task.signed_off_at)}` : ''}`
+        : task.sign_off_task?.status === 'open' || task.sign_off_task?.status === 'in_progress'
+          ? `Waiting for sign-off by ${task.sign_off_task.assignee_name ?? 'someone'}`
+          : 'Nobody was there to sign it off'}
+    </p>
   );
 }
 

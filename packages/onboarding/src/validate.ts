@@ -483,8 +483,12 @@ function validateTasks(
       templates.set(t.template_code, t);
       place(file, t.line, 'place_code', t.place_code);
       assignee(file, t.line, t.assign_to);
+      const signer = /^role:(.+)$/.exec(t.sign_off)?.[1];
+      if (signer && !roles.has(signer)) {
+        add(file, t.line, 'sign_off', `${signer} is not in ${f('jobRoles')}`);
+      }
     } else {
-      for (const col of ['place_code', 'name', 'schedule', 'assign_to'] as const) {
+      for (const col of ['place_code', 'name', 'schedule', 'assign_to', 'sign_off'] as const) {
         if (JSON.stringify(first[col]) !== JSON.stringify(t[col])) {
           add(file, t.line, col, `differs from line ${first.line} of ${t.template_code}`);
         }

@@ -24,6 +24,8 @@ import {
   getDiscardUploadUrl,
   getTaskUploadUrl,
   recordTaskBatch,
+  sendBack,
+  signOff,
 } from '../actions';
 
 function range(s: TaskStep): string {
@@ -169,6 +171,11 @@ function StepValue({ step, unit }: { step: TaskStep; unit: string | undefined })
       {v}
       {step.photo_key && <span className="text-slate-500"> · photo added</span>}
       <span className="text-slate-500">{by}</span>
+      {step.checked_by_name && (
+        <span className="block text-emerald-700" data-testid="step-checked">
+          ✓ checked by {step.checked_by_name}
+        </span>
+      )}
       {step.flagged && (
         <span className="block font-semibold text-amber-800">Outside the acceptable range</span>
       )}
@@ -405,5 +412,58 @@ export function CancelTask({ task }: { task: string }) {
         </button>
       </div>
     </details>
+  );
+}
+
+/**
+ * A finished checklist round to sign off (ADR 087): its signer signs it off, or sends it back
+ * with what to redo. Whoever did any of it can't (the database says so).
+ */
+export function SignOffWork({ task }: { task: TaskDetail }) {
+  const router = useRouter();
+  const hydrated = useHydrated();
+  const [pending, start] = useTransition();
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const act = (fn: () => Promise<{ ok: true } | { ok: false; message: string }>) =>
+    start(async () => {
+      setError(null);
+      const r = await fn();
+      if (!r.ok) setError(r.message);
+      else router.refresh();
+    });
+  return (
+    <section className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+      <ErrorBox message={error} />
+      <button
+        type="button"
+        disabled={!hydrated || pending}
+        className={primaryButton}
+        onClick={() => act(() => signOff(task.id))}
+      >
+        Sign it off
+      </button>
+      <details className="space-y-2">
+        <summary className="min-h-11 cursor-pointer content-center text-sm font-medium">
+          Send it back
+        </summary>
+        <label className="block space-y-1 pt-2">
+          <span className="text-sm font-medium">What to redo</span>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            className={`${inputClass} min-h-20 py-2`}
+          />
+        </label>
+        <button
+          type="button"
+          disabled={!hydrated || pending || !note.trim()}
+          className={secondaryButton}
+          onClick={() => act(() => sendBack(task.id, note))}
+        >
+          Send back
+        </button>
+      </details>
+    </section>
   );
 }

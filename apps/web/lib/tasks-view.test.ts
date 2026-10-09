@@ -57,6 +57,12 @@ describe('checklist schedules', () => {
     expect(describeSchedule({ kind: 'every_n_hours', every: 1, from: '22:00', to: '06:00' })).toBe(
       'Every hour, 22:00 to 06:00',
     );
+    expect(describeSchedule({ kind: 'monthly', days: [1, 16], times: ['09:00'] })).toBe(
+      'On the 1st and 16th of the month at 09:00',
+    );
+    expect(
+      describeSchedule({ kind: 'nth_weekday', weekday: 1, nths: [1, 3], times: ['10:00'] }),
+    ).toBe('The 1st and 3rd Mon of the month at 10:00');
   });
 });
 
@@ -85,6 +91,19 @@ describe('steps editor', () => {
     expect(parseSteps(Array.from({ length: 31 }, (_, i) => `s${i}`).join('\n'))).toBe(
       'Up to 30 steps.',
     );
+  });
+
+  it('a step may run on some weekdays only (ADR 087)', () => {
+    expect(
+      parseSteps('Hoods | Mon\nWalk-in | 0-5 °C | Mon-Wed\nNotes | text | on Fri, Sun'),
+    ).toEqual([
+      { label: 'Hoods', kind: 'tick', days: [1] },
+      { label: 'Walk-in', kind: 'number', min: 0, max: 5, unit: '°C', days: [1, 2, 3] },
+      { label: 'Notes', kind: 'text', days: [5, 7] },
+    ]);
+    const text = 'Hoods | Mon,Thu\nWalk-in | 0-5 °C | Sat\nFloor | photo required | Mon';
+    const steps = parseSteps(text);
+    expect(stepsText(steps as Exclude<typeof steps, string>)).toBe(text);
   });
 
   it('writes steps back as the same text', () => {

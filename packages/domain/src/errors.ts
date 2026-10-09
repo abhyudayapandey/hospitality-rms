@@ -118,6 +118,7 @@ export const ERROR_MESSAGES = {
   // who covers it (file 37, Admin → Who does what; ADR 061, 065)
   INVALID_MODE: "Choose We have it, Someone else does it, or We don't do this.",
   COVER_NOT_OUTLET: 'Who does what is set for a whole outlet or central kitchen.',
+  OWN_WORK: 'Someone else signs off your own work.',
   COVER_SELF: "A role can't cover itself. Pick another role.",
   COVER_CHAIN:
     'One of these roles is itself covered or covering. Pick a role the outlet has that covers nothing.',

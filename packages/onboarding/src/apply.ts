@@ -2846,6 +2846,7 @@ class Loader {
             ...(r.unit !== undefined && { unit: r.unit }),
             ...(r.photo_required && { photo_required: true }),
             ...(r.step_icon && { icon: r.step_icon }),
+            ...(r.days && { days: r.days }),
           })),
       );
       const schedule = JSON.stringify(first.schedule);
@@ -2865,20 +2866,22 @@ class Loader {
       await this.upsert(
         'checklists',
         `insert into ops.checklist_template as t (tenant_id, org_node_id, code, name, schedule,
-                                                 assign, steps, library_code, library_version)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                                                 assign, steps, library_code, library_version,
+                                                 sign_off)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          on conflict (tenant_id, code) where code is not null do update
             set org_node_id = excluded.org_node_id, name = excluded.name,
                 schedule = excluded.schedule, assign = excluded.assign, steps = excluded.steps,
                 library_code = coalesce(excluded.library_code, t.library_code),
                 library_version = coalesce(excluded.library_version, t.library_version),
-                archived_at = null
+                sign_off = excluded.sign_off, archived_at = null
           where (t.org_node_id, t.name, t.schedule, t.assign, t.steps, t.library_code,
-                 t.library_version, t.archived_at)
+                 t.library_version, t.sign_off, t.archived_at)
                 is distinct from (excluded.org_node_id, excluded.name, excluded.schedule,
                                   excluded.assign, excluded.steps,
                                   coalesce(excluded.library_code, t.library_code),
-                                  coalesce(excluded.library_version, t.library_version), null)
+                                  coalesce(excluded.library_version, t.library_version),
+                                  excluded.sign_off, null)
          returning id, xmax = 0 as inserted`,
         [
           this.tenant,
@@ -2890,6 +2893,7 @@ class Loader {
           steps,
           lib?.code ?? null,
           lib?.version ?? null,
+          first.sign_off,
         ],
       );
     }

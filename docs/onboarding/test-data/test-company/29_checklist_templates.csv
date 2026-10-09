@@ -1,36 +1,43 @@
-template_code,place_code,name,schedule,assign_to,step,step_label,step_kind,min,max,unit,photo_required,step_icon,from_library
-HOTEL-1.0-KITCHEN-OPENING,TEST-HOTEL-1.0-KITCHEN,Kitchen opening,daily 07:00,role:COMMIS,1,Walk-in chiller temperature,number,0,5,°C,no,fridge,
-HOTEL-1.0-KITCHEN-OPENING,TEST-HOTEL-1.0-KITCHEN,Kitchen opening,daily 07:00,role:COMMIS,2,Hand-wash station stocked,tick,,,,no,,
-HOTEL-1.0-KITCHEN-OPENING,TEST-HOTEL-1.0-KITCHEN,Kitchen opening,daily 07:00,role:COMMIS,3,Date labels checked on all prep,tick,,,,no,,
-HOTEL-1.0-KITCHEN-CLOSING,TEST-HOTEL-1.0-KITCHEN,Kitchen closing,daily 23:00,on_shift,1,Gas and burners off,tick,,,,yes,,
-HOTEL-1.0-KITCHEN-CLOSING,TEST-HOTEL-1.0-KITCHEN,Kitchen closing,daily 23:00,on_shift,2,Walk-in chiller temperature,number,0,5,°C,no,,
-HOTEL-1.0-KITCHEN-CLOSING,TEST-HOTEL-1.0-KITCHEN,Kitchen closing,daily 23:00,on_shift,3,Floors and drains cleaned,tick,,,,no,,
-HOTEL-1.0-KITCHEN-FRIDGE-LOG,TEST-HOTEL-1.0-KITCHEN,Fridge temperature log,every 4h 07:00-23:00,on_shift,1,Walk-in chiller,number,0,5,°C,no,,
-HOTEL-1.0-KITCHEN-FRIDGE-LOG,TEST-HOTEL-1.0-KITCHEN,Fridge temperature log,every 4h 07:00-23:00,on_shift,2,Freezer,number,-25,-18,°C,no,,
-HOTEL-1.0-BAR-SETUP,TEST-HOTEL-1.0-BAR,Bar setup,daily 17:00,role:BARTENDER,1,Ice well filled,tick,,,,no,,
-HOTEL-1.0-BAR-SETUP,TEST-HOTEL-1.0-BAR,Bar setup,daily 17:00,role:BARTENDER,2,Garnishes cut and dated,tick,,,,no,,
-HOTEL-1.0-BAR-SETUP,TEST-HOTEL-1.0-BAR,Bar setup,daily 17:00,role:BARTENDER,3,Glass chiller temperature,number,0,6,°C,no,,
-HOTEL-1.0-BAR-CLOSING,TEST-HOTEL-1.0-BAR,Bar closing,daily 01:00,on_shift,1,Open bottles capped and stored,tick,,,,no,,
-HOTEL-1.0-BAR-CLOSING,TEST-HOTEL-1.0-BAR,Bar closing,daily 01:00,on_shift,2,Bar top and mats washed,tick,,,,no,,
-HOTEL-1.0-FO-HANDOVER,TEST-HOTEL-1.0-FRONT-OFFICE,Front desk shift handover,daily 07:00 15:00 23:00,on_shift,1,Cash float counted,number,,,INR,no,,
-HOTEL-1.0-FO-HANDOVER,TEST-HOTEL-1.0-FRONT-OFFICE,Front desk shift handover,daily 07:00 15:00 23:00,on_shift,2,Arrivals and pending requests reviewed,tick,,,,no,,
-HOTEL-1.0-FO-HANDOVER,TEST-HOTEL-1.0-FRONT-OFFICE,Front desk shift handover,daily 07:00 15:00 23:00,on_shift,3,Handover note,text,,,,no,,
-HOTEL-1.0-HK-WASHROOM,TEST-HOTEL-1.0-HOUSEKEEPING,Lobby washroom check,every 2h 08:00-22:00,role:PUBLIC_AREA_ATTENDANT,1,Washroom clean and dry,tick,,,,no,,
-HOTEL-1.0-HK-WASHROOM,TEST-HOTEL-1.0-HOUSEKEEPING,Lobby washroom check,every 2h 08:00-22:00,role:PUBLIC_AREA_ATTENDANT,2,Soap and paper refilled,tick,,,,no,,
-HOTEL-1.0-HK-WASHROOM,TEST-HOTEL-1.0-HOUSEKEEPING,Lobby washroom check,every 2h 08:00-22:00,role:PUBLIC_AREA_ATTENDANT,3,Photo of the washroom,photo,,,,no,,
-HOTEL-1.0-HK-LINEN,TEST-HOTEL-1.0-HOUSEKEEPING,Linen room count,weekly Mon 10:00,role:ROOM_ATTENDANT,1,Bath towels on the shelf,number,120,,each,no,,
-HOTEL-1.0-HK-LINEN,TEST-HOTEL-1.0-HOUSEKEEPING,Linen room count,weekly Mon 10:00,role:ROOM_ATTENDANT,2,Bed sheets on the shelf,number,80,,each,no,,
-BAR-3.0-KITCHEN-OPENING,TEST-BAR-3.0-KITCHEN,Kitchen opening,daily 11:00,role:COOK,1,Chiller temperature,number,0,5,°C,no,,
-BAR-3.0-KITCHEN-OPENING,TEST-BAR-3.0-KITCHEN,Kitchen opening,daily 11:00,role:COOK,2,Fryer oil checked,tick,,,,no,,
-BAR-3.0-KITCHEN-CLOSING,TEST-BAR-3.0-KITCHEN,Kitchen closing,daily 23:30,on_shift,1,Gas and burners off,tick,,,,yes,,
-BAR-3.0-KITCHEN-CLOSING,TEST-BAR-3.0-KITCHEN,Kitchen closing,daily 23:30,on_shift,2,Chiller temperature,number,0,5,°C,no,,
-BAR-3.0-BAR-SETUP,TEST-BAR-3.0-BAR,Bar setup,daily 17:00,role:BARTENDER,1,Ice well filled,tick,,,,no,,
-BAR-3.0-BAR-SETUP,TEST-BAR-3.0-BAR,Bar setup,daily 17:00,role:BARTENDER,2,Batched cocktails in date,tick,,,,no,,
-BAR-3.0-BAR-SETUP,TEST-BAR-3.0-BAR,Bar setup,daily 17:00,role:BARTENDER,3,Draught lines flushed,tick,,,,no,,
-HOTEL-1.1-KITCHEN-OPENING,TEST-HOTEL-1.1-KITCHEN,Kitchen opening,daily 07:00,on_shift,1,Walk-in chiller,number,0,5,°C,no,,KITCHEN-OPENING@1
-HOTEL-1.1-KITCHEN-OPENING,TEST-HOTEL-1.1-KITCHEN,Kitchen opening,daily 07:00,on_shift,2,Freezer,number,-25,-18,°C,no,,KITCHEN-OPENING@1
-HOTEL-1.1-KITCHEN-OPENING,TEST-HOTEL-1.1-KITCHEN,Kitchen opening,daily 07:00,on_shift,3,"Hand-wash station stocked (soap, towels)",tick,,,,no,,KITCHEN-OPENING@1
-HOTEL-1.1-KITCHEN-OPENING,TEST-HOTEL-1.1-KITCHEN,Kitchen opening,daily 07:00,on_shift,4,Work surfaces sanitised,tick,,,,no,,KITCHEN-OPENING@1
-HOTEL-1.1-KITCHEN-OPENING,TEST-HOTEL-1.1-KITCHEN,Kitchen opening,daily 07:00,on_shift,5,Gas and exhaust checked,tick,,,,no,,KITCHEN-OPENING@1
-HOTEL-1.1-CHILLER-LOG,TEST-HOTEL-1.1-KITCHEN,Chiller and freezer log,daily 10:00 16:00,on_shift,1,Chiller,number,0,5,°C,no,,CHILLER-LOG@1
-HOTEL-1.1-CHILLER-LOG,TEST-HOTEL-1.1-KITCHEN,Chiller and freezer log,daily 10:00 16:00,on_shift,2,Freezer,number,-25,-18,°C,no,,CHILLER-LOG@1
+template_code,place_code,name,schedule,assign_to,step,step_label,step_kind,min,max,unit,photo_required,step_icon,from_library,days,sign_off
+HOTEL-1.0-KITCHEN-OPENING,TEST-HOTEL-1.0-KITCHEN,Kitchen opening,daily 07:00,role:COMMIS,1,Walk-in chiller temperature,number,0,5,°C,no,fridge,,,
+HOTEL-1.0-KITCHEN-OPENING,TEST-HOTEL-1.0-KITCHEN,Kitchen opening,daily 07:00,role:COMMIS,2,Hand-wash station stocked,tick,,,,no,,,,
+HOTEL-1.0-KITCHEN-OPENING,TEST-HOTEL-1.0-KITCHEN,Kitchen opening,daily 07:00,role:COMMIS,3,Date labels checked on all prep,tick,,,,no,,,,
+HOTEL-1.0-KITCHEN-CLOSING,TEST-HOTEL-1.0-KITCHEN,Kitchen closing,daily 23:00,on_shift,1,Gas and burners off,tick,,,,yes,,,,
+HOTEL-1.0-KITCHEN-CLOSING,TEST-HOTEL-1.0-KITCHEN,Kitchen closing,daily 23:00,on_shift,2,Walk-in chiller temperature,number,0,5,°C,no,,,,
+HOTEL-1.0-KITCHEN-CLOSING,TEST-HOTEL-1.0-KITCHEN,Kitchen closing,daily 23:00,on_shift,3,Floors and drains cleaned,tick,,,,no,,,,
+HOTEL-1.0-KITCHEN-FRIDGE-LOG,TEST-HOTEL-1.0-KITCHEN,Fridge temperature log,every 4h 07:00-23:00,on_shift,1,Walk-in chiller,number,0,5,°C,no,,,,
+HOTEL-1.0-KITCHEN-FRIDGE-LOG,TEST-HOTEL-1.0-KITCHEN,Fridge temperature log,every 4h 07:00-23:00,on_shift,2,Freezer,number,-25,-18,°C,no,,,,
+HOTEL-1.0-BAR-SETUP,TEST-HOTEL-1.0-BAR,Bar setup,daily 17:00,role:BARTENDER,1,Ice well filled,tick,,,,no,,,,
+HOTEL-1.0-BAR-SETUP,TEST-HOTEL-1.0-BAR,Bar setup,daily 17:00,role:BARTENDER,2,Garnishes cut and dated,tick,,,,no,,,,
+HOTEL-1.0-BAR-SETUP,TEST-HOTEL-1.0-BAR,Bar setup,daily 17:00,role:BARTENDER,3,Glass chiller temperature,number,0,6,°C,no,,,,
+HOTEL-1.0-BAR-CLOSING,TEST-HOTEL-1.0-BAR,Bar closing,daily 01:00,on_shift,1,Open bottles capped and stored,tick,,,,no,,,,
+HOTEL-1.0-BAR-CLOSING,TEST-HOTEL-1.0-BAR,Bar closing,daily 01:00,on_shift,2,Bar top and mats washed,tick,,,,no,,,,
+HOTEL-1.0-FO-HANDOVER,TEST-HOTEL-1.0-FRONT-OFFICE,Front desk shift handover,daily 07:00 15:00 23:00,on_shift,1,Cash float counted,number,,,INR,no,,,,
+HOTEL-1.0-FO-HANDOVER,TEST-HOTEL-1.0-FRONT-OFFICE,Front desk shift handover,daily 07:00 15:00 23:00,on_shift,2,Arrivals and pending requests reviewed,tick,,,,no,,,,
+HOTEL-1.0-FO-HANDOVER,TEST-HOTEL-1.0-FRONT-OFFICE,Front desk shift handover,daily 07:00 15:00 23:00,on_shift,3,Handover note,text,,,,no,,,,
+HOTEL-1.0-HK-WASHROOM,TEST-HOTEL-1.0-HOUSEKEEPING,Lobby washroom check,every 2h 08:00-22:00,role:PUBLIC_AREA_ATTENDANT,1,Washroom clean and dry,tick,,,,no,,,,
+HOTEL-1.0-HK-WASHROOM,TEST-HOTEL-1.0-HOUSEKEEPING,Lobby washroom check,every 2h 08:00-22:00,role:PUBLIC_AREA_ATTENDANT,2,Soap and paper refilled,tick,,,,no,,,,
+HOTEL-1.0-HK-WASHROOM,TEST-HOTEL-1.0-HOUSEKEEPING,Lobby washroom check,every 2h 08:00-22:00,role:PUBLIC_AREA_ATTENDANT,3,Photo of the washroom,photo,,,,no,,,,
+HOTEL-1.0-HK-LINEN,TEST-HOTEL-1.0-HOUSEKEEPING,Linen room count,weekly Mon 10:00,role:ROOM_ATTENDANT,1,Bath towels on the shelf,number,120,,each,no,,,,up
+HOTEL-1.0-HK-LINEN,TEST-HOTEL-1.0-HOUSEKEEPING,Linen room count,weekly Mon 10:00,role:ROOM_ATTENDANT,2,Bed sheets on the shelf,number,80,,each,no,,,,up
+BAR-3.0-KITCHEN-OPENING,TEST-BAR-3.0-KITCHEN,Kitchen opening,daily 11:00,role:COOK,1,Chiller temperature,number,0,5,°C,no,,,,
+BAR-3.0-KITCHEN-OPENING,TEST-BAR-3.0-KITCHEN,Kitchen opening,daily 11:00,role:COOK,2,Fryer oil checked,tick,,,,no,,,,
+BAR-3.0-KITCHEN-CLOSING,TEST-BAR-3.0-KITCHEN,Kitchen closing,daily 23:30,on_shift,1,Gas and burners off,tick,,,,yes,,,,
+BAR-3.0-KITCHEN-CLOSING,TEST-BAR-3.0-KITCHEN,Kitchen closing,daily 23:30,on_shift,2,Chiller temperature,number,0,5,°C,no,,,,
+BAR-3.0-BAR-SETUP,TEST-BAR-3.0-BAR,Bar setup,daily 17:00,role:BARTENDER,1,Ice well filled,tick,,,,no,,,,
+BAR-3.0-BAR-SETUP,TEST-BAR-3.0-BAR,Bar setup,daily 17:00,role:BARTENDER,2,Batched cocktails in date,tick,,,,no,,,,
+BAR-3.0-BAR-SETUP,TEST-BAR-3.0-BAR,Bar setup,daily 17:00,role:BARTENDER,3,Draught lines flushed,tick,,,,no,,,,
+HOTEL-1.1-KITCHEN-OPENING,TEST-HOTEL-1.1-KITCHEN,Kitchen opening,daily 07:00,on_shift,1,Walk-in chiller,number,0,5,°C,no,,KITCHEN-OPENING@1,,
+HOTEL-1.1-KITCHEN-OPENING,TEST-HOTEL-1.1-KITCHEN,Kitchen opening,daily 07:00,on_shift,2,Freezer,number,-25,-18,°C,no,,KITCHEN-OPENING@1,,
+HOTEL-1.1-KITCHEN-OPENING,TEST-HOTEL-1.1-KITCHEN,Kitchen opening,daily 07:00,on_shift,3,"Hand-wash station stocked (soap, towels)",tick,,,,no,,KITCHEN-OPENING@1,,
+HOTEL-1.1-KITCHEN-OPENING,TEST-HOTEL-1.1-KITCHEN,Kitchen opening,daily 07:00,on_shift,4,Work surfaces sanitised,tick,,,,no,,KITCHEN-OPENING@1,,
+HOTEL-1.1-KITCHEN-OPENING,TEST-HOTEL-1.1-KITCHEN,Kitchen opening,daily 07:00,on_shift,5,Gas and exhaust checked,tick,,,,no,,KITCHEN-OPENING@1,,
+HOTEL-1.1-CHILLER-LOG,TEST-HOTEL-1.1-KITCHEN,Chiller and freezer log,daily 10:00 16:00,on_shift,1,Chiller,number,0,5,°C,no,,CHILLER-LOG@1,,
+HOTEL-1.1-CHILLER-LOG,TEST-HOTEL-1.1-KITCHEN,Chiller and freezer log,daily 10:00 16:00,on_shift,2,Freezer,number,-25,-18,°C,no,,CHILLER-LOG@1,,
+HOTEL-1.0-KITCHEN-DEEP-CLEAN,TEST-HOTEL-1.0-KITCHEN,Kitchen deep clean,daily 15:00,role:KITCHEN_STEWARD,1,Hoods and filters degreased,tick,,,,no,,,Mon,up
+HOTEL-1.0-KITCHEN-DEEP-CLEAN,TEST-HOTEL-1.0-KITCHEN,Kitchen deep clean,daily 15:00,role:KITCHEN_STEWARD,2,Walk-in defrosted and wiped,tick,,,,no,,,Wed,up
+HOTEL-1.0-KITCHEN-DEEP-CLEAN,TEST-HOTEL-1.0-KITCHEN,Kitchen deep clean,daily 15:00,role:KITCHEN_STEWARD,3,Dishwasher descaled,tick,,,,no,,,Fri,up
+HOTEL-1.0-KITCHEN-DEEP-CLEAN,TEST-HOTEL-1.0-KITCHEN,Kitchen deep clean,daily 15:00,role:KITCHEN_STEWARD,4,Floor drains cleaned,tick,,,,no,,,Mon-Sat,up
+HOTEL-1.0-ENG-PPM,TEST-HOTEL-1.0-ENGINEERING,Generator and fire equipment check,"nth Mon 1,3 10:00",role:TECHNICIAN,1,Generator run time,number,10,30,min,no,,,,department_head
+HOTEL-1.0-ENG-PPM,TEST-HOTEL-1.0-ENGINEERING,Generator and fire equipment check,"nth Mon 1,3 10:00",role:TECHNICIAN,2,Fire extinguisher gauges in the green,tick,,,,no,,,,department_head
+HOTEL-1.0-FO-FLOAT,TEST-HOTEL-1.0-FRONT-OFFICE,Front desk float count,"monthly 1,16 09:00",role:FRONT_DESK_EXECUTIVE,1,Cash float counted,number,5000,5000,₹,no,,,,role:FRONT_OFFICE_MANAGER

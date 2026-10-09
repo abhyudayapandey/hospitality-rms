@@ -113,6 +113,22 @@ export async function completeTask(task: string, note: string): Promise<ActionRe
   });
 }
 
+/** The signer checks a finished checklist round (ADR 087): signed off, every step checked. */
+export async function signOff(task: string): Promise<ActionResult<null>> {
+  return run('sign_off', async (tx) => {
+    await sql`select ops.sign_off(${task}::uuid)`.execute(tx);
+    return null;
+  });
+}
+
+/** ... or sends it back with what to redo; its steps open again for whoever did it. */
+export async function sendBack(task: string, note: string): Promise<ActionResult<null>> {
+  return run('send_back', async (tx) => {
+    await sql`select ops.send_back(${task}::uuid, ${note})`.execute(tx);
+    return null;
+  });
+}
+
 export async function cancelTask(task: string, reason: string): Promise<ActionResult<null>> {
   return run('cancel_task', async (tx) => {
     await sql`select ops.cancel_task(${task}::uuid, ${reason})`.execute(tx);

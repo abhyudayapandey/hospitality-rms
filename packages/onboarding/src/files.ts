@@ -209,11 +209,15 @@ export type Requirement =
 export type Schedule =
   | { kind: 'daily'; times: string[] }
   | { kind: 'weekly'; weekdays: number[]; times: string[] }
-  | { kind: 'every_n_hours'; every: number; from: string; to: string };
+  | { kind: 'every_n_hours'; every: number; from: string; to: string }
+  | { kind: 'monthly'; days: number[]; times: string[] }
+  | { kind: 'nth_weekday'; weekday: number; nths: number[]; times: string[] };
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 /**
- * A checklist's schedule (ADR 020), times local to its place: `daily 07:00 15:00`,
- * `weekly Mon,Thu 09:00` or `every 2h 08:00-22:00`.
+ * A checklist's schedule (ADR 020, 087), times local to its place: `daily 07:00 15:00`,
+ * `weekly Mon,Thu 09:00`, `every 2h 08:00-22:00`, `monthly 1,16 09:00` (days of the month; a
+ * day past the month's end falls on its last day) or `nth Mon 1,3 10:00` (the 1st and 3rd
+ * Monday).
  */
 const schedule = z.string().transform((v, ctx): Schedule => {
   const parts = v.trim().split(/\s+/);
@@ -240,12 +244,38 @@ const schedule = z.string().transform((v, ctx): Schedule => {
     }
     return { kind: 'weekly', weekdays: [...weekdays].sort(), times };
   }
+  if (parts[0] === 'monthly') {
+    const ds = (parts[1] ?? '').split(',').map(Number);
+    const times = parts.slice(2);
+    if (
+      ds.some((d) => !Number.isInteger(d) || d < 1 || d > 31) ||
+      times.length === 0 ||
+      !times.every((t) => HHMM.test(t))
+    ) {
+      return bad('must be like "monthly 1,16 09:00" (days of the month 1 to 31)');
+    }
+    return { kind: 'monthly', days: [...new Set(ds)].sort((a, b) => a - b), times };
+  }
+  if (parts[0] === 'nth') {
+    const weekday = DAY[parts[1] as Day];
+    const nths = (parts[2] ?? '').split(',').map(Number);
+    const times = parts.slice(3);
+    if (
+      !weekday ||
+      nths.some((n) => ![1, 2, 3, 4].includes(n)) ||
+      times.length === 0 ||
+      !times.every((t) => HHMM.test(t))
+    ) {
+      return bad('must be like "nth Mon 1,3 10:00" (the 1st to 4th of a weekday)');
+    }
+    return { kind: 'nth_weekday', weekday, nths: [...new Set(nths)].sort(), times };
+  }
   const m = /^every (1|2|3|4|6|8|12)h ([0-2]\d:[0-5]\d)-([0-2]\d:[0-5]\d)$/.exec(parts.join(' '));
   if (m && HHMM.test(m[2]!) && HHMM.test(m[3]!)) {
     return { kind: 'every_n_hours', every: Number(m[1]), from: m[2]!, to: m[3]! };
   }
   return bad(
-    'must be "daily 07:00", "weekly Mon,Thu 09:00" or "every 2h 08:00-22:00" (1, 2, 3, 4, 6, 8 or 12 hours)',
+    'must be "daily 07:00", "weekly Mon,Thu 09:00", "every 2h 08:00-22:00" (1, 2, 3, 4, 6, 8 or 12 hours), "monthly 1,16 09:00" or "nth Mon 1,3 10:00"',
   );
 });
 
@@ -776,8 +806,34 @@ export const FILES = {
           ctx.addIssue({ code: 'custom', message: 'must be like CHILLER-LOG@1' });
           return z.NEVER;
         }),
+      // ADR 087: optional, the weekdays the step runs (`Mon,Thu`, `Mon-Fri`); blank: every round
+      days: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          if (v === '') return undefined;
+          const r = days.safeParse(v);
+          if (r.success) return r.data;
+          ctx.addIssue({ code: 'custom', message: r.error.issues[0]!.message });
+          return z.NEVER;
+        }),
+      // ADR 087: optional, the same on every row of a checklist: who signs it off once done.
+      // Blank or `none`; `up` (the role one level up there, else the department head),
+      // `department_head` or `role:CODE`
+      sign_off: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          if (v === '' || v === 'none') return 'none';
+          if (/^(up|department_head|role:[A-Z][A-Z0-9_]*)$/.test(v)) return v;
+          ctx.addIssue({
+            code: 'custom',
+            message: 'must be blank, none, up, department_head or role:CODE',
+          });
+          return z.NEVER;
+        }),
     }),
-    optional: ['step_icon', 'from_library'],
+    optional: ['step_icon', 'from_library', 'days', 'sign_off'],
   },
   // Test-only tasks (ADR 020): one-off tasks, open maintenance requests and prep lists.
   tasks: {
