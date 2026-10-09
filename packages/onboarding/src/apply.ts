@@ -19,7 +19,7 @@ import {
   type Issue,
 } from './files';
 import { checkDishPhotos, UploadError } from './upload';
-import { menuWarnings, validateBundle } from './validate';
+import { menuWarnings, pictureWarnings, validateBundle } from './validate';
 
 // Loads one customer's onboarding files (ADR 009): validate, then write everything in one
 // transaction. Every write is an upsert on the natural key (codes, usernames), so loading
@@ -1687,7 +1687,7 @@ class Loader {
   // are versioned: a changed recipe or price closes the open version and starts a new one
   // today (a second change on the same day replaces today's version).
   private async menu() {
-    this.report.warnings.push(...menuWarnings(this.b));
+    this.report.warnings.push(...menuWarnings(this.b), ...pictureWarnings(this.b));
     for (const u of this.b.unitConversions) {
       this.step(FILES.unitConversions.file, u.line);
       await this.upsert(

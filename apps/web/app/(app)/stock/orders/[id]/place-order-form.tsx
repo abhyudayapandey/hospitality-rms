@@ -6,6 +6,7 @@ import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { placeOrder, type OrderGroup } from '../../actions';
 import { formatQty } from '@/lib/qty';
+import { ItemThumb } from '@/components/item-thumb';
 
 export interface PlaceLine {
   item_id: string;
@@ -126,8 +127,11 @@ export function PlaceOrderForm({
       <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
         {lines.map((l) => (
           <li key={l.item_id} className="space-y-2 px-4 py-2" data-testid="place-line">
-            <p className="flex justify-between gap-2 text-sm">
-              <span className="font-medium">{l.name}</span>
+            <p className="flex items-center justify-between gap-2 text-sm">
+              <span className="flex min-w-0 items-center gap-3">
+                <ItemThumb name={l.name} size="size-10" />
+                <span className="font-medium">{l.name}</span>
+              </span>
               <span className="tabular-nums text-slate-600">{formatQty(l.qty, l.base_uom)}</span>
             </p>
             {several &&

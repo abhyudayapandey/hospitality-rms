@@ -22,6 +22,7 @@ import {
   reviewStockCheck,
   type ReviewLine,
 } from '../actions';
+import { ItemThumb } from '@/components/item-thumb';
 
 export interface SheetLine {
   item_id: string;
@@ -227,8 +228,11 @@ export function CheckSheet({
           <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
             {differing.map((l) => (
               <li key={l.item_id} className="space-y-2 px-4 py-3" data-testid="difference">
-                <div className="flex justify-between gap-2">
-                  <span className="font-medium">{l.name}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <ItemThumb name={l.name} size="size-10" />
+                    <span className="font-medium">{l.name}</span>
+                  </span>
                   <span className="text-right text-sm tabular-nums">
                     {formatQty(l.counted_qty ?? 0, l.unit)} counted ·{' '}
                     {formatQty(l.expected_qty, l.unit)} expected (
@@ -330,6 +334,7 @@ export function CheckSheet({
                 </p>
               )}
               <div className="flex items-center justify-between gap-3 px-4 py-2">
+                <ItemThumb name={l.name} />
                 <label htmlFor={`c-${l.item_id}`} className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{l.name}</span>
                   <PackChip line={l} />

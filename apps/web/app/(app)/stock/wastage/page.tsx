@@ -6,6 +6,7 @@ import { formatMoney, formatWhen } from '@/lib/format';
 import { formatQty, itemOptions, param, supplyContext, type SearchParams } from '@/lib/inventory';
 import { photosEnabled } from '@/lib/photos';
 import { WastageForm } from './wastage-form';
+import { ItemThumb } from '@/components/item-thumb';
 
 export default async function WastagePage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await supplyContext(searchParams, 'wastage');
@@ -52,8 +53,9 @@ export default async function WastagePage({ searchParams }: { searchParams: Sear
         ) : (
           <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
             {data.recent.map((r) => (
-              <li key={r.id} className="flex justify-between gap-2 px-4 py-3 text-sm">
-                <span>
+              <li key={r.id} className="flex items-center justify-between gap-2 px-4 py-3 text-sm">
+                <ItemThumb name={r.name} size="size-10" />
+                <span className="min-w-0 flex-1">
                   <span className="block font-medium">{r.name}</span>
                   <span className="text-xs text-slate-500">
                     {r.reason.replace(/_/g, ' ')} · {formatWhen(r.created_at)}

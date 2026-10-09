@@ -6,6 +6,7 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { ListSearch } from '@/components/list-search';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
 import { submitCount } from '../../actions';
+import { ItemThumb } from '@/components/item-thumb';
 
 export interface CountLine {
   item_id: string;
@@ -73,6 +74,7 @@ export function CountForm({
               data-filter-row
               data-filter-text={l.name}
             >
+              <ItemThumb name={l.name} />
               <label htmlFor={`c-${l.item_id}`} className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{l.name}</span>
                 <span className="text-xs text-slate-500">{l.base_uom}</span>

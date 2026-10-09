@@ -9,6 +9,7 @@ import { UnusualNote } from '@/components/unusual-note';
 import { FillToPar } from '@/components/fill-to-par';
 import { formatQty, inputQty } from '@/lib/qty';
 import { requestSupplies } from '../../actions';
+import { ItemThumb } from '@/components/item-thumb';
 
 export interface OrderLine {
   item_id: string;
@@ -109,8 +110,11 @@ export function NewOrderForm({ node, lines }: { node: string; lines: OrderLine[]
               data-filter-text={l.name}
               data-usual={Number(l.suggested_qty) > 0 ? 'yes' : 'no'}
             >
-              <p className="flex justify-between gap-2 text-sm">
-                <span className="font-medium">{l.name}</span>
+              <p className="flex items-center justify-between gap-2 text-sm">
+                <span className="flex min-w-0 items-center gap-3">
+                  <ItemThumb name={l.name} size="size-10" />
+                  <span className="font-medium">{l.name}</span>
+                </span>
                 <span
                   className={`tabular-nums ${Number(l.on_hand) < 0 ? 'text-rose-700' : 'text-slate-500'}`}
                   data-testid="have-keep"

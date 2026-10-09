@@ -5,7 +5,7 @@ import { Empty } from '@/components/messages';
 import { ViewTabs } from '@/components/view-tabs';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, portionsText } from '@/lib/format';
 import { formatQty, isUuid, param, type SearchParams } from '@/lib/inventory';
 import {
   canEditDish,
@@ -110,7 +110,14 @@ export default async function RecipePage({
         />
       )}
       <div className="flex items-start gap-3">
-        {!photoUrl && <ItemThumb category={recipe.kind === 'menu' ? 'meat' : 'prep'} />}
+        {!photoUrl && (
+          <ItemThumb
+            name={recipe.name}
+            category={recipe.grp}
+            fallback={recipe.kind === 'menu' ? 'dish' : 'gravy'}
+            size="size-16"
+          />
+        )}
         <div className="min-w-0">
           <h1 className="text-xl font-semibold" data-testid="recipe-name">
             {recipe.name}
@@ -118,8 +125,17 @@ export default async function RecipePage({
           <p className="text-sm text-slate-600">{recipe.grp}</p>
           {recipe.kind === 'prep' && (
             <p className="mt-1 text-sm" data-testid="batch">
-              Batch makes <strong>{formatQty(recipe.batch_yield!, recipe.unit!)}</strong> ·{' '}
-              <strong>{shelfLifeText(recipe.shelf_life_hours)}</strong>
+              Batch makes <strong>{formatQty(recipe.batch_yield!, recipe.unit!)}</strong>
+              {recipe.batch_portions && (
+                <>
+                  {' '}
+                  ·{' '}
+                  <strong data-testid="portions">
+                    about {portionsText(recipe.batch_portions)}
+                  </strong>
+                </>
+              )}{' '}
+              · <strong>{shelfLifeText(recipe.shelf_life_hours)}</strong>
             </p>
           )}
         </div>
@@ -160,9 +176,10 @@ export default async function RecipePage({
               <li
                 key={l.line_no}
                 data-testid="recipe-line"
-                className="flex justify-between gap-3 px-4 py-3"
+                className="flex items-center gap-3 px-4 py-3"
               >
-                <span className="min-w-0">
+                <ItemThumb name={l.name} fallback={l.kind === 'prep' ? 'gravy' : undefined} />
+                <span className="min-w-0 flex-1">
                   {subs.has(l.line_no) ? (
                     <Link
                       href={`/menu/recipes/${subs.get(l.line_no)}?tab=recipe`}

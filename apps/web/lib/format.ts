@@ -38,3 +38,9 @@ export function formatWhen(d: Date | string, now: Date = new Date()): string {
   }).format(at);
   return `${date}, ${time}`;
 }
+
+/** '50 portions', '1 portion', '12.5 portions' (ADR 084): what a batch, or a prep task, makes. */
+export function portionsText(n: string | number): string {
+  const v = Math.round(Number(n) * 10) / 10;
+  return `${v.toLocaleString('en-IN')} portion${v === 1 ? '' : 's'}`;
+}

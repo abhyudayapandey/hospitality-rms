@@ -175,6 +175,37 @@ describe('the Passport Hotel demo', () => {
         r.counts[e]!.created + r.counts[e]!.updated + r.counts[e]!.unchanged;
       expect(all('sales days')).toBe(7);
       expect(all('licences')).toBe(6);
+      // the tepache is a prep task (ADR 084): the bartender opens it on its ingredients for
+      // the litre, the method, and how many it makes
+      const tepache = await c.query<{
+        who: string;
+        uid: string;
+        task: string;
+      }>(
+        `select u.username as who, u.id::text as uid, t.id::text as task
+           from ops.task t join inv.item i on i.id = t.item_id
+           join core.app_user u on u.id = t.assignee_user_id
+          where t.tenant_id = $1 and t.kind = 'prep' and i.sku = 'TEPACHE-LIQUEUR'`,
+        [tenant.id],
+      );
+      expect(tepache.rows).toHaveLength(1);
+      expect(tepache.rows[0]!.who).toBe('passport.bartender');
+      // what the bartender sees on it
+      await c.query(`select set_config('app.user_id', $1, true)`, [tepache.rows[0]!.uid]);
+      const seen = (
+        await c.query<{
+          r: { portions: number; ingredients: { name: string }[]; method: unknown[] };
+        }>(`select ops.prep_task_recipe($1::uuid) as r`, [tepache.rows[0]!.task])
+      ).rows[0]!.r;
+      await c.query(`select set_config('app.user_id', '', true)`);
+      expect(seen.portions).toBe(33);
+      expect(seen.ingredients.map((x) => x.name)).toContain('Pineapple');
+      expect(seen.method).toHaveLength(2);
+      expect(
+        await one(
+          `select count(*)::int n from ops.task where tenant_id = $1 and title like '%tepache%' and kind <> 'prep'`,
+        ),
+      ).toBe(0);
       // everyone who works shifts has a daily checklist of their own role's (ADR 075); only
       // the managers, the office and the store keeper (receiving and sending is his day) have
       // none

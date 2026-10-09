@@ -17,6 +17,7 @@ import {
   transfersIn,
 } from '@/lib/report-data';
 import { capRange, formatMeasure, trendHref } from '@/lib/reports';
+import { ItemThumb } from '@/components/item-thumb';
 
 // Purchasing (R-2, ADR 028), per store: price changes (each receipt against the store's
 // previous price for the item, else its standard cost) and each supplier's fill rate and
@@ -83,9 +84,10 @@ export default async function Purchasing({ searchParams }: { searchParams: Searc
               <li key={i} className="text-sm" data-sku={p.sku}>
                 <Link
                   href={`/reports/item?node=${place.id}&item=${p.item_id}`}
-                  className="flex justify-between gap-2 px-4 py-3"
+                  className="flex items-center justify-between gap-2 px-4 py-3"
                 >
-                  <span className="min-w-0">
+                  <ItemThumb name={p.name} size="size-10" />
+                  <span className="min-w-0 flex-1">
                     <span className="block font-medium">{p.name}</span>
                     <span className="block text-xs text-slate-500">
                       {formatMoney(p.unit_cost)} a {p.unit}, was {formatMoney(p.previous_cost)}
@@ -152,8 +154,9 @@ export default async function Purchasing({ searchParams }: { searchParams: Searc
             </summary>
             <ul className="divide-y divide-slate-100 border-t border-slate-100">
               {short.map((s, i) => (
-                <li key={i} className="flex justify-between gap-2 px-4 py-3 text-sm">
-                  <span className="min-w-0">
+                <li key={i} className="flex items-center justify-between gap-2 px-4 py-3 text-sm">
+                  <ItemThumb name={s.name} size="size-10" />
+                  <span className="min-w-0 flex-1">
                     <span className="block font-medium">{s.name}</span>
                     <span className="block text-xs text-slate-500">
                       {s.supplier} · ordered {formatDay(s.released_on)}, due {formatDay(s.due_on)}

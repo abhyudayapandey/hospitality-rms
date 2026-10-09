@@ -4,6 +4,7 @@ import { businessDate, formatDay } from '@/lib/dates';
 import { EXPIRY_TITLE, type ExpiryBatch, type ExpiryShow } from '@/lib/expiry';
 import { formatQty } from '@/lib/inventory';
 import { inputQty } from '@/lib/qty';
+import { ItemThumb } from '@/components/item-thumb';
 
 /**
  * The Expiring and Expired tabs of the Stock screen (INV-12, ADR 033): batches expiring
@@ -40,7 +41,8 @@ export function ExpiryList({
               data-testid="expiry-row"
               data-sku={b.sku}
             >
-              <span className="min-w-0">
+              <ItemThumb name={b.name} size="size-10" />
+              <span className="min-w-0 flex-1">
                 <span className="block font-medium">{b.name}</span>
                 {all && (
                   <span className="block text-xs text-slate-500" data-testid="expiry-store">

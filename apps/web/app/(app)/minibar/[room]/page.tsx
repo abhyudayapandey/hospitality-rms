@@ -6,6 +6,7 @@ import { formatMoney, formatWhen } from '@/lib/format';
 import { minibarHistory, minibarRoom, usedWords } from '@/lib/minibar';
 import { isUuid } from '@/lib/params';
 import { CheckForm } from './check-form';
+import { ItemThumb } from '@/components/item-thumb';
 
 // Check one room's minibar (ADR 072): count what is left of each item; what is missing is
 // charged; the refill and the bill are To do items (ADR 081). Then the room's recent checks.
@@ -59,8 +60,14 @@ export default async function MinibarRoomPage({ params }: { params: Promise<{ ro
       ) : (
         <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
           {items.map((i) => (
-            <li key={i.item_id} className="flex justify-between px-3 py-2 text-sm">
-              <span>{i.item}</span>
+            <li
+              key={i.item_id}
+              className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <ItemThumb name={i.item} size="size-10" />
+                <span>{i.item}</span>
+              </span>
               <span className="text-slate-500">
                 par {Number(i.par)} · {formatMoney(i.price)}
               </span>

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { Icon } from '@/components/icon';
+import { ItemThumb } from '@/components/item-thumb';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
 import { localToInstant, localToday } from '@/lib/dates';
 import type { JobRole, Person, PrepSuggestion } from '@/lib/tasks';
@@ -84,43 +84,48 @@ export function PrepForm({
             <li
               key={l.item_id}
               data-testid="prep-line"
-              className={`flex items-center gap-3 rounded-xl bg-white p-3 ring-1 ${
+              className={`space-y-2 rounded-xl bg-white p-3 ring-1 ${
                 ticked ? 'ring-brand-600' : 'ring-slate-200'
               }`}
             >
-              {canCreate && (
-                <input
-                  type="checkbox"
-                  aria-label={`Make ${l.name} today`}
-                  checked={ticked}
-                  onChange={(e) => setOn({ ...on, [l.item_id]: e.target.checked })}
-                  className="size-6 shrink-0 accent-brand-700"
-                />
-              )}
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-                <Icon name={l.unit === 'ml' || l.unit === 'l' ? 'glass' : 'pot'} />
-              </span>
-              <span className="min-w-0 flex-1 text-sm">
-                <span className="block font-medium">{l.name}</span>
-                <span className="block text-xs text-slate-500">
-                  par {q(l.par, l.unit)} · on hand {q(l.on_hand, l.unit)}
-                  {n(l.event_need) > 0 && ` · events ${q(l.event_need, l.unit)}`}
-                  {n(l.open_tasks) > 0 && ` · in prep ${q(l.open_tasks, l.unit)}`}
+              {/* the name gets the width; what the store has, then how much to make, below */}
+              <label className="flex items-center gap-3">
+                {canCreate && (
+                  <input
+                    type="checkbox"
+                    aria-label={`Make ${l.name} today`}
+                    checked={ticked}
+                    onChange={(e) => setOn({ ...on, [l.item_id]: e.target.checked })}
+                    className="size-6 shrink-0 accent-brand-700"
+                  />
+                )}
+                <ItemThumb name={l.name} fallback="gravy" />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">{l.name}</span>
+                  <span className="block text-xs text-slate-500">
+                    par {q(l.par, l.unit)} · on hand {q(l.on_hand, l.unit)}
+                    {n(l.event_need) > 0 && ` · events ${q(l.event_need, l.unit)}`}
+                    {n(l.open_tasks) > 0 && ` · in prep ${q(l.open_tasks, l.unit)}`}
+                  </span>
                 </span>
-              </span>
+              </label>
               {canCreate ? (
-                <input
-                  inputMode="decimal"
-                  aria-label={`Make ${l.name} (${l.unit})`}
-                  value={qty[l.item_id] ?? ''}
-                  disabled={!ticked}
-                  onChange={(e) => setQty({ ...qty, [l.item_id]: e.target.value })}
-                  className={`${inputClass} w-24 text-right disabled:opacity-50`}
-                />
-              ) : (
-                <span className="text-sm tabular-nums">
-                  {n(l.suggested)} {l.unit}
+                <span className="flex items-center justify-end gap-2">
+                  <span className="text-sm text-slate-600">Make</span>
+                  <input
+                    inputMode="decimal"
+                    aria-label={`Make ${l.name} (${l.unit})`}
+                    value={qty[l.item_id] ?? ''}
+                    disabled={!ticked}
+                    onChange={(e) => setQty({ ...qty, [l.item_id]: e.target.value })}
+                    className="min-h-12 w-28 shrink-0 rounded-lg border border-slate-300 bg-white px-3 text-right text-base tabular-nums disabled:opacity-50"
+                  />
+                  <span className="w-8 text-sm text-slate-600">{l.unit}</span>
                 </span>
+              ) : (
+                <p className="text-right text-sm tabular-nums">
+                  Make {n(l.suggested)} {l.unit}
+                </p>
               )}
             </li>
           );

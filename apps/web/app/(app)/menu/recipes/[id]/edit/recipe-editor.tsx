@@ -7,6 +7,7 @@ import { ErrorBox, inputClass, primaryButton, secondaryButton } from '@/componen
 import type { IngredientOption, RecipeRow } from '@/lib/menu';
 import { useHydrated } from '@/lib/use-hydrated';
 import { saveRecipe } from '../../../actions';
+import { ItemThumb } from '@/components/item-thumb';
 
 interface Line {
   ingredient_item_id: string;
@@ -79,19 +80,24 @@ export function RecipeEditor({
             data-testid="edit-line"
             className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200"
           >
-            <select
-              aria-label={`Ingredient ${i + 1}`}
-              className={inputClass}
-              value={l.ingredient_item_id}
-              onChange={(e) => update(i, { ingredient_item_id: e.target.value })}
-            >
-              <option value="">Choose…</option>
-              {options.map((o) => (
-                <option key={o.item_id} value={o.item_id}>
-                  {o.name} ({o.unit}){o.kind === 'prep' ? ' · prep' : ''}
-                </option>
-              ))}
-            </select>
+            <span className="flex items-center gap-3">
+              {l.ingredient_item_id && (
+                <ItemThumb name={options.find((o) => o.item_id === l.ingredient_item_id)?.name} />
+              )}
+              <select
+                aria-label={`Ingredient ${i + 1}`}
+                className={inputClass}
+                value={l.ingredient_item_id}
+                onChange={(e) => update(i, { ingredient_item_id: e.target.value })}
+              >
+                <option value="">Choose…</option>
+                {options.map((o) => (
+                  <option key={o.item_id} value={o.item_id}>
+                    {o.name} ({o.unit}){o.kind === 'prep' ? ' · prep' : ''}
+                  </option>
+                ))}
+              </select>
+            </span>
             <div className="flex gap-2">
               <label className="flex-1 space-y-1">
                 <span className="text-xs">Quantity ({unitOf(l.ingredient_item_id) || 'unit'})</span>

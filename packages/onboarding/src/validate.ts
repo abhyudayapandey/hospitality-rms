@@ -1,4 +1,10 @@
-import { ACCESS_GROUPS, CALENDAR_JOB_BY_CODE, DOMAINS } from '@outlet-ops/domain';
+import {
+  ACCESS_GROUPS,
+  CALENDAR_JOB_BY_CODE,
+  DOMAINS,
+  matchPicture,
+  pictureOf,
+} from '@outlet-ops/domain';
 import type { AssignTo, Bundle, Issue } from './files';
 import { FILES, jobRoleAccess } from './files';
 
@@ -1359,4 +1365,26 @@ export function menuWarnings(b: Bundle): Issue[] {
     }
   }
   return warnings;
+}
+
+/**
+ * Not blockers (ADR 084): an item or prep item whose name matches no picture of its own shows
+ * its category's picture. Staff find items by their picture, so the team adds the word for it
+ * to the picture catalogue (packages/domain/src/pictures.ts).
+ */
+export function pictureWarnings(b: Bundle): Issue[] {
+  const out: Issue[] = [];
+  const check = (file: string, line: number, column: string, name: string, kind?: string) => {
+    const m = matchPicture(name, kind);
+    if (m.specific) return;
+    out.push({
+      file,
+      row: line,
+      column,
+      message: `${name} has no picture of its own yet: it shows ${pictureOf(m.key)?.label.toLowerCase() ?? 'a box'}. Ask the product team to add a picture for it`,
+    });
+  };
+  for (const i of b.items) check(FILES.items.file, i.line, 'name', i.name, i.category);
+  for (const i of b.prepItems) check(FILES.prepItems.file, i.line, 'name', i.name);
+  return out;
 }

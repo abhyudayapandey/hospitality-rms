@@ -28,6 +28,7 @@ import {
 } from '@/lib/report-data';
 import { capRange, topLosses, trendHref } from '@/lib/reports';
 import { LabourByDepartment } from './labour';
+import { ItemThumb } from '@/components/item-thumb';
 
 // Cost of sales (R-2, ADR 028; replaces the Variance screen, UX U-14): the rupees first.
 // Food and drink cost against the recipes, what was lost at the count, and the five items
@@ -116,8 +117,9 @@ export default async function CostOfSales({ searchParams }: { searchParams: Sear
             className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
           >
             {expired.map((e, i) => (
-              <li key={i} className="flex justify-between gap-2 px-4 py-3 text-sm">
-                <span className="min-w-0">
+              <li key={i} className="flex items-center justify-between gap-2 px-4 py-3 text-sm">
+                <ItemThumb name={e.name} size="size-10" />
+                <span className="min-w-0 flex-1">
                   <span className="block font-medium">{e.name}</span>
                   <span className="block text-xs text-slate-500">
                     {e.batch_no ? `batch ${e.batch_no}` : 'no batch'}
@@ -175,8 +177,9 @@ function ItemRow({ r, store }: { r: CostItemRow; store: boolean }) {
   return (
     <li data-testid="variance-row" data-sku={r.sku} className={r.unexplained ? 'bg-rose-50' : ''}>
       <details>
-        <summary className="flex min-h-11 cursor-pointer justify-between gap-2 px-4 py-3 text-sm">
-          <span className="min-w-0">
+        <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-4 py-3 text-sm">
+          <ItemThumb name={r.name} size="size-10" />
+          <span className="min-w-0 flex-1">
             <span className="block font-medium">{r.name}</span>
             {store && (
               <span className="block truncate text-xs text-slate-500">

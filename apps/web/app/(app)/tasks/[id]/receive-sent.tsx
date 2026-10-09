@@ -7,6 +7,7 @@ import type { Person } from '@/lib/tasks';
 import { useHydrated } from '@/lib/use-hydrated';
 import { reassignTask, receiveSent } from '../actions';
 import { formatQty } from '@/lib/qty';
+import { ItemThumb } from '@/components/item-thumb';
 
 export interface SentLine {
   item_id: string;
@@ -68,6 +69,7 @@ export function ReceiveSent({ task, lines }: { task: string; lines: SentLine[] }
       <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
         {lines.map((l) => (
           <li key={l.item_id} className="flex items-center justify-between gap-3 px-4 py-2">
+            <ItemThumb name={l.name} />
             <label htmlFor={`r-${l.item_id}`} className="min-w-0 flex-1 text-sm">
               <span className="block font-medium">{l.name}</span>
               <span className="text-xs text-slate-500">sent {formatQty(l.sent, l.base_uom)}</span>
@@ -101,8 +103,11 @@ export function SentLines({ lines }: { lines: SentLine[] }) {
       {lines.map((l) => {
         const got = n(l.received);
         return (
-          <li key={l.item_id} className="flex justify-between gap-2 px-4 py-3 text-sm">
-            <span className="font-medium">{l.name}</span>
+          <li key={l.item_id} className="flex items-center justify-between gap-2 px-4 py-3 text-sm">
+            <span className="flex min-w-0 items-center gap-3">
+              <ItemThumb name={l.name} size="size-10" />
+              <span className="font-medium">{l.name}</span>
+            </span>
             <span className="text-right tabular-nums">
               sent {formatQty(l.sent, l.base_uom)}
               {got !== null && (

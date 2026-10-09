@@ -23,6 +23,7 @@ import {
   reportToday,
 } from '@/lib/report-data';
 import { capRange, formatMeasure, trendHref } from '@/lib/reports';
+import { ItemThumb } from '@/components/item-thumb';
 
 // Central kitchen (R-3, ADR 030), per kitchen store: what was made against the prep lists,
 // what each outlet asked for, was sent and received, what was lost on the way, and what is
@@ -76,9 +77,10 @@ export default async function KitchenReport({ searchParams }: { searchParams: Se
               <li key={p.sku} className="text-sm" data-sku={p.sku}>
                 <Link
                   href={`/reports/item?node=${place.id}&item=${p.item_id}`}
-                  className="flex justify-between gap-2 px-4 py-3"
+                  className="flex items-center justify-between gap-2 px-4 py-3"
                 >
-                  <span className="min-w-0">
+                  <ItemThumb name={p.name} fallback="gravy" size="size-10" />
+                  <span className="min-w-0 flex-1">
                     <span className="block font-medium">{p.name}</span>
                     <span className="block text-xs text-slate-500">
                       {p.batches} {p.batches === 1 ? 'batch' : 'batches'}

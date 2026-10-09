@@ -11,6 +11,7 @@ import { shelfLifeText, useByText } from '@/lib/shelf-life';
 import { ProductionForm } from './production-form';
 import { ReportExpired } from './report-expired';
 import { inputQty } from '@/lib/qty';
+import { ItemThumb } from '@/components/item-thumb';
 
 // Production (ADR 015): record a batch of a prep item made at this store. Ingredients leave
 // by the recipe scaled to the batch (actual quantities can be changed), the batch arrives
@@ -92,7 +93,8 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
                   data-testid="make-task"
                   className="flex min-h-14 items-center justify-between gap-2 px-4 py-3 text-sm"
                 >
-                  <span>
+                  <ItemThumb name={t.name} fallback="gravy" size="size-10" />
+                  <span className="min-w-0 flex-1">
                     <span className="block font-medium">{t.name}</span>
                     <span
                       className={`text-xs ${t.overdue ? 'font-semibold text-rose-700' : 'text-slate-500'}`}
@@ -165,9 +167,10 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
               <li
                 key={`${b.item_id}-${b.batch_no}-${String(b.expires_at)}`}
                 data-testid="batch"
-                className="flex justify-between gap-2 px-4 py-3 text-sm"
+                className="flex items-center justify-between gap-2 px-4 py-3 text-sm"
               >
-                <span className="min-w-0">
+                <ItemThumb name={b.name} fallback="gravy" size="size-10" />
+                <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2 font-medium">
                     <FoodMark type={b.food_type} />
                     {b.name}

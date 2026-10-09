@@ -10,6 +10,7 @@ import { toKeepLevel } from '@/lib/send-keep';
 import { FillToPar } from '@/components/fill-to-par';
 import { formatQty, inputQty } from '@/lib/qty';
 import { sendStock } from '../../actions';
+import { ItemThumb } from '@/components/item-thumb';
 
 export interface SendItem {
   item_id: string;
@@ -100,6 +101,7 @@ export function SendStockForm({
                   data-filter-row
                   data-filter-text={i.name}
                 >
+                  <ItemThumb name={i.name} />
                   <label htmlFor={`s-${i.item_id}`} className="min-w-0 flex-1 text-sm">
                     <span className="block font-medium" data-testid="item-name">
                       {i.name}

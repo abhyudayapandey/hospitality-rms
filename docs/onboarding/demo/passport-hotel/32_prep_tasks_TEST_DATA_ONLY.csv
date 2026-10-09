@@ -1,0 +1,2 @@
+store_node_code,prep_item_code,day,due_time,quantity,assign_to,created_by
+PASSPORT-ASSAGAO-LAYOVER-BAR-STORE,TEPACHE-LIQUEUR,0,18:00,1000,person:passport.bartender,passport.bar-manager
