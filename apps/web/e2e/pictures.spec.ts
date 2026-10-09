@@ -74,9 +74,12 @@ test('the prep list gives each name its own line, with its picture', async ({ pa
   await expect(line.getByTestId('item-picture')).toHaveAttribute('data-picture', 'chutney');
   // the name is never squeezed into one word a line by the quantity box
   const name = line.getByText('Mint Chutney', { exact: true });
+  // boundingBox does not wait: measure once it is shown
+  await expect(name).toBeVisible();
   expect((await name.boundingBox())!.width).toBeGreaterThan(80);
   expect((await name.boundingBox())!.height).toBeLessThan(30);
   const box = line.getByRole('textbox', { name: /^Make Mint Chutney/ });
+  await expect(box).toBeVisible();
   expect((await box.boundingBox())!.width).toBeLessThan(140);
 });
 
