@@ -104,8 +104,9 @@ const NET = 'PASSPORT-SUPPLY-NETWORK';
 const SUPPLY = D('SUPPLY');
 const MAIN = D('MAIN-STORE');
 const KS = D('KITCHEN-STORE');
-const LAYOVER = D('LAYOVER-BAR-STORE');
-const LOBBY = D('MINI-BAR-STORE');
+// one store for the bar, serving Layover on the roof and the Mini Bar in the lobby (ADR 083);
+// its code is from when they were two
+const BAR_STORE = D('LAYOVER-BAR-STORE');
 const HK = D('HOUSEKEEPING-STORE');
 csv(
   '02_delivery_nodes.csv',
@@ -115,8 +116,7 @@ csv(
     [SUPPLY, 'Passport Hotel – Supply Point', 'outlet', NET, TZ, 'no', 'no'],
     [MAIN, 'Main Store', 'store', SUPPLY, TZ, 'yes', 'yes'],
     [KS, 'Kitchen Store', 'store', SUPPLY, TZ, 'yes', 'no'],
-    [LAYOVER, 'Bar · Layover (rooftop)', 'store', SUPPLY, TZ, 'yes', 'no'],
-    [LOBBY, 'Bar · Mini Bar (lobby)', 'store', SUPPLY, TZ, 'yes', 'no'],
+    [BAR_STORE, 'Bar', 'store', SUPPLY, TZ, 'yes', 'no'],
     [HK, 'Housekeeping Store (with the in-room minibars)', 'store', SUPPLY, TZ, 'yes', 'no'],
   ],
 );
@@ -127,8 +127,11 @@ csv(
     [H, SUPPLY, 'The hotel and its supply point'],
     [D('STORES-TEAM'), MAIN, 'Purchase & Stores runs the Main Store'],
     [D('KITCHEN'), KS, 'The kitchen uses the Kitchen Store'],
-    [D('BAR'), LAYOVER, 'The bar is one department in two places: Layover on the roof'],
-    [D('BAR'), LOBBY, 'and the Mini Bar in the lobby'],
+    [
+      D('BAR'),
+      BAR_STORE,
+      'The bar keeps one store for Layover on the roof and the Mini Bar in the lobby',
+    ],
     [D('HOUSEKEEPING'), HK, 'Housekeeping keeps its store and the in-room minibars'],
   ],
 );
@@ -590,16 +593,6 @@ const BAR_ITEMS: [string, number, string][] = [
   ['CINNAMON', 0.2, 'Dry shelf'],
   ['ICE', 60, 'Ice machine'],
 ];
-// the lobby Mini Bar pours the signatures and a few classics: no beer, wine or rum
-const LOBBY_SKIP = new Set([
-  'LAGER-330ML',
-  'CRAFT-BEER-330ML',
-  'RED-WINE-750ML',
-  'WHITE-WINE-750ML',
-  'WHITE-RUM-750ML',
-  'COLA-300ML',
-  'MINT',
-]);
 const HK_ITEMS: [string, number][] = [
   ['WATER-1L', 120],
   ['COLA-300ML', 60],
@@ -639,14 +632,7 @@ const MAIN_ITEMS: [string, number][] = [
 type Loc = { item: string; store: string; par: number; shelf?: string; order?: number };
 const LOCS: Loc[] = [
   ...KITCHEN_ITEMS.map(([item, par]) => ({ item, store: KS, par })),
-  ...BAR_ITEMS.map(([item, par, shelf], i) => ({ item, store: LAYOVER, par, shelf, order: i })),
-  ...BAR_ITEMS.filter(([item]) => !LOBBY_SKIP.has(item)).map(([item, par, shelf], i) => ({
-    item,
-    store: LOBBY,
-    par: Math.max(Math.round(par * 0.5 * 10) / 10, 0.5),
-    shelf,
-    order: i,
-  })),
+  ...BAR_ITEMS.map(([item, par, shelf], i) => ({ item, store: BAR_STORE, par, shelf, order: i })),
   ...HK_ITEMS.map(([item, par]) => ({ item, store: HK, par })),
   ...MAIN_ITEMS.map(([item, par]) => ({ item, store: MAIN, par })),
 ];
@@ -703,7 +689,7 @@ const PREPS: Prep[] = [
     yield: 1000,
     life: 336,
     portions: 50,
-    at: [LAYOVER, LOBBY],
+    at: [BAR_STORE],
     par: 1500,
     lines: [['SUGAR', 650, 'g']],
     steps: [['Dissolve the sugar in 500 ml of hot water; cool and bottle.', 15]],
@@ -716,7 +702,7 @@ const PREPS: Prep[] = [
     yield: 1000,
     life: 240,
     portions: 33,
-    at: [LAYOVER, LOBBY],
+    at: [BAR_STORE],
     par: 1000,
     lines: [
       ['PINEAPPLE', 800, 'g'],
@@ -737,7 +723,7 @@ const PREPS: Prep[] = [
     yield: 250,
     life: 336,
     portions: 125,
-    at: [LAYOVER, LOBBY],
+    at: [BAR_STORE],
     par: 250,
     lines: [
       ['GREEN-CHILLIES', 80, 'g'],
@@ -754,7 +740,7 @@ const PREPS: Prep[] = [
     yield: 1000,
     life: 72,
     portions: 16,
-    at: [LAYOVER, LOBBY],
+    at: [BAR_STORE],
     par: 1000,
     lines: [['ESPRESSO-BEANS', 120, 'g']],
     steps: [['Coarse-grind the beans; steep in cold water for 16 hours; strain.', 10]],
@@ -767,7 +753,7 @@ const PREPS: Prep[] = [
     yield: 750,
     life: 168,
     portions: 25,
-    at: [LAYOVER, LOBBY],
+    at: [BAR_STORE],
     par: 750,
     lines: [
       ['MUSKMELON', 600, 'g'],
@@ -784,7 +770,7 @@ const PREPS: Prep[] = [
     yield: 750,
     life: 240,
     portions: 37,
-    at: [LAYOVER, LOBBY],
+    at: [BAR_STORE],
     par: 750,
     lines: [
       ['HIBISCUS', 30, 'g'],
@@ -958,7 +944,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Mini Bar signatures',
     '1 glass',
-    LOBBY,
+    BAR_STORE,
     650,
     [4, 9],
     [
@@ -976,7 +962,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Mini Bar signatures',
     '1 glass',
-    LOBBY,
+    BAR_STORE,
     600,
     [3, 8],
     [
@@ -994,7 +980,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Mini Bar signatures',
     '1 glass',
-    LOBBY,
+    BAR_STORE,
     650,
     [6, 12],
     [
@@ -1013,7 +999,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Mini Bar signatures',
     '1 glass',
-    LOBBY,
+    BAR_STORE,
     600,
     [3, 7],
     [
@@ -1031,7 +1017,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Mini Bar signatures',
     '1 glass',
-    LOBBY,
+    BAR_STORE,
     700,
     [3, 8],
     [
@@ -1047,7 +1033,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Mini Bar classics',
     '1 glass',
-    LOBBY,
+    BAR_STORE,
     450,
     [4, 10],
     [
@@ -1063,7 +1049,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Mini Bar classics',
     '1 glass',
-    LOBBY,
+    BAR_STORE,
     600,
     [2, 6],
     [
@@ -1080,7 +1066,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Layover cocktails',
     '1 glass',
-    LAYOVER,
+    BAR_STORE,
     500,
     [5, 12],
     [
@@ -1098,7 +1084,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Layover cocktails',
     '1 glass',
-    LAYOVER,
+    BAR_STORE,
     550,
     [5, 11],
     [
@@ -1114,7 +1100,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Layover cocktails',
     '1 glass',
-    LAYOVER,
+    BAR_STORE,
     600,
     [3, 8],
     [
@@ -1131,7 +1117,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Layover cocktails',
     '1 glass',
-    LAYOVER,
+    BAR_STORE,
     650,
     [4, 9],
     [
@@ -1150,7 +1136,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Beer',
     '1 bottle',
-    LAYOVER,
+    BAR_STORE,
     250,
     [10, 24],
     [['LAGER-330ML', 1, 'each']],
@@ -1161,7 +1147,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Beer',
     '1 can',
-    LAYOVER,
+    BAR_STORE,
     350,
     [6, 15],
     [['CRAFT-BEER-330ML', 1, 'each']],
@@ -1172,7 +1158,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Wine',
     '150 ml',
-    LAYOVER,
+    BAR_STORE,
     450,
     [3, 8],
     [['RED-WINE-750ML', 150, 'ml']],
@@ -1183,7 +1169,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Wine',
     '150 ml',
-    LAYOVER,
+    BAR_STORE,
     450,
     [3, 8],
     [['WHITE-WINE-750ML', 150, 'ml']],
@@ -1194,7 +1180,7 @@ const DISHES: Dish[] = [
     'Bar',
     'Pool drinks',
     '1 glass',
-    LAYOVER,
+    BAR_STORE,
     180,
     [8, 18],
     [
@@ -1593,7 +1579,7 @@ for (const p of PREPS) {
         d,
         s === KS ? '09:30' : '16:00',
         p.yield,
-        s === KS ? U('cdp') : s === LOBBY ? U('head-bartender') : U('bartender'),
+        s === KS ? U('cdp') : U('bartender'),
       ]);
     }
   }
@@ -1758,10 +1744,10 @@ csv(
   '28_counts_TEST_DATA_ONLY.csv',
   ['store_node_code', 'item_code', 'difference', 'counted_by', 'approved_by'],
   [
-    [LAYOVER, 'FENI-750ML', -0.3, U('head-bartender'), U('gm')],
-    [LAYOVER, 'GIN-750ML', -0.1, U('head-bartender'), U('gm')],
-    [LAYOVER, 'LAGER-330ML', -2, U('head-bartender'), U('gm')],
-    [LAYOVER, 'TONIC-200ML', 0, U('head-bartender'), U('gm')],
+    [BAR_STORE, 'FENI-750ML', -0.3, U('head-bartender'), U('gm')],
+    [BAR_STORE, 'GIN-750ML', -0.1, U('head-bartender'), U('gm')],
+    [BAR_STORE, 'LAGER-330ML', -2, U('head-bartender'), U('gm')],
+    [BAR_STORE, 'TONIC-200ML', 0, U('head-bartender'), U('gm')],
   ],
 );
 

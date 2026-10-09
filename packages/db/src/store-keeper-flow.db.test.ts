@@ -501,4 +501,57 @@ describe('what the Main Store can give (ADR 051 addendum)', () => {
       ).toMatch(/NOT_AUTHORISED/);
     });
   });
+
+  // ADR 083: asking a store lists what that store keeps, not the asker's own list
+  it('asking another store lists only what both stores keep, with what is here and its par', async () => {
+    await inRolledBackTx(async (c) => {
+      const HK_HEAD = 'test.executive-housekeeper.1.0';
+      const own = async (node: string) =>
+        (
+          await c.query<{ name: string }>(
+            `select i.name from inv.item_node x join inv.item i on i.id = x.item_id
+              where x.delivery_node_id = $1 and x.archived_at is null`,
+            [node],
+          )
+        ).rows.map((r) => r.name);
+      // one kitchen item housekeeping keeps too
+      const rice = await itemId(c, 'Test Basmati Rice');
+      await c.query(
+        `insert into inv.item_node (tenant_id, item_id, delivery_node_id, par_level)
+         select tenant_id, $1, id, 4 from core.hierarchy_node where id = $2`,
+        [rice, housekeeping()],
+      );
+      const fromKitchen = await rows(
+        c,
+        HK_HEAD,
+        `select name, on_hand, par_level from inv.request_items($1, $2)`,
+        [housekeeping(), kitchen()],
+      );
+      const kitchenItems = await own(kitchen());
+      const hkItems = await own(housekeeping());
+      // exactly the items both keep: the rice, and the garbage bags both stores use
+      const both = hkItems.filter((n) => kitchenItems.includes(n)).sort();
+      expect(both).toContain('Test Basmati Rice');
+      expect(both.length).toBeLessThan(hkItems.length);
+      expect(fromKitchen.map((r) => r.name as string).sort()).toEqual(both);
+      expect(fromKitchen.find((r) => r.name === 'Test Basmati Rice')).toMatchObject({
+        on_hand: '0',
+        par_level: '4.000',
+      });
+      // the Main Store: what it may give, not housekeeping's items it does not keep
+      const fromMain = (
+        await rows(c, HK_HEAD, `select name from inv.request_items($1, $2)`, [
+          housekeeping(),
+          main(),
+        ])
+      ).map((r) => r.name as string);
+      const mainItems = await own(main());
+      expect(fromMain.length).toBeGreaterThan(0);
+      expect(fromMain.every((n) => mainItems.includes(n))).toBe(true);
+      // no source: nothing to list
+      expect(
+        await rows(c, HK_HEAD, `select name from inv.request_items($1, null)`, [housekeeping()]),
+      ).toEqual([]);
+    });
+  });
 });

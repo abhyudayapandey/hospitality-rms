@@ -491,6 +491,7 @@ class Loader {
       }
     }
     await this.bundleNotes(this.b.orgNodes.filter((n) => !before.has(n.node_code)));
+    await this.retireStores();
     for (const l of this.b.nodeLinks) {
       this.step(FILES.nodeLinks.file, l.line);
       await this.upsert(
@@ -519,6 +520,102 @@ class Loader {
          returning id, xmax = 0 as inserted`,
         [this.tenant, node, s.latitude, s.longitude, s.geofence_radius_m],
       );
+    }
+  }
+
+  /**
+   * A store no longer in file 02 is retired (ADR 083): archived with its item places, and no
+   * longer linked to any department, so access re-derived below stops reaching it. It must have
+   * no stock request or order open, and hold no stock; at a test customer what is left is
+   * counted out (a count adjustment in the ledger) so a demo can be loaded again as it is. An
+   * empty file 02 retires nothing (a customer just created, or files from before stores).
+   */
+  private async retireStores() {
+    const file = FILES.deliveryNodes.file;
+    const kept = this.b.deliveryNodes.map((n) => n.node_code);
+    if (kept.length === 0) return;
+    const { rows } = await this.c.query<{
+      id: string;
+      code: string;
+      name: string;
+      items: number;
+      open: number;
+      stocked: number;
+    }>(
+      `select n.id, n.code, n.name,
+              (select count(*)::int from inv.item_node x
+                where x.delivery_node_id = n.id and x.archived_at is null) as items,
+              (select count(*)::int from inv.transfer t
+                where (t.from_node_id = n.id or t.to_node_id = n.id)
+                  and t.status in ('draft', 'submitted') and t.received_at is null)
+              + (select count(*)::int from inv.purchase_order_summary p
+                  where p.delivery_node_id = n.id
+                    and p.progress in ('draft', 'awaiting_approval', 'to_order', 'released',
+                                       'partially_received')) as open,
+              (select count(*)::int from inv.stock_level s
+                where s.delivery_node_id = n.id and s.on_hand <> 0) as stocked
+         from core.hierarchy_node n
+        where n.tenant_id = $1 and n.type = 'delivery' and n.archived_at is null
+          and n.code is not null and not (n.code = any ($2))
+        order by n.path desc`,
+      [this.tenant, kept],
+    );
+    const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
+    for (const r of rows) {
+      this.step(file);
+      const label = `${r.name} (${r.code})`;
+      if (r.open > 0) {
+        this.report.issues.push({
+          file,
+          column: 'node_code',
+          message: `${label} is not in this file, but it still has ${plural(r.open, 'stock request or order')} open: finish or withdraw ${r.open === 1 ? 'it' : 'them'} in the app first, or keep the store in the file`,
+        });
+        continue;
+      }
+      if (r.stocked > 0 && !this.isTest) {
+        this.report.issues.push({
+          file,
+          column: 'node_code',
+          message: `${label} is not in this file, but it still holds stock of ${plural(r.stocked, 'item')}: send it to another store or count it out in the app first, or keep the store in the file`,
+        });
+        continue;
+      }
+      if (r.stocked > 0) {
+        await this.c.query(
+          `insert into inv.stock_ledger (tenant_id, item_id, delivery_node_id, movement_type, qty,
+                                         unit_cost, currency, ref_type, reason)
+           select s.tenant_id, s.item_id, s.delivery_node_id, 'count_adjust', -s.on_hand,
+                  coalesce(s.avg_cost, 0), t.currency, 'retired',
+                  'the store was retired: no longer in the onboarding files'
+             from inv.stock_level s join core.tenant t on t.id = s.tenant_id
+            where s.delivery_node_id = $1 and s.on_hand <> 0`,
+          [r.id],
+        );
+      }
+      await this.c.query(
+        `update inv.item_node set archived_at = now()
+          where delivery_node_id = $1 and archived_at is null`,
+        [r.id],
+      );
+      await this.c.query(`delete from core.node_link where delivery_node_id = $1`, [r.id]);
+      await this.c.query(
+        `update core.hierarchy_node set archived_at = now(), is_main_store = false where id = $1`,
+        [r.id],
+      );
+      const counts = (this.report.counts['retired stores'] ??= {
+        created: 0,
+        updated: 0,
+        unchanged: 0,
+      });
+      counts.updated++;
+      this.report.warnings.push({
+        file,
+        message:
+          `${label} is not in this file: it is retired, with its ${plural(r.items, 'item')}` +
+          (r.stocked > 0
+            ? `; what is left on its shelves (${plural(r.stocked, 'item')}) is counted out, as this is a test customer`
+            : ''),
+      });
     }
   }
 

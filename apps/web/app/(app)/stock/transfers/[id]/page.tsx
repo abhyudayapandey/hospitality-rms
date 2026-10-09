@@ -73,10 +73,21 @@ export default async function TransferPage({
       )}
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <div className="flex items-baseline justify-between gap-2">
-          <h1 className="text-lg font-semibold">
-            {t.kind === 'rfm' ? 'Request for material: ' : ''}
-            {t.from_name} → {t.to_name}
-          </h1>
+          {/* who asked first, then whom (ADR 083); a store's own send names the sender */}
+          <div>
+            <p className="text-xs font-medium text-slate-500" data-testid="transfer-kind">
+              {t.kind === 'rfm'
+                ? 'Request for material'
+                : t.kind === 'send'
+                  ? 'Sent'
+                  : 'Stock request'}
+            </p>
+            <h1 className="text-lg font-semibold">
+              {t.kind === 'send'
+                ? `${t.from_name} sent to ${t.to_name}`
+                : `${t.to_name} asked ${t.from_name}`}
+            </h1>
+          </div>
           <span
             data-testid="transfer-progress"
             className={`rounded-full px-2 py-0.5 text-xs font-semibold ${style}`}

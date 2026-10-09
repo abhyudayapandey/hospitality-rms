@@ -194,6 +194,11 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   hand; a `department_store` duty reaches every store linked to the department; counts above
   `inv.count_limit` are `COUNT_TOO_HIGH`; leave is department head, then GM; the clock-in
   selfie is the live camera only.
+- A store no longer in file 02 is retired by the import (ADR 083): archived with its items, its
+  links gone; refused while it holds stock or has a request or order open, except at a test
+  customer, where its stock is counted out. Asking another store lists what that store keeps
+  (from the Main Store, what it may give), with what is here and its par; a request reads
+  "<who asked> asked <store>". Passport's bar is one store, "Bar".
 - A hotel's pool, spa and gym are extras with the SOP's people and checks; breakfast is the
   restaurant's (ADR 068). A library checklist's copy is offered a newer library version on its
   screen and changes only when its editor takes it (`ops.use_library_version`).

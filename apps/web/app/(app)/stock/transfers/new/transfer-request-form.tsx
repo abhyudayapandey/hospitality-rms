@@ -44,6 +44,7 @@ export function TransferRequestForm({
 
   if (sources.length === 0)
     return <p className="text-slate-600">There is nowhere to request from.</p>;
+  const fromName = sources.find((s) => s.id === from)?.name ?? '';
   return (
     <form
       className="space-y-4"
@@ -70,6 +71,11 @@ export function TransferRequestForm({
         </select>
       </label>
       <div id="transfer-lines" className="space-y-2">
+        {items.length === 0 && (
+          <p className="text-sm text-slate-600" data-testid="nothing-to-ask">
+            {fromName} keeps nothing this store uses.
+          </p>
+        )}
         <ListSearch scope="transfer-lines" count={items.length} noun="items" />
         {byGroup(items).map((g) => (
           <section key={g.group} className="space-y-1" data-testid={`group-${g.group}`}>
@@ -86,6 +92,9 @@ export function TransferRequestForm({
                     <span className="block font-medium">{i.name}</span>
                     <span className="text-xs text-slate-500">
                       here: {formatQty(i.on_hand, i.base_uom)}
+                      {i.par_level && Number(i.par_level) > 0
+                        ? ` · par ${formatQty(i.par_level, i.base_uom)}`
+                        : ''}
                     </span>
                   </label>
                   <input

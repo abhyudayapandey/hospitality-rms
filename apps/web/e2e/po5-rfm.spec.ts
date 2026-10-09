@@ -36,7 +36,10 @@ test('a request for material off the menu waits for the department head, with wh
   await page.getByRole('button', { name: 'Request 1 item' }).click();
   await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
-  await expect(page.getByRole('heading', { name: /^Request for material/ })).toBeVisible();
+  await expect(page.getByTestId('transfer-kind')).toHaveText('Request for material');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    'Test Bar 3.0 – Kitchen Store asked Test Central Kitchen – Store',
+  );
   await expect(page.getByTestId('transfer-progress')).toHaveText('waiting for approval');
 
   // the store keeper has nothing to issue yet
