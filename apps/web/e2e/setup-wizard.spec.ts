@@ -64,16 +64,17 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
   await expect(page).toHaveURL(new RegExp(`${draftUrl}/outlets`));
   await next(page);
 
-  // 3. what they buy (ADR 067, 069): the café's usual bundles ticked, Compliance offered
-  // unticked; they don't buy People & roster, and they do buy Compliance
+  // 3. what they buy (ADR 067, 085): the café's usual bundles ticked, Hotel and Events &
+  // compliance offered unticked; they don't buy People, and they do buy Events & compliance
   const usual = page.getByTestId('bundles-usual');
-  for (const b of ['Stock & cost', 'People & roster', 'Tasks & food safety']) {
+  for (const b of ['Stock & buying', 'Kitchen & bar', 'People', 'Daily work']) {
     await expect(usual.getByRole('checkbox', { name: new RegExp(b) })).toBeChecked();
   }
   const more = page.getByTestId('bundles-more');
-  await expect(more.getByRole('checkbox', { name: /Compliance/ })).not.toBeChecked();
-  await usual.getByRole('checkbox', { name: /People & roster/ }).uncheck();
-  await more.getByRole('checkbox', { name: /Compliance/ }).check();
+  await expect(more.getByRole('checkbox', { name: /Events & compliance/ })).not.toBeChecked();
+  await expect(more.getByRole('checkbox', { name: /Hotel/ })).not.toBeChecked();
+  await usual.getByRole('checkbox', { name: /^People/ }).uncheck();
+  await more.getByRole('checkbox', { name: /Events & compliance/ }).check();
   await next(page);
 
   // 4. departments: a café's own first; the dining room offered, unticked
@@ -131,7 +132,7 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
   await expect(who.locator('[data-role="Kitchen Steward"]')).toContainText('Not done here');
   // what they buy, as chosen on screen 3
   await expect(page.getByTestId('bundles')).toContainText(
-    'Stock & cost, Tasks & food safety, Compliance',
+    'Stock & buying, Kitchen & bar, Daily work, Events & compliance',
   );
   await page.getByRole('button', { name: 'Check everything' }).click();
   await workerUntil(page, 'checked');
@@ -141,7 +142,7 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
   await expect(warnings).toContainText("Asha Rao's own");
   await expect(warnings).not.toContainText(/[A-Z]{2,}_[A-Z]|wiz-/i);
   await expect(page.getByTestId('check-warnings')).toContainText(
-    "Bandra Café uses Leave and Shift swaps, part of People & roster, which isn't on for this customer",
+    "Bandra Café uses Roster, Clock-in, Salaries & labour cost, Leave and Shift swaps, part of People, which isn't on for this customer",
   );
   await page.getByRole('button', { name: 'Looks right: apply and send logins' }).click();
   await workerUntil(page, 'live');
@@ -181,12 +182,14 @@ test('a café company from nothing to live, resumed half way', async ({ page }) 
     { job_role_code: 'HEAD_COOK', mode: 'covered_by' },
     { job_role_code: 'KITCHEN_STEWARD', mode: 'not_done' },
   ]);
-  // Go live put the ticked bundles in the plan and left People & roster out
-  const plan = await asMigrator<{ b: unknown }>(
-    `select settings -> 'bundles' as b from core.tenant where code = $1`,
+  // Go live put the ticked bundles in the plan with every block in them on (Compliance
+  // included) and left People out
+  const plan = await asMigrator<{ b: unknown; compliance: boolean }>(
+    `select settings -> 'bundles' as b, core.module_on(id, 'compliance') as compliance
+       from core.tenant where code = $1`,
     [code],
   );
-  expect(plan[0]!.b).toEqual({ people_roster: false, compliance: true });
+  expect(plan[0]).toEqual({ b: { people: false }, compliance: true });
   // with Compliance, the café's licences to fill in and its calendar jobs
   const lic = await asMigrator<{ n: number }>(
     `select count(*)::int n from ops.licence l join core.tenant t on t.id = l.tenant_id

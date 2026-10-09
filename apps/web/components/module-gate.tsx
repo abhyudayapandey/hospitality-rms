@@ -6,9 +6,8 @@ import { loadShell } from '@/lib/shell';
 import { Empty } from './messages';
 
 /**
- * A module's screens when the company has switched it off (ADR 026): the page says so
- * instead of showing the screen. The data is kept; the Account Owner can turn it back on in
- * Admin → Modules.
+ * A block's screens when the customer doesn't have it on (ADR 026, 085): the page says so
+ * instead of showing the screen. The data is kept; only Outlet Ops switches blocks and bundles.
  */
 export async function ModuleGate({
   code,
@@ -19,7 +18,7 @@ export async function ModuleGate({
 }) {
   const shell = await loadShell();
   if (shell.modules.has(code)) return children;
-  // out of the plan (ADR 067, 069): only Outlet Ops can add it, not the account owner
+  // out of the plan (ADR 067, 085)
   const bundle = bundleOf(code);
   const inPlan = await withUser(shell.user.id, async (tx) => {
     const r = await sql<{ in_plan: boolean }>`
@@ -37,7 +36,7 @@ export function ModuleOff({ code, plan = null }: { code: ModuleCode; plan?: stri
       <Empty>
         {plan
           ? `${plan} isn't part of your company's plan. Ask Outlet Ops to add it.`
-          : `${name} isn't switched on for your company. Your account owner can turn it on in Admin.`}
+          : `${name} isn't switched on for your company. Ask Outlet Ops to switch it on.`}
       </Empty>
       <Link href="/" className="block text-sm text-slate-700 underline">
         Back to Home

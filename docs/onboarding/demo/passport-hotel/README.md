@@ -84,8 +84,9 @@ Enter:
 **Create customer**, check the owner reads `test.ashesh-sajnani` and "no email is sent", then
 **Confirm and create**.
 
-**3. Put Compliance in the plan**: the customer's page → **Bundles** → **Compliance** →
-**On** (the licences and the calendar only show with it).
+**3. The plan**: the customer's page → **What they buy** → **Hotel** → **On** (the rooms and
+their minibars), then **Events & compliance** → **Compliance** → **On** (the licences and the
+calendar only show with it). Without Hotel the dry run says the minibar checks are not loaded.
 
 **4. Import**: **Import setup files** → `passport-hotel.zip` → **Upload and dry run**. It
 should report no problems and no warnings, with (new): org places 12 / 1 changed (the

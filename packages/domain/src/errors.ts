@@ -40,7 +40,7 @@ export const ERROR_MESSAGES = {
   MODULE_OFF: "This isn't switched on for your company.",
   INVALID_MODULE: "That module doesn't exist.",
   // selling by bundle (ADR 067)
-  NOT_IN_PLAN: 'Not in your plan. Ask Outlet Ops to add it.',
+  NOT_IN_PLAN: "Its bundle isn't in the plan: put the bundle in first.",
   INVALID_BUNDLE: "That bundle doesn't exist.",
   // today's briefing note (ADR 070)
   NOT_ON_MENU: "One of those dishes isn't on today's menu here. Refresh and pick again.",

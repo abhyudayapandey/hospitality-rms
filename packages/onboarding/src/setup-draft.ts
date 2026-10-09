@@ -607,14 +607,14 @@ export function filesFromDraft(
     cover.save();
   }
 
-  // what they buy (ADR 069): no checklist rounds without Tasks & food safety; with
-  // Compliance, each outlet's licences (to fill in) and its calendar jobs, which its manager
+  // what they buy (ADR 069, 085): no checklist rounds without Daily work; with Events &
+  // compliance (every block in a bought bundle is on, Compliance included), each outlet's licences (to fill in) and its calendar jobs, which its manager
   // answers for and its kitchen head or chief engineer does (ADR 073), else the manager
   const plan = planFromDraft(draft);
-  if (!plan.tasks_food_safety) {
+  if (!plan.daily_work) {
     for (const f of Object.keys(files)) if (f.startsWith('29_')) delete files[f];
   }
-  if (plan.compliance) {
+  if (plan.events_compliance) {
     const lic = edit(files, 'licences', [
       'place_code',
       'kind',

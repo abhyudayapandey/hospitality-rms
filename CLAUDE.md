@@ -161,9 +161,16 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   draft (`filesFromDraft`) and goes live through the usual create, dry run and apply jobs; it
   holds no rules of its own. Codes and login IDs are made from names. People without an email
   get a login ID on a printed sheet; everyone sets their own password at first sign-in.
-- Bundles (ADR 067, `bundles.ts`) are what a customer buys; only the platform admin changes the
-  plan (`platform.set_bundle`), modules switch inside it (`NOT_IN_PLAN`), templates switch nothing.
-- Compliance (ADR 069) is a bundle out of the plan until the platform admin adds it: licences
+- Building blocks (ADR 085, `modules.ts`): every group of functionality is a block (a module)
+  with a manifest (bundle, `needs`, `fits`, the domains it owns, default); the base (places and
+  people, access, To do, approvals, notifications, Home, Me, Admin, reports) has none. Bundles
+  (ADR 067, `bundles.ts`) are what a customer buys. Only platform admins change either
+  (`platform.set_module`, `platform.set_bundle`, file 00); Admin → Your plan is read-only. A block
+  off is gone: `core.can` refuses its domains (`core.domain_module`), so RLS hides its rows; reports
+  decide who opens them on the grants (`core.report_can`) and each needs its block. Salaries &
+  labour cost off: no pay, total cost is materials only. A new block: manifest, migration codes,
+  file 00 column; the guard tests fail until all agree.
+- Compliance (ADR 069) is a block off until a platform admin switches it on: licences
   (`ops.licence`, renewed by a job role, GM by default) and calendar jobs (`ops.compliance_item`,
   not checklists). Reminders are To do items from `ops.compliance_tick` (90 days before expiry,
   14 before a job); documents under `compliance/` never expire. It is the first card on Home,

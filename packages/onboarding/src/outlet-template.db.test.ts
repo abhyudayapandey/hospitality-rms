@@ -124,7 +124,7 @@ describe('the plan decides what is on, never a template (ADR 067)', () => {
       expect(file00(files)).toBe(file00(company));
 
       await c.query(
-        `update core.tenant set settings = settings || '{"bundles": {"tasks_food_safety": false}}'
+        `update core.tenant set settings = settings || '{"bundles": {"daily_work": false}}'
           where code = 'TEST-COMPANY'`,
       );
       const r = await loadCustomer(c, files, { nested: true, dryRun: true });
@@ -134,7 +134,7 @@ describe('the plan decides what is on, never a template (ADR 067)', () => {
         [
           '01_org_nodes.csv',
           'outlet_format',
-          "New cafe uses Checklists and Maintenance, part of Tasks & food safety, which isn't on for this customer",
+          "New cafe uses Checklists, Maintenance and Today's briefing, part of Daily work, which isn't on for this customer",
         ],
       ]);
       expect(notes[0]!.row).toBeGreaterThan(0);

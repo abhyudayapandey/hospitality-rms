@@ -53,21 +53,22 @@ const jobId = async (c: pg.PoolClient, name: string) =>
   ).rows[0]!.id;
 
 describe('the plan', () => {
-  it('Compliance is out unless put in: Test Company has it, the Solo Bar does not', async () => {
+  it('Compliance is off unless switched on: Test Company has it, the Solo Bar does not', async () => {
     await inRolledBackTx(async (c) => {
       const on = await c.query<{ company: boolean; solo: boolean; d: boolean; other: boolean }>(
         `select core.module_on($1, 'compliance') company, core.module_on($2, 'compliance') solo,
-                core.bundle_default('compliance') d, core.bundle_default('tasks_food_safety') other`,
+                core.module_default('compliance') d, core.module_default('events') other`,
         [ids.tenant(), ids.tenant('TEST-SOLO-COMPANY')],
       );
       expect(on.rows[0]).toEqual({ company: true, solo: false, d: false, other: true });
-      // the owner can't switch it on outside the plan
+      // nobody in the customer can switch it on: only a platform admin (ADR 085)
       const r = await attemptAs(
         c,
         ids.user('test.solo.bar-manager'),
-        `select core.set_module('compliance', true)`,
+        `select platform.set_module($1, 'compliance', true)`,
+        [ids.tenant('TEST-SOLO-COMPANY')],
       );
-      expect(r.error).toMatch(/NOT_IN_PLAN/);
+      expect(r.error).toMatch(/NOT_AUTHORISED/);
       // and nothing of it shows or saves there
       expect(await names(c, 'test.solo.bar-manager', 'ops.licences')).toEqual([]);
       const save = await attemptAs(
@@ -255,10 +256,10 @@ describe('licences', () => {
       expect(n.filter((x) => /in 29 days/.test(x)).length).toBeGreaterThan(0);
       expect(n.filter((x) => /in 6 days/.test(x)).length).toBeGreaterThan(0);
       expect(n.filter((x) => /in (28|5) days/.test(x))).toEqual([]);
-      // off the plan, nothing
+      // switched off, nothing
       await c.query(
-        `update core.tenant set settings = jsonb_set(settings, '{bundles}', '{"compliance": false}')
-          where id = $1`,
+        `update core.tenant set settings = jsonb_set(settings, '{modules}',
+           settings -> 'modules' || '{"compliance": false}') where id = $1`,
         [ids.tenant()],
       );
       await c.query(`update ops.task set status = 'cancelled' where licence_id = $1`, [noc]);

@@ -265,3 +265,19 @@ export async function setBundle(
     return r.rows[0]!.changed;
   });
 }
+
+/**
+ * One block of a customer on or off (ADR 085): only platform admins, only inside a bundle in
+ * its plan (NOT_IN_PLAN), in the platform audit. Nobody in the customer can.
+ */
+export async function setModule(
+  tenantId: string,
+  code: string,
+  on: boolean,
+): Promise<ActionResult<boolean>> {
+  return run('set_module', async (tx) => {
+    const r = await sql<{ changed: boolean }>`
+      select platform.set_module(${tenantId}::uuid, ${code}, ${on}) as changed`.execute(tx);
+    return r.rows[0]!.changed;
+  });
+}

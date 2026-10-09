@@ -3,12 +3,10 @@ import { ALWAYS_ON, BUNDLES, MODULES } from '@outlet-ops/domain';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { loadShell } from '@/lib/shell';
-import { ModuleSwitch } from './module-switch';
 
-// Modules (ADR 026) by bundle (ADR 067): what the company uses. Bundles are what the company
-// buys, so this page shows them read-only: "On" or "Not in your plan". Inside a bundle that
-// is on, the Account Owner turns single modules off and on (COMPANY_SETTINGS modify, checked
-// by core.set_module, which refuses one outside the plan); other administrators see them.
+// The company's plan (ADR 026, 067, 085): its bundles and the blocks in each, read-only. Only
+// Outlet Ops (platform admins) puts bundles in or out and switches blocks; nobody in the
+// company changes them. Administrators see what they have.
 export default async function ModulesPage() {
   const shell = await loadShell();
   if (!shell.domains.has('USER_ACCESS') && !shell.domains.has('COMPANY_SETTINGS')) {
@@ -27,17 +25,15 @@ export default async function ModulesPage() {
       .filter((b) => b.in_plan)
       .map((b) => b.code),
   );
-  const owner = shell.domains.get('COMPANY_SETTINGS') === 'modify';
   return (
     <div className="space-y-4">
       <Link href="/admin" className="text-sm text-slate-600">
         ← Administration
       </Link>
-      <h1 className="text-xl font-semibold">Modules</h1>
+      <h1 className="text-xl font-semibold">Your plan</h1>
       <p className="text-sm text-slate-600">
-        A module that is off disappears for everyone in the company. Nothing is deleted: turn it
-        back on and everything is there.
-        {owner ? '' : ' Only the account owner can change these.'}
+        What your company has, in bundles. A part that is off isn&apos;t shown to anyone and nothing
+        of it is deleted. To add or change anything, ask Outlet Ops.
       </p>
       <p className="text-sm text-slate-600">{ALWAYS_ON}</p>
       <div className="space-y-4" data-testid="modules">
@@ -51,7 +47,7 @@ export default async function ModulesPage() {
                   className={`shrink-0 text-sm ${inPlan ? 'text-emerald-800' : 'text-slate-600'}`}
                   data-testid="bundle-state"
                 >
-                  {inPlan ? 'On' : 'Not in your plan'}
+                  {inPlan ? 'In your plan' : 'Not in your plan'}
                 </span>
               </div>
               <p className="text-xs text-slate-500">{b.adds}</p>
@@ -59,7 +55,6 @@ export default async function ModulesPage() {
                 {b.modules.map((code) => {
                   const m = MODULES.find((x) => x.code === code)!;
                   const on = shell.modules.has(m.code);
-                  const blocked = 'needs' in m && !shell.modules.has(m.needs);
                   return (
                     <li
                       key={m.code}
@@ -70,16 +65,9 @@ export default async function ModulesPage() {
                         <span className="block font-medium">{m.name}</span>
                         <span className="block text-xs text-slate-500">{m.what}</span>
                       </span>
-                      {owner && inPlan && !blocked ? (
-                        <ModuleSwitch code={m.code} name={m.name} on={on} />
-                      ) : (
-                        <span
-                          className="shrink-0 text-sm text-slate-600"
-                          data-testid="module-state"
-                        >
-                          {!inPlan ? 'Not in your plan' : on ? 'On' : 'Off'}
-                        </span>
-                      )}
+                      <span className="shrink-0 text-sm text-slate-600" data-testid="module-state">
+                        {!inPlan ? 'Not in your plan' : on ? 'On' : 'Off'}
+                      </span>
                     </li>
                   );
                 })}

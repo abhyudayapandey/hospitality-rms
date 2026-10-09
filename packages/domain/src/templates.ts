@@ -13,6 +13,18 @@ import { DEPARTMENTS, ROLE_BY_CODE, type RoleDef } from './catalogue';
 import { OUTLET_FORMATS, type OutletFormat } from './formats';
 import type { ModuleCode } from './modules';
 
+/** The blocks every outlet template uses (ADR 085): an outlet keeps stock, buys, has recipes,
+ * a roster, clock-in, pay and a briefing; each template adds its own. */
+const EVERY_OUTLET = [
+  'stock',
+  'buying',
+  'recipes',
+  'roster',
+  'clock_in',
+  'pay',
+  'briefing',
+] as const satisfies readonly ModuleCode[];
+
 export type View = 'cafe' | 'restaurant';
 
 export interface TemplateDepartment {
@@ -147,6 +159,7 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       item('BASMATI-RICE', 'Basmati rice', 'Dry Grocery', 'kg', false, 'STORES-TEAM', 'restaurant'),
     ],
     modules: [
+      ...EVERY_OUTLET,
       'production',
       'prep_lists',
       'checklists',
@@ -200,6 +213,7 @@ export const TEMPLATES: readonly OutletTemplate[] = [
     ],
     items: [...BAR_ITEMS, ...KITCHEN_ITEMS],
     modules: [
+      ...EVERY_OUTLET,
       'production',
       'prep_lists',
       'checklists',
@@ -236,6 +250,7 @@ export const TEMPLATES: readonly OutletTemplate[] = [
     ],
     items: KITCHEN_ITEMS,
     modules: [
+      ...EVERY_OUTLET,
       'production',
       'prep_lists',
       'checklists',
@@ -275,6 +290,7 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       item('CARRY-BAGS', 'Carry bags', 'Packaging', 'each', false, 'STORES-TEAM'),
     ],
     modules: [
+      ...EVERY_OUTLET,
       'production',
       'prep_lists',
       'checklists',
@@ -376,6 +392,7 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       item('FLOOR-CLEANER', 'Floor cleaner', 'Cleaning', 'l', false, 'STORES-TEAM'),
     ],
     modules: [
+      ...EVERY_OUTLET,
       'production',
       'prep_lists',
       'checklists',
@@ -383,6 +400,7 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       'swaps',
       'maintenance',
       'menu_sales',
+      'minibars',
     ],
   },
 ];

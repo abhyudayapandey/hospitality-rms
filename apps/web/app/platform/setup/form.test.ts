@@ -33,7 +33,7 @@ describe('the set-up forms', () => {
     });
   });
 
-  it('what they buy: a usual bundle unticked stays out; Compliance is in only when ticked', () => {
+  it('what they buy: a usual bundle unticked stays out; Events & compliance is in only when ticked', () => {
     const withCafe = applyForm(
       emptyDraft(),
       'outlets',
@@ -48,28 +48,30 @@ describe('the set-up forms', () => {
       withCafe,
       'bundles',
       fields([
-        ['bundle', 'stock_cost'],
-        ['bundle', 'tasks_food_safety'],
-        ['bundle', 'compliance'],
+        ['bundle', 'stock_buying'],
+        ['bundle', 'kitchen_bar'],
+        ['bundle', 'daily_work'],
+        ['bundle', 'events_compliance'],
       ]),
       key,
     ).draft;
-    expect(off.bundlesOff).toEqual(['people_roster']);
-    expect(off.bundlesOn).toEqual(['compliance']);
+    expect(off.bundlesOff).toEqual(['people']);
+    expect(off.bundlesOn).toEqual(['events_compliance']);
     const back = applyForm(
       off,
       'bundles',
       fields([
-        ['bundle', 'stock_cost'],
-        ['bundle', 'people_roster'],
-        ['bundle', 'tasks_food_safety'],
+        ['bundle', 'stock_buying'],
+        ['bundle', 'kitchen_bar'],
+        ['bundle', 'people'],
+        ['bundle', 'daily_work'],
       ]),
       key,
     ).draft;
     expect(back.bundlesOff).toEqual([]);
     expect(back.bundlesOn).toEqual([]);
     // the review posts nothing about bundles: nothing changes
-    expect(applyForm(off, 'review', fields([]), key).draft.bundlesOff).toEqual(['people_roster']);
+    expect(applyForm(off, 'review', fields([]), key).draft.bundlesOff).toEqual(['people']);
   });
 
   it('outlets: add, change keeps answers, a new kind starts again, remove', () => {

@@ -325,8 +325,8 @@ export function OutletsStep({
 }
 
 /**
- * Screen 3, What they buy (ADR 067, 069): every bundle, those its outlets use first and
- * ticked, the rest after them unticked (Compliance among them). Untick what they aren't
+ * Screen 3, What they buy (ADR 067, 085): every bundle, those its outlets use first and
+ * ticked, the rest after them unticked (Events & compliance among them). Untick what they aren't
  * buying; tick what they are. The next screens and the files follow it.
  */
 export function BundlesStep({ id, draft }: { id: string; draft: SetupDraft }) {

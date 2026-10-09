@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { failure, type ActionResult } from '@outlet-ops/domain';
+import { BUNDLES, failure, type ActionResult } from '@outlet-ops/domain';
 import {
   companyCode,
   createPayload,
@@ -44,13 +44,18 @@ async function draftOf(tx: Tx, id: string) {
 }
 
 /**
- * What the customer buys (ADR 067): the bundles ticked on the review go in its plan, the rest
- * stay out, through the same audited switch as the console's Bundles card. Before each check
- * and before the apply, so a change of ticks after a check is what goes live.
+ * What the customer buys (ADR 067, 085): the bundles ticked on the review go in its plan with
+ * every block in them on (Compliance included), the rest stay out, through the same audited
+ * switches as the console's bundle cards. Before each check and before the apply, so a change of
+ * ticks after a check is what goes live.
  */
 async function applyPlan(tx: Tx, tenant: string, draft: SetupDraft): Promise<void> {
   for (const [bundle, on] of Object.entries(planFromDraft(draft))) {
     await sql`select platform.set_bundle(${tenant}::uuid, ${bundle}, ${on})`.execute(tx);
+    if (!on) continue;
+    for (const m of BUNDLES.find((b) => b.code === bundle)!.modules) {
+      await sql`select platform.set_module(${tenant}::uuid, ${m}, true)`.execute(tx);
+    }
   }
 }
 

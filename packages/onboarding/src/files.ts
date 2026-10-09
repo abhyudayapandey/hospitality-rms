@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   DUTY_BY_CODE,
   MODULE_CODES,
+  type ModuleCode,
   OUTLET_FORMATS,
   outletFormat,
   type OutletFormat,
@@ -307,18 +308,13 @@ export const FILES = {
       swaps_managers_only: keepYesNo,
       // optional: a test customer (ADR 012); only when the customer is created, never changed
       is_test: z.union([z.literal('').transform(() => undefined), yesNo]),
-      // optional: modules on or off (ADR 026); blank or absent leaves the module as it is
-      // (on for a new customer); the Account Owner can also change them in the app
-      events: keepYesNo,
-      swaps: keepYesNo,
-      leave: keepYesNo,
-      production: keepYesNo,
-      prep_lists: keepYesNo,
-      checklists: keepYesNo,
-      maintenance: keepYesNo,
-      menu_sales: keepYesNo,
-      // only within the plan: Compliance is out unless the platform admin puts it in (ADR 069)
-      compliance: keepYesNo,
+      // optional: a column per block, on or off (ADR 026, 085); blank or absent leaves it as it
+      // is (a new customer has every block on but Compliance). Only platform admins run imports,
+      // so only they change blocks; a block is on only inside a bundle in the plan.
+      ...(Object.fromEntries(MODULE_CODES.map((m) => [m, keepYesNo])) as Record<
+        ModuleCode,
+        typeof keepYesNo
+      >),
     }),
     optional: ['leave_hr_approval', 'is_test', 'swaps_managers_only', ...MODULE_CODES],
   },

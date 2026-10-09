@@ -170,8 +170,8 @@ export function applyForm(
     }
   }
   if (step === 'bundles') {
-    // what the customer buys (ADR 067, 069): a usual bundle left unticked stays out of the plan;
-    // one the outlets don't usually use (Compliance) is in only when ticked
+    // what the customer buys (ADR 067, 085): a usual bundle left unticked stays out of the plan;
+    // one the outlets don't usually use (Hotel, Events & compliance) is in only when ticked
     const ticked = new Set(all(f, 'bundle'));
     const bundles = draftBundles(d);
     d.bundlesOff = bundles.filter((b) => b.usual && !ticked.has(b.code)).map((b) => b.code);
