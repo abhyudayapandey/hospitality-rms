@@ -2,25 +2,28 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { ALWAYS_ON, BUNDLES, BUNDLE_STATE_WORDS, MODULES, bundleState } from '@outlet-ops/domain';
+import { ALWAYS_ON, BUNDLES, MODULES, needsOf } from '@outlet-ops/domain';
 import { ErrorBox } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
-import { setBundle } from '../../actions';
+import { setBundle, setModule } from '../../actions';
 
-/** One module of the customer, as platform.customer_modules returns it. */
+/** One block of the customer, as platform.customer_modules returns it. */
 export interface CustomerModule {
   bundle: string;
   module: string;
   in_plan: boolean;
+  /** switched on (or on by default) */
+  switched_on: boolean;
+  /** on: switched on, its bundle in the plan and every block it needs on */
   is_on: boolean;
 }
 
 const nameOf = (code: string) => MODULES.find((m) => m.code === code)?.name ?? code;
 
 /**
- * What the customer buys (ADR 067): each bundle On, Partly on or Off, worked out from its
- * modules, and the switch that puts it in or out of the plan. Only here: the Account Owner
- * sees the plan read-only and turns single modules off and on inside it.
+ * What the customer buys (ADR 067, 085): a card per bundle with the switch that puts it in or
+ * out of the plan, and inside it a switch per block. Only here: nobody in the customer changes
+ * either; Admin → Your plan shows them read-only.
  */
 export function Bundles({
   tenantId,
@@ -31,66 +34,86 @@ export function Bundles({
   customer: string;
   modules: CustomerModule[];
 }) {
-  const on = new Set(modules.filter((m) => m.is_on).map((m) => m.module));
+  const of = new Map(modules.map((m) => [m.module, m]));
   return (
     <section className="space-y-2" aria-label="What they buy">
       <h2 className="font-semibold">What they buy</h2>
       <p className="text-sm text-slate-600">{ALWAYS_ON}</p>
-      <ul
-        className="divide-y divide-slate-200 rounded-xl bg-white text-sm ring-1 ring-slate-200"
-        data-testid="bundles"
-      >
+      <div className="space-y-3" data-testid="bundles">
         {BUNDLES.map((b) => {
-          const inPlan = modules.some((m) => m.bundle === b.code && m.in_plan);
-          const state = bundleState(b, on);
-          const off = b.modules.filter((m) => !on.has(m)).map(nameOf);
+          const inPlan = b.modules.some((m) => of.get(m)?.in_plan);
           return (
-            <li
+            <section
               key={b.code}
-              className="flex items-start justify-between gap-3 p-3"
+              aria-label={b.name}
               data-bundle={b.code}
+              className="rounded-xl bg-white text-sm ring-1 ring-slate-200"
             >
-              <span className="min-w-0">
-                <span className="block font-medium">{b.name}</span>
-                <span className="block text-xs text-slate-500">{b.adds}</span>
-                {/* the switch says On or Off; only a part the customer turned off needs words */}
-                {inPlan && state !== 'on' && (
-                  <span className="block text-amber-800" data-testid="bundle-state">
-                    {BUNDLE_STATE_WORDS[state]} · the customer turned {list(off)} off
-                  </span>
-                )}
-              </span>
-              <BundleSwitch
-                tenantId={tenantId}
-                customer={customer}
-                code={b.code}
-                name={b.name}
-                inPlan={inPlan}
-              />
-            </li>
+              <div className="flex items-start justify-between gap-3 p-3">
+                <span className="min-w-0">
+                  <span className="block font-medium">{b.name}</span>
+                  <span className="block text-xs text-slate-500">{b.adds}</span>
+                </span>
+                <Switch
+                  label={b.name}
+                  on={inPlan}
+                  confirmText={`Every part of it stops for everyone at ${customer}. Nothing is deleted.`}
+                  save={(next) => setBundle(tenantId, b.code, next)}
+                />
+              </div>
+              {inPlan && (
+                <ul className="divide-y divide-slate-200 border-t border-slate-200">
+                  {b.modules.map((code) => {
+                    const m = of.get(code);
+                    const switched = m?.switched_on ?? false;
+                    const missing = needsOf(code).filter((n) => !of.get(n)?.is_on);
+                    return (
+                      <li
+                        key={code}
+                        className="flex items-start justify-between gap-3 p-3 pl-5"
+                        data-module={code}
+                      >
+                        <span className="min-w-0">
+                          <span className="block">{nameOf(code)}</span>
+                          <span className="block text-xs text-slate-500">
+                            {MODULES.find((x) => x.code === code)?.what}
+                          </span>
+                          {switched && missing.length > 0 && (
+                            <span className="block text-xs text-amber-800" data-testid="needs">
+                              Off until {missing.map(nameOf).join(' and ')} is on
+                            </span>
+                          )}
+                        </span>
+                        <Switch
+                          label={nameOf(code)}
+                          on={switched}
+                          confirmText={`It stops for everyone at ${customer}. Nothing is deleted.`}
+                          save={(next) => setModule(tenantId, code, next)}
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
           );
         })}
-      </ul>
+      </div>
     </section>
   );
 }
 
-const list = (xs: string[]) =>
-  xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`;
-
-/** In or out of the plan; taking one out asks first, since it stops it for everyone there. */
-function BundleSwitch({
-  tenantId,
-  customer,
-  code,
-  name,
-  inPlan,
+/** On or off; turning off asks first, since it stops it for everyone there. */
+function Switch({
+  label,
+  on,
+  confirmText,
+  save: write,
 }: {
-  tenantId: string;
-  customer: string;
-  code: string;
-  name: string;
-  inPlan: boolean;
+  label: string;
+  on: boolean;
+  confirmText: string;
+  save: (next: boolean) => Promise<{ ok: true } | { ok: false; message: string }>;
 }) {
   const router = useRouter();
   const hydrated = useHydrated();
@@ -99,7 +122,7 @@ function BundleSwitch({
   const [error, setError] = useState<string | null>(null);
   const save = (next: boolean) =>
     start(async () => {
-      const r = await setBundle(tenantId, code, next);
+      const r = await write(next);
       setConfirm(false);
       if (!r.ok) setError(r.message);
       else {
@@ -110,10 +133,8 @@ function BundleSwitch({
   const button = 'min-h-11 shrink-0 rounded-lg px-3 text-sm font-medium disabled:opacity-50';
   if (confirm) {
     return (
-      <div role="group" aria-label={`Turn off ${name}`} className="flex shrink-0 flex-col gap-2">
-        <p className="max-w-40 text-xs text-slate-600">
-          Its parts stop for everyone at {customer}. Nothing is deleted.
-        </p>
+      <div role="group" aria-label={`Turn off ${label}`} className="flex shrink-0 flex-col gap-2">
+        <p className="max-w-40 text-xs text-slate-600">{confirmText}</p>
         <button
           type="button"
           className={`${button} ring-1 ring-slate-300`}
@@ -137,13 +158,13 @@ function BundleSwitch({
       <button
         type="button"
         role="switch"
-        aria-checked={inPlan}
-        aria-label={name}
+        aria-checked={on}
+        aria-label={label}
         disabled={!hydrated || pending}
-        onClick={() => (inPlan ? setConfirm(true) : save(true))}
-        className={`${button} ${inPlan ? 'bg-emerald-700 text-white' : 'ring-1 ring-slate-300'}`}
+        onClick={() => (on ? setConfirm(true) : save(true))}
+        className={`${button} ${on ? 'bg-emerald-700 text-white' : 'ring-1 ring-slate-300'}`}
       >
-        {inPlan ? 'On' : 'Off'}
+        {on ? 'On' : 'Off'}
       </button>
       <ErrorBox message={error} />
     </div>

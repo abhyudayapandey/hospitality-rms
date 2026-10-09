@@ -6,7 +6,7 @@ import { asMigrator, runPlatformWorker, signInPlatform } from './helpers';
 // The final pass of docs/templates-and-cover.md at 380 px, through the real wizard screens and
 // the real worker (ADR 064):
 // 1. every tile in one company, each extra used once, through the check and live: the
-//    bundles they use ticked on "What they buy" (Compliance offered, unticked), "who does
+//    bundles they use ticked on "What they buy" (the rest offered, unticked), "who does
 //    what" on the review, warnings in words, then the outlets' formats, departments and
 //    starter checklists as loaded;
 // 2. a café, a bar and a hotel set up from nothing, timed: taps, fields typed and seconds per
@@ -98,21 +98,24 @@ async function addOutlets(w: Walk, outlets: OutletSpec[]) {
   w.step('outlets');
 }
 
-/** What they buy (ADR 067, 069): the bundles their outlets use come ticked. */
+/** What they buy (ADR 067, 085): the bundles their outlets use come ticked, the rest not. */
 async function bundles(w: Walk, usual: string[]) {
   const page = w.page;
   const ticked = page.getByTestId('bundles-usual');
+  await expect(ticked.getByRole('checkbox')).toHaveCount(usual.length);
   for (const b of usual) {
     await expect(ticked.getByRole('checkbox', { name: new RegExp(b) })).toBeChecked();
   }
-  await expect(
-    page.getByTestId('bundles-more').getByRole('checkbox', { name: /Compliance/ }),
-  ).not.toBeChecked();
+  for (const box of await page.getByTestId('bundles-more').getByRole('checkbox').all()) {
+    await expect(box).not.toBeChecked();
+  }
   await w.next();
   w.step('bundles');
 }
 
-const USUAL = ['Stock & cost', 'People & roster', 'Tasks & food safety'];
+const USUAL = ['Stock & buying', 'Kitchen & bar', 'People', 'Daily work'];
+// a hotel's rooms (Hotel) and banquets (Events & compliance) as well
+const ALL = [...USUAL, 'Hotel', 'Events & compliance'];
 
 /** Departments, roles and stock as the template offers them; people pasted. */
 async function defaults(w: Walk, people: string) {
@@ -183,7 +186,7 @@ test('every tile and extra, in one company, to live', async ({ page }) => {
     },
   ];
   await addOutlets(w, outlets);
-  await bundles(w, USUAL);
+  await bundles(w, ALL);
   await defaults(
     w,
     [
@@ -195,7 +198,7 @@ test('every tile and extra, in one company, to live', async ({ page }) => {
 
   // the review: who does what for each outlet, and what they buy as chosen
   for (const o of outlets) await expect(page.getByTestId(`who-${o.name}`)).toBeVisible();
-  await expect(page.getByTestId('bundles')).toContainText(USUAL.join(', '));
+  await expect(page.getByTestId('bundles')).toContainText(ALL.join(', '));
   await checkAndGoLive(w);
 
   // as loaded: each outlet's format, its departments and its starter checklists
@@ -238,7 +241,8 @@ test('every tile and extra, in one company, to live', async ({ page }) => {
     `select settings -> 'bundles' as b from core.tenant where code = $1`,
     [code],
   );
-  expect(plan[0]!.b ?? {}).toEqual({});
+  // in by default but Hotel, which goes in for the hotel's rooms
+  expect(plan[0]!.b ?? {}).toEqual({ hotel: true });
 });
 
 for (const t of [
@@ -265,7 +269,7 @@ for (const t of [
     const w = new Walk(page);
     await startCompany(w, `Timed ${t.kind} ${s}`, code);
     await addOutlets(w, [{ tile: t.tile, name: t.name }]);
-    await bundles(w, USUAL);
+    await bundles(w, t.kind === 'hotel' ? [...USUAL, 'Hotel'] : USUAL);
     await defaults(
       w,
       [

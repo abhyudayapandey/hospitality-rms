@@ -1,4 +1,4 @@
-# 085 — Our own photo library: real photos of items and brands, freely licensed
+# 086 — Our own photo library: real photos of items and brands, freely licensed
 
 Status: accepted · 2026-10-09 · no migration
 

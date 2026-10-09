@@ -1,23 +1,14 @@
-// Modules on or off per company (UX-3b, ADR 026). A switched-off module's domains are left
-// out of what the screens see, so its tabs, links and Home cards disappear through the same
-// checks that hide anything else the person can't open. This is presentation only: the
-// database keeps the data and the access rules, and refuses the module's writes with
-// MODULE_OFF (core.require_module, and the wf.request trigger for leave and swaps).
+// Building blocks on or off per customer (ADR 026, 085). A switched-off block's domains are
+// left out of what the screens see, so its tabs, links and Home cards disappear through the
+// same checks that hide anything else the person can't open. The database says no as well:
+// core.can refuses a switched-off block's domains, and core.require_module says MODULE_OFF.
 
-import { MODULE_CODES, type ModuleCode } from '@outlet-ops/domain';
+import { MODULE_CODES, MODULES, resolveModules, type ModuleCode } from '@outlet-ops/domain';
 
-/** The domains whose screens belong to each module. Prep lists and Checklists are task tabs. */
-export const MODULE_DOMAINS: Readonly<Record<ModuleCode, readonly string[]>> = {
-  events: ['EVENTS'],
-  swaps: ['SHIFT_SWAPS'],
-  leave: ['LEAVE'],
-  production: ['PRODUCTION', 'PRODUCTION_TEAM', 'DERIVED_PRODUCTION'],
-  prep_lists: [],
-  checklists: ['CHECKLIST_TEMPLATES'],
-  maintenance: ['MAINTENANCE'],
-  compliance: ['COMPLIANCE'],
-  menu_sales: ['MENU', 'DERIVED_MENU', 'SALES', 'DERIVED_SALES', 'POS_IMPORT'],
-};
+/** The domains whose screens belong to each block (the manifest's). */
+export const MODULE_DOMAINS: Readonly<Record<ModuleCode, readonly string[]>> = Object.fromEntries(
+  MODULES.map((m): [ModuleCode, readonly string[]] => [m.code, m.domains]),
+) as Record<ModuleCode, readonly string[]>;
 
 /** Report figures that come from sales: hidden when Menu and sales is off. */
 export const SALES_MEASURES: ReadonlySet<string> = new Set([
@@ -42,12 +33,10 @@ export const SALES_MEASURES: ReadonlySet<string> = new Set([
   'cost_materials',
 ]);
 
-/** The modules that are on, from core.my_modules() rows; Prep lists only with Production. */
+/** The blocks that are on, from core.my_modules() rows; a block is off with one it needs. */
 export function modulesOn(rows: readonly { code: string; on: boolean }[]): Set<ModuleCode> {
   const off = new Set(rows.filter((r) => !r.on).map((r) => r.code));
-  const on = new Set(MODULE_CODES.filter((c) => !off.has(c)));
-  if (!on.has('production')) on.delete('prep_lists');
-  return on;
+  return resolveModules(MODULE_CODES.filter((c) => !off.has(c)));
 }
 
 /** The person's domains without those of switched-off modules. */

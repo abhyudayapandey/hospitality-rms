@@ -249,36 +249,40 @@ describe('people pasted from a sheet', () => {
 });
 
 describe('what the customer buys (ADR 067)', () => {
-  it("lists every bundle: its outlets' usual ones ticked, the rest (Compliance) not; Go live's plan follows", () => {
+  it("lists every bundle: its outlets' usual ones ticked, the rest (Hotel, Events & compliance) not; Go live's plan follows", () => {
     const d = cafe();
     expect(emptyDraft().bundlesOff).toEqual([]);
     expect(emptyDraft().bundlesOn).toEqual([]);
     const b = draftBundles(d);
     expect(b.map((x) => [x.name, x.usual, x.ticked])).toEqual([
-      ['Stock & cost', true, true],
-      ['People & roster', true, true],
-      ['Tasks & food safety', true, true],
-      ['Compliance', false, false],
+      ['Stock & buying', true, true],
+      ['Kitchen & bar', true, true],
+      ['People', true, true],
+      ['Daily work', true, true],
+      ['Hotel', false, false],
+      ['Events & compliance', false, false],
     ]);
-    expect(b[2]!.uses).toEqual(['Checklists', 'Maintenance']);
+    expect(b[3]!.uses).toEqual(['Checklists', 'Maintenance', "Today's briefing"]);
     expect(planFromDraft(d)).toEqual({
-      stock_cost: true,
-      people_roster: true,
-      tasks_food_safety: true,
-      compliance: false,
+      stock_buying: true,
+      kitchen_bar: true,
+      people: true,
+      daily_work: true,
+      hotel: false,
+      events_compliance: false,
     });
-    d.bundlesOff = ['people_roster'];
-    d.bundlesOn = ['compliance'];
+    d.bundlesOff = ['people'];
+    d.bundlesOn = ['events_compliance'];
     expect(planFromDraft(d)).toMatchObject({
-      people_roster: false,
-      stock_cost: true,
-      compliance: true,
+      people: false,
+      stock_buying: true,
+      events_compliance: true,
     });
   });
 
-  it("with Compliance: the outlet's licences to fill in and its calendar jobs, each with an owner", () => {
+  it("with Events & compliance: the outlet's licences to fill in and its calendar jobs, each with an owner", () => {
     const d = hotel();
-    d.bundlesOn = ['compliance'];
+    d.bundlesOn = ['events_compliance'];
     const files = filesFromDraft(d, '2026-10-07');
     const lic = rows(files, '38_');
     expect(lic.map((r) => r['kind'])).toEqual(
@@ -316,10 +320,10 @@ describe('what the customer buys (ADR 067)', () => {
     expect(Object.keys(none).some((f) => /^3[89]_/.test(f))).toBe(false);
   });
 
-  it('without Tasks & food safety, no checklist rounds are set up', () => {
+  it('without Daily work, no checklist rounds are set up', () => {
     const d = cafe();
     expect(Object.keys(filesFromDraft(d)).some((f) => f.startsWith('29_'))).toBe(true);
-    d.bundlesOff = ['tasks_food_safety'];
+    d.bundlesOff = ['daily_work'];
     expect(Object.keys(filesFromDraft(d)).some((f) => f.startsWith('29_'))).toBe(false);
   });
 

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { asMigrator, signInAs } from './helpers';
 
-// Compliance (ADR 069) at 380 px. Test Company has the bundle in its plan (seed/dev/002); its
+// Compliance (ADR 069) at 380 px. Test Company has the block switched on (seed/dev/002); its
 // files 38 and 39 give Hotel 1.0 an expired FSSAI licence and an overdue pest control
 // service. The GM finds both at the top of Home, in red; a renewal needs the
 // renewed licence; a job that needs no report is marked done and its next due date moves on
@@ -148,10 +148,10 @@ test('the GM: a job with no report needed is marked done; its next due date move
   }
 });
 
-test("a customer without the bundle: Compliance isn't part of its plan", async ({ page }) => {
+test("a customer without it: Compliance isn't switched on", async ({ page }) => {
   await signInAs(page, 'Test Bar Manager');
   await page.goto('/compliance');
   await expect(page.getByTestId('module-off')).toContainText(
-    "Compliance isn't part of your company's plan. Ask Outlet Ops to add it.",
+    "Compliance isn't switched on for your company. Ask Outlet Ops to switch it on.",
   );
 });

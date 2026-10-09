@@ -315,7 +315,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     // Push today: the function decides who sees it (service teams and the outlet's managers)
     const push = atWork ? await myPushToday(tx) : [];
     // today's briefing: everyone who works at the outlet reads it (ADR 070)
-    const briefing = atWork ? await myBriefing(tx) : null;
+    const briefing = atWork && shell.modules.has('briefing') ? await myBriefing(tx) : null;
 
     let numbers: TodayNumbers | null = null;
     let leagueTable: TodayLeague | null = null;

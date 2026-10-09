@@ -111,7 +111,7 @@ test('every stock line is matched to the picture of the thing itself', async ({ 
   expect(keys.filter((k) => k === 'box')).toEqual([]);
 });
 
-test('an item shows a real photo from our library, and Profile credits it (ADR 085)', async ({
+test('an item shows a real photo from our library, and Profile credits it (ADR 086)', async ({
   page,
 }) => {
   const store = await placeId('TEST-HOTEL-1.0-KITCHEN-STORE');

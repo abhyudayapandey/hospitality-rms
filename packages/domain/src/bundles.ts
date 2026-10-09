@@ -1,61 +1,74 @@
-// Selling by bundle (ADR 067): what a customer buys. A bundle groups module switches (ADR
-// 026); stock, orders, bills, recipes, the roster, clock-in, tasks and reports have no switch
-// and come with every plan. Only the platform admin puts a bundle in or out of a customer's
-// plan; the Account Owner turns single modules off and on inside a bundle in the plan. The
-// same codes as core.bundle_codes() and core.module_bundle() in the database; a test keeps
-// them equal.
+// Selling by bundle (ADR 067, 085): what a customer buys, a group of building blocks
+// (modules.ts). Only a platform admin puts a bundle in or out of a customer's plan and switches
+// single blocks inside it; nobody in the customer changes either. The base (places and people,
+// access, To do, approvals, notifications, Home, Me, Admin, the reports shell) comes with every
+// plan. The same codes as core.bundle_codes() and core.module_bundle() in the database; a test
+// keeps them equal.
 
 import { MODULES, type ModuleCode } from './modules';
 
-export const BUNDLES = [
+const DEFS = [
   {
-    code: 'stock_cost',
-    name: 'Stock & cost',
-    adds: 'Adds production and prep lists, the menu with its costs, and sales.',
-    modules: ['production', 'prep_lists', 'menu_sales'],
+    code: 'stock_buying',
+    name: 'Stock & buying',
+    adds: 'Adds stores and stock, stock checks and requests, wastage, and buying from suppliers.',
   },
   {
-    code: 'people_roster',
-    name: 'People & roster',
-    adds: 'Adds leave, shift swaps and events.',
-    modules: ['leave', 'swaps', 'events'],
+    code: 'kitchen_bar',
+    name: 'Kitchen & bar',
+    adds: 'Adds recipes and costing, production and prep lists, the menu and sales.',
   },
   {
-    code: 'tasks_food_safety',
-    name: 'Tasks & food safety',
-    adds: 'Adds food safety and cleaning checklists, and repairs.',
-    modules: ['checklists', 'maintenance'],
+    code: 'people',
+    name: 'People',
+    adds: 'Adds the roster, clock-in, salaries and labour cost, leave and shift swaps.',
   },
-  // the first bundle out of a plan unless the platform admin puts it in (ADR 069)
   {
-    code: 'compliance',
-    name: 'Compliance',
-    adds: 'Adds the licence register with renewal reminders, and the compliance calendar (pest control, fire drills, inspections).',
-    modules: ['compliance'],
+    code: 'daily_work',
+    name: 'Daily work',
+    adds: "Adds checklists, maintenance and today's briefing.",
+  },
+  // out of a plan unless the platform admin puts it in: only hotels have rooms
+  {
+    code: 'hotel',
+    name: 'Hotel',
+    adds: 'Adds room minibars.',
     outByDefault: true,
+  },
+  {
+    code: 'events_compliance',
+    name: 'Events & compliance',
+    adds: 'Adds events, and the licence register with the compliance calendar.',
   },
 ] as const satisfies readonly {
   code: string;
   name: string;
-  /** what it adds to every plan's stock, orders, roster and tasks, in plain words */
+  /** what it adds to the base, in plain words */
   adds: string;
-  modules: readonly ModuleCode[];
   outByDefault?: boolean;
 }[];
+
+type Def = (typeof DEFS)[number];
+
+export type Bundle = Def & { modules: readonly ModuleCode[] };
+
+export const BUNDLES: readonly Bundle[] = DEFS.map((b) => ({
+  ...b,
+  modules: MODULES.filter((m) => m.bundle === b.code).map((m) => m.code),
+}));
 
 /** Whether a bundle is in a plan that doesn't say (core.bundle_default). */
 export function inPlanByDefault(b: { code: string }): boolean {
   return !('outByDefault' in b && b.outByDefault === true);
 }
 
-export type BundleCode = (typeof BUNDLES)[number]['code'];
-export type Bundle = (typeof BUNDLES)[number];
+export type BundleCode = Def['code'];
 
 export const BUNDLE_CODES: readonly BundleCode[] = BUNDLES.map((b) => b.code);
 
 /** What every plan has, whatever bundles are in it. */
 export const ALWAYS_ON =
-  'Every plan has stock, orders, bills, recipes, the roster, clock-in, tasks and reports.';
+  'Every plan has places and people, access, the To do list, approvals, notifications and reports.';
 
 export function isBundleCode(s: string): s is BundleCode {
   return (BUNDLE_CODES as readonly string[]).includes(s);
