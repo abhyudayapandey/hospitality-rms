@@ -117,9 +117,12 @@ describe('utilities', () => {
         );
         expect(r.error, who).toMatch(/NOT_AUTHORISED/);
       }
-      expect(await run(c, 'test.chief-engineer.1.0', `select * from ops.utility_places()`)).toEqual(
-        [{ place_id: ids.node(ENG), name: expect.any(String), meters: 4 }],
+      const places = await run<{ place_id: string; meters: number }>(
+        c,
+        'test.chief-engineer.1.0',
+        `select place_id, meters from ops.utility_places()`,
       );
+      expect(places).toEqual([{ place_id: ids.node(ENG), meters: 4 }]);
     });
   });
 
