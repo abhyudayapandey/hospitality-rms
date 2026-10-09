@@ -170,13 +170,15 @@ export interface ItemOption {
   item_group?: string | null;
   /** par at the asking store (stock requests, ADR 083) */
   par_level?: string;
+  /** thrown away only once the GM approves it (ADR 092) */
+  needs_gm?: boolean;
 }
 
 /** Items set up at the node, for pickers. */
 export async function itemOptions(tx: Tx, node: string): Promise<ItemOption[]> {
   const r = await sql<ItemOption>`
     select i.id as item_id, i.name, i.base_uom, coalesce(s.on_hand, 0) as on_hand,
-           coalesce(s.avg_cost, 0) as avg_cost
+           coalesce(s.avg_cost, 0) as avg_cost, i.discard_approval as needs_gm
       from inv.item_node n
       join inv.item i on i.id = n.item_id
       left join inv.stock_level s on s.item_id = n.item_id and s.delivery_node_id = n.delivery_node_id

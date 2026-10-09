@@ -139,6 +139,17 @@ export async function sendBack(task: string, note: string): Promise<ActionResult
   });
 }
 
+/** Approve throwing it away (ADR 092): to whoever is on shift there, or one person. */
+export async function approveDiscard(
+  task: string,
+  user: string | null,
+): Promise<ActionResult<null>> {
+  return run('approve_discard', async (tx) => {
+    await sql`select ops.approve_discard(${task}::uuid, ${user}::uuid)`.execute(tx);
+    return null;
+  });
+}
+
 export async function cancelTask(task: string, reason: string): Promise<ActionResult<null>> {
   return run('cancel_task', async (tx) => {
     await sql`select ops.cancel_task(${task}::uuid, ${reason})`.execute(tx);

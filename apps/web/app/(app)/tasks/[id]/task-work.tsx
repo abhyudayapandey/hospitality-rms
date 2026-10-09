@@ -19,6 +19,7 @@ import { roomStatusName } from '@/lib/rooms-view';
 import { RoomStatusPicker } from '../../rooms/status-picker';
 import { acknowledgeHandover } from '../../logbook/actions';
 import {
+  approveDiscard,
   assignExpiry,
   cancelTask,
   completeStep,
@@ -300,6 +301,8 @@ function StepInputs({
   const [thrown, setThrown] = useState<boolean | null>(null);
   const [key] = useState(() => crypto.randomUUID());
   const needsPhoto = step.kind === 'photo' || step.photo_required;
+  // asked and approved (ADR 092), not an expired batch
+  const approved = task.kind === 'discard';
   const num = Number(value);
   const warn = step.kind === 'number' && value !== '' && outOfRange(num, step.min, step.max);
 
@@ -314,7 +317,7 @@ function StepInputs({
       } else if (step.kind === 'discard') {
         if (!(num > 0)) return setError('Enter how much you threw away.');
         r = await discardExpired(task.id, num, photoKey);
-        if (r.ok) setStatus('Recorded as expired wastage.');
+        if (r.ok) setStatus(approved ? 'Recorded as wastage.' : 'Recorded as expired wastage.');
       } else {
         if (step.kind === 'number' && (value === '' || !Number.isFinite(num))) {
           return setError('Enter the reading.');
@@ -434,8 +437,9 @@ function StepInputs({
       {step.kind === 'discard' && (
         <>
           <p className="text-xs text-slate-600">
-            Worth more than the store&apos;s limit, it needs a photo and the outlet manager&apos;s
-            approval.
+            {approved
+              ? 'Approved to throw away; no other approval is needed.'
+              : "Worth more than the store's limit, it needs a photo and the outlet manager's approval."}
           </p>
           {photoField('discard')}
         </>
@@ -453,7 +457,9 @@ function StepInputs({
           : step.kind === 'batch'
             ? 'Record the batch'
             : step.kind === 'discard'
-              ? 'Record as expired wastage'
+              ? approved
+                ? 'Record it thrown away'
+                : 'Record as expired wastage'
               : 'Save'}
       </button>
     </div>
@@ -637,6 +643,49 @@ export function AcknowledgeHandover({ task }: { task: string }) {
         }
       >
         I&apos;ve read it
+      </button>
+    </section>
+  );
+}
+
+/**
+ * Approve a request to throw something away (ADR 092): one tap gives it to whoever is on shift
+ * in the department; or choose someone.
+ */
+export function ApproveDiscard({ task, people }: { task: string; people: Person[] }) {
+  const router = useRouter();
+  const hydrated = useHydrated();
+  const [pending, start] = useTransition();
+  const [user, setUser] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <section className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+      <label className="block space-y-1">
+        <span className="text-sm font-medium">Who throws it away</span>
+        <select value={user} onChange={(e) => setUser(e.target.value)} className={inputClass}>
+          <option value="">Whoever is on shift</option>
+          {people.map((p) => (
+            <option key={p.user_id} value={p.user_id}>
+              {p.name}
+              {p.job_role ? ` (${p.job_role})` : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+      <ErrorBox message={error} />
+      <button
+        type="button"
+        disabled={!hydrated || pending}
+        className={primaryButton}
+        onClick={() =>
+          start(async () => {
+            const r = await approveDiscard(task, user || null);
+            if (!r.ok) setError(r.message);
+            else router.refresh();
+          })
+        }
+      >
+        Approve
       </button>
     </section>
   );

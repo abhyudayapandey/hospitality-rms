@@ -344,6 +344,13 @@ class Loader {
         [this.tenant, cu.leave_hr_approval],
       );
     }
+    if (cu.purchase_approval !== undefined) {
+      await this.c.query(
+        `update core.tenant set settings = settings || jsonb_build_object('purchase_approval', $2::text)
+          where id = $1 and settings ->> 'purchase_approval' is distinct from $2`,
+        [this.tenant, cu.purchase_approval],
+      );
+    }
     if (cu.swaps_managers_only !== undefined) {
       await this.c.query(
         `update core.tenant set settings = settings || jsonb_build_object('swaps_managers_only', $2::boolean)
@@ -1592,21 +1599,23 @@ class Loader {
       await this.upsert(
         'items',
         `insert into inv.item (tenant_id, sku, name, category, base_uom, is_perishable,
-                               standard_unit_cost, preferred_supplier_id, durable, receive_to)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                               standard_unit_cost, preferred_supplier_id, durable, receive_to,
+                               discard_approval)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          on conflict (tenant_id, sku) do update
             set name = excluded.name, category = excluded.category, base_uom = excluded.base_uom,
                 is_perishable = excluded.is_perishable,
                 standard_unit_cost = excluded.standard_unit_cost,
                 preferred_supplier_id = excluded.preferred_supplier_id,
-                durable = excluded.durable, receive_to = excluded.receive_to, archived_at = null
+                durable = excluded.durable, receive_to = excluded.receive_to,
+                discard_approval = excluded.discard_approval, archived_at = null
           where (inv.item.name, inv.item.category, inv.item.base_uom, inv.item.is_perishable,
                  inv.item.standard_unit_cost, inv.item.preferred_supplier_id, inv.item.durable,
-                 inv.item.receive_to, inv.item.archived_at)
+                 inv.item.receive_to, inv.item.discard_approval, inv.item.archived_at)
                 is distinct from (excluded.name, excluded.category, excluded.base_uom,
                                   excluded.is_perishable, excluded.standard_unit_cost,
                                   excluded.preferred_supplier_id, excluded.durable,
-                                  excluded.receive_to, null)
+                                  excluded.receive_to, excluded.discard_approval, null)
          returning id, xmax = 0 as inserted`,
         [
           this.tenant,
@@ -1619,6 +1628,7 @@ class Loader {
           supplier(i.preferred_supplier_code),
           i.item_type === 'durable',
           i.receive_to,
+          i.discard_approval,
         ],
       );
       this.items.set(
@@ -1636,23 +1646,31 @@ class Loader {
       await this.upsert(
         'item locations',
         `insert into inv.item_node (tenant_id, item_id, delivery_node_id, par_level, reorder_qty,
-                                    count_tolerance_pct, preferred_supplier_id, shelf, shelf_order)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                                    count_tolerance_pct, preferred_supplier_id, shelf, shelf_order,
+                                    par_base, par_by_day)
+         values ($1, $2, $3,
+                 -- par by day (ADR 092): today's, by the store's business day
+                 inv.par_on($10::jsonb, $4,
+                            ((now() at time zone ops.tz_of($3)) - interval '4 hours')::date),
+                 $5, $6, $7, $8, $9, case when $10::jsonb is not null then $4::numeric end,
+                 $10::jsonb)
          on conflict (tenant_id, item_id, delivery_node_id) do update
             set par_level = excluded.par_level, reorder_qty = excluded.reorder_qty,
                 count_tolerance_pct = excluded.count_tolerance_pct,
                 preferred_supplier_id = excluded.preferred_supplier_id,
                 shelf = coalesce(excluded.shelf, inv.item_node.shelf),
                 shelf_order = coalesce(excluded.shelf_order, inv.item_node.shelf_order),
+                par_base = excluded.par_base, par_by_day = excluded.par_by_day,
                 archived_at = null
           where (inv.item_node.par_level, inv.item_node.reorder_qty,
                  inv.item_node.count_tolerance_pct, inv.item_node.preferred_supplier_id,
-                 inv.item_node.shelf, inv.item_node.shelf_order, inv.item_node.archived_at)
+                 inv.item_node.shelf, inv.item_node.shelf_order, inv.item_node.par_base,
+                 inv.item_node.par_by_day, inv.item_node.archived_at)
                 is distinct from (excluded.par_level, excluded.reorder_qty,
                                   excluded.count_tolerance_pct, excluded.preferred_supplier_id,
                                   coalesce(excluded.shelf, inv.item_node.shelf),
                                   coalesce(excluded.shelf_order, inv.item_node.shelf_order),
-                                  null)
+                                  excluded.par_base, excluded.par_by_day, null)
          returning id, xmax = 0 as inserted`,
         [
           this.tenant,
@@ -1664,6 +1682,7 @@ class Loader {
           supplier(l.preferred_supplier_code),
           l.shelf ?? null,
           l.shelf_order ?? null,
+          l.par_by_day ? JSON.stringify(l.par_by_day) : null,
         ],
       );
     }

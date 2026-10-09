@@ -97,6 +97,26 @@ export async function recordWastage(
   });
 }
 
+/**
+ * Ask for something the GM must approve to be thrown away (ADR 092): a request on the GM's To do
+ * list; approving it gives it to someone in the department, and the stock leaves when they
+ * have thrown it away.
+ */
+export async function askDiscard(
+  node: string,
+  item: string,
+  qty: number,
+  reason: string,
+  idempotencyKey: string,
+): Promise<ActionResult<{ id: string }>> {
+  return run('ask_discard', async (tx) => {
+    const r = await sql<{ id: string }>`
+      select ops.ask_discard(${node}::uuid, ${item}::uuid, ${qty}, ${reason},
+                             ${idempotencyKey}) as id`.execute(tx);
+    return { id: r.rows[0]!.id };
+  });
+}
+
 export interface UnusualCheck {
   /** the department head (or the GM) will have to approve */
   needs: boolean;

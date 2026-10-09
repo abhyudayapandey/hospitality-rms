@@ -18,7 +18,8 @@ export interface MyTask {
     | 'minibar_refill'
     | 'minibar_bill'
     | 'sign_off'
-    | 'handover';
+    | 'handover'
+    | 'discard';
   title: string;
   org_node_id: string;
   place_name: string;
@@ -122,6 +123,8 @@ export interface TaskDetail {
   sign_off_task: { id: string; status: string; assignee_name: string | null } | null;
   /** may set the status of the rooms on its grid (ADR 088) */
   can_set_room_status: boolean;
+  /** a request to throw something away (ADR 092): whether the GM approves it, and whether I may */
+  discard: { needs_gm: boolean; reason: string; can_approve: boolean } | null;
   /** a handover (ADR 089): where and who it came from */
   handover_from: { place: string; by: string; at: string } | null;
   /** a sign-off: the round it checks and who did it */

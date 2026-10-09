@@ -20,7 +20,14 @@ import {
 import { overdueWhenGiven } from '@/lib/tasks-view';
 import { complianceTask, dayWords, type ComplianceTaskRow } from '@/lib/compliance';
 import { DoneForm, RenewForm } from '../../compliance/act-forms';
-import { AcknowledgeHandover, AssignExpiry, CancelTask, SignOffWork, TaskWork } from './task-work';
+import {
+  AcknowledgeHandover,
+  ApproveDiscard,
+  AssignExpiry,
+  CancelTask,
+  SignOffWork,
+  TaskWork,
+} from './task-work';
 import { AddTaskPhoto } from './task-photos';
 import { MinibarTask, type MinibarTaskCheck } from './minibar-task';
 import { ReassignTask, ReceiveSent, SentLines, type SentLine } from './receive-sent';
@@ -51,7 +58,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         );
         // a reported expired batch: the lead gives the discard to someone there
         const p =
-          t.status === 'reported' && t.can_manage
+          t.status === 'reported' && (t.can_manage || t.discard?.can_approve)
             ? await assignablePeople(tx, t.org_node_id)
             : t.can_hand_on
               ? await handOnPeople(tx, id)
@@ -138,14 +145,28 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
           </p>
         )}
       </header>
-      {task.status === 'reported' &&
+      {task.status === 'reported' && task.kind === 'discard' ? (
+        task.discard?.can_approve ? (
+          <ApproveDiscard task={task.id} people={people} />
+        ) : (
+          <p
+            className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900"
+            data-testid="discard-waiting"
+          >
+            Waiting for {task.discard?.needs_gm ? 'the GM' : 'the department head'} to approve
+            throwing it away.
+          </p>
+        )
+      ) : (
+        task.status === 'reported' &&
         (task.can_manage ? (
           <AssignExpiry task={task.id} people={people} />
         ) : (
           <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
             Reported. The department head will give it to someone to discard.
           </p>
-        ))}
+        ))
+      )}
       {recipe && <MakeIt recipe={recipe} unit={task.item?.unit ?? ''} open={open} />}
       {/* photos come before the button that finishes the task: they are part of doing it */}
       {(photos.length > 0 || (open && task.can_work && photosEnabled())) && (

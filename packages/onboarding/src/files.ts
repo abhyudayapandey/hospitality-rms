@@ -337,6 +337,16 @@ export const FILES = {
       // optional: swaps for management only (SW-4, ADR 035); blank or absent leaves it as it
       // is (on for a new customer); the Account Owner can also change it in Admin → Settings
       swaps_managers_only: keepYesNo,
+      // ADR 092: which orders need approving: unusual (blank: the default), every, above:<amount>
+      purchase_approval: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          if (v === '') return undefined;
+          if (v === 'unusual' || v === 'every' || /^above:\d+$/.test(v)) return v;
+          ctx.addIssue({ code: 'custom', message: 'must be unusual, every or above:<amount>' });
+          return z.NEVER;
+        }),
       // optional: a test customer (ADR 012); only when the customer is created, never changed
       is_test: z.union([z.literal('').transform(() => undefined), yesNo]),
       // optional: a column per block, on or off (ADR 026, 085); blank or absent leaves it as it
@@ -347,7 +357,13 @@ export const FILES = {
         typeof keepYesNo
       >),
     }),
-    optional: ['leave_hr_approval', 'is_test', 'swaps_managers_only', ...MODULE_CODES],
+    optional: [
+      'leave_hr_approval',
+      'is_test',
+      'swaps_managers_only',
+      'purchase_approval',
+      ...MODULE_CODES,
+    ],
   },
   orgNodes: {
     file: '01_org_nodes.csv',
@@ -492,8 +508,14 @@ export const FILES = {
         z.literal('').transform(() => 'store' as const),
         z.enum(['store', 'department'], 'must be store or department'),
       ]),
+      // ADR 092: `gm` for an item only thrown away once the GM approves it; blank: told to
+      // the department head
+      discard_approval: z.union(
+        [z.literal('').transform(() => false), z.literal('gm').transform(() => true)],
+        { message: 'must be blank or gm' },
+      ),
     }),
-    optional: ['item_type', 'receive_to'],
+    optional: ['item_type', 'receive_to', 'discard_approval'],
   },
   itemLocations: {
     file: '11_item_locations.csv',
@@ -515,8 +537,36 @@ export const FILES = {
         z.literal('').transform(() => undefined),
         int.refine((v) => v >= 0, 'must not be negative'),
       ]),
+      // ADR 092: par by day of the week, e.g. `Mon-Thu 10; Fri-Sun 20`; days not listed keep
+      // par_level
+      par_by_day: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          if (v.trim() === '') return undefined;
+          const out: Record<string, number> = {};
+          for (const part of v
+            .split(';')
+            .map((p) => p.trim())
+            .filter(Boolean)) {
+            const m = /^(\S+)\s+(\d+(?:\.\d+)?)$/.exec(part);
+            const ds = m ? days.safeParse(m[1]) : undefined;
+            if (!m || !ds?.success) {
+              ctx.addIssue({ code: 'custom', message: 'must be like "Mon-Thu 10; Fri-Sun 20"' });
+              return z.NEVER;
+            }
+            for (const d of ds.data) {
+              if (String(d) in out) {
+                ctx.addIssue({ code: 'custom', message: 'gives a day two pars' });
+                return z.NEVER;
+              }
+              out[String(d)] = Number(m[2]);
+            }
+          }
+          return out;
+        }),
     }),
-    optional: ['shelf', 'shelf_order'],
+    optional: ['shelf', 'shelf_order', 'par_by_day'],
   },
   openingStock: {
     file: '12_opening_stock.csv',
