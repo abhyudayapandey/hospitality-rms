@@ -19,4 +19,3 @@ The buffet host ticking rooms off as guests come in needs the hotel's in-house l
 PMS or POS, kept in sync through the morning: a list imported once misses late check-ins and
 early check-outs. Until that sync exists, Breakfast keeps the buffet as a count, with room
 numbers only when someone adds them.
-

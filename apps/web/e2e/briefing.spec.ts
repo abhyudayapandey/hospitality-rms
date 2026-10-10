@@ -23,13 +23,27 @@ test('the head cook writes the briefing; the outlet reads it on Home', async ({ 
       [],
     )
   )[0]!;
+  // from the evening, a writer's Home card writes tomorrow's (ADR 112): today's is written
+  // straight from the briefing screen then
+  const { today, evening } = (
+    await asMigrator<{ today: string; evening: boolean }>(
+      `select rpt.today(id)::text as today, ops.plan_day(id) <> rpt.today(id) as evening
+         from core.hierarchy_node where code = 'TEST-BAR-3.0'`,
+      [],
+    )
+  )[0]!;
   try {
     await signInAs(page, 'Test Head Cook 3.0');
     await page.goto('/');
     const card = page.getByTestId('briefing');
-    await expect(card).toContainText('Nothing written for today yet.');
-    await card.getByRole('link', { name: "Write today's briefing" }).click();
-    await page.waitForURL(/\/briefing$/);
+    if (evening) {
+      await expect(card.getByTestId('briefing-tomorrow')).toBeVisible();
+      await page.goto(`/briefing?day=${today}`);
+    } else {
+      await expect(card).toContainText('Nothing written for today yet.');
+      await card.getByRole('link', { name: "Write today's briefing" }).click();
+      await page.waitForURL(/\/briefing$/);
+    }
 
     const form = page.getByRole('form', { name: 'Briefing' });
     await expect(form.getByRole('radio', { name: 'Whole day' })).toHaveAttribute(
@@ -50,16 +64,18 @@ test('the head cook writes the briefing; the outlet reads it on Home', async ({ 
       .click();
     await expect(form.getByTestId('off-dishes')).toContainText(dish);
     await form.getByRole('button', { name: 'Share with the team' }).click();
-    await expect(form).toContainText('Saved. Everyone at the outlet sees it on Home.');
+    await expect(form).toContainText('Saved. Everyone at the outlet sees it on Home');
     await expect(form.getByRole('button', { name: 'Save changes' })).toBeVisible();
 
-    // on their own Home: the note, with Edit
-    await page.goto('/');
-    const mine = page.getByTestId('briefing-note');
-    await expect(mine).toContainText('From Kitchen');
-    await expect(mine).toContainText('Fish special tonight.');
-    await expect(mine.getByTestId('briefing-off')).toHaveText(`Off today: ${dish}`);
-    await expect(mine.getByRole('link', { name: 'Edit' })).toBeVisible();
+    // on their own Home: the note, with Edit (in the evening their card is tomorrow's)
+    if (!evening) {
+      await page.goto('/');
+      const mine = page.getByTestId('briefing-note');
+      await expect(mine).toContainText('From Kitchen');
+      await expect(mine).toContainText('Fish special tonight.');
+      await expect(mine.getByTestId('briefing-off')).toHaveText(`Off today: ${dish}`);
+      await expect(mine.getByRole('link', { name: 'Edit' })).toBeVisible();
+    }
 
     // a server at the same outlet reads it, and cannot edit or write
     await signInAs(page, 'Test Server 3.0');

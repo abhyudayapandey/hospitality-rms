@@ -34,7 +34,7 @@ test('the GM: open shifts open the roster for All departments, a section each', 
   await signInAs(page, 'Test General Manager 1.0', { expanded: false });
   await page
     .getByTestId('dofirst-card')
-    .getByRole('link', { name: /open shifts? this week/ })
+    .getByRole('link', { name: /open shifts? in the next 7 days/ })
     .click();
   await page.waitForURL(/\/roster\/week\?.*all=1/);
   await expect.poll(() => viewing(page)).toBe('All departments');

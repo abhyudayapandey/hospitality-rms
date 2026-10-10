@@ -139,10 +139,13 @@ test('manager builds and publishes; approved leave drops the shift after both ap
     .getByRole('group', { name: 'Type' })
     .getByRole('button', { name: /Unpaid Leave/ })
     .click();
-  await form.getByTestId('leave-dates').locator('summary').click();
+  // the dates fold is open already when there are no shifts to tap
+  if ((await form.getByTestId('leave-dates').getAttribute('open')) === null) {
+    await form.getByTestId('leave-dates').locator('summary').click();
+  }
   await form.getByLabel('From', { exact: true }).fill(FRIDAY);
   await form.getByLabel('To', { exact: true }).fill(FRIDAY);
-  await expect(form.getByTestId('leave-days')).toHaveText('1 calendar day');
+  await expect(form.getByTestId('leave-days')).toContainText('1 calendar day');
   await form.getByRole('button', { name: 'Request 1 day' }).click();
   await expect(form.getByRole('status')).toContainText('Leave requested');
   await expect(page.getByTestId('my-leave').locator('li').first()).toContainText(
@@ -568,7 +571,10 @@ test('the sole owner: own leave approved at the top of the chain; the admin page
     .getByRole('group', { name: 'Type' })
     .getByRole('button', { name: /Unpaid Leave/ })
     .click();
-  await form.getByTestId('leave-dates').locator('summary').click();
+  // the dates fold is open already when there are no shifts to tap
+  if ((await form.getByTestId('leave-dates').getAttribute('open')) === null) {
+    await form.getByTestId('leave-dates').locator('summary').click();
+  }
   await form.getByLabel('From', { exact: true }).fill(day);
   await form.getByLabel('To', { exact: true }).fill(day);
   await form.getByRole('button', { name: 'Request 1 day' }).click();

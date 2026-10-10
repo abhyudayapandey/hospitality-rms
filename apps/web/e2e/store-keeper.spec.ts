@@ -58,13 +58,20 @@ test('receiving: nothing filled in, an amount for each item, and "Bill missing" 
   await expect(page.getByTestId('bill-missing')).toBeVisible();
 
   // the GM and the department head see it at once
-  for (const who of ['Test General Manager 1.0', 'Test Executive Chef 1.0']) {
+  for (const who of ['Test Executive Chef 1.0', 'Test General Manager 1.0']) {
     await signInAs(page, who);
     await page.goto(`/stock/orders/${po}`);
     await expect(page.getByTestId('bill-missing')).toBeVisible();
   }
   const kitchen = await placeId('TEST-HOTEL-1.0-KITCHEN-STORE');
-  await page.goto(`/stock/orders?node=${kitchen}`);
+  // the GM's list of the kitchen's orders (they see what came into the Main Store for it); a
+  // test order is dated on its own day (ADR 114): open the tab its state is on
+  const [row] = await asMigrator<{ progress: string }>(
+    `select progress from inv.purchase_order_summary where id = $1`,
+    [po],
+  );
+  const tab = row!.progress === 'partially_received' ? 'receive' : 'received';
+  await page.goto(`/stock/orders?node=${kitchen}&tab=${tab}`);
   await expect(page.locator(`[data-po-id="${po}"]`).getByTestId('bill-missing')).toHaveText(
     'Bill missing',
   );

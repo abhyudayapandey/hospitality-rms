@@ -58,13 +58,14 @@ test('the room attendant checks a minibar; the front desk adds it to the bill', 
     await expect(
       page.getByRole('link', { name: /Bill room 103: 1 Test Cola 300ml/ }).first(),
     ).toBeVisible();
-    await page.goto('/minibar');
+    // the front desk opens on To charge (ADR 113); the rooms are their own tab
+    await page.goto('/minibar?tab=rooms');
     await expect(
       page
         .locator('[data-testid="minibar-room"][data-room="103"]')
         .getByTestId('minibar-room-charge'),
     ).toHaveText('₹120');
-    await page.goto('/minibar?tab=charge');
+    await page.goto('/minibar');
     const charge = page.getByTestId('minibar-charge').filter({ hasText: 'Room 103' });
     await expect(charge).toContainText('₹120.00');
     await charge.getByRole('button', { name: 'Added to the bill' }).click();

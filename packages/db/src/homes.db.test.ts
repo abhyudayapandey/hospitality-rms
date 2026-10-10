@@ -117,6 +117,35 @@ describe("an event's people (ADR 113)", () => {
         [event],
       );
       expect(other.error).toMatch(/NOT_AUTHORISED/);
+
+      // in the event's own company: whoever reads the event under RLS reads its people, and
+      // nobody else does
+      const users = (
+        await c.query<{ id: string; username: string }>(
+          `select id, username from core.app_user where tenant_id = $1 and status = 'active'`,
+          [ids.tenant()],
+        )
+      ).rows;
+      let seen = 0;
+      let hidden = 0;
+      for (const u of users) {
+        const sees = await attemptAs<{ n: number }>(
+          c,
+          u.id,
+          `select count(*)::int as n from ops.event where id = $1`,
+          [event],
+        );
+        const r = await attemptAs(c, u.id, `select * from ops.event_staffing($1)`, [event]);
+        if (sees.rows?.[0]?.n === 1) {
+          seen++;
+          expect(r.error, u.username).toBeUndefined();
+        } else {
+          hidden++;
+          expect(r.error, u.username).toMatch(/NOT_AUTHORISED/);
+        }
+      }
+      expect(seen).toBeGreaterThan(0);
+      expect(hidden).toBeGreaterThan(0);
     });
   });
 });

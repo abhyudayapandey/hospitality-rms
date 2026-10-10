@@ -86,11 +86,13 @@ test('clock in (server)', async ({ page }) => {
   if (await card.isVisible()) {
     await j.go(card);
   } else {
+    // off shift: Shifts & leave, then its Clock tab (ADR 113)
     await j.go(nav(page, 'Me'));
-    await j.go(page.getByTestId('me-clock'));
+    await j.go(page.getByTestId('me-shifts'));
+    await j.go(page.getByRole('navigation', { name: 'Me' }).getByRole('link', { name: 'Clock' }));
   }
   await j.last(page.getByRole('button', { name: /^Clock (in with a selfie|out)$/ }));
-  j.done('Clock in', 'Server', { there: 2, form: 1 });
+  j.done('Clock in', 'Server', { there: 3, form: 1 });
 });
 
 test('open my next task (commis)', async ({ page }) => {
@@ -187,7 +189,7 @@ test('fill an open slot (executive chef)', async ({ page }) => {
   // took Roster → the day → Assign
   const j = await start(page, 'Test Executive Chef 1.0');
   await j.go(
-    page.getByTestId('dofirst-card').getByRole('link', { name: /open shifts? this week/ }),
+    page.getByTestId('dofirst-card').getByRole('link', { name: /open shifts? in the next 7 days/ }),
   );
   await j.go(
     page

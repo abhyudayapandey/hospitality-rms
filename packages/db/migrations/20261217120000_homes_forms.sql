@@ -33,7 +33,8 @@ declare
 begin
   select e.org_node_id into v_node from ops.event e
    where e.id = p_event and e.tenant_id = core.my_tenant();
-  if v_node is null or not core.can('EVENTS', 'view', v_node, null) then
+  -- whoever sees the event under RLS (ops.visible_event_nodes, ops.event's policy) sees this
+  if v_node is null or not (v_node = any(ops.visible_event_nodes())) then
     raise exception 'NOT_AUTHORISED' using detail = 'EVENTS view';
   end if;
   return query
