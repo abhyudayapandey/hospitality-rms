@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState, useTransition } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
-import { daysInclusive, isIsoDate } from '@/lib/dates';
+import { addDays, daysInclusive, isIsoDate } from '@/lib/dates';
 import { requestLeave } from '../roster/actions';
 
 export interface LeaveTypeOption {
@@ -61,6 +61,41 @@ export function LeaveForm({ types, today }: { types: LeaveTypeOption[]; today: s
           ))}
         </select>
       </label>
+      {/* tap a start and a length; the dates below are there to change (ADR 098) */}
+      <div className="space-y-2" data-testid="leave-picks">
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            ['Today', today],
+            ['Tomorrow', addDays(today, 1)],
+          ].map(([label, day]) => (
+            <button
+              key={label}
+              type="button"
+              aria-pressed={from === day}
+              onClick={() => {
+                setFrom(day!);
+                setTo(addDays(day!, Math.max(days, 1) - 1));
+              }}
+              className={`min-h-11 rounded-lg text-sm font-medium ring-1 ${from === day ? 'bg-brand-700 text-white ring-brand-700' : 'ring-slate-300'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {[1, 2, 3].map((n) => (
+            <button
+              key={n}
+              type="button"
+              aria-pressed={days === n}
+              onClick={() => setTo(addDays(from, n - 1))}
+              className={`min-h-11 rounded-lg text-sm font-medium ring-1 ${days === n ? 'bg-brand-700 text-white ring-brand-700' : 'ring-slate-300'}`}
+            >
+              {n} {n === 1 ? 'day' : 'days'}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-sm">
           From

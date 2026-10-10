@@ -2571,3 +2571,22 @@ change.
      with the wastage tile, not ₹0.
    - **`passport.room-attendant`**: Home's Next card shows the task's own picture (a fridge for
      the minibar round).
+
+## Releasing fewer words and tap-not-type (ADR 099)
+
+Screens only: no migration, no access change, no infrastructure change.
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual.
+4. No re-import.
+5. Check, at 380 px:
+   - **`passport.front-desk`** (Sneha Naik): Home has no welcome card; Next shows the job with
+     Start, then three more with their pictures, then "See all". Tasks: one line a task, a red
+     dot on late ones, done ones folded into one row; Report a problem on the first screen.
+   - **`passport.commis`**: a temperature step shows "0 to 5 °C is good", then − / + and
+     coloured numbers to tap. The task's page has one line under its title; who it is for is
+     under History.
+   - **`passport.room-attendant`**: a minibar check has − / + beside each item.
+   - **`passport.laundry`**: Linen → each item has − / + for Sent to laundry and Came back.
+   - **Anyone**: Leave → Tomorrow, then 2 days, fills the dates.

@@ -12,6 +12,7 @@ import {
 import { stepIcon } from '@outlet-ops/domain';
 import { Icon } from '@/components/icon';
 import { PhotoField } from '@/components/photo-field';
+import { quickPicks, Stepper } from '@/components/stepper';
 import { useHydrated } from '@/lib/use-hydrated';
 import type { Person, TaskDetail, TaskStep } from '@/lib/tasks';
 import { outOfRange } from '@/lib/tasks-view';
@@ -125,7 +126,7 @@ export function TaskWork({
                 </span>
                 {s.done_at && <span className="text-xs text-emerald-700">✓ done</span>}
               </p>
-              {s.kind === 'number' && range(s) && (
+              {s.kind === 'number' && range(s) && s.done_at && (
                 <p className="text-xs text-slate-500">Acceptable: {range(s)}</p>
               )}
               {s.done_at ? (
@@ -144,9 +145,19 @@ export function TaskWork({
         </ol>
       )}
       {later.length > 0 && (
-        <p className="text-sm text-slate-500" data-testid="steps-later">
-          Then {later.length} more: {later.map((s) => s.label).join(', ')}
-        </p>
+        // what comes after, as pictures, not a list of words (ADR 098)
+        <div className="flex flex-wrap items-center gap-1.5" data-testid="steps-later">
+          <span className="text-sm text-slate-500">Then</span>
+          {later.map((s) => (
+            <span
+              key={s.id}
+              title={s.label}
+              className="flex size-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500"
+            >
+              <Icon name={stepIcon(s.label, s.kind, s.icon)} className="size-5" />
+            </span>
+          ))}
+        </div>
       )}
       {canWork && open && manual && allDone && (
         <div className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
@@ -370,13 +381,50 @@ function StepInputs({
 
   return (
     <div className="space-y-2">
-      {(step.kind === 'number' || step.kind === 'batch' || step.kind === 'discard') && (
+      {step.kind === 'number' && (
+        // a reading: the safe range first, then − / + and the numbers around it to tap (ADR 098)
+        <div className="space-y-2" data-testid="reading">
+          {range(step) && (
+            <p
+              className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800"
+              data-testid="reading-range"
+            >
+              {range(step)} is good
+            </p>
+          )}
+          <Stepper
+            value={value}
+            onChange={setValue}
+            label={step.grid_row ? `${step.grid_row}: ${step.label}` : step.label}
+            unit={step.unit}
+            start={step.min ?? undefined}
+          />
+          {quickPicks(step.min, step.max).length > 0 && (
+            <div className="grid grid-cols-5 gap-1.5" data-testid="reading-picks">
+              {quickPicks(step.min, step.max).map((q) => (
+                <button
+                  key={q.value}
+                  type="button"
+                  onClick={() => setValue(String(q.value))}
+                  aria-pressed={value === String(q.value)}
+                  className={`min-h-11 rounded-lg text-sm font-semibold tabular-nums ${
+                    q.tone === 'good'
+                      ? 'bg-emerald-50 text-emerald-800'
+                      : q.tone === 'near'
+                        ? 'bg-amber-50 text-amber-800'
+                        : 'bg-rose-50 text-rose-800'
+                  } ${value === String(q.value) ? 'ring-2 ring-slate-900' : ''}`}
+                >
+                  {q.value}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {(step.kind === 'batch' || step.kind === 'discard') && (
         <label className="block space-y-1">
-          <span className="text-sm">
-            {step.kind === 'number'
-              ? `Reading${step.unit ? ` (${step.unit})` : ''}`
-              : `Quantity (${task.item?.unit ?? ''})`}
-          </span>
+          <span className="text-sm">{`Quantity (${task.item?.unit ?? ''})`}</span>
           <input
             inputMode="decimal"
             aria-label={step.grid_row ? `${step.grid_row}: ${step.label}` : step.label}

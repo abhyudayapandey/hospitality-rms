@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { failure, taskIcon } from '@outlet-ops/domain';
+import { BackLink } from '@/components/back-link';
 import { Icon } from '@/components/icon';
 import { ItemThumb } from '@/components/item-thumb';
 import { requireUser } from '@/lib/auth/server';
@@ -105,35 +106,33 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
     );
   }
   const open = task.status === 'open' || task.status === 'in_progress';
+  const mine = task.assignee_user_id === user.id;
+  const late = open && new Date(task.due_at).getTime() < Date.now();
   return (
     <div className="space-y-4">
-      <Link href="/tasks" className="text-sm text-slate-600 underline">
-        Back to tasks
-      </Link>
+      <BackLink fallback="/tasks" />
       <header className="space-y-1">
         <h1 className="flex items-center gap-2 text-xl font-semibold" data-testid="task-title">
           <Icon name={taskIcon(task.title, task.kind)} className="size-7 text-brand-700" />
           {task.title}
         </h1>
-        <p className="text-sm text-slate-600">
-          {task.place_name}
-          {task.store_name && ` · ${task.store_name}`} · due {formatWhen(task.due_at)}
-          {task.priority === 'high' && ' · high priority'}
-        </p>
-        <p className="text-sm text-slate-600" data-testid="task-status">
-          {statusLine(task)}
-        </p>
-        {open &&
-          task.assignee_name &&
-          overdueWhenGiven({ due_at: task.due_at, given: task.assigned_at }) && (
-            <p
-              className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900"
-              data-testid="task-fair"
-            >
-              It was already overdue when it was given to {task.assignee_name}
-              {task.assigned_at && ` (${formatWhen(task.assigned_at)})`}.
-            </p>
-          )}
+        {/* one line under the title: when it is due, red when late (ADR 098); who has it, from
+            whom and since when are under History */}
+        {open ? (
+          <p
+            className={`flex items-center gap-1.5 text-sm ${late ? 'font-semibold text-rose-700' : 'text-slate-600'}`}
+            data-testid="task-due"
+          >
+            <Icon name="clock" className="size-4 shrink-0" />
+            {late ? 'Late · was due ' : 'Due '}
+            {formatWhen(task.due_at)}
+            {task.priority === 'high' && ' · urgent'}
+          </p>
+        ) : (
+          <p className="text-sm text-slate-600" data-testid="task-status">
+            {statusLine(task)}
+          </p>
+        )}
         {task.description && (
           <p className="text-sm whitespace-pre-line text-slate-800">{task.description}</p>
         )}
@@ -242,7 +241,38 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       {open && task.can_hand_on && (
         <ReassignTask task={task.id} people={people} current={task.assignee_user_id} />
       )}
-      {task.handovers.length > 0 && <History task={task} />}
+      {/* who has it and how it got there: open for those who follow it, folded for the person
+          doing it, who needs only the job (ADR 098) */}
+      <details
+        className="rounded-xl bg-white text-sm ring-1 ring-slate-200"
+        open={!mine && (task.can_manage || task.can_hand_on)}
+        data-testid="task-more"
+      >
+        <summary className="flex min-h-11 cursor-pointer items-center px-4 font-medium text-slate-600">
+          History
+        </summary>
+        <div className="space-y-2 px-4 pb-3">
+          <p className="text-slate-600">
+            {task.place_name}
+            {task.store_name && ` · ${task.store_name}`}
+          </p>
+          {open && (
+            <p className="text-slate-600" data-testid="task-status">
+              {statusLine(task)}
+            </p>
+          )}
+          {open &&
+            !mine &&
+            task.assignee_name &&
+            overdueWhenGiven({ due_at: task.due_at, given: task.assigned_at }) && (
+              <p className="rounded-lg bg-amber-50 p-3 text-amber-900" data-testid="task-fair">
+                It was already overdue when it was given to {task.assignee_name}
+                {task.assigned_at && ` (${formatWhen(task.assigned_at)})`}.
+              </p>
+            )}
+          {task.handovers.length > 0 && <History task={task} />}
+        </div>
+      </details>
       {open && task.can_manage && !about && task.kind !== 'expiry' && task.kind !== 'receive' && (
         <CancelTask task={task.id} />
       )}
@@ -417,14 +447,10 @@ function SignOffLine({ task, open }: { task: TaskDetail; open: boolean }) {
 /** Each time the task reached someone, oldest first (ADR 074). */
 function History({ task }: { task: TaskDetail }) {
   return (
-    <section className="space-y-2">
-      <h2 className="text-sm font-semibold text-slate-500">Who it has been with</h2>
-      <ol
-        className="divide-y divide-slate-100 rounded-xl bg-white text-sm ring-1 ring-slate-200"
-        data-testid="handover-history"
-      >
+    <section>
+      <ol className="divide-y divide-slate-100" data-testid="handover-history">
         {task.handovers.map((h, i) => (
-          <li key={i} className="px-4 py-2">
+          <li key={i} className="py-2">
             <span className="block">
               {h.took
                 ? `${h.to_name} took it`

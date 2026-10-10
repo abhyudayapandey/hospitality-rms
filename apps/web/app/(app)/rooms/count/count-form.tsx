@@ -2,8 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
+import { ErrorBox, primaryButton } from '@/components/messages';
 import { ItemThumb } from '@/components/item-thumb';
+import { Stepper } from '@/components/stepper';
 import { formatQty } from '@/lib/qty';
 import { useHydrated } from '@/lib/use-hydrated';
 import { countRoom } from '../actions';
@@ -52,23 +53,24 @@ export function RoomCountForm({
     >
       <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
         {lines.map((l) => (
-          <li key={l.item_id} className="flex items-center gap-3 px-4 py-2">
-            <ItemThumb name={l.item} size="size-10" />
-            <label className="flex min-w-0 flex-1 items-center justify-between gap-3">
+          <li key={l.item_id} className="space-y-2 px-4 py-3">
+            <span className="flex items-center gap-3">
+              <ItemThumb name={l.item} size="size-10" />
               <span className="min-w-0">
                 <span className="block text-sm font-medium">{l.item}</span>
                 <span className="block text-xs text-slate-500">
                   should have {formatQty(l.expected, l.unit)}
                 </span>
               </span>
-              <input
-                inputMode="decimal"
-                aria-label={l.item}
-                value={counts[l.item_id] ?? ''}
-                onChange={(e) => setCounts({ ...counts, [l.item_id]: e.target.value })}
-                className={`${inputClass} w-20 text-right`}
-              />
-            </label>
+            </span>
+            {/* counted by − / + from what should be there (ADR 098) */}
+            <Stepper
+              value={counts[l.item_id] ?? ''}
+              onChange={(x) => setCounts({ ...counts, [l.item_id]: x })}
+              label={l.item}
+              min={0}
+              start={Number(l.expected)}
+            />
           </li>
         ))}
       </ul>

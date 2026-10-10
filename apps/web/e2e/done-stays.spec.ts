@@ -41,11 +41,14 @@ test('a done task stays on the To do list, saying who did it; the other attendan
     await signInAs(page, RA);
     await markDone(page, task);
     await page.goto('/tasks');
+    // done ones fold into one row (ADR 098)
+    await page.getByTestId('done-fold').locator('summary').click();
     const done = page.getByTestId('tasks-done').getByRole('link', { name: new RegExp(title) });
     await expect(done.getByTestId('task-who')).toContainText('Done by you, today');
 
     await signInAs(page, RA_B);
     await page.goto('/tasks');
+    await page.getByTestId('done-fold').locator('summary').click();
     const theirs = page.getByTestId('tasks-done').getByRole('link', { name: new RegExp(title) });
     await expect(theirs.getByTestId('task-who')).toContainText(`Done by ${RA}, today`);
     await theirs.click();

@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { Fragment } from 'react';
 import { taskIcon } from '@outlet-ops/domain';
-import { FirstRun } from '@/components/first-run';
 import { ExpiryBanner } from '@/components/expiry-banner';
 import { Icon, type IconName } from '@/components/icon';
 import { businessDate, formatDay, formatLongDay, formatTime } from '@/lib/dates';
@@ -45,7 +44,8 @@ export default async function Home() {
   const tz = shell.nodes.find((n) => n.id === shell.home?.id)?.timezone ?? 'Asia/Kolkata';
   const today = await loadToday(shell, tz);
   const now = new Date();
-  const tasks = todaysTasks(today.tasks, now, tz);
+  // the next job, then the three after it (ADR 098)
+  const tasks = todaysTasks(today.tasks, now, tz, 4);
   const frontline = today.profile === 'frontline';
   const tiles = frontline
     ? homeTiles(screenInput(shell)).map((t) => ({
@@ -69,8 +69,6 @@ export default async function Home() {
       </h1>
 
       <ComplianceCard card={complianceCard(today.compliance)} />
-
-      <FirstRun profile={today.profile} />
 
       <Banners today={today} />
 
@@ -483,9 +481,47 @@ function NextTask({
               Start
             </Link>
           )}
+          {tasks.shown.length > 1 && (
+            // then the next three, one line each, each with its own picture (ADR 098)
+            <>
+              <h3 className="mt-4 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                Then
+              </h3>
+              <ul className="mt-1 divide-y divide-slate-100" data-testid="then-tasks">
+                {tasks.shown.slice(1).map((t) => (
+                  <li key={t.id}>
+                    <Link
+                      href={`/tasks/${t.id}`}
+                      className="flex min-h-12 items-center gap-3 py-1.5"
+                    >
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                        <Icon name={taskIcon(t.title, t.kind ?? 'one_off')} className="size-5" />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{t.title}</span>
+                      <span
+                        className={`shrink-0 text-sm tabular-nums ${t.overdue ? 'font-semibold text-rose-700' : 'text-slate-500'}`}
+                      >
+                        {formatTime(t.due_at, tz)}
+                      </span>
+                      {t.overdue && (
+                        <span
+                          className="size-2.5 shrink-0 rounded-full bg-rose-600"
+                          aria-label="Late"
+                        />
+                      )}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           {tasks.total > 1 && (
-            <Link href="/tasks" className="mt-3 block text-sm font-medium text-brand-700">
-              {tasks.total - 1} more today
+            <Link
+              href="/tasks"
+              className="mt-3 flex min-h-12 items-center justify-center rounded-xl font-medium ring-1 ring-slate-300"
+              data-testid="see-all-tasks"
+            >
+              See all {tasks.total}
             </Link>
           )}
         </>

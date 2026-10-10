@@ -4,9 +4,10 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
 import { ListSearch } from '@/components/list-search';
-import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
+import { ErrorBox, primaryButton, StatusBox } from '@/components/messages';
 import { submitCount } from '../../actions';
 import { ItemThumb } from '@/components/item-thumb';
+import { Stepper } from '@/components/stepper';
 
 export interface CountLine {
   item_id: string;
@@ -70,22 +71,21 @@ export function CountForm({
           {lines.map((l) => (
             <li
               key={l.item_id}
-              className="flex items-center justify-between gap-3 px-4 py-2"
+              className="space-y-2 px-4 py-3"
               data-filter-row
               data-filter-text={l.name}
             >
-              <ItemThumb name={l.name} />
-              <label htmlFor={`c-${l.item_id}`} className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{l.name}</span>
-                <span className="text-xs text-slate-500">{l.base_uom}</span>
-              </label>
-              <input
-                id={`c-${l.item_id}`}
-                aria-label={`Counted ${l.name}`}
-                inputMode="decimal"
+              <span className="flex items-center gap-3">
+                <ItemThumb name={l.name} />
+                <span className="min-w-0 flex-1 truncate font-medium">{l.name}</span>
+              </span>
+              {/* − / + to count, the unit beside the number (ADR 098) */}
+              <Stepper
                 value={values[l.item_id] ?? ''}
-                onChange={(e) => setValues((v) => ({ ...v, [l.item_id]: e.target.value }))}
-                className={`${inputClass} max-w-28 text-right`}
+                onChange={(x) => setValues((v) => ({ ...v, [l.item_id]: x }))}
+                label={`Counted ${l.name}`}
+                unit={l.base_uom}
+                min={0}
               />
             </li>
           ))}

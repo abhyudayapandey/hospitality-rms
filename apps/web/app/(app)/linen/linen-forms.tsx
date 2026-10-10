@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, primaryButton, secondaryButton } from '@/components/messages';
 import { ItemThumb } from '@/components/item-thumb';
+import { Stepper } from '@/components/stepper';
 import { useHydrated } from '@/lib/use-hydrated';
 import { issueUniform, recordLaundry, returnUniform } from './actions';
 
@@ -59,27 +60,26 @@ export function LaundryForm({
               <ItemThumb name={i.name} size="size-8" />
               <span className="min-w-0 flex-1 text-sm font-medium break-words">{i.name}</span>
             </span>
-            <span className="grid grid-cols-2 gap-3">
-              <label className="block space-y-1">
+            {/* − / + for each, one under the other, so a number is tapped, not typed (ADR 098) */}
+            <span className="block space-y-2">
+              <span className="block space-y-1">
                 <span className="text-xs text-slate-500">Sent to laundry</span>
-                <input
-                  inputMode="numeric"
-                  aria-label={`${i.name} sent`}
+                <Stepper
                   value={v[i.item_id]?.sent ?? ''}
-                  onChange={(e) => set(i.item_id, 'sent', e.target.value)}
-                  className={`${inputClass} text-right`}
+                  onChange={(x) => set(i.item_id, 'sent', x)}
+                  label={`${i.name} sent`}
+                  min={0}
                 />
-              </label>
-              <label className="block space-y-1">
+              </span>
+              <span className="block space-y-1">
                 <span className="text-xs text-slate-500">Came back</span>
-                <input
-                  inputMode="numeric"
-                  aria-label={`${i.name} back`}
+                <Stepper
                   value={v[i.item_id]?.received ?? ''}
-                  onChange={(e) => set(i.item_id, 'received', e.target.value)}
-                  className={`${inputClass} text-right`}
+                  onChange={(x) => set(i.item_id, 'received', x)}
+                  label={`${i.name} back`}
+                  min={0}
                 />
-              </label>
+              </span>
             </span>
           </li>
         ))}

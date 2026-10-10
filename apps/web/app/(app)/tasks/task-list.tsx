@@ -33,7 +33,20 @@ const STATUS: Record<string, string> = {
   cancelled: 'cancelled',
 };
 
-export function TaskList({ tasks, testId }: { tasks: ListedTask[]; testId?: string }) {
+/**
+ * A list of tasks. `mine`: the reader's own To do list (ADR 098), one line a task: its
+ * picture, its title, when it is due and a red dot when late; who gave it and when are on the
+ * task's History. Lists of other people's tasks say who has it, since when, and where.
+ */
+export function TaskList({
+  tasks,
+  testId,
+  mine = false,
+}: {
+  tasks: ListedTask[];
+  testId?: string;
+  mine?: boolean;
+}) {
   return (
     <ul
       data-testid={testId}
@@ -55,14 +68,7 @@ export function TaskList({ tasks, testId }: { tasks: ListedTask[]; testId?: stri
                 <Icon name={taskIcon(t.title, t.kind ?? 'one_off')} className="size-7" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">
-                  {t.priority === 'high' && (
-                    <span className="mr-1 text-rose-700" aria-label="High priority">
-                      !
-                    </span>
-                  )}
-                  {t.title}
-                </span>
+                <span className="block truncate font-medium">{t.title}</span>
                 {t.covering && (
                   <span
                     data-testid="task-covering"
@@ -71,10 +77,12 @@ export function TaskList({ tasks, testId }: { tasks: ListedTask[]; testId?: stri
                     {t.covering}&rsquo;s work (you&rsquo;re covering)
                   </span>
                 )}
-                <span className="block truncate text-xs text-slate-500">
-                  {t.place_name} · due {formatWhen(t.due_at)}
-                </span>
-                {(t.who !== undefined || t.given) && (
+                {!mine && (
+                  <span className="block truncate text-xs text-slate-500">
+                    {t.place_name} · due {formatWhen(t.due_at)}
+                  </span>
+                )}
+                {(!mine || t.status === 'done') && (t.who !== undefined || t.given) && (
                   <span className="block truncate text-xs text-slate-500" data-testid="task-who">
                     {t.who !== undefined ? (t.who ?? 'Not taken yet') : ''}
                     {t.who !== undefined && t.given ? ' · ' : ''}
@@ -82,27 +90,53 @@ export function TaskList({ tasks, testId }: { tasks: ListedTask[]; testId?: stri
                   </span>
                 )}
               </span>
-              <span className="shrink-0 text-right text-xs tabular-nums">
-                <span
-                  className={
-                    t.overdue
-                      ? 'font-semibold text-rose-700'
-                      : t.status === 'done'
-                        ? 'text-emerald-700'
-                        : 'text-slate-600'
-                  }
-                >
-                  {t.overdue
-                    ? overdueWhenGiven(t)
-                      ? 'overdue when given'
-                      : 'overdue'
-                    : (STATUS[t.status] ?? t.status)}
+              {mine ? (
+                // the reader's own: when, and a red dot when late or urgent; done is green
+                <span className="flex shrink-0 items-center gap-2 text-sm tabular-nums">
+                  {t.status === 'done' ? (
+                    <Icon name="check" className="size-5 text-emerald-700" label="Done" />
+                  ) : (
+                    <>
+                      <span
+                        className={t.overdue ? 'font-semibold text-rose-700' : 'text-slate-600'}
+                      >
+                        {t.steps_total > 1 && t.steps_done > 0
+                          ? p.text
+                          : formatWhen(t.due_at).replace(/^today, /, '')}
+                      </span>
+                      {(t.overdue || t.priority === 'high') && (
+                        <span
+                          className="size-2.5 rounded-full bg-rose-600"
+                          data-testid="task-late"
+                          aria-label={t.overdue ? 'Late' : 'Urgent'}
+                        />
+                      )}
+                    </>
+                  )}
                 </span>
-                {t.steps_total > 1 && <span className="block text-slate-500">{p.text}</span>}
-                {(t.flagged ?? 0) > 0 && (
-                  <span className="block font-semibold text-amber-700">{t.flagged} flagged</span>
-                )}
-              </span>
+              ) : (
+                <span className="shrink-0 text-right text-xs tabular-nums">
+                  <span
+                    className={
+                      t.overdue
+                        ? 'font-semibold text-rose-700'
+                        : t.status === 'done'
+                          ? 'text-emerald-700'
+                          : 'text-slate-600'
+                    }
+                  >
+                    {t.overdue
+                      ? overdueWhenGiven(t)
+                        ? 'overdue when given'
+                        : 'overdue'
+                      : (STATUS[t.status] ?? t.status)}
+                  </span>
+                  {t.steps_total > 1 && <span className="block text-slate-500">{p.text}</span>}
+                  {(t.flagged ?? 0) > 0 && (
+                    <span className="block font-semibold text-amber-700">{t.flagged} flagged</span>
+                  )}
+                </span>
+              )}
             </Link>
           </li>
         );
