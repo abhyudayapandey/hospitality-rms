@@ -54,7 +54,9 @@ test("a breakage leaves the store and is in the outlet's log", async ({ page }) 
     await main(page)
       .getByLabel(/^How many/)
       .fill('1');
-    await main(page).getByLabel('How', { exact: true }).selectOption('worn_out');
+    await main(page)
+      .getByLabel(/^How it broke/)
+      .selectOption('worn_out');
     await main(page).getByLabel('Who broke it').selectOption('staff');
     await main(page)
       .getByLabel(/^Who on the staff/)

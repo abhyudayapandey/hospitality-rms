@@ -133,7 +133,7 @@ export function BreakageForm({
           />
         </label>
         <label className="block space-y-1">
-          <span className="text-sm font-medium">How</span>
+          <span className="text-sm font-medium">How it broke</span>
           <select value={reason} onChange={(e) => setReason(e.target.value)} className={inputClass}>
             <option value="">Choose…</option>
             {BREAKAGE_REASONS.map((r) => (
