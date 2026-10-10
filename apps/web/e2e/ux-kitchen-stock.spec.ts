@@ -109,39 +109,20 @@ test('below zero: "Count needed" for those who may not correct it, the figure fo
   page,
 }) => {
   const kitchen = await placeId('TEST-HOTEL-1.0-KITCHEN-STORE');
-  const [item] = await asMigrator<{ id: string; sku: string; on_hand: string; avg: string }>(
-    `select i.id, i.sku, s.on_hand::text, s.avg_cost::text as avg
-       from inv.stock_level s join inv.item i on i.id = s.item_id
-      where s.delivery_node_id = $1 and s.on_hand > 0 and i.sku = 'TOMATO-KETCHUP'`,
-    [kitchen],
-  );
-  const take = Number(item!.on_hand) + 5;
-  // ledger inserts only (rule 3): out now (a sale, the one movement that may go below zero),
-  // back in after at the same average cost; dated long ago so no report's days hold them
-  const move = (qty: number) =>
-    asMigrator(
-      `insert into inv.stock_ledger (tenant_id, item_id, delivery_node_id, movement_type, qty,
-                                     unit_cost, ref_type, occurred_at)
-       select tenant_id, $1, $2, $3, $4, $5, 'e2e-count-needed', '2020-01-01'
-         from inv.item where id = $1`,
-      [item!.id, kitchen, qty < 0 ? 'sales_depletion' : 'receipt', qty, item!.avg],
-    );
-  await move(-take);
-  try {
-    await signInAs(page, 'Test Area Manager');
-    await page.goto(`/stock?node=${kitchen}`);
-    const row = main(page).locator(`[data-sku="${item!.sku}"]`);
-    await expect(row.getByTestId('count-needed')).toHaveText('Count needed');
-    await expect(row.getByTestId('on-hand')).toHaveCount(0);
+  // the test data's maida is sold below zero at the Hotel 1.0 Kitchen Store (file 27)
+  const sku = 'REFINED-FLOUR-MAIDA';
+  await signInAs(page, 'Test Area Manager');
+  await page.goto(`/stock?node=${kitchen}`);
+  const row = main(page).locator(`[data-sku="${sku}"]`);
+  await expect(row.getByTestId('count-needed')).toHaveText('Count needed');
+  await expect(row.getByTestId('on-hand')).toHaveCount(0);
 
-    await signInAs(page, 'Test Executive Chef 1.0');
-    await page.goto(`/stock?node=${kitchen}`);
-    const mine = main(page).locator(`[data-sku="${item!.sku}"]`);
-    await expect(mine.getByTestId('on-hand')).toHaveText('-5 kg');
-    await expect(mine.getByTestId('count-needed')).toHaveCount(0);
-  } finally {
-    await move(take);
-  }
+  await signInAs(page, 'Test Executive Chef 1.0');
+  await page.goto(`/stock?node=${kitchen}`);
+  const mine = main(page).locator(`[data-sku="${sku}"]`);
+  await expect(mine.getByTestId('on-hand')).toHaveText(/^-[\d.]+ kg$/);
+  await expect(mine.getByTestId('below-zero')).toBeVisible();
+  await expect(mine.getByTestId('count-needed')).toHaveCount(0);
 });
 
 test("a long Stock list keeps the store's jobs above the nav", async ({ page }) => {
