@@ -52,13 +52,13 @@ export const NAV_ITEMS: Readonly<Record<NavKey, NavItem>> = {
   production: { href: '/stock/production', label: 'Make', icon: 'pot' },
   stock: { href: '/stock', label: 'Stock', icon: 'box' },
   // menu costs for MENU holders, otherwise the recipes and procedures they may read
-  menu: { href: '/menu', label: 'Menu', icon: 'book' },
-  roster: { href: '/roster', label: 'Roster', icon: 'calendar' },
-  requests: { href: '/requests', label: 'Requests', icon: 'list' },
+  menu: { href: '/menu', label: 'Menu', icon: 'chefHat' },
+  roster: { href: '/roster', label: 'Roster', icon: 'roster' },
+  requests: { href: '/requests', label: 'Requests', icon: 'hand' },
   // user administration (ADR 011) as well as the security roles view
   admin: { href: '/admin', label: 'Admin', icon: 'gear' },
   // reports (ADR 023): business reports only; "My week" is on Me
-  reports: { href: '/reports', label: 'Reports', icon: 'chart' },
+  reports: { href: '/reports', label: 'Reports', icon: 'pie' },
   // the person's own things and every other screen they can open (UX-6)
   me: { href: '/me', label: 'Me', icon: 'user' },
 };

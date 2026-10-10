@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { Icon } from '@/components/icon';
 import { ErrorBox, primaryButton, secondaryButton, StatusBox } from '@/components/messages';
 import { addTemplateShifts, discardDrafts, publishWeek, unassignShift } from '../actions';
 
@@ -24,11 +25,14 @@ export function WeekActions({
   monday,
   drafts,
   window: w,
+  empty = false,
 }: {
   node: string;
   monday: string;
   drafts: number;
   window: TemplateWindow;
+  /** no shifts on screen: one big Fill button instead of the counts and the buttons (ADR 107) */
+  empty?: boolean;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -70,6 +74,25 @@ export function WeekActions({
     setDone(null);
     setConfirm(what);
   };
+  // an empty week: one big button that adds the usual shifts as drafts (nobody sees drafts
+  // until they are published, and Discard drafts takes them back)
+  if (empty && w.drafts === 0 && w.toAdd > 0 && !done) {
+    return (
+      <div className="space-y-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={add}
+          data-testid="fill-week"
+          className="flex min-h-20 w-full items-center justify-center gap-3 rounded-xl bg-brand-700 px-4 text-lg font-semibold text-white disabled:opacity-50"
+        >
+          <Icon name="calendar" className="size-8" />
+          Fill this week from the usual shifts
+        </button>
+        <ErrorBox message={error} />
+      </div>
+    );
+  }
   return (
     <div className="space-y-2">
       {confirm ? (

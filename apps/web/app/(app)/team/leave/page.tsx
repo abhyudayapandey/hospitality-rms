@@ -5,6 +5,7 @@ import { requireUser } from '@/lib/auth/server';
 import { addDays, formatDay, localToday } from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import { param, type SearchParams } from '@/lib/inventory';
+import { Initials } from '@/components/initials';
 import { peopleContext, teamLeave } from '@/lib/people';
 
 // Team → Leave (UX-5, ADR 035): who is off when at the place, waiting and approved, over
@@ -48,7 +49,8 @@ export default async function TeamLeavePage({ searchParams }: { searchParams: Se
               className="flex items-start justify-between gap-3 px-4 py-3"
               data-testid="leave-row"
             >
-              <span className="min-w-0">
+              <Initials name={r.name} />
+              <span className="min-w-0 flex-1">
                 <span className="block font-medium">{r.name}</span>
                 <span className="block text-xs text-slate-500">
                   {r.job_role} · {r.place}

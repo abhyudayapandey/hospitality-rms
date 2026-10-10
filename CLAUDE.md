@@ -282,6 +282,12 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   lines have their photo and ×N, prices on the bill only. Managers' Home (ADR 105): departments
   are tiles, two to a row, one fact each (red runs low, amber waits, green "All done" where they
   run it), each from an existing line and opening that department; a count is said once.
+  ADR 106: Me shows first Clock, My shifts, Leave, SOPs, Report a problem, then the tiles of
+  the person's own work (access above what every shift worker holds, `meTiles`), the rest under
+  More; every tile its own picture (`me-tiles.test.ts`). ADR 107: an empty roster week is one
+  "Fill this week" button, By person / By shift a switch, the clock one camera button. ADR 108:
+  shift types, notifications, clock rows and people (initials) carry pictures. ADR 109: the
+  accountant reads bills and purchasing (`READS_BILLS`), the sales manager plans events.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

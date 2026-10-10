@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { Icon } from '@/components/icon';
 import { Empty } from '@/components/messages';
+import { LEAVE_STATUS, leaveIcon } from '@/lib/leave-icons';
 import { PeopleHeader } from '@/components/people-header';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
@@ -9,14 +11,6 @@ import type { SearchParams } from '@/lib/inventory';
 import { balances, myLeave, myWorker, peopleContext } from '@/lib/people';
 import { LeaveForm } from './leave-form';
 import { ModuleOff } from '@/components/module-gate';
-
-const STATUS: Record<string, string> = {
-  submitted: 'Waiting for approval',
-  approved: 'Approved',
-  rejected: 'Not approved',
-  cancelled: 'Cancelled',
-  draft: 'Draft',
-};
 
 // My leave: balances (entitled, used, pending, available), a request form and history.
 export default async function LeavePage({ searchParams }: { searchParams: SearchParams }) {
@@ -40,7 +34,10 @@ export default async function LeavePage({ searchParams }: { searchParams: Search
               .filter((b) => b.available_days !== null)
               .map((b) => (
                 <li key={b.leave_type_id} className="rounded-xl bg-white p-3 ring-1 ring-slate-200">
-                  <span className="block text-sm text-slate-600">{b.name}</span>
+                  <span className="flex items-center gap-2 text-sm text-slate-600">
+                    <Icon name={leaveIcon(b.code, b.name)} className="size-6 text-brand-700" />
+                    {b.name}
+                  </span>
                   <span className="text-2xl font-semibold tabular-nums">
                     {Number(b.available_days)}
                   </span>
@@ -54,16 +51,20 @@ export default async function LeavePage({ searchParams }: { searchParams: Search
           </ul>
           <h2 className="text-sm font-semibold text-slate-700">My requests</h2>
           {data.leave.length === 0 ? (
-            <Empty>No leave requested yet.</Empty>
+            <Empty icon="umbrella">No leave yet</Empty>
           ) : (
             <ul className="space-y-2" data-testid="my-leave">
               {data.leave.map((l) => (
                 <li key={l.id}>
                   <Link
                     href={`/leave/${l.id}`}
-                    className="flex items-center justify-between gap-2 rounded-xl bg-white p-4 ring-1 ring-slate-200"
+                    className="flex items-center justify-between gap-3 rounded-xl bg-white p-4 ring-1 ring-slate-200"
                   >
-                    <span>
+                    <Icon
+                      name={leaveIcon(l.type_code, l.type_name)}
+                      className="size-7 text-brand-700"
+                    />
+                    <span className="min-w-0 flex-1">
                       <span className="block font-medium">{l.type_name}</span>
                       <span className="text-sm text-slate-600">
                         {formatDay(l.from_date)}
@@ -72,7 +73,7 @@ export default async function LeavePage({ searchParams }: { searchParams: Search
                       </span>
                     </span>
                     <span className="text-right text-xs text-slate-600">
-                      {STATUS[l.status] ?? l.status}
+                      {LEAVE_STATUS[l.status] ?? 'Waiting for approval'}
                     </span>
                   </Link>
                 </li>
@@ -85,6 +86,7 @@ export default async function LeavePage({ searchParams }: { searchParams: Search
             types={data.balances.map((b) => ({
               id: b.leave_type_id,
               name: b.name,
+              icon: leaveIcon(b.code, b.name),
               available: b.available_days === null ? null : Number(b.available_days),
             }))}
           />

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { newSession, SESSION_COOKIE, signSession } from '../lib/auth/session';
-import { asMigrator, signInAs } from './helpers';
+import { asMigrator, meTile, signInAs } from './helpers';
 
 // Bottom navigation: three to five tabs, chosen by the kind of work a person does (UX-6,
 // ADR 034); the pages themselves are enforced in the DB. These rows follow the mock-ups.
@@ -38,7 +38,7 @@ test('Me has every screen the tabs leave out', async ({ page }) => {
     .getByRole('navigation', { name: 'Main' })
     .getByRole('link', { name: 'Me', exact: true })
     .click();
-  await page.getByTestId('me-requests').click();
+  await (await meTile(page, 'requests')).click();
   await expect(page).toHaveURL(/\/requests$/);
   await signInAs(page, 'Test General Manager 1.0');
   await page.goto('/me');

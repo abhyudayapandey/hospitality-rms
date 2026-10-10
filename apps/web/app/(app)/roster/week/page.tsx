@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Icon } from '@/components/icon';
 import { Empty } from '@/components/messages';
 import { PeopleHeader } from '@/components/people-header';
 import { PollRefresh } from '@/components/use-polling';
@@ -15,6 +16,7 @@ import { PeopleTiles, RepeatPattern } from './people-tiles';
 import { rosterDay, type RosterDay } from '@/lib/roster-tiles';
 import { jobTitles } from '@/lib/job-titles';
 import { navProfile } from '@/lib/nav';
+import { shiftIcon } from '@/lib/shift-types';
 
 // The manager's week: build from templates, assign, publish. Mobile-first: a day strip
 // (Mon–Sun, open slots per day) and one day's shifts grouped by time, names inline (ADR 025,
@@ -97,6 +99,7 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
                 key={s.id}
                 s={s}
                 title={title}
+                tz={ctx.tz}
                 node={s.org_node_id}
                 editable={editable(s)}
               />
@@ -134,37 +137,62 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
           →
         </Link>
       </div>
+      {/* By person / By shift as one two-part switch (ADR 107); the list is a small link */}
       <div className="flex items-center justify-between gap-2">
+        {!all && !list ? (
+          <nav
+            aria-label="Roster view"
+            data-testid="view-switch"
+            className="grid flex-1 grid-cols-2 rounded-lg bg-slate-100 p-1 text-sm font-medium"
+          >
+            {(
+              [
+                ['people', 'By person', byPerson],
+                ['shift', 'By shift', !byPerson],
+              ] as const
+            ).map(([v, label, on]) => (
+              <Link
+                key={v}
+                href={`${base}&week=${monday}&day=${day}&view=${v}`}
+                aria-current={on ? 'page' : undefined}
+                data-testid={`view-${v}`}
+                className={`flex min-h-11 items-center justify-center gap-1.5 rounded-md ${
+                  on ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600'
+                }`}
+              >
+                <Icon name={v === 'people' ? 'people' : 'clock'} className="size-4" />
+                {label}
+              </Link>
+            ))}
+          </nav>
+        ) : (
+          <span />
+        )}
+        <Link
+          href={
+            list
+              ? `${base}&week=${monday}&day=${day}&view=shift`
+              : `${base}&week=${monday}&view=list`
+          }
+          className="flex min-h-11 shrink-0 items-center text-sm text-slate-700 underline"
+        >
+          {list ? 'Day view' : 'List view'}
+        </Link>
+      </div>
+      {shifts.length > 0 && (
         <p className="text-sm text-slate-600" data-testid="week-summary">
           {shifts.length} shifts · {drafts} draft · {open} open slot{open === 1 ? '' : 's'}
         </p>
-        <span className="flex shrink-0 items-center gap-3 text-sm">
-          {!all && (
-            <Link
-              href={
-                byPerson
-                  ? `${base}&week=${monday}&day=${day}&view=shift`
-                  : `${base}&week=${monday}&day=${day}&view=people`
-              }
-              className="flex min-h-11 items-center text-slate-700 underline"
-              data-testid="view-people"
-            >
-              {byPerson ? 'By shift' : 'By person'}
-            </Link>
-          )}
-          <Link
-            href={
-              list
-                ? `${base}&week=${monday}&day=${day}&view=shift`
-                : `${base}&week=${monday}&view=list`
-            }
-            className="flex min-h-11 items-center text-slate-700 underline"
-          >
-            {list ? 'Day view' : 'List view'}
-          </Link>
-        </span>
-      </div>
-      {window && <WeekActions node={node.id} monday={monday} drafts={drafts} window={window} />}
+      )}
+      {window && (
+        <WeekActions
+          node={node.id}
+          monday={monday}
+          drafts={drafts}
+          window={window}
+          empty={shifts.length === 0}
+        />
+      )}
       {byPerson && tiles ? (
         <>
           <nav aria-label="Days" className="grid grid-cols-7 gap-1">
@@ -195,7 +223,10 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
           {canEdit && <RepeatPattern node={node.id} monday={monday} />}
         </>
       ) : shifts.length === 0 ? (
-        <Empty>No shifts this week yet.{canEdit ? ' Add them from the templates.' : ''}</Empty>
+        // an empty week that can be filled shows only the Fill button above (ADR 107)
+        window && window.toAdd > 0 ? null : (
+          <Empty icon="calendar">No shifts this week</Empty>
+        )
       ) : list ? (
         (() => {
           const byDay = (rows: RosterShift[]) =>
@@ -329,9 +360,15 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 type Title = (code: string) => string;
 
 /** "Evening · server · 1/2", with a draft badge. */
-function ShiftLabel({ s, title }: { s: RosterShift; title: Title }) {
+function ShiftLabel({ s, title, tz }: { s: RosterShift; title: Title; tz: string }) {
   return (
     <span className="flex items-center gap-2">
+      {/* the shift type's picture: sun, moon or a split (ADR 108) */}
+      <Icon
+        name={shiftIcon(s.shift_type, s.start_at, tz)}
+        className="size-5 text-brand-700"
+        {...(s.shift_type === 'split' ? { label: 'Split shift' } : {})}
+      />
       <span className="text-sm">
         {s.template_name ?? 'Shift'} · {title(s.role_code)} · {s.people.length}/{s.headcount}
       </span>
@@ -357,17 +394,19 @@ function AssignLink({ s, node }: { s: RosterShift; node: string }) {
 function ShiftRow({
   s,
   title,
+  tz,
   node,
   editable,
 }: {
   s: RosterShift;
   title: Title;
+  tz: string;
   node: string;
   editable: boolean;
 }) {
   return (
     <li className="px-3 py-2" data-testid="roster-shift">
-      <ShiftLabel s={s} title={title} />
+      <ShiftLabel s={s} title={title} tz={tz} />
       {s.people.length > 0 && (
         <ul className="mt-1 flex flex-wrap gap-1">
           {s.people.map((p) => (
@@ -407,7 +446,7 @@ function ShiftCard({
   return (
     <li className="rounded-xl bg-white p-3 ring-1 ring-slate-200" data-testid="roster-shift">
       <span className="block font-medium tabular-nums">{formatSpan(s.start_at, s.end_at, tz)}</span>
-      <ShiftLabel s={s} title={title} />
+      <ShiftLabel s={s} title={title} tz={tz} />
       <ul className="mt-2 space-y-1">
         {s.people.map((p) => (
           <li key={p.assignment_id} className="flex items-center justify-between gap-2">

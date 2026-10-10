@@ -1,3 +1,5 @@
+import { Icon, type IconName } from './icon';
+
 export function ErrorBox({ message }: { message: string | null }) {
   if (!message) return null;
   return (
@@ -16,9 +18,10 @@ export function StatusBox({ message }: { message: string | null }) {
   );
 }
 
-export function Empty({ children }: { children: React.ReactNode }) {
+export function Empty({ children, icon }: { children: React.ReactNode; icon?: IconName }) {
   return (
-    <p className="rounded-xl bg-white p-6 text-center text-slate-600 ring-1 ring-slate-200">
+    <p className="flex flex-col items-center gap-2 rounded-xl bg-white p-6 text-center text-slate-600 ring-1 ring-slate-200">
+      {icon && <Icon name={icon} className="size-10 text-slate-400" />}
       {children}
     </p>
   );

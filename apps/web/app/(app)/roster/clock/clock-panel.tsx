@@ -1,5 +1,6 @@
 'use client';
 
+import { Icon } from '@/components/icon';
 import { InfoTip } from '@/components/info-tip';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
@@ -27,10 +28,16 @@ export function ClockPanel({
   clockedInAt,
   tz,
   userId,
+  shiftLine = null,
+  noShiftToday = false,
 }: {
   clockedInAt: string | null;
   tz: string;
   userId: string;
+  /** today's (or tomorrow's) shift, in a line */
+  shiftLine?: string | null;
+  /** no shift today: "No shift today" with a calendar (ADR 107) */
+  noShiftToday?: boolean;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -143,14 +150,28 @@ export function ClockPanel({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl bg-white p-6 text-center ring-1 ring-slate-200">
-        <p className="text-sm text-slate-600" data-testid="clock-state">
+      <div className="flex flex-col items-center gap-2 rounded-xl bg-white p-5 text-center ring-1 ring-slate-200">
+        <Icon
+          name={inSince ? 'clock' : noShiftToday ? 'calendar' : 'clock'}
+          className={`size-10 ${inSince ? 'text-emerald-700' : 'text-slate-400'}`}
+        />
+        <p
+          className={inSince || noShiftToday ? 'text-base font-semibold' : 'text-sm text-slate-600'}
+          data-testid="clock-state"
+        >
           {inSince
             ? `Clocked in since ${formatTime(inSince, tz)}, ${formatDuration(
                 Math.max(0, Math.floor((now - new Date(inSince).getTime()) / 60_000)),
               )}`
-            : 'Not clocked in'}
+            : noShiftToday
+              ? 'No shift today'
+              : 'Not clocked in'}
         </p>
+        {shiftLine && (
+          <p className="text-sm text-slate-600" data-testid="next-shift">
+            {shiftLine}
+          </p>
+        )}
         {waiting.length > 0 && (
           <p className="mt-1 text-xs text-amber-700" data-testid="clock-waiting">
             {waiting.length} punch{waiting.length === 1 ? '' : 'es'} waiting to sync
@@ -180,8 +201,12 @@ export function ClockPanel({
             if (action === 'in') setShooting(true);
             else punch(null);
           }}
-          className={`${primaryButton} min-h-16 text-lg`}
+          className={`${primaryButton} flex flex-col items-center justify-center gap-1 text-lg ${
+            inSince ? 'min-h-16' : 'min-h-32'
+          }`}
         >
+          {/* one big camera button to clock in (ADR 107) */}
+          {!inSince && !pending && <Icon name="camera" className="size-12" />}
           {pending ? 'Working…' : inSince ? 'Clock out' : 'Clock in with a selfie'}
         </button>
       )}
