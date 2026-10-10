@@ -30,26 +30,46 @@ const input = (
 };
 
 describe('screens', () => {
-  it('a commis: their tasks, Make, their shifts and leave as the four tiles', () => {
+  it('a commis: Make and the recipes, then Shifts & leave and Report a problem (ADR 113)', () => {
     const t = homeTiles(input([['PRODUCTION_TEAM', 'modify']], { production: true, menu: true }));
-    expect(t.map((x) => x.label)).toEqual(['My tasks', 'Make', 'My shifts', 'Leave']);
-  });
-
-  it('a server: their tasks, shifts, leave and reporting a problem', () => {
-    expect(homeTiles(input()).map((x) => x.label)).toEqual([
-      'My tasks',
-      'My shifts',
-      'Leave',
+    expect(t.map((x) => x.label)).toEqual([
+      'Make',
+      'Recipes',
+      'Shifts & leave',
       'Report a problem',
     ]);
   });
 
-  it("a cashier: importing the day's sales comes first (SAL-2)", () => {
+  it('a server: Shifts & leave and reporting a problem; their tasks are the Tasks tab', () => {
+    expect(homeTiles(input()).map((x) => x.label)).toEqual(['Shifts & leave', 'Report a problem']);
+  });
+
+  it('a room attendant: rooms and minibars first', () => {
+    const t = homeTiles(
+      input([
+        ['ROOMS', 'modify'],
+        ['MINIBAR', 'modify'],
+      ]),
+    );
+    expect(t.map((x) => x.key)).toEqual(['rooms', 'minibar', 'shifts', 'problem']);
+  });
+
+  it("a cashier: the day's import is its own card on Home, never a tile too (SAL-2)", () => {
     const t = homeTiles(input([['POS_IMPORT', 'modify']]));
-    expect(t.map((x) => x.label)).toEqual(['Import sales', 'My tasks', 'My shifts', 'Leave']);
-    expect(t[0]!.href).toBe('/menu/sales/import');
+    expect(t.map((x) => x.key)).not.toContain('posImport');
+    expect(screensFor(input([['POS_IMPORT', 'modify']])).map((s) => s.key)).toContain('posImport');
     // a server never sees it
     expect(screensFor(input()).map((s) => s.key)).not.toContain('posImport');
+  });
+
+  it('one Shifts & leave tile where they work shifts; Clock and Leave are its tabs', () => {
+    const keys = screensFor(input()).map((s) => s.key);
+    expect(keys).toContain('shifts');
+    expect(keys).not.toContain('clock');
+    expect(keys).not.toContain('leave');
+    // away from an outlet: leave alone
+    const away = screensFor(input([], { atWork: false })).map((s) => s.key);
+    expect(away).toContain('leave');
   });
 
   it('shifts, clock and swaps only for people who work at an outlet', () => {
@@ -61,7 +81,7 @@ describe('screens', () => {
     expect(away).not.toContain('swaps');
     expect(away).toContain('roster');
     const here = screensFor(input([['SHIFT_SWAPS', 'modify']])).map((s) => s.key);
-    expect(here).toEqual(expect.arrayContaining(['shifts', 'clock', 'swaps']));
+    expect(here).toEqual(expect.arrayContaining(['shifts', 'swaps']));
     // the Team side of Roster only for roster builders
     expect(here).not.toContain('roster');
   });

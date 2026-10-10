@@ -29,6 +29,7 @@ import {
 } from '@/lib/today-view';
 import { listHref, stockHref } from '@/lib/stock-view';
 import { countDueText } from '@/lib/stock-hub';
+import { BreakfastCard, EventsCard, MinibarCard, RoomsCard, TomorrowCard } from './home-cards';
 import { InboxItem } from './inbox/inbox-item';
 
 // Home is "Today" (UX-2), simplified for each role (UX-6, ADR 034): what the person must
@@ -58,14 +59,9 @@ export default async function Home() {
     ? homeTiles(screenInput(shell)).map((t) => ({
         ...t,
         badge:
-          t.key === 'tasks'
-            ? {
-                n: tasks.total + today.repairs.length,
-                tone: tasks.shown.some((x) => x.overdue) ? 'bad' : 'brand',
-              }
-            : t.key === 'make'
-              ? { n: today.tasks.filter((x) => x.kind === 'prep').length, tone: 'brand' }
-              : null,
+          t.key === 'make'
+            ? { n: today.tasks.filter((x) => x.kind === 'prep').length, tone: 'brand' }
+            : null,
       }))
     : [];
 
@@ -139,10 +135,20 @@ export default async function Home() {
 
       {today.push.length > 0 && <PushToday push={today.push} tz={tz} />}
 
+      {today.tomorrow && <TomorrowCard tomorrow={today.tomorrow} />}
+
       {(((frontline || tasks.total > 0) && shell.domains.has('TASKS')) ||
         today.repairs.length > 0) && (
         <NextTask tasks={tasks} repairs={today.repairs} tz={tz} frontline={frontline} />
       )}
+
+      {/* the person's own job (ADR 113): their rooms, minibars, breakfast and events */}
+      {today.rooms && <RoomsCard rooms={today.rooms} />}
+      {today.minibar && <MinibarCard minibar={today.minibar} />}
+      {today.breakfast && (today.breakfast.canEdit || today.profile === 'department') && (
+        <BreakfastCard breakfast={today.breakfast} />
+      )}
+      {today.events.length > 0 && <EventsCard events={today.events} tz={tz} />}
 
       {today.handedOn.length > 0 && <HandedOnCard tasks={today.handedOn} />}
 
@@ -761,7 +767,11 @@ const DEPT_FACT = {
  * one fact in its colour; a tap opens that department.
  */
 function Attention({ today }: { today: Today }) {
-  const tiles = departmentTiles(today.attention ?? []);
+  // a GM's Home names only the departments in the red (ADR 113): eleven tiles mostly saying
+  // "open shifts" is a wall; a department head still sees theirs, green or not
+  const tiles = departmentTiles(today.attention ?? []).filter(
+    (t) => today.profile !== 'outlet' || t.tone === 'bad',
+  );
   if (tiles.length === 0) return null;
   return (
     <section aria-label="Departments" className="space-y-2" data-testid="attention-card">
@@ -779,7 +789,9 @@ function Attention({ today }: { today: Today }) {
             >
               <Icon name={t.icon} className="size-7 shrink-0 text-slate-700" />
               <span className="min-w-0">
-                <span className="block truncate text-sm font-semibold">{t.label}</span>
+                <span className="block text-sm leading-tight font-semibold break-words">
+                  {t.label}
+                </span>
                 <span
                   className={`block text-sm font-medium ${DEPT_FACT[t.tone]}`}
                   data-testid="dept-fact"

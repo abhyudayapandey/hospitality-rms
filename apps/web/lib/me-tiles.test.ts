@@ -54,12 +54,13 @@ const role = (code: string) => {
   return tiles(r.formatDuties?.hotel ?? r.duties, r.formatHome?.hotel ?? r.home);
 };
 
-const FIRST = ['clock', 'shifts', 'leave', 'sops', 'problem'];
+// after their own work: their day (ADR 113)
+const DAY = ['shifts', 'sops', 'problem'];
 
 describe('Me tiles per person (ADR 106)', () => {
-  it("a pool attendant: his day's five, then his department's store; the rest under More", () => {
+  it("a pool attendant: his department's store, then his day; the rest under More", () => {
     const t = tiles(['WORKS_SHIFTS', 'USES_DEPARTMENT_STORE'], 'HOUSEKEEPING');
-    expect(t.mine).toEqual([...FIRST, 'stock']);
+    expect(t.mine).toEqual(['stock', ...DAY]);
     // what every shift worker may open is still there, folded
     expect(t.more).toEqual(
       expect.arrayContaining(['logbook', 'registers', 'breakage', 'linen', 'events', 'count']),
@@ -67,27 +68,30 @@ describe('Me tiles per person (ADR 106)', () => {
   });
 
   it('a commis: Make, the recipes and opened packs', () => {
-    expect(role('COMMIS').mine).toEqual([...FIRST, 'make', 'menu', 'opened']);
+    expect(role('COMMIS').mine).toEqual(['make', 'menu', 'opened', ...DAY]);
   });
 
   it('a server, a security guard: their day only', () => {
-    expect(role('SERVER').mine).toEqual(FIRST);
-    expect(role('SECURITY_GUARD').mine).toEqual(FIRST);
+    expect(role('SERVER').mine).toEqual(DAY);
+    expect(role('SECURITY_GUARD').mine).toEqual(DAY);
   });
 
-  it('a room attendant: minibars and rooms; a cashier: importing sales', () => {
-    expect(role('ROOM_ATTENDANT').mine).toEqual([...FIRST, 'minibar', 'rooms']);
-    expect(role('CASHIER').mine).toEqual([...FIRST, 'posImport']);
+  it('a room attendant: rooms and minibars first; a cashier: importing sales', () => {
+    expect(role('ROOM_ATTENDANT').mine).toEqual(['rooms', 'minibar', ...DAY]);
+    expect(role('CASHIER').mine).toEqual(['posImport', ...DAY]);
   });
 
   it('the accountant: bills and orders; the sales manager: events (ADR 109)', () => {
-    expect(role('ACCOUNTANT').mine).toEqual([...FIRST, 'orders', 'bills']);
-    expect(role('SALES_MANAGER').mine).toEqual([...FIRST, 'events']);
+    expect(role('ACCOUNTANT').mine).toEqual(['orders', 'bills', ...DAY]);
+    expect(role('SALES_MANAGER').mine).toEqual(['events', ...DAY]);
   });
 
   it('a department head: training and the department’s jobs, not the stock tabs', () => {
     const t = role('EXECUTIVE_HOUSEKEEPER');
     expect(t.mine).toEqual(expect.arrayContaining(['minibar', 'rooms', 'training', 'audits']));
+    // the department's work first (ADR 113), reading the sales folded away
+    expect(t.mine.slice(0, 2)).toEqual(['rooms', 'minibar']);
+    expect(t.mine).not.toContain('sales');
     for (const k of ['count', 'wastage', 'orders', 'transfers', 'bills']) {
       expect(t.mine).not.toContain(k);
     }

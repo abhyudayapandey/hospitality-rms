@@ -460,7 +460,7 @@ test('Roster is Me and Team: staff see only Me; the manager switches; HR has Tea
   await page.goto('/roster');
   await page.waitForURL('**/roster/my');
   await expect(sides(page)).toHaveCount(0);
-  await expect(tabs(page, 'Me')).toHaveText(['My shifts', 'Clock', 'Leave', 'Swaps']);
+  await expect(tabs(page, 'Me')).toHaveText(['Shifts', 'Clock', 'Leave', 'Swaps']);
 
   // the bar manager: Roster opens on Team; the switch goes to Me and back
   await signInAs(page, 'Test Bar Manager 3.0');
@@ -479,7 +479,7 @@ test('Roster is Me and Team: staff see only Me; the manager switches; HR has Tea
   );
   await sides(page).getByRole('link', { name: 'Me' }).click();
   await page.waitForURL('**/roster/my');
-  await expect(tabs(page, 'Me')).toHaveText(['My shifts', 'Clock', 'Leave', 'Swaps']);
+  await expect(tabs(page, 'Me')).toHaveText(['Shifts', 'Clock', 'Leave', 'Swaps']);
   await sides(page).getByRole('link', { name: 'Team' }).click();
   await page.waitForURL(/\/roster\/week/);
 

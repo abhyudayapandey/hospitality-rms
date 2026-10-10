@@ -46,6 +46,7 @@ import {
 import { jobTitles } from '@/lib/job-titles';
 import { companySettings } from '@/lib/settings-data';
 import { canOfferSwap } from '@/lib/roster-view';
+import { clockable } from '@/lib/today-view';
 
 // My shifts (ADR 018): the past 14 days and every upcoming published shift (six weeks),
 // grouped by day, today first. Past rows show In/Out and a status; time worked outside a
@@ -109,32 +110,36 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
     ['past', 'Past 14 days', data.timeline.filter((r) => r.local_date < today)],
   ];
   const next = nextShift(data.timeline, today);
+  const now = new Date();
   const strip = weekStrip(data.timeline, today, ctx.tz);
   return (
     <div className="space-y-4">
       <PollRefresh />
-      <PeopleHeader ctx={ctx} active="/roster/my" title="My shifts" />
+      <PeopleHeader ctx={ctx} active="/roster/my" title="Shifts & leave" />
       {!data.worker ? (
         <Empty>You are not set up as a worker, so you have no shifts.</Empty>
       ) : (
         <>
-          <Link
-            href="/roster/clock"
-            className="flex min-h-16 items-center justify-between rounded-xl bg-white p-4 ring-1 ring-slate-200"
-            data-testid="clock-card"
-          >
-            <span>
-              <span className="block font-medium">
-                {data.punch ? 'Clocked in' : 'Not clocked in'}
+          {/* Clock in only on a shift or near one (ADR 113): never on a day off */}
+          {(data.punch || data.shifts.some((s) => clockable(s, now))) && (
+            <Link
+              href="/roster/clock"
+              className="flex min-h-16 items-center justify-between rounded-xl bg-white p-4 ring-1 ring-slate-200"
+              data-testid="clock-card"
+            >
+              <span>
+                <span className="block font-medium">
+                  {data.punch ? 'Clocked in' : 'Not clocked in'}
+                </span>
+                <span className="text-sm text-slate-600">
+                  {data.punch
+                    ? `since ${formatTime(data.punch.clock_in_at, ctx.tz)}`
+                    : 'Tap to clock in'}
+                </span>
               </span>
-              <span className="text-sm text-slate-600">
-                {data.punch
-                  ? `since ${formatTime(data.punch.clock_in_at, ctx.tz)}`
-                  : 'Tap to clock in'}
-              </span>
-            </span>
-            <Icon name="clock" className="size-8 text-brand-700" />
-          </Link>
+              <Icon name="clock" className="size-8 text-brand-700" />
+            </Link>
+          )}
           {next && (
             <section
               aria-label="Your next shift"
@@ -191,6 +196,16 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
           <p className="text-sm text-slate-600">
             {data.worker.node_name} · {title(data.worker.role_code)} · {hours} h in the next 7 days
           </p>
+          {ctx.can('LEAVE') && (
+            <Link
+              href="/leave"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-xl font-semibold ring-1 ring-slate-300"
+              data-testid="ask-leave"
+            >
+              <Icon name="umbrella" className="size-5" />
+              Ask for leave
+            </Link>
+          )}
           {data.events.length > 0 && <EventsThisWeek events={data.events} tz={ctx.tz} />}
           {data.flags.length > 0 && (
             // the latest flag, with what happens next; earlier ones folded away so a run of
@@ -225,59 +240,69 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
             <div className="space-y-6" data-testid="my-shifts">
               {sections
                 .filter(([, , rows]) => rows.length > 0)
-                .map(([key, title, rows]) => (
-                  <section key={key} data-testid={`my-shifts-${key}`} className="space-y-2">
-                    <h2 className="text-sm font-semibold text-slate-500">{title}</h2>
-                    {(() => {
-                      const days = key === 'past' ? groupByDay(rows).reverse() : groupByDay(rows);
-                      // beyond a week, the rest of the upcoming shifts wait behind a tap
-                      const later =
-                        key === 'upcoming' ? days.filter(([d]) => d > addDays(today, 7)) : [];
-                      const soon = days.filter(([d]) => !later.some(([l]) => l === d));
-                      const day = ([d, dayRows]: [string, TimelineRow[]]) => (
-                        <div
-                          key={d}
-                          data-testid="shift-day"
-                          data-today={d === today ? 'true' : undefined}
-                          className={`space-y-1 rounded-xl p-2 ${d === today ? 'bg-sky-50 ring-2 ring-sky-300' : ''}`}
-                        >
-                          <p className="px-2 text-sm font-medium">
-                            {d === today ? `Today, ${formatDay(d)}` : formatDay(d)}
-                          </p>
-                          <ul className="space-y-1">
-                            {dayRows.map((r, i) => (
-                              <Row
-                                key={`${r.kind}-${r.shift_id ?? r.from_at}-${i}`}
-                                row={r}
-                                tz={ctx.tz}
-                                type={r.shift_id ? data.types.get(r.shift_id) : undefined}
-                                swap={
-                                  r.kind === 'shift' && r.status === 'upcoming' && r.shift_id
-                                    ? swaps.get(r.shift_id)
-                                    : undefined
-                                }
-                                canSwap={canSwap}
-                              />
-                            ))}
-                          </ul>
-                        </div>
-                      );
-                      return (
-                        <>
-                          {soon.map(day)}
-                          {later.length > 0 && (
-                            <details data-testid="shifts-later">
-                              <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-slate-700 underline">
-                                Later: {later.length} more {later.length === 1 ? 'day' : 'days'}
-                              </summary>
-                              <div className="space-y-2 pt-1">{later.map(day)}</div>
-                            </details>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </section>
-                ))}
+                .map(([key, title, rows]) => {
+                  const Wrap = key === 'past' ? 'details' : 'section';
+                  return (
+                    <Wrap key={key} data-testid={`my-shifts-${key}`} className="space-y-2">
+                      {key === 'past' ? (
+                        // what has been worked is folded: the clock tab has today's (ADR 113)
+                        <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-slate-500">
+                          {title}
+                        </summary>
+                      ) : (
+                        <h2 className="text-sm font-semibold text-slate-500">{title}</h2>
+                      )}
+                      {(() => {
+                        const days = key === 'past' ? groupByDay(rows).reverse() : groupByDay(rows);
+                        // beyond a week, the rest of the upcoming shifts wait behind a tap
+                        const later =
+                          key === 'upcoming' ? days.filter(([d]) => d > addDays(today, 7)) : [];
+                        const soon = days.filter(([d]) => !later.some(([l]) => l === d));
+                        const day = ([d, dayRows]: [string, TimelineRow[]]) => (
+                          <div
+                            key={d}
+                            data-testid="shift-day"
+                            data-today={d === today ? 'true' : undefined}
+                            className={`space-y-1 rounded-xl p-2 ${d === today ? 'bg-sky-50 ring-2 ring-sky-300' : ''}`}
+                          >
+                            <p className="px-2 text-sm font-medium">
+                              {d === today ? `Today, ${formatDay(d)}` : formatDay(d)}
+                            </p>
+                            <ul className="space-y-1">
+                              {dayRows.map((r, i) => (
+                                <Row
+                                  key={`${r.kind}-${r.shift_id ?? r.from_at}-${i}`}
+                                  row={r}
+                                  tz={ctx.tz}
+                                  type={r.shift_id ? data.types.get(r.shift_id) : undefined}
+                                  swap={
+                                    r.kind === 'shift' && r.status === 'upcoming' && r.shift_id
+                                      ? swaps.get(r.shift_id)
+                                      : undefined
+                                  }
+                                  canSwap={canSwap}
+                                />
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                        return (
+                          <>
+                            {soon.map(day)}
+                            {later.length > 0 && (
+                              <details data-testid="shifts-later">
+                                <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-slate-700 underline">
+                                  Later: {later.length} more {later.length === 1 ? 'day' : 'days'}
+                                </summary>
+                                <div className="space-y-2 pt-1">{later.map(day)}</div>
+                              </details>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </Wrap>
+                  );
+                })}
             </div>
           )}
         </>

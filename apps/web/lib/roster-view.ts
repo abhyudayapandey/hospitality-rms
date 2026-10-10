@@ -13,7 +13,7 @@ export interface PeopleTabDef {
 }
 
 export const PEOPLE_TABS = [
-  { href: '/roster/my', label: 'My shifts', side: 'me' },
+  { href: '/roster/my', label: 'Shifts', side: 'me' },
   { href: '/roster/clock', label: 'Clock', side: 'me' },
   { href: '/leave', label: 'Leave', side: 'me' },
   { href: '/roster/swaps', label: 'Swaps', side: 'me' },

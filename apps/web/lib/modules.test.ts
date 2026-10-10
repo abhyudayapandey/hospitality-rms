@@ -60,7 +60,7 @@ describe('what disappears from the screens', () => {
       personal: true,
       exceptions: false,
     });
-    expect(t.me.map((x) => x.label)).toEqual(['My shifts', 'Clock', 'Leave']);
+    expect(t.me.map((x) => x.label)).toEqual(['Shifts', 'Clock', 'Leave']);
   });
   it('a cook without Production loses Make', () => {
     const input: NavInput = {

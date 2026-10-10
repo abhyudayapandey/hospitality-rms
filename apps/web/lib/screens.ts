@@ -71,27 +71,32 @@ export interface Screen {
 const can = (i: ScreenInput, domain: string, access: 'view' | 'modify' = 'view') =>
   i.access.has(domain) && (access === 'view' || i.access.get(domain) === 'modify');
 
+/** Works shifts at an outlet: My shifts, with Clock and Leave as its tabs (ADR 113). */
+const worksShifts = (i: ScreenInput) => i.atWork && can(i, 'ROSTER');
+
 const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
   {
+    // one tile for shifts, clocking in and leave: they are the tabs of one screen (ADR 113)
     key: 'shifts',
     href: '/roster/my',
-    label: 'My shifts',
+    label: 'Shifts & leave',
     icon: 'calendar',
-    show: (i) => i.atWork && can(i, 'ROSTER'),
+    show: (i) => worksShifts(i),
   },
   {
+    // clocking in without a roster of their own to see
     key: 'clock',
     href: '/roster/clock',
     label: 'Clock',
     icon: 'clock',
-    show: (i) => i.atWork && can(i, 'ATTENDANCE', 'modify'),
+    show: (i) => i.atWork && can(i, 'ATTENDANCE', 'modify') && !worksShifts(i),
   },
   {
     key: 'leave',
     href: '/leave',
     label: 'Leave',
     icon: 'umbrella',
-    show: (i) => can(i, 'LEAVE'),
+    show: (i) => can(i, 'LEAVE') && !worksShifts(i),
   },
   {
     key: 'swaps',
@@ -423,8 +428,28 @@ export function ownWork(i: ScreenInput, domain: string): boolean {
   return !everyone || (everyone === 'view' && mine === 'modify');
 }
 
-/** First on Me wherever the person has them (ADR 106). */
-const FIRST: readonly ScreenKey[] = ['clock', 'shifts', 'leave', 'sops', 'problem'];
+/**
+ * After the person's own work on Me, wherever they have them (ADR 106, 113): their shifts
+ * (with clocking in and leave), their SOPs and reporting a problem.
+ */
+const DAY: readonly ScreenKey[] = ['shifts', 'clock', 'leave', 'sops', 'problem'];
+
+/**
+ * The person's own work in the order a day uses it (ADR 113): what they make, the rooms and
+ * what goes with them, then the stores; screens not named here follow in the Me order.
+ */
+const WORK_ORDER: readonly ScreenKey[] = [
+  'posImport',
+  'make',
+  'menu',
+  'opened',
+  'rooms',
+  'minibar',
+  'linen',
+  'breakfast',
+  'events',
+  'stock',
+];
 
 /** Screens that are tabs of the Stock screen: their own tile only without Stock (ADR 048). */
 const STOCK_TABS: ReadonlySet<ScreenKey> = new Set([
@@ -477,6 +502,9 @@ function isOwn(s: Screen, i: ScreenInput): boolean {
     // recipes for those who make what is in them, or who see the recipes of the stores they use
     case 'menu':
       return i.production || ['MENU', 'DERIVED_MENU', 'RECIPES'].some((d) => ownWork(i, d));
+    // reading the sales is not a day's work; keeping them is (ADR 113)
+    case 'sales':
+      return can(i, 'SALES', 'modify');
     default: {
       if (STOCK_TABS.has(s.key) && canOpen('stock', i)) return false;
       return (OWN_DOMAINS[s.key] ?? []).some((d) => ownWork(i, d));
@@ -485,19 +513,28 @@ function isOwn(s: Screen, i: ScreenInput): boolean {
 }
 
 /**
- * Me's tiles for one person (ADR 106): first Clock, My shifts, Leave, SOPs and Report a problem
- * where they have them, then the work their own duties give them; the rest under "More".
- * `hide` leaves out what the bottom nav already offers. Nothing is folded when fewer than three
- * would be on either side (an account owner's few screens, a short list of extras).
+ * Me's tiles for one person (ADR 106, 113): first the work their own duties give them (a
+ * housekeeper's rooms, a commis's Make), then Shifts & leave, SOPs and Report a problem where
+ * they have them; the rest under "More". `hide` leaves out what the bottom nav already offers.
+ * Nothing is folded when fewer than three would be on either side (an account owner's few
+ * screens, a short list of extras).
  */
 export function meTiles(
   i: ScreenInput,
   hide: ReadonlySet<string> = new Set(),
 ): { mine: Screen[]; more: Screen[] } {
   const all = screensFor(i).filter((s) => !hide.has(s.href));
-  const first = FIRST.flatMap((k) => all.filter((s) => s.key === k));
-  const own = all.filter((s) => !FIRST.includes(s.key) && isOwn(s, i));
-  const mine = [...first, ...own];
+  const day = DAY.flatMap((k) => all.filter((s) => s.key === k));
+  const rank = (k: ScreenKey) => {
+    const n = WORK_ORDER.indexOf(k);
+    return n < 0 ? WORK_ORDER.length : n;
+  };
+  const own = all
+    .filter((s) => !DAY.includes(s.key) && isOwn(s, i))
+    .map((s, n) => ({ s, n }))
+    .sort((a, b) => rank(a.s.key) - rank(b.s.key) || a.n - b.n)
+    .map((x) => x.s);
+  const mine = [...own, ...day];
   const more = all.filter((s) => !mine.includes(s));
   return mine.length < 3 || more.length < 3
     ? { mine: [...mine, ...more], more: [] }
@@ -505,22 +542,29 @@ export function meTiles(
 }
 
 /**
- * Frontline Home's four tiles (UX-6): the cashier's import first (SAL-2), their tasks, what
- * they make, the store they keep, their shifts and leave, then reporting a problem. Clocking in is the card above them.
+ * Frontline Home's four tiles (UX-6, ADR 113): the person's own work first (what they make,
+ * their rooms, the store they keep), then Shifts & leave and Report a problem. Never what the
+ * bottom nav or a card on Home already offers: their tasks are a tab, the cashier's import its
+ * own card.
  */
-const TILE_ORDER: readonly ScreenKey[] = [
-  'posImport',
-  'tasks',
+const OWN_TILES: readonly ScreenKey[] = [
   'make',
-  'stock',
-  'shifts',
-  'leave',
-  'problem',
   'menu',
-  'swaps',
+  'opened',
+  'rooms',
+  'minibar',
+  'linen',
+  'breakfast',
+  'stock',
 ];
+const DAY_TILES: readonly ScreenKey[] = ['shifts', 'problem', 'clock', 'leave', 'swaps'];
 
 export function homeTiles(i: ScreenInput, max = 4): Screen[] {
   const by = new Map(screensFor(i).map((s) => [s.key, s]));
-  return TILE_ORDER.flatMap((k) => by.get(k) ?? []).slice(0, max);
+  const own = OWN_TILES.flatMap((k) => by.get(k) ?? []);
+  const day = DAY_TILES.flatMap((k) => by.get(k) ?? []);
+  // Shifts & leave and Report a problem always have their place; own work takes the rest
+  const keep = day.slice(0, 2);
+  const room = Math.max(0, max - keep.length);
+  return [...own.slice(0, room), ...keep, ...own.slice(room), ...day.slice(2)].slice(0, max);
 }

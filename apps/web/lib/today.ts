@@ -2,6 +2,18 @@ import 'server-only';
 import { addDays, localToday, weekStart } from './dates';
 import { sql, withUser, type Tx } from './db';
 import { myBriefing, type MyBriefing } from './briefing';
+import {
+  homeBreakfast,
+  homeEvents,
+  homeMinibar,
+  homeRooms,
+  homeTomorrow,
+  type HomeBreakfast,
+  type HomeEvent,
+  type HomeMinibar,
+  type HomeRooms,
+  type HomeTomorrow,
+} from './home-work';
 import { inboxEntries, type InboxEntry } from './inbox';
 import { expiryList } from './inventory';
 import { navProfile, type NavProfile } from './nav';
@@ -130,6 +142,13 @@ export interface Today {
   compliance: ComplianceInput | null;
   /** the business day now and the day to plan (ADR 112): tomorrow from the evening */
   plan: PlanDay | null;
+  /** the person's own job on Home (ADR 113) */
+  rooms: HomeRooms | null;
+  minibar: HomeMinibar | null;
+  breakfast: HomeBreakfast | null;
+  events: HomeEvent[];
+  /** from the evening, tomorrow's roster where they build it */
+  tomorrow: HomeTomorrow | null;
 }
 
 export interface PlanDay {
@@ -359,6 +378,15 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     // today's briefing: everyone who works at the outlet reads it (ADR 070)
     const briefing = atWork && shell.modules.has('briefing') ? await myBriefing(tx) : null;
     const plan = shell.home ? await planDay(tx, shell.home.id) : null;
+    // the job's own cards (ADR 113)
+    const rooms = await homeRooms(tx, shell);
+    const minibar = await homeMinibar(tx, shell);
+    const breakfast = await homeBreakfast(tx, shell);
+    const events = await homeEvents(tx, shell);
+    const tomorrow =
+      plan?.evening && shell.domains.get('ROSTER') === 'modify'
+        ? await homeTomorrow(tx, plan.day)
+        : null;
 
     let numbers: TodayNumbers | null = null;
     let leagueTable: TodayLeague | null = null;
@@ -400,12 +428,14 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
         }
       }
     }
+    // a compliance reminder is a row of the Compliance card, never a task as well (ADR 113)
+    const onCard = new Set((compliance?.rows ?? []).flatMap((r) => (r.task_id ? [r.task_id] : [])));
     return {
       profile,
       shift: currentShift(shifts, now),
       nextShift: laterShift(shifts, now),
       punch,
-      tasks,
+      tasks: tasks.filter((t) => !onCard.has(t.id)),
       handedOn,
       repairs,
       approvals: { shown: inbox.slice(0, HOME_APPROVALS), total: inbox.length, toAssign: assign },
@@ -420,6 +450,11 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       push,
       briefing,
       plan,
+      rooms,
+      minibar,
+      breakfast,
+      events,
+      tomorrow,
       targets: (await companySettings(tx)).targets,
     };
   });
