@@ -39,25 +39,25 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           >
             {initials(shell.user.name)}
           </span>
+          {/* the name on its own line and the job under it, so neither is cut short; the
+              place only when it says something the job does not ("Cashier · Cashier") */}
           <span className="min-w-0">
-            <span className="flex min-w-0 items-baseline gap-1.5">
-              <span className="truncate text-sm font-semibold" data-testid="current-user">
-                {shell.user.name}
-              </span>
+            <span className="block truncate text-sm font-semibold" data-testid="current-user">
+              {shell.user.name}
+            </span>
+            <span className="flex min-w-0 text-xs text-slate-500">
               {shell.jobTitle && (
-                <span
-                  className="shrink-[2] truncate text-xs text-slate-500"
-                  data-testid="current-role"
-                >
+                <span className="shrink-0" data-testid="current-role">
                   {shell.jobTitle}
                 </span>
               )}
+              {shell.home && shell.home.name !== shell.jobTitle && (
+                <span className="truncate" data-testid="home-place">
+                  {shell.jobTitle && '\u00a0· '}
+                  {shell.home.name}
+                </span>
+              )}
             </span>
-            {shell.home && (
-              <span className="block truncate text-xs text-slate-500" data-testid="home-place">
-                {shell.home.name}
-              </span>
-            )}
           </span>
         </Link>
         <div className="flex items-center gap-1">

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Fragment } from 'react';
+import { taskIcon } from '@outlet-ops/domain';
 import { FirstRun } from '@/components/first-run';
 import { ExpiryBanner } from '@/components/expiry-banner';
 import { Icon, type IconName } from '@/components/icon';
@@ -459,9 +460,8 @@ function NextTask({
         <>
           <Link href={`/tasks/${next.id}`} className="mt-2 flex items-center gap-3">
             <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-              <Icon
-                name={next.kind === 'prep' ? 'pot' : next.kind === 'checklist' ? 'tasks' : 'list'}
-              />
+              {/* the task's own picture, as on the To do list (ADR 079, 098) */}
+              <Icon name={taskIcon(next.title, next.kind ?? 'one_off')} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block font-semibold">{next.title}</span>
@@ -781,12 +781,17 @@ function Numbers({
   targets: Record<TargetKey, number>;
 }) {
   const by = new Map(numbers.rows.map((r) => [r.measure, r]));
+  // before the day's sales are in, ₹0 and "–" for cost read as broken (ADR 098): say so, and
+  // keep only what is already true, the wastage
+  const noSales = numbers.report === 'outlet_flash' && !(Number(by.get('sales')?.value ?? 0) > 0);
   const tiles: { key: string; row: MeasureRow | undefined; label?: string }[] =
     numbers.report === 'outlet_flash'
-      ? ['sales', 'food_cost_pct', 'bar_cost_pct', 'wastage'].map((k) => ({
-          key: k,
-          row: by.get(k),
-        }))
+      ? (noSales ? ['wastage'] : ['sales', 'food_cost_pct', 'bar_cost_pct', 'wastage']).map(
+          (k) => ({
+            key: k,
+            row: by.get(k),
+          }),
+        )
       : [
           { key: 'shifts', row: by.get('shifts'), label: 'On shift today' },
           {
@@ -804,6 +809,15 @@ function Numbers({
   return (
     <section aria-label="Today's numbers" className={card} data-testid="numbers-card">
       <h2 className={cardTitle}>Today so far · {numbers.place.name}</h2>
+      {noSales && (
+        <p
+          className="mt-2 flex items-center gap-2 text-sm text-slate-600"
+          data-testid="no-sales-yet"
+        >
+          <Icon name="sales" className="size-5 shrink-0" />
+          No sales in yet today. They come in with the day&apos;s sales.
+        </p>
+      )}
       {/* each figure opens its own report: its trend, else the report (ADR 057) */}
       <div className="mt-3 grid grid-cols-2 gap-2">
         {tiles.map(({ key, row, label }) => (

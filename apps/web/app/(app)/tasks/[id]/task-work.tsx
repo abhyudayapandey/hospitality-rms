@@ -364,7 +364,7 @@ function StepInputs({
       />
     ) : needsPhoto ? (
       <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-        Photo upload isn&apos;t set up here, so this step can&apos;t be recorded.
+        Photos can&apos;t be taken here right now. Tell your manager.
       </p>
     ) : null;
 
