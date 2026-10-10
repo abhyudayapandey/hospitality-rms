@@ -106,7 +106,7 @@ async function signOffTask(c: PoolClient, checklist: string) {
   const { rows } = await c.query<{ id: string; assignee: string; status: string }>(
     `select t.id, u.username as assignee, t.status
        from ops.task t join core.app_user u on u.id = t.assignee_user_id
-      where t.signs_off = $1 order by t.created_at desc`,
+      where t.signs_off = $1 order by t.created_at desc, t.id desc`,
     [checklist],
   );
   return rows;
