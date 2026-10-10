@@ -120,3 +120,59 @@ describe("an event's people (ADR 113)", () => {
     });
   });
 });
+
+describe('who is on shift here today (ADR 113)', () => {
+  const KITCHEN = 'TEST-HOTEL-1.0-KITCHEN';
+
+  it('those rostered today, for whoever gives out tasks there; nobody else may ask', async () => {
+    await inRolledBackTx(async (c) => {
+      const w = (
+        await c.query<{ id: string; user_id: string; role_code: string }>(
+          `select id, owner_user_id as user_id, role_code from hr.worker
+            where org_node_id = $1 and status = 'active'
+              and owner_user_id = $2`,
+          [ids.node(KITCHEN), ids.user('test.commis-b.1.0')],
+        )
+      ).rows[0]!;
+      const on = () =>
+        run<{ id: string }>(
+          c,
+          'test.executive-chef.1.0',
+          `select x::text as id from ops.on_shift_today($1) x`,
+          [ids.node(KITCHEN)],
+        );
+      await c.query(
+        `delete from hr.shift_assignment a using hr.shift s
+          where s.id = a.shift_id and a.owner_user_id = $1
+            and s.local_date = rpt.business_date(now(), ops.tz_of($2))`,
+        [w.user_id, ids.node(KITCHEN)],
+      );
+      expect((await on()).map((r) => r.id)).not.toContain(w.user_id);
+      const shift = (
+        await c.query<{ id: string }>(
+          `insert into hr.shift (tenant_id, org_node_id, local_date, start_at, end_at, role_code,
+                                 headcount, status)
+           values ($1, $2, rpt.business_date(now(), ops.tz_of($2)), now(), now() + interval '6 hours',
+                   $3, 1, 'published')
+           returning id`,
+          [ids.tenant(), ids.node(KITCHEN), w.role_code],
+        )
+      ).rows[0]!.id;
+      await c.query(
+        `insert into hr.shift_assignment (tenant_id, shift_id, worker_id, owner_user_id,
+                                          org_node_id, start_at, end_at)
+         select $1, s.id, $3, $4, s.org_node_id, s.start_at, s.end_at from hr.shift s
+          where s.id = $2`,
+        [ids.tenant(), shift, w.id, w.user_id],
+      );
+      expect((await on()).map((r) => r.id)).toContain(w.user_id);
+      const commis = await attemptAs(
+        c,
+        ids.user('test.commis.1.0'),
+        `select * from ops.on_shift_today($1)`,
+        [ids.node(KITCHEN)],
+      );
+      expect(commis.error).toMatch(/NOT_AUTHORISED/);
+    });
+  });
+});

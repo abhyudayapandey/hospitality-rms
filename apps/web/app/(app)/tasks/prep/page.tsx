@@ -4,7 +4,7 @@ import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { placesFor } from '@/lib/places';
 import type { SearchParams } from '@/lib/params';
-import { assignablePeople, jobRolesAt, prepSuggestions, taskTabs } from '@/lib/tasks';
+import { peopleOnShift, jobRolesAt, prepSuggestions, taskTabs } from '@/lib/tasks';
 import { PrepForm } from './prep-form';
 import { planDay } from '@/lib/today';
 import { addDays } from '@/lib/dates';
@@ -34,7 +34,7 @@ export default async function PrepPage({ searchParams }: { searchParams: SearchP
       team,
       canCreate,
       plan,
-      people: canCreate && team ? await assignablePeople(tx, team) : [],
+      people: canCreate && team ? await peopleOnShift(tx, team) : [],
       roles: canCreate && team ? await jobRolesAt(tx, team) : [],
     };
   });

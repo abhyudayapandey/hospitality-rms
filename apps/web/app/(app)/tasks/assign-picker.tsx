@@ -16,6 +16,14 @@ export function AssignPicker({
   people: Person[];
   roles: JobRole[];
 }) {
+  // marked where the page asked who is on shift (a task made now, not a checklist)
+  const shifts = people.some((p) => p.on_shift !== undefined);
+  const option = (p: Person) => (
+    <option key={p.user_id} value={p.user_id}>
+      {p.name}
+      {p.job_role ? ` (${p.job_role})` : ''}
+    </option>
+  );
   const modes = [
     ['person', 'A person'],
     ['job_role', 'A job role'],
@@ -42,7 +50,12 @@ export function AssignPicker({
               onChange={() =>
                 onChange(
                   mode === 'person'
-                    ? { mode, user_id: people[0]?.user_id ?? '' }
+                    ? // someone on shift today, never whoever is first by name (ADR 113)
+                      {
+                        mode,
+                        user_id:
+                          (shifts ? people.find((p) => p.on_shift) : people[0])?.user_id ?? '',
+                      }
                     : mode === 'job_role'
                       ? { mode, role: roles[0]?.code ?? '' }
                       : { mode },
@@ -54,19 +67,38 @@ export function AssignPicker({
         ))}
       </div>
       {value.mode === 'person' && (
-        <select
-          aria-label="Person"
-          value={value.user_id}
-          onChange={(e) => onChange({ mode: 'person', user_id: e.target.value })}
-          className={inputClass}
-        >
-          {people.map((p) => (
-            <option key={p.user_id} value={p.user_id}>
-              {p.name}
-              {p.job_role ? ` (${p.job_role})` : ''}
-            </option>
-          ))}
-        </select>
+        <>
+          <select
+            aria-label="Person"
+            value={value.user_id}
+            onChange={(e) => onChange({ mode: 'person', user_id: e.target.value })}
+            className={inputClass}
+          >
+            {!value.user_id && <option value="">Choose…</option>}
+            {shifts ? (
+              <>
+                <optgroup label="On shift today">
+                  {people.filter((p) => p.on_shift).map(option)}
+                </optgroup>
+                <optgroup label="Not on shift today">
+                  {people.filter((p) => !p.on_shift).map(option)}
+                </optgroup>
+              </>
+            ) : (
+              people.map(option)
+            )}
+          </select>
+          {shifts && !people.some((p) => p.on_shift) && (
+            <p className="text-sm text-amber-800" data-testid="nobody-on-shift">
+              No one is on shift here today.
+            </p>
+          )}
+          {shifts && people.find((p) => p.user_id === value.user_id)?.on_shift === false && (
+            <p className="text-sm text-amber-800" data-testid="not-on-shift">
+              They aren&apos;t on shift today.
+            </p>
+          )}
+        </>
       )}
       {value.mode === 'job_role' && (
         <select

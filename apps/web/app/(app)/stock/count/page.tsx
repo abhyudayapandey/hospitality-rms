@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { InfoTip } from '@/components/info-tip';
 import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
@@ -29,10 +30,11 @@ export default async function CountPage({ searchParams }: { searchParams: Search
   return (
     <div className="space-y-4">
       <SupplyHeader ctx={ctx} active="/stock/count" title="Stock count" />
-      <p className="text-sm text-slate-600">
+      {/* the rule behind a "?" (ADR 099, 113) */}
+      <InfoTip label="What happens to a difference">
         Count what is on the shelf. Differences within each item&apos;s tolerance are posted
         straight away; bigger ones go to the outlet manager for approval.
-      </p>
+      </InfoTip>
       {/* a count already started comes first: it is what to do now (ADR 053) */}
       {open && (
         <Link

@@ -60,11 +60,39 @@ begin
      order by q.role_code;
 end $$;
 
+-- Who is on shift at a place today (ADR 113): a published shift on today's business day, or
+-- clocked in now. Person pickers put them first and say so; whoever gives out tasks there
+-- (TASKS modify) may ask.
+create function ops.on_shift_today(p_node uuid) returns setof uuid
+language plpgsql stable security definer
+set search_path = pg_catalog, core, hr, ops, rpt, extensions
+as $$
+begin
+  if not core.can('TASKS', 'modify', p_node, null) then
+    raise exception 'NOT_AUTHORISED' using detail = 'TASKS modify';
+  end if;
+  return query
+    select distinct w.owner_user_id
+      from hr.worker w
+      join core.hierarchy_node h on h.id = w.org_node_id
+      join core.hierarchy_node n on n.id = p_node and n.tenant_id = w.tenant_id
+     where w.status = 'active' and h.path operator(extensions.<@) n.path
+       and (ops.clocked_in(w.owner_user_id, now())
+            or exists (select 1 from hr.shift_assignment a
+                         join hr.shift s on s.id = a.shift_id and s.status = 'published'
+                        where a.owner_user_id = w.owner_user_id and a.status = 'assigned'
+                          and s.local_date = rpt.business_date(now(), ops.tz_of(p_node))));
+end $$;
+
+revoke execute on function ops.on_shift_today(uuid) from public, platform_loader;
+grant execute on function ops.on_shift_today(uuid) to app_rw;
+
 revoke execute on function ops.event_staffing(uuid) from public, platform_loader;
 grant execute on function ops.event_staffing(uuid) to app_rw;
 
 -- migrate:down
 -- Forward-only in production (ADR 005); this restores the previous shape for local work.
+drop function ops.on_shift_today(uuid);
 drop function ops.event_staffing(uuid);
 create or replace function ops.reads_breakfast(p_outlet uuid) returns boolean
 language sql stable security definer

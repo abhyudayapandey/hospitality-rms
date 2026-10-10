@@ -95,12 +95,17 @@ test('the laundry exchange and a uniform', async ({ page }) => {
   try {
     await signInAs(page, 'Test Laundry Attendant 1.0');
     await page.goto(`/linen?place=${hk}`);
+    // sending and taking back are two moments (ADR 113): Send asks only for what goes out
     await main(page).getByLabel('Test Bath Towel sent').fill('30');
+    await main(page).getByRole('button', { name: 'Save what went out' }).click();
+    await main(page).getByRole('link', { name: 'Receive (1 out)' }).click();
+    await page.waitForURL(/view=receive/);
+    const towel = main(page).getByTestId('receive-line').filter({ hasText: 'Test Bath Towel' });
+    await expect(towel).toContainText('30 out');
     await main(page).getByLabel('Test Bath Towel back').fill('12');
-    await main(page).getByRole('button', { name: "Save today's exchange" }).click();
-    await expect(
-      main(page).getByTestId('at-laundry').filter({ hasText: 'Test Bath Towel' }),
-    ).toContainText('18');
+    await expect(towel.getByTestId('receive-short')).toHaveText('18 short');
+    await main(page).getByRole('button', { name: 'Save what came back' }).click();
+    await expect(towel).toContainText('18 out');
 
     await main(page).getByRole('link', { name: 'Uniforms' }).click();
     await page.waitForURL(/view=uniforms/);

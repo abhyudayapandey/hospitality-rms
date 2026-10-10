@@ -3,7 +3,7 @@ import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { placesFor } from '@/lib/places';
 import type { SearchParams } from '@/lib/params';
-import { assignablePeople, jobRolesAt, taskTabs } from '@/lib/tasks';
+import { peopleOnShift, jobRolesAt, taskTabs } from '@/lib/tasks';
 import { TaskForm } from './task-form';
 
 // New one-off task (ADR 020) at a place where the person manages tasks: for a person, a
@@ -13,7 +13,7 @@ export default async function NewTaskPage({ searchParams }: { searchParams: Sear
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => ({
     tabs: await taskTabs(tx),
-    people: place ? await assignablePeople(tx, place.id) : [],
+    people: place ? await peopleOnShift(tx, place.id) : [],
     roles: place ? await jobRolesAt(tx, place.id) : [],
   }));
   return (

@@ -8,37 +8,52 @@ import { Stepper } from '@/components/stepper';
 import { useHydrated } from '@/lib/use-hydrated';
 import { issueUniform, recordLaundry, returnUniform } from './actions';
 
-/** The day's laundry exchange (ADR 094): how many of each went soiled and came back fresh. */
-export function LaundryForm({
+/** Today's row for an item: what the day already has, added to, never replaced (ADR 113). */
+export interface LaundryToday {
+  item_id: string;
+  sent: number;
+  received: number;
+}
+
+/**
+ * Sending to the laundry (ADR 094, 113): only what goes out, each item a − / + with nothing
+ * filled in. Added to what today already sent.
+ */
+export function SendForm({
   place,
   day,
   items,
+  today,
 }: {
   place: string;
   day: string;
   items: { item_id: string; name: string }[];
+  today: LaundryToday[];
 }) {
   const router = useRouter();
   const hydrated = useHydrated();
   const [pending, start] = useTransition();
-  const [v, setV] = useState<Record<string, { sent: string; received: string }>>({});
+  const [v, setV] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
-  const set = (id: string, k: 'sent' | 'received', val: string) =>
-    setV({ ...v, [id]: { sent: v[id]?.sent ?? '', received: v[id]?.received ?? '', [k]: val } });
+  const [saved, setSaved] = useState(false);
   const save = () =>
     start(async () => {
       setError(null);
       const lines = items
-        .filter((i) => (v[i.item_id]?.sent ?? '') !== '' || (v[i.item_id]?.received ?? '') !== '')
-        .map((i) => ({
-          item_id: i.item_id,
-          sent: Number(v[i.item_id]?.sent || 0),
-          received: Number(v[i.item_id]?.received || 0),
-        }));
-      if (lines.length === 0) return setError('Enter what went or came back.');
+        .filter((i) => Number(v[i.item_id] || 0) > 0)
+        .map((i) => {
+          const t = today.find((x) => x.item_id === i.item_id);
+          return {
+            item_id: i.item_id,
+            sent: (t?.sent ?? 0) + Number(v[i.item_id]),
+            received: t?.received ?? 0,
+          };
+        });
+      if (lines.length === 0) return setError('Enter what goes to the laundry.');
       const r = await recordLaundry(place, day, lines);
       if (!r.ok) return setError(r.message);
       setV({});
+      setSaved(true);
       router.refresh();
     });
   if (items.length === 0) return <p className="text-sm text-slate-600">No linen is kept here.</p>;
@@ -50,43 +65,122 @@ export function LaundryForm({
         save();
       }}
     >
-      <h2 className="font-semibold">Today with the laundry</h2>
       <ul className="divide-y divide-slate-100">
         {items.map((i) => (
-          // the name on its own line and the two numbers under it, labelled, so a long name
-          // never squeezes the inputs at 380px
+          // the name on its own line and the number under it, so a long name never squeezes it
           <li key={i.item_id} className="space-y-2 py-3" data-testid="laundry-line">
             <span className="flex items-center gap-3">
               <ItemThumb name={i.name} size="size-8" />
               <span className="min-w-0 flex-1 text-sm font-medium break-words">{i.name}</span>
             </span>
-            {/* − / + for each, one under the other, so a number is tapped, not typed (ADR 098) */}
-            <span className="block space-y-2">
-              <span className="block space-y-1">
-                <span className="text-xs text-slate-500">Sent to laundry</span>
-                <Stepper
-                  value={v[i.item_id]?.sent ?? ''}
-                  onChange={(x) => set(i.item_id, 'sent', x)}
-                  label={`${i.name} sent`}
-                  min={0}
-                />
-              </span>
-              <span className="block space-y-1">
-                <span className="text-xs text-slate-500">Came back</span>
-                <Stepper
-                  value={v[i.item_id]?.received ?? ''}
-                  onChange={(x) => set(i.item_id, 'received', x)}
-                  label={`${i.name} back`}
-                  min={0}
-                />
-              </span>
-            </span>
+            <Stepper
+              value={v[i.item_id] ?? ''}
+              onChange={(x) => {
+                setV({ ...v, [i.item_id]: x });
+                setSaved(false);
+              }}
+              label={`${i.name} sent`}
+              min={0}
+            />
           </li>
         ))}
       </ul>
       <ErrorBox message={error} />
+      {saved && !pending && (
+        <p role="status" className="text-sm font-semibold text-emerald-700">
+          Sent.
+        </p>
+      )}
       <button type="submit" disabled={!hydrated || pending} className={primaryButton}>
-        Save today&apos;s exchange
+        Save what went out
+      </button>
+    </form>
+  );
+}
+
+/**
+ * What came back (ADR 113): each item still at the laundry, with how many and since when, and a
+ * − / + for what came back; less than went out says how many are short.
+ */
+export function ReceiveForm({
+  place,
+  day,
+  out,
+  today,
+}: {
+  place: string;
+  day: string;
+  out: { item_id: string; name: string; at_laundry: number; since: string | null }[];
+  today: LaundryToday[];
+}) {
+  const router = useRouter();
+  const hydrated = useHydrated();
+  const [pending, start] = useTransition();
+  const [v, setV] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+  const save = () =>
+    start(async () => {
+      setError(null);
+      const lines = out
+        .filter((i) => Number(v[i.item_id] || 0) > 0)
+        .map((i) => {
+          const t = today.find((x) => x.item_id === i.item_id);
+          return {
+            item_id: i.item_id,
+            sent: t?.sent ?? 0,
+            received: (t?.received ?? 0) + Number(v[i.item_id]),
+          };
+        });
+      if (lines.length === 0) return setError('Enter what came back.');
+      const r = await recordLaundry(place, day, lines);
+      if (!r.ok) return setError(r.message);
+      setV({});
+      router.refresh();
+    });
+  return (
+    <form
+      className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200"
+      onSubmit={(e) => {
+        e.preventDefault();
+        save();
+      }}
+    >
+      <ul className="divide-y divide-slate-100">
+        {out.map((i) => {
+          const back = Number(v[i.item_id] || 0);
+          const short = back > 0 && back < i.at_laundry ? i.at_laundry - back : 0;
+          return (
+            <li key={i.item_id} className="space-y-2 py-3" data-testid="receive-line">
+              <span className="flex items-center gap-3">
+                <ItemThumb name={i.name} size="size-8" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium break-words">{i.name}</span>
+                  <span className="block text-xs text-slate-500 tabular-nums">
+                    {i.at_laundry} out{i.since ? ` since ${i.since}` : ''}
+                  </span>
+                </span>
+                {short > 0 && (
+                  <span
+                    className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800"
+                    data-testid="receive-short"
+                  >
+                    {short} short
+                  </span>
+                )}
+              </span>
+              <Stepper
+                value={v[i.item_id] ?? ''}
+                onChange={(x) => setV({ ...v, [i.item_id]: x })}
+                label={`${i.name} back`}
+                min={0}
+              />
+            </li>
+          );
+        })}
+      </ul>
+      <ErrorBox message={error} />
+      <button type="submit" disabled={!hydrated || pending} className={primaryButton}>
+        Save what came back
       </button>
     </form>
   );

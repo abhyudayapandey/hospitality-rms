@@ -66,6 +66,8 @@ test('a problem goes to Engineering, who assigns the technician', async ({ page 
   const title = `Fryer pilot light out ${Date.now()}`;
   await signInAs(page, 'Test Commis 1.0');
   await page.goto(`/tasks/maintenance/new?node=${kitchen}`);
+  // what is wrong is a tap; "Other" asks for the words (ADR 113)
+  await main(page).getByRole('button', { name: 'Other' }).click();
   await main(page).getByRole('textbox', { name: 'What is wrong' }).fill(title);
   await main(page).getByRole('button', { name: 'Send to maintenance' }).click();
   await expect(page.getByTestId('repair-status')).toContainText(

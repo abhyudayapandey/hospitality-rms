@@ -33,6 +33,11 @@ class Journey {
     this.form++;
     await l.selectOption(option);
   }
+  /** A tap on a choice in the job's form (a picture, a chip). */
+  async tap(l: Locator) {
+    this.form++;
+    await l.click();
+  }
   async type(l: Locator, text: string) {
     this.typed++;
     await l.fill(text);
@@ -105,9 +110,14 @@ test('report a problem (commis)', async ({ page }) => {
   const j = await start(page, 'Test Commis 1.0');
   await j.go(nav(page, 'Tasks'));
   await j.go(page.getByRole('link', { name: 'Report a problem' }));
-  await j.type(page.getByLabel('What is wrong'), 'Fridge door does not close');
+  // a tap, not a sentence (ADR 113)
+  await j.tap(
+    page
+      .getByRole('group', { name: 'What is wrong' })
+      .getByRole('button', { name: 'AC or fridge' }),
+  );
   await j.last(page.getByRole('button', { name: 'Send to maintenance' }));
-  j.done('Report a problem', 'Commis', { there: 2, form: 1 });
+  j.done('Report a problem', 'Commis', { there: 2, form: 2 });
 });
 
 test('record wastage (store keeper)', async ({ page }) => {
@@ -119,10 +129,12 @@ test('record wastage (store keeper)', async ({ page }) => {
       .getByRole('navigation', { name: 'Stock jobs' })
       .getByRole('link', { name: 'Record wastage' }),
   );
-  await j.choose(page.getByRole('combobox', { name: /^Item/ }), { index: 1 });
+  // nothing is chosen for them (ADR 113): a picture, how much, why
+  await j.tap(page.getByTestId('item-choice').first());
   await j.type(page.getByLabel(/^Quantity/), '1');
+  await j.tap(page.getByRole('group', { name: 'Reason' }).getByRole('button', { name: 'Spoiled' }));
   await j.last(page.getByRole('button', { name: 'Record wastage' }));
-  j.done('Record wastage', 'Store keeper', { there: 2, form: 2 });
+  j.done('Record wastage', 'Store keeper', { there: 2, form: 3 });
 });
 
 test('count a store (store keeper)', async ({ page }) => {

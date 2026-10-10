@@ -34,7 +34,10 @@ test('a commis opens a pack of milk from their own Opened packs screen', async (
     await page.goto('/me');
     await page.getByTestId('me-opened').click();
     await page.waitForURL(/\/stock\/opened/);
-    await main(page).getByLabel('What you opened').selectOption({ label: 'Test Milk (l)' });
+    await main(page)
+      .getByRole('group', { name: 'What you opened' })
+      .getByRole('button', { name: 'Test Milk', exact: true })
+      .click();
     // milk comes in 1 l cartons: opened by the carton (ADR 102)
     await expect(main(page).getByTestId('pack-size')).toHaveText('1 carton = 1 l');
     await expect(main(page).getByLabel('How many Test Milk')).toHaveValue('1');
@@ -66,7 +69,7 @@ test("a store's Opened tab shows only where something has a shelf life once open
     .click();
   await main(page).getByTestId('open-a-pack').click();
   await page.waitForURL(/\/stock\/opened\?.*item=/);
-  await expect(main(page).getByLabel('What you opened')).toHaveValue(/[0-9a-f-]{36}/);
+  await expect(main(page).getByTestId('picked-item')).toHaveText(/Test Milk/);
 });
 
 test('Back from an SOP goes back to the list, and Back from there leaves it', async ({ page }) => {

@@ -51,7 +51,13 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
     rooms: await minibarRooms(tx, place.outlet_id),
     charge: place.bills ? await minibarToCharge(tx, place.outlet_id) : [],
   }));
-  const askedTab: MinibarTab = isMinibarTab(raw) ? raw : charge.length > 0 ? 'charge' : 'rooms';
+  // each opens on what they do here (ADR 113): the front desk on To charge, even when nothing
+  // waits; whoever checks minibars as well, on To charge only when something does
+  const askedTab: MinibarTab = isMinibarTab(raw)
+    ? raw
+    : place.bills && (charge.length > 0 || !place.can_check)
+      ? 'charge'
+      : 'rooms';
   const tab: MinibarTab = askedTab === 'charge' && !place.bills ? 'rooms' : askedTab;
   const usage =
     tab === 'usage'

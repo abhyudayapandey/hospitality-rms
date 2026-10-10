@@ -31,7 +31,8 @@ export function TaskForm({
   const [priority, setPriority] = useState<'low' | 'normal' | 'high'>('normal');
   const [assign, setAssign] = useState<Assign>({
     mode: 'person',
-    user_id: people[0]?.user_id ?? '',
+    // someone on shift today first (ADR 113); people are listed that way
+    user_id: (people.find((p) => p.on_shift) ?? people[0])?.user_id ?? '',
   });
   const [steps, setSteps] = useState('');
   const [key] = useState(() => crypto.randomUUID());

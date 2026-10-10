@@ -145,7 +145,10 @@ test('a commis opens two cartons of cream: by whole packs, and the label says so
   try {
     await signInAs(page, 'Test Commis 1.0');
     await page.goto(`/stock/opened?node=${store}`);
-    await main(page).getByLabel('What you opened').selectOption({ label: 'Test Fresh Cream (l)' });
+    await main(page)
+      .getByRole('group', { name: 'What you opened' })
+      .getByRole('button', { name: 'Test Fresh Cream', exact: true })
+      .click();
     await expect(main(page).getByTestId('pack-size')).toHaveText('1 carton = 200 ml');
     const many = main(page).getByLabel('How many Test Fresh Cream');
     await expect(many).toHaveValue('1');

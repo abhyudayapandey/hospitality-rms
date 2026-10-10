@@ -2,8 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
-import { ItemThumb } from '@/components/item-thumb';
+import { ErrorBox, primaryButton } from '@/components/messages';
+import { ItemPicker } from '@/components/item-picker';
 import { formatQty } from '@/lib/qty';
 import { packAmount, packCount } from '@/lib/pack';
 import { Stepper } from '@/components/stepper';
@@ -80,20 +80,13 @@ export function OpenPackForm({
       }}
     >
       <h2 className="font-semibold">Open a pack</h2>
-      <label className="block space-y-1">
-        <span className="text-sm font-medium">What you opened</span>
-        <span className="flex items-center gap-3">
-          {item && <ItemThumb name={item.name} />}
-          <select value={itemId} onChange={(e) => setItemId(e.target.value)} className={inputClass}>
-            <option value="">Choose…</option>
-            {items.map((i) => (
-              <option key={i.item_id} value={i.item_id}>
-                {i.name} ({i.base_uom})
-              </option>
-            ))}
-          </select>
-        </span>
-      </label>
+      {/* what has a shelf life once opened, as pictures (ADR 113) */}
+      <ItemPicker
+        items={items}
+        value={itemId || null}
+        onChange={(id) => setItemId(id ?? '')}
+        label="What you opened"
+      />
       {item && (
         <p className="text-sm text-slate-600" data-testid="pack-keeps">
           Keeps {keeps(item.hours)} once opened. The store has{' '}
@@ -115,19 +108,14 @@ export function OpenPackForm({
             unit={packCount(Number(packs) || 2, item.pack_name).replace(/^\d+ /, '')}
           />
         </div>
-      ) : (
-        <label className="block space-y-1">
-          <span className="text-sm font-medium">How much ({item?.base_uom ?? 'in its unit'})</span>
-          <input
-            inputMode="decimal"
-            value={qty}
-            onChange={(e) => setQty(e.target.value)}
-            className={inputClass}
-          />
-        </label>
-      )}
+      ) : item ? (
+        <div className="space-y-1">
+          <span className="text-sm font-medium">How much ({item.base_uom})</span>
+          <Stepper label={`How much (${item.base_uom})`} value={qty} onChange={setQty} min={0} />
+        </div>
+      ) : null}
       <ErrorBox message={error} />
-      <button type="submit" disabled={!hydrated || pending} className={primaryButton}>
+      <button type="submit" disabled={!hydrated || pending || !item} className={primaryButton}>
         Open and print the label
       </button>
     </form>

@@ -9,7 +9,7 @@ import type { ItemOption } from '@/lib/inventory';
 import { PhotoField } from '@/components/photo-field';
 import { ACTION_QUEUE_EVENT, indexedDbActions, type QueuedWastage } from '@/lib/action-queue';
 import { askDiscard, getWastageUploadUrl, recordWastage } from '../actions';
-import { ItemThumb } from '@/components/item-thumb';
+import { ItemPicker } from '@/components/item-picker';
 import { Stepper } from '@/components/stepper';
 
 const REASONS = [
@@ -20,9 +20,16 @@ const REASONS = [
   ['other', 'Other'],
 ] as const;
 
+/**
+ * Wastage (ADR 113): nothing is chosen until the person chooses it. The item from pictures
+ * (what is wasted here most first, a search above), how much, why as chips, a photo above the
+ * button; the button stays off until the item, the amount and the reason are given. A link
+ * (an expired batch) may say all three.
+ */
 export function WastageForm({
   node,
   items,
+  often,
   threshold,
   photos,
   initial,
@@ -31,18 +38,20 @@ export function WastageForm({
   node: string;
   userId: string;
   items: ItemOption[];
+  /** item ids wasted here lately, first in the grid */
+  often: string[];
   threshold: number;
   photos: boolean;
   /** prefilled from a link, e.g. an expired batch on the production page */
   initial?: { item: string; qty: string; reason: string };
 }) {
   const router = useRouter();
-  const [itemId, setItemId] = useState(
-    items.find((i) => i.item_id === initial?.item)?.item_id ?? items[0]?.item_id ?? '',
+  const [itemId, setItemId] = useState<string | null>(
+    items.find((i) => i.item_id === initial?.item)?.item_id ?? null,
   );
   const [qty, setQty] = useState(initial?.qty ?? '');
-  const [reason, setReason] = useState<string>(
-    REASONS.some(([r]) => r === initial?.reason) ? initial!.reason : 'spoiled',
+  const [reason, setReason] = useState<string | null>(
+    REASONS.some(([r]) => r === initial?.reason) ? initial!.reason : null,
   );
   const [photoKey, setPhotoKey] = useState<string | null>(null);
   const [key, setKey] = useState(() => crypto.randomUUID());
@@ -62,11 +71,11 @@ export function WastageForm({
       setError(null);
       setDone(null);
       const n = Number(qty);
-      if (!item || !Number.isFinite(n) || n <= 0) {
+      if (!item || !reason || !Number.isFinite(n) || n <= 0) {
         setError('Enter how much to throw away.');
         return;
       }
-      const r = await askDiscard(node, itemId, n, reason, key);
+      const r = await askDiscard(node, item.item_id, n, reason, key);
       if (!r.ok) return setError(r.message);
       setDone('Asked. Once the GM approves, it goes to someone here to throw away.');
       setQty('');
@@ -79,11 +88,11 @@ export function WastageForm({
       setError(null);
       setDone(null);
       const n = Number(qty);
-      if (!item || !Number.isFinite(n) || n <= 0) {
+      if (!item || !reason || !Number.isFinite(n) || n <= 0) {
         setError('Enter how much was wasted.');
         return;
       }
-      const lines = [{ item_id: itemId, qty: n, reason, photo_key: photoKey }];
+      const lines = [{ item_id: item.item_id, qty: n, reason, photo_key: photoKey }];
       const clientTs = new Date().toISOString(); // when it happened, kept if it syncs later
       // Small wastage (no photo, no approval) is saved on the phone when there is no signal
       // and sent later with its original time (INV-8).
@@ -132,39 +141,41 @@ export function WastageForm({
         else submit();
       }}
     >
-      <label className="block space-y-1">
-        <span className="text-sm font-medium">Item</span>
-        <span className="flex items-center gap-3">
-          {item && <ItemThumb name={item.name} />}
-          <select value={itemId} onChange={(e) => setItemId(e.target.value)} className={inputClass}>
-            {items.map((i) => (
-              <option key={i.item_id} value={i.item_id}>
-                {i.name} ({i.base_uom})
-              </option>
-            ))}
-          </select>
-        </span>
-      </label>
-      <div className="space-y-3">
+      <ItemPicker
+        items={items}
+        value={itemId}
+        onChange={(id) => {
+          setItemId(id);
+          setDone(null);
+        }}
+        often={often}
+        note={(i) => `${i.base_uom}`}
+      />
+      {item && (
         <div className="space-y-1">
-          <span className="text-sm font-medium">Quantity ({item?.base_uom})</span>
-          <Stepper
-            value={qty}
-            onChange={setQty}
-            label={`Quantity (${item?.base_uom ?? ''})`}
-            min={0}
-          />
+          <span className="text-sm font-medium">How much ({item.base_uom})</span>
+          <Stepper value={qty} onChange={setQty} label={`Quantity (${item.base_uom})`} min={0} />
         </div>
-        <label className="block space-y-1">
-          <span className="text-sm font-medium">Reason</span>
-          <select value={reason} onChange={(e) => setReason(e.target.value)} className={inputClass}>
-            {REASONS.map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
-              </option>
-            ))}
-          </select>
-        </label>
+      )}
+      <div role="group" aria-label="Reason" className="space-y-1">
+        <span className="text-sm font-medium">Why</span>
+        <div className="flex flex-wrap gap-2">
+          {REASONS.map(([v, l]) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={reason === v}
+              onClick={() => setReason(v)}
+              className={`min-h-11 rounded-full px-4 text-sm font-medium ring-1 ${
+                reason === v
+                  ? 'bg-brand-700 text-white ring-brand-700'
+                  : 'bg-white text-slate-800 ring-slate-300'
+              }`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
       </div>
       {needsGm && (
         <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900" data-testid="needs-gm">
@@ -180,25 +191,33 @@ export function WastageForm({
             : 'Recorded straight away.'}
         </p>
       )}
-      {needsApproval &&
+      {/* a photo above the button (ADR 098): asked for over the limit, welcome below it */}
+      {!needsGm &&
         (photos ? (
           <PhotoField
             node={node}
             photoKey={photoKey}
             onChange={setPhotoKey}
             getUploadUrl={getWastageUploadUrl}
-            label="Wastage photo"
+            label={needsApproval ? 'Wastage photo' : 'Wastage photo (optional)'}
           />
-        ) : (
+        ) : needsApproval ? (
           <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
             Photos can&apos;t be taken here right now. Tell your manager.
           </p>
-        ))}
+        ) : null)}
       <ErrorBox message={error} />
       <StatusBox message={done} />
       <button
         type="submit"
-        disabled={!hydrated || pending || (needsApproval && !photoKey)}
+        disabled={
+          !hydrated ||
+          pending ||
+          !item ||
+          !reason ||
+          !(Number(qty) > 0) ||
+          (needsApproval && !photoKey)
+        }
         className={primaryButton}
       >
         {needsGm ? 'Ask the GM' : 'Record wastage'}

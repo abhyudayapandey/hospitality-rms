@@ -21,6 +21,7 @@ export default async function WastagePage({ searchParams }: { searchParams: Sear
       select inv.wastage_threshold(${ctx.node!.id}::uuid) as v`.execute(tx);
     const recent = await sql<{
       id: string;
+      item_id: string;
       name: string;
       base_uom: string;
       qty: string;
@@ -29,7 +30,7 @@ export default async function WastagePage({ searchParams }: { searchParams: Sear
       outcome: string;
       created_at: Date;
     }>`
-      select wl.id, i.name, i.base_uom, wl.qty, wl.reason, wl.value, wl.outcome, wl.created_at
+      select wl.id, wl.item_id::text, i.name, i.base_uom, wl.qty, wl.reason, wl.value, wl.outcome, wl.created_at
         from inv.wastage_line wl join inv.item i on i.id = wl.item_id
        where wl.delivery_node_id = ${ctx.node!.id}::uuid
        order by wl.created_at desc limit 10`.execute(tx);
@@ -42,6 +43,7 @@ export default async function WastagePage({ searchParams }: { searchParams: Sear
         node={ctx.node.id}
         userId={ctx.shell.user.id}
         items={data.items}
+        often={[...new Set(data.recent.map((r) => r.item_id))]}
         threshold={data.threshold}
         photos={photosEnabled()}
         initial={{ item: param(sp, 'item'), qty: param(sp, 'qty'), reason: param(sp, 'reason') }}
