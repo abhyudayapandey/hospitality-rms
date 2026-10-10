@@ -19,7 +19,14 @@ import {
 } from '@/lib/today';
 import type { MyTask } from '@/lib/tasks';
 import { doneBy } from '@/lib/tasks-view';
-import { clockable, complianceCard, doFirst, shiftLine, todaysTasks } from '@/lib/today-view';
+import {
+  clockable,
+  complianceCard,
+  departmentTiles,
+  doFirst,
+  shiftLine,
+  todaysTasks,
+} from '@/lib/today-view';
 import { listHref, stockHref } from '@/lib/stock-view';
 import { countDueText } from '@/lib/stock-hub';
 import { InboxItem } from './inbox/inbox-item';
@@ -150,7 +157,6 @@ export default async function Home() {
               href={listHref('/stock/orders', { all: true, tab: 'to_order' })}
               icon="cart"
               label="To order"
-              note={`${today.store.toOrder} ${today.store.toOrder === 1 ? 'request' : 'requests'}`}
               testId="tile-to-order"
               badge={{ n: today.store.toOrder, tone: 'bad' }}
             />
@@ -159,7 +165,8 @@ export default async function Home() {
             href={listHref('/stock/orders', { all: true, tab: 'receive' })}
             icon="truck"
             label="Receive"
-            note={`${today.store.receive} to come`}
+            // the badge is the number; words only when there is none (ADR 105)
+            note={today.store.receive > 0 ? undefined : 'nothing to come'}
             testId="tile-receive"
             badge={today.store.receive > 0 ? { n: today.store.receive, tone: 'warn' } : null}
           />
@@ -167,7 +174,7 @@ export default async function Home() {
             href={listHref('/stock/transfers', { all: true, tab: 'send' })}
             icon="box"
             label="Send"
-            note={`${today.store.issue} to send`}
+            note={today.store.issue > 0 ? undefined : 'nothing to send'}
             testId="tile-issue"
             badge={today.store.issue > 0 ? { n: today.store.issue, tone: 'bad' } : null}
           />
@@ -705,49 +712,52 @@ function DoFirst({ items }: { items: ReturnType<typeof doFirst> }) {
   );
 }
 
-/** Every department, one line each, behind a tap (DB-2 order; UX-8). */
+const DEPT_TONE = {
+  bad: 'bg-rose-50 ring-rose-300',
+  warn: 'bg-amber-50 ring-amber-300',
+  ok: 'bg-emerald-50 ring-emerald-300',
+} as const;
+const DEPT_FACT = {
+  bad: 'text-rose-700',
+  warn: 'text-amber-800',
+  ok: 'text-emerald-800',
+} as const;
+
+/**
+ * Every department as a tile, two to a row (DB-2 order; ADR 105): its picture, its name and
+ * one fact in its colour; a tap opens that department.
+ */
 function Attention({ today }: { today: Today }) {
-  const groups = today.attention ?? [];
-  if (groups.length === 0) return null;
+  const tiles = departmentTiles(today.attention ?? []);
+  if (tiles.length === 0) return null;
   return (
-    <section aria-label="Needs attention" className={card} data-testid="attention-card">
-      <details>
-        <summary className="flex min-h-11 cursor-pointer items-center justify-between text-sm font-medium text-slate-700">
-          <span className={cardTitle}>All departments ({groups.length})</span>
-          <span className="underline">Show</span>
-        </summary>
-        <div className="mt-3 space-y-3">
-          {groups.map((g) => (
-            <section
-              key={g.key}
-              aria-label={g.label}
-              className="space-y-1"
+    <section aria-label="Departments" className="space-y-2" data-testid="attention-card">
+      <h2 className={cardTitle}>Departments</h2>
+      <ul className="grid grid-cols-2 gap-2">
+        {tiles.map((t) => (
+          <li key={t.key}>
+            <Link
+              href={t.href}
+              aria-label={`${t.label}: ${t.fact}`}
               data-testid="attention-group"
-              data-tone={g.tone}
+              data-tone={t.tone}
+              data-label={t.label}
+              className={`flex min-h-18 items-center gap-2 rounded-2xl p-3 ring-1 ${DEPT_TONE[t.tone]}`}
             >
-              {/* one line per department: its name, a dot for the worst, then what is open */}
-              <h3 className="flex items-center gap-2 text-sm font-semibold">
-                <span aria-hidden className={`size-2.5 rounded-full ${TONE_DOT[g.tone]}`} />
-                {g.label}
-              </h3>
-              <p className="flex flex-wrap gap-x-3 gap-y-1 pl-4 text-sm">
-                {g.lines.map((a) => (
-                  <Link
-                    key={a.text}
-                    href={a.href}
-                    className="inline-flex min-h-8 items-center gap-1"
-                  >
-                    <span className="font-semibold tabular-nums">{a.n}</span>
-                    <span className="text-slate-600 underline decoration-slate-300 underline-offset-2">
-                      {a.text}
-                    </span>
-                  </Link>
-                ))}
-              </p>
-            </section>
-          ))}
-        </div>
-      </details>
+              <Icon name={t.icon} className="size-7 shrink-0 text-slate-700" />
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold">{t.label}</span>
+                <span
+                  className={`block text-sm font-medium ${DEPT_FACT[t.tone]}`}
+                  data-testid="dept-fact"
+                >
+                  {t.fact}
+                </span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

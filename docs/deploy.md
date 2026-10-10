@@ -2590,3 +2590,34 @@ Screens only: no migration, no access change, no infrastructure change.
    - **`passport.room-attendant`**: a minibar check has − / + beside each item.
    - **`passport.laundry`**: Linen → each item has − / + for Sent to laundry and Came back.
    - **Anyone**: Leave → Tomorrow, then 2 days, fills the dates.
+
+## Releasing rooms and minibars at a glance, and the managers' Home (ADR 104, 105)
+
+One migration (`20261215100000_minibar_due_and_billers`): two read functions gain columns
+(`ops.minibar_places.bills`, `ops.minibar_rooms.status` and `due_today`); no table or access
+change (who may mark a charge added is unchanged).
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual.
+4. **Re-import the Passport demo**: file 30 loses its one-off "Restock minibars on the second
+   floor"; no other file changes. The dry run shows no problems, no warnings and no changes (an
+   import adds test tasks, it never removes one), so the task already in the demo stays: sign
+   in as `passport.room-attendant` and mark it done, or leave it. Test customers: nothing to
+   re-import.
+5. Check, at 380 px:
+   - **`passport.executive-housekeeper`** (Maria Rodrigues): Rooms → a coloured tile per room,
+     floor by floor, a legend ("27 clean"); tap 204, tap Dirty: the tile turns amber with a
+     broom. No "VC" anywhere. Minibars → tiles, no "Checked … by" lines, no ₹ and no To charge
+     tab; the last tab is "Charged to guests".
+   - **`passport.front-desk`** (Sneha Naik): Minibars → the rooms with something to charge show
+     ₹ on their tile; To charge lists each item with its photo and ×N. A bill task shows the
+     same lines with prices and the total. Mark 204 as Guest in on Rooms: Minibars puts 204
+     under "Due today". Breakfast → rooms are tiles with their guests; a room is chosen by
+     tapping its tile.
+   - **`passport.room-attendant`** (Savio Dias): a refill task lists what goes back, each with
+     its photo and ×N, no prices.
+   - **`passport.gm`** (Sainath): Home ends with Departments, two tiles to a row, each its
+     picture, name and one fact in red, amber or green "All done"; tapping one opens that
+     department. Compliance is still first.
+   - **`passport.store-keeper`**: the Receive tile shows its number once, as the badge.
