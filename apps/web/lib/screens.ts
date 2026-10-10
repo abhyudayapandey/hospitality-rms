@@ -3,6 +3,7 @@
 // person may open still comes from their domain access (rule 2), never from a check here,
 // and the pages and the database refuse anything else.
 
+import { ACCESS_GROUPS, DUTY_BY_CODE, type Access } from '@outlet-ops/domain';
 import type { IconName } from '@/components/icon';
 import { canOpen, type NavInput } from './nav';
 
@@ -16,8 +17,6 @@ export interface ScreenInput extends NavInput {
   /** keeps or reads a hotel's breakfast (Shell.breakfast, ADR 097) */
   breakfast?: boolean;
 }
-
-export type ScreenSection = 'mine' | 'work' | 'team';
 
 export type ScreenKey =
   | 'shifts'
@@ -67,14 +66,7 @@ export interface Screen {
   href: string;
   label: string;
   icon: IconName;
-  section: ScreenSection;
 }
-
-export const SECTION_TITLES: Readonly<Record<ScreenSection, string>> = {
-  mine: 'Mine',
-  work: 'Work',
-  team: 'Team and business',
-};
 
 const can = (i: ScreenInput, domain: string, access: 'view' | 'modify' = 'view') =>
   i.access.has(domain) && (access === 'view' || i.access.get(domain) === 'modify');
@@ -85,7 +77,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/roster/my',
     label: 'My shifts',
     icon: 'calendar',
-    section: 'mine',
     show: (i) => i.atWork && can(i, 'ROSTER'),
   },
   {
@@ -93,15 +84,13 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/roster/clock',
     label: 'Clock',
     icon: 'clock',
-    section: 'mine',
     show: (i) => i.atWork && can(i, 'ATTENDANCE', 'modify'),
   },
   {
     key: 'leave',
     href: '/leave',
     label: 'Leave',
-    icon: 'sun',
-    section: 'mine',
+    icon: 'umbrella',
     show: (i) => can(i, 'LEAVE'),
   },
   {
@@ -109,7 +98,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/roster/swaps',
     label: 'Swaps',
     icon: 'swap',
-    section: 'mine',
     // with swaps for management only, staff never see Swaps (the database refuses them too)
     show: (i) =>
       i.atWork && can(i, 'SHIFT_SWAPS') && (!i.swapsManagersOnly || can(i, 'ROSTER', 'modify')),
@@ -119,15 +107,13 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/reports/my-week',
     label: 'My week',
     icon: 'chart',
-    section: 'mine',
     show: (i) => i.reports === 'mine',
   },
   {
     key: 'requests',
     href: '/requests',
     label: 'Things I asked for',
-    icon: 'list',
-    section: 'mine',
+    icon: 'hand',
     show: () => true,
   },
   {
@@ -135,7 +121,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/inbox',
     label: 'To do list',
     icon: 'inbox',
-    section: 'mine',
     show: () => true,
   },
   {
@@ -143,7 +128,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/notifications',
     label: 'Notifications',
     icon: 'bell',
-    section: 'mine',
     show: () => true,
   },
   {
@@ -151,7 +135,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/profile',
     label: 'Profile',
     icon: 'user',
-    section: 'mine',
     show: () => true,
   },
   {
@@ -159,7 +142,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/tasks',
     label: 'My tasks',
     icon: 'tasks',
-    section: 'work',
     show: (i) => canOpen('tasks', i),
   },
   {
@@ -167,7 +149,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/stock/production',
     label: 'Make',
     icon: 'pot',
-    section: 'work',
     show: (i) => canOpen('production', i),
   },
   {
@@ -175,8 +156,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/menu',
     // without menu costs, the Menu screen is the recipes (UX U-4)
     label: 'Menu',
-    icon: 'book',
-    section: 'work',
+    icon: 'chefHat',
     show: (i) => canOpen('menu', i),
   },
   {
@@ -184,7 +164,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/stock',
     label: 'Stock',
     icon: 'box',
-    section: 'work',
     show: (i) => canOpen('stock', i),
   },
   {
@@ -192,15 +171,13 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/stock/count',
     label: 'Count',
     icon: 'clipboard',
-    section: 'work',
     show: (i) => can(i, 'STOCK_ADJUSTMENTS', 'modify'),
   },
   {
     key: 'check',
     href: '/stock/check',
     label: 'Stock check',
-    icon: 'clipboard',
-    section: 'work',
+    icon: 'clipboardCheck',
     show: (i) => can(i, 'STOCK_CHECK'),
   },
   {
@@ -208,7 +185,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/stock/wastage',
     label: 'Wastage',
     icon: 'trash',
-    section: 'work',
     show: (i) => can(i, 'STOCK_ADJUSTMENTS', 'modify'),
   },
   {
@@ -216,7 +192,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/stock/orders',
     label: 'Orders',
     icon: 'cart',
-    section: 'work',
     show: (i) => can(i, 'PURCHASE_ORDERS'),
   },
   {
@@ -224,7 +199,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/stock/transfers',
     label: 'Transfers',
     icon: 'truck',
-    section: 'work',
     show: (i) => can(i, 'TRANSFERS'),
   },
   {
@@ -233,7 +207,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/stock/bills',
     label: 'Bills',
     icon: 'bill',
-    section: 'work',
     show: (i) => can(i, 'BILLS'),
   },
   {
@@ -242,16 +215,14 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     key: 'opened',
     href: '/stock/opened',
     label: 'Opened packs',
-    icon: 'clock',
-    section: 'work',
+    icon: 'openBottle',
     show: (i) => can(i, 'SHELF_LIFE', 'modify') && !canOpen('stock', i),
   },
   {
     key: 'sales',
     href: '/menu/sales',
     label: 'Sales',
-    icon: 'sales',
-    section: 'work',
+    icon: 'rupee',
     show: (i) => can(i, 'SALES') || can(i, 'DERIVED_SALES'),
   },
   {
@@ -260,7 +231,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/menu/sales/import',
     label: 'Import sales',
     icon: 'upload',
-    section: 'work',
     show: (i) => can(i, 'POS_IMPORT', 'modify'),
   },
   {
@@ -268,8 +238,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     key: 'briefing',
     href: '/briefing',
     label: "Today's briefing",
-    icon: 'clipboard',
-    section: 'work',
+    icon: 'megaphone',
     show: (i) => can(i, 'BRIEFING', 'modify'),
   },
   {
@@ -277,8 +246,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     key: 'minibar',
     href: '/minibar',
     label: 'Minibars',
-    icon: 'bed',
-    section: 'work',
+    icon: 'fridge',
     show: (i) => can(i, 'MINIBAR'),
   },
   {
@@ -287,7 +255,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/rooms',
     label: 'Rooms',
     icon: 'bed',
-    section: 'work',
     show: (i) => can(i, 'ROOMS'),
   },
   {
@@ -295,8 +262,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     key: 'logbook',
     href: '/logbook',
     label: 'Logbook',
-    icon: 'book',
-    section: 'work',
+    icon: 'notebook',
     show: (i) => can(i, 'LOGBOOK'),
   },
   {
@@ -304,8 +270,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     key: 'registers',
     href: '/registers',
     label: 'Registers',
-    icon: 'list',
-    section: 'work',
+    icon: 'register',
     show: (i) => can(i, 'REGISTERS'),
   },
   {
@@ -314,7 +279,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/utilities',
     label: 'Utilities',
     icon: 'bulb',
-    section: 'team',
     show: (i) => can(i, 'UTILITIES'),
   },
   {
@@ -322,8 +286,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     key: 'breakage',
     href: '/breakage',
     label: 'Breakage',
-    icon: 'box',
-    section: 'work',
+    icon: 'brokenGlass',
     show: (i) => can(i, 'BREAKAGE'),
   },
   {
@@ -333,7 +296,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/breakfast',
     label: 'Breakfast',
     icon: 'plate',
-    section: 'work',
     show: (i) => i.breakfast === true,
   },
   {
@@ -342,7 +304,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/me/sops',
     label: 'My SOPs',
     icon: 'book',
-    section: 'mine',
     show: (i) => can(i, 'TRAINING'),
   },
   {
@@ -350,8 +311,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     key: 'training',
     href: '/training',
     label: 'Training',
-    icon: 'clipboard',
-    section: 'team',
+    icon: 'mortarboard',
     show: (i) => can(i, 'TRAINING', 'modify'),
   },
   {
@@ -360,7 +320,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/excise',
     label: 'Excise',
     icon: 'bottle',
-    section: 'team',
     show: (i) => can(i, 'EXCISE'),
   },
   {
@@ -368,8 +327,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     key: 'audits',
     href: '/audits',
     label: 'Audits',
-    icon: 'star',
-    section: 'team',
+    icon: 'medal',
     show: (i) => can(i, 'AUDITS'),
   },
   {
@@ -378,7 +336,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/linen',
     label: 'Linen & uniforms',
     icon: 'towel',
-    section: 'work',
     show: (i) => can(i, 'LINEN', 'modify'),
   },
   {
@@ -386,7 +343,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/tasks/maintenance/new',
     label: 'Report a problem',
     icon: 'wrench',
-    section: 'work',
     show: (i) => can(i, 'MAINTENANCE'),
   },
   {
@@ -396,7 +352,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/compliance',
     label: 'Compliance',
     icon: 'shield',
-    section: 'team',
     show: (i) => can(i, 'COMPLIANCE'),
   },
   {
@@ -404,8 +359,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     key: 'roster',
     href: '/roster',
     label: 'Roster',
-    icon: 'calendar',
-    section: 'team',
+    icon: 'roster',
     show: (i) => can(i, 'ROSTER', 'modify') || (!i.atWork && can(i, 'ROSTER')),
   },
   {
@@ -413,15 +367,13 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/events',
     label: 'Events',
     icon: 'star',
-    section: 'team',
     show: (i) => can(i, 'EVENTS'),
   },
   {
     key: 'reports',
     href: '/reports',
     label: 'Reports',
-    icon: 'chart',
-    section: 'team',
+    icon: 'pie',
     show: (i) => i.reports === 'business',
   },
   {
@@ -429,7 +381,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/admin',
     label: 'Admin',
     icon: 'gear',
-    section: 'team',
     show: (i) => canOpen('admin', i),
   },
 ];
@@ -440,6 +391,117 @@ export function screensFor(i: ScreenInput): Screen[] {
     ...s,
     label: s.key === 'menu' && !i.access.has('MENU') ? 'Recipes' : s.label,
   }));
+}
+
+/**
+ * What everyone who works shifts holds (ADR 106): self-service (the user-based groups) and the
+ * groups of the WORKS_SHIFTS duty, each domain at its highest access. Product data, the same
+ * for every customer.
+ */
+export const EVERYONES_ACCESS: ReadonlyMap<string, Access> = (() => {
+  const shifts = new Set(DUTY_BY_CODE.get('WORKS_SHIFTS')?.grants.map((g) => g.group) ?? []);
+  const out = new Map<string, Access>();
+  for (const g of ACCESS_GROUPS) {
+    if (g.kind !== 'user_based' && !shifts.has(g.code)) continue;
+    for (const [d, a] of Object.entries(g.grants)) {
+      if (out.get(d) !== 'modify') out.set(d, a);
+    }
+  }
+  return out;
+})();
+
+/**
+ * Whether the person's access to a domain is their own work (ADR 106): more than what
+ * everyone who works shifts holds. A pool attendant's Stock (his department's store) is; the
+ * logbook, registers, breakage and linen every shift worker may write are not, nor are the
+ * events they may read. Reads only the access the database returned.
+ */
+export function ownWork(i: ScreenInput, domain: string): boolean {
+  const mine = i.access.get(domain);
+  if (!mine) return false;
+  const everyone = EVERYONES_ACCESS.get(domain);
+  return !everyone || (everyone === 'view' && mine === 'modify');
+}
+
+/** First on Me wherever the person has them (ADR 106). */
+const FIRST: readonly ScreenKey[] = ['clock', 'shifts', 'leave', 'sops', 'problem'];
+
+/** Screens that are tabs of the Stock screen: their own tile only without Stock (ADR 048). */
+const STOCK_TABS: ReadonlySet<ScreenKey> = new Set([
+  'count',
+  'wastage',
+  'orders',
+  'transfers',
+  'bills',
+  'check',
+]);
+
+/** The domains whose own access makes each work tile the person's (ADR 106). */
+const OWN_DOMAINS: Partial<Record<ScreenKey, readonly string[]>> = {
+  tasks: ['TASKS'],
+  stock: ['STOCK_LEVELS'],
+  count: ['STOCK_ADJUSTMENTS'],
+  wastage: ['STOCK_ADJUSTMENTS'],
+  check: ['STOCK_CHECK'],
+  orders: ['PURCHASE_ORDERS'],
+  transfers: ['TRANSFERS'],
+  bills: ['BILLS'],
+  sales: ['SALES', 'DERIVED_SALES'],
+  posImport: ['POS_IMPORT'],
+  briefing: ['BRIEFING'],
+  minibar: ['MINIBAR'],
+  rooms: ['ROOMS'],
+  logbook: ['LOGBOOK'],
+  registers: ['REGISTERS'],
+  utilities: ['UTILITIES'],
+  breakage: ['BREAKAGE'],
+  training: ['TRAINING'],
+  excise: ['EXCISE'],
+  audits: ['AUDITS'],
+  linen: ['LINEN'],
+  compliance: ['COMPLIANCE'],
+  roster: ['ROSTER'],
+  events: ['EVENTS'],
+  swaps: ['SHIFT_SWAPS'],
+};
+
+function isOwn(s: Screen, i: ScreenInput): boolean {
+  switch (s.key) {
+    // shown only where there is something of theirs to open (the shell's checks)
+    case 'make':
+    case 'opened':
+    case 'breakfast':
+    case 'reports':
+    case 'admin':
+      return true;
+    // recipes for those who make what is in them, or who see the recipes of the stores they use
+    case 'menu':
+      return i.production || ['MENU', 'DERIVED_MENU', 'RECIPES'].some((d) => ownWork(i, d));
+    default: {
+      if (STOCK_TABS.has(s.key) && canOpen('stock', i)) return false;
+      return (OWN_DOMAINS[s.key] ?? []).some((d) => ownWork(i, d));
+    }
+  }
+}
+
+/**
+ * Me's tiles for one person (ADR 106): first Clock, My shifts, Leave, SOPs and Report a problem
+ * where they have them, then the work their own duties give them; the rest under "More".
+ * `hide` leaves out what the bottom nav already offers. Nothing is folded when fewer than three
+ * would be on either side (an account owner's few screens, a short list of extras).
+ */
+export function meTiles(
+  i: ScreenInput,
+  hide: ReadonlySet<string> = new Set(),
+): { mine: Screen[]; more: Screen[] } {
+  const all = screensFor(i).filter((s) => !hide.has(s.href));
+  const first = FIRST.flatMap((k) => all.filter((s) => s.key === k));
+  const own = all.filter((s) => !FIRST.includes(s.key) && isOwn(s, i));
+  const mine = [...first, ...own];
+  const more = all.filter((s) => !mine.includes(s));
+  return mine.length < 3 || more.length < 3
+    ? { mine: [...mine, ...more], more: [] }
+    : { mine, more };
 }
 
 /**

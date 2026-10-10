@@ -2,6 +2,7 @@
 // one day become "5 new tasks", two roster rows "Roster published for 2 weeks". A single
 // notification stays as it is. Pure, so it can be unit tested.
 
+import type { IconName } from '@/components/icon';
 import { localDate } from './dates';
 
 export interface NotificationRow {
@@ -16,6 +17,7 @@ export interface NotificationRow {
 
 export interface NotificationGroup {
   key: string;
+  kind: string;
   title: string;
   /** the single notification's body; for a group, the first few titles */
   body: string | null;
@@ -59,6 +61,7 @@ export function groupNotifications(
       if (sorted.length === 1) {
         return {
           key: first.id,
+          kind: first.kind,
           title: first.title,
           body: first.body,
           link: first.link,
@@ -74,6 +77,7 @@ export function groupNotifications(
       const more = new Set(titles).size - shown.length;
       return {
         key,
+        kind: first.kind,
         title: g ? g.title(sorted.length) : `${sorted.length} × ${first.title}`,
         body: `${shown.join(' · ')}${more > 0 ? ` · ${more} more` : ''}`,
         link: g?.link ?? first.link,
@@ -89,4 +93,30 @@ export function groupNotifications(
 /** The bell's number: the unread lines Notifications shows, not the rows behind them. */
 export function unreadLines(rows: readonly NotificationRow[], tz: string): number {
   return groupNotifications(rows, tz).filter((g) => g.unread).length;
+}
+
+/**
+ * The picture of what a notification is about (ADR 108), from its kind: tasks, leave, swaps,
+ * the roster, orders, stock, repairs, compliance, access; anything else the bell.
+ */
+const KIND_ICONS: readonly [RegExp, IconName][] = [
+  [/^task_|^checklist|^sign_?off|^handover/, 'tasks'],
+  [/^leave_/, 'umbrella'],
+  [/^swap_/, 'swap'],
+  [/^roster_|^shift/, 'roster'],
+  [/^order|^po_|^supply|^receive|^bill/, 'cart'],
+  [/^transfer/, 'truck'],
+  [/^wastage|^discard/, 'trash'],
+  [/^expiry/, 'openBottle'],
+  [/stock/, 'box'],
+  [/^maintenance_/, 'wrench'],
+  [/^compliance_|^licence/, 'shield'],
+  [/^access_|^deactivation_/, 'lock'],
+  [/^approv|_approval$/, 'check'],
+  [/^event/, 'star'],
+  [/^minibar/, 'fridge'],
+];
+
+export function notificationIcon(kind: string): IconName {
+  return KIND_ICONS.find(([re]) => re.test(kind))?.[1] ?? 'bell';
 }

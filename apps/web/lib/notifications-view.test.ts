@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { groupNotifications, type NotificationRow, unreadLines } from './notifications-view';
+import {
+  groupNotifications,
+  notificationIcon,
+  type NotificationRow,
+  unreadLines,
+} from './notifications-view';
 
 const n = (
   id: string,
@@ -72,5 +77,27 @@ describe('grouped notifications (U-21)', () => {
       n('5', 'task_overdue', 'Overdue: Old', '2026-10-01T11:30:00Z', true),
     ];
     expect(unreadLines(rows, 'Asia/Kolkata')).toBe(3);
+  });
+});
+
+describe('notification pictures (ADR 108)', () => {
+  it('each kind the app sends has the picture of what it is about', () => {
+    const cases: [string, string][] = [
+      ['task_assigned', 'tasks'],
+      ['task_overdue', 'tasks'],
+      ['leave_approved', 'umbrella'],
+      ['swap_offer', 'swap'],
+      ['roster_published', 'roster'],
+      ['order', 'cart'],
+      ['negative_stock', 'box'],
+      ['stock_check', 'box'],
+      ['wastage', 'trash'],
+      ['expiry_soon', 'openBottle'],
+      ['maintenance_raised', 'wrench'],
+      ['compliance_due', 'shield'],
+      ['access_changed', 'lock'],
+      ['something_new', 'bell'],
+    ];
+    for (const [kind, icon] of cases) expect(notificationIcon(kind), kind).toBe(icon);
   });
 });

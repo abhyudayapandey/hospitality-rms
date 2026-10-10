@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Suspense, type ReactNode } from 'react';
 import { BottomNav } from '@/components/bottom-nav';
 import { Icon } from '@/components/icon';
+import { initials } from '@/components/initials';
 import { ActionSync } from '@/components/action-sync';
 import { PunchSync } from '@/components/punch-sync';
 import { ShowAsBanner } from '@/components/show-as-banner';
@@ -10,14 +11,6 @@ import { NavProgress } from '@/components/nav-progress';
 import { VersionCheck } from '@/components/version-check';
 import { approvalsInNav, visibleNav } from '@/lib/nav';
 import { loadShell, navInput } from '@/lib/shell';
-
-/** "Priya Menon" → "PM" (UX-6: a face for the person, not a sign-out button). */
-function initials(name: string): string {
-  const parts = name.split(/\s+/).filter((w) => /^\p{L}/u.test(w));
-  return (
-    (parts[0]?.[0] ?? '') + (parts.length > 1 ? (parts.at(-1)?.[0] ?? '') : '')
-  ).toUpperCase();
-}
 
 const badge =
   'absolute top-1 right-0.5 rounded-full bg-rose-600 px-1.5 text-[10px] font-bold text-white';

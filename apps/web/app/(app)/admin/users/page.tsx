@@ -4,6 +4,7 @@ import { Empty } from '@/components/messages';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
+import { Initials } from '@/components/initials';
 import { jobTitles } from '@/lib/job-titles';
 
 export interface AdminUserRow {
@@ -76,21 +77,29 @@ export default async function UsersPage({
             key: r.user_id,
             text: r.display_name,
             node: (
-              <Link href={`/admin/users/${r.user_id}`} className="block min-h-12 p-3">
-                <span className="flex items-baseline justify-between gap-2">
-                  <span className="font-medium">{r.display_name}</span>
-                  {r.status === 'inactive' && (
-                    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs">inactive</span>
-                  )}
-                </span>
-                <span className="block text-sm text-slate-600">
-                  {r.username ?? r.email} ·{' '}
-                  {r.job_role_code ? title(r.job_role_code) : 'no job role'} · {r.home_node_name}
-                </span>
-                <span className="block text-xs text-slate-500">
-                  {r.last_sign_in_at
-                    ? `Last signed in ${formatWhen(r.last_sign_in_at)}`
-                    : 'Never signed in'}
+              <Link
+                href={`/admin/users/${r.user_id}`}
+                className="flex min-h-12 items-start gap-3 p-3"
+              >
+                <Initials name={r.display_name} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-baseline justify-between gap-2">
+                    <span className="font-medium">{r.display_name}</span>
+                    {r.status === 'inactive' && (
+                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs">
+                        inactive
+                      </span>
+                    )}
+                  </span>
+                  <span className="block text-sm text-slate-600">
+                    {r.username ?? r.email} ·{' '}
+                    {r.job_role_code ? title(r.job_role_code) : 'no job role'} · {r.home_node_name}
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    {r.last_sign_in_at
+                      ? `Last signed in ${formatWhen(r.last_sign_in_at)}`
+                      : 'Never signed in'}
+                  </span>
                 </span>
               </Link>
             ),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { shiftTypeHours, shiftTypeTimes } from './shift-types';
+import { shiftIcon, shiftTypeHours, shiftTypeTimes } from './shift-types';
 
 const t = (x: Partial<Parameters<typeof shiftTypeTimes>[0]>) => ({
   name: 'X',
@@ -47,5 +47,21 @@ describe('shift types on their tiles (ADR 082)', () => {
     expect(
       shiftTypeHours(t({ shift_type: 'panzer', start: '19:00', end: '04:00', break_minutes: 30 })),
     ).toBe(8.5);
+  });
+});
+
+describe('a picture per shift (ADR 108)', () => {
+  const tz = 'Asia/Kolkata';
+  it('morning and day: the sun; evening, night and panzer: the moon; split: two blocks', () => {
+    expect(shiftIcon('straight', '2026-10-10T01:30:00Z', tz)).toBe('sun'); // 07:00
+    expect(shiftIcon('straight', '2026-10-10T08:30:00Z', tz)).toBe('sun'); // 14:00
+    expect(shiftIcon('straight', '2026-10-10T09:30:00Z', tz)).toBe('moon'); // 15:00
+    expect(shiftIcon('straight', '2026-10-09T20:30:00Z', tz)).toBe('moon'); // 02:00
+    expect(shiftIcon('panzer', '2026-10-10T01:30:00Z', tz)).toBe('moon');
+    expect(shiftIcon('split', '2026-10-10T05:30:00Z', tz)).toBe('split');
+    expect(shiftIcon(null, new Date('2026-10-10T03:30:00Z'), tz)).toBe('sun');
+    // a shift type's own times
+    expect(shiftIcon('straight', '07:00', tz)).toBe('sun');
+    expect(shiftIcon('straight', '16:00:00', tz)).toBe('moon');
   });
 });

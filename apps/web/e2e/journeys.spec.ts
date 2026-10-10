@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { asMigrator, signInAs } from './helpers';
+import { asMigrator, meTile, signInAs } from './helpers';
 
 // How many taps the common jobs take, from Home (UX review U-27, ADR 026). Each journey
 // starts on Home, walks to the job and stops at its last button, which it checks is ready
@@ -197,7 +197,7 @@ test("today's sales (cost controller)", async ({ page }) => {
 test('my week (server)', async ({ page }) => {
   const j = await start(page, 'Test Server 3.0');
   await j.go(nav(page, 'Me'));
-  await j.go(page.getByTestId('me-myWeek'));
+  await j.go(await meTile(page, 'myWeek'));
   await expect(page.getByTestId('report-week')).toBeVisible();
   j.done('See my week', 'Server', { there: 2, form: 0 });
 });

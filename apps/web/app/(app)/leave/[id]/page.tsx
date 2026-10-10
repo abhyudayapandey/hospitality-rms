@@ -6,6 +6,8 @@ import { sql, withUser } from '@/lib/db';
 import { isUuid } from '@/lib/inventory';
 import { balances } from '@/lib/people';
 import { RequestDecision } from '@/components/request-decision';
+import { Icon } from '@/components/icon';
+import { LEAVE_STATUS, leaveIcon } from '@/lib/leave-icons';
 import { jobTitles } from '@/lib/job-titles';
 
 // A leave request: the worker, dates and days, their balance for that type, and the
@@ -21,6 +23,7 @@ export default async function LeaveRequestPage({ params }: { params: Promise<{ i
       worker_id: string;
       worker_name: string | null;
       type_name: string;
+      type_code: string;
       leave_type_id: string;
       from_date: string;
       to_date: string;
@@ -32,7 +35,7 @@ export default async function LeaveRequestPage({ params }: { params: Promise<{ i
       mine: boolean;
       tz: string | null;
     }>`
-      select l.id, l.worker_id, d.display_name as worker_name, t.name as type_name, l.leave_type_id,
+      select l.id, l.worker_id, d.display_name as worker_name, t.name as type_name, t.code as type_code, l.leave_type_id,
              l.from_date::text, l.to_date::text, l.days, l.reason, l.status, l.wf_request_id,
              exists (select 1 from wf.my_inbox() i where i.request_id = l.wf_request_id) as pending_for_me,
              l.owner_user_id = core.current_user_id() as mine,
@@ -72,7 +75,11 @@ export default async function LeaveRequestPage({ params }: { params: Promise<{ i
         ← {leave.mine ? 'Leave' : 'To do list'}
       </Link>
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-        <h1 className="text-lg font-semibold">
+        <h1 className="flex items-center gap-2 text-lg font-semibold">
+          <Icon
+            name={leaveIcon(leave.type_code, leave.type_name)}
+            className="size-7 text-brand-700"
+          />
           {leave.type_name}
           {leave.worker_name && !leave.mine ? ` · ${leave.worker_name}` : ''}
         </h1>
@@ -82,7 +89,9 @@ export default async function LeaveRequestPage({ params }: { params: Promise<{ i
           {Number(leave.days)} calendar day{Number(leave.days) === 1 ? '' : 's'}
         </p>
         {leave.reason && <p className="mt-1 text-sm">“{leave.reason}”</p>}
-        <p className="mt-1 text-sm text-slate-600">Status: {leave.status}</p>
+        <p className="mt-1 text-sm text-slate-600">
+          {LEAVE_STATUS[leave.status] ?? 'Waiting for approval'}
+        </p>
       </div>
       {bal && bal.available_days !== null && (
         <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200" data-testid="leave-balance">

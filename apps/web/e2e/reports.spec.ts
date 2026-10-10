@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { placeId, signInAs } from './helpers';
+import { meTile, placeId, signInAs } from './helpers';
 
 // Home is "Today" (UX-2) and the first reports (R-1, ADR 023), through the real screens.
 // Who may open what is proved for every user in reports-access.db.test.ts; these check
@@ -13,7 +13,7 @@ test('a server: only My week; the outlet and department reports refuse', async (
   await expect(page.getByTestId('numbers-card')).toHaveCount(0);
   await expect(page.getByTestId('attention-card')).toHaveCount(0);
   await page.goto('/me');
-  await page.getByTestId('me-myWeek').click();
+  await (await meTile(page, 'myWeek')).click();
   await expect(page.getByRole('heading', { name: 'My week' })).toBeVisible();
   await expect(page.getByTestId('report-week')).toHaveText('This week');
   await expect(page.getByTestId('measure-shifts')).toBeVisible();

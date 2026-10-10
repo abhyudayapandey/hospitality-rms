@@ -28,7 +28,8 @@ Company → Test Solo Bar → Bar, Floor Service, Kitchen. No region, area or ce
 The owner `test.solo.bar-manager` is both Bar Manager (outlet head) and Account Owner.
 There is no Cost Controller, so `test.solo.accountant` (the bar SOP's Accountant / Excise Clerk,
 who does the monthly count with the GM; access group STOCK_VERIFIER at the outlet's stores,
-ADR 043, 066) verifies the stock check there. Its Kitchen Steward is not done (file 37).
+ADR 043, 066) verifies the stock check there, and reads the vendor bills and the purchasing
+report (READS_BILLS, ADR 109). Its Kitchen Steward is not done (file 37).
 Policy difference from Test Company: here the Head Bartender is a STORE_KEEPER (can order stock), not a STOCK_USER — job-role access is set per customer.
 
 ## How codes work
@@ -159,6 +160,7 @@ catalogue is `packages/domain/src/duties.ts`; a test keeps this table in step wi
 | `KEEPS_DEPARTMENT_STORE`                          | Keeps the department's store               | Runs the department's store: stock, counts, requests and receiving                                       | `STORE_KEEPER@department_store`                                                              |
 | `KEEPS_MAIN_STORE`                                | Keeps the Main Store                       | Orders from suppliers, receives deliveries and sends stock to the departments                            | `STORE_KEEPER@main_store`                                                                    |
 | `USES_MAIN_STORE`                                 | Receives at the Main Store                 | Receives deliveries and counts stock at the Main Store                                                   | `STOCK_USER@main_store`                                                                      |
+| `READS_BILLS`                                     | Reads the bills and what was bought        | Reads the vendor bills and orders of the outlet's stores, and the purchasing report (ADR 109)            | `ACCOUNTS@outlet_stores`                                                                     |
 | `PLANS_EVENTS`                                    | Plans events                               | Adds and changes the outlet's events                                                                     | `EVENT_PLANNER@whole_outlet`                                                                 |
 | `UPLOADS_POS_SALES`                               | Uploads the day's POS sales                | Uploads the POS file and matches its codes to dishes                                                     | `CASHIER@outlet_stores`                                                                      |
 | `RUNS_CENTRAL_KITCHEN`                            | Runs the central kitchen                   | Runs the central kitchen site and its people                                                             | `OUTLET_MANAGER@central_kitchen`                                                             |

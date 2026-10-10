@@ -1,9 +1,14 @@
+import { Icon } from '@/components/icon';
 import { Empty } from '@/components/messages';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
-import { groupNotifications, type NotificationRow } from '@/lib/notifications-view';
+import {
+  groupNotifications,
+  notificationIcon,
+  type NotificationRow,
+} from '@/lib/notifications-view';
 import { loadShell } from '@/lib/shell';
 import { MarkAllRead, NotificationItem } from './mark-read';
 
@@ -31,27 +36,31 @@ export default async function NotificationsPage() {
         {unread > 0 && <MarkAllRead />}
       </div>
       {rows.length === 0 ? (
-        <Empty>Nothing yet.</Empty>
+        <Empty icon="bell">Nothing yet</Empty>
       ) : (
         <ul className="space-y-2" data-testid="notifications">
           {rows.map((n) => {
             const read = !n.unread;
             const inner = (
               <>
-                <span className="flex items-start justify-between gap-2">
-                  <span className={read ? '' : 'font-semibold'}>{n.title}</span>
-                  {!read && (
-                    <span
-                      aria-label="unread"
-                      className="mt-1.5 size-2 shrink-0 rounded-full bg-rose-600"
-                    />
-                  )}
+                {/* the picture of what it is about (ADR 108) */}
+                <Icon name={notificationIcon(n.kind)} className="mt-0.5 size-7 text-brand-700" />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-start justify-between gap-2">
+                    <span className={read ? '' : 'font-semibold'}>{n.title}</span>
+                    {!read && (
+                      <span
+                        aria-label="unread"
+                        className="mt-1.5 size-2 shrink-0 rounded-full bg-rose-600"
+                      />
+                    )}
+                  </span>
+                  {n.body && <span className="block text-sm text-slate-600">{n.body}</span>}
+                  <span className="block text-xs text-slate-500">{formatWhen(n.created_at)}</span>
                 </span>
-                {n.body && <span className="block text-sm text-slate-600">{n.body}</span>}
-                <span className="block text-xs text-slate-500">{formatWhen(n.created_at)}</span>
               </>
             );
-            const cls = 'block rounded-xl bg-white p-4 ring-1 ring-slate-200';
+            const cls = 'flex items-start gap-3 rounded-xl bg-white p-4 ring-1 ring-slate-200';
             return (
               <li key={n.key} data-count={n.count}>
                 <NotificationItem ids={n.ids} link={n.link} unread={!read} className={cls}>

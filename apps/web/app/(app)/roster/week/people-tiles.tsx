@@ -11,7 +11,9 @@ import {
   StatusBox,
 } from '@/components/messages';
 import { WARNING_CODES } from '@/lib/roster-warnings';
-import { shiftTypeHours, shiftTypeTimes, type ShiftTypeWords } from '@/lib/shift-types';
+import { Icon } from '@/components/icon';
+import { Initials } from '@/components/initials';
+import { shiftIcon, shiftTypeHours, shiftTypeTimes, type ShiftTypeWords } from '@/lib/shift-types';
 import { useHydrated } from '@/lib/use-hydrated';
 import { repeatPattern, setDayShift } from '../actions';
 
@@ -128,8 +130,9 @@ export function PeopleTiles({
               data-testid="person-row"
               data-name={p.name}
             >
-              <p className="flex items-baseline justify-between gap-2">
-                <span className="font-medium">{p.name}</span>
+              <p className="flex items-center gap-2">
+                <Initials name={p.name} className="size-8 text-xs" />
+                <span className="min-w-0 flex-1 font-medium">{p.name}</span>
                 {p.job_role && <span className="text-xs text-slate-500">{p.job_role}</span>}
               </p>
               {tiles.length === 0 && (
@@ -158,7 +161,8 @@ export function PeopleTiles({
                             : 'bg-slate-50 text-slate-500 ring-slate-200'
                       }`}
                     >
-                      <span>
+                      <span className="flex items-center gap-1.5">
+                        <Icon name={shiftIcon(t.shift_type, t.start, 'UTC')} className="size-4" />
                         {t.name}
                         {KIND[t.shift_type] && t.name !== KIND[t.shift_type]
                           ? ` · ${KIND[t.shift_type]}`

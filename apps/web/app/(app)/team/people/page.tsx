@@ -7,6 +7,7 @@ import { formatDay } from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import { param, type SearchParams } from '@/lib/inventory';
 import { peopleContext, teamPeople } from '@/lib/people';
+import { Initials } from '@/components/initials';
 import { DeactivateForm } from './deactivate-form';
 
 // Team → People (UX-5, ADR 035): who works at the place, for HR and leads (WORKERS view).
@@ -59,7 +60,8 @@ export default async function TeamPeoplePage({ searchParams }: { searchParams: S
             node: (
               <>
                 <div className="flex items-start justify-between gap-3">
-                  <span className="min-w-0">
+                  <Initials name={p.name} />
+                  <span className="min-w-0 flex-1">
                     <span className="block font-medium">{p.name}</span>
                     <span className="block text-xs text-slate-500">
                       {p.job_role} · {p.place}

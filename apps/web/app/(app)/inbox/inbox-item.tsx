@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { Initials } from '@/components/initials';
 import type { InboxEntry } from '@/lib/inbox';
 import { actOnRequest } from './actions';
 
@@ -34,15 +35,21 @@ export function InboxItem({ entry, compact = false }: { entry: InboxEntry; compa
       data-testid="inbox-item"
       data-request-id={entry.requestId}
     >
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="font-medium">{entry.processLabel}</p>
-        {entry.amount && <p className="font-semibold tabular-nums">{entry.amount}</p>}
+      <div className="flex items-start gap-3">
+        {/* who asked, as a face (ADR 108); Home's compact rows stay as they are */}
+        {!compact && <Initials name={entry.from} />}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="font-medium">{entry.processLabel}</p>
+            {entry.amount && <p className="font-semibold tabular-nums">{entry.amount}</p>}
+          </div>
+          <p className="text-sm text-slate-600">
+            {compact
+              ? `${entry.from} · ${entry.waitingSince}`
+              : `${entry.from} · ${entry.stepLabel} · waiting since ${entry.waitingSince}`}
+          </p>
+        </div>
       </div>
-      <p className="text-sm text-slate-600">
-        {compact
-          ? `${entry.from} · ${entry.waitingSince}`
-          : `${entry.from} · ${entry.stepLabel} · waiting since ${entry.waitingSince}`}
-      </p>
       {entry.items && (
         <p className="mt-1 text-sm text-slate-700" data-testid="inbox-items">
           {entry.items}
