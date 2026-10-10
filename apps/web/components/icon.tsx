@@ -101,6 +101,72 @@ const PATHS = {
     'M8 14V5a2 2 0 0 1 4 0M14 14V5a2 2 0 0 1 4 0M8 9h6',
   ],
   dumbbell: ['M3 10v4M21 10v4', 'rect:5,7,3,10,1', 'rect:16,7,3,10,1', 'M8 12h8'],
+  // one picture per Me tile, never one for two things (ADR 106)
+  // an opened bottle, its cap off to the side: opened packs and their use-by
+  openBottle: [
+    'M8 10l2-3V5h4v2l2 3v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1z',
+    'M15.5 2.5l3 1.5-1 1.8-3-1.5z',
+    'M8 14h8',
+  ],
+  // a wine glass with a crack and a shard: breakage
+  brokenGlass: [
+    'M7 3h10l-1 6.5a4 4 0 0 1-8 0z',
+    'M12 3l-1.5 3 2 1.5-1 2.5',
+    'M12 13.5V21M9 21h6',
+    'M18 17l2 1M17.5 20l2.5-.5',
+  ],
+  // a notebook with a pen: the logbook's handovers
+  notebook: ['rect:4,3,12,18,1.5', 'M7 3v18', 'M10 8h3M10 12h3', 'M20 6l1.5 1.5L15 14h-1.5v-1.5z'],
+  // a chef's hat: recipes
+  chefHat: [
+    'M7 14a4 4 0 0 1-1-7.9A5 5 0 0 1 12 3a5 5 0 0 1 6 3.1A4 4 0 0 1 17 14',
+    'M7 14v6h10v-6',
+    'M7 17h10',
+  ],
+  // a bound register with ruled lines: registers
+  register: ['rect:5,3,14,18,1', 'M8.5 3v18', 'M11.5 8h5M11.5 12h5M11.5 16h5'],
+  // a raised hand: things I asked for
+  hand: [
+    'M8 12V5.5a1.5 1.5 0 0 1 3 0V11',
+    'M11 11V4a1.5 1.5 0 0 1 3 0v7',
+    'M14 11V5.5a1.5 1.5 0 0 1 3 0V14',
+    'M17 9.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-5-2.7L5 15a1.5 1.5 0 0 1 2.5-1.6L8 14',
+  ],
+  // a clipboard with a tick: the stock check
+  clipboardCheck: ['rect:5,4,14,17,2', 'M9 4V3h6v1', 'M9 13l2 2 4-4'],
+  // a megaphone: today's briefing
+  megaphone: ['M3 10h3l9-5v14l-9-5H3z', 'M18.5 9a4 4 0 0 1 0 6', 'M7 14l1 5h2.5l-1-5'],
+  // a mortarboard: training
+  mortarboard: ['M2 9l10-5 10 5-10 5z', 'M6 11v5c3 2 9 2 12 0v-5', 'M22 9v6'],
+  // a week's grid: the roster
+  roster: ['rect:3,5,18,16,2', 'M3 10h18M8 3v4M16 3v4', 'M9 10v11M15 10v11M3 15.5h18'],
+  // a medal: audits and their scores
+  medal: ['circle:12,15,5', 'M8 3l2.5 7.5M16 3l-2.5 7.5', 'M10 15l1.5 1.5 2.5-2.5'],
+  // a pie: business reports
+  pie: ['circle:12,12,9', 'M12 3v9l6.5 6.2'],
+  // the rupee: sales
+  rupee: ['M7 4h10M7 8.5h10', 'M7 4h3.5a4.5 4.5 0 0 1 0 9H7l8 7.5'],
+  // a beach umbrella: leave, and casual leave
+  umbrella: ['M3 12a9 9 0 0 1 18 0z', 'M12 12v7a2 2 0 0 1-4 0', 'M12 3V2'],
+  // more tiles, folded
+  dots: ['circle:6,12,1.5', 'circle:12,12,1.5', 'circle:18,12,1.5'],
+  // a palm tree: earned leave (a holiday)
+  palm: [
+    'M12 21c0-5 .5-9 1.5-12',
+    'M13.5 9C12 6 8 5 5 7c3 0 5.5 1 8.5 2z',
+    'M13.5 9c1-3 5-4.5 7.5-2.5-3 0-5 1-7.5 2.5z',
+    'M13.5 9c0-3-1.5-5-3.5-6 3 .5 4 3 3.5 6z',
+    'M7 21h12',
+  ],
+  // a first-aid kit: sick leave
+  medkit: ['rect:3,7,18,13,2', 'M9 7V5h6v2', 'M12 10.5v6M9 13.5h6'],
+  // a day each way: compensatory off, a day back for a day worked
+  compOff: ['M4 12h16', 'M8 12a3 3 0 0 1 6 0', 'M16 8l3 4-3 4', 'M8 16l-3-4 3-4'],
+  // two blocks with a gap: a split shift
+  split: ['rect:2.5,8,7.5,8,1.5', 'rect:14,8,7.5,8,1.5', 'M12 6v12'],
+  // into and out of work: clock-in and clock-out rows
+  arrowIn: ['M14 4h5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5', 'M4 12h11M11 8l4 4-4 4'],
+  arrowOut: ['M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5', 'M9 12h11M16 8l4 4-4 4'],
 } as const;
 
 export type IconName = keyof typeof PATHS;
