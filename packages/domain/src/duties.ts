@@ -187,6 +187,12 @@ export const DUTIES: readonly DutyDef[] = [
     grants: [{ group: 'STOCK_USER', scope: 'main_store' }],
   },
   {
+    code: 'READS_BILLS',
+    name: 'Reads the bills and what was bought',
+    does: "Reads the vendor bills and orders of the outlet's stores, and the purchasing report (ADR 109)",
+    grants: [{ group: 'ACCOUNTS', scope: 'outlet_stores' }],
+  },
+  {
     code: 'PLANS_EVENTS',
     name: 'Plans events',
     does: "Adds and changes the outlet's events",

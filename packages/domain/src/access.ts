@@ -412,6 +412,14 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     },
   },
   { code: 'SUPPLY_VIEWER', name: 'Supply Viewer', kind: 'role', grants: { STOCK_LEVELS: v } },
+  // reads the stores' vendor bills and the orders they pay for, and so the purchasing report;
+  // no stock, no changes (an accountant; ADR 109)
+  {
+    code: 'ACCOUNTS',
+    name: 'Accounts',
+    kind: 'role',
+    grants: { BILLS: v, PURCHASE_ORDERS: v },
+  },
   // keeps the licences and the compliance calendar for someone other than the manager (an
   // accountant, an admin executive; ADR 069)
   {

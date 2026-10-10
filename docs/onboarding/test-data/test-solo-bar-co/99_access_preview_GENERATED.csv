@@ -19,4 +19,5 @@ test.solo.cook,Test Cook,STOCK_USER,TEST-SOLO-BAR-KITCHEN-STORE,Test Solo Bar �
 test.solo.cook,Test Cook,STAFF,TEST-SOLO-BAR-KITCHEN,Test Solo Bar – Kitchen,this place and everything below,job role default (any)
 test.solo.cook,Test Cook,PRODUCTION_TEAM,TEST-SOLO-BAR-KITCHEN,Test Solo Bar – Kitchen,this place and everything below,job role default (any)
 test.solo.accountant,Test Accountant,STOCK_VERIFIER,TEST-SOLO-BAR-SUPPLY,Test Solo Bar – Supply Point,this place and everything below,job role default (bar_pub)
+test.solo.accountant,Test Accountant,ACCOUNTS,TEST-SOLO-BAR-SUPPLY,Test Solo Bar – Supply Point,this place and everything below,job role default (bar_pub)
 test.solo.bar-manager,Test Bar Manager,ACCOUNT_OWNER,TEST-SOLO-COMPANY,Test Solo Bar Co.,this place and everything below,extra (file 08)

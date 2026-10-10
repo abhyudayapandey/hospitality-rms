@@ -644,9 +644,10 @@ export const ROLES: readonly RoleDef[] = [
     title: 'Accountant',
     alsoCalled: ['Excise Clerk', 'Stock Verifier'],
     home: 'ADMIN-FINANCE',
-    duties: [W],
+    // the vendor bills and the purchasing report (ADR 109)
+    duties: [W, 'READS_BILLS'],
     // the bar SOP's monthly stock count is the Accountant / Excise Clerk's, with the GM (LC-07)
-    formatDuties: { bar_pub: ['VERIFIES_STOCK_CHECKS'] },
+    formatDuties: { bar_pub: ['VERIFIES_STOCK_CHECKS', 'READS_BILLS'] },
     formatHome: { bar_pub: '(outlet)' },
     sops: ['R', 'B', 'C', 'H'],
   },
@@ -685,7 +686,8 @@ export const ROLES: readonly RoleDef[] = [
     title: 'Sales Manager',
     alsoCalled: ['Catering Sales Manager'],
     home: 'SALES-MARKETING',
-    duties: [W],
+    // sells and plans the banquets and events (ADR 109)
+    duties: [W, 'PLANS_EVENTS'],
     sops: ['H'],
   },
   {
