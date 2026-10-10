@@ -94,6 +94,8 @@ export interface MyShift {
   role_code: string;
   node_name: string;
   open_swap: string | null;
+  /** straight, split or panzer (ADR 082), for its picture (ADR 108) */
+  shift_type: string;
 }
 
 /** The current user's published shifts from `from` (local date) for `days` days. */
@@ -101,6 +103,7 @@ export async function myShifts(tx: Tx, from: string, days: number): Promise<MySh
   const r = await sql<MyShift>`
     select a.id as assignment_id, s.id as shift_id, s.local_date::text as local_date,
            s.start_at, s.end_at, s.role_code, core.node_name(s.org_node_id) as node_name,
+           s.shift_type,
            (select sw.status from hr.shift_swap sw
              where sw.assignment_id = a.id and sw.status in ('proposed', 'submitted')) as open_swap
       from hr.shift_assignment a
@@ -164,6 +167,8 @@ export interface RosterShift {
   headcount: number;
   status: 'draft' | 'published' | 'cancelled';
   template_name: string | null;
+  /** straight, split or panzer (ADR 082), for its picture (ADR 108) */
+  shift_type?: string;
   /** a split shift (ADR 082): when its first block ends and its second starts */
   split_end_at?: Date | null;
   split_start_at?: Date | null;
@@ -183,7 +188,7 @@ export async function weekRoster(
   if (nodes.length === 0) return [];
   const r = await sql<RosterShift>`
     select s.id, s.org_node_id::text as org_node_id, s.local_date::text as local_date, s.start_at, s.end_at, s.role_code, s.headcount,
-           s.status, t.name as template_name, s.split_end_at, s.split_start_at,
+           s.status, t.name as template_name, s.shift_type, s.split_end_at, s.split_start_at,
            coalesce((select json_agg(json_build_object('assignment_id', a.id, 'worker_id', a.worker_id,
                                                        'name', coalesce(d.display_name, 'Worker'))
                                      order by d.display_name)
@@ -345,6 +350,7 @@ export async function balances(tx: Tx, worker: string | null, year?: number): Pr
 
 export interface LeaveRow {
   id: string;
+  type_code: string;
   type_name: string;
   from_date: string;
   to_date: string;
@@ -355,7 +361,7 @@ export interface LeaveRow {
 
 export async function myLeave(tx: Tx): Promise<LeaveRow[]> {
   const r = await sql<LeaveRow>`
-    select l.id, t.name as type_name, l.from_date::text, l.to_date::text, l.days, l.status, l.reason
+    select l.id, t.code as type_code, t.name as type_name, l.from_date::text, l.to_date::text, l.days, l.status, l.reason
       from hr.leave_request l join hr.leave_type t on t.id = l.leave_type_id
      where l.owner_user_id = core.current_user_id()
      order by l.from_date desc limit 30`.execute(tx);

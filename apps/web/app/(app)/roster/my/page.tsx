@@ -1,5 +1,8 @@
 import Link from 'next/link';
+import { Icon } from '@/components/icon';
 import { Empty } from '@/components/messages';
+import { shiftIcon } from '@/lib/shift-types';
+import { sql } from '@/lib/db';
 import { PeopleHeader } from '@/components/people-header';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
@@ -64,11 +67,22 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
   const today = localToday(ctx.tz);
   const data = await withUser(user.id, async (tx) => {
     const worker = await myWorker(tx);
+    const timeline = worker
+      ? await myTimeline(tx, addDays(today, -14), addDays(today, UPCOMING_DAYS))
+      : [];
+    // each shift's type, for its picture (ADR 108)
+    const ids = [...new Set(timeline.flatMap((r) => (r.shift_id ? [r.shift_id] : [])))];
+    const types =
+      ids.length > 0
+        ? (
+            await sql<{ id: string; shift_type: string }>`
+              select id::text, shift_type from hr.shift where id = any(${ids}::uuid[])`.execute(tx)
+          ).rows
+        : [];
     return {
       worker,
-      timeline: worker
-        ? await myTimeline(tx, addDays(today, -14), addDays(today, UPCOMING_DAYS))
-        : [],
+      timeline,
+      types: new Map(types.map((t) => [t.id, t.shift_type])),
       shifts: await myShifts(tx, today, UPCOMING_DAYS),
       punch: await openPunch(tx),
       flags: await myExceptions(tx, addDays(today, -14)),
@@ -119,9 +133,7 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
                   : 'Tap to clock in'}
               </span>
             </span>
-            <span aria-hidden className="text-2xl">
-              ⏱
-            </span>
+            <Icon name="clock" className="size-8 text-brand-700" />
           </Link>
           {next && (
             <section
@@ -137,7 +149,15 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
                     ? 'Tomorrow'
                     : formatDay(next.local_date)}
               </p>
-              <p className="text-2xl font-bold tabular-nums">
+              <p className="flex items-center gap-2 text-2xl font-bold tabular-nums">
+                <Icon
+                  name={shiftIcon(
+                    next.shift_id ? data.types.get(next.shift_id) : null,
+                    next.shift_start!,
+                    ctx.tz,
+                  )}
+                  className="size-8"
+                />
                 {formatTime(next.shift_start!, ctx.tz)}–{formatTime(next.shift_end!, ctx.tz)}
               </p>
               <p className="text-sm text-brand-100">
@@ -200,7 +220,7 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
             </section>
           )}
           {data.timeline.length === 0 ? (
-            <Empty>No shifts in the last two weeks or the next six.</Empty>
+            <Empty icon="calendar">No shifts</Empty>
           ) : (
             <div className="space-y-6" data-testid="my-shifts">
               {sections
@@ -230,6 +250,7 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
                                 key={`${r.kind}-${r.shift_id ?? r.from_at}-${i}`}
                                 row={r}
                                 tz={ctx.tz}
+                                type={r.shift_id ? data.types.get(r.shift_id) : undefined}
                                 swap={
                                   r.kind === 'shift' && r.status === 'upcoming' && r.shift_id
                                     ? swaps.get(r.shift_id)
@@ -268,11 +289,14 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
 function Row({
   row,
   tz,
+  type,
   swap,
   canSwap,
 }: {
   row: TimelineRow;
   tz: string;
+  /** the shift's type (ADR 082), for its picture */
+  type?: string | undefined;
   swap: MyShift | undefined;
   canSwap: boolean;
 }) {
@@ -288,7 +312,11 @@ function Row({
         isFlagged(row) ? 'ring-amber-300' : 'ring-slate-200'
       }`}
     >
-      <span className="min-w-0">
+      <Icon
+        name={extra || !row.shift_start ? 'clock' : shiftIcon(type ?? null, row.shift_start, tz)}
+        className={`size-7 self-center ${extra ? 'text-slate-400' : 'text-brand-700'}`}
+      />
+      <span className="min-w-0 flex-1">
         <span className={`block font-medium tabular-nums ${extra ? 'text-slate-600' : ''}`}>
           {rowTitle(row, tz)}
         </span>

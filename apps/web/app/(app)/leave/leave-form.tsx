@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useRef, useState, useTransition } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
+import { Icon, type IconName } from '@/components/icon';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
 import { addDays, daysInclusive, isIsoDate } from '@/lib/dates';
 import { requestLeave } from '../roster/actions';
@@ -11,6 +12,8 @@ export interface LeaveTypeOption {
   id: string;
   name: string;
   available: number | null;
+  /** its picture (lib/leave-icons, ADR 107) */
+  icon: IconName;
 }
 
 export function LeaveForm({ types, today }: { types: LeaveTypeOption[]; today: string }) {
@@ -52,14 +55,17 @@ export function LeaveForm({ types, today }: { types: LeaveTypeOption[]; today: s
       <h2 className="font-semibold">Request leave</h2>
       <label className="block text-sm">
         Type
-        <select value={type} onChange={(e) => setType(e.target.value)} className={inputClass}>
-          {types.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-              {t.available === null ? '' : ` (${t.available} left)`}
-            </option>
-          ))}
-        </select>
+        <span className="flex items-center gap-2">
+          {chosen && <Icon name={chosen.icon} className="size-8 text-brand-700" />}
+          <select value={type} onChange={(e) => setType(e.target.value)} className={inputClass}>
+            {types.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+                {t.available === null ? '' : ` (${t.available} left)`}
+              </option>
+            ))}
+          </select>
+        </span>
       </label>
       {/* tap a start and a length; the dates below are there to change (ADR 098) */}
       <div className="space-y-2" data-testid="leave-picks">

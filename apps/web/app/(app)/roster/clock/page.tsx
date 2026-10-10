@@ -1,3 +1,4 @@
+import { Icon } from '@/components/icon';
 import { Empty } from '@/components/messages';
 import { PeopleHeader } from '@/components/people-header';
 import { requireUser } from '@/lib/auth/server';
@@ -34,22 +35,24 @@ export default async function ClockPage({ searchParams }: { searchParams: Search
         <Empty>You are not set up as a worker.</Empty>
       ) : (
         <>
-          <p className="text-sm text-slate-600" data-testid="next-shift">
-            {next
-              ? `${next.local_date === today ? 'Today' : 'Tomorrow'} ${formatSpan(next.start_at, next.end_at, ctx.tz)} at ${next.node_name}`
-              : ended
-                ? `Today's shift (${formatSpan(ended.start_at, ended.end_at, ctx.tz)}) has ended.`
-                : 'No shift today or tomorrow.'}
-          </p>
+          {/* the shift sits in the clock's card; no shift today says so with a picture (ADR 107) */}
           <ClockPanel
             clockedInAt={data.punch ? new Date(data.punch.clock_in_at).toISOString() : null}
             tz={ctx.tz}
             userId={ctx.shell.user.id}
+            noShiftToday={!ended && next?.local_date !== today}
+            shiftLine={
+              next
+                ? `${next.local_date === today ? 'Today' : 'Tomorrow'} ${formatSpan(next.start_at, next.end_at, ctx.tz)} · ${next.node_name}`
+                : ended
+                  ? `Today's shift (${formatSpan(ended.start_at, ended.end_at, ctx.tz)}) has ended`
+                  : null
+            }
           />
           <section className="space-y-2" data-testid="past-sessions">
             <h2 className="text-sm font-semibold text-slate-500">Past 14 days</h2>
             {data.past.length === 0 ? (
-              <Empty>No clock sessions yet.</Empty>
+              <Empty icon="clock">No clock sessions yet</Empty>
             ) : (
               <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
                 {data.past.map((p) => (
@@ -61,9 +64,19 @@ export default async function ClockPage({ searchParams }: { searchParams: Search
                     <span className="font-medium">
                       {formatDay(localDate(p.clock_in_at, ctx.tz))}
                     </span>
+                    {/* in and out as arrows, the words kept for screen readers (ADR 108) */}
                     <span className="text-right text-slate-600 tabular-nums">
-                      In {formatTime(p.clock_in_at, ctx.tz)} · Out{' '}
-                      {formatTime(p.clock_out_at, ctx.tz)}
+                      <span className="inline-flex items-center gap-1">
+                        <Icon name="arrowIn" className="size-4 text-emerald-700" />
+                        <span className="sr-only">In </span>
+                        {formatTime(p.clock_in_at, ctx.tz)}
+                      </span>
+                      <span aria-hidden> · </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icon name="arrowOut" className="size-4 text-slate-500" />
+                        <span className="sr-only">Out </span>
+                        {formatTime(p.clock_out_at, ctx.tz)}
+                      </span>
                       <span className="block text-xs text-slate-500">
                         {formatDuration(
                           Math.floor(

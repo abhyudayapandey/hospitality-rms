@@ -21,7 +21,7 @@ test('the Breakfast tile: front office and a hotel kitchen, not engineering or a
   ] as const) {
     await signInAs(page, who);
     await page.goto('/me');
-    await expect(page.getByTestId('me-profile')).toBeVisible();
+    await expect(page.getByTestId('me-tiles')).toBeVisible();
     await expect(page.getByTestId('me-breakfast'), who).toHaveCount(shown ? 1 : 0);
   }
 });
@@ -105,7 +105,7 @@ test("a department head's roster opens by person; the GM's by shift", async ({ p
   const kitchen = await placeId('TEST-HOTEL-1.0-KITCHEN');
   await signInAs(page, 'Test Executive Chef 1.0');
   await page.goto(`/roster/week?node=${kitchen}`);
-  await expect(page.getByTestId('view-people')).toHaveText('By shift');
+  await expect(page.getByTestId('view-people')).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('person-row').first()).toBeVisible();
   // no kitchen shift type is the executive chef's: Off, and a line saying so, not the other
   // roles' tiles a tap would be refused (ADR 097)
@@ -116,7 +116,7 @@ test("a department head's roster opens by person; the GM's by shift", async ({ p
 
   await signInAs(page, 'Test General Manager 1.0');
   await page.goto(`/roster/week?node=${kitchen}`);
-  await expect(page.getByTestId('view-people')).toHaveText('By person');
+  await expect(page.getByTestId('view-shift')).toHaveAttribute('aria-current', 'page');
 });
 
 test('a shift added by hand shows as theirs on the roster by person, not as Off', async ({
