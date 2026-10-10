@@ -6,6 +6,8 @@ import {
   doFirst,
   attentionGroups,
   currentShift,
+  departmentIcon,
+  departmentTiles,
   shiftLine,
   todaysTasks,
   type ComplianceRow,
@@ -180,6 +182,17 @@ describe('attentionGroups (DB-2)', () => {
       },
     ]);
     expect(attentionGroups([], places)).toEqual([]);
+  });
+
+  it('departments they run with nothing waiting are green, in their place in the order (ADR 105)', () => {
+    const quiet = [place('restaurant', 'Restaurant', 2), place('hk', 'Housekeeping', 3)];
+    const g = attentionGroups([{ kind: 'flags', node: 'hk', n: 1 }], places, quiet);
+    expect(g.map((x) => [x.label, x.tone, x.total])).toEqual([
+      ['Restaurant', 'ok', 0],
+      ['Housekeeping', 'warn', 1],
+    ]);
+    // a place that is no department is never a quiet tile
+    expect(attentionGroups([], places, [place('outlet', null, 5)])).toEqual([]);
   });
 
   it('across outlets the outlet stays in the name', () => {
@@ -398,5 +411,76 @@ describe('Compliance first on Home (ADR 069)', () => {
     const c = complianceCard({ keeps: true, recorded: 7, rows })!;
     expect(c.rows).toHaveLength(COMPLIANCE_CARD_ROWS);
     expect(c.more).toBe(2);
+  });
+});
+
+describe("department tiles on a manager's Home (ADR 105)", () => {
+  const dept = (department: string, rank: number, type: string | null): PlaceDepartment => ({
+    node_id: `n-${department}`,
+    department_id: `d-${department}`,
+    department: `Hotel – ${department}`,
+    department_type: type,
+    rank,
+    outlet_id: 'o1',
+    outlet: 'Hotel',
+  });
+  const places = [
+    dept('Kitchen', 1, 'kitchen'),
+    dept('Bar', 2, 'service'),
+    dept('Housekeeping', 3, 'housekeeping'),
+    dept('Front Office', 4, 'other'),
+    dept('Engineering', 4, 'other'),
+    {
+      node_id: 's-kitchen',
+      department_id: 'd-Kitchen',
+      department: 'Hotel – Kitchen',
+      department_type: 'kitchen',
+      rank: 1,
+      outlet_id: 'o1',
+      outlet: 'Hotel',
+    },
+  ];
+
+  it('one fact each, its colour, and the line it comes from opens that department', () => {
+    const groups = attentionGroups(
+      [
+        { kind: 'openSlots', node: 'n-Kitchen', n: 4, href: '/roster/week?node=n-Kitchen' },
+        { kind: 'lowStock', node: 's-kitchen', n: 3 },
+        { kind: 'repairs', node: 'n-Housekeeping', n: 1 },
+        { kind: 'flags', node: 'n-Housekeeping', n: 2 },
+        { kind: 'openSlots', node: 'n-Bar', n: 1, href: '/roster/week?node=n-Bar' },
+      ],
+      places,
+      places.slice(0, 5),
+    );
+    const tiles = departmentTiles(groups);
+    expect(tiles.map((t) => [t.label, t.icon, t.tone, t.fact, t.href])).toEqual([
+      ['Kitchen', 'pot', 'bad', '3 running low', '/stock?node=s-kitchen&tab=low'],
+      ['Bar', 'glass', 'warn', '1 open shift', '/roster/week?node=n-Bar'],
+      [
+        'Housekeeping',
+        'bed',
+        'warn',
+        '1 repair',
+        '/tasks/maintenance?node=d-Housekeeping&tab=assign',
+      ],
+      ['Engineering', 'wrench', 'ok', 'All done', '/tasks/team?node=d-Engineering'],
+      ['Front Office', 'bell', 'ok', 'All done', '/tasks/team?node=d-Front Office'],
+    ]);
+    // every figure is one of its department's lines (ADR 057)
+    for (const t of tiles) {
+      const g = groups.find((x) => x.key === t.key)!;
+      if (t.tone === 'ok') expect(g.lines).toEqual([]);
+      else
+        expect(g.lines.some((l) => t.fact.startsWith(`${l.n} `) && l.href === t.href)).toBe(true);
+    }
+  });
+
+  it("a department's picture from its name, else its type", () => {
+    expect(departmentIcon('Sales, Events & Banquets')).toBe('calendar');
+    expect(departmentIcon('In-Room Dining')).toBe('plate');
+    expect(departmentIcon('Cashier')).toBe('bill');
+    expect(departmentIcon('Galley', 'kitchen')).toBe('pot');
+    expect(departmentIcon('Team Q')).toBe('people');
   });
 });

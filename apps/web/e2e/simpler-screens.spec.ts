@@ -4,7 +4,7 @@ import { placeId, signInAs } from './helpers';
 // The simpler screens (UX-7 to UX-12, ADR 047): one thing first, detail on a tap. These
 // check the closed state with { expanded: false }; the other specs open the detail.
 
-test('the GM: Do these first (at most five), then Waiting for you, departments closed', async ({
+test('the GM: Do these first (at most five), then Waiting for you, department tiles', async ({
   page,
 }) => {
   await signInAs(page, 'Test General Manager 1.0', { expanded: false });
@@ -15,13 +15,15 @@ test('the GM: Do these first (at most five), then Waiting for you, departments c
   expect(n).toBeLessThanOrEqual(5);
   // every line has one action and no summed badge of its own
   await expect(first.getByTestId('dofirst-item').first().getByRole('link')).toHaveCount(1);
-  // the department wall is one tap away, closed
-  const all = page.getByTestId('attention-card').locator('details');
-  await expect(all).toBeVisible();
-  await expect(all).not.toHaveAttribute('open', '');
-  await expect(page.getByTestId('attention-group').first()).toBeHidden();
-  await all.locator('summary').click();
-  await expect(page.getByTestId('attention-group').first()).toBeVisible();
+  // the departments are tiles, two to a row, each one fact in its colour (ADR 105)
+  const tiles = page.getByTestId('attention-card').getByTestId('attention-group');
+  await expect(tiles.first()).toBeVisible();
+  for (const t of await tiles.all()) {
+    await expect(t.getByTestId('dept-fact')).toHaveCount(1);
+    expect(['bad', 'warn', 'ok']).toContain(await t.getAttribute('data-tone'));
+  }
+  const [a, b] = [await tiles.nth(0).boundingBox(), await tiles.nth(1).boundingBox()];
+  if (a && b) expect(Math.abs(a.y - b.y)).toBeLessThan(2);
 });
 
 test('the area manager: outlets side by side as shares of total cost, adding up to 100', async ({

@@ -19,6 +19,10 @@ test('the room attendant checks a minibar; the front desk adds it to the bill', 
     await page.getByTestId('me-minibar').click();
     await page.waitForURL(/\/minibar$/);
     await expect(page.getByTestId('minibar-summary')).toContainText('rooms checked today');
+    // the rupees are for whoever bills them: the attendant has no To charge tab (ADR 104)
+    await expect(page.getByRole('link', { name: /Charged to guests/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /To charge/ })).toHaveCount(0);
+    await expect(page.getByTestId('minibar-summary')).not.toContainText('₹');
     await page.getByTestId('minibar-room').filter({ hasText: 'Room 103' }).click();
     await page.waitForURL(/\/minibar\/[0-9a-f-]{36}$/);
 
@@ -41,7 +45,10 @@ test('the room attendant checks a minibar; the front desk adds it to the bill', 
       .click();
     await page.waitForURL(/\/tasks\/[0-9a-f-]{36}$/);
     await expect(page.getByTestId('task-title')).toHaveText('Refill minibar, room 103');
-    await expect(page.getByTestId('minibar-used')).toContainText('1 Test Cola 300ml');
+    // what goes back, with its photo and a big ×N, no price (ADR 104)
+    await expect(page.getByTestId('minibar-used')).toContainText('Test Cola 300ml');
+    await expect(page.getByTestId('minibar-used').getByTestId('minibar-qty')).toHaveText('×1');
+    await expect(page.getByTestId('minibar-used')).not.toContainText('₹');
     await page.getByRole('button', { name: 'Refilled' }).click();
     await expect(page.getByTestId('task-status')).toContainText(/done/i);
 
@@ -51,6 +58,12 @@ test('the room attendant checks a minibar; the front desk adds it to the bill', 
     await expect(
       page.getByRole('link', { name: /Bill room 103: 1 Test Cola 300ml/ }).first(),
     ).toBeVisible();
+    await page.goto('/minibar');
+    await expect(
+      page
+        .locator('[data-testid="minibar-room"][data-room="103"]')
+        .getByTestId('minibar-room-charge'),
+    ).toHaveText('₹120');
     await page.goto('/minibar?tab=charge');
     const charge = page.getByTestId('minibar-charge').filter({ hasText: 'Room 103' });
     await expect(charge).toContainText('₹120.00');

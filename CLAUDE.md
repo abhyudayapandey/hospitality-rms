@@ -275,6 +275,13 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   it); one's own To do list is one line a task, done ones folded; a rule sits behind a "?"
   (`InfoTip`); every number a frontline person enters has − / + (`Stepper`), a reading its safe
   range first and coloured quick picks.
+- Rooms and minibars (ADR 104): a room is a tile coloured by its status with its picture and
+  word (`lib/rooms-view.ts`), never a code; tap it, tap the new status. Minibars due today
+  (`ops.minibar_rooms.due_today`) come first as tiles; the rupees to charge only for whoever
+  bills them (`ops.minibar_places.bills`); the usage tab is "Charged to guests"; minibar task
+  lines have their photo and ×N, prices on the bill only. Managers' Home (ADR 105): departments
+  are tiles, two to a row, one fact each (red runs low, amber waits, green "All done" where they
+  run it), each from an existing line and opening that department; a count is said once.
   ADR 106: Me shows first Clock, My shifts, Leave, SOPs, Report a problem, then the tiles of
   the person's own work (access above what every shift worker holds, `meTiles`), the rest under
   More; every tile its own picture (`me-tiles.test.ts`). ADR 107: an empty roster week is one

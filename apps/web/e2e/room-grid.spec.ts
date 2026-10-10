@@ -36,9 +36,15 @@ test('the front desk marks a room arriving; the attendant checks it on the grid'
   try {
     await signInAs(page, 'Test Front Desk Executive 1.0');
     await page.goto('/rooms');
-    const room = main(page).getByTestId('room').filter({ hasText: '101' });
-    await room.getByLabel('Room 101 status').selectOption('ARR');
-    await expect(main(page).getByTestId('room').filter({ hasText: '101' })).toHaveAttribute(
+    // a tile per room, its colour and picture the status; tap it, tap the new one (ADR 104)
+    const room = main(page).locator('[data-testid="room"][data-room="101"]');
+    await expect(room).not.toContainText('VC');
+    await room.click();
+    const sheet = page.getByTestId('room-sheet');
+    await expect(sheet).not.toContainText(/VC|VD|OCC|ARR/);
+    await sheet.getByRole('button', { name: 'Arriving' }).click();
+    await expect(sheet).toHaveCount(0);
+    await expect(main(page).locator('[data-testid="room"][data-room="101"]')).toHaveAttribute(
       'data-status',
       'ARR',
     );
@@ -47,9 +53,11 @@ test('the front desk marks a room arriving; the attendant checks it on the grid'
     await signInAs(page, 'Test Room Attendant 1.0');
     await page.goto(`/tasks/${task}`);
     const row = main(page).locator('[data-testid="grid-row"][data-row="101"]');
-    await expect(row.locator('summary')).toContainText('ARR · Arriving · 0 of 3');
-    await row.getByLabel('Room 101 status').selectOption('VD');
-    await expect(row.locator('summary')).toContainText('VD · Vacant dirty');
+    await expect(row.locator('summary').first()).toContainText('Arriving · 0 of 3');
+    await row.getByTestId('room-status').locator('summary').click();
+    await row.getByRole('button', { name: 'Dirty' }).click();
+    await expect(row.locator('summary').first()).toContainText('Dirty');
+    await expect(row.locator('summary').first()).not.toContainText('VD');
     await row
       .getByTestId('step')
       .filter({ hasText: 'Bed made' })
@@ -62,7 +70,7 @@ test('the front desk marks a room arriving; the attendant checks it on the grid'
       .filter({ hasText: 'Toiletries topped up' })
       .getByRole('button', { name: 'Done' })
       .click();
-    await expect(row.locator('summary')).toContainText('✓ done');
+    await expect(row.locator('summary').first()).toContainText('✓ done');
     // the next room is open now
     await expect(main(page).locator('[data-testid="grid-row"][data-row="102"]')).toHaveAttribute(
       'open',

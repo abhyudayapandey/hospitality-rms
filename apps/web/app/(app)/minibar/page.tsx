@@ -5,21 +5,26 @@ import { requireUser } from '@/lib/auth/server';
 import { addDays, businessDate } from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import { formatMoney, formatWhen } from '@/lib/format';
+import { Icon } from '@/components/icon';
+import { byFloor, floorName } from '@/lib/rooms-view';
 import {
   isMinibarTab,
   minibarPlaces,
   minibarRooms,
   minibarToCharge,
   minibarUsage,
-  usedWords,
+  type MinibarRoomRow,
   type MinibarTab,
 } from '@/lib/minibar';
 import { isUuid, param, type SearchParams } from '@/lib/params';
 import { formatQty } from '@/lib/qty';
 import { ChargedButton } from './charged-button';
+import { UsedLines } from './used-lines';
 
-// The rooms' minibars (ADR 072): every room with when it was last checked, what is still to
-// be added to guests' bills, and what the minibars sold. One screen, three tabs (ADR 048).
+// The rooms' minibars (ADR 072, 104): every room as a tile, those due a check today first;
+// what is still to be added to guests' bills (for whoever bills them: the front desk and the
+// managers); and what was charged to guests. One screen, its tabs (ADR 048). When a room was
+// last checked, and by whom, is on the room's own page.
 
 const PERIODS = [7, 30] as const;
 
@@ -38,12 +43,13 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
     );
   }
   const raw = param(sp, 'tab');
-  const tab: MinibarTab = isMinibarTab(raw) ? raw : 'rooms';
+  const askedTab: MinibarTab = isMinibarTab(raw) ? raw : 'rooms';
+  const tab: MinibarTab = askedTab === 'charge' && !place.bills ? 'rooms' : askedTab;
   const days = param(sp, 'days') === '30' ? 30 : 7;
   const today = businessDate(new Date());
   const { rooms, charge, usage } = await withUser(user.id, async (tx) => ({
     rooms: await minibarRooms(tx, place.outlet_id),
-    charge: await minibarToCharge(tx, place.outlet_id),
+    charge: place.bills ? await minibarToCharge(tx, place.outlet_id) : [],
     usage:
       tab === 'usage'
         ? await minibarUsage(tx, place.outlet_id, addDays(today, 1 - days), today)
@@ -76,8 +82,8 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
       <div>
         <h1 className="text-xl font-semibold">Minibars</h1>
         <p className="text-sm text-slate-600" data-testid="minibar-summary">
-          {place.outlet}: {checkedToday} of {rooms.length} rooms checked today
-          {toCharge > 0 && ` · ${formatMoney(toCharge)} to add to bills`}
+          {checkedToday} of {rooms.length} rooms checked today
+          {place.bills && toCharge > 0 && ` · ${formatMoney(toCharge)} to add to bills`}
         </p>
       </div>
       <ViewTabs
@@ -85,51 +91,15 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
         current={tab}
         tabs={[
           { key: 'rooms', label: 'Rooms', count: rooms.length, href: href('rooms') },
-          { key: 'charge', label: 'To charge', count: charge.length, href: href('charge') },
-          { key: 'usage', label: 'Sold', href: href('usage') },
+          // the rupees to add to bills are for whoever bills them (ADR 104)
+          ...(place.bills
+            ? [{ key: 'charge', label: 'To charge', count: charge.length, href: href('charge') }]
+            : []),
+          { key: 'usage', label: 'Charged to guests', href: href('usage') },
         ]}
       />
 
-      {tab === 'rooms' && (
-        <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-          {rooms.map((r) => (
-            <li key={r.id} data-testid="minibar-room" data-room={r.number}>
-              <Link
-                href={`/minibar/${r.id}`}
-                className="flex min-h-14 items-center justify-between gap-3 px-3 py-2"
-              >
-                <span className="min-w-0">
-                  <span className="block font-medium">
-                    Room {r.number}
-                    {r.room_type && (
-                      <span className="font-normal text-slate-500"> · {r.room_type}</span>
-                    )}
-                  </span>
-                  <span className="block truncate text-xs text-slate-500">
-                    {!r.set_name
-                      ? 'No minibar'
-                      : r.last_checked_at
-                        ? `Checked ${formatWhen(r.last_checked_at)}${r.last_checked_by ? ` by ${r.last_checked_by}` : ''}`
-                        : 'Not checked yet'}
-                  </span>
-                </span>
-                <span className="flex shrink-0 flex-col items-end gap-1 text-xs">
-                  {r.checked_today && (
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-800">
-                      Checked today
-                    </span>
-                  )}
-                  {Number(r.to_charge) > 0 && (
-                    <span className="rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-800">
-                      {formatMoney(r.to_charge)} to charge
-                    </span>
-                  )}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      {tab === 'rooms' && <MinibarTiles rooms={rooms} bills={place.bills} />}
 
       {tab === 'charge' &&
         (charge.length === 0 ? (
@@ -147,12 +117,12 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
                   <span className="font-medium">Room {c.room}</span>
                   <span className="font-semibold">{formatMoney(c.charge)}</span>
                 </div>
-                <p className="text-sm text-slate-600">{usedWords(c.used)}</p>
+                <UsedLines used={c.used} prices />
                 <p className="text-xs text-slate-500">
                   Checked {formatWhen(c.checked_at)}
                   {c.checked_by && ` by ${c.checked_by}`}
                 </p>
-                {place.can_check && <ChargedButton id={c.id} />}
+                <ChargedButton id={c.id} />
               </li>
             ))}
           </ul>
@@ -210,6 +180,98 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** "₹1,050": a tile is narrow, so whole rupees. */
+function rupees(n: number): string {
+  return `₹${Math.round(n).toLocaleString('en-IN')}`;
+}
+
+/**
+ * The rooms as tiles (ADR 104): those due a check today first, then every other room floor by
+ * floor. Green with a tick: checked today; amber: due; faded: no minibar. Whoever bills them
+ * sees what is still to charge on the tile.
+ */
+function MinibarTiles({ rooms, bills }: { rooms: MinibarRoomRow[]; bills: boolean }) {
+  const due = rooms.filter((r) => r.due_today);
+  const rest = rooms.filter((r) => !r.due_today);
+  const tile = (r: MinibarRoomRow) => {
+    const charge = Number(r.to_charge);
+    const tone = !r.set_name
+      ? 'bg-slate-50 text-slate-500 ring-slate-200'
+      : r.checked_today
+        ? 'bg-emerald-50 text-emerald-800 ring-emerald-300'
+        : r.due_today
+          ? 'bg-amber-50 text-amber-800 ring-amber-300'
+          : 'bg-white text-slate-800 ring-slate-200';
+    const word = !r.set_name
+      ? 'no minibar'
+      : r.checked_today
+        ? 'checked today'
+        : r.due_today
+          ? 'due today'
+          : 'not due';
+    return (
+      <li key={r.id} data-testid="minibar-room" data-room={r.number} data-due={r.due_today}>
+        <Link
+          href={`/minibar/${r.id}`}
+          aria-label={`Room ${r.number}, ${word}${bills && charge > 0 ? `, ${rupees(charge)} to charge` : ''}`}
+          className={`flex min-h-18 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-2 ring-1 ${tone}`}
+        >
+          {r.checked_today ? (
+            <Icon name="check" className="size-5" />
+          ) : r.set_name ? (
+            <Icon name="fridge" className="size-5" />
+          ) : (
+            <span className="size-5" aria-hidden />
+          )}
+          <span className="text-lg leading-tight font-bold tabular-nums">
+            <span className="sr-only">Room </span>
+            {r.number}
+          </span>
+          {bills && charge > 0 && (
+            <span
+              className="rounded-full bg-amber-100 px-1.5 text-xs font-semibold text-amber-900 tabular-nums"
+              data-testid="minibar-room-charge"
+            >
+              {rupees(charge)}
+            </span>
+          )}
+        </Link>
+      </li>
+    );
+  };
+  return (
+    <div className="space-y-4">
+      <ul
+        className="flex flex-wrap gap-3 text-xs text-slate-600"
+        aria-label="What the colours mean"
+      >
+        <li className="inline-flex items-center gap-1">
+          <span aria-hidden className="size-3 rounded-sm bg-amber-300" /> due today
+        </li>
+        <li className="inline-flex items-center gap-1">
+          <span aria-hidden className="size-3 rounded-sm bg-emerald-300" /> checked today
+        </li>
+      </ul>
+      {due.length > 0 && (
+        <section aria-label="Due today" className="space-y-2" data-testid="minibar-due">
+          <h2 className="text-sm font-semibold text-amber-800">Due today ({due.length})</h2>
+          <ul className="grid grid-cols-4 gap-2">{due.map(tile)}</ul>
+        </section>
+      )}
+      {byFloor(rest).map((f, _, all) => (
+        <section key={f.floor} aria-label={floorName(f.floor)} className="space-y-2">
+          {(all.length > 1 || due.length > 0) && (
+            <h2 className="text-sm font-semibold text-slate-500">
+              {due.length > 0 && all.length === 1 ? 'Other rooms' : floorName(f.floor)}
+            </h2>
+          )}
+          <ul className="grid grid-cols-4 gap-2">{f.rooms.map(tile)}</ul>
+        </section>
+      ))}
     </div>
   );
 }
