@@ -48,6 +48,8 @@ export type ScreenKey =
   | 'registers'
   | 'utilities'
   | 'breakage'
+  | 'breakfast'
+  | 'linen'
   | 'roster'
   | 'events'
   | 'reports'
@@ -306,6 +308,25 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     icon: 'box',
     section: 'work',
     show: (i) => can(i, 'BREAKAGE'),
+  },
+  {
+    // the day's breakfast guests by mode (ADR 094): front office and housekeeping keep it, the
+    // kitchen and restaurant read it (the screen says when there is none for them)
+    key: 'breakfast',
+    href: '/breakfast',
+    label: 'Breakfast',
+    icon: 'plate',
+    section: 'work',
+    show: (i) => can(i, 'ROOMS') || can(i, 'RECIPES_TEAM'),
+  },
+  {
+    // the laundry exchange and uniforms (ADR 094)
+    key: 'linen',
+    href: '/linen',
+    label: 'Linen & uniforms',
+    icon: 'towel',
+    section: 'work',
+    show: (i) => can(i, 'LINEN', 'modify'),
   },
   {
     key: 'problem',
