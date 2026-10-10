@@ -1016,6 +1016,43 @@ function validateMinibars(
     }
     rooms.set(key, set);
   }
+  // file 44 (ADR 094): a room type of the outlet's rooms, or one of its rooms, and an item
+  const contents = new Set<string>();
+  for (const c of b.roomContents) {
+    const file = f('roomContents');
+    outlet(file, c.line, c.outlet_code);
+    if (!c.room_type === !c.room_number) {
+      add(file, c.line, 'room_type', 'give a room type or a room number, not both');
+    }
+    if (
+      c.room_type &&
+      !b.rooms.some(
+        (r) =>
+          r.outlet_code === c.outlet_code &&
+          r.room_type?.toLowerCase() === c.room_type!.toLowerCase(),
+      )
+    ) {
+      add(
+        file,
+        c.line,
+        'room_type',
+        `no room of ${c.outlet_code} in ${f('rooms')} is a ${c.room_type}`,
+      );
+    }
+    if (c.room_number && !rooms.has(`${c.outlet_code} ${c.room_number.toLowerCase()}`)) {
+      add(
+        file,
+        c.line,
+        'room_number',
+        `${c.room_number} is not a room of ${c.outlet_code} in ${f('rooms')}`,
+      );
+    }
+    if (!b.items.some((i) => i.item_code === c.item_code))
+      add(file, c.line, 'item_code', `is not in ${f('items')}`);
+    const key = `${c.outlet_code} ${(c.room_type ?? '#' + c.room_number).toLowerCase()} ${c.item_code}`;
+    if (contents.has(key)) add(file, c.line, 'item_code', 'is listed twice for that room or type');
+    contents.add(key);
+  }
   const counted = new Map<string, Set<string>>();
   for (const c of b.minibarChecks) {
     const file = f('minibarChecks');

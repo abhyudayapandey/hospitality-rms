@@ -1177,6 +1177,21 @@ export const FILES = {
       charged_by: optional,
     }),
   },
+  // Room contents (ADR 094): what a room holds and how many, by room type or for one room (a
+  // room's own line wins). Counted on the room, not stocked. Keyed by outlet, room type or
+  // room, and item; a later load corrects a line and archives one no longer listed.
+  roomContents: {
+    file: '44_room_contents.csv',
+    required: false,
+    schema: z.object({
+      outlet_code: code,
+      room_type: optional,
+      room_number: optional,
+      item_code: code,
+      qty: num.refine((v) => v > 0, 'must be more than 0'),
+    }),
+    optional: ['room_type', 'room_number'],
+  },
   // Meters (ADR 091): electricity, gas, water and diesel meters at a place (the outlet or a
   // department, usually Engineering), the job role that reads them and when each day. Keyed by
   // meter_code; a later load corrects one.

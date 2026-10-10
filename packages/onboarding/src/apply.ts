@@ -208,6 +208,7 @@ class Loader {
     await this.stockReach();
     await this.stock();
     await this.minibars();
+    await this.roomContents();
     await this.menu();
     await this.leave();
     await this.payRates();
@@ -1021,6 +1022,56 @@ class Loader {
                       returning id, true as inserted)
          select * from upd union all select * from ins`,
         [this.tenant, outlet, r.room_number, r.floor ?? null, r.room_type ?? null, set],
+      );
+    }
+  }
+
+  /**
+   * File 44 (ADR 094): what each room type or room holds. Lines no longer in the file are
+   * archived at the outlets the file names.
+   */
+  private async roomContents() {
+    const kept: string[] = [];
+    for (const c of this.b.roomContents) {
+      this.step(FILES.roomContents.file, c.line);
+      const outlet = this.nodes.get(c.outlet_code)!;
+      const room = c.room_number
+        ? ((
+            await this.c.query<{ id: string }>(
+              `select id from ops.room where tenant_id = $1 and org_node_id = $2
+                  and lower(number) = lower($3) and archived_at is null`,
+              [this.tenant, outlet, c.room_number],
+            )
+          ).rows[0]?.id ?? null)
+        : null;
+      const args = [this.tenant, outlet, c.room_type ?? null, room, this.items.get(c.item_code)];
+      const cur = `select id from ops.room_item
+                    where tenant_id = $1 and org_node_id = $2 and item_id = $5
+                      and archived_at is null
+                      and (($3::text is not null and lower(room_type) = lower($3))
+                           or ($4::uuid is not null and room_id = $4))`;
+      await this.upsert(
+        'room contents',
+        `with cur as (${cur}),
+              upd as (update ops.room_item t set qty = $6
+                        where t.id = (select id from cur) and t.qty is distinct from $6::numeric
+                       returning t.id, false as inserted),
+              ins as (insert into ops.room_item (tenant_id, org_node_id, room_type, room_id,
+                                                 item_id, qty)
+                      select $1, $2, $3, $4, $5, $6 where not exists (select 1 from cur)
+                      returning id, true as inserted)
+         select * from upd union all select * from ins`,
+        [...args, c.qty],
+      );
+      kept.push(...(await this.c.query<{ id: string }>(cur, args)).rows.map((x) => x.id));
+    }
+    const outlets = [...new Set(this.b.roomContents.map((c) => this.nodes.get(c.outlet_code)))];
+    if (outlets.length) {
+      await this.c.query(
+        `update ops.room_item set archived_at = now()
+          where tenant_id = $1 and org_node_id = any ($2) and archived_at is null
+            and not (id = any ($3))`,
+        [this.tenant, outlets, kept],
       );
     }
   }
