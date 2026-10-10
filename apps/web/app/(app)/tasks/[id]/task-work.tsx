@@ -242,6 +242,9 @@ function GridRows({
   );
 }
 
+// an audit's answers (ADR 095)
+const YES_NO_WORDS: Record<string, string> = { yes: 'Yes', no: 'No', na: 'Not applicable' };
+
 function StepValue({ step, unit }: { step: TaskStep; unit: string | undefined }) {
   const by = step.done_by_name ? ` · ${step.done_by_name}` : '';
   let v = '';
@@ -249,6 +252,8 @@ function StepValue({ step, unit }: { step: TaskStep; unit: string | undefined })
   else if (step.kind === 'text') v = step.value_text ?? '';
   else if (step.kind === 'discard') v = `Thrown away: ${step.value_num} ${unit ?? ''}`;
   else if (step.kind === 'batch') v = `Made: ${step.value_num} ${unit ?? ''}`;
+  else if (step.kind === 'yesno') v = YES_NO_WORDS[step.value_text ?? ''] ?? '';
+  else if (step.kind === 'rating') v = `${step.value_num} of 5`;
   return (
     <p className="text-sm text-slate-700">
       {v}
@@ -323,6 +328,9 @@ function StepInputs({
           return setError('Enter the reading.');
         }
         if (step.kind === 'text' && !value.trim()) return setError('Write something first.');
+        if ((step.kind === 'yesno' || step.kind === 'rating') && !value) {
+          return setError('Choose an answer first.');
+        }
         if (warn && !action.trim()) return setError('Say what you did about it.');
         if (step.asks_food && !food.trim()) return setError('Say which food you probed.');
         if (step.asks_thrown && thrown === null) {
@@ -332,6 +340,8 @@ function StepInputs({
           ...(step.kind === 'tick' && { done: true }),
           ...(step.kind === 'number' && { number: num }),
           ...(step.kind === 'text' && { text: value }),
+          ...(step.kind === 'yesno' && { answer: value }),
+          ...(step.kind === 'rating' && { number: Number(value) }),
           ...(warn && { action }),
           ...(step.asks_food && { food }),
           ...(step.asks_thrown && thrown !== null && { thrown }),
@@ -419,6 +429,55 @@ function StepInputs({
                   onChange={() => setThrown(v as boolean)}
                 />
                 {label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+      {step.kind === 'yesno' && (
+        <fieldset className="space-y-1">
+          <legend className="sr-only">{step.label}</legend>
+          <div className="grid grid-cols-3 gap-2">
+            {Object.entries(YES_NO_WORDS).map(([v, label]) => (
+              <label
+                key={v}
+                className={`flex min-h-11 items-center justify-center rounded-lg text-center text-sm ring-1 ${
+                  value === v ? 'bg-brand-700 text-white ring-brand-700' : 'ring-slate-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  className="sr-only"
+                  name={`answer-${step.id}`}
+                  checked={value === v}
+                  onChange={() => setValue(v)}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+      {step.kind === 'rating' && (
+        <fieldset className="space-y-1">
+          <legend className="sr-only">{step.label}</legend>
+          <div className="grid grid-cols-5 gap-2">
+            {['1', '2', '3', '4', '5'].map((v) => (
+              <label
+                key={v}
+                className={`flex min-h-11 items-center justify-center rounded-lg text-sm ring-1 ${
+                  value === v ? 'bg-brand-700 text-white ring-brand-700' : 'ring-slate-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  className="sr-only"
+                  name={`rating-${step.id}`}
+                  aria-label={`${v} of 5`}
+                  checked={value === v}
+                  onChange={() => setValue(v)}
+                />
+                {v}
               </label>
             ))}
           </div>

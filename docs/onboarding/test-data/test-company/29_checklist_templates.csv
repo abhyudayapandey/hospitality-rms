@@ -47,3 +47,10 @@ HOTEL-1.0-HK-ROOM-CHECK,TEST-HOTEL-1.0-HOUSEKEEPING,Room check,daily 10:00,role:
 HOTEL-1.0-HK-PUBLIC-AREAS,TEST-HOTEL-1.0-HOUSEKEEPING,Public areas round,daily 09:00,role:PUBLIC_AREA_ATTENDANT,1,Floor mopped,tick,,,,no,,,,,Lobby; Corridor 1; Corridor 2,
 HOTEL-1.0-HK-PUBLIC-AREAS,TEST-HOTEL-1.0-HOUSEKEEPING,Public areas round,daily 09:00,role:PUBLIC_AREA_ATTENDANT,2,Bins emptied,tick,,,,no,,,,,Lobby; Corridor 1; Corridor 2,
 HOTEL-1.0-KITCHEN-PROBE,TEST-HOTEL-1.0-KITCHEN,Hot food probe,daily 12:30,on_shift,1,Core temperature of a hot dish,number,63,100,°C,no,thermometer,,,,,food; thrown
+HOTEL-1.0-SERVICE-AUDIT,TEST-HOTEL-1.0-RESTAURANT,Service audit,weekly Fri 13:00,role:RESTAURANT_MANAGER,1,Guests greeted within a minute,yesno,,,,no,,,,,,
+HOTEL-1.0-SERVICE-AUDIT,TEST-HOTEL-1.0-RESTAURANT,Service audit,weekly Fri 13:00,role:RESTAURANT_MANAGER,2,Menu presented and specials explained,yesno,,,,no,,,,,,
+HOTEL-1.0-SERVICE-AUDIT,TEST-HOTEL-1.0-RESTAURANT,Service audit,weekly Fri 13:00,role:RESTAURANT_MANAGER,3,Water refilled without asking,yesno,,,,no,,,,,,
+HOTEL-1.0-SERVICE-AUDIT,TEST-HOTEL-1.0-RESTAURANT,Service audit,weekly Fri 13:00,role:RESTAURANT_MANAGER,4,Bill presented within five minutes,yesno,,,,no,,,,,,
+HOTEL-1.0-TASTE-PANEL,TEST-HOTEL-1.0-KITCHEN,Taste panel,"monthly 1,16 16:00",role:EXECUTIVE_CHEF,1,Butter chicken: taste,rating,,,,no,,,,,,
+HOTEL-1.0-TASTE-PANEL,TEST-HOTEL-1.0-KITCHEN,Taste panel,"monthly 1,16 16:00",role:EXECUTIVE_CHEF,2,Butter chicken: presentation,rating,,,,no,,,,,,
+HOTEL-1.0-TASTE-PANEL,TEST-HOTEL-1.0-KITCHEN,Taste panel,"monthly 1,16 16:00",role:EXECUTIVE_CHEF,3,Dal makhani: taste,rating,,,,no,,,,,,

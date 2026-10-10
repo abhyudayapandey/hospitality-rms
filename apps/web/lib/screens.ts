@@ -49,6 +49,7 @@ export type ScreenKey =
   | 'utilities'
   | 'breakage'
   | 'breakfast'
+  | 'audits'
   | 'linen'
   | 'roster'
   | 'events'
@@ -318,6 +319,15 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     icon: 'plate',
     section: 'work',
     show: (i) => can(i, 'ROOMS') || can(i, 'RECIPES_TEAM'),
+  },
+  {
+    // service audits and taste panels, their scores and trend (ADR 095)
+    key: 'audits',
+    href: '/audits',
+    label: 'Audits',
+    icon: 'star',
+    section: 'team',
+    show: (i) => can(i, 'AUDITS'),
   },
   {
     // the laundry exchange and uniforms (ADR 094)

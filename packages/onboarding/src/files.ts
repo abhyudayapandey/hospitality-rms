@@ -857,7 +857,11 @@ export const FILES = {
       assign_to: assignTo,
       step: int.refine((v) => v >= 1 && v <= 30, 'must be 1 to 30'),
       step_label: text,
-      step_kind: z.enum(['tick', 'number', 'text', 'photo'], 'must be tick, number, text or photo'),
+      // ADR 095: yesno (yes, no or not applicable) and rating (1 to 5) make the checklist an audit
+      step_kind: z.enum(
+        ['tick', 'number', 'text', 'photo', 'yesno', 'rating'],
+        'must be tick, number, text, photo, yesno or rating',
+      ),
       min: optNum,
       max: optNum,
       unit: optional,

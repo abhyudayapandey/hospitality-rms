@@ -2954,21 +2954,22 @@ class Loader {
         'checklists',
         `insert into ops.checklist_template as t (tenant_id, org_node_id, code, name, schedule,
                                                  assign, steps, library_code, library_version,
-                                                 sign_off, for_each)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                                                 sign_off, for_each, module)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          on conflict (tenant_id, code) where code is not null do update
             set org_node_id = excluded.org_node_id, name = excluded.name,
                 schedule = excluded.schedule, assign = excluded.assign, steps = excluded.steps,
                 library_code = coalesce(excluded.library_code, t.library_code),
                 library_version = coalesce(excluded.library_version, t.library_version),
-                sign_off = excluded.sign_off, for_each = excluded.for_each, archived_at = null
+                sign_off = excluded.sign_off, for_each = excluded.for_each,
+                module = excluded.module, archived_at = null
           where (t.org_node_id, t.name, t.schedule, t.assign, t.steps, t.library_code,
-                 t.library_version, t.sign_off, t.for_each, t.archived_at)
+                 t.library_version, t.sign_off, t.for_each, t.module, t.archived_at)
                 is distinct from (excluded.org_node_id, excluded.name, excluded.schedule,
                                   excluded.assign, excluded.steps,
                                   coalesce(excluded.library_code, t.library_code),
                                   coalesce(excluded.library_version, t.library_version),
-                                  excluded.sign_off, excluded.for_each, null)
+                                  excluded.sign_off, excluded.for_each, excluded.module, null)
          returning id, xmax = 0 as inserted`,
         [
           this.tenant,
@@ -2982,6 +2983,8 @@ class Loader {
           lib?.version ?? null,
           first.sign_off,
           forEach,
+          // a checklist of scored steps is an audit, in the Audits block (ADR 095)
+          rows.some((r) => r.step_kind === 'yesno' || r.step_kind === 'rating') ? 'audits' : null,
         ],
       );
     }

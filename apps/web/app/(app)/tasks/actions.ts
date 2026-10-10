@@ -85,6 +85,8 @@ export async function completeStep(
     /** the food probed, and whether out-of-date food was thrown away, where the step asks */
     food?: string;
     thrown?: boolean;
+    /** an audit's yes, no or not applicable (ADR 095) */
+    answer?: 'yes' | 'no' | 'na' | string;
   },
 ): Promise<ActionResult<{ flagged: boolean }>> {
   const r = await run('complete_step', async (tx) => {

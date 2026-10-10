@@ -49,7 +49,7 @@ export interface TaskStep {
   id: string;
   position: number;
   label: string;
-  kind: 'tick' | 'number' | 'text' | 'photo' | 'discard' | 'batch' | 'receive';
+  kind: 'tick' | 'number' | 'text' | 'photo' | 'discard' | 'batch' | 'receive' | 'yesno' | 'rating';
   min: number | null;
   max: number | null;
   unit: string | null;
