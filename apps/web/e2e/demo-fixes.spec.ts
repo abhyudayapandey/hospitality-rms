@@ -100,3 +100,15 @@ test('the laundry form keeps each name whole and its numbers inside the screen',
   const width = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(width).toBeLessThanOrEqual(380);
 });
+
+test("a department head's roster opens by person; the GM's by shift", async ({ page }) => {
+  const kitchen = await placeId('TEST-HOTEL-1.0-KITCHEN');
+  await signInAs(page, 'Test Executive Chef 1.0');
+  await page.goto(`/roster/week?node=${kitchen}`);
+  await expect(page.getByTestId('view-people')).toHaveText('By shift');
+  await expect(page.getByTestId('person-row').first()).toBeVisible();
+
+  await signInAs(page, 'Test General Manager 1.0');
+  await page.goto(`/roster/week?node=${kitchen}`);
+  await expect(page.getByTestId('view-people')).toHaveText('By person');
+});

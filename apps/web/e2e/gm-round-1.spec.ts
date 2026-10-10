@@ -146,9 +146,9 @@ test('the restaurant manager rosters by person: a tile for each shift type, and 
   await cleanup();
   try {
     await signInAs(page, 'Test Restaurant Manager 1.0');
+    // a department head's roster opens by person (ADR 097)
     await page.goto(`/roster/week?node=${restaurant}&week=${monday}&day=${day}`);
-    await page.getByTestId('view-people').click();
-    await page.waitForURL(/view=people/);
+    await expect(page.getByTestId('view-people')).toHaveText('By shift');
     const row = page.getByTestId('person-row').filter({ hasText: 'Test Steward C 1.0' });
     const split = row.getByTestId('shift-tile').filter({ hasText: 'Split' });
     await expect(split).toContainText('11:00–15:00 · 18:00–23:00 · 9 h');
@@ -158,6 +158,11 @@ test('the restaurant manager rosters by person: a tile for each shift type, and 
     await off.click();
     await expect(off).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('form', { name: 'Repeat this pattern' })).toBeVisible();
+    // By shift stays chosen from day to day
+    await page.getByTestId('view-people').click();
+    await page.waitForURL(/view=shift/);
+    await expect(page.getByTestId('view-people')).toHaveText('By person');
+    await expect(page.getByTestId('person-row')).toHaveCount(0);
   } finally {
     await cleanup();
   }
