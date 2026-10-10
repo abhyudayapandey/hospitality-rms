@@ -36,6 +36,12 @@ past week, the licences and their numbers.
   library): the server's section set-up, the room attendant's rooms and turndown, the
   steward's kitchen closing, the technician's plant round… each on that person's To do list
   every day, with no roster needed.
+- **New blocks** (ADR 087 to 096): the room ready check per room, signed off by the
+  housekeeping supervisor; a weekly service audit (yes or no) and the taste panel (1 to 5) on
+  the 1st and 16th; five meters the technician reads at 08:00; what each room type holds;
+  four SOPs (handwashing, allergies, turndown, serving alcohol); spirits, wine and beer in the
+  excise register; milk, butter, cheese, coconut milk and wine with an opened-pack shelf life;
+  the craft gin thrown away only once the GM approves.
 - **Rooms**: 101–109, 201–209, 301–306 and the pool terraces P-10 to P-12; Passport Deluxe
   rooms have the Standard minibar, suites and terraces the Suite one.
 - `pos-sale-by-item.csv`: the cashier's end-of-day POS file, imported live in the pitch.
@@ -92,7 +98,8 @@ calendar only show with it). Without Hotel the dry run says the minibar checks a
 should report no problems and no warnings, with (new): org places 12 / 1 changed (the
 company root), delivery places 6, links 5, job roles 38, users 38, workers 38 / 1 changed (the owner's), items 80, item
 locations 109, menu items 34, rooms 27, minibar sets 2, minibar checks 53, sales days 7,
-purchase orders 5, attendance sessions 138, checklists 28. **Apply**, then a second dry run shows no
+purchase orders 5, attendance sessions 138, checklists 32, meters 5, room contents 17, SOPs 4.
+**Apply**, then a second dry run shows no
 changes.
 
 A Passport loaded before ADR 083 has two bar stores. Its re-import retires the Mini Bar (lobby)

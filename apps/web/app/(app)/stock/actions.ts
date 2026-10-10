@@ -97,6 +97,26 @@ export async function recordWastage(
   });
 }
 
+/**
+ * Ask for something the GM must approve to be thrown away (ADR 092): a request on the GM's To do
+ * list; approving it gives it to someone in the department, and the stock leaves when they
+ * have thrown it away.
+ */
+export async function askDiscard(
+  node: string,
+  item: string,
+  qty: number,
+  reason: string,
+  idempotencyKey: string,
+): Promise<ActionResult<{ id: string }>> {
+  return run('ask_discard', async (tx) => {
+    const r = await sql<{ id: string }>`
+      select ops.ask_discard(${node}::uuid, ${item}::uuid, ${qty}, ${reason},
+                             ${idempotencyKey}) as id`.execute(tx);
+    return { id: r.rows[0]!.id };
+  });
+}
+
 export interface UnusualCheck {
   /** the department head (or the GM) will have to approve */
   needs: boolean;
@@ -429,5 +449,35 @@ export async function setItemPhoto(
   return run('set_item_photo', async (tx) => {
     await sql`select inv.set_item_photo(${item}::uuid, ${photoKey})`.execute(tx);
     return null;
+  });
+}
+
+/** Open a pack (ADR 093): it keeps its shelf life from now; returns it, for its label. */
+export async function openPack(
+  node: string,
+  item: string,
+  qty: number,
+  idempotencyKey: string,
+): Promise<ActionResult<{ id: string }>> {
+  return run('open_pack', async (tx) => {
+    await requireModule(tx, 'shelf_life');
+    const r = await sql<{ id: string }>`
+      select inv.open_pack(${node}::uuid, ${item}::uuid, ${qty}, ${idempotencyKey}) as id`.execute(
+      tx,
+    );
+    return { id: r.rows[0]!.id };
+  });
+}
+
+/** An opened pack used up (nothing leaves the store) or thrown away (expired wastage). */
+export async function closePack(
+  pack: string,
+  thrown: boolean,
+): Promise<ActionResult<{ done: true }>> {
+  return run('close_pack', async (tx) => {
+    await requireModule(tx, 'shelf_life');
+    if (thrown) await sql`select inv.throw_pack(${pack}::uuid)`.execute(tx);
+    else await sql`select inv.finish_pack(${pack}::uuid)`.execute(tx);
+    return { done: true as const };
   });
 }

@@ -154,6 +154,16 @@ describe('the set-up draft', () => {
     expect(placed.find((r) => r['item_code'] === 'OAT-MILK')?.['par_level']).toBe('6');
   });
 
+  it('which orders need approving goes in file 00; unusual ones (the default) leave it out', () => {
+    expect(rows(filesFromDraft(cafe()), '00_')[0]?.['purchase_approval'] ?? '').toBe('');
+    const d = cafe();
+    d.company.purchaseApproval = 'above:5000';
+    const files = filesFromDraft(d);
+    expect(readBundle(files).issues).toEqual([]);
+    expect(rows(files, '00_')[0]?.['purchase_approval']).toBe('above:5000');
+    expect(readDraft({ company: { purchaseApproval: 'often' } }).company.purchaseApproval).toBe('');
+  });
+
   it('cover answers become file 37, and the lines say what moves', () => {
     const d = cafe();
     d.outlets[0]!.tile = 'restaurant';

@@ -270,6 +270,28 @@ the app as someone and picks a person of their company; every screen is then the
 amber banner with Switch and Back to. The database checks it on every request, audit rows say
 who presented, and nothing touches a login meanwhile.
 
+**Building blocks round 2** (ADR 087 to 096, all on by default; a platform admin switches them).
+
+- _Checklists_: a finished round may need signing off (one level up, the department head or a
+  named role; a To do item), schedules may be monthly or the nth weekday, steps may run on some
+  weekdays only, readings ask what food and whether it was thrown, and a checklist may run per
+  room or per area as a grid; rooms carry a status (VC, OCC, VD, OOO, ...) (ADR 087, 088).
+- _Logbook & handover_ (LOGBOOK): entries per place and a handover acknowledged by whoever it is
+  for. _Registers_ (REGISTERS): lost and found, incidents, visitors, vehicles, staff in and out,
+  keys, fire equipment, each kept by the roles file 45 names. _Utilities_ (UTILITIES): meters
+  read daily by a job role, consumption by day (ADR 089 to 091).
+- _Stock policies_: par by weekday, items thrown away only once the GM approves, and which
+  orders need approving (unusual, every, above an amount) (ADR 092).
+- _Shelf life & labels_ (SHELF_LIFE): an opened pack's use-by and its label with day dot;
+  _Breakage_ (BREAKAGE): what broke, where and how, posted as consumption (ADR 093).
+- _Rooms_ (ROOMS): what each room should hold, counted not stocked; breakfast by room and buffet
+  for front office and housekeeping, read by the kitchen and restaurant. _Linen & uniforms_
+  (LINEN): the laundry exchange and uniforms issued (ADR 094).
+- _Audits_ (AUDITS): yes/no and 1 to 5 checklists scored as a %; _Training & SOPs_ (TRAINING):
+  Me → SOPs with "I've read this" per version, sessions with attendance and scores (ADR 095).
+- _Excise_ (EXCISE): a store's daily bar register and FLR from the ledger, and transport
+  permits; _covers_ per meal on the outlet's day report, with the spend per cover (ADR 096).
+
 ### Approval processes (To do list)
 
 LEAVE, SHIFT_SWAP, PURCHASE_ORDER (only unusual ones, ADR 044: off the menu or more than

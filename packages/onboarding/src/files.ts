@@ -14,6 +14,7 @@ import {
   parseAllergens,
   isTaskIcon,
   TASK_ICONS,
+  REGISTER_CODES,
 } from '@outlet-ops/domain';
 import { CsvError, parseCsv } from './csv';
 
@@ -41,6 +42,17 @@ const num = z
   .transform(Number);
 const optNum = z.union([z.literal('').transform(() => undefined), num]);
 const int = z.string().regex(/^\d+$/, 'must be a whole number').transform(Number);
+const optInt = z.union([z.literal('').transform(() => undefined), int]);
+/** "milk; tree nuts": the allergens FSSAI lists (files 10 and 19, ADR 076). */
+const allergenList = z.string().transform((v, ctx) => {
+  const r = parseAllergens(v);
+  if ('ok' in r) return r.ok;
+  ctx.addIssue({
+    code: 'custom',
+    message: `"${r.bad}" is not an allergen FSSAI lists (${ALLERGENS.join('; ')})`,
+  });
+  return z.NEVER;
+});
 /** A phone number for WhatsApp (PO-4): digits, spaces, brackets and dashes, 8 to 15 digits. */
 const phone = z
   .string()
@@ -209,11 +221,15 @@ export type Requirement =
 export type Schedule =
   | { kind: 'daily'; times: string[] }
   | { kind: 'weekly'; weekdays: number[]; times: string[] }
-  | { kind: 'every_n_hours'; every: number; from: string; to: string };
+  | { kind: 'every_n_hours'; every: number; from: string; to: string }
+  | { kind: 'monthly'; days: number[]; times: string[] }
+  | { kind: 'nth_weekday'; weekday: number; nths: number[]; times: string[] };
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 /**
- * A checklist's schedule (ADR 020), times local to its place: `daily 07:00 15:00`,
- * `weekly Mon,Thu 09:00` or `every 2h 08:00-22:00`.
+ * A checklist's schedule (ADR 020, 087), times local to its place: `daily 07:00 15:00`,
+ * `weekly Mon,Thu 09:00`, `every 2h 08:00-22:00`, `monthly 1,16 09:00` (days of the month; a
+ * day past the month's end falls on its last day) or `nth Mon 1,3 10:00` (the 1st and 3rd
+ * Monday).
  */
 const schedule = z.string().transform((v, ctx): Schedule => {
   const parts = v.trim().split(/\s+/);
@@ -240,12 +256,38 @@ const schedule = z.string().transform((v, ctx): Schedule => {
     }
     return { kind: 'weekly', weekdays: [...weekdays].sort(), times };
   }
+  if (parts[0] === 'monthly') {
+    const ds = (parts[1] ?? '').split(',').map(Number);
+    const times = parts.slice(2);
+    if (
+      ds.some((d) => !Number.isInteger(d) || d < 1 || d > 31) ||
+      times.length === 0 ||
+      !times.every((t) => HHMM.test(t))
+    ) {
+      return bad('must be like "monthly 1,16 09:00" (days of the month 1 to 31)');
+    }
+    return { kind: 'monthly', days: [...new Set(ds)].sort((a, b) => a - b), times };
+  }
+  if (parts[0] === 'nth') {
+    const weekday = DAY[parts[1] as Day];
+    const nths = (parts[2] ?? '').split(',').map(Number);
+    const times = parts.slice(3);
+    if (
+      !weekday ||
+      nths.some((n) => ![1, 2, 3, 4].includes(n)) ||
+      times.length === 0 ||
+      !times.every((t) => HHMM.test(t))
+    ) {
+      return bad('must be like "nth Mon 1,3 10:00" (the 1st to 4th of a weekday)');
+    }
+    return { kind: 'nth_weekday', weekday, nths: [...new Set(nths)].sort(), times };
+  }
   const m = /^every (1|2|3|4|6|8|12)h ([0-2]\d:[0-5]\d)-([0-2]\d:[0-5]\d)$/.exec(parts.join(' '));
   if (m && HHMM.test(m[2]!) && HHMM.test(m[3]!)) {
     return { kind: 'every_n_hours', every: Number(m[1]), from: m[2]!, to: m[3]! };
   }
   return bad(
-    'must be "daily 07:00", "weekly Mon,Thu 09:00" or "every 2h 08:00-22:00" (1, 2, 3, 4, 6, 8 or 12 hours)',
+    'must be "daily 07:00", "weekly Mon,Thu 09:00", "every 2h 08:00-22:00" (1, 2, 3, 4, 6, 8 or 12 hours), "monthly 1,16 09:00" or "nth Mon 1,3 10:00"',
   );
 });
 
@@ -306,6 +348,16 @@ export const FILES = {
       // optional: swaps for management only (SW-4, ADR 035); blank or absent leaves it as it
       // is (on for a new customer); the Account Owner can also change it in Admin → Settings
       swaps_managers_only: keepYesNo,
+      // ADR 092: which orders need approving: unusual (blank: the default), every, above:<amount>
+      purchase_approval: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          if (v === '') return undefined;
+          if (v === 'unusual' || v === 'every' || /^above:\d+$/.test(v)) return v;
+          ctx.addIssue({ code: 'custom', message: 'must be unusual, every or above:<amount>' });
+          return z.NEVER;
+        }),
       // optional: a test customer (ADR 012); only when the customer is created, never changed
       is_test: z.union([z.literal('').transform(() => undefined), yesNo]),
       // optional: a column per block, on or off (ADR 026, 085); blank or absent leaves it as it
@@ -316,7 +368,13 @@ export const FILES = {
         typeof keepYesNo
       >),
     }),
-    optional: ['leave_hr_approval', 'is_test', 'swaps_managers_only', ...MODULE_CODES],
+    optional: [
+      'leave_hr_approval',
+      'is_test',
+      'swaps_managers_only',
+      'purchase_approval',
+      ...MODULE_CODES,
+    ],
   },
   orgNodes: {
     file: '01_org_nodes.csv',
@@ -461,8 +519,40 @@ export const FILES = {
         z.literal('').transform(() => 'store' as const),
         z.enum(['store', 'department'], 'must be store or department'),
       ]),
+      // ADR 092: `gm` for an item only thrown away once the GM approves it; blank: told to
+      // the department head
+      discard_approval: z.union(
+        [z.literal('').transform(() => false), z.literal('gm').transform(() => true)],
+        { message: 'must be blank or gm' },
+      ),
+      // ADR 093 (Shelf life & labels): hours it keeps once opened, how it is kept, and for the
+      // opened pack's label veg or non-veg and its allergens (as file 19)
+      open_shelf_life_hours: optInt.refine(
+        (v) => v === undefined || (v >= 1 && v <= 8760),
+        'must be 1 to 8760 hours',
+      ),
+      storage: z.union([
+        z.literal('').transform(() => undefined),
+        z.enum(['dry', 'chilled', 'frozen'], 'must be dry, chilled or frozen'),
+      ]),
+      food_type: z.union([
+        z.literal('').transform(() => undefined),
+        z.enum(FOOD_TYPES, 'must be veg, non_veg or egg'),
+      ]),
+      allergens: allergenList,
+      // ADR 096: under excise (liquor, wine, beer), in the bar register and the FLR
+      excise: optYesNo,
     }),
-    optional: ['item_type', 'receive_to'],
+    optional: [
+      'excise',
+      'item_type',
+      'receive_to',
+      'discard_approval',
+      'open_shelf_life_hours',
+      'storage',
+      'food_type',
+      'allergens',
+    ],
   },
   itemLocations: {
     file: '11_item_locations.csv',
@@ -484,8 +574,36 @@ export const FILES = {
         z.literal('').transform(() => undefined),
         int.refine((v) => v >= 0, 'must not be negative'),
       ]),
+      // ADR 092: par by day of the week, e.g. `Mon-Thu 10; Fri-Sun 20`; days not listed keep
+      // par_level
+      par_by_day: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          if (v.trim() === '') return undefined;
+          const out: Record<string, number> = {};
+          for (const part of v
+            .split(';')
+            .map((p) => p.trim())
+            .filter(Boolean)) {
+            const m = /^(\S+)\s+(\d+(?:\.\d+)?)$/.exec(part);
+            const ds = m ? days.safeParse(m[1]) : undefined;
+            if (!m || !ds?.success) {
+              ctx.addIssue({ code: 'custom', message: 'must be like "Mon-Thu 10; Fri-Sun 20"' });
+              return z.NEVER;
+            }
+            for (const d of ds.data) {
+              if (String(d) in out) {
+                ctx.addIssue({ code: 'custom', message: 'gives a day two pars' });
+                return z.NEVER;
+              }
+              out[String(d)] = Number(m[2]);
+            }
+          }
+          return out;
+        }),
     }),
-    optional: ['shelf', 'shelf_order'],
+    optional: ['shelf', 'shelf_order', 'par_by_day'],
   },
   openingStock: {
     file: '12_opening_stock.csv',
@@ -601,15 +719,7 @@ export const FILES = {
         z.literal('').transform(() => undefined),
         z.enum(FOOD_TYPES, 'must be veg, non_veg or egg'),
       ]),
-      allergens: z.string().transform((v, ctx) => {
-        const r = parseAllergens(v);
-        if ('ok' in r) return r.ok;
-        ctx.addIssue({
-          code: 'custom',
-          message: `"${r.bad}" is not an allergen FSSAI lists (${ALLERGENS.join('; ')})`,
-        });
-        return z.NEVER;
-      }),
+      allergens: allergenList,
       batch_portions: optNum.refine((v) => v === undefined || v > 0, 'must be more than 0'),
     }),
     optional: ['food_type', 'allergens', 'batch_portions'],
@@ -750,7 +860,11 @@ export const FILES = {
       assign_to: assignTo,
       step: int.refine((v) => v >= 1 && v <= 30, 'must be 1 to 30'),
       step_label: text,
-      step_kind: z.enum(['tick', 'number', 'text', 'photo'], 'must be tick, number, text or photo'),
+      // ADR 095: yesno (yes, no or not applicable) and rating (1 to 5) make the checklist an audit
+      step_kind: z.enum(
+        ['tick', 'number', 'text', 'photo', 'yesno', 'rating'],
+        'must be tick, number, text, photo, yesno or rating',
+      ),
       min: optNum,
       max: optNum,
       unit: optional,
@@ -776,8 +890,76 @@ export const FILES = {
           ctx.addIssue({ code: 'custom', message: 'must be like CHILLER-LOG@1' });
           return z.NEVER;
         }),
+      // ADR 087: optional, the weekdays the step runs (`Mon,Thu`, `Mon-Fri`); blank: every round
+      days: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          if (v === '') return undefined;
+          const r = days.safeParse(v);
+          if (r.success) return r.data;
+          ctx.addIssue({ code: 'custom', message: r.error.issues[0]!.message });
+          return z.NEVER;
+        }),
+      // ADR 087: optional, the same on every row of a checklist: who signs it off once done.
+      // Blank or `none`; `up` (the role one level up there, else the department head),
+      // `department_head` or `role:CODE`
+      sign_off: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          if (v === '' || v === 'none') return 'none';
+          if (/^(up|department_head|role:[A-Z][A-Z0-9_]*)$/.test(v)) return v;
+          ctx.addIssue({
+            code: 'custom',
+            message: 'must be blank, none, up, department_head or role:CODE',
+          });
+          return z.NEVER;
+        }),
+      // ADR 088: optional, the same on every row of a checklist: `rooms` (each room of its
+      // outlet, file 40) or named areas `Lobby; Pool deck`; blank: once
+      for_each: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          if (v === '') return undefined;
+          if (v === 'rooms') return { rooms: true as const };
+          const areas = v
+            .split(';')
+            .map((a) => a.trim())
+            .filter(Boolean);
+          if (
+            areas.length >= 1 &&
+            areas.length <= 60 &&
+            areas.every((a) => a.length <= 60) &&
+            new Set(areas.map((a) => a.toLowerCase())).size === areas.length
+          ) {
+            return { areas };
+          }
+          ctx.addIssue({
+            code: 'custom',
+            message: 'must be rooms, or 1 to 60 different areas separated by ";"',
+          });
+          return z.NEVER;
+        }),
+      // ADR 088: optional, what else a step asks: `food` (which food was probed, readings
+      // only) and `thrown` (whether out-of-date food was thrown away), separated by ";"
+      step_asks: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          const asks = v
+            .split(';')
+            .map((a) => a.trim())
+            .filter(Boolean);
+          if (asks.every((a) => a === 'food' || a === 'thrown')) {
+            return { food: asks.includes('food'), thrown: asks.includes('thrown') };
+          }
+          ctx.addIssue({ code: 'custom', message: 'must be blank, food, thrown or food; thrown' });
+          return z.NEVER;
+        }),
     }),
-    optional: ['step_icon', 'from_library'],
+    optional: ['step_icon', 'from_library', 'days', 'sign_off', 'for_each', 'step_asks'],
   },
   // Test-only tasks (ADR 020): one-off tasks, open maintenance requests and prep lists.
   tasks: {
@@ -1001,6 +1183,90 @@ export const FILES = {
       // added to the guest's bill, by whom (blank: still to charge)
       charged_by: optional,
     }),
+  },
+  // Room contents (ADR 094): what a room holds and how many, by room type or for one room (a
+  // room's own line wins). Counted on the room, not stocked. Keyed by outlet, room type or
+  // room, and item; a later load corrects a line and archives one no longer listed.
+  roomContents: {
+    file: '44_room_contents.csv',
+    required: false,
+    schema: z.object({
+      outlet_code: code,
+      room_type: optional,
+      room_number: optional,
+      item_code: code,
+      qty: num.refine((v) => v > 0, 'must be more than 0'),
+    }),
+    optional: ['room_type', 'room_number'],
+  },
+  // Meters (ADR 091): electricity, gas, water and diesel meters at a place (the outlet or a
+  // department, usually Engineering), the job role that reads them and when each day. Keyed by
+  // meter_code; a later load corrects one.
+  meters: {
+    file: '43_meters.csv',
+    required: false,
+    schema: z.object({
+      place_code: code,
+      meter_code: code,
+      name: text,
+      kind: z.enum(
+        ['electricity', 'gas', 'water', 'diesel', 'other'],
+        'must be electricity, gas, water, diesel or other',
+      ),
+      unit: text,
+      read_by: code,
+      read_at: z.union([z.literal('').transform(() => '09:00'), time]),
+    }),
+    optional: ['read_at'],
+  },
+  // SOPs (ADR 095): the SOP library, each at a place, for some job roles (blank: everyone
+  // there), its text and whether it needs "I've read this". Keyed by sop_code; a later load
+  // corrects one (a changed text asks again) and archives one no longer listed.
+  sops: {
+    file: '46_sops.csv',
+    required: false,
+    schema: z.object({
+      sop_code: code,
+      place_code: code,
+      title: text,
+      // job role codes separated by ";"
+      roles: z
+        .string()
+        .default('')
+        .transform((v) =>
+          v
+            .split(';')
+            .map((r) => r.trim())
+            .filter(Boolean),
+        ),
+      needs_ack: optYesNo,
+      body: text,
+    }),
+    optional: ['roles', 'needs_ack'],
+  },
+  // Registers (ADR 090): which are kept, and by which job roles (blank: anyone who keeps
+  // registers where it is written). A register not listed keeps the default: lost and found
+  // and incidents everywhere, the rest at hotels.
+  registers: {
+    file: '45_registers.csv',
+    required: false,
+    schema: z.object({
+      register: z.enum(REGISTER_CODES as [string, ...string[]], {
+        message: `must be one of ${REGISTER_CODES.join(', ')}`,
+      }),
+      on: yesNo,
+      // job role codes separated by ";"
+      roles: z
+        .string()
+        .default('')
+        .transform((v) =>
+          v
+            .split(';')
+            .map((r) => r.trim())
+            .filter(Boolean),
+        ),
+    }),
+    optional: ['roles'],
   },
 } as const;
 

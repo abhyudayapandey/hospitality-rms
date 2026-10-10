@@ -59,9 +59,9 @@ describe('bundles (ADR 067)', () => {
 
   it('On, Partly on or Off from the modules that are on', () => {
     const people = byCode('people');
-    expect(bundleState(people, new Set(['roster', 'clock_in', 'pay', 'leave', 'swaps']))).toBe(
-      'on',
-    );
+    expect(
+      bundleState(people, new Set(['roster', 'clock_in', 'pay', 'leave', 'swaps', 'training'])),
+    ).toBe('on');
     expect(bundleState(people, new Set(['leave']))).toBe('partly');
     expect(bundleState(people, new Set(['checklists']))).toBe('off');
   });

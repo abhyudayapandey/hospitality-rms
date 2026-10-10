@@ -1,0 +1,8 @@
+register,on,roles
+lost_found,yes,FRONT_DESK_EXECUTIVE; SECURITY_GUARD; ROOM_ATTENDANT
+incidents,yes,
+visitors,yes,SECURITY_GUARD; SECURITY_SUPERVISOR
+vehicles,yes,SECURITY_GUARD
+staff_movement,yes,SECURITY_GUARD
+keys,yes,FRONT_DESK_EXECUTIVE; SECURITY_GUARD
+fire_equipment,yes,TECHNICIAN; SECURITY_SUPERVISOR

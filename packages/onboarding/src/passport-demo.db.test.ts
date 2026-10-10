@@ -84,6 +84,9 @@ describe('the Passport Hotel demo', () => {
         orders: n('purchase orders'),
         attendance: n('attendance sessions'),
         checklists: n('checklists'),
+        meters: n('meters'),
+        contents: n('room contents'),
+        sops: n('SOPs'),
       }).toEqual({
         org: [12, 1],
         delivery: [6, 0],
@@ -100,7 +103,12 @@ describe('the Passport Hotel demo', () => {
         sales: [7, 0],
         orders: [5, 0],
         attendance: [138, 0],
-        checklists: [28, 0],
+        // 28 daily ones, the room ready check, the service audit, the taste panel and the
+        // technician's meter round (ADR 088, 091, 095)
+        checklists: [32, 0],
+        meters: [5, 0],
+        contents: [17, 0],
+        sops: [4, 0],
       });
       expect((await loadCustomer(c, files, { nested: true })).ok).toBe(true);
       const again = await loadCustomer(c, files, { nested: true, dryRun: true });
@@ -217,7 +225,8 @@ describe('the Passport Hotel demo', () => {
       ).toBe(0);
       // everyone who works shifts has a daily checklist of their own role's (ADR 075); only
       // the managers, the office and the store keeper (receiving and sending is his day) have
-      // none
+      // none; the executive chef's taste panel and the restaurant manager's service audit are
+      // theirs (ADR 095)
       const without = await c.query<{ role_code: string }>(
         `select distinct w.role_code from hr.worker w
           where w.tenant_id = $1 and w.status = 'active'
@@ -234,13 +243,11 @@ describe('the Passport Hotel demo', () => {
         'BAR_MANAGER',
         'CHIEF_ENGINEER',
         'COST_CONTROLLER',
-        'EXECUTIVE_CHEF',
         'EXECUTIVE_HOUSEKEEPER',
         'FRONT_OFFICE_MANAGER',
         'GENERAL_MANAGER',
         'HR_EXECUTIVE',
         'PURCHASE_MANAGER',
-        'RESTAURANT_MANAGER',
         'SALES_MANAGER',
         'STORE_KEEPER',
       ]);

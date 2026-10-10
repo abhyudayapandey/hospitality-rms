@@ -75,7 +75,19 @@ export async function createTask(input: {
 export async function completeStep(
   task: string,
   step: string,
-  value: { done?: boolean; number?: number; text?: string; photo_key?: string | null },
+  value: {
+    done?: boolean;
+    number?: number;
+    text?: string;
+    photo_key?: string | null;
+    /** what was done about a reading out of its range (ADR 088) */
+    action?: string;
+    /** the food probed, and whether out-of-date food was thrown away, where the step asks */
+    food?: string;
+    thrown?: boolean;
+    /** an audit's yes, no or not applicable (ADR 095) */
+    answer?: string;
+  },
 ): Promise<ActionResult<{ flagged: boolean }>> {
   const r = await run('complete_step', async (tx) => {
     const x = await sql<{ r: { flagged: boolean } }>`
@@ -109,6 +121,33 @@ export async function addTaskPhoto(task: string, photoKey: string): Promise<Acti
 export async function completeTask(task: string, note: string): Promise<ActionResult<null>> {
   return run('complete_task', async (tx) => {
     await sql`select ops.complete_task(${task}::uuid, ${note})`.execute(tx);
+    return null;
+  });
+}
+
+/** The signer checks a finished checklist round (ADR 087): signed off, every step checked. */
+export async function signOff(task: string): Promise<ActionResult<null>> {
+  return run('sign_off', async (tx) => {
+    await sql`select ops.sign_off(${task}::uuid)`.execute(tx);
+    return null;
+  });
+}
+
+/** ... or sends it back with what to redo; its steps open again for whoever did it. */
+export async function sendBack(task: string, note: string): Promise<ActionResult<null>> {
+  return run('send_back', async (tx) => {
+    await sql`select ops.send_back(${task}::uuid, ${note})`.execute(tx);
+    return null;
+  });
+}
+
+/** Approve throwing it away (ADR 092): to whoever is on shift there, or one person. */
+export async function approveDiscard(
+  task: string,
+  user: string | null,
+): Promise<ActionResult<null>> {
+  return run('approve_discard', async (tx) => {
+    await sql`select ops.approve_discard(${task}::uuid, ${user}::uuid)`.execute(tx);
     return null;
   });
 }

@@ -157,6 +157,10 @@ export function taskIcon(title: string, kind: string): TaskIcon {
       return 'fridge';
     case 'minibar_bill':
       return 'bill';
+    case 'sign_off':
+      return 'check';
+    case 'handover':
+      return 'bell';
     default: {
       const hit = RULES.find(([re]) => re.test(title));
       return hit ? hit[1] : 'clipboard';

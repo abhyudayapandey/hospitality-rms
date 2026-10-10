@@ -5,7 +5,8 @@ import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from
 // Any discard tells the GM (NT-2, ADR 033): every wastage recorded at a store notifies the
 // outlet managers of the store's outlet (OUTLET_MANAGER there: the General Manager and the
 // Assistant GM; a standalone bar's Bar Manager), whether it posts at once or waits for
-// approval. Nobody else is told, and never the person who recorded it.
+// approval. Since ADR 092 the head of the store's department is told too (the Executive Chef
+// for the kitchen store). Nobody else is told, and never the person who recorded it.
 
 let ids: SeedIds;
 beforeAll(async () => {
@@ -45,7 +46,7 @@ const record = (c: PoolClient, user: string, store: string, lines: object[]) =>
   ]);
 
 describe('wastage notifies the GM (NT-2)', () => {
-  it('a small discard posts and tells the outlet’s managers only', async () => {
+  it('a small discard posts and tells the outlet’s managers (its department head recorded it)', async () => {
     await inRolledBackTx(async (c) => {
       const paste = await item(c, KITCHEN, 'Ginger Garlic Paste');
       const r = await record(c, 'test.executive-chef.1.0', KITCHEN, [
@@ -81,6 +82,7 @@ describe('wastage notifies the GM (NT-2)', () => {
       expect(r.error).toBeUndefined();
       expect((await told(c)).map((n) => n.username)).toEqual([
         'test.assistant-general-manager.1.0',
+        'test.executive-chef.1.0',
         'test.general-manager.1.0',
       ]);
     });
@@ -95,6 +97,7 @@ describe('wastage notifies the GM (NT-2)', () => {
       expect(r.error).toBeUndefined();
       expect((await told(c)).map((n) => n.username)).toEqual([
         'test.assistant-general-manager.1.0',
+        'test.executive-chef.1.0',
       ]);
     });
   });

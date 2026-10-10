@@ -43,6 +43,17 @@ export type ScreenKey =
   | 'posImport'
   | 'briefing'
   | 'minibar'
+  | 'rooms'
+  | 'logbook'
+  | 'registers'
+  | 'utilities'
+  | 'breakage'
+  | 'breakfast'
+  | 'audits'
+  | 'sops'
+  | 'training'
+  | 'excise'
+  | 'linen'
   | 'roster'
   | 'events'
   | 'reports'
@@ -256,6 +267,106 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     icon: 'bed',
     section: 'work',
     show: (i) => can(i, 'MINIBAR'),
+  },
+  {
+    // each room's status (ADR 088): front office and housekeeping
+    key: 'rooms',
+    href: '/rooms',
+    label: 'Rooms',
+    icon: 'bed',
+    section: 'work',
+    show: (i) => can(i, 'ROOMS'),
+  },
+  {
+    // handovers to the next shift and logs (ADR 089): wherever people keep a logbook
+    key: 'logbook',
+    href: '/logbook',
+    label: 'Logbook',
+    icon: 'book',
+    section: 'work',
+    show: (i) => can(i, 'LOGBOOK'),
+  },
+  {
+    // lost and found, incidents, visitors, keys... (ADR 090): who keeps each is checked there
+    key: 'registers',
+    href: '/registers',
+    label: 'Registers',
+    icon: 'list',
+    section: 'work',
+    show: (i) => can(i, 'REGISTERS'),
+  },
+  {
+    // meters and what they used (ADR 091): engineering and the managers
+    key: 'utilities',
+    href: '/utilities',
+    label: 'Utilities',
+    icon: 'bulb',
+    section: 'team',
+    show: (i) => can(i, 'UTILITIES'),
+  },
+  {
+    // what broke and what it cost (ADR 093): every department records; heads see the outlet's
+    key: 'breakage',
+    href: '/breakage',
+    label: 'Breakage',
+    icon: 'box',
+    section: 'work',
+    show: (i) => can(i, 'BREAKAGE'),
+  },
+  {
+    // the day's breakfast guests by mode (ADR 094): front office and housekeeping keep it, the
+    // kitchen and restaurant read it (the screen says when there is none for them)
+    key: 'breakfast',
+    href: '/breakfast',
+    label: 'Breakfast',
+    icon: 'plate',
+    section: 'work',
+    show: (i) => can(i, 'ROOMS') || can(i, 'RECIPES_TEAM'),
+  },
+  {
+    // the SOPs for my place and job role, with "I've read this" (ADR 095)
+    key: 'sops',
+    href: '/me/sops',
+    label: 'My SOPs',
+    icon: 'book',
+    section: 'mine',
+    show: (i) => can(i, 'TRAINING'),
+  },
+  {
+    // training sessions, attendance and test scores; who has read the SOPs (ADR 095)
+    key: 'training',
+    href: '/training',
+    label: 'Training',
+    icon: 'clipboard',
+    section: 'team',
+    show: (i) => can(i, 'TRAINING', 'modify'),
+  },
+  {
+    // the daily bar register, the FLR and transport permits (ADR 096)
+    key: 'excise',
+    href: '/excise',
+    label: 'Excise',
+    icon: 'bottle',
+    section: 'team',
+    show: (i) => can(i, 'EXCISE'),
+  },
+  {
+    // service audits and taste panels, their scores and trend (ADR 095)
+    key: 'audits',
+    href: '/audits',
+    label: 'Audits',
+    icon: 'star',
+    section: 'team',
+    show: (i) => can(i, 'AUDITS'),
+  },
+  {
+    // the laundry exchange and uniforms (ADR 094)
+    key: 'linen',
+    href: '/linen',
+    label: 'Linen & uniforms',
+    icon: 'towel',
+    section: 'work',
+    show: (i) => can(i, 'LINEN', 'modify'),
   },
   {
     key: 'problem',

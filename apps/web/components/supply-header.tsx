@@ -11,6 +11,7 @@ const TABS = [
   { href: '/stock/transfers', label: 'Transfers', domain: 'TRANSFERS', access: 'view' },
   { href: '/stock/count', label: 'Count', domain: 'STOCK_ADJUSTMENTS', access: 'modify' },
   { href: '/stock/wastage', label: 'Wastage', domain: 'STOCK_ADJUSTMENTS', access: 'modify' },
+  { href: '/stock/opened', label: 'Opened', domain: 'SHELF_LIFE', access: 'view' },
   { href: '/stock/production', label: 'Make', domain: null, access: 'modify' },
   { href: '/stock/check', label: 'Stock check', domain: 'STOCK_CHECK', access: 'view' },
   { href: '/stock/bills', label: 'Bills', domain: 'BILLS', access: 'view' },

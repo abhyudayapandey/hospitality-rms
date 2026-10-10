@@ -51,6 +51,22 @@ export const MODULES = [
     needs: ['stock'],
     domains: ['PURCHASE_ORDERS', 'BILLS', 'DERIVED_PURCHASE_ORDERS'],
   },
+  {
+    code: 'breakage',
+    name: 'Breakage',
+    what: 'Broken crockery, cutlery, glassware and linen: what, where, who and its value.',
+    bundle: 'stock_buying',
+    needs: ['stock'],
+    domains: ['BREAKAGE'],
+  },
+  {
+    code: 'shelf_life',
+    name: 'Shelf life & labels',
+    what: 'Opened packs with their use-by and a day-dot label; they show in Expiring and Expired.',
+    bundle: 'stock_buying',
+    needs: ['stock'],
+    domains: ['SHELF_LIFE'],
+  },
   // Kitchen & bar
   {
     code: 'recipes',
@@ -83,6 +99,15 @@ export const MODULES = [
     bundle: 'kitchen_bar',
     needs: ['recipes'],
     domains: ['MENU', 'DERIVED_MENU', 'SALES', 'DERIVED_SALES', 'POS_IMPORT'],
+  },
+  {
+    code: 'excise',
+    name: 'Excise',
+    what: 'The daily bar register, the monthly FLR, transport permits and free stock.',
+    bundle: 'kitchen_bar',
+    needs: ['stock'],
+    fits: 'alcohol',
+    domains: ['EXCISE'],
   },
   // People
   {
@@ -123,6 +148,13 @@ export const MODULES = [
     needs: ['roster'],
     domains: ['SHIFT_SWAPS'],
   },
+  {
+    code: 'training',
+    name: 'Training & SOPs',
+    what: 'The training calendar, sessions with attendance and scores, induction, and the SOPs in Me.',
+    bundle: 'people',
+    domains: ['TRAINING'],
+  },
   // Daily work
   {
     code: 'checklists',
@@ -145,6 +177,36 @@ export const MODULES = [
     bundle: 'daily_work',
     domains: ['BRIEFING'],
   },
+  {
+    code: 'logbook',
+    name: 'Logbook & handover',
+    what: 'Handovers to the next shift, acknowledged by whoever takes over, and logs that hold a while.',
+    bundle: 'daily_work',
+    domains: ['LOGBOOK'],
+  },
+  {
+    code: 'registers',
+    name: 'Registers',
+    what: 'Lost and found, incidents, visitors, vehicles, staff in and out, keys and fire equipment.',
+    bundle: 'daily_work',
+    domains: ['REGISTERS'],
+  },
+  {
+    code: 'utilities',
+    name: 'Utilities',
+    what: 'Daily meter readings (electricity, gas, water, diesel) and what was used.',
+    bundle: 'daily_work',
+    needs: ['checklists'],
+    domains: ['UTILITIES'],
+  },
+  {
+    code: 'audits',
+    name: 'Audits & taste panels',
+    what: 'Scored checklists on a schedule, with each score and its trend.',
+    bundle: 'daily_work',
+    needs: ['checklists'],
+    domains: ['AUDITS'],
+  },
   // Hotel
   {
     code: 'minibars',
@@ -154,6 +216,23 @@ export const MODULES = [
     needs: ['stock'],
     fits: 'hotel',
     domains: ['MINIBAR'],
+  },
+  {
+    code: 'rooms',
+    name: 'Rooms',
+    what: "Each room's status and what is in it, counted on the room check, and breakfast by room.",
+    bundle: 'hotel',
+    fits: 'hotel',
+    domains: ['ROOMS'],
+  },
+  {
+    code: 'linen',
+    name: 'Linen & uniforms',
+    what: 'Linen par per room and store, exchanges with the laundry, and uniforms per person.',
+    bundle: 'hotel',
+    needs: ['stock'],
+    fits: 'hotel',
+    domains: ['LINEN'],
   },
   // Events & compliance
   {

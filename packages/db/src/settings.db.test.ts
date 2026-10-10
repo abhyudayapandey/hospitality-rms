@@ -37,7 +37,11 @@ async function settings(c: PoolClient, who: string): Promise<typeof DEFAULTS> {
     'select core.company_settings() as s',
   );
   if (r.error !== undefined) throw new Error(`${who}: ${r.error}`);
-  return r.rows[0]!.s;
+  // which registers are on and who keeps them is file 45's (registers.db.test.ts, ADR 090)
+  const { registers: _registers, ...rest } = r.rows[0]!.s as typeof DEFAULTS & {
+    registers?: unknown;
+  };
+  return rest;
 }
 
 const set = (c: PoolClient, who: string, value: unknown) =>

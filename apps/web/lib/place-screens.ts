@@ -11,6 +11,8 @@ export const PLACE_SCREENS = [
   'transfers',
   // vendor bills (ADR 050): stores where the caller holds BILLS
   'bills',
+  // opened packs (ADR 093): stores where the caller holds SHELF_LIFE
+  'opened',
   // licences and the compliance calendar (ADR 069): outlets where the caller holds COMPLIANCE
   'compliance',
   'variance',

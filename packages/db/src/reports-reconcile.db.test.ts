@@ -502,6 +502,55 @@ describe('the rules the audit fixed', () => {
     });
   });
 
+  it('the spend per cover is the outlet flash’s sales over the day’s covers (ADR 096)', async () => {
+    await inRolledBackTx(async (c) => {
+      const place = ids.node('TEST-BAR-3.0');
+      const who = ids.user('test.bar-manager.3.0');
+      // the last day of file 27's sales
+      const day = (
+        await migratorPool.query<{ d: string }>(
+          `select max(business_date)::text as d from rpt.sales_day
+            where org_node_id = $1 and sales > 0`,
+          [place],
+        )
+      ).rows[0]!.d;
+      for (const [period, covers] of [
+        ['lunch', 40],
+        ['dinner', 60],
+      ] as const) {
+        const r = await attemptAs(c, who, `select ops.set_covers($1, $2, $3, $4)`, [
+          place,
+          day,
+          period,
+          covers,
+        ]);
+        expect(r.error).toBeUndefined();
+      }
+      const flash = await attemptAs<{ value: string }>(
+        c,
+        who,
+        `select value::text from rpt.outlet_flash($1, $2) where measure = 'sales'`,
+        [place, day],
+      );
+      const rows = await attemptAs<{
+        covers: number | null;
+        total_covers: number;
+        sales: string;
+        per_cover: string;
+      }>(
+        c,
+        who,
+        `select covers, total_covers, sales::text, per_cover::text from ops.covers_day($1, $2)`,
+        [place, day],
+      );
+      const r = rows.rows!;
+      expect(sum(r, 'covers')).toBe(r[0]!.total_covers);
+      expect(n(r[0]!.sales)).toBe(n(flash.rows![0]!.value));
+      expect(n(r[0]!.sales)).toBeGreaterThan(0);
+      expect(n(r[0]!.per_cover)).toBe(Math.round((n(r[0]!.sales) / 100) * 100) / 100);
+    });
+  });
+
   it('the People report counts the people who belong to the place, wherever they worked', async () => {
     await inRolledBackTx(async (c) => {
       const place = ids.node('TEST-BAR-3.0');

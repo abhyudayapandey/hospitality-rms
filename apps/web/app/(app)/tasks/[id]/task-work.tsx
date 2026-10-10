@@ -15,7 +15,11 @@ import { PhotoField } from '@/components/photo-field';
 import { useHydrated } from '@/lib/use-hydrated';
 import type { Person, TaskDetail, TaskStep } from '@/lib/tasks';
 import { outOfRange } from '@/lib/tasks-view';
+import { roomStatusName } from '@/lib/rooms-view';
+import { RoomStatusPicker } from '../../rooms/status-picker';
+import { acknowledgeHandover } from '../../logbook/actions';
 import {
+  approveDiscard,
   assignExpiry,
   cancelTask,
   completeStep,
@@ -24,6 +28,8 @@ import {
   getDiscardUploadUrl,
   getTaskUploadUrl,
   recordTaskBatch,
+  sendBack,
+  signOff,
 } from '../actions';
 
 function range(s: TaskStep): string {
@@ -63,7 +69,9 @@ export function TaskWork({
 
   // one step at a time for whoever does the task (UX-6): what is done, then the step
   // to do now; the rest wait. Anyone else sees every step.
-  const focus = canWork && open && task.steps.length > 1;
+  // a round for each room or area (ADR 088): a row each, steps inside
+  const grid = task.steps.some((s) => s.grid_row);
+  const focus = !grid && canWork && open && task.steps.length > 1;
   const current = focus ? task.steps.find((s) => !s.done_at) : undefined;
   const doneCount = task.steps.filter((s) => s.done_at).length;
   const shown = focus ? task.steps.filter((s) => s.done_at || s.id === current?.id) : task.steps;
@@ -86,51 +94,55 @@ export function TaskWork({
           </div>
         </div>
       )}
-      <ol className="space-y-2" data-testid="steps">
-        {shown.map((s) => (
-          <li
-            key={s.id}
-            data-testid="step"
-            className={`space-y-2 rounded-xl p-3 ring-1 ${
-              s.flagged
-                ? 'bg-amber-50 ring-amber-300'
-                : focus && s.id === current?.id
-                  ? 'bg-white ring-2 ring-brand-700'
-                  : 'bg-white ring-slate-200'
-            }`}
-          >
-            <p className="flex items-start justify-between gap-2">
-              <span
-                className={`flex items-center gap-2 font-medium ${focus && s.id === current?.id ? 'text-lg' : ''}`}
-              >
+      {grid ? (
+        <GridRows task={task} canWork={canWork && open} photos={photos} disabled={!hydrated} />
+      ) : (
+        <ol className="space-y-2" data-testid="steps">
+          {shown.map((s) => (
+            <li
+              key={s.id}
+              data-testid="step"
+              className={`space-y-2 rounded-xl p-3 ring-1 ${
+                s.flagged
+                  ? 'bg-amber-50 ring-amber-300'
+                  : focus && s.id === current?.id
+                    ? 'bg-white ring-2 ring-brand-700'
+                    : 'bg-white ring-slate-200'
+              }`}
+            >
+              <p className="flex items-start justify-between gap-2">
                 <span
-                  data-testid="step-icon"
-                  data-icon={stepIcon(s.label, s.kind, s.icon)}
-                  className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"
+                  className={`flex items-center gap-2 font-medium ${focus && s.id === current?.id ? 'text-lg' : ''}`}
                 >
-                  <Icon name={stepIcon(s.label, s.kind, s.icon)} className="size-7" />
+                  <span
+                    data-testid="step-icon"
+                    data-icon={stepIcon(s.label, s.kind, s.icon)}
+                    className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"
+                  >
+                    <Icon name={stepIcon(s.label, s.kind, s.icon)} className="size-7" />
+                  </span>
+                  {s.label}
                 </span>
-                {s.label}
-              </span>
-              {s.done_at && <span className="text-xs text-emerald-700">✓ done</span>}
-            </p>
-            {s.kind === 'number' && range(s) && (
-              <p className="text-xs text-slate-500">Acceptable: {range(s)}</p>
-            )}
-            {s.done_at ? (
-              <StepValue step={s} unit={task.item?.unit} />
-            ) : (
-              canWork &&
-              open && <StepInputs task={task} step={s} photos={photos} disabled={!hydrated} />
-            )}
-            {!s.done_at && s.kind === 'batch' && s.value_num !== null && (
-              <p className="text-sm text-slate-600">
-                Made so far: {s.value_num} {task.item?.unit}
+                {s.done_at && <span className="text-xs text-emerald-700">✓ done</span>}
               </p>
-            )}
-          </li>
-        ))}
-      </ol>
+              {s.kind === 'number' && range(s) && (
+                <p className="text-xs text-slate-500">Acceptable: {range(s)}</p>
+              )}
+              {s.done_at ? (
+                <StepValue step={s} unit={task.item?.unit} />
+              ) : (
+                canWork &&
+                open && <StepInputs task={task} step={s} photos={photos} disabled={!hydrated} />
+              )}
+              {!s.done_at && s.kind === 'batch' && s.value_num !== null && (
+                <p className="text-sm text-slate-600">
+                  Made so far: {s.value_num} {task.item?.unit}
+                </p>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
       {later.length > 0 && (
         <p className="text-sm text-slate-500" data-testid="steps-later">
           Then {later.length} more: {later.map((s) => s.label).join(', ')}
@@ -157,6 +169,82 @@ export function TaskWork({
   );
 }
 
+/**
+ * A round for each room or area (ADR 088): one row each, its status beside a room, the first
+ * row with something left open; inside, its steps, each done on its own.
+ */
+function GridRows({
+  task,
+  canWork,
+  photos,
+  disabled,
+}: {
+  task: TaskDetail;
+  canWork: boolean;
+  photos: boolean;
+  disabled: boolean;
+}) {
+  const rows: { name: string; steps: TaskStep[] }[] = [];
+  for (const s of task.steps) {
+    const name = s.grid_row ?? '';
+    const last = rows[rows.length - 1];
+    if (last?.name === name) last.steps.push(s);
+    else rows.push({ name, steps: [s] });
+  }
+  const firstOpen = rows.find((r) => r.steps.some((s) => !s.done_at))?.name;
+  return (
+    <div className="space-y-2" data-testid="grid">
+      {rows.map((r) => {
+        const done = r.steps.filter((s) => s.done_at).length;
+        const room = r.steps[0]!.room_id;
+        const status = r.steps[0]!.room_status;
+        return (
+          <details
+            key={r.name}
+            open={r.name === firstOpen}
+            data-testid="grid-row"
+            data-row={r.name}
+            className="rounded-xl bg-white ring-1 ring-slate-200"
+          >
+            <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-3 py-2">
+              <span className="font-medium">{r.name}</span>
+              <span className="text-xs text-slate-500">
+                {room && `${status ?? 'VC'} · ${roomStatusName(status)} · `}
+                {done === r.steps.length ? '✓ done' : `${done} of ${r.steps.length}`}
+              </span>
+            </summary>
+            <div className="space-y-2 border-t border-slate-200 p-3">
+              {room && task.can_set_room_status && (
+                <RoomStatusPicker room={room} number={r.name} status={status ?? 'VC'} />
+              )}
+              <ol className="space-y-2">
+                {r.steps.map((s) => (
+                  <li key={s.id} data-testid="step" className="space-y-1">
+                    <p className="flex items-center justify-between gap-2 text-sm font-medium">
+                      {s.label}
+                      {s.done_at && <span className="text-xs text-emerald-700">✓ done</span>}
+                    </p>
+                    {s.done_at ? (
+                      <StepValue step={s} unit={task.item?.unit} />
+                    ) : (
+                      canWork && (
+                        <StepInputs task={task} step={s} photos={photos} disabled={disabled} />
+                      )
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </details>
+        );
+      })}
+    </div>
+  );
+}
+
+// an audit's answers (ADR 095)
+const YES_NO_WORDS: Record<string, string> = { yes: 'Yes', no: 'No', na: 'Not applicable' };
+
 function StepValue({ step, unit }: { step: TaskStep; unit: string | undefined }) {
   const by = step.done_by_name ? ` · ${step.done_by_name}` : '';
   let v = '';
@@ -164,13 +252,31 @@ function StepValue({ step, unit }: { step: TaskStep; unit: string | undefined })
   else if (step.kind === 'text') v = step.value_text ?? '';
   else if (step.kind === 'discard') v = `Thrown away: ${step.value_num} ${unit ?? ''}`;
   else if (step.kind === 'batch') v = `Made: ${step.value_num} ${unit ?? ''}`;
+  else if (step.kind === 'yesno') v = YES_NO_WORDS[step.value_text ?? ''] ?? '';
+  else if (step.kind === 'rating') v = `${step.value_num} of 5`;
   return (
     <p className="text-sm text-slate-700">
       {v}
       {step.photo_key && <span className="text-slate-500"> · photo added</span>}
+      {step.food_text && <span className="text-slate-500"> · {step.food_text}</span>}
+      {step.thrown_away !== null && (
+        <span className="text-slate-500">
+          {step.thrown_away ? ' · out-of-date food thrown away' : ' · nothing out of date'}
+        </span>
+      )}
       <span className="text-slate-500">{by}</span>
+      {step.checked_by_name && (
+        <span className="block text-emerald-700" data-testid="step-checked">
+          ✓ checked by {step.checked_by_name}
+        </span>
+      )}
       {step.flagged && (
         <span className="block font-semibold text-amber-800">Outside the acceptable range</span>
+      )}
+      {step.action_text && (
+        <span className="block text-amber-900" data-testid="step-action">
+          Done about it: {step.action_text}
+        </span>
       )}
     </p>
   );
@@ -195,8 +301,13 @@ function StepInputs({
     step.kind === 'discard' && step.value_num !== null ? String(step.value_num) : '',
   );
   const [photoKey, setPhotoKey] = useState<string | null>(null);
+  const [action, setAction] = useState('');
+  const [food, setFood] = useState('');
+  const [thrown, setThrown] = useState<boolean | null>(null);
   const [key] = useState(() => crypto.randomUUID());
   const needsPhoto = step.kind === 'photo' || step.photo_required;
+  // asked and approved (ADR 092), not an expired batch
+  const approved = task.kind === 'discard';
   const num = Number(value);
   const warn = step.kind === 'number' && value !== '' && outOfRange(num, step.min, step.max);
 
@@ -211,16 +322,29 @@ function StepInputs({
       } else if (step.kind === 'discard') {
         if (!(num > 0)) return setError('Enter how much you threw away.');
         r = await discardExpired(task.id, num, photoKey);
-        if (r.ok) setStatus('Recorded as expired wastage.');
+        if (r.ok) setStatus(approved ? 'Recorded as wastage.' : 'Recorded as expired wastage.');
       } else {
         if (step.kind === 'number' && (value === '' || !Number.isFinite(num))) {
           return setError('Enter the reading.');
         }
         if (step.kind === 'text' && !value.trim()) return setError('Write something first.');
+        if ((step.kind === 'yesno' || step.kind === 'rating') && !value) {
+          return setError('Choose an answer first.');
+        }
+        if (warn && !action.trim()) return setError('Say what you did about it.');
+        if (step.asks_food && !food.trim()) return setError('Say which food you probed.');
+        if (step.asks_thrown && thrown === null) {
+          return setError('Say whether out-of-date food was thrown away.');
+        }
         r = await completeStep(task.id, step.id, {
           ...(step.kind === 'tick' && { done: true }),
           ...(step.kind === 'number' && { number: num }),
           ...(step.kind === 'text' && { text: value }),
+          ...(step.kind === 'yesno' && { answer: value }),
+          ...(step.kind === 'rating' && { number: Number(value) }),
+          ...(warn && { action }),
+          ...(step.asks_food && { food }),
+          ...(step.asks_thrown && thrown !== null && { thrown }),
           photo_key: photoKey,
         });
         if (r.ok && r.data.flagged) setStatus('Outside the range: your lead has been told.');
@@ -255,7 +379,7 @@ function StepInputs({
           </span>
           <input
             inputMode="decimal"
-            aria-label={step.label}
+            aria-label={step.grid_row ? `${step.grid_row}: ${step.label}` : step.label}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             className={inputClass}
@@ -263,9 +387,101 @@ function StepInputs({
         </label>
       )}
       {warn && (
-        <p className="text-sm font-medium text-amber-800">
-          Outside {range(step)}. Saving it tells your lead.
-        </p>
+        <>
+          <p className="text-sm font-medium text-amber-800">
+            Outside {range(step)}. Saving it tells your lead.
+          </p>
+          <label className="block space-y-1">
+            <span className="text-sm">What did you do about it?</span>
+            <textarea
+              value={action}
+              onChange={(e) => setAction(e.target.value)}
+              className={`${inputClass} min-h-16 py-2`}
+            />
+          </label>
+        </>
+      )}
+      {step.asks_food && (
+        <label className="block space-y-1">
+          <span className="text-sm">Which food did you probe?</span>
+          <input value={food} onChange={(e) => setFood(e.target.value)} className={inputClass} />
+        </label>
+      )}
+      {step.asks_thrown && (
+        <fieldset className="space-y-1">
+          <legend className="text-sm">Out-of-date food thrown away?</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              [true, 'Yes'],
+              [false, 'None found'],
+            ].map(([v, label]) => (
+              <label
+                key={String(v)}
+                className={`flex min-h-11 items-center justify-center rounded-lg text-sm ring-1 ${
+                  thrown === v ? 'bg-brand-700 text-white ring-brand-700' : 'ring-slate-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  className="sr-only"
+                  name={`thrown-${step.id}`}
+                  checked={thrown === v}
+                  onChange={() => setThrown(v as boolean)}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+      {step.kind === 'yesno' && (
+        <fieldset className="space-y-1">
+          <legend className="sr-only">{step.label}</legend>
+          <div className="grid grid-cols-3 gap-2">
+            {Object.entries(YES_NO_WORDS).map(([v, label]) => (
+              <label
+                key={v}
+                className={`flex min-h-11 items-center justify-center rounded-lg text-center text-sm ring-1 ${
+                  value === v ? 'bg-brand-700 text-white ring-brand-700' : 'ring-slate-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  className="sr-only"
+                  name={`answer-${step.id}`}
+                  checked={value === v}
+                  onChange={() => setValue(v)}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+      {step.kind === 'rating' && (
+        <fieldset className="space-y-1">
+          <legend className="sr-only">{step.label}</legend>
+          <div className="grid grid-cols-5 gap-2">
+            {['1', '2', '3', '4', '5'].map((v) => (
+              <label
+                key={v}
+                className={`flex min-h-11 items-center justify-center rounded-lg text-sm ring-1 ${
+                  value === v ? 'bg-brand-700 text-white ring-brand-700' : 'ring-slate-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  className="sr-only"
+                  name={`rating-${step.id}`}
+                  aria-label={`${v} of 5`}
+                  checked={value === v}
+                  onChange={() => setValue(v)}
+                />
+                {v}
+              </label>
+            ))}
+          </div>
+        </fieldset>
       )}
       {step.kind === 'text' && (
         <textarea
@@ -280,8 +496,9 @@ function StepInputs({
       {step.kind === 'discard' && (
         <>
           <p className="text-xs text-slate-600">
-            Worth more than the store&apos;s limit, it needs a photo and the outlet manager&apos;s
-            approval.
+            {approved
+              ? 'Approved to throw away; no other approval is needed.'
+              : "Worth more than the store's limit, it needs a photo and the outlet manager's approval."}
           </p>
           {photoField('discard')}
         </>
@@ -299,7 +516,9 @@ function StepInputs({
           : step.kind === 'batch'
             ? 'Record the batch'
             : step.kind === 'discard'
-              ? 'Record as expired wastage'
+              ? approved
+                ? 'Record it thrown away'
+                : 'Record as expired wastage'
               : 'Save'}
       </button>
     </div>
@@ -405,5 +624,128 @@ export function CancelTask({ task }: { task: string }) {
         </button>
       </div>
     </details>
+  );
+}
+
+/**
+ * A finished checklist round to sign off (ADR 087): its signer signs it off, or sends it back
+ * with what to redo. Whoever did any of it can't (the database says so).
+ */
+export function SignOffWork({ task }: { task: TaskDetail }) {
+  const router = useRouter();
+  const hydrated = useHydrated();
+  const [pending, start] = useTransition();
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const act = (fn: () => Promise<{ ok: true } | { ok: false; message: string }>) =>
+    start(async () => {
+      setError(null);
+      const r = await fn();
+      if (!r.ok) setError(r.message);
+      else router.refresh();
+    });
+  return (
+    <section className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+      <ErrorBox message={error} />
+      <button
+        type="button"
+        disabled={!hydrated || pending}
+        className={primaryButton}
+        onClick={() => act(() => signOff(task.id))}
+      >
+        Sign it off
+      </button>
+      <details className="space-y-2">
+        <summary className="min-h-11 cursor-pointer content-center text-sm font-medium">
+          Send it back
+        </summary>
+        <label className="block space-y-1 pt-2">
+          <span className="text-sm font-medium">What to redo</span>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            className={`${inputClass} min-h-20 py-2`}
+          />
+        </label>
+        <button
+          type="button"
+          disabled={!hydrated || pending || !note.trim()}
+          className={secondaryButton}
+          onClick={() => act(() => sendBack(task.id, note))}
+        >
+          Send back
+        </button>
+      </details>
+    </section>
+  );
+}
+
+/** A handover (ADR 089): whoever it is for reads it and acknowledges it. */
+export function AcknowledgeHandover({ task }: { task: string }) {
+  const router = useRouter();
+  const hydrated = useHydrated();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <section className="space-y-2">
+      <ErrorBox message={error} />
+      <button
+        type="button"
+        disabled={!hydrated || pending}
+        className={primaryButton}
+        onClick={() =>
+          start(async () => {
+            const r = await acknowledgeHandover(task);
+            if (!r.ok) setError(r.message);
+            else router.refresh();
+          })
+        }
+      >
+        I&apos;ve read it
+      </button>
+    </section>
+  );
+}
+
+/**
+ * Approve a request to throw something away (ADR 092): one tap gives it to whoever is on shift
+ * in the department; or choose someone.
+ */
+export function ApproveDiscard({ task, people }: { task: string; people: Person[] }) {
+  const router = useRouter();
+  const hydrated = useHydrated();
+  const [pending, start] = useTransition();
+  const [user, setUser] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <section className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+      <label className="block space-y-1">
+        <span className="text-sm font-medium">Who throws it away</span>
+        <select value={user} onChange={(e) => setUser(e.target.value)} className={inputClass}>
+          <option value="">Whoever is on shift</option>
+          {people.map((p) => (
+            <option key={p.user_id} value={p.user_id}>
+              {p.name}
+              {p.job_role ? ` (${p.job_role})` : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+      <ErrorBox message={error} />
+      <button
+        type="button"
+        disabled={!hydrated || pending}
+        className={primaryButton}
+        onClick={() =>
+          start(async () => {
+            const r = await approveDiscard(task, user || null);
+            if (!r.ok) setError(r.message);
+            else router.refresh();
+          })
+        }
+      >
+        Approve
+      </button>
+    </section>
   );
 }

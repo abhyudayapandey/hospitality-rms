@@ -1,0 +1,5 @@
+sop_code,place_code,title,roles,needs_ack,body
+PASSPORT-HANDWASH,PASSPORT-ASSAGAO-KITCHEN,Handwashing,,yes,"Wash your hands for 20 seconds with soap and warm water before starting work, after the toilet, after handling raw fish or meat, after touching your face or phone, and after taking out waste. Dry them on a paper towel."
+PASSPORT-ALLERGENS,PASSPORT-ASSAGAO-KITCHEN,Serving a guest with an allergy,CHEF_DE_PARTIE;COMMIS,yes,"Ask the server which allergens. Check the dish's recipe and its prep items. Use a clean board, knife and pan. Tell the server the dish is ready for that guest, and say so at the pass."
+PASSPORT-TURNDOWN,PASSPORT-ASSAGAO-HOUSEKEEPING,Evening turndown,ROOM_ATTENDANT;HOUSEKEEPING_SUPERVISOR,no,"From 18:00. Knock and say ""Housekeeping"". Close the curtains, turn down the bed on the side away from the bathroom, put out slippers and a bottle of water, empty the bins, and leave the bedside lamp on."
+PASSPORT-RESPONSIBLE-SERVICE,PASSPORT-ASSAGAO-BAR,Serving alcohol responsibly,,yes,No alcohol to anyone under 25 (Goa) or who is drunk. Ask for ID when in doubt. Offer water and food. Write a refusal in the logbook.

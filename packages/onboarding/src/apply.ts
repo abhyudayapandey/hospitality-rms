@@ -208,6 +208,7 @@ class Loader {
     await this.stockReach();
     await this.stock();
     await this.minibars();
+    await this.roomContents();
     await this.menu();
     await this.leave();
     await this.payRates();
@@ -215,6 +216,9 @@ class Loader {
     await this.events();
     await this.checklists();
     await this.notDoneChecklists();
+    await this.registers();
+    await this.meters();
+    await this.sops();
     if (this.isTest) {
       await this.shifts();
       await this.pastWeek();
@@ -340,6 +344,13 @@ class Loader {
         `update core.tenant set settings = settings || jsonb_build_object('leave_hr_approval', $2::boolean)
           where id = $1 and (settings ->> 'leave_hr_approval')::boolean is distinct from $2`,
         [this.tenant, cu.leave_hr_approval],
+      );
+    }
+    if (cu.purchase_approval !== undefined) {
+      await this.c.query(
+        `update core.tenant set settings = settings || jsonb_build_object('purchase_approval', $2::text)
+          where id = $1 and settings ->> 'purchase_approval' is distinct from $2`,
+        [this.tenant, cu.purchase_approval],
       );
     }
     if (cu.swaps_managers_only !== undefined) {
@@ -1017,6 +1028,56 @@ class Loader {
   }
 
   /**
+   * File 44 (ADR 094): what each room type or room holds. Lines no longer in the file are
+   * archived at the outlets the file names.
+   */
+  private async roomContents() {
+    const kept: string[] = [];
+    for (const c of this.b.roomContents) {
+      this.step(FILES.roomContents.file, c.line);
+      const outlet = this.nodes.get(c.outlet_code)!;
+      const room = c.room_number
+        ? ((
+            await this.c.query<{ id: string }>(
+              `select id from ops.room where tenant_id = $1 and org_node_id = $2
+                  and lower(number) = lower($3) and archived_at is null`,
+              [this.tenant, outlet, c.room_number],
+            )
+          ).rows[0]?.id ?? null)
+        : null;
+      const args = [this.tenant, outlet, c.room_type ?? null, room, this.items.get(c.item_code)];
+      const cur = `select id from ops.room_item
+                    where tenant_id = $1 and org_node_id = $2 and item_id = $5
+                      and archived_at is null
+                      and (($3::text is not null and lower(room_type) = lower($3))
+                           or ($4::uuid is not null and room_id = $4))`;
+      await this.upsert(
+        'room contents',
+        `with cur as (${cur}),
+              upd as (update ops.room_item t set qty = $6
+                        where t.id = (select id from cur) and t.qty is distinct from $6::numeric
+                       returning t.id, false as inserted),
+              ins as (insert into ops.room_item (tenant_id, org_node_id, room_type, room_id,
+                                                 item_id, qty)
+                      select $1, $2, $3, $4, $5, $6 where not exists (select 1 from cur)
+                      returning id, true as inserted)
+         select * from upd union all select * from ins`,
+        [...args, c.qty],
+      );
+      kept.push(...(await this.c.query<{ id: string }>(cur, args)).rows.map((x) => x.id));
+    }
+    const outlets = [...new Set(this.b.roomContents.map((c) => this.nodes.get(c.outlet_code)))];
+    if (outlets.length) {
+      await this.c.query(
+        `update ops.room_item set archived_at = now()
+          where tenant_id = $1 and org_node_id = any ($2) and archived_at is null
+            and not (id = any ($3))`,
+        [this.tenant, outlets, kept],
+      );
+    }
+  }
+
+  /**
    * File 42 (test customers only, ADR 072): minibar checks of the past week, made at their
    * time as the person named (ops.record_test_minibar_check), then marked added to the bill
    * by whoever the file says. Once per customer: later loads report them unchanged.
@@ -1590,21 +1651,31 @@ class Loader {
       await this.upsert(
         'items',
         `insert into inv.item (tenant_id, sku, name, category, base_uom, is_perishable,
-                               standard_unit_cost, preferred_supplier_id, durable, receive_to)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                               standard_unit_cost, preferred_supplier_id, durable, receive_to,
+                               discard_approval, open_shelf_life_hours, storage, food_type,
+                               allergens, excise)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
          on conflict (tenant_id, sku) do update
             set name = excluded.name, category = excluded.category, base_uom = excluded.base_uom,
                 is_perishable = excluded.is_perishable,
                 standard_unit_cost = excluded.standard_unit_cost,
                 preferred_supplier_id = excluded.preferred_supplier_id,
-                durable = excluded.durable, receive_to = excluded.receive_to, archived_at = null
+                durable = excluded.durable, receive_to = excluded.receive_to,
+                discard_approval = excluded.discard_approval,
+                open_shelf_life_hours = excluded.open_shelf_life_hours,
+                storage = excluded.storage, food_type = excluded.food_type,
+                allergens = excluded.allergens, excise = excluded.excise, archived_at = null
           where (inv.item.name, inv.item.category, inv.item.base_uom, inv.item.is_perishable,
                  inv.item.standard_unit_cost, inv.item.preferred_supplier_id, inv.item.durable,
-                 inv.item.receive_to, inv.item.archived_at)
+                 inv.item.receive_to, inv.item.discard_approval, inv.item.open_shelf_life_hours,
+                 inv.item.storage, inv.item.food_type, inv.item.allergens, inv.item.excise,
+                 inv.item.archived_at)
                 is distinct from (excluded.name, excluded.category, excluded.base_uom,
                                   excluded.is_perishable, excluded.standard_unit_cost,
                                   excluded.preferred_supplier_id, excluded.durable,
-                                  excluded.receive_to, null)
+                                  excluded.receive_to, excluded.discard_approval,
+                                  excluded.open_shelf_life_hours, excluded.storage,
+                                  excluded.food_type, excluded.allergens, excluded.excise, null)
          returning id, xmax = 0 as inserted`,
         [
           this.tenant,
@@ -1617,6 +1688,12 @@ class Loader {
           supplier(i.preferred_supplier_code),
           i.item_type === 'durable',
           i.receive_to,
+          i.discard_approval,
+          i.open_shelf_life_hours ?? null,
+          i.storage ?? null,
+          i.food_type ?? null,
+          i.allergens,
+          i.excise ?? false,
         ],
       );
       this.items.set(
@@ -1634,23 +1711,31 @@ class Loader {
       await this.upsert(
         'item locations',
         `insert into inv.item_node (tenant_id, item_id, delivery_node_id, par_level, reorder_qty,
-                                    count_tolerance_pct, preferred_supplier_id, shelf, shelf_order)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                                    count_tolerance_pct, preferred_supplier_id, shelf, shelf_order,
+                                    par_base, par_by_day)
+         values ($1, $2, $3,
+                 -- par by day (ADR 092): today's, by the store's business day
+                 inv.par_on($10::jsonb, $4,
+                            ((now() at time zone ops.tz_of($3)) - interval '4 hours')::date),
+                 $5, $6, $7, $8, $9, case when $10::jsonb is not null then $4::numeric end,
+                 $10::jsonb)
          on conflict (tenant_id, item_id, delivery_node_id) do update
             set par_level = excluded.par_level, reorder_qty = excluded.reorder_qty,
                 count_tolerance_pct = excluded.count_tolerance_pct,
                 preferred_supplier_id = excluded.preferred_supplier_id,
                 shelf = coalesce(excluded.shelf, inv.item_node.shelf),
                 shelf_order = coalesce(excluded.shelf_order, inv.item_node.shelf_order),
+                par_base = excluded.par_base, par_by_day = excluded.par_by_day,
                 archived_at = null
           where (inv.item_node.par_level, inv.item_node.reorder_qty,
                  inv.item_node.count_tolerance_pct, inv.item_node.preferred_supplier_id,
-                 inv.item_node.shelf, inv.item_node.shelf_order, inv.item_node.archived_at)
+                 inv.item_node.shelf, inv.item_node.shelf_order, inv.item_node.par_base,
+                 inv.item_node.par_by_day, inv.item_node.archived_at)
                 is distinct from (excluded.par_level, excluded.reorder_qty,
                                   excluded.count_tolerance_pct, excluded.preferred_supplier_id,
                                   coalesce(excluded.shelf, inv.item_node.shelf),
                                   coalesce(excluded.shelf_order, inv.item_node.shelf_order),
-                                  null)
+                                  excluded.par_base, excluded.par_by_day, null)
          returning id, xmax = 0 as inserted`,
         [
           this.tenant,
@@ -1662,6 +1747,7 @@ class Loader {
           supplier(l.preferred_supplier_code),
           l.shelf ?? null,
           l.shelf_order ?? null,
+          l.par_by_day ? JSON.stringify(l.par_by_day) : null,
         ],
       );
     }
@@ -2846,6 +2932,9 @@ class Loader {
             ...(r.unit !== undefined && { unit: r.unit }),
             ...(r.photo_required && { photo_required: true }),
             ...(r.step_icon && { icon: r.step_icon }),
+            ...(r.days && { days: r.days }),
+            ...(r.step_asks.food && { food: true }),
+            ...(r.step_asks.thrown && { thrown: true }),
           })),
       );
       const schedule = JSON.stringify(first.schedule);
@@ -2856,29 +2945,34 @@ class Loader {
         first.assign_to.mode === 'job_role' &&
         !!first.from_library &&
         !!CHECKLIST_BY_CODE.get(first.from_library.code)?.roles.includes(first.assign_to.role);
+      const forEach = first.for_each ? JSON.stringify(first.for_each) : null;
       await this.c.query(
-        `select ops.check_schedule($1), ops.check_steps($2), ops.check_assign($3, $4)`,
-        [schedule, steps, node, own ? JSON.stringify({ mode: 'on_shift' }) : assign],
+        `select ops.check_schedule($1), ops.check_steps($2), ops.check_assign($3, $4),
+                ops.check_for_each($5)`,
+        [schedule, steps, node, own ? JSON.stringify({ mode: 'on_shift' }) : assign, forEach],
       );
       // a library copy records its source (ADR 062); blank keeps what was recorded
       const lib = first.from_library;
       await this.upsert(
         'checklists',
         `insert into ops.checklist_template as t (tenant_id, org_node_id, code, name, schedule,
-                                                 assign, steps, library_code, library_version)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                                                 assign, steps, library_code, library_version,
+                                                 sign_off, for_each, module)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          on conflict (tenant_id, code) where code is not null do update
             set org_node_id = excluded.org_node_id, name = excluded.name,
                 schedule = excluded.schedule, assign = excluded.assign, steps = excluded.steps,
                 library_code = coalesce(excluded.library_code, t.library_code),
                 library_version = coalesce(excluded.library_version, t.library_version),
-                archived_at = null
+                sign_off = excluded.sign_off, for_each = excluded.for_each,
+                module = excluded.module, archived_at = null
           where (t.org_node_id, t.name, t.schedule, t.assign, t.steps, t.library_code,
-                 t.library_version, t.archived_at)
+                 t.library_version, t.sign_off, t.for_each, t.module, t.archived_at)
                 is distinct from (excluded.org_node_id, excluded.name, excluded.schedule,
                                   excluded.assign, excluded.steps,
                                   coalesce(excluded.library_code, t.library_code),
-                                  coalesce(excluded.library_version, t.library_version), null)
+                                  coalesce(excluded.library_version, t.library_version),
+                                  excluded.sign_off, excluded.for_each, excluded.module, null)
          returning id, xmax = 0 as inserted`,
         [
           this.tenant,
@@ -2890,9 +2984,130 @@ class Loader {
           steps,
           lib?.code ?? null,
           lib?.version ?? null,
+          first.sign_off,
+          forEach,
+          // a checklist of scored steps is an audit, in the Audits block (ADR 095)
+          rows.some((r) => r.step_kind === 'yesno' || r.step_kind === 'rating') ? 'audits' : null,
         ],
       );
     }
+  }
+
+  /**
+   * File 43 (ADR 091): the meters, and for each place, role and time the daily reading round
+   * (a checklist of the Utilities block, a reading step per meter), kept by this file.
+   */
+  private async meters() {
+    const rounds = new Map<string, Bundle['meters']>();
+    for (const m of this.b.meters) {
+      this.step(FILES.meters.file, m.line);
+      await this.upsert(
+        'meters',
+        `insert into ops.meter as t (tenant_id, org_node_id, code, name, kind, unit)
+         values ($1, $2, $3, $4, $5, $6)
+         on conflict (tenant_id, code) do update
+            set org_node_id = excluded.org_node_id, name = excluded.name, kind = excluded.kind,
+                unit = excluded.unit, archived_at = null
+          where (t.org_node_id, t.name, t.kind, t.unit, t.archived_at)
+                is distinct from (excluded.org_node_id, excluded.name, excluded.kind,
+                                  excluded.unit, null)
+         returning id, xmax = 0 as inserted`,
+        [this.tenant, this.nodes.get(m.place_code), m.meter_code, m.name, m.kind, m.unit],
+      );
+      const key = `${m.place_code}|${m.read_by}|${m.read_at}`;
+      rounds.set(key, [...(rounds.get(key) ?? []), m]);
+    }
+    for (const [key, meters] of rounds) {
+      const [place, role, at] = key.split('|') as [string, string, string];
+      const ids = await this.c.query<{ id: string; code: string }>(
+        `select id, code from ops.meter where tenant_id = $1 and code = any ($2)`,
+        [this.tenant, meters.map((m) => m.meter_code)],
+      );
+      const idOf = new Map(ids.rows.map((r) => [r.code, r.id]));
+      const steps = JSON.stringify(
+        [...meters]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((m) => ({
+            label: m.name,
+            kind: 'number',
+            min: 0,
+            unit: m.unit,
+            meter: idOf.get(m.meter_code),
+          })),
+      );
+      const schedule = JSON.stringify({ kind: 'daily', times: [at] });
+      const assign = JSON.stringify({ mode: 'job_role', role });
+      await this.upsert(
+        'checklists',
+        `insert into ops.checklist_template as t (tenant_id, org_node_id, code, name, schedule,
+                                                 assign, steps, module)
+         values ($1, $2, $3, 'Meter readings', $4, $5, $6, 'utilities')
+         on conflict (tenant_id, code) where code is not null do update
+            set org_node_id = excluded.org_node_id, schedule = excluded.schedule,
+                assign = excluded.assign, steps = excluded.steps, archived_at = null
+          where (t.org_node_id, t.schedule, t.assign, t.steps, t.archived_at)
+                is distinct from (excluded.org_node_id, excluded.schedule, excluded.assign,
+                                  excluded.steps, null)
+         returning id, xmax = 0 as inserted`,
+        [
+          this.tenant,
+          this.nodes.get(place),
+          `METERS-${place}-${role}-${at.replace(':', '')}`,
+          schedule,
+          assign,
+          steps,
+        ],
+      );
+    }
+  }
+
+  /** File 46 (ADR 095): the SOP library; an SOP no longer listed is archived. */
+  private async sops() {
+    for (const s of this.b.sops) {
+      this.step(FILES.sops.file, s.line);
+      await this.upsert(
+        'SOPs',
+        `insert into ops.sop as t (tenant_id, org_node_id, code, title, body, roles, needs_ack)
+         values ($1, $2, $3, $4, $5, $6, $7)
+         on conflict (tenant_id, code) do update
+            set org_node_id = excluded.org_node_id, title = excluded.title, body = excluded.body,
+                roles = excluded.roles, needs_ack = excluded.needs_ack, archived_at = null
+          where (t.org_node_id, t.title, t.body, t.roles, t.needs_ack, t.archived_at)
+                is distinct from (excluded.org_node_id, excluded.title, excluded.body,
+                                  excluded.roles, excluded.needs_ack, null)
+         returning id, xmax = 0 as inserted`,
+        [
+          this.tenant,
+          this.nodes.get(s.place_code),
+          s.sop_code,
+          s.title,
+          s.body,
+          s.roles,
+          s.needs_ack ?? false,
+        ],
+      );
+    }
+    if (this.b.sops.length) {
+      await this.c.query(
+        `update ops.sop set archived_at = now()
+          where tenant_id = $1 and archived_at is null and not (code = any ($2))`,
+        [this.tenant, this.b.sops.map((s) => s.sop_code)],
+      );
+    }
+  }
+
+  /** File 45 (ADR 090): which registers are kept, and by which job roles. */
+  private async registers() {
+    if (!this.b.registers.length) return;
+    this.step(FILES.registers.file, this.b.registers[0]!.line);
+    const set = Object.fromEntries(
+      this.b.registers.map((r) => [r.register, { on: r.on, roles: r.roles }]),
+    );
+    await this.c.query(
+      `update core.tenant set settings = settings || jsonb_build_object('registers', $2::jsonb)
+        where id = $1 and settings -> 'registers' is distinct from $2::jsonb`,
+      [this.tenant, JSON.stringify(set)],
+    );
   }
 
   /** Checklists given to a job role that is not done at their outlet: no rounds (ADR 061). */

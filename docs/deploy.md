@@ -2482,3 +2482,40 @@ No migration, no stack change, nothing to re-import: the photos are files in the
    - **Stock**: each item has a real photo cut out on white (garlic, cloves, Old Monk, Kingfisher);
      an item whose brand has no photo shows its kind (a rum bottle).
    - **Profile → Picture credits**: every photo with its author, licence and a link to Commons.
+
+## Releasing building blocks round 2 (ADRs 087 to 096)
+
+Thirteen migrations (20261211100000 to 20261211220000), run by the Deploy workflow. No stack
+change. The new blocks (Logbook, Registers, Utilities, Shelf life & labels, Breakage, Rooms,
+Linen & uniforms, Audits, Training & SOPs, Excise) are on for every customer that has their
+bundle; nothing a customer already has changes.
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual.
+4. Re-import:
+   - **Passport** (`cd docs/onboarding/demo/passport-hotel && zip ../passport-hotel.zip *.csv`):
+     the dry run shows no problems and no warnings, with items 20 changed (excise, opened-pack
+     shelf life, the gin's GM approval), room contents 17, checklists 4 (the room ready check,
+     the service audit, the taste panel, the technician's meter round), meters 5 and SOPs 4.
+     Apply, then a second dry run shows no changes.
+   - **The test customers** (test environment only): Test Company's items 28 changed, item
+     locations 1 changed (the onions' par by day), checklists 9 new and 1 changed, meters 4,
+     room contents 7, SOPs 3; Test Solo Bar Co. keeps only lost and found and incidents (file
+     45). Apply, then a second dry run shows no changes.
+5. Check, at 380 px:
+   - **Passport, `passport.room-attendant`**: To do has "Room ready check" with a grid of rooms;
+     finishing it gives `passport.housekeeping-supervisor` a sign-off To do item (Approve or
+     Send back). Me → SOPs lists "Evening turndown".
+   - **`passport.technician`**: today's meter reading round is on To do; **`passport.chief-engineer`**
+     sees the five meters and their use by day on Utilities.
+   - **`passport.bar-manager`**: Excise shows the Bar's register for today (opening, in, out,
+     closing per bottle; closing = what the store holds) and Month (FLR); Permits keeps a
+     transport permit. Logbook and Registers open; Breakage records a broken glass.
+   - **`passport.gm`**: the outlet's day report has Covers (breakfast, lunch, dinner) and the
+     spend per cover; Audits lists the service audit and the taste panel.
+   - **`passport.commis`**: Me → SOPs asks "I've read this" for handwashing.
+     **`passport.store-keeper`**: Stock → Opened opens a milk pack and prints its label with the
+     day dot.
+   - **`passport.front-office-manager`**: Breakfast (today and tomorrow) by room and buffet;
+     Rooms → Contents shows what each room should hold.

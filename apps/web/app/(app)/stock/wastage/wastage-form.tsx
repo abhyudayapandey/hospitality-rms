@@ -8,7 +8,7 @@ import { formatMoney } from '@/lib/format';
 import type { ItemOption } from '@/lib/inventory';
 import { PhotoField } from '@/components/photo-field';
 import { ACTION_QUEUE_EVENT, indexedDbActions, type QueuedWastage } from '@/lib/action-queue';
-import { getWastageUploadUrl, recordWastage } from '../actions';
+import { askDiscard, getWastageUploadUrl, recordWastage } from '../actions';
 import { ItemThumb } from '@/components/item-thumb';
 
 const REASONS = [
@@ -52,7 +52,26 @@ export function WastageForm({
 
   const item = items.find((i) => i.item_id === itemId);
   const value = useMemo(() => (item && qty ? Number(qty) * Number(item.avg_cost) : 0), [item, qty]);
-  const needsApproval = value > threshold;
+  // thrown away only once the GM approves (ADR 092): asked, not recorded
+  const needsGm = !!item?.needs_gm;
+  const needsApproval = !needsGm && value > threshold;
+
+  const ask = () =>
+    start(async () => {
+      setError(null);
+      setDone(null);
+      const n = Number(qty);
+      if (!item || !Number.isFinite(n) || n <= 0) {
+        setError('Enter how much to throw away.');
+        return;
+      }
+      const r = await askDiscard(node, itemId, n, reason, key);
+      if (!r.ok) return setError(r.message);
+      setDone('Asked. Once the GM approves, it goes to someone here to throw away.');
+      setQty('');
+      setKey(crypto.randomUUID());
+      router.refresh();
+    });
 
   const submit = () =>
     start(async () => {
@@ -108,7 +127,8 @@ export function WastageForm({
       className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200"
       onSubmit={(e) => {
         e.preventDefault();
-        submit();
+        if (needsGm) ask();
+        else submit();
       }}
     >
       <label className="block space-y-1">
@@ -145,7 +165,13 @@ export function WastageForm({
           </select>
         </label>
       </div>
-      {value > 0 && (
+      {needsGm && (
+        <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900" data-testid="needs-gm">
+          {item?.name} is thrown away only once the GM approves. Ask, and the GM gives it to someone
+          here to throw away.
+        </p>
+      )}
+      {value > 0 && !needsGm && (
         <p className="text-sm text-slate-600">
           Worth about {formatMoney(value)}.{' '}
           {needsApproval
@@ -174,7 +200,7 @@ export function WastageForm({
         disabled={!hydrated || pending || (needsApproval && !photoKey)}
         className={primaryButton}
       >
-        Record wastage
+        {needsGm ? 'Ask the GM' : 'Record wastage'}
       </button>
     </form>
   );

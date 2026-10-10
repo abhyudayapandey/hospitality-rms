@@ -478,6 +478,15 @@ const ITEMS: Item[] = [
 // counted items are used by count in recipes
 for (const i of ITEMS) if (!i.conv && i.unit !== 'kg') i.conv = ['each', 1];
 const ITEM = new Map(ITEMS.map((i) => [i.code, i]));
+// what an opened pack keeps for and its label (ADR 093): hours, storage, food type, allergens
+const OPENED: Record<string, [number, string, string, string]> = {
+  MILK: [48, 'chilled', 'veg', 'milk'],
+  BUTTER: [336, 'chilled', 'veg', 'milk'],
+  CHEESE: [168, 'chilled', 'veg', 'milk'],
+  'COCONUT-MILK': [48, 'chilled', 'veg', ''],
+  'RED-WINE-750ML': [72, 'dry', 'veg', 'sulphites'],
+  'WHITE-WINE-750ML': [72, 'chilled', 'veg', 'sulphites'],
+};
 csv(
   '10_items.csv',
   [
@@ -490,6 +499,12 @@ csv(
     'preferred_supplier_code',
     'item_type',
     'receive_to',
+    'discard_approval',
+    'open_shelf_life_hours',
+    'storage',
+    'food_type',
+    'allergens',
+    'excise',
   ],
   ITEMS.map((i) => [
     i.code,
@@ -503,6 +518,11 @@ csv(
     i.cat === 'Linen' ? 'durable' : 'consumable',
     // fresh food goes straight to the kitchen that asked for it (ADR 080)
     ['Seafood', 'Meat', 'Dairy & eggs', 'Produce', 'Bakery'].includes(i.cat) ? 'department' : '',
+    // the craft gin is only thrown away once the GM approves (ADR 092)
+    i.code === 'GIN-750ML' ? 'gm' : '',
+    ...(OPENED[i.code] ?? ['', '', '', '']),
+    // liquor, wine and beer are in the bar register and the FLR (ADR 096)
+    ['Spirits', 'Beer', 'Wine'].includes(i.cat) || i.code === 'FENI-NIP-180ML' ? 'yes' : '',
   ]),
 );
 csv(
@@ -1925,7 +1945,7 @@ csv(
 
 type Step = [
   label: string,
-  kind: 'tick' | 'number' | 'text' | 'photo',
+  kind: 'tick' | 'number' | 'text' | 'photo' | 'yesno' | 'rating',
   min?: number | undefined,
   max?: number | undefined,
   unit?: string | undefined,
@@ -1938,7 +1958,9 @@ type List = [
   schedule: string,
   assign: string,
   steps: Step[],
-  fromLibrary?: string,
+  fromLibrary?: string | undefined,
+  /** ADR 087, 088: who signs a round off, and a round per room or per area */
+  extra?: { signOff?: string; forEach?: string },
 ];
 /** A copy of the SOP library's checklist (ADR 075), for the role that does it here. */
 const fromLibrary = (code: string, dept: string, assign: string, schedule?: string): List => {
@@ -2086,6 +2108,49 @@ const LISTS: List[] = [
   fromLibrary('LAUNDRY-ROUND', 'HOUSEKEEPING', 'role:LAUNDRY_ATTENDANT'),
   fromLibrary('RECEIVING-CHECK', 'STORES-TEAM', 'role:RECEIVING_CLERK'),
   fromLibrary('PLANT-ROUND', 'ENGINEERING', 'role:TECHNICIAN'),
+  // ADR 088: each room in a grid, signed off by the supervisor (one level up, ADR 087)
+  [
+    'HK-ROOM-READY',
+    D('HOUSEKEEPING'),
+    'Room ready check',
+    'daily 11:00',
+    'role:ROOM_ATTENDANT',
+    [
+      ['Bed made, linen fresh', 'tick'],
+      ['Bathroom clean, amenities in', 'tick'],
+      ['Minibar checked', 'tick'],
+    ],
+    undefined,
+    { signOff: 'up', forEach: 'rooms' },
+  ],
+  // ADR 095: the weekly service audit and the management taste panel twice a month
+  [
+    'RESTAURANT-SERVICE-AUDIT',
+    D('RESTAURANT'),
+    'Service audit',
+    'weekly Fri 13:00',
+    'role:RESTAURANT_MANAGER',
+    [
+      ['Guest greeted within a minute', 'yesno'],
+      ['Menu explained, specials told', 'yesno'],
+      ['Order taken within five minutes', 'yesno'],
+      ['Allergies asked', 'yesno'],
+      ['Table cleared before dessert', 'yesno'],
+    ],
+  ],
+  [
+    'KITCHEN-TASTE-PANEL',
+    D('KITCHEN'),
+    'Taste panel',
+    'monthly 1,16 16:00',
+    'role:EXECUTIVE_CHEF',
+    [
+      ['Goan fish curry: taste', 'rating'],
+      ['Goan fish curry: look', 'rating'],
+      ['Chicken cafreal: taste', 'rating'],
+      ['Bebinca: taste', 'rating'],
+    ],
+  ],
 ];
 csv(
   '29_checklist_templates.csv',
@@ -2103,8 +2168,10 @@ csv(
     'unit',
     'photo_required',
     'from_library',
+    'sign_off',
+    'for_each',
   ],
-  LISTS.flatMap(([code, place, name, schedule, assign, steps, lib]) =>
+  LISTS.flatMap(([code, place, name, schedule, assign, steps, lib, extra]) =>
     steps.map(([label, kind, min, max, unit, photo], i) => [
       code,
       place,
@@ -2119,6 +2186,8 @@ csv(
       unit ?? '',
       photo ? 'yes' : 'no',
       lib ?? '',
+      extra?.signOff ?? '',
+      extra?.forEach ?? '',
     ]),
   ),
 );
@@ -2410,6 +2479,101 @@ csv(
   '41_minibar_sets.csv',
   ['outlet_code', 'set_name', 'store_node_code', 'item_code', 'par', 'price_inr'],
   SETS.map(([set, item, par, price]) => [H, set, HK, item, par, price]),
+);
+// what each room type holds, counted on the room, not stocked (ADR 094)
+const CONTENTS: [string, string, number][] = [
+  ['Passport Deluxe', 'BATH-TOWEL', 2],
+  ['Passport Deluxe', 'BEDSHEET-KING', 1],
+  ['Passport Deluxe', 'SHAMPOO-30ML', 2],
+  ['Passport Deluxe', 'SOAP-40G', 2],
+  ['Passport Deluxe', 'DENTAL-KIT', 2],
+  ['Passport Deluxe', 'TOILET-ROLL', 2],
+  ['Explorer Suite', 'BATH-TOWEL', 4],
+  ['Explorer Suite', 'BEDSHEET-KING', 1],
+  ['Explorer Suite', 'SHAMPOO-30ML', 4],
+  ['Explorer Suite', 'SOAP-40G', 4],
+  ['Explorer Suite', 'DENTAL-KIT', 2],
+  ['Explorer Suite', 'TOILET-ROLL', 3],
+  ['Pool Terrace', 'BATH-TOWEL', 2],
+  ['Pool Terrace', 'POOL-TOWEL', 2],
+  ['Pool Terrace', 'BEDSHEET-KING', 1],
+  ['Pool Terrace', 'SHAMPOO-30ML', 2],
+  ['Pool Terrace', 'SOAP-40G', 2],
+];
+csv(
+  '44_room_contents.csv',
+  ['outlet_code', 'room_type', 'room_number', 'item_code', 'qty'],
+  CONTENTS.map(([type, item, qty]) => [H, type, '', item, qty]),
+);
+
+// ---------------------------------------------------------------------------------------
+// Meters and SOPs (ADR 091, 095)
+// ---------------------------------------------------------------------------------------
+
+csv(
+  '43_meters.csv',
+  ['place_code', 'meter_code', 'name', 'kind', 'unit', 'read_by', 'read_at'],
+  [
+    [
+      D('ENGINEERING'),
+      'PASSPORT-EB-MAIN',
+      'Electricity main',
+      'electricity',
+      'kWh',
+      'TECHNICIAN',
+      '08:00',
+    ],
+    [
+      D('ENGINEERING'),
+      'PASSPORT-EB-POOL',
+      'Electricity, pool pumps',
+      'electricity',
+      'kWh',
+      'TECHNICIAN',
+      '08:00',
+    ],
+    [D('ENGINEERING'), 'PASSPORT-LPG', 'Kitchen LPG', 'gas', 'kg', 'TECHNICIAN', '08:00'],
+    [D('ENGINEERING'), 'PASSPORT-WATER', 'Water inlet', 'water', 'kL', 'TECHNICIAN', '08:00'],
+    [D('ENGINEERING'), 'PASSPORT-DG', 'Generator diesel', 'diesel', 'L', 'TECHNICIAN', '08:00'],
+  ],
+);
+csv(
+  '46_sops.csv',
+  ['sop_code', 'place_code', 'title', 'roles', 'needs_ack', 'body'],
+  [
+    [
+      'PASSPORT-HANDWASH',
+      D('KITCHEN'),
+      'Handwashing',
+      '',
+      'yes',
+      'Wash your hands for 20 seconds with soap and warm water before starting work, after the toilet, after handling raw fish or meat, after touching your face or phone, and after taking out waste. Dry them on a paper towel.',
+    ],
+    [
+      'PASSPORT-ALLERGENS',
+      D('KITCHEN'),
+      'Serving a guest with an allergy',
+      'CHEF_DE_PARTIE;COMMIS',
+      'yes',
+      "Ask the server which allergens. Check the dish's recipe and its prep items. Use a clean board, knife and pan. Tell the server the dish is ready for that guest, and say so at the pass.",
+    ],
+    [
+      'PASSPORT-TURNDOWN',
+      D('HOUSEKEEPING'),
+      'Evening turndown',
+      'ROOM_ATTENDANT;HOUSEKEEPING_SUPERVISOR',
+      'no',
+      'From 18:00. Knock and say "Housekeeping". Close the curtains, turn down the bed on the side away from the bathroom, put out slippers and a bottle of water, empty the bins, and leave the bedside lamp on.',
+    ],
+    [
+      'PASSPORT-RESPONSIBLE-SERVICE',
+      D('BAR'),
+      'Serving alcohol responsibly',
+      '',
+      'yes',
+      'No alcohol to anyone under 25 (Goa) or who is drunk. Ask for ID when in doubt. Offer water and food. Write a refusal in the logbook.',
+    ],
+  ],
 );
 // checks over the past week; the last few still to add to the bill
 const CHECKS: Cell[][] = [];

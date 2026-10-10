@@ -2,6 +2,9 @@ import {
   BUNDLES,
   DOMAINS,
   inPlanByDefault,
+  LEVELS,
+  REGISTERS,
+  levelOf,
   MODULE_CODES,
   moduleOfDomain,
   needsOf,
@@ -359,6 +362,37 @@ describe('approvers (ADR 009)', () => {
         `select settings as s from core.tenant where code = 'TEST-SOLO-COMPANY'`,
       );
       expect(rows[0]!.s).toMatchObject({ leave_hr_approval: false });
+    });
+  });
+
+  it("each register's required fields and whether it closes are the database's (ADR 090)", async () => {
+    await inRolledBackTx(async (c) => {
+      for (const r of REGISTERS) {
+        const { rows } = await c.query<{ req: string[]; closes: boolean }>(
+          'select ops.register_required($1) as req, ops.register_closes($1) as closes',
+          [r.code],
+        );
+        const fields = r.fields as readonly { key: string; required?: true }[];
+        expect(rows[0]!.req, r.code).toEqual(fields.filter((f) => f.required).map((f) => f.key));
+        expect(rows[0]!.closes, r.code).toBe('close' in r);
+      }
+    });
+  });
+
+  it("a job role's level is the catalogue's rule for its duties (ops.role_level, ADR 087)", async () => {
+    await inRolledBackTx(async (c) => {
+      const { rows } = await c.query<{ code: string; level: number; duties: string[] }>(
+        `select r.code, ops.role_level(r.tenant_id, r.code) as level,
+                array_remove(array_agg(distinct a.duty_code), null) as duties
+           from hr.job_role r
+           join core.tenant t on t.id = r.tenant_id and t.code = 'TEST-COMPANY'
+           left join hr.job_role_access a on a.tenant_id = r.tenant_id and a.job_role_code = r.code
+          group by r.tenant_id, r.code`,
+      );
+      expect(rows.length).toBeGreaterThan(20);
+      for (const r of rows) expect(LEVELS[r.level], r.code).toBe(levelOf(r.duties));
+      // every rung appears at least once, so each branch of the rule is checked
+      expect(new Set(rows.map((r) => r.level)).size).toBeGreaterThanOrEqual(4);
     });
   });
 

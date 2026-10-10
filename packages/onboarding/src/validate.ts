@@ -483,8 +483,19 @@ function validateTasks(
       templates.set(t.template_code, t);
       place(file, t.line, 'place_code', t.place_code);
       assignee(file, t.line, t.assign_to);
+      const signer = /^role:(.+)$/.exec(t.sign_off)?.[1];
+      if (signer && !roles.has(signer)) {
+        add(file, t.line, 'sign_off', `${signer} is not in ${f('jobRoles')}`);
+      }
     } else {
-      for (const col of ['place_code', 'name', 'schedule', 'assign_to'] as const) {
+      for (const col of [
+        'place_code',
+        'name',
+        'schedule',
+        'assign_to',
+        'sign_off',
+        'for_each',
+      ] as const) {
         if (JSON.stringify(first[col]) !== JSON.stringify(t[col])) {
           add(file, t.line, col, `differs from line ${first.line} of ${t.template_code}`);
         }
@@ -499,6 +510,44 @@ function validateTasks(
     }
     if ((t.min !== undefined || t.max !== undefined) && t.step_kind !== 'number') {
       add(file, t.line, 'step_kind', 'only a number step has a range');
+    }
+  }
+
+  // file 43 (ADR 091): meters at places, read by a job role
+  const meterCodes = new Set<string>();
+  for (const m of b.meters) {
+    place(f('meters'), m.line, 'place_code', m.place_code);
+    if (meterCodes.has(m.meter_code)) {
+      add(f('meters'), m.line, 'meter_code', `${m.meter_code} is listed twice`);
+    }
+    meterCodes.add(m.meter_code);
+    if (!roles.has(m.read_by)) {
+      add(f('meters'), m.line, 'read_by', `${m.read_by} is not in ${f('jobRoles')}`);
+    }
+  }
+
+  // file 46 (ADR 095): SOPs at places, for job roles of file 06
+  const sopCodes = new Set<string>();
+  for (const s of b.sops) {
+    place(f('sops'), s.line, 'place_code', s.place_code);
+    if (sopCodes.has(s.sop_code))
+      add(f('sops'), s.line, 'sop_code', `${s.sop_code} is listed twice`);
+    sopCodes.add(s.sop_code);
+    for (const r of s.roles) {
+      if (!roles.has(r)) add(f('sops'), s.line, 'roles', `${r} is not in ${f('jobRoles')}`);
+    }
+  }
+
+  // file 45 (ADR 090): each register once; its roles are job roles of file 06
+  const registers = new Set<string>();
+  for (const r of b.registers) {
+    if (registers.has(r.register)) {
+      add(f('registers'), r.line, 'register', `${r.register} is listed twice`);
+    }
+    registers.add(r.register);
+    for (const role of r.roles) {
+      if (!roles.has(role))
+        add(f('registers'), r.line, 'roles', `${role} is not in ${f('jobRoles')}`);
     }
   }
 
@@ -978,6 +1027,43 @@ function validateMinibars(
       );
     }
     rooms.set(key, set);
+  }
+  // file 44 (ADR 094): a room type of the outlet's rooms, or one of its rooms, and an item
+  const contents = new Set<string>();
+  for (const c of b.roomContents) {
+    const file = f('roomContents');
+    outlet(file, c.line, c.outlet_code);
+    if (!c.room_type === !c.room_number) {
+      add(file, c.line, 'room_type', 'give a room type or a room number, not both');
+    }
+    if (
+      c.room_type &&
+      !b.rooms.some(
+        (r) =>
+          r.outlet_code === c.outlet_code &&
+          r.room_type?.toLowerCase() === c.room_type!.toLowerCase(),
+      )
+    ) {
+      add(
+        file,
+        c.line,
+        'room_type',
+        `no room of ${c.outlet_code} in ${f('rooms')} is a ${c.room_type}`,
+      );
+    }
+    if (c.room_number && !rooms.has(`${c.outlet_code} ${c.room_number.toLowerCase()}`)) {
+      add(
+        file,
+        c.line,
+        'room_number',
+        `${c.room_number} is not a room of ${c.outlet_code} in ${f('rooms')}`,
+      );
+    }
+    if (!b.items.some((i) => i.item_code === c.item_code))
+      add(file, c.line, 'item_code', `is not in ${f('items')}`);
+    const key = `${c.outlet_code} ${(c.room_type ?? '#' + c.room_number).toLowerCase()} ${c.item_code}`;
+    if (contents.has(key)) add(file, c.line, 'item_code', 'is listed twice for that room or type');
+    contents.add(key);
   }
   const counted = new Map<string, Set<string>>();
   for (const c of b.minibarChecks) {
