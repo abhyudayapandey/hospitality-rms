@@ -2,7 +2,8 @@ import 'server-only';
 import { sql, type Tx } from './db';
 
 // Covers and spend per cover (ADR 096): ops.covers_day checks that the person opens the
-// outlet's day (rpt.can_open('outlet_flash')) and that Menu and sales is on.
+// outlet's day (rpt.can_open('outlet_flash')) and that Menu and sales is on; can_edit says
+// whether they also enter its sales, and so give its covers.
 
 export type CoverPeriod = 'breakfast' | 'lunch' | 'dinner';
 
@@ -12,6 +13,7 @@ export interface CoversRow {
   total_covers: number | null;
   sales: string;
   per_cover: string | null;
+  can_edit: boolean;
 }
 
 export async function salesOn(tx: Tx): Promise<boolean> {
@@ -26,7 +28,7 @@ export async function salesOn(tx: Tx): Promise<boolean> {
 export async function coversDay(tx: Tx, outlet: string, day: string): Promise<CoversRow[]> {
   return (
     await sql<CoversRow>`
-      select period, covers, total_covers, sales::text, per_cover::text
+      select period, covers, total_covers, sales::text, per_cover::text, can_edit
         from ops.covers_day(${outlet}::uuid, ${day}::date)`.execute(tx)
   ).rows;
 }

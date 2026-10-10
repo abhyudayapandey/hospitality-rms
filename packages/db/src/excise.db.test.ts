@@ -163,7 +163,7 @@ describe('the bar register', () => {
 });
 
 describe('covers (ADR 096)', () => {
-  it('given by those who open the outlet’s sales; nobody else', async () => {
+  it('given by those who enter the outlet’s sales; read by those who open its day', async () => {
     await inRolledBackTx(async (c) => {
       const outlet = ids.node('TEST-HOTEL-1.0');
       const gm = await attemptAs(
@@ -173,7 +173,12 @@ describe('covers (ADR 096)', () => {
         [outlet],
       );
       expect(gm.error).toBeUndefined();
-      for (const who of ['test.steward.1.0', 'test.captain.1.0']) {
+      for (const who of [
+        'test.steward.1.0',
+        'test.captain.1.0',
+        'test.restaurant-manager.1.0',
+        'test.account-owner',
+      ]) {
         const r = await attemptAs(
           c,
           ids.user(who),
@@ -182,6 +187,19 @@ describe('covers (ADR 096)', () => {
         );
         expect(r.error, who).toMatch(/NOT_AUTHORISED/);
       }
+      const edit = async (who: string) =>
+        (
+          await run<{ covers: number | null; can_edit: boolean }>(
+            c,
+            who,
+            `select covers, can_edit from ops.covers_day($1, rpt.today($1)) where period = 'lunch'`,
+            [outlet],
+          )
+        )[0]!;
+      expect(await edit('test.general-manager.1.0')).toEqual({ covers: 42, can_edit: true });
+      expect(await edit('test.cost-controller.1.0')).toEqual({ covers: 42, can_edit: true });
+      // the Account Owner's reports are read-only
+      expect(await edit('test.account-owner')).toEqual({ covers: 42, can_edit: false });
       const wrong = await attemptAs(
         c,
         ids.user('test.general-manager.1.0'),

@@ -22,14 +22,16 @@ and what a cover spent. Part of `docs/plans/building-blocks.md`, PR 4; the Excis
 4. **Who**: whoever holds EXCISE at the store (the GM and Bar Manager change, the cost
    controller reads). The Excise screen has Day, Month (FLR) and Permits tabs.
 5. **Covers** (`ops.covers`, domain DERIVED_SALES): a business day's covers per meal period
-   (breakfast, lunch, dinner) at an outlet, given on the outlet's day report by whoever opens
-   it (`rpt.can_open('outlet_flash')`, the GM and Restaurant Manager), today or in the month
-   before, with Menu and sales on. The spend per cover is the day's sales on that report over
+   (breakfast, lunch, dinner) at an outlet, given on the outlet's day report by whoever enters
+   its sales (`ops.can_give_covers`: SALES modify at one of its menu stores, the GM and the
+   cost controller), today or in the month before, with Menu and sales on. Whoever opens the
+   report (`rpt.can_open('outlet_flash')`) reads them; the Account Owner's reports stay
+   read-only. The spend per cover is the day's sales on that report over
    the day's covers (`ops.covers_day`), so it equals what is behind it
    (`reports-reconcile.db.test.ts`).
 
 ## Tests
 
 `excise.db.test.ts` (each line adds up to what the store holds; days and the month chain; a
-sale shows; who may; one permit each; covers given only by those who open the outlet's day),
+sale shows; who may; one permit each; covers given only by those who enter the outlet's sales, read by those who open its day),
 the reconcile test for the spend per cover, and the e2e `excise-covers.spec.ts`.

@@ -69,6 +69,12 @@ export default async function OutletReport({ searchParams }: { searchParams: Sea
   );
 }
 
+const PERIOD: Record<CoversRow['period'], string> = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+};
+
 /** The day's covers per meal period and the spend per cover: the day's sales over them. */
 function Covers({ outlet, day, rows }: { outlet: string; day: string; rows: CoversRow[] }) {
   const first = rows[0];
@@ -93,7 +99,17 @@ function Covers({ outlet, day, rows }: { outlet: string; day: string; rows: Cove
           </>
         )}
       </p>
-      <CoversForm key={`${outlet}-${day}`} outlet={outlet} day={day} given={given} />
+      {first?.can_edit ? (
+        <CoversForm key={`${outlet}-${day}`} outlet={outlet} day={day} given={given} />
+      ) : (
+        <ul className="text-sm text-slate-600">
+          {rows.map((r) => (
+            <li key={r.period}>
+              {PERIOD[r.period]}: {r.covers ?? '–'}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
