@@ -232,7 +232,8 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
           kind: 'openSlots' as const,
           node: s.node,
           n: s.n,
-          href: `/roster/week?node=${s.node}&week=${weekStart(s.day)}&day=${s.day}`,
+          // open slots are filled by shift, whoever opens the roster by person (ADR 097)
+          href: `/roster/week?node=${s.node}&week=${weekStart(s.day)}&day=${s.day}&view=shift`,
         })),
       ];
       const nodes = [...new Set(all.map((c) => c.node))];

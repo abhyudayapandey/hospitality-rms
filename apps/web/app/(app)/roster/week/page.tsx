@@ -57,8 +57,11 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
   // by person (ADR 082): a row each, a tile per shift type and Off; one department at a time.
   // A department head opens it by default; everyone else opens by shift (ADR 097). "By shift"
   // is ?view=shift, so the choice holds while they move between days and weeks.
+  // Home's open-slot counts ask for every department (?all=1): filling a slot is by shift,
+  // even for someone with only one department
   const byPerson =
-    !all && (view === 'people' || (view === '' && navProfile(ctx.shell.groups) === 'department'));
+    !all &&
+    param(sp, 'all') !== '1' && (view === 'people' || (view === '' && navProfile(ctx.shell.groups) === 'department'));
   const day = pickDay(days, param(sp, 'day'), localToday(ctx.tz));
   const tiles: RosterDay | null = byPerson
     ? await withUser(user.id, (tx) => rosterDay(tx, node.id, day))
