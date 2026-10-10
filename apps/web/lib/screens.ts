@@ -52,6 +52,7 @@ export type ScreenKey =
   | 'audits'
   | 'sops'
   | 'training'
+  | 'excise'
   | 'linen'
   | 'roster'
   | 'events'
@@ -339,6 +340,15 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     icon: 'clipboard',
     section: 'team',
     show: (i) => can(i, 'TRAINING', 'modify'),
+  },
+  {
+    // the daily bar register, the FLR and transport permits (ADR 096)
+    key: 'excise',
+    href: '/excise',
+    label: 'Excise',
+    icon: 'bottle',
+    section: 'team',
+    show: (i) => can(i, 'EXCISE'),
   },
   {
     // service audits and taste panels, their scores and trend (ADR 095)

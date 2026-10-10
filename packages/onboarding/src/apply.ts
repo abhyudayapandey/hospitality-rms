@@ -1653,8 +1653,8 @@ class Loader {
         `insert into inv.item (tenant_id, sku, name, category, base_uom, is_perishable,
                                standard_unit_cost, preferred_supplier_id, durable, receive_to,
                                discard_approval, open_shelf_life_hours, storage, food_type,
-                               allergens)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                               allergens, excise)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
          on conflict (tenant_id, sku) do update
             set name = excluded.name, category = excluded.category, base_uom = excluded.base_uom,
                 is_perishable = excluded.is_perishable,
@@ -1664,17 +1664,18 @@ class Loader {
                 discard_approval = excluded.discard_approval,
                 open_shelf_life_hours = excluded.open_shelf_life_hours,
                 storage = excluded.storage, food_type = excluded.food_type,
-                allergens = excluded.allergens, archived_at = null
+                allergens = excluded.allergens, excise = excluded.excise, archived_at = null
           where (inv.item.name, inv.item.category, inv.item.base_uom, inv.item.is_perishable,
                  inv.item.standard_unit_cost, inv.item.preferred_supplier_id, inv.item.durable,
                  inv.item.receive_to, inv.item.discard_approval, inv.item.open_shelf_life_hours,
-                 inv.item.storage, inv.item.food_type, inv.item.allergens, inv.item.archived_at)
+                 inv.item.storage, inv.item.food_type, inv.item.allergens, inv.item.excise,
+                 inv.item.archived_at)
                 is distinct from (excluded.name, excluded.category, excluded.base_uom,
                                   excluded.is_perishable, excluded.standard_unit_cost,
                                   excluded.preferred_supplier_id, excluded.durable,
                                   excluded.receive_to, excluded.discard_approval,
                                   excluded.open_shelf_life_hours, excluded.storage,
-                                  excluded.food_type, excluded.allergens, null)
+                                  excluded.food_type, excluded.allergens, excluded.excise, null)
          returning id, xmax = 0 as inserted`,
         [
           this.tenant,
@@ -1692,6 +1693,7 @@ class Loader {
           i.storage ?? null,
           i.food_type ?? null,
           i.allergens,
+          i.excise ?? false,
         ],
       );
       this.items.set(

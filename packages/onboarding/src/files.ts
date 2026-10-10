@@ -540,8 +540,11 @@ export const FILES = {
         z.enum(FOOD_TYPES, 'must be veg, non_veg or egg'),
       ]),
       allergens: allergenList,
+      // ADR 096: under excise (liquor, wine, beer), in the bar register and the FLR
+      excise: optYesNo,
     }),
     optional: [
+      'excise',
       'item_type',
       'receive_to',
       'discard_approval',
