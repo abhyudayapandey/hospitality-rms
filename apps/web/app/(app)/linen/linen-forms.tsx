@@ -52,25 +52,35 @@ export function LaundryForm({
       <h2 className="font-semibold">Today with the laundry</h2>
       <ul className="divide-y divide-slate-100">
         {items.map((i) => (
-          <li key={i.item_id} className="flex items-center gap-3 py-2">
-            <ItemThumb name={i.name} size="size-8" />
-            <span className="min-w-0 flex-1 text-sm">{i.name}</span>
-            <input
-              inputMode="numeric"
-              aria-label={`${i.name} sent`}
-              placeholder="Sent"
-              value={v[i.item_id]?.sent ?? ''}
-              onChange={(e) => set(i.item_id, 'sent', e.target.value)}
-              className={`${inputClass} w-20 text-right`}
-            />
-            <input
-              inputMode="numeric"
-              aria-label={`${i.name} back`}
-              placeholder="Back"
-              value={v[i.item_id]?.received ?? ''}
-              onChange={(e) => set(i.item_id, 'received', e.target.value)}
-              className={`${inputClass} w-20 text-right`}
-            />
+          // the name on its own line and the two numbers under it, labelled, so a long name
+          // never squeezes the inputs at 380px
+          <li key={i.item_id} className="space-y-2 py-3" data-testid="laundry-line">
+            <span className="flex items-center gap-3">
+              <ItemThumb name={i.name} size="size-8" />
+              <span className="min-w-0 flex-1 text-sm font-medium break-words">{i.name}</span>
+            </span>
+            <span className="grid grid-cols-2 gap-3">
+              <label className="block space-y-1">
+                <span className="text-xs text-slate-500">Sent to laundry</span>
+                <input
+                  inputMode="numeric"
+                  aria-label={`${i.name} sent`}
+                  value={v[i.item_id]?.sent ?? ''}
+                  onChange={(e) => set(i.item_id, 'sent', e.target.value)}
+                  className={`${inputClass} text-right`}
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs text-slate-500">Came back</span>
+                <input
+                  inputMode="numeric"
+                  aria-label={`${i.name} back`}
+                  value={v[i.item_id]?.received ?? ''}
+                  onChange={(e) => set(i.item_id, 'received', e.target.value)}
+                  className={`${inputClass} text-right`}
+                />
+              </label>
+            </span>
           </li>
         ))}
       </ul>
@@ -164,7 +174,8 @@ export function ReturnUniform({ id }: { id: string }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   return (
-    <span className="space-y-1">
+    // a fixed width beside the uniform's line: the shared button is full width
+    <span className="block w-28 shrink-0 space-y-1">
       <button
         type="button"
         disabled={!hydrated || pending}

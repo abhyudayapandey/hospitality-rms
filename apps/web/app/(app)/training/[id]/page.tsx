@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { BackLink } from '@/components/back-link';
 import { Empty } from '@/components/messages';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
@@ -30,9 +30,7 @@ export default async function SessionPage({
   const marked = new Map(session.attendance.map((a) => [a.person_id, a]));
   return (
     <div className="space-y-4">
-      <Link href={back} className="text-sm text-slate-600 underline">
-        Back to training
-      </Link>
+      <BackLink fallback={back} />
       <div>
         <h1 className="text-xl font-semibold">{session.title}</h1>
         <p className="text-sm text-slate-600">

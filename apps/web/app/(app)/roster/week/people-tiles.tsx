@@ -27,6 +27,10 @@ export interface TileRow {
   role_code: string;
   job_role: string | null;
   template_id: string | null;
+  shift_id: string | null;
+  shift_name: string | null;
+  start: string | null;
+  end: string | null;
 }
 
 const KIND: Record<TileType['shift_type'], string> = {
@@ -36,9 +40,12 @@ const KIND: Record<TileType['shift_type'], string> = {
 };
 
 /**
- * The roster by person (ADR 082): one row each, a tile per shift type of the department
- * (their job role's) and Off. A tap puts them on it for the day; the database runs every
- * roster rule again, and a warning (rest, weekly hours) asks before going ahead.
+ * The roster by person (ADR 082): one row each, a tile per shift type of their job role in the
+ * department, and Off. A tap puts them on it for the day; the database runs every roster rule
+ * again, and a warning (rest, weekly hours) asks before going ahead. A role with no shift type
+ * here gets Off and says so: another role's shift type is refused (ROLE_MISMATCH). A shift
+ * they have that no tile stands for (added by hand) shows as its own tile, theirs, so Off is
+ * lit only when they have no shift that day (ADR 097).
  */
 export function PeopleTiles({
   day,
@@ -107,10 +114,13 @@ export function PeopleTiles({
       )}
       <ul className="space-y-2">
         {people.map((p) => {
-          const own = types.filter((t) => t.role_code === p.role_code);
-          const mine = own.length > 0 ? own : types;
-          // one tile per shift type, whatever roles the department's templates name
-          const tiles = [...new Map(mine.map((t) => [t.template_id, t])).values()];
+          const tiles = types.filter((t) => t.role_code === p.role_code);
+          const off = p.shift_id === null;
+          // their shift that day when no tile stands for it (added by hand, or another role's)
+          const other =
+            !off && !tiles.some((t) => t.template_id === p.template_id)
+              ? (types.find((t) => t.template_id === p.template_id) ?? null)
+              : null;
           return (
             <li
               key={p.worker_id}
@@ -122,6 +132,12 @@ export function PeopleTiles({
                 <span className="font-medium">{p.name}</span>
                 {p.job_role && <span className="text-xs text-slate-500">{p.job_role}</span>}
               </p>
+              {tiles.length === 0 && (
+                <p className="text-xs text-slate-500" data-testid="no-shift-types">
+                  No shift type for {p.job_role ?? 'their job'} here yet; add one to the
+                  department&apos;s shifts to roster them by tile.
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {tiles.map((t) => {
                   const on = p.template_id === t.template_id;
@@ -154,15 +170,29 @@ export function PeopleTiles({
                     </button>
                   );
                 })}
+                {(!off && p.template_id === null) || other ? (
+                  <span
+                    aria-pressed="true"
+                    role="status"
+                    data-testid="shift-tile"
+                    data-type="other"
+                    className="flex min-h-14 flex-col items-start justify-center rounded-lg bg-brand-700 px-3 py-1 text-left text-sm font-semibold text-white ring-1 ring-brand-700"
+                  >
+                    <span>{other?.name ?? p.shift_name ?? 'Shift'}</span>
+                    <span className="text-xs tabular-nums">
+                      {other ? shiftTypeTimes(other) : `${p.start}–${p.end}`}
+                    </span>
+                  </span>
+                ) : null}
                 <button
                   type="button"
                   disabled={!canEdit || !hydrated || pending}
-                  onClick={() => p.template_id !== null && tap(p, null)}
-                  aria-pressed={p.template_id === null}
+                  onClick={() => !off && tap(p, null)}
+                  aria-pressed={off}
                   data-testid="shift-tile"
                   data-type="off"
                   className={`flex min-h-14 items-center justify-center rounded-lg px-3 text-sm ring-1 ${
-                    p.template_id === null
+                    off
                       ? 'bg-slate-700 font-semibold text-white ring-slate-700'
                       : 'bg-white ring-slate-300'
                   }`}

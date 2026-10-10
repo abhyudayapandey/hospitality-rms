@@ -18,7 +18,7 @@ EXECUTIVE_SOUS_CHEF,Executive Sous Chef,,leads_shift,KITCHEN,LEADS_SHIFT; USES_D
 SOUS_CHEF,Sous Chef,Shift Lead,leads_shift,KITCHEN,LEADS_SHIFT; USES_DEPARTMENT_STORE; WORKS_SHIFTS,,Restaurant; Cloud kitchen; Hotel
 CHEF_DE_PARTIE,Chef de Partie,,works,KITCHEN,USES_DEPARTMENT_STORE; WORKS_SHIFTS,,Restaurant; Hotel
 COOK,Cook,Line Cook,works,KITCHEN,USES_DEPARTMENT_STORE; WORKS_SHIFTS; MAKES_PREP,,Restaurant; Cloud kitchen
-COMMIS,Commis,Kitchen Helper,works,KITCHEN,WORKS_SHIFTS; MAKES_PREP,,Restaurant; Hotel
+COMMIS,Commis,Kitchen Helper,works,KITCHEN,WORKS_SHIFTS; MAKES_PREP; OPENS_PACKS,,Restaurant; Hotel
 PASTRY_CHEF,Pastry Chef,,works,KITCHEN,USES_DEPARTMENT_STORE; WORKS_SHIFTS; MAKES_PREP,,Hotel
 BAKER,Baker,,works,KITCHEN,USES_DEPARTMENT_STORE; WORKS_SHIFTS; MAKES_PREP,,Hotel
 KITCHEN_STEWARD,Kitchen Steward,Utility; Dishwasher,works,KITCHEN,WORKS_SHIFTS,,Restaurant; Hotel

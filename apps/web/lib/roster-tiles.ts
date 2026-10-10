@@ -22,8 +22,14 @@ export interface TilePerson {
   name: string;
   role_code: string;
   job_role: string | null;
-  /** the shift type they are on that day; null: off */
+  /** the shift type they are on that day; null: off, or a shift added by hand */
   template_id: string | null;
+  /** the shift they are on that day, with or without a shift type; null: off */
+  shift_id: string | null;
+  shift_name: string | null;
+  /** its times where the department is, HH:MM */
+  start: string | null;
+  end: string | null;
   status: 'draft' | 'published' | null;
 }
 

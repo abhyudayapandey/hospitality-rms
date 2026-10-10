@@ -260,6 +260,13 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   typed). Stock policies: file 11 `par_by_day`, file 10 `discard_approval` (`gm`), file 00
   `purchase_approval`. Covers per meal go on the outlet's day report; the spend per cover is
   its sales over them (`reports-reconcile`).
+- The demo walk's fixes (ADR 097): Utilities lists every meter (`ops.utility_meters`) and 60 days
+  of readings; a commis opens packs (duty `OPENS_PACKS`, group `PACK_OPENER`, SHELF_LIFE only,
+  `inv.pack_items`); Opened shows only at stores that keep something with a shelf life once
+  opened; the Breakfast tile follows `ops.breakfast_outlets` (`Shell.breakfast`); a detail
+  screen reached from a "← Back" list uses "← Back" itself; a department head's roster opens by person, whose tiles
+  are their own role's shift types (a role with none gets Off and says so) and a hand-made shift
+  shows as their own tile.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

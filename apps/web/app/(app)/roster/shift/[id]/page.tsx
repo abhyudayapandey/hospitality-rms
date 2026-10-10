@@ -46,7 +46,7 @@ export default async function ShiftPage({
   });
   if (!data) return <Empty>Shift not found.</Empty>;
   const { shift, people } = data;
-  const back = `/roster/week?node=${shift.org_node_id}&week=${shift.local_date}&day=${shift.local_date}`;
+  const back = `/roster/week?node=${shift.org_node_id}&week=${shift.local_date}&day=${shift.local_date}&view=shift`;
   const full = shift.filled >= shift.headcount;
   const reason = (code: string) =>
     code in ERROR_MESSAGES ? messageFor(code as ErrorCode) : 'Not available';

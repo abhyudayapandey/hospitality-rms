@@ -57,16 +57,21 @@ export async function packLabel(tx: Tx, pack: string): Promise<PackLabel | null>
   return r.rows[0] ?? null;
 }
 
-/** What may be opened at a store: items kept there with a shelf life once opened. */
+/**
+ * What may be opened at a store: items kept there with a shelf life once opened
+ * (inv.pack_items checks SHELF_LIFE there, so a commis needs no stock access; ADR 097).
+ */
 export async function packItems(tx: Tx, store: string): Promise<PackItem[]> {
   const r = await sql<PackItem>`
-    select i.id::text as item_id, i.name, i.base_uom, i.open_shelf_life_hours as hours,
-           coalesce(s.on_hand, 0)::text as on_hand
-      from inv.item_node x
-      join inv.item i on i.id = x.item_id
-      left join inv.stock_level s on s.item_id = x.item_id and s.delivery_node_id = x.delivery_node_id
-     where x.delivery_node_id = ${store}::uuid and x.archived_at is null
-       and i.archived_at is null and i.open_shelf_life_hours is not null
-     order by i.name`.execute(tx);
+    select item_id::text, name, base_uom, hours, on_hand::text
+      from inv.pack_items(${store}::uuid)`.execute(tx);
   return r.rows;
+}
+
+/** Whether a store keeps something with a shelf life once opened, or has a pack open. */
+export async function opensPacksAt(tx: Tx, store: string): Promise<boolean> {
+  const r = await sql<{ ok: boolean }>`
+    select exists (select 1 from core.screen_places('opened') p where p.id = ${store}::uuid)
+           as ok`.execute(tx);
+  return r.rows[0]?.ok ?? false;
 }

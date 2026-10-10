@@ -239,6 +239,14 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: { EVENTS: m },
   },
   {
+    // opens packs with a shelf life once opened at a store and prints their labels, with no
+    // other stock access (a commis; ADR 093, 097)
+    code: 'PACK_OPENER',
+    name: 'Pack Opener',
+    kind: 'role',
+    grants: { SHELF_LIFE: m },
+  },
+  {
     // receives goods against an existing PO (inv.receive: PO view + adjustments modify)
     code: 'STOCK_USER',
     name: 'Stock User',

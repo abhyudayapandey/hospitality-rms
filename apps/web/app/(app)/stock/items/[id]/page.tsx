@@ -13,6 +13,7 @@ import {
   supplyContext,
   type SearchParams,
 } from '@/lib/inventory';
+import { packItems } from '@/lib/opened-packs';
 import { itemPhotoUrls, photosEnabled } from '@/lib/photos';
 import { ItemPhoto } from './item-photo';
 
@@ -29,12 +30,17 @@ export default async function ItemLedgerPage({
   const ctx = await supplyContext(searchParams, 'stock');
   if (!ctx.can('STOCK_LEVELS') || !ctx.node) return <NoSupplyAccess />;
   const user = await requireUser();
-  const { item, rows, canPhoto } = await withUser(user.id, async (tx) => ({
+  const canOpenPacks = ctx.can('SHELF_LIFE', 'modify') && ctx.opensPacks;
+  const { item, rows, canPhoto, pack } = await withUser(user.id, async (tx) => ({
     item: (await stockList(tx, ctx.node!.id)).find((r) => r.item_id === id),
     rows: await ledger(tx, ctx.node!.id, id),
     canPhoto: (
       await sql<{ ok: boolean }>`select inv.can_set_item_photo(${id}::uuid) as ok`.execute(tx)
     ).rows[0]?.ok,
+    // an item with a shelf life once opened is opened from here too (ADR 097)
+    pack: canOpenPacks
+      ? (await packItems(tx, ctx.node!.id)).find((p) => p.item_id === id)
+      : undefined,
   }));
   if (!item) return <Empty>This item isn&apos;t set up here.</Empty>;
   const photo = (await itemPhotoUrls([item])).get(item.item_id);
@@ -56,6 +62,15 @@ export default async function ItemLedgerPage({
         </p>
         <p className="text-sm text-slate-600">par {formatQty(item.par_level, item.base_uom)}</p>
         {canPhoto && photosEnabled() && <ItemPhoto item={item.item_id} has={!!item.photo_key} />}
+        {pack && (
+          <Link
+            href={`/stock/opened?node=${ctx.node.id}&item=${item.item_id}`}
+            className="flex min-h-12 items-center justify-center rounded-lg border border-slate-300 bg-white font-medium"
+            data-testid="open-a-pack"
+          >
+            Open a pack
+          </Link>
+        )}
       </div>
       <h2 className="text-sm font-semibold text-slate-500">Latest movements</h2>
       {rows.length === 0 ? (

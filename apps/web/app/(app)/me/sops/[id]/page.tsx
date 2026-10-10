@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { BackLink } from '@/components/back-link';
 import { failure } from '@outlet-ops/domain';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
@@ -19,9 +19,7 @@ export default async function SopPageView({ params }: { params: Promise<{ id: st
   if (!sop) return <p className="rounded-xl bg-white p-6 text-slate-600">That SOP is not there.</p>;
   return (
     <div className="space-y-4">
-      <Link href="/me/sops" className="text-sm text-slate-600 underline">
-        Back to my SOPs
-      </Link>
+      <BackLink fallback="/me/sops" />
       <div>
         <h1 className="text-xl font-semibold">{sop.title}</h1>
         <p className="text-sm text-slate-600">{sop.place}</p>

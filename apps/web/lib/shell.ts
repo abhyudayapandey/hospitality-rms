@@ -53,6 +53,8 @@ export interface Shell {
   production: boolean;
   /** what Reports offers them (ADR 023) */
   reports: NavInput['reports'];
+  /** they keep or read a hotel's breakfast somewhere (ops.breakfast_outlets, ADR 094, 097) */
+  breakfast: boolean;
 }
 
 const MENU_DOMAINS = ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM'];
@@ -64,7 +66,7 @@ const MENU_DOMAINS = ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM'];
  * reads it; every screen still checks access in the database.
  */
 const NAV_TTL_MS = 5 * 60_000;
-type NavFlags = Pick<Shell, 'menu' | 'production' | 'reports'>;
+type NavFlags = Pick<Shell, 'menu' | 'production' | 'reports' | 'breakfast'>;
 const navFlags = new Map<string, { at: number; v: NavFlags }>();
 
 async function cachedNavFlags(key: string, load: () => Promise<NavFlags>): Promise<NavFlags> {
@@ -138,6 +140,12 @@ export const loadShell = cache(async (): Promise<Shell> => {
             ? await sql<{ v: boolean }>`
                 select exists (select 1 from core.screen_places('production')) as v`.execute(tx)
             : null;
+        // the Breakfast tile follows the database's rule: front office and housekeeping (ROOMS),
+        // and whoever works in a kitchen or restaurant of a hotel with rooms (ADR 094, 097)
+        const breakfast = modules.has('rooms')
+          ? await sql<{ v: boolean }>`
+              select exists (select 1 from ops.breakfast_outlets()) as v`.execute(tx)
+          : null;
         // frontline staff have only their own week; others ask rpt.my_reports() (ADR 023)
         const listed =
           navProfile(groupSet) === 'frontline'
@@ -156,6 +164,7 @@ export const loadShell = cache(async (): Promise<Shell> => {
           menu: menu?.rows[0]?.v ?? false,
           production: production?.rows[0]?.v ?? false,
           reports,
+          breakfast: breakfast?.rows[0]?.v ?? false,
         };
       },
     );
@@ -193,5 +202,6 @@ export function screenInput(shell: Shell): ScreenInput {
     access: shell.domains,
     atWork: shell.home?.at_workplace ?? false,
     swapsManagersOnly: shell.swapsManagersOnly,
+    breakfast: shell.breakfast,
   };
 }

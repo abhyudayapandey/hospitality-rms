@@ -14,6 +14,7 @@ import { RemoveButton, WeekActions, type TemplateWindow } from './week-actions';
 import { PeopleTiles, RepeatPattern } from './people-tiles';
 import { rosterDay, type RosterDay } from '@/lib/roster-tiles';
 import { jobTitles } from '@/lib/job-titles';
+import { navProfile } from '@/lib/nav';
 
 // The manager's week: build from templates, assign, publish. Mobile-first: a day strip
 // (Mon–Sun, open slots per day) and one day's shifts grouped by time, names inline (ADR 025,
@@ -51,15 +52,23 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
   const open = shifts.reduce((n, s) => n + Math.max(0, s.headcount - s.people.length), 0);
   const window = canEdit && !all ? await templateWindow(user.id, node.id, monday) : null;
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
-  const list = param(sp, 'view') === 'list';
-  // by person (ADR 082): a row each, a tile per shift type and Off; one department at a time
-  const byPerson = param(sp, 'view') === 'people' && !all;
+  const view = param(sp, 'view');
+  const list = view === 'list';
+  // by person (ADR 082): a row each, a tile per shift type and Off; one department at a time.
+  // A department head opens it by default; everyone else opens by shift (ADR 097). "By shift"
+  // is ?view=shift, so the choice holds while they move between days and weeks.
+  // Home's open-slot counts ask for every department (?all=1): filling a slot is by shift,
+  // even for someone with only one department
+  const byPerson =
+    !all &&
+    param(sp, 'all') !== '1' &&
+    (view === 'people' || (view === '' && navProfile(ctx.shell.groups) === 'department'));
   const day = pickDay(days, param(sp, 'day'), localToday(ctx.tz));
   const tiles: RosterDay | null = byPerson
     ? await withUser(user.id, (tx) => rosterDay(tx, node.id, day))
     : null;
   const base = `/roster/week?node=${node.id}${all ? '&all=1' : ''}`;
-  const viewQ = list ? '&view=list' : byPerson ? '&view=people' : '';
+  const viewQ = list ? '&view=list' : byPerson ? '&view=people' : '&view=shift';
   const link = (week: string) => `${base}&week=${week}${viewQ}`;
   const now = new Date();
   const editable = (s: RosterShift) => canEdit && new Date(s.start_at) > now;
@@ -134,7 +143,7 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
             <Link
               href={
                 byPerson
-                  ? `${base}&week=${monday}&day=${day}`
+                  ? `${base}&week=${monday}&day=${day}&view=shift`
                   : `${base}&week=${monday}&day=${day}&view=people`
               }
               className="flex min-h-11 items-center text-slate-700 underline"
@@ -144,7 +153,11 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
             </Link>
           )}
           <Link
-            href={list ? `${base}&week=${monday}&day=${day}` : `${base}&week=${monday}&view=list`}
+            href={
+              list
+                ? `${base}&week=${monday}&day=${day}&view=shift`
+                : `${base}&week=${monday}&view=list`
+            }
             className="flex min-h-11 items-center text-slate-700 underline"
           >
             {list ? 'Day view' : 'List view'}
@@ -230,7 +243,7 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
             {dayStrip(shifts, days).map((c, i) => (
               <Link
                 key={c.day}
-                href={`${base}&week=${monday}&day=${c.day}`}
+                href={`${base}&week=${monday}&day=${c.day}&view=shift`}
                 aria-current={c.day === day ? 'date' : undefined}
                 aria-label={`${formatDay(c.day)}: ${c.shifts} shift${c.shifts === 1 ? '' : 's'}, ${c.open} open slot${c.open === 1 ? '' : 's'}${c.drafts ? `, ${c.drafts} draft` : ''}`}
                 data-testid="day-chip"

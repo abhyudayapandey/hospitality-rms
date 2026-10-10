@@ -1,11 +1,12 @@
 import Link from 'next/link';
+import { BackLink } from '@/components/back-link';
 import { Empty } from '@/components/messages';
 import { ItemThumb } from '@/components/item-thumb';
 import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
-import { formatQty, supplyContext, type SearchParams } from '@/lib/inventory';
+import { formatQty, param, supplyContext, type SearchParams } from '@/lib/inventory';
 import { openPacks, packItems } from '@/lib/opened-packs';
 import { OpenPackForm } from './open-form';
 import { PackButtons } from '@/components/pack-buttons';
@@ -14,7 +15,19 @@ import { PackButtons } from '@/components/pack-buttons';
 // then opening another. Expired ones are in Stock → Expired too.
 export default async function OpenedPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await supplyContext(searchParams, 'opened');
-  if (!ctx.can('SHELF_LIFE') || !ctx.node || ctx.node.derived) return <NoSupplyAccess />;
+  // "Open a pack" on an item's page comes here with the item chosen (ADR 097)
+  const chosen = param(await searchParams, 'item');
+  if (!ctx.can('SHELF_LIFE')) return <NoSupplyAccess />;
+  // only stores that keep something with a shelf life once opened are offered (ADR 097)
+  if (!ctx.node || ctx.node.derived) {
+    return (
+      <div className="space-y-4">
+        <BackLink />
+        <h1 className="text-xl font-semibold">Opened packs</h1>
+        <Empty>Nothing kept in your stores has a shelf life once opened.</Empty>
+      </div>
+    );
+  }
   const user = await requireUser();
   const node = ctx.node;
   const canOpen = ctx.can('SHELF_LIFE', 'modify');
@@ -70,7 +83,7 @@ export default async function OpenedPage({ searchParams }: { searchParams: Searc
           </ul>
         )}
       </section>
-      {canOpen && <OpenPackForm node={node.id} items={items} />}
+      {canOpen && <OpenPackForm node={node.id} items={items} initial={chosen} />}
     </div>
   );
 }

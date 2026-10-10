@@ -125,13 +125,82 @@ describe('opened packs', () => {
         [store, await item(c, 'MILK')],
       );
       expect(tooMuch.error).toMatch(/INSUFFICIENT_STOCK/);
-      const commis = await attemptAs(
+      // housekeeping uses its own store, not the kitchen's
+      const other = await attemptAs(
         c,
-        ids.user('test.commis.1.0'),
+        ids.user('test.housekeeping-supervisor.1.0'),
         `select inv.open_pack($1, $2, 1)`,
         [store, await item(c, 'MILK')],
       );
-      expect(commis.error).toMatch(/NOT_AUTHORISED/);
+      expect(other.error).toMatch(/NOT_AUTHORISED/);
+    });
+  });
+
+  it("a commis opens packs in the kitchen's store, with no other stock access (ADR 097)", async () => {
+    await inRolledBackTx(async (c) => {
+      const store = ids.node(KITCHEN_STORE);
+      const items = await run<{ name: string; hours: number }>(
+        c,
+        'test.commis.1.0',
+        `select name, hours from inv.pack_items($1)`,
+        [store],
+      );
+      expect(items.map((i) => i.name)).toEqual([
+        'Test Fresh Cream',
+        'Test Milk',
+        'Test Tomato Ketchup',
+      ]);
+      const [p] = await run<{ id: string }>(
+        c,
+        'test.commis.1.0',
+        `select inv.open_pack($1, $2, 1) as id`,
+        [store, await item(c, 'MILK')],
+      );
+      const packs = await run<{ id: string }>(
+        c,
+        'test.commis.1.0',
+        `select id from inv.open_packs($1)`,
+        [store],
+      );
+      expect(packs.map((x) => x.id)).toContain(p!.id);
+      // still no stock levels, counts or other stores
+      const levels = await run(
+        c,
+        'test.commis.1.0',
+        `select 1 from inv.stock_level where delivery_node_id = $1`,
+        [store],
+      );
+      expect(levels).toEqual([]);
+      for (const sql of [
+        `select inv.pack_items($1)`,
+        `select inv.open_pack($1, (select id from inv.item where sku = 'ORANGE-JUICE' and tenant_id = core.my_tenant()), 1)`,
+      ]) {
+        const r = await attemptAs(c, ids.user('test.commis.1.0'), sql, [
+          ids.node('TEST-HOTEL-1.0-BAR-STORE'),
+        ]);
+        expect(r.error, sql).toMatch(/NOT_AUTHORISED/);
+      }
+    });
+  });
+
+  it('the Opened screen offers only stores that keep something with a shelf life once opened', async () => {
+    await inRolledBackTx(async (c) => {
+      const places = await run<{ code: string }>(
+        c,
+        'test.general-manager.1.0',
+        `select code from core.screen_places('opened') where code like 'TEST-HOTEL-1.0-%' order by code`,
+      );
+      expect(places.map((p) => p.code)).toEqual([
+        'TEST-HOTEL-1.0-BAR-STORE',
+        'TEST-HOTEL-1.0-KITCHEN-STORE',
+        'TEST-HOTEL-1.0-MAIN-STORE',
+      ]);
+      const commis = await run<{ code: string }>(
+        c,
+        'test.commis.1.0',
+        `select code from core.screen_places('opened')`,
+      );
+      expect(commis.map((p) => p.code)).toEqual([KITCHEN_STORE]);
     });
   });
 

@@ -106,6 +106,65 @@ describe('utilities', () => {
     });
   });
 
+  it('lists every meter, read or not, with who reads it and when, and its last reading (ADR 097)', async () => {
+    await inRolledBackTx(async (c) => {
+      const before = await run<{
+        meter: string;
+        read_by: string;
+        read_at: string;
+        last_reading: string | null;
+      }>(
+        c,
+        'test.chief-engineer.1.0',
+        `select meter, read_by, read_at, last_reading::text from ops.utility_meters($1)`,
+        [ids.node(ENG)],
+      );
+      expect(before.map((m) => m.meter)).toEqual([
+        'Electricity main',
+        'Generator diesel',
+        'Kitchen gas',
+        'Water inlet',
+      ]);
+      expect(new Set(before.map((m) => `${m.read_by} at ${m.read_at}`))).toEqual(
+        new Set(['Technician at 09:00']),
+      );
+      expect(before.every((m) => m.last_reading === null)).toBe(true);
+      await c.query(
+        `insert into ops.meter_reading (tenant_id, meter_id, org_node_id, read_at, value)
+         select m.tenant_id, m.id, m.org_node_id, now() - interval '70 days', v
+           from ops.meter m, (values (1000), (1200)) x(v)
+          where m.tenant_id = $1 and m.code like 'HOTEL-1.0-%' and m.name = 'Kitchen gas'`,
+        [ids.tenant()],
+      );
+      await c.query(
+        `update ops.meter_reading set read_at = read_at + interval '1 hour' where value = 1200`,
+      );
+      const after = await run<{ meter: string; last_reading: string | null }>(
+        c,
+        'test.chief-engineer.1.0',
+        `select meter, last_reading::text from ops.utility_meters($1) where meter = 'Kitchen gas'`,
+        [ids.node(ENG)],
+      );
+      expect(Number(after[0]!.last_reading)).toBe(1200);
+      // the readings are kept: 70 days back is still there for the days list
+      const days = await run<{ day: string }>(
+        c,
+        'test.chief-engineer.1.0',
+        `select day from ops.utility_days($1, rpt.today($1) - 400, rpt.today($1))
+          where meter = 'Kitchen gas'`,
+        [ids.node(ENG)],
+      );
+      expect(days).toHaveLength(1);
+      const r = await attemptAs(
+        c,
+        ids.user('test.commis.1.0'),
+        `select * from ops.utility_meters($1)`,
+        [ids.node(ENG)],
+      );
+      expect(r.error).toMatch(/NOT_AUTHORISED/);
+    });
+  });
+
   it('only engineering and the managers read it; not the kitchen, not another customer', async () => {
     await inRolledBackTx(async (c) => {
       for (const who of ['test.commis.1.0', 'test.solo.bar-manager']) {

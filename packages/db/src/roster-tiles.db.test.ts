@@ -264,6 +264,44 @@ describe('the tiles (hr.set_day_shift)', () => {
     });
   });
 
+  it("a shift added by hand shows with its times; another role's shift type is refused (ADR 097)", async () => {
+    await inRolledBackTx(async (c) => {
+      const monday = await mondayAhead(c, 5);
+      const w = await worker(c, 'test.steward.1.0');
+      const [shift] = (
+        await c.query<{ id: string }>(
+          `insert into hr.shift (tenant_id, org_node_id, local_date, start_at, end_at, role_code,
+                                 headcount)
+           values ($1, $2, $3::date, ($3::date + time '12:00') at time zone 'Asia/Kolkata',
+                   ($3::date + time '16:00') at time zone 'Asia/Kolkata', 'STEWARD', 1)
+           returning id`,
+          [ids.tenant(), ids.node(RESTAURANT), monday],
+        )
+      ).rows;
+      const as = (sql: string, params: unknown[]) => attemptAs(c, ids.user(MANAGER), sql, params);
+      expect((await as('select hr.assign($1, $2)', [shift!.id, w])).error).toBeUndefined();
+      const day = await as(`select hr.roster_day($1, $2::date) as d`, [
+        ids.node(RESTAURANT),
+        monday,
+      ]);
+      const me = (
+        day.rows![0] as {
+          d: {
+            people: { worker_id: string; template_id: string | null; start: string; end: string }[];
+          };
+        }
+      ).d.people.find((p) => p.worker_id === w)!;
+      expect(me).toMatchObject({ template_id: null, start: '12:00', end: '16:00' });
+      // a tile of another job role's shift type can't be used for them
+      const other = await as('select hr.set_day_shift($1, $2::date, $3)', [
+        await worker(c, 'test.steward-b.1.0'),
+        addDays(monday, 1),
+        await template(c, RESTAURANT, 'Dinner', 'CAPTAIN'),
+      ]);
+      expect(other.error).toMatch(/ROLE_MISMATCH/);
+    });
+  });
+
   it('a full shift takes one more for the manager; nobody else may set tiles', async () => {
     await inRolledBackTx(async (c) => {
       const monday = await mondayAhead(c, 5);

@@ -13,6 +13,8 @@ export interface ScreenInput extends NavInput {
   atWork: boolean;
   /** the company keeps swaps for those who change the roster (SW-4, ADR 035, 074) */
   swapsManagersOnly?: boolean;
+  /** keeps or reads a hotel's breakfast (Shell.breakfast, ADR 097) */
+  breakfast?: boolean;
 }
 
 export type ScreenSection = 'mine' | 'work' | 'team';
@@ -38,6 +40,7 @@ export type ScreenKey =
   | 'orders'
   | 'transfers'
   | 'bills'
+  | 'opened'
   | 'compliance'
   | 'sales'
   | 'posImport'
@@ -234,6 +237,16 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     show: (i) => can(i, 'BILLS'),
   },
   {
+    // opened packs for someone who opens them but has no Stock screen (a commis, ADR 097);
+    // with stock access it is the Stock screen's Opened tab
+    key: 'opened',
+    href: '/stock/opened',
+    label: 'Opened packs',
+    icon: 'clock',
+    section: 'work',
+    show: (i) => can(i, 'SHELF_LIFE', 'modify') && !canOpen('stock', i),
+  },
+  {
     key: 'sales',
     href: '/menu/sales',
     label: 'Sales',
@@ -315,13 +328,13 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
   },
   {
     // the day's breakfast guests by mode (ADR 094): front office and housekeeping keep it, the
-    // kitchen and restaurant read it (the screen says when there is none for them)
+    // kitchen and restaurant of a hotel with rooms read it; nobody else gets the tile (ADR 097)
     key: 'breakfast',
     href: '/breakfast',
     label: 'Breakfast',
     icon: 'plate',
     section: 'work',
-    show: (i) => can(i, 'ROOMS') || can(i, 'RECIPES_TEAM'),
+    show: (i) => i.breakfast === true,
   },
   {
     // the SOPs for my place and job role, with "I've read this" (ADR 095)

@@ -253,7 +253,7 @@ export const ROLES: readonly RoleDef[] = [
     title: 'Commis',
     alsoCalled: ['Kitchen Helper'],
     home: 'KITCHEN',
-    duties: [W, 'MAKES_PREP'],
+    duties: [W, 'MAKES_PREP', 'OPENS_PACKS'],
     sops: ['R', 'H'],
   },
   {

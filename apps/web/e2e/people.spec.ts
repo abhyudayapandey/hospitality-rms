@@ -29,7 +29,10 @@ test.beforeAll(async () => {
 });
 
 async function openWeek(page: Page, day = W) {
-  await page.goto(`/roster/week?node=${await placeId(PLACE.floor)}&week=${W}&day=${day}`);
+  // by shift: a department head (the floor manager) opens by person otherwise (ADR 097)
+  await page.goto(
+    `/roster/week?node=${await placeId(PLACE.floor)}&week=${W}&day=${day}&view=shift`,
+  );
   await expect(page.getByTestId('week-label')).toHaveText(`Week of ${formatDay(W)}`);
 }
 
