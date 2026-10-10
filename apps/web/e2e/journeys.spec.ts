@@ -189,7 +189,8 @@ test('fill an open slot (executive chef)', async ({ page }) => {
 
 test("today's sales (cost controller)", async ({ page }) => {
   const j = await start(page, 'Test Cost Controller 1.0');
-  await expect(page.getByTestId('tile-sales')).toBeVisible();
+  // before the day's sales are in, Home says so in a line instead of ₹0 (ADR 098)
+  await expect(page.getByTestId('tile-sales').or(page.getByTestId('no-sales-yet'))).toBeVisible();
   j.done("See today's sales", 'Cost controller', { there: 0, form: 0 });
 });
 

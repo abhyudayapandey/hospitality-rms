@@ -424,6 +424,26 @@ export async function events(
      where ${id ? sql`e.id = ${id}::uuid` : sql`e.org_node_id = ${node}::uuid and e.ends_at >= ${fromIso}::timestamptz`}
      order by e.starts_at
      limit 60`.execute(tx);
+  // an item the viewer may not see in stock still has its name on the event (ADR 098)
+  const missing = r.rows.filter((e) =>
+    e.requirements.some((q) => q.kind === 'item' && q.item_name === null),
+  );
+  if (missing.length > 0) {
+    const n = await sql<{ event_id: string; item_id: string; name: string; base_uom: string }>`
+      select e.id as event_id, n.item_id, n.name, n.base_uom
+        from unnest(${missing.map((e) => e.id)}::uuid[]) e(id),
+             ops.event_item_names(e.id) n`.execute(tx);
+    const by = new Map(n.rows.map((x) => [`${x.event_id}:${x.item_id}`, x]));
+    for (const e of missing) {
+      for (const q of e.requirements) {
+        const x = q.item_id ? by.get(`${e.id}:${q.item_id}`) : undefined;
+        if (x && q.item_name === null) {
+          q.item_name = x.name;
+          q.base_uom = x.base_uom;
+        }
+      }
+    }
+  }
   return r.rows;
 }
 

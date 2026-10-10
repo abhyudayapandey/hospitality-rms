@@ -35,7 +35,10 @@ test('the GM: today’s numbers on Home, the outlet report, yesterday', async ({
   await signInAs(page, 'Test General Manager 1.0');
   const numbers = page.getByTestId('numbers-card');
   await expect(numbers).toContainText('Test Hotel & Bar 1.0');
-  await expect(numbers.getByTestId('tile-sales')).toContainText('₹');
+  // today's sales once they are in; before, a line saying so instead of ₹0 (ADR 098)
+  await expect(
+    numbers.getByTestId('tile-sales').or(numbers.getByTestId('no-sales-yet')),
+  ).toBeVisible();
   await numbers.getByRole('link', { name: 'Open the report' }).click();
   await expect(page.getByRole('heading', { name: 'Outlet today' })).toBeVisible();
   await expect(page.getByTestId('report-day')).toHaveText('Today so far');

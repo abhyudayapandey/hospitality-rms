@@ -2552,3 +2552,22 @@ catalogue's Commis gains that duty, so a customer whose file 06 lists COMMIS by 
      stays chosen while moving between days.
    - **`passport.laundry`**: Linen → each item's
      name whole, Sent to laundry and Came back under it.
+
+## Releasing the UX audit's first fixes (ADR 098)
+
+One migration (`20261213100000_event_item_names`): a read function, no table changes, no access
+change.
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual.
+4. No re-import.
+5. Check, at 380 px:
+   - **`passport.banquet-server`** (Melissa Vaz): Events → the feni and gin tasting lists its
+     supplies by name and unit with their photos, never "Item · 4". The header says "Melissa
+     Vaz", and under it "Banquet Server · Sales, Events & Banquets".
+   - **`passport.cashier`**: the header's second line says "Cashier" once.
+   - **`passport.gm`**: before the day's sales are in, Today so far says "No sales in yet today"
+     with the wastage tile, not ₹0.
+   - **`passport.room-attendant`**: Home's Next card shows the task's own picture (a fridge for
+     the minibar round).

@@ -267,6 +267,10 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   screen reached from a "← Back" list uses "← Back" itself; a department head's roster opens by person, whose tiles
   are their own role's shift types (a role with none gets Off and says so) and a hand-made shift
   shows as their own tile.
+- The UX audit (plan `docs/plans/ux-audit.md`, ADR 098): fewer words, a picture on everything,
+  tap instead of type, each person sees only their own work. A photo or file control sits above
+  the button that finishes (`lib/photo-first.test.ts`); an event's supplies come by name to
+  whoever sees the event (`ops.event_item_names`); the header is the name, then the job.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

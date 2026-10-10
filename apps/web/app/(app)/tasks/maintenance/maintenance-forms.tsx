@@ -173,7 +173,7 @@ export function WorkRepair({
         />
       ) : (
         <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-          Photo upload isn&apos;t set up here, so this can&apos;t be closed.
+          Photos can&apos;t be taken here right now. Tell your manager.
         </p>
       )}
       <label className="block space-y-1">
