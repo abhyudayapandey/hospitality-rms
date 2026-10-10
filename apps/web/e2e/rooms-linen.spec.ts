@@ -48,7 +48,10 @@ test('a room is counted; breakfast is given and read', async ({ page }) => {
     await expect(
       main(page).getByTestId('breakfast-buffet').getByTestId('breakfast-total'),
     ).toContainText('18 guests');
-    await main(page).getByRole('combobox', { name: /^Room/ }).selectOption({ label: '102' });
+    await main(page)
+      .getByRole('group', { name: 'Room' })
+      .getByRole('button', { name: 'Room 102' })
+      .click();
     await main(page).getByLabel('Guests').fill('2');
     await main(page).getByLabel('Note (optional)').fill('no onion');
     await main(page).getByRole('button', { name: 'Save the room' }).click();

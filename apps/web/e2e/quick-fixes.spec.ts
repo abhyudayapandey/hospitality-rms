@@ -26,7 +26,7 @@ test('the GM: Needs attention by department, Kitchen first', async ({ page }) =>
   await page.goto('/');
   const groups = page.getByTestId('attention-card').getByTestId('attention-group');
   await expect(groups.first()).toBeVisible();
-  const labels = await groups.evaluateAll((gs) => gs.map((g) => g.getAttribute('aria-label')));
+  const labels = await groups.evaluateAll((gs) => gs.map((g) => g.getAttribute('data-label')));
   expect(labels.length).toBeGreaterThan(1);
   expect(labels[0]).toBe('Kitchen');
   const ranks = labels.map((l) => ORDER.indexOf(l ?? ''));

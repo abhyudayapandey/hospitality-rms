@@ -86,33 +86,29 @@ test('Orders and Transfers: All stores, with To receive and To send tabs', async
   await expect(page.getByTestId('tab-send')).toHaveAttribute('aria-current', 'page');
 });
 
-test("the GM: a department's line under All departments opens that department, not all", async ({
-  page,
-}) => {
+test("the GM: a department's tile opens that department, not all (ADR 105)", async ({ page }) => {
   await signInAs(page, 'Test General Manager 1.0');
   await page.goto('/');
-  const groups = page.getByTestId('attention-card').getByTestId('attention-group');
-  const n = await groups.count();
+  const tiles = page.getByTestId('attention-card').getByTestId('attention-group');
+  const n = await tiles.count();
   let checked = 0;
   for (let i = 0; i < n; i++) {
-    const g = groups.nth(i);
-    const label = (await g.getAttribute('aria-label')) ?? '';
+    const t = tiles.nth(i);
+    const label = (await t.getAttribute('data-label')) ?? '';
     if (label === 'Whole outlet') continue;
-    for (const link of await g.getByRole('link').all()) {
-      const href = (await link.getAttribute('href')) ?? '';
-      // never the all-places view from a department's own line
-      expect(href, `${label}: ${href}`).not.toContain('all=1');
-      expect(href, `${label}: ${href}`).toContain('node=');
-      checked++;
-    }
+    const href = (await t.getAttribute('href')) ?? '';
+    // never the all-places view from a department's own tile
+    expect(href, `${label}: ${href}`).not.toContain('all=1');
+    expect(href, `${label}: ${href}`).toContain('node=');
+    checked++;
   }
   expect(checked).toBeGreaterThan(0);
-  // and an attendance line lands on its department with as many issues as it says
-  const line = groups.getByRole('link', { name: /attendance issue/ }).first();
-  if ((await line.count()) > 0) {
-    const want = Number((await line.locator('.tabular-nums').innerText()).trim());
-    const dept = await line.locator('xpath=ancestor::section[1]').getAttribute('aria-label');
-    await line.click();
+  // and an attendance tile lands on its department with as many issues as it says
+  const tile = tiles.filter({ hasText: /attendance issue/ }).first();
+  if ((await tile.count()) > 0) {
+    const want = Number((await tile.getByTestId('dept-fact').innerText()).split(' ')[0]);
+    const dept = await tile.getAttribute('data-label');
+    await tile.click();
     await page.waitForURL(/\/roster\/exceptions\?node=/);
     await expect.poll(() => viewing(page)).toContain(dept!);
     await expect(page.getByTestId('exception')).toHaveCount(want);
