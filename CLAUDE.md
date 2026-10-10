@@ -275,6 +275,12 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   it); one's own To do list is one line a task, done ones folded; a rule sits behind a "?"
   (`InfoTip`); every number a frontline person enters has − / + (`Stepper`), a reading its safe
   range first and coloured quick picks.
+  ADR 106: Me shows first Clock, My shifts, Leave, SOPs, Report a problem, then the tiles of
+  the person's own work (access above what every shift worker holds, `meTiles`), the rest under
+  More; every tile its own picture (`me-tiles.test.ts`). ADR 107: an empty roster week is one
+  "Fill this week" button, By person / By shift a switch, the clock one camera button. ADR 108:
+  shift types, notifications, clock rows and people (initials) carry pictures. ADR 109: the
+  accountant reads bills and purchasing (`READS_BILLS`), the sales manager plans events.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

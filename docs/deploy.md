@@ -2590,3 +2590,39 @@ Screens only: no migration, no access change, no infrastructure change.
    - **`passport.room-attendant`**: a minibar check has − / + beside each item.
    - **`passport.laundry`**: Linen → each item has − / + for Sent to laundry and Came back.
    - **Anyone**: Leave → Tomorrow, then 2 days, fills the dates.
+
+## Releasing Me per person, roster and clock, pictures, and two roles' access (ADR 106 to 109)
+
+One migration (`20261216100000_bills_readers_purchasing`): the purchasing report's access
+rule, no table change. An access change (ADR 109): the Deploy workflow's `sync-defs` step adds
+the product group Accounts and the duty "Reads the bills and what was bought"; the catalogue's
+Accountant gains it and the Sales Manager gains "Plans events", so a customer whose file 06
+lists them by code alone (Passport) gets them at its next import.
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual.
+4. Re-import:
+   - **Passport** (`cd docs/onboarding/demo/passport-hotel && zip ../passport-hotel.zip *.csv`):
+     the dry run shows no problems and no warnings, with job role access 2 new (the
+     accountant's Accounts at the outlet's stores, the sales manager's Event Planner at the
+     outlet). Apply, then a second dry run shows no changes.
+   - **The test customers** (test environment only): Test Solo Bar Co.'s job roles 1 changed
+     (the Accountant gains "Reads the bills and what was bought") and job role access 1 new.
+     Test Company: no changes. Apply, then a second dry run shows no changes.
+5. Check, at 380 px:
+   - **`passport.pool`** (Nikhil Kerkar): Me shows Clock, My shifts, Leave, SOPs, Report a
+     problem and Stock, then More (the rest, opened in place); every tile its own picture.
+   - **`passport.commis`** (Ganesh Parab): Me starts with his day, then Make, Recipes (a chef's
+     hat) and Opened packs (an open bottle).
+   - **`passport.gm`** (Sainath): Roster → a future week with no shifts shows one big "Fill this
+     week from the usual shifts"; By person / By shift is a switch. Shift rows show a sun, a
+     moon or a split.
+   - **Anyone on the roster with no shift today**: Clock says "No shift today" with a calendar,
+     and one big camera button clocks in. Leave shows a picture per type; Notifications a
+     picture per kind; Team → People and Admin → Users start each row with initials.
+   - **`passport.accountant`** (Neha Sardesai): Me has Bills and Orders first; Bills lists the
+     outlet's bills and "Waiting for a bill"; Reports opens Purchasing and nothing on stock or
+     pay.
+   - **`passport.sales-manager`** (Leon Almeida): Events → New event saves an event at the
+     hotel.
