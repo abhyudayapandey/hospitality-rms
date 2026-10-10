@@ -50,6 +50,8 @@ export type ScreenKey =
   | 'breakage'
   | 'breakfast'
   | 'audits'
+  | 'sops'
+  | 'training'
   | 'linen'
   | 'roster'
   | 'events'
@@ -319,6 +321,24 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     icon: 'plate',
     section: 'work',
     show: (i) => can(i, 'ROOMS') || can(i, 'RECIPES_TEAM'),
+  },
+  {
+    // the SOPs for my place and job role, with "I've read this" (ADR 095)
+    key: 'sops',
+    href: '/me/sops',
+    label: 'My SOPs',
+    icon: 'book',
+    section: 'mine',
+    show: (i) => can(i, 'TRAINING'),
+  },
+  {
+    // training sessions, attendance and test scores; who has read the SOPs (ADR 095)
+    key: 'training',
+    href: '/training',
+    label: 'Training',
+    icon: 'clipboard',
+    section: 'team',
+    show: (i) => can(i, 'TRAINING', 'modify'),
   },
   {
     // service audits and taste panels, their scores and trend (ADR 095)

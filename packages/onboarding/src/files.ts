@@ -1216,6 +1216,31 @@ export const FILES = {
     }),
     optional: ['read_at'],
   },
+  // SOPs (ADR 095): the SOP library, each at a place, for some job roles (blank: everyone
+  // there), its text and whether it needs "I've read this". Keyed by sop_code; a later load
+  // corrects one (a changed text asks again) and archives one no longer listed.
+  sops: {
+    file: '46_sops.csv',
+    required: false,
+    schema: z.object({
+      sop_code: code,
+      place_code: code,
+      title: text,
+      // job role codes separated by ";"
+      roles: z
+        .string()
+        .default('')
+        .transform((v) =>
+          v
+            .split(';')
+            .map((r) => r.trim())
+            .filter(Boolean),
+        ),
+      needs_ack: optYesNo,
+      body: text,
+    }),
+    optional: ['roles', 'needs_ack'],
+  },
   // Registers (ADR 090): which are kept, and by which job roles (blank: anyone who keeps
   // registers where it is written). A register not listed keeps the default: lost and found
   // and incidents everywhere, the rest at hotels.

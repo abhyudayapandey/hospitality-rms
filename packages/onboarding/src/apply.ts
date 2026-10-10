@@ -218,6 +218,7 @@ class Loader {
     await this.notDoneChecklists();
     await this.registers();
     await this.meters();
+    await this.sops();
     if (this.isTest) {
       await this.shifts();
       await this.pastWeek();
@@ -3054,6 +3055,41 @@ class Loader {
           assign,
           steps,
         ],
+      );
+    }
+  }
+
+  /** File 46 (ADR 095): the SOP library; an SOP no longer listed is archived. */
+  private async sops() {
+    for (const s of this.b.sops) {
+      this.step(FILES.sops.file, s.line);
+      await this.upsert(
+        'SOPs',
+        `insert into ops.sop as t (tenant_id, org_node_id, code, title, body, roles, needs_ack)
+         values ($1, $2, $3, $4, $5, $6, $7)
+         on conflict (tenant_id, code) do update
+            set org_node_id = excluded.org_node_id, title = excluded.title, body = excluded.body,
+                roles = excluded.roles, needs_ack = excluded.needs_ack, archived_at = null
+          where (t.org_node_id, t.title, t.body, t.roles, t.needs_ack, t.archived_at)
+                is distinct from (excluded.org_node_id, excluded.title, excluded.body,
+                                  excluded.roles, excluded.needs_ack, null)
+         returning id, xmax = 0 as inserted`,
+        [
+          this.tenant,
+          this.nodes.get(s.place_code),
+          s.sop_code,
+          s.title,
+          s.body,
+          s.roles,
+          s.needs_ack ?? false,
+        ],
+      );
+    }
+    if (this.b.sops.length) {
+      await this.c.query(
+        `update ops.sop set archived_at = now()
+          where tenant_id = $1 and archived_at is null and not (code = any ($2))`,
+        [this.tenant, this.b.sops.map((s) => s.sop_code)],
       );
     }
   }

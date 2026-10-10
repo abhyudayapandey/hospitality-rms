@@ -526,6 +526,18 @@ function validateTasks(
     }
   }
 
+  // file 46 (ADR 095): SOPs at places, for job roles of file 06
+  const sopCodes = new Set<string>();
+  for (const s of b.sops) {
+    place(f('sops'), s.line, 'place_code', s.place_code);
+    if (sopCodes.has(s.sop_code))
+      add(f('sops'), s.line, 'sop_code', `${s.sop_code} is listed twice`);
+    sopCodes.add(s.sop_code);
+    for (const r of s.roles) {
+      if (!roles.has(r)) add(f('sops'), s.line, 'roles', `${r} is not in ${f('jobRoles')}`);
+    }
+  }
+
   // file 45 (ADR 090): each register once; its roles are job roles of file 06
   const registers = new Set<string>();
   for (const r of b.registers) {

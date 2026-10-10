@@ -1,0 +1,4 @@
+sop_code,place_code,title,roles,needs_ack,body
+HOTEL-1.0-HANDWASH,TEST-HOTEL-1.0-KITCHEN,Handwashing,,yes,"Wash your hands for 20 seconds with soap and warm water before starting work, after the toilet, after handling raw meat or fish, after touching your face or phone, and after taking out waste. Dry them on a paper towel."
+HOTEL-1.0-ALLERGENS,TEST-HOTEL-1.0-KITCHEN,Serving a guest with an allergy,CHEF_DE_PARTIE;COMMIS,yes,"Ask the guest which allergens. Check the dish's recipe and its prep items. Use a clean board, knife and pan. Tell the server the dish is ready for the allergy, and say what it holds."
+HOTEL-1.0-ROOM-TURNDOWN,TEST-HOTEL-1.0-HOUSEKEEPING,Evening turndown,ROOM_ATTENDANT,no,"Knock and say Housekeeping. Close the curtains, turn the bed down on the side nearest the bathroom, put the slippers and the night card out, empty the bins and replace used towels."
