@@ -12,8 +12,9 @@ import { as, everyone, placesOf, reportsOf } from '../test/report-access';
 // The cost controller's reports (R-2, ADR 028): cost of sales and menu engineering open
 // where the person sees the menu costs (MENU view) at one of the place's stores; the stock
 // and purchasing reports open at a store for its cost people: MENU view or PURCHASE_ORDERS
-// modify there (store keepers, cost controllers, managers). STOCK_LEVELS and
-// PURCHASE_ORDERS view are not enough: commis and bartenders hold them to use the store.
+// modify there (store keepers, cost controllers, managers); purchasing also for whoever reads
+// the store's bills (BILLS view: an accountant, ADR 109). STOCK_LEVELS and PURCHASE_ORDERS
+// view are not enough: commis and bartenders hold them to use the store.
 
 let ids: SeedIds;
 beforeAll(async () => {
@@ -74,7 +75,9 @@ const RULES: Record<string, string> = {
                                     and (core.can('REPORTS', 'view', n.id, null)
                                          or core.can('MENU', 'view', null, mo.delivery_node_id)))`,
   stock_position: `(${STORE_RULE}) or (${ALL_STORES_RULE})`,
-  purchasing: STORE_RULE,
+  // and whoever reads the store's bills (an accountant, ADR 109)
+  purchasing: `(${STORE_RULE}) or (n.type = 'delivery' and n.holds_stock
+                                    and core.can('BILLS', 'view', null, n.id))`,
   // R-3 (ADR 030): a central kitchen's store, for its cost people
   central_kitchen: `${STORE_RULE}
     and exists (select 1 from core.node_link l
