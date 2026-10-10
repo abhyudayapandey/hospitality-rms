@@ -61,7 +61,8 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
   // even for someone with only one department
   const byPerson =
     !all &&
-    param(sp, 'all') !== '1' && (view === 'people' || (view === '' && navProfile(ctx.shell.groups) === 'department'));
+    param(sp, 'all') !== '1' &&
+    (view === 'people' || (view === '' && navProfile(ctx.shell.groups) === 'department'));
   const day = pickDay(days, param(sp, 'day'), localToday(ctx.tz));
   const tiles: RosterDay | null = byPerson
     ? await withUser(user.id, (tx) => rosterDay(tx, node.id, day))
