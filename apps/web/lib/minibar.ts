@@ -14,6 +14,8 @@ export interface MinibarPlace {
   outlet: string;
   rooms: number;
   can_check: boolean;
+  /** they bill these minibars: the front desk and the managers (ADR 104) */
+  bills: boolean;
 }
 
 export interface MinibarRoomRow {
@@ -27,6 +29,10 @@ export interface MinibarRoomRow {
   last_used: number | null;
   checked_today: boolean;
   to_charge: string;
+  /** the room's status code (never shown, ADR 104) */
+  status: string;
+  /** a minibar, not checked today, a guest in, arriving or leaving */
+  due_today: boolean;
 }
 
 export interface MinibarItem {

@@ -2,6 +2,7 @@
 // These helpers choose what each card shows; they are pure so they can be unit tested.
 
 import { daysWords } from '@outlet-ops/domain';
+import type { IconName } from '@/components/icon';
 import { formatSpan, localDate } from './dates';
 import { listHref, stockHref } from './stock-view';
 
@@ -71,6 +72,8 @@ export interface PlaceDepartment {
   node_id: string;
   department_id: string | null;
   department: string | null;
+  /** kitchen, service, housekeeping or other (file 01); null for no department */
+  department_type?: string | null;
   /** 1 kitchen, 2 service, 3 housekeeping, 4 other, 5 no department (the outlet itself) */
   rank: number;
   outlet_id: string | null;
@@ -93,7 +96,10 @@ export interface AttentionGroup {
   lines: AttentionLine[];
   /** everything in the group added up */
   total: number;
-  tone: AttentionTone;
+  /** green ('ok'): a department they look after with nothing waiting (ADR 105) */
+  tone: AttentionTone | 'ok';
+  /** the department's type, for its picture */
+  type?: string | null | undefined;
 }
 
 const KINDS: readonly AttentionKind[] = ['lowStock', 'flags', 'repairs', 'openSlots'];
@@ -139,6 +145,8 @@ const LINE: Record<AttentionKind, { href: string; one: string; many: string }> =
 export function attentionGroups(
   counts: readonly AttentionCount[],
   places: readonly PlaceDepartment[],
+  /** departments they look after: shown "all done" when nothing waits there (ADR 105) */
+  quiet: readonly PlaceDepartment[] = [],
 ): AttentionGroup[] {
   const of = new Map(places.map((p) => [p.node_id, p]));
   const groups = new Map<
@@ -164,6 +172,15 @@ export function attentionGroups(
     if (c.kind === 'openSlots' && !g.slot && c.href) g.slot = c.href;
     if (c.kind === 'lowStock') g.stores.add(c.node);
     groups.set(key, g);
+  }
+  for (const q of quiet) {
+    if (!q.department_id || groups.has(q.department_id)) continue;
+    groups.set(q.department_id, {
+      place: q,
+      n: new Map<AttentionKind, number>(),
+      slot: null,
+      stores: new Set<string>(),
+    });
   }
   // A department's line opens that department, not every place (ADR 048): exceptions and
   // repairs there, low stock at its store; what is at the outlet itself opens the outlet.
@@ -200,6 +217,7 @@ export function attentionGroups(
   return [...groups.entries()]
     .map(([key, g]) => ({
       key,
+      type: g.place?.department_type ?? undefined,
       rank: g.place?.rank ?? 5,
       outlet: g.place?.outlet ?? '',
       label: label(g.place),
@@ -217,13 +235,83 @@ export function attentionGroups(
       (a, b) =>
         a.rank - b.rank || a.outlet.localeCompare(b.outlet) || a.label.localeCompare(b.label),
     )
-    .map(({ key, label: l, lines }) => ({
+    .map(({ key, label: l, lines, type }) => ({
       key,
       label: l,
       lines,
       total: lines.reduce((t, x) => t + x.n, 0),
-      tone: lines.some((x) => TONE[x.kind] === 'bad') ? ('bad' as const) : ('warn' as const),
+      tone:
+        lines.length === 0
+          ? ('ok' as const)
+          : lines.some((x) => TONE[x.kind] === 'bad')
+            ? ('bad' as const)
+            : ('warn' as const),
+      type,
     }));
+}
+
+/** A department's picture: from its name, else its type (file 01). */
+export function departmentIcon(name: string, type?: string | null): IconName {
+  const n = name.toLowerCase();
+  const byName: [RegExp, IconName][] = [
+    [/kitchen|bakery|pastry/, 'pot'],
+    [/bar|cellar|beverage/, 'glass'],
+    [/restaurant|dining|caf[eé]|room service|f&b|service/, 'plate'],
+    [/housekeep|laundry|linen/, 'bed'],
+    [/front office|front desk|reception|concierge/, 'bell'],
+    [/engineer|mainten|technical/, 'wrench'],
+    [/banquet|event|sales/, 'calendar'],
+    [/cash|account|finance|admin/, 'bill'],
+    [/store|purchas|supply/, 'box'],
+    [/secur/, 'shield'],
+    [/pool|spa|gym|recreation/, 'pool'],
+  ];
+  for (const [re, icon] of byName) if (re.test(n)) return icon;
+  if (type === 'kitchen') return 'pot';
+  if (type === 'service') return 'plate';
+  if (type === 'housekeeping') return 'bed';
+  return 'people';
+}
+
+/** A department's tile on a manager's Home (ADR 105): one fact, its colour, one tap. */
+export interface DepartmentTile {
+  key: string;
+  label: string;
+  icon: IconName;
+  tone: AttentionTone | 'ok';
+  /** "3 running low", "1 repair", "All done" */
+  fact: string;
+  href: string;
+}
+
+// the one fact a tile shows: what runs out first, then what is broken, then people
+const FACT_ORDER: readonly AttentionKind[] = ['lowStock', 'repairs', 'flags', 'openSlots'];
+const FACT: Record<AttentionKind, [string, string]> = {
+  lowStock: ['running low', 'running low'],
+  repairs: ['repair', 'repairs'],
+  flags: ['attendance issue', 'attendance issues'],
+  openSlots: ['open shift', 'open shifts'],
+};
+
+/**
+ * Every department as a tile (ADR 105): red when something runs low, amber when something
+ * waits, green when nothing does. The fact is one of its lines, so its number is that line's
+ * and the tile opens what the line opens, at that department (ADR 048); a green tile opens
+ * the department's team tasks.
+ */
+export function departmentTiles(groups: readonly AttentionGroup[]): DepartmentTile[] {
+  return groups.map((g) => {
+    const line = FACT_ORDER.map((k) => g.lines.find((l) => l.kind === k)).find(Boolean);
+    const dept = g.key.startsWith('outlet:') ? null : g.key;
+    return {
+      key: g.key,
+      label: g.label,
+      icon: dept ? departmentIcon(g.label, g.type) : 'home',
+      tone: g.tone,
+      fact: line ? `${line.n} ${FACT[line.kind][line.n === 1 ? 0 : 1]}` : 'All done',
+      href: line ? line.href : listHref('/tasks/team', { node: dept }),
+    };
+  });
 }
 
 /** Clock in is offered from this long before a shift starts (UX-9). */

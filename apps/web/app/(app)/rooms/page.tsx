@@ -8,11 +8,11 @@ import { roomContents, roomOutlets, rooms, type RoomContentRow } from '@/lib/roo
 import { ViewTabs } from '@/components/view-tabs';
 import { formatQty } from '@/lib/qty';
 import { ItemThumb } from '@/components/item-thumb';
-import { ROOM_STATUSES } from '@/lib/rooms-view';
-import { RoomStatusPicker } from './status-picker';
+import { RoomGrid, RoomLegend } from './status-picker';
 
-// Rooms (ADR 088, 094): every room of the outlet with its status, floor by floor; front office
-// and housekeeping change it here or on the room check's grid. A count of each status first.
+// Rooms (ADR 088, 094, 104): every room of the outlet as a tile coloured by its status, floor
+// by floor; front office and housekeeping tap one to change it (or on the room check's grid).
+// How many rooms have each status first, as the legend.
 // The Contents tab: what each room should hold and what was last counted there.
 export default async function RoomsPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
@@ -47,11 +47,6 @@ export default async function RoomsPage({ searchParams }: { searchParams: Search
       ]}
     />
   );
-  const floors = [...new Set(list.map((r) => r.floor ?? ''))];
-  const counts = ROOM_STATUSES.map((s) => ({
-    ...s,
-    n: list.filter((r) => r.status === s.code).length,
-  })).filter((s) => s.n > 0);
   return (
     <div className="space-y-4">
       {places.length > 1 && (
@@ -72,48 +67,23 @@ export default async function RoomsPage({ searchParams }: { searchParams: Search
           ))}
         </nav>
       )}
-      <div>
-        <h1 className="text-xl font-semibold">Rooms</h1>
-        <p className="text-sm text-slate-600" data-testid="room-counts">
-          {place.name}: {counts.map((s) => `${s.n} ${s.name.toLowerCase()}`).join(' · ')}
-        </p>
-      </div>
+      <h1 className="text-xl font-semibold">Rooms</h1>
       {tabs}
       {view === 'contents' ? (
         <Contents rows={contents} outlet={place.outlet_id} />
       ) : (
-        floors.map((f) => (
-          <section key={f} className="space-y-2">
-            {floors.length > 1 && (
-              <h2 className="text-sm font-semibold text-slate-500">{f ? `Floor ${f}` : 'Rooms'}</h2>
-            )}
-            <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-              {list
-                .filter((r) => (r.floor ?? '') === f)
-                .map((r) => (
-                  <li
-                    key={r.room_id}
-                    className="flex items-center justify-between gap-3 px-4 py-2"
-                    data-testid="room"
-                    data-status={r.status}
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-base font-medium">{r.number}</span>
-                      <span className="block text-xs text-slate-500">
-                        {r.room_type}
-                        {r.set_at && ` · ${r.set_by_name ?? 'someone'}, ${formatWhen(r.set_at)}`}
-                      </span>
-                    </span>
-                    {r.can_set ? (
-                      <RoomStatusPicker room={r.room_id} number={r.number} status={r.status} />
-                    ) : (
-                      <span className="text-sm">{r.status_name}</span>
-                    )}
-                  </li>
-                ))}
-            </ul>
-          </section>
-        ))
+        <>
+          <RoomLegend rooms={list} />
+          <RoomGrid
+            rooms={list.map((r) => ({
+              room_id: r.room_id,
+              number: r.number,
+              floor: r.floor,
+              status: r.status,
+              can_set: r.can_set,
+            }))}
+          />
+        </>
       )}
     </div>
   );

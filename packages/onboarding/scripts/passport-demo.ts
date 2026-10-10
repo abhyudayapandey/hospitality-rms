@@ -2203,6 +2203,8 @@ csv(
     ]),
   ),
 );
+// One-off tasks. Minibars are refilled room by room from the refill task each check makes,
+// with what goes back (ADR 081, 104), so there is no one-off "restock the minibars" here.
 csv(
   '30_tasks_TEST_DATA_ONLY.csv',
   [
@@ -2218,18 +2220,6 @@ csv(
     'done_by',
   ],
   [
-    [
-      D('HOUSEKEEPING'),
-      'Restock minibars on the second floor',
-      '',
-      0,
-      '13:00',
-      'normal',
-      `person:${U('room-attendant')}`,
-      '',
-      U('executive-housekeeper'),
-      '',
-    ],
     [
       D('KITCHEN'),
       'Deep clean the tandoor area',

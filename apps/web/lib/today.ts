@@ -236,17 +236,33 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
           href: `/roster/week?node=${s.node}&week=${weekStart(s.day)}&day=${s.day}&view=shift`,
         })),
       ];
-      const nodes = [...new Set(all.map((c) => c.node))];
+      // the departments they run (TASKS modify there, core.can): each is a tile on Home, green
+      // when nothing waits there (ADR 105)
+      const depts = shell.nodes
+        .filter((n) => n.type === 'org' && n.kind === 'department')
+        .map((n) => n.id);
+      const run =
+        depts.length > 0
+          ? (
+              await sql<{ id: string }>`
+                select d::text as id from unnest(${depts}::uuid[]) d
+                 where core.can('TASKS', 'modify', d, null)`.execute(tx)
+            ).rows.map((r) => r.id)
+          : [];
+      const nodes = [...new Set([...all.map((c) => c.node), ...run])];
       const places =
         nodes.length > 0
           ? (
               await sql<PlaceDepartment>`
-                select node_id::text, department_id::text, department, rank, outlet_id::text,
-                       outlet
+                select node_id::text, department_id::text, department, department_type, rank,
+                       outlet_id::text, outlet
                   from core.department_of(${nodes}::uuid[])`.execute(tx)
             ).rows
           : [];
-      attention = attentionGroups(all, places);
+      const quiet = places.filter((p) => run.includes(p.node_id));
+      // across outlets only what needs them: one tile per department of every outlet is a wall
+      const oneOutlet = new Set(places.map((p) => p.outlet_id)).size <= 1;
+      attention = attentionGroups(all, places, oneOutlet ? quiet : []);
     }
 
     // the store keeper's tiles (UX-6): the stores they see, under RLS

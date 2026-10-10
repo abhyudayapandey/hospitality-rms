@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { BackLink } from '@/components/back-link';
+import { Icon } from '@/components/icon';
 import { Empty } from '@/components/messages';
 import { requireUser } from '@/lib/auth/server';
 import { addDays, formatDay } from '@/lib/dates';
@@ -10,6 +11,7 @@ import { BreakfastRoomForm, BreakfastTotals } from './breakfast-forms';
 
 // Breakfast (ADR 094): the day's guests by mode, the totals front office gave and the rooms,
 // for the kitchen and restaurant to cook and serve; front office and housekeeping change them.
+// The rooms are tiles with their guests (ADR 104); a room is chosen by tapping its tile.
 const MODE_WORDS = { in_room: 'In-room', buffet: 'Buffet' } as const;
 
 export default async function BreakfastPage({ searchParams }: { searchParams: SearchParams }) {
@@ -67,18 +69,21 @@ export default async function BreakfastPage({ searchParams }: { searchParams: Se
             </span>
           </h2>
           {m.room_list.length > 0 && (
-            <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
+            <ul className="grid grid-cols-4 gap-2">
               {m.room_list.map((r) => (
                 <li
                   key={r.room_id}
-                  className="flex items-center justify-between gap-3 px-4 py-2 text-sm"
+                  className="flex min-h-18 flex-col items-center justify-center rounded-xl bg-white px-1 py-2 text-center ring-1 ring-slate-200"
                   data-testid="breakfast-room"
                 >
-                  <span>
-                    <span className="block font-medium">Room {r.number}</span>
-                    {r.note && <span className="block text-xs text-slate-500">{r.note}</span>}
+                  <span className="text-lg leading-tight font-bold tabular-nums">
+                    <span className="sr-only">Room </span>
+                    {r.number}
                   </span>
-                  <span className="tabular-nums">{r.guests}</span>
+                  <span className="inline-flex items-center gap-0.5 text-sm font-semibold text-brand-700 tabular-nums">
+                    <Icon name="user" className="size-4" />×{r.guests}
+                  </span>
+                  {r.note && <span className="line-clamp-2 text-xs text-slate-500">{r.note}</span>}
                 </li>
               ))}
             </ul>
@@ -94,7 +99,11 @@ export default async function BreakfastPage({ searchParams }: { searchParams: Se
           />
           <BreakfastRoomForm
             day={day}
-            rooms={roomList.map((r) => ({ room_id: r.room_id, number: r.number }))}
+            rooms={roomList.map((r) => ({
+              room_id: r.room_id,
+              number: r.number,
+              floor: r.floor,
+            }))}
           />
         </>
       )}
