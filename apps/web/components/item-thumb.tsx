@@ -86,3 +86,22 @@ export function ItemThumb({
     </span>
   );
 }
+
+/**
+ * The pictures of what is in an order or a transfer (ADR 100): its first three items, then
+ * "+N". `names` is the list's ", "-joined item names.
+ */
+export function ItemThumbs({ names, max = 3 }: { names: string; max?: number }) {
+  const all = names.split(', ').filter(Boolean);
+  if (all.length === 0) return null;
+  return (
+    <span className="flex shrink-0 items-center gap-1" data-testid="item-pictures">
+      {all.slice(0, max).map((n, i) => (
+        <ItemThumb key={`${n}-${i}`} name={n} size="size-8" />
+      ))}
+      {all.length > max ? (
+        <span className="text-xs text-slate-500 tabular-nums">+{all.length - max}</span>
+      ) : null}
+    </span>
+  );
+}

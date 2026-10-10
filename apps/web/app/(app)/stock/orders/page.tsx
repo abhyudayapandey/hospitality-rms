@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { ItemThumbs } from '@/components/item-thumb';
+import { PinnedActions } from '@/components/pinned-actions';
 import { withBack } from '@/lib/back';
 import { Empty } from '@/components/messages';
 import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
@@ -190,7 +192,10 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
                     )}
                   </span>
                   {r.items && (
-                    <span className="mt-1 block truncate text-sm text-slate-600">{r.items}</span>
+                    <span className="mt-1 flex items-center gap-2">
+                      <ItemThumbs names={r.items} />
+                      <span className="min-w-0 truncate text-sm text-slate-600">{r.items}</span>
+                    </span>
                   )}
                   <span className="mt-1 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
                     {formatWhen(r.created_at)}
@@ -232,12 +237,15 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
             Ask for supplies for the Main Store
           </Link>
         ) : (
-          <Link
-            href={ask}
-            className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
-          >
-            Ask for supplies
-          </Link>
+          // kept in reach while the list runs past the screen (ADR 101)
+          <PinnedActions label="Main actions">
+            <Link
+              href={ask}
+              className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
+            >
+              Ask for supplies
+            </Link>
+          </PinnedActions>
         ))}
     </div>
   );

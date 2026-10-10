@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ItemThumb } from '@/components/item-thumb';
 import { Empty } from '@/components/messages';
+import { MethodSteps } from '@/components/method-steps';
 import { ViewTabs } from '@/components/view-tabs';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
@@ -229,25 +230,7 @@ export default async function RecipePage({
       {tab === 'recipe' && steps.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-500">Method</h2>
-          <ol className="space-y-2">
-            {steps.map((s) => (
-              <li
-                key={s.step}
-                data-testid="step"
-                className="flex gap-3 rounded-xl bg-white p-3 ring-1 ring-slate-200"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-semibold text-white">
-                  {s.step}
-                </span>
-                <span className="min-w-0">
-                  <span className="block">{s.instruction}</span>
-                  {s.minutes !== null && (
-                    <span className="text-xs text-slate-500">{s.minutes} min</span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ol>
+          <MethodSteps steps={steps} ingredients={lines} />
         </section>
       )}
 

@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { Icon } from '@/components/icon';
 import { NoSupplyAccess } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { isUuid, param, supplyContext, type SearchParams } from '@/lib/inventory';
+import { storeIcon } from '@/lib/store-icon';
 import { SendStockForm, type SendItem } from './send-stock-form';
 
 // Send stock (ADR 051): the Main Store gives stock to a department's store. First the
@@ -64,8 +66,11 @@ export default async function SendStockPage({ searchParams }: { searchParams: Se
                 <li key={d.id}>
                   <Link
                     href={`/stock/transfers/send?node=${from.id}&to=${d.id}`}
-                    className="flex min-h-12 items-center rounded-xl bg-white px-4 font-medium ring-1 ring-slate-200"
+                    className="flex min-h-14 items-center gap-3 rounded-xl bg-white px-4 font-medium ring-1 ring-slate-200"
                   >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700 ring-1 ring-brand-100">
+                      <Icon name={storeIcon(d.name)} className="size-6" />
+                    </span>
                     {short(d.name)}
                   </Link>
                 </li>
