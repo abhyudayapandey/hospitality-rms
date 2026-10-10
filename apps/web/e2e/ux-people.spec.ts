@@ -19,9 +19,9 @@ test("Me: a server's own day first, the rest under More; no two tiles share a pi
   await page.getByTestId('me-more').click();
   await expect(page.getByTestId('me-logbook')).toBeVisible();
   await expect(page.getByTestId('me-registers')).toBeVisible();
-  const icons = await tiles.locator('a svg[data-icon]').evaluateAll((els) =>
-    els.map((e) => e.getAttribute('data-icon')),
-  );
+  const icons = await tiles
+    .locator('a svg[data-icon]')
+    .evaluateAll((els) => els.map((e) => e.getAttribute('data-icon')));
   expect(icons.length).toBeGreaterThan(8);
   expect(new Set(icons).size).toBe(icons.length);
   const width = await page.evaluate(() => document.documentElement.scrollWidth);
