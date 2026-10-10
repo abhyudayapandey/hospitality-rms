@@ -152,7 +152,6 @@ export function TaskWork({
             <span
               key={s.id}
               title={s.label}
-              aria-label={s.label}
               className="flex size-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500"
             >
               <Icon name={stepIcon(s.label, s.kind, s.icon)} className="size-5" />
