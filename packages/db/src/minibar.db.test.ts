@@ -86,15 +86,23 @@ describe('who sees and checks minibars', () => {
           'select * from ops.minibar_places()',
         );
         expect(places, u).toEqual([
-          { outlet_id: ids.node(HOTEL), outlet: 'Test Hotel & Bar 1.0', rooms: 5, can_check: true },
+          {
+            outlet_id: ids.node(HOTEL),
+            outlet: 'Test Hotel & Bar 1.0',
+            rooms: 5,
+            can_check: true,
+            // the rupees to charge are for whoever bills them: the front desk and the GM
+            // (ADR 104), not housekeeping
+            bills: u === FRONT_DESK || u === 'test.general-manager.1.0',
+          },
         ]);
       }
-      const area = await ok<{ can_check: boolean }>(
+      const area = await ok<{ can_check: boolean; bills: boolean }>(
         c,
         'test.area-manager',
         'select * from ops.minibar_places()',
       );
-      expect(area.map((p) => p.can_check)).toEqual([false]);
+      expect(area.map((p) => [p.can_check, p.bills])).toEqual([[false, false]]);
       const r101 = await room(c, '101');
       expect(
         await error(c, 'test.area-manager', 'select ops.check_minibar($1, $2)', [
@@ -456,6 +464,53 @@ describe('the refill and the bill are tasks (ADR 081)', () => {
         [refill!.id],
       );
       expect(seen).toEqual([{ room: '101', charge: '250.00' }]);
+    });
+  });
+});
+
+describe('due a check today (ADR 104)', () => {
+  it('a room with a minibar and a guest in, arriving or leaving, until it is checked today', async () => {
+    await inRolledBackTx(async (c) => {
+      const due = async () =>
+        (
+          await ok<{ number: string; status: string; due_today: boolean }>(
+            c,
+            ATTENDANT,
+            'select number, status, due_today from ops.minibar_rooms($1)',
+            [ids.node(HOTEL)],
+          )
+        )
+          .filter((r) => r.due_today)
+          .map((r) => r.number);
+      await c.query(
+        `delete from ops.room_status where room_id in (
+                       select id from ops.room where org_node_id = $1)`,
+        [ids.node(HOTEL)],
+      );
+      // every room clean and empty: nothing due
+      expect(await due()).toEqual([]);
+      for (const [n, s] of [
+        ['101', 'OCC'],
+        ['102', 'DEP'],
+        ['103', 'VD'],
+        ['202', 'OCC'], // no minibar
+      ] as const) {
+        await ok(c, FRONT_DESK, 'select ops.set_room_status($1, $2)', [await room(c, n), s]);
+      }
+      expect(await due()).toEqual(['101', '102']);
+      const [r] = await ok<{ status: string }>(
+        c,
+        ATTENDANT,
+        'select status from ops.minibar_rooms($1) where number = $2',
+        [ids.node(HOTEL), '101'],
+      );
+      expect(r!.status).toBe('OCC');
+      // checked today: no longer due
+      await ok(c, ATTENDANT, 'select ops.check_minibar($1, $2)', [
+        await room(c, '101'),
+        await lines(c, 2, 2, 2),
+      ]);
+      expect(await due()).toEqual(['102']);
     });
   });
 });

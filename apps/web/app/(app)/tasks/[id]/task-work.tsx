@@ -16,8 +16,8 @@ import { quickPicks, Stepper } from '@/components/stepper';
 import { useHydrated } from '@/lib/use-hydrated';
 import type { Person, TaskDetail, TaskStep } from '@/lib/tasks';
 import { outOfRange } from '@/lib/tasks-view';
-import { roomStatusName } from '@/lib/rooms-view';
-import { RoomStatusPicker } from '../../rooms/status-picker';
+import { ROOM_TONE, roomStatus } from '@/lib/rooms-view';
+import { RoomStatusButtons } from '../../rooms/status-picker';
 import { acknowledgeHandover } from '../../logbook/actions';
 import {
   approveDiscard,
@@ -220,13 +220,26 @@ function GridRows({
             <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-3 py-2">
               <span className="font-medium">{r.name}</span>
               <span className="text-xs text-slate-500">
-                {room && `${status ?? 'VC'} · ${roomStatusName(status)} · `}
+                {room && `${roomStatus(status).word} · `}
                 {done === r.steps.length ? '✓ done' : `${done} of ${r.steps.length}`}
               </span>
             </summary>
             <div className="space-y-2 border-t border-slate-200 p-3">
               {room && task.can_set_room_status && (
-                <RoomStatusPicker room={room} number={r.name} status={status ?? 'VC'} />
+                <details data-testid="room-status">
+                  <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium">
+                    <span
+                      className={`inline-flex min-h-9 items-center gap-1 rounded-full px-3 ring-1 ${ROOM_TONE[roomStatus(status).tone]}`}
+                    >
+                      <Icon name={roomStatus(status).icon} className="size-4" />
+                      {roomStatus(status).word}
+                    </span>
+                    <span className="text-slate-500 underline">Change</span>
+                  </summary>
+                  <div className="pt-2">
+                    <RoomStatusButtons room={room} number={r.name} status={status ?? 'VC'} />
+                  </div>
+                </details>
               )}
               <ol className="space-y-2">
                 {r.steps.map((s) => (

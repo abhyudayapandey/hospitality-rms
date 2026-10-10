@@ -1,4 +1,3 @@
 place_code,title,description,day,due_time,priority,assign_to,steps,created_by,done_by
-PASSPORT-ASSAGAO-HOUSEKEEPING,Restock minibars on the second floor,,0,13:00,normal,person:passport.room-attendant,,passport.executive-housekeeper,
 PASSPORT-ASSAGAO-KITCHEN,Deep clean the tandoor area,,-1,16:00,normal,person:passport.commis,Scrubbed;Floor mopped,passport.sous-chef,passport.commis
 PASSPORT-ASSAGAO-BANQUETS,Set Jet Lag for the sangeet walk-through,,1,12:00,high,person:passport.banquet-captain,Floor plan printed;Stage measured,passport.banquet-manager,
