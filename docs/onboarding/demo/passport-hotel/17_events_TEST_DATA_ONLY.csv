@@ -1,3 +1,3 @@
 org_node_code,event_name,starts_at,ends_at,covers,requirements
-PASSPORT-ASSAGAO,Feni & gin tasting at Jet Lag,2026-10-12 18:00,2026-10-12 21:00,30,item FENI-750ML = 4 bottle; item GIN-750ML = 3 bottle; item TONIC-200ML = 48 can; role BARTENDER = 2 (17:30-21:30); role BANQUET_SERVER = 2 (17:30-21:30)
-PASSPORT-ASSAGAO,Sangeet at Jet Lag (private),2026-10-18 19:00,2026-10-18 23:30,80,item PRAWNS = 6 kg; item CHICKEN = 10 kg; item LAGER-330ML = 120 bottle; role BANQUET_SERVER = 6 (18:00-00:00); role BARTENDER = 2 (18:30-00:00)
+PASSPORT-ASSAGAO,Feni & gin tasting at Jet Lag,2026-10-13 18:00,2026-10-13 21:00,30,item FENI-750ML = 4 bottle; item GIN-750ML = 3 bottle; item TONIC-200ML = 48 can; role BARTENDER = 2 (17:30-21:30); role BANQUET_SERVER = 2 (17:30-21:30)
+PASSPORT-ASSAGAO,Sangeet at Jet Lag (private),2026-10-19 19:00,2026-10-19 23:30,80,item PRAWNS = 6 kg; item CHICKEN = 10 kg; item LAGER-330ML = 120 bottle; role BANQUET_SERVER = 6 (18:00-00:00); role BARTENDER = 2 (18:30-00:00)

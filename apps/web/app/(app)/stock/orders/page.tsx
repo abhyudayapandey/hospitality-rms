@@ -8,6 +8,7 @@ import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatMoney, formatWhen } from '@/lib/format';
+import { formatDay } from '@/lib/dates';
 import {
   PO_PROGRESS as PROGRESS,
   param,
@@ -36,6 +37,8 @@ interface Row {
   store: string;
   progress: string;
   created_at: Date;
+  /** the day it is due (ADR 049) */
+  expected_on: string | null;
   items: string | null;
   value: string | null;
   bill_missing: boolean;
@@ -87,6 +90,8 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
       select bucket, count(*)::int as n from (${scope}) x group by bucket`.execute(tx);
     const r = await sql<Row>`
       select id, supplier, store_id::text, store, progress, created_at, items, desk,
+             (select p.expected_on::text from inv.purchase_order p where p.id = x.id)
+               as expected_on,
              inv.po_received_value(id) as value,
              coalesce(inv.po_bill_missing(id), false) as bill_missing,
              inv.follows_order(id) as follow
@@ -198,7 +203,17 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
                     </span>
                   )}
                   <span className="mt-1 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
-                    {formatWhen(r.created_at)}
+                    {/* what is still to come says when it is due first (ADR 113) */}
+                    {!received && r.expected_on ? (
+                      <span data-testid="order-due">
+                        <span className="font-semibold text-slate-800">
+                          Due {formatDay(r.expected_on)}
+                        </span>{' '}
+                        · placed {formatWhen(r.created_at)}
+                      </span>
+                    ) : (
+                      formatWhen(r.created_at)
+                    )}
                     <span className="flex gap-1">
                       {received && r.bill_missing && (
                         <span

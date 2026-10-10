@@ -1576,6 +1576,7 @@ csv(
 
 const SALES: Cell[][] = [];
 const used = new Map<string, number>(); // `item store` -> stock units used over the week
+const prepUsed = new Map<string, number>(); // `prep day` -> what that day's sales take
 const useOf = (code: string, store: string, qty: number, unit: string) => {
   const item = ITEM.get(code);
   if (!item) return; // a prep
@@ -1591,6 +1592,7 @@ for (let d = -7; d <= -1; d++) {
     for (const [c, qty, unit, kind] of x.lines) {
       // a prep comes from its batches (below), not from the raw items
       if (kind !== 'prep') useOf(c, x.store, n * qty, unit);
+      else prepUsed.set(`${c} ${d}`, (prepUsed.get(`${c} ${d}`) ?? 0) + n * qty);
     }
   }
 }
@@ -1600,17 +1602,20 @@ csv(
   SALES,
 );
 
-// batches of the preps every other day, as the people who make them
+// batches of the preps every day, as the people who make them: what the day sells uses them
+// (ADR 114), so no prep runs below zero in the store
 const PRODUCTION: Cell[][] = [];
 for (const p of PREPS) {
   for (const s of p.at) {
-    for (const d of [-7, -5, -3, -1]) {
+    for (const d of [-7, -6, -5, -4, -3, -2, -1]) {
+      // whole batches enough for the day's sales: nothing runs below zero (ADR 114)
+      const need = prepUsed.get(`${p.code} ${d}`) ?? 0;
       PRODUCTION.push([
         s,
         p.code,
         d,
         s === KS ? '09:30' : '16:00',
-        p.yield,
+        p.yield * Math.max(1, Math.ceil(need / p.yield)),
         s === KS ? U('cdp') : U('bartender'),
       ]);
     }
@@ -1912,23 +1917,26 @@ const OFF = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 csv(
   '25_shifts_TEST_DATA_ONLY.csv',
   ['roster_node_code', 'shift_name', 'job_role_code', 'week', 'days', 'username', 'rostered_by'],
-  SHIFTS.map(([user, dept, shift], i) => {
-    const off = i % 7;
-    const days = OFF.filter((_, j) => j !== off);
-    // six days, as runs of consecutive days
-    const runs: string[] = [];
-    let from = -1;
-    for (let j = 0; j <= 7; j++) {
-      const on = j < 7 && j !== off;
-      if (on && from < 0) from = j;
-      if (!on && from >= 0) {
-        runs.push(from === j - 1 ? OFF[from]! : `${OFF[from]}-${OFF[j - 1]}`);
-        from = -1;
+  // the past seven days as worked (file 35), today to Sunday, and next week (ADR 114)
+  [-1, 0, 1].flatMap((week) =>
+    SHIFTS.map(([user, dept, shift], i) => {
+      const off = i % 7;
+      const days = OFF.filter((_, j) => j !== off);
+      // six days, as runs of consecutive days
+      const runs: string[] = [];
+      let from = -1;
+      for (let j = 0; j <= 7; j++) {
+        const on = j < 7 && j !== off;
+        if (on && from < 0) from = j;
+        if (!on && from >= 0) {
+          runs.push(from === j - 1 ? OFF[from]! : `${OFF[from]}-${OFF[j - 1]}`);
+          from = -1;
+        }
       }
-    }
-    void days;
-    return [D(dept), shift, roleOf(user), 1, runs.join(','), U(user), U(headOf[dept]!)];
-  }),
+      void days;
+      return [D(dept), shift, roleOf(user), week, runs.join(','), U(user), U(headOf[dept]!)];
+    }),
+  ),
 );
 // the past week's clock-ins, a few late, one missing
 const ATTENDANCE: Cell[][] = [];
@@ -2451,15 +2459,47 @@ for (const [floor, numbers] of [
     ROOMS.push([n, floor, n % 100 >= 8 ? 'Explorer Suite' : 'Passport Deluxe']);
 }
 ROOMS.push([10, 0, 'Pool Terrace'], [11, 0, 'Pool Terrace'], [12, 0, 'Pool Terrace']);
+const ROOM_MORNING = [
+  'DEP',
+  'OCC',
+  'OCC',
+  'VD',
+  'DEP',
+  'OCC',
+  'VC',
+  'ARR',
+  'OCC',
+  'VC',
+  'DEP',
+  'OCC',
+  'VD',
+  'OCC',
+  'ARR',
+  'OCC',
+  'VC',
+  'DEP',
+  'OCC',
+  'OOO',
+  'OCC',
+  'VC',
+  'OCC',
+  'DEP',
+  'VD',
+  'OCC',
+  'ARR',
+];
 csv(
   '40_rooms.csv',
-  ['outlet_code', 'room_number', 'floor', 'room_type', 'minibar_set'],
-  ROOMS.map(([n, floor, type]) => [
+  ['outlet_code', 'room_number', 'floor', 'room_type', 'minibar_set', 'status'],
+  // a morning at the hotel (ADR 114): check-outs, stay-overs, arrivals, a few clean and
+  // dirty, one out of order
+  ROOMS.map(([n, floor, type], i) => [
     H,
     floor === 0 ? `P-${String(n).padStart(2, '0')}` : String(n),
     floor === 0 ? 'Pool level' : String(floor),
     type,
     type === 'Passport Deluxe' ? 'Standard' : 'Suite',
+    ROOM_MORNING[i % ROOM_MORNING.length]!,
   ]),
 );
 const SETS: [string, string, number, number][] = [

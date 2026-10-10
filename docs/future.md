@@ -12,3 +12,11 @@ Things agreed to come back to, not planned yet. Each says where it came from.
 - **PMS integration (Hotelogix).** Reservations, check-in, folios and the night audit stay in
   the hotel's PMS; later we may read arrivals and occupancy from it and post minibar and other
   charges to the folio. From Passport's Front Office SOP.
+
+## The buffet list from the PMS (ADR 110)
+
+The buffet host ticking rooms off as guests come in needs the hotel's in-house list from its
+PMS or POS, kept in sync through the morning: a list imported once misses late check-ins and
+early check-outs. Until that sync exists, Breakfast keeps the buffet as a count, with room
+numbers only when someone adds them.
+

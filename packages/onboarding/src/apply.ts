@@ -1024,6 +1024,18 @@ class Loader {
          select * from upd union all select * from ins`,
         [this.tenant, outlet, r.room_number, r.floor ?? null, r.room_type ?? null, set],
       );
+      // a status only where the room has none (ADR 114): the app keeps it from then on
+      if (r.status) {
+        const made = await this.c.query(
+          `insert into ops.room_status (tenant_id, room_id, org_node_id, status)
+           select r.tenant_id, r.id, r.org_node_id, $4 from ops.room r
+            where r.tenant_id = $1 and r.org_node_id = $2 and lower(r.number) = lower($3)
+              and r.archived_at is null
+           on conflict (room_id) do nothing`,
+          [this.tenant, outlet, r.room_number, r.status],
+        );
+        this.count('room statuses', (made.rowCount ?? 0) > 0);
+      }
     }
   }
 
@@ -2464,42 +2476,93 @@ class Loader {
     await this.counts();
   }
 
-  /** File 25: shifts from the templates, assigned (hr.assign) and published. */
+  /**
+   * File 25: shifts from the templates, assigned (hr.assign) and published. Week 1 starts next
+   * Monday. Week -1 is the past seven days on the days file 35 has the person clocking in, so a
+   * demo's past is rostered as it was worked; week 0 is today to Sunday on the weekdays they
+   * worked last week (ADR 114). For those two the row's days are not used. A shift that has
+   * started is assigned with hr.record_test_assignment (test customers only).
+   */
   private async shifts() {
     const today = new Date(`${this.today}T00:00:00Z`);
     const nextMonday = 7 - ((today.getUTCDay() + 6) % 7); // days to next Monday
+    const monday = (offset: number) => {
+      const d = new Date(`${this.day(offset)}T00:00:00Z`);
+      return this.day(offset - ((d.getUTCDay() + 6) % 7));
+    };
     const weeks = new Map<string, { node: string; week: string; by: string; line: number }>();
+    // the past week follows file 35, which loads once per customer: so does it
+    const worked = await this.c.query(
+      `select 1 from hr.attendance where tenant_id = $1 and in_key like 'test-data att %' limit 1`,
+      [this.tenant],
+    );
     for (const s of this.b.shifts) {
       this.step(FILES.shifts.file, s.line);
+      if (s.week === -1 && worked.rowCount) {
+        this.count('shift assignments', false);
+        continue;
+      }
       const node = this.nodes.get(s.roster_node_code)!;
-      const weekStart = this.day(nextMonday + 7 * (s.week - 1));
       const worker = this.workers.get(s.username);
+      // the days to roster: [the Monday of their week, the day of that week (1 = Monday)]
+      const days: [string, number][] =
+        s.week === -1
+          ? this.b.attendance
+              .filter((a) => a.username === s.username && a.day < 0 && a.day >= -7)
+              .map((a) => {
+                const date = this.day(a.day);
+                const start = monday(a.day);
+                return [start, (Date.parse(date) - Date.parse(start)) / 86_400_000 + 1];
+              })
+          : s.week === 0
+            ? // today to Sunday, on the weekdays they worked last week (file 35): the week then
+              // holds what one week of theirs does, inside the weekly cap
+              Array.from({ length: nextMonday }, (_, o) => o)
+                .filter((o) =>
+                  this.b.attendance.some((a) => a.username === s.username && a.day === o - 7),
+                )
+                .map((o): [string, number] => [this.day(nextMonday - 7), 8 - nextMonday + o])
+            : s.days.map((d): [string, number] => [this.day(nextMonday + 7 * (s.week - 1)), d]);
       await this.as(s.rostered_by, async () => {
-        const made = await this.c.query<{ n: number }>(
-          `select hr.generate_week($1, $2::date) as n`,
-          [node, weekStart],
-        );
-        const n = (this.report.counts['shifts'] ??= { created: 0, updated: 0, unchanged: 0 });
-        n.created += made.rows[0]!.n;
-        for (const d of s.days) {
+        for (const [weekStart, d] of days) {
+          if (!weeks.has(`${node} ${weekStart}`)) {
+            const made = await this.c.query<{ n: number }>(
+              `select hr.generate_week($1, $2::date) as n`,
+              [node, weekStart],
+            );
+            const n = (this.report.counts['shifts'] ??= { created: 0, updated: 0, unchanged: 0 });
+            n.created += made.rows[0]!.n;
+            weeks.set(`${node} ${weekStart}`, {
+              node,
+              week: weekStart,
+              by: s.rostered_by,
+              line: s.line,
+            });
+          }
           const shift = (
-            await this.c.query<{ id: string; assigned: boolean }>(
-              `select s.id, exists (select 1 from hr.shift_assignment a
-                                     where a.shift_id = s.id and a.worker_id = $5
-                                       and a.status = 'assigned') as assigned
+            await this.c.query<{ id: string; assigned: boolean; started: boolean }>(
+              `select s.id, s.start_at <= now() as started,
+                      exists (select 1 from hr.shift_assignment a
+                               where a.shift_id = s.id and a.worker_id = $5
+                                 and a.status = 'assigned') as assigned
                  from hr.shift s join hr.shift_template t on t.id = s.template_id
                 where t.org_node_id = $1 and t.name = $2 and t.role_code = $3
                   and s.local_date = $4::date + $6::int - 1 and s.status <> 'cancelled'`,
               [node, s.shift_name, s.job_role_code, weekStart, worker, d],
             )
-          ).rows[0]!;
+          ).rows[0];
+          if (!shift) continue; // the template doesn't run that day
           if (!shift.assigned) {
-            await this.c.query(`select hr.assign($1, $2)`, [shift.id, worker]);
+            await this.c.query(
+              shift.started
+                ? `select hr.record_test_assignment($1, $2)`
+                : `select hr.assign($1, $2)`,
+              [shift.id, worker],
+            );
           }
           this.count('shift assignments', !shift.assigned);
         }
       });
-      weeks.set(`${node} ${weekStart}`, { node, week: weekStart, by: s.rostered_by, line: s.line });
     }
     for (const w of weeks.values()) {
       this.step(FILES.shifts.file, w.line);

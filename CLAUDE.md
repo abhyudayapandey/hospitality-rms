@@ -297,6 +297,18 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   "Fill this week" button, By person / By shift a switch, the clock one camera button. ADR 108:
   shift types, notifications, clock rows and people (initials) carry pictures. ADR 109: the
   accountant reads bills and purchasing (`READS_BILLS`), the sales manager plans events.
+- Real use (ADR 110 to 114): Breakfast opens on the next one (`ops.breakfast_next`, company
+  setting `breakfast_ends`, 12:00); a served one is read only (`BREAKFAST_SERVED`). From the
+  evening (`evening_from`, 18:00) screens plan tomorrow (`ops.plan_day`): the briefing (today
+  or tomorrow), prep's Ready on, the roster week, leave. Rooms are given to attendants per day
+  (`ops.room_assignment`, `ops.give_rooms`, by whoever has ROOMS and TASKS modify at
+  housekeeping); an attendant sees theirs first and every other room folded below. Home shows
+  the job once (`lib/home-work.ts`): rooms, minibar bills, the next breakfast, events with their
+  people (`ops.event_staffing`), tomorrow's roster; a compliance reminder is its card's row,
+  never a task too; Me and Home tiles are own work first, then "Shifts & leave"; a shift lead
+  gets the frontline Home. Forms choose nothing for the person (`ItemPicker`, chips); person
+  pickers put who is on shift today first (`ops.on_shift_today`). File 25 weeks -1 and 0 and
+  file 40 `status` make a demo look worked (`hr.record_test_assignment`, test customers only).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in
