@@ -22,11 +22,22 @@ const keeps = (h: number) => (h % 24 === 0 ? `${h / 24} days` : `${h} hours`);
  * Open a pack (ADR 093): which item and how much; it keeps its shelf life from now, and its
  * label opens to print. Nothing is filled in.
  */
-export function OpenPackForm({ node, items }: { node: string; items: PackOption[] }) {
+export function OpenPackForm({
+  node,
+  items,
+  initial,
+}: {
+  node: string;
+  items: PackOption[];
+  /** the item chosen on its page ("Open a pack") */
+  initial?: string | undefined;
+}) {
   const router = useRouter();
   const hydrated = useHydrated();
   const [pending, start] = useTransition();
-  const [itemId, setItemId] = useState('');
+  const [itemId, setItemId] = useState(() =>
+    items.some((i) => i.item_id === initial) ? initial! : '',
+  );
   const [qty, setQty] = useState('');
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);

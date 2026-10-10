@@ -89,9 +89,9 @@ export default async function LinenPage({ searchParams }: { searchParams: Search
                 data-testid="at-laundry"
               >
                 {atLaundry.map((r) => (
-                  <li key={r.item_id} className="flex justify-between px-4 py-2 text-sm">
-                    <span>{r.item}</span>
-                    <span className="tabular-nums" data-testid="at-laundry-qty">
+                  <li key={r.item_id} className="flex justify-between gap-3 px-4 py-2 text-sm">
+                    <span className="min-w-0 break-words">{r.item}</span>
+                    <span className="shrink-0 tabular-nums" data-testid="at-laundry-qty">
                       {r.at_laundry}
                     </span>
                   </li>
@@ -106,9 +106,9 @@ export default async function LinenPage({ searchParams }: { searchParams: Search
                 {data.rows
                   .filter((r) => r.day === d)
                   .map((r) => (
-                    <li key={r.item_id} className="flex justify-between px-4 py-2">
-                      <span>{r.item}</span>
-                      <span className="tabular-nums">
+                    <li key={r.item_id} className="flex justify-between gap-3 px-4 py-2">
+                      <span className="min-w-0 break-words">{r.item}</span>
+                      <span className="shrink-0 tabular-nums">
                         sent {r.sent} · back {r.received}
                       </span>
                     </li>

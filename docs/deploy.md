@@ -2515,7 +2515,36 @@ bundle; nothing a customer already has changes.
    - **`passport.gm`**: the outlet's day report has Covers (breakfast, lunch, dinner) and the
      spend per cover; Audits lists the service audit and the taste panel.
    - **`passport.commis`**: Me → SOPs asks "I've read this" for handwashing.
-     **`passport.store-keeper`**: Stock → Opened opens a milk pack and prints its label with the
-     day dot.
+     **`passport.cdp`**: Stock → Opened at the Kitchen store opens a milk pack and prints its
+     label with the day dot (the Main Store keeps nothing with a shelf life once opened).
    - **`passport.front-office-manager`**: Breakfast (today and tomorrow) by room and buffet;
      Rooms → Contents shows what each room should hold.
+
+## Releasing the demo walk's fixes (ADR 097)
+
+Two migrations (`20261212100000_utility_meters`, `20261212110000_opened_packs_where_kept`): new
+read functions and the Opened screen's stores; no table changes. The Deploy workflow's
+`sync-defs` step adds the product group Pack Opener and the duty "Opens packs". The
+catalogue's Commis gains that duty, so a customer whose file 06 lists COMMIS by code alone
+(Passport) gets it at its next import.
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual.
+4. Re-import:
+   - **Passport** (`cd docs/onboarding/demo/passport-hotel && zip ../passport-hotel.zip *.csv`):
+     the dry run shows no problems and no warnings, with job role access 1 new (the commis
+     opens packs at the Kitchen store). Apply, then a second dry run shows no changes.
+   - **The test customers** (test environment only): Test Company's job roles 1 changed (the
+     Commis gains "Opens packs") and job role access 1 new. Apply, then a second dry run shows
+     no changes.
+5. Check, at 380 px:
+   - **`passport.chief-engineer`**: Utilities lists all five meters; before the first round
+     each says "No reading yet. Technician reads it at 08:00 each day."
+   - **`passport.commis`**: Me → Opened packs opens a milk pack at the Kitchen store and prints
+     its label. Me has a Breakfast tile (a hotel kitchen); `passport.technician` has none.
+   - **`passport.store-keeper`**: Stock at the Main Store has no Opened tab.
+   - **`passport.cdp`**: Stock → an item such as milk → Open a pack.
+   - **Any SOP reader**: Me → SOPs → an SOP → ← Back → ← Back lands on Me.
+   - **`passport.laundry`**: Linen → each item's
+     name whole, Sent to laundry and Came back under it.

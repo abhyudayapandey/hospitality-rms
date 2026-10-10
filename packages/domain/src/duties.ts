@@ -157,6 +157,12 @@ export const DUTIES: readonly DutyDef[] = [
     grants: [{ group: 'PRODUCTION_TEAM', scope: 'home_department' }],
   },
   {
+    code: 'OPENS_PACKS',
+    name: 'Opens packs',
+    does: "Opens packs in the department's store and labels them with their use-by",
+    grants: [{ group: 'PACK_OPENER', scope: 'department_store' }],
+  },
+  {
     code: 'USES_DEPARTMENT_STORE',
     name: "Uses the department's store",
     does: "Counts, records wastage and asks for stock in the department's store",

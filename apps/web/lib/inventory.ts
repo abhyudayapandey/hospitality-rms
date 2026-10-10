@@ -3,6 +3,7 @@ import { sql, withUser, type Tx } from './db';
 import type { ExpiryBatch } from './expiry';
 import type { SearchParams } from './params';
 import { pickPlace, screenPlaces, type Place, type Screen } from './places';
+import { opensPacksAt } from './opened-packs';
 import { loadShell, type Shell } from './shell';
 
 // Reads for the supply screens. Every query runs inside withUser, so RLS decides what is
@@ -18,6 +19,9 @@ export interface SupplyContext {
   /** the stock locations this screen can show (core.screen_places), most useful first */
   nodes: Place[];
   node: Place | null;
+  /** the store keeps something with a shelf life once opened, or has a pack open: its
+   * Opened tab shows (ADR 097) */
+  opensPacks: boolean;
   can(domain: string, access?: 'view' | 'modify'): boolean;
 }
 
@@ -46,11 +50,16 @@ export async function supplyContext(
   const shell = await loadShell();
   const nodes = await withUser(shell.user.id, (tx) => screenPlaces(tx, screen, shell));
   const node = await pickPlace(screen, nodes, sp);
+  const opensPacks =
+    node !== null &&
+    shell.domains.has('SHELF_LIFE') &&
+    (screen === 'opened' || (await withUser(shell.user.id, (tx) => opensPacksAt(tx, node.id))));
   return {
     shell,
     screen,
     nodes,
     node,
+    opensPacks,
     can(domain, access = 'view') {
       const a = shell.domains.get(domain);
       return a !== undefined && (access === 'view' || a === 'modify');

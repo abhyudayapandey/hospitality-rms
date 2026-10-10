@@ -20,6 +20,17 @@ export interface UtilityDay {
   used: string | null;
 }
 
+export interface UtilityMeter {
+  meter_id: string;
+  meter: string;
+  kind: string;
+  unit: string;
+  read_by: string | null;
+  read_at: string | null;
+  last_read_at: string | null;
+  last_reading: string | null;
+}
+
 export interface UtilityMonth {
   meter_id: string;
   meter: string;
@@ -30,6 +41,16 @@ export interface UtilityMonth {
 
 export async function utilityPlaces(tx: Tx): Promise<UtilityPlace[]> {
   return (await sql<UtilityPlace>`select * from ops.utility_places()`.execute(tx)).rows;
+}
+
+/** Every meter of the place, read yet or not, with who reads it and its last reading (ADR 097). */
+export async function utilityMeters(tx: Tx, place: string): Promise<UtilityMeter[]> {
+  return (
+    await sql<UtilityMeter>`
+      select meter_id, meter, kind, unit, read_by, read_at, last_read_at::text,
+             last_reading::text
+        from ops.utility_meters(${place}::uuid)`.execute(tx)
+  ).rows;
 }
 
 export async function utilityDays(tx: Tx, place: string, days: number): Promise<UtilityDay[]> {

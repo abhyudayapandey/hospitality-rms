@@ -97,6 +97,8 @@ const FRONTLINE = new Set([
   'BRIEFING_WRITER',
   // checks the rooms' minibars (ADR 072): their own rooms, no one else's work
   'MINIBAR_KEEPER',
+  // opens packs and labels them (a commis, ADR 097)
+  'PACK_OPENER',
 ]);
 
 export type NavProfile = 'outlet' | 'department' | 'store' | 'cost' | 'frontline' | 'office';

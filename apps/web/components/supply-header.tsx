@@ -38,7 +38,9 @@ export function SupplyHeader({
   const node = ctx.node!;
   const q = `?node=${node.id}`;
   const tabs = TABS.filter((t) =>
-    t.domain === null ? ctx.shell.production : ctx.can(t.domain, t.access),
+    t.domain === null
+      ? ctx.shell.production
+      : ctx.can(t.domain, t.access) && (t.domain !== 'SHELF_LIFE' || ctx.opensPacks),
   );
   const { shown, more, open } = splitTabs(tabs, active);
   const pill = (t: (typeof TABS)[number]) => (

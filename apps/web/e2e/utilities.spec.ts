@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { asMigrator, signInAs } from './helpers';
 
-// Utilities (ADR 091) at 380 px on Test Hotel 1.0. The technician's meter round is on his To
+// Utilities (ADR 091, 097) at 380 px on Test Hotel 1.0. The technician's meter round is on his To
 // do list; he reads the four meters, and the chief engineer sees today's readings. Who may is
 // proved in packages/db/src/utilities.db.test.ts.
 
@@ -28,6 +28,14 @@ test('the technician reads the meters; the chief engineer sees the readings', as
     [task],
   );
   try {
+    // before any reading, every meter is listed and says who reads it (ADR 097)
+    await signInAs(page, 'Test Chief Engineer 1.0');
+    await page.goto('/utilities');
+    await expect(main(page).getByTestId('meter')).toHaveCount(4);
+    await expect(
+      main(page).getByTestId('meter').filter({ hasText: 'Water inlet' }).getByTestId('meter-last'),
+    ).toHaveText('No reading yet. Technician reads it at 09:00 each day.');
+
     await signInAs(page, 'Test Technician 1.0');
     await page.goto(`/tasks/${task}`);
     for (const [label, value] of [
@@ -49,6 +57,7 @@ test('the technician reads the meters; the chief engineer sees the readings', as
     await page.goto('/utilities');
     const meter = main(page).getByTestId('meter').filter({ hasText: 'Electricity main' });
     await expect(meter.getByTestId('meter-day').first()).toContainText('45,210');
+    await expect(meter.getByTestId('meter-last')).toContainText('Last reading 45,210 kWh');
   } finally {
     await asMigrator(
       `delete from ops.meter_reading where task_step_id in (
