@@ -40,30 +40,46 @@ test('a room is counted; breakfast is given and read', async ({ page }) => {
         .getByTestId('room-counted'),
     ).toContainText('counted 1 each');
 
+    // breakfast (ADR 110): the next one opens, buffet first, a room is two unless changed
     await signInAs(page, 'Test Front Desk Executive 1.0');
     await page.goto(`/breakfast?outlet=${outlet}`);
-    await main(page).getByRole('textbox', { name: 'In-room' }).fill('3');
-    await main(page).getByRole('textbox', { name: 'Buffet' }).fill('18');
-    await main(page).getByRole('button', { name: 'Save the totals' }).click();
-    await expect(
-      main(page).getByTestId('breakfast-buffet').getByTestId('breakfast-total'),
-    ).toContainText('18 guests');
+    await expect(main(page).getByTestId('breakfast-buffet')).toBeVisible();
+    await expect(main(page).locator('section[data-testid^="breakfast-"]').first()).toHaveAttribute(
+      'data-testid',
+      'breakfast-buffet',
+    );
+    await main(page).getByRole('textbox', { name: 'Buffet guests' }).fill('18');
+    await main(page).getByTestId('breakfast-add-in_room').click();
     await main(page)
+      .getByTestId('breakfast-add')
       .getByRole('group', { name: 'Room' })
       .getByRole('button', { name: 'Room 102' })
       .click();
-    await main(page).getByLabel('Guests').fill('2');
-    await main(page).getByLabel('Note (optional)').fill('no onion');
-    await main(page).getByRole('button', { name: 'Save the room' }).click();
-    await expect(main(page).getByTestId('breakfast-room')).toContainText('Room 102');
+    await main(page).getByLabel('Note for the kitchen (optional)').fill('no onion');
+    await main(page).getByRole('button', { name: 'Add room 102 · 2 guests' }).click();
+    await expect(main(page).getByRole('textbox', { name: 'In-room guests' })).toHaveValue('2');
+    await main(page)
+      .getByRole('button', { name: /^Save / })
+      .click();
+    await expect(main(page).getByRole('status')).toHaveText('Saved.');
+    // the next day starts from its own numbers, never this one's
+    const dayLinks = main(page)
+      .getByRole('navigation', { name: 'Day' })
+      .getByTestId('breakfast-day');
+    await dayLinks.last().click();
+    await page.waitForURL(/day=/);
+    await expect(main(page).getByRole('textbox', { name: 'Buffet guests' })).toHaveValue('');
 
     await signInAs(page, 'Test Executive Chef 1.0');
     await page.goto(`/breakfast?outlet=${outlet}`);
     await expect(
       main(page).getByTestId('breakfast-in_room').getByTestId('breakfast-total'),
-    ).toContainText('3 guests · 2 by room');
+    ).toContainText('2 guests · 2 by room');
+    await expect(
+      main(page).getByTestId('breakfast-buffet').getByTestId('breakfast-total'),
+    ).toContainText('18 guests');
     await expect(main(page).getByTestId('breakfast-room')).toContainText('no onion');
-    await expect(main(page).getByRole('button', { name: 'Save the totals' })).toHaveCount(0);
+    await expect(main(page).getByRole('button', { name: /^Save / })).toHaveCount(0);
   } finally {
     await asMigrator(`delete from ops.room_count where org_node_id = $1 and created_at >= $2`, [
       outlet,

@@ -135,7 +135,11 @@ test('manager builds and publishes; approved leave drops the shift after both ap
   await expect(page.getByTestId('unread-count')).toBeVisible();
   await page.goto('/leave');
   const form = page.getByRole('form', { name: 'Request leave' });
-  await form.getByLabel('Type').selectOption({ label: 'Unpaid Leave' });
+  await form
+    .getByRole('group', { name: 'Type' })
+    .getByRole('button', { name: /Unpaid Leave/ })
+    .click();
+  await form.getByTestId('leave-dates').locator('summary').click();
   await form.getByLabel('From', { exact: true }).fill(FRIDAY);
   await form.getByLabel('To', { exact: true }).fill(FRIDAY);
   await expect(form.getByTestId('leave-days')).toHaveText('1 calendar day');
@@ -560,7 +564,11 @@ test('the sole owner: own leave approved at the top of the chain; the admin page
   await signInAs(page, 'Test Bar Manager');
   await page.goto('/leave');
   const form = page.getByRole('form', { name: 'Request leave' });
-  await form.getByLabel('Type').selectOption({ label: 'Unpaid Leave' });
+  await form
+    .getByRole('group', { name: 'Type' })
+    .getByRole('button', { name: /Unpaid Leave/ })
+    .click();
+  await form.getByTestId('leave-dates').locator('summary').click();
   await form.getByLabel('From', { exact: true }).fill(day);
   await form.getByLabel('To', { exact: true }).fill(day);
   await form.getByRole('button', { name: 'Request 1 day' }).click();

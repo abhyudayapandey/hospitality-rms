@@ -137,8 +137,8 @@ export function PeopleTiles({
               </p>
               {tiles.length === 0 && (
                 <p className="text-xs text-slate-500" data-testid="no-shift-types">
-                  No shift type for {p.job_role ?? 'their job'} here yet; add one to the
-                  department&apos;s shifts to roster them by tile.
+                  Not on the roster: there are no usual shift times for {p.job_role ?? 'this job'}{' '}
+                  here yet.
                 </p>
               )}
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

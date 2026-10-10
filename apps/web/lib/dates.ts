@@ -122,3 +122,19 @@ export function formatLongDay(at: Date | string, tz: string = DEFAULT_TZ): strin
     timeZone: tz,
   }).format(new Date(at));
 }
+
+/**
+ * The day whose week the roster opens on (ADR 112): today, except from Friday 18:00 through
+ * Sunday, when what is left of this week is already set and next week is the one to plan.
+ */
+export function planningWeekDay(
+  today: string,
+  now: Date = new Date(),
+  tz: string = DEFAULT_TZ,
+): string {
+  const wd = isoWeekday(today);
+  const hour = Number(
+    new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: tz }).format(now),
+  );
+  return wd >= 6 || (wd === 5 && hour >= 18) ? addDays(today, 7) : today;
+}

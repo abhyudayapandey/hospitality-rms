@@ -72,19 +72,34 @@ export interface RoomTileRow {
   floor: string | null;
   status: string;
   can_set: boolean;
+  /** whose the room is today, when given to someone else (ADR 111) */
+  who?: string | null;
 }
 
-/** One room's tile: its number, its status's colour and picture. */
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join('');
+
+/** One room's tile: its number, its status's colour and picture, and whose it is today. */
 function RoomTile({ r, onTap }: { r: RoomTileRow; onTap?: (() => void) | undefined }) {
   const s = roomStatus(r.status);
   const inner = (
     <>
       <Icon name={s.icon} className="size-5" />
       <span className="text-lg leading-tight font-bold tabular-nums">{r.number}</span>
+      {r.who && (
+        <span className="text-[11px] leading-none font-semibold opacity-80" data-testid="room-who">
+          {initials(r.who)}
+        </span>
+      )}
     </>
   );
   const common = {
-    'aria-label': `Room ${r.number}: ${s.word}`,
+    'aria-label': `Room ${r.number}: ${s.word}${r.who ? `, ${r.who}'s` : ''}`,
     'data-testid': 'room',
     'data-room': r.number,
     'data-status': s.code,

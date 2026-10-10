@@ -83,3 +83,21 @@ export async function setBreakfastRoom(
     return null;
   });
 }
+
+/**
+ * Give rooms for a day (ADR 111): the person gets exactly these rooms; rooms another had move
+ * to them. ops.give_rooms checks who may (ROOMS modify and TASKS modify over housekeeping).
+ */
+export async function giveRooms(
+  outlet: string,
+  day: string,
+  person: string,
+  roomIds: string[],
+): Promise<ActionResult<number>> {
+  return roomsAction('give_rooms', async (tx) => {
+    const r = await sql<{ n: number }>`
+      select ops.give_rooms(${outlet}::uuid, ${day}::date, ${person}::uuid,
+                            ${roomIds}::uuid[]) as n`.execute(tx);
+    return r.rows[0]!.n;
+  });
+}

@@ -3,7 +3,7 @@
 
 import { daysWords } from '@outlet-ops/domain';
 import type { IconName } from '@/components/icon';
-import { formatSpan, localDate } from './dates';
+import { addDays, formatDay, formatSpan, localDate } from './dates';
 import { listHref, stockHref } from './stock-view';
 
 export interface TaskLike {
@@ -50,9 +50,29 @@ export function currentShift<S extends ShiftLike>(shifts: readonly S[], now: Dat
   );
 }
 
-/** "Today 06:00–14:00 · Kitchen", "Tomorrow 22:00–06:00 · Bar". */
+/**
+ * The first shift after the next 24 hours, within the week (ADR 112): what a person with no
+ * shift today or tomorrow sees on Home instead of nothing.
+ */
+export function laterShift<S extends ShiftLike>(shifts: readonly S[], now: Date): S | null {
+  if (currentShift(shifts, now)) return null;
+  const t = now.getTime();
+  return (
+    [...shifts]
+      .filter((s) => new Date(s.start_at).getTime() >= t)
+      .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())[0] ?? null
+  );
+}
+
+/** "Today 06:00–14:00 · Kitchen", "Tomorrow 22:00–06:00 · Bar", "Mon, 12 Oct 16:00–00:00 · Bar". */
 export function shiftLine(s: ShiftLike, now: Date, tz: string): string {
-  const day = localDate(s.start_at, tz) === localDate(now, tz) ? 'Today' : 'Tomorrow';
+  const d = localDate(s.start_at, tz);
+  const day =
+    d === localDate(now, tz)
+      ? 'Today'
+      : d === addDays(localDate(now, tz), 1)
+        ? 'Tomorrow'
+        : formatDay(d);
   return `${day} ${formatSpan(s.start_at, s.end_at, tz)} · ${s.node_name}`;
 }
 
@@ -132,8 +152,8 @@ const LINE: Record<AttentionKind, { href: string; one: string; many: string }> =
   },
   openSlots: {
     href: listHref('/roster/week', { all: true }),
-    one: 'open shift this week',
-    many: 'open shifts this week',
+    one: 'open shift in the next 7 days',
+    many: 'open shifts in the next 7 days',
   },
 };
 

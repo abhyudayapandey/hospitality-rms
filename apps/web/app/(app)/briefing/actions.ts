@@ -29,13 +29,14 @@ export async function saveBriefing(input: {
   body: string;
   offDishes: string[];
   idempotencyKey: string;
+  /** today or tomorrow (ADR 112) */
+  day: string;
 }): Promise<ActionResult<{ id: string }>> {
   return run('save_briefing', async (tx) => {
     const r = await sql<{ id: string }>`
       select ops.save_briefing(${input.place}::uuid, ${input.part}, ${input.body},
-                               ${input.offDishes}::uuid[], ${input.idempotencyKey}) as id`.execute(
-      tx,
-    );
+                               ${input.offDishes}::uuid[], ${input.idempotencyKey},
+                               ${input.day}::date) as id`.execute(tx);
     return { id: r.rows[0]!.id };
   });
 }
