@@ -23,3 +23,6 @@ drawn, and puts screenshots of before and after in its description.
 | 12                        | Roles with little to do: the accountant's bills and purchasing, the sales manager's events (an access change: the RLS all-users workflow before merging)                                                                                                                                                  | accountant, sales manager               |
 | 13                        | Language: the app's words in Hindi, Konkani and Marathi, chosen per person on Profile                                                                                                                                                                                                                     | all                                     |
 | 14                        | Read aloud (optional): a speaker button on task steps                                                                                                                                                                                                                                                     | frontline                               |
+
+Shipped in one PR (feat/ux-kitchen-stock): the kitchen, bar and stores part of 5 (ADR 100), 9
+(ADR 101) and 7 (ADR 102).

@@ -10,6 +10,8 @@ import { FillToPar } from '@/components/fill-to-par';
 import { formatQty, inputQty } from '@/lib/qty';
 import { requestSupplies } from '../../actions';
 import { ItemThumb } from '@/components/item-thumb';
+import { Stepper } from '@/components/stepper';
+import { qtyStep, shortFirst } from '@/lib/short-first';
 
 export interface OrderLine {
   item_id: string;
@@ -18,6 +20,7 @@ export interface OrderLine {
   on_hand: string;
   par_level: string;
   suggested_qty: string;
+  category: string | null;
 }
 
 /**
@@ -31,7 +34,6 @@ export function NewOrderForm({ node, lines }: { node: string; lines: OrderLine[]
   const short = lines.filter((l) => Number(l.suggested_qty) > 0);
   const [filled, setFilled] = useState(false);
   const [notes, setNotes] = useState('');
-  const [usual, setUsual] = useState(false);
   const [key] = useState(() => crypto.randomUUID());
   const [pending, start] = useTransition();
   const hydrated = useHydrated();
@@ -82,63 +84,58 @@ export function NewOrderForm({ node, lines }: { node: string; lines: OrderLine[]
             setFilled(false);
           }}
         />
-        {lines.some((l) => Number(l.suggested_qty) > 0) && lines.length > 8 && (
-          <label className="flex min-h-11 items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={usual}
-              onChange={(e) => {
-                setUsual(e.target.checked);
-                for (const el of document.querySelectorAll<HTMLElement>(
-                  '#order-lines [data-usual="no"]',
-                )) {
-                  el.hidden = e.target.checked;
-                }
-              }}
-              className="size-5"
-            />
-            Only items that are running short
-          </label>
-        )}
-        <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-          {lines.map((l) => (
-            <li
-              key={l.item_id}
-              className="space-y-1 px-4 py-2"
-              data-testid="order-line"
-              data-filter-row
-              data-filter-text={l.name}
-              data-usual={Number(l.suggested_qty) > 0 ? 'yes' : 'no'}
+        {/* below par first, then the rest by category (ADR 101) */}
+        {shortFirst(lines, (l) => Number(l.suggested_qty) > 0).map((g) => (
+          <section
+            key={g.key}
+            className="space-y-1"
+            data-filter-group
+            data-testid={`order-${g.key}`}
+          >
+            <h2
+              className={`pt-2 text-sm font-semibold ${g.short ? 'text-rose-700' : 'text-slate-500'}`}
             >
-              <p className="flex items-center justify-between gap-2 text-sm">
-                <span className="flex min-w-0 items-center gap-3">
-                  <ItemThumb name={l.name} size="size-10" />
-                  <span className="font-medium">{l.name}</span>
-                </span>
-                <span
-                  className={`tabular-nums ${Number(l.on_hand) < 0 ? 'text-rose-700' : 'text-slate-500'}`}
-                  data-testid="have-keep"
+              {g.label}
+            </h2>
+            <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
+              {g.rows.map((l) => (
+                <li
+                  key={l.item_id}
+                  className="space-y-2 px-4 py-3"
+                  data-testid="order-line"
+                  data-filter-row
+                  data-filter-text={`${l.name} ${l.category ?? ''}`}
                 >
-                  In stock {formatQty(l.on_hand, l.base_uom)} · par{' '}
-                  {formatQty(l.par_level, l.base_uom)}
-                  {Number(l.on_hand) < 0 ? ' (below zero: count it)' : ''}
-                </span>
-              </p>
-              <input
-                aria-label={`Quantity ${l.name}`}
-                inputMode="decimal"
-                placeholder={`how much (${l.base_uom})`}
-                value={qty[l.item_id] ?? ''}
-                onChange={(e) => setQty((v) => ({ ...v, [l.item_id]: e.target.value }))}
-                onBlur={(e) =>
-                  e.target.value.trim() &&
-                  setQty((v) => ({ ...v, [l.item_id]: inputQty(e.target.value) || e.target.value }))
-                }
-                className={inputClass}
-              />
-            </li>
-          ))}
-        </ul>
+                  <p className="flex items-center gap-3 text-sm">
+                    <ItemThumb name={l.name} category={l.category} size="size-10" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium">{l.name}</span>
+                      <span
+                        className={`block text-xs tabular-nums ${Number(l.on_hand) < 0 ? 'text-rose-700' : 'text-slate-500'}`}
+                        data-testid="have-keep"
+                      >
+                        In stock {formatQty(l.on_hand, l.base_uom)} · par{' '}
+                        {formatQty(l.par_level, l.base_uom)}
+                        {Number(l.on_hand) < 0 ? ' (below zero: count it)' : ''}
+                      </span>
+                    </span>
+                  </p>
+                  <Stepper
+                    label={`Quantity ${l.name}`}
+                    value={qty[l.item_id] ?? ''}
+                    onChange={(v) => setQty((q) => ({ ...q, [l.item_id]: v }))}
+                    min={0}
+                    step={qtyStep(l.base_uom)}
+                    start={
+                      Number(l.suggested_qty) > 0 ? Number(inputQty(l.suggested_qty)) : undefined
+                    }
+                    unit={l.base_uom}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
       </div>
       <label className="block space-y-1">
         <span className="text-sm font-medium">Notes (optional)</span>

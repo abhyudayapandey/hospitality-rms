@@ -2590,3 +2590,34 @@ Screens only: no migration, no access change, no infrastructure change.
    - **`passport.room-attendant`**: a minibar check has − / + beside each item.
    - **`passport.laundry`**: Linen → each item has − / + for Sent to laundry and Came back.
    - **Anyone**: Leave → Tomorrow, then 2 days, fills the dates.
+
+## Releasing the kitchen, bar and stores screens (ADR 100 to 102)
+
+One migration (`20261214100000_whole_packs`): `inv.item.pack_size` and `pack_name`,
+`inv.open_pack` refuses part packs, `inv.pack_items` and `inv.pack_label` give the pack. No
+access change, no infrastructure change.
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual (the migration runs with it).
+4. Re-import:
+   - **Passport** (`pnpm --filter @outlet-ops/onboarding passport-demo`, then
+     `cd docs/onboarding/demo/passport-hotel && zip ../passport-hotel.zip *.csv`): the dry run shows
+     no problems and no warnings, with items 6 changed (milk, butter, cheddar, coconut milk and the
+     two wines get their packs), plus whatever the regeneration re-dates (events, licences, the
+     compliance calendar, opening stock). Apply, then a second dry run shows no changes.
+   - **The test customers** (test environment only): Test Company's items 7 changed (milk, cream,
+     ketchup, the wines and the juices); Test Solo Bar Co. unchanged. Apply, then a second dry run
+     shows no changes.
+5. Check, at 380 px:
+   - **`passport.commis`** (Ganesh Parab): Opened packs → Coconut milk says "1 tin = 400 ml";
+     "How many?" starts at 1; + makes 2; Open and print the label says "2 tins · 800 ml". A
+     prep task's Method shows a picture per step, the ingredients' photos and "Start N min timer".
+   - **`passport.chef`**: Menu → Recipes → a dish → Recipe: the same pictures and timers. Stock →
+     Ask for supplies: "Running short" first with "Fill all N short items up to par", then
+     categories; − / + on each.
+   - **`passport.bar-manager`** (Dylan Coutinho): Stock → Stock check goes by shelf (Back bar, Beer
+     fridge...), each row a picture and a clock until verified; Excise → each line has its picture.
+     A long Stock list keeps Count, Record wastage... pinned above the nav.
+   - **`passport.store-keeper`**: Transfers → Send stock: each department with its picture; the
+     transfers and orders lists show the items' pictures.

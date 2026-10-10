@@ -275,6 +275,15 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   it); one's own To do list is one line a task, done ones folded; a rule sits behind a "?"
   (`InfoTip`); every number a frontline person enters has − / + (`Stepper`), a reading its safe
   range first and coloured quick picks.
+- Kitchen, bar and stores after the audit (ADR 100 to 102): every item line has its picture
+  (orders and transfers lists the first three, `ItemThumbs`); a recipe's method (Recipe tab, a prep
+  task's Method; `MethodSteps`) shows each step's picture from its starting kitchen verb
+  (`stepIcon`), the photos of the ingredients it names (`lib/method.ts`) and a "Start N min timer".
+  Ask for supplies: short items first, the rest by category, − / +; the stock check by shelf with a
+  tick or a clock; a figure below zero reads "Count needed" unless `core.can` lets the viewer adjust
+  stock or verify a check there; a long list's main actions stay pinned above the nav, still after
+  the list (`PinnedActions`). File 10 `pack_size` (base unit) and `pack_name`: an opened pack is a
+  whole number of packs ("How many?", `NOT_WHOLE_PACKS`), the label "1 tin · 400 ml".
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in
