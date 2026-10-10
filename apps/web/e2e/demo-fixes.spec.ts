@@ -107,8 +107,52 @@ test("a department head's roster opens by person; the GM's by shift", async ({ p
   await page.goto(`/roster/week?node=${kitchen}`);
   await expect(page.getByTestId('view-people')).toHaveText('By shift');
   await expect(page.getByTestId('person-row').first()).toBeVisible();
+  // no kitchen shift type is the executive chef's: Off, and a line saying so, not the other
+  // roles' tiles a tap would be refused (ADR 097)
+  const chef = page.getByTestId('person-row').filter({ hasText: 'Test Executive Chef 1.0' });
+  await expect(chef.getByTestId('no-shift-types')).toBeVisible();
+  await expect(chef.getByTestId('shift-tile')).toHaveCount(1);
+  await expect(chef.getByTestId('shift-tile')).toHaveAttribute('data-type', 'off');
 
   await signInAs(page, 'Test General Manager 1.0');
   await page.goto(`/roster/week?node=${kitchen}`);
   await expect(page.getByTestId('view-people')).toHaveText('By person');
+});
+
+test('a shift added by hand shows as theirs on the roster by person, not as Off', async ({
+  page,
+}) => {
+  const restaurant = await placeId('TEST-HOTEL-1.0-RESTAURANT');
+  const [{ day = '' } = {}] = await asMigrator<{ day: string }>(
+    `select (date_trunc('week', now() at time zone 'Asia/Kolkata')::date + 37)::text as day`,
+    [],
+  );
+  const [shift] = await asMigrator<{ id: string }>(
+    `insert into hr.shift (tenant_id, org_node_id, local_date, start_at, end_at, role_code,
+                           headcount)
+     select n.tenant_id, n.id, $2::date, ($2::date + time '12:00') at time zone 'Asia/Kolkata',
+            ($2::date + time '16:00') at time zone 'Asia/Kolkata', 'STEWARD', 1
+       from core.hierarchy_node n where n.id = $1
+     returning id`,
+    [restaurant, day],
+  );
+  await asMigrator(
+    `insert into hr.shift_assignment (tenant_id, shift_id, worker_id, owner_user_id, org_node_id,
+                                      start_at, end_at)
+     select s.tenant_id, s.id, w.id, w.owner_user_id, s.org_node_id, s.start_at, s.end_at
+       from hr.shift s, hr.worker w join core.app_user u on u.id = w.owner_user_id
+      where s.id = $1 and u.username = 'test.steward-c.1.0'`,
+    [shift!.id],
+  );
+  try {
+    await signInAs(page, 'Test Restaurant Manager 1.0');
+    await page.goto(`/roster/week?node=${restaurant}&week=${day}&day=${day}&view=people`);
+    const row = page.getByTestId('person-row').filter({ hasText: 'Test Steward C 1.0' });
+    const mine = row.locator('[data-type="other"]');
+    await expect(mine).toContainText('12:00–16:00');
+    await expect(row.locator('[data-type="off"]')).toHaveAttribute('aria-pressed', 'false');
+  } finally {
+    await asMigrator(`delete from hr.shift_assignment where shift_id = $1`, [shift!.id]);
+    await asMigrator(`delete from hr.shift where id = $1`, [shift!.id]);
+  }
 });

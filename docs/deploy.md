@@ -2522,8 +2522,9 @@ bundle; nothing a customer already has changes.
 
 ## Releasing the demo walk's fixes (ADR 097)
 
-Two migrations (`20261212100000_utility_meters`, `20261212110000_opened_packs_where_kept`): new
-read functions and the Opened screen's stores; no table changes. The Deploy workflow's
+Three migrations (`20261212100000_utility_meters`, `20261212110000_opened_packs_where_kept`,
+`20261212120000_roster_day_shift_times`): read functions, the Opened screen's stores and each
+person's shift times on the roster by person; no table changes. The Deploy workflow's
 `sync-defs` step adds the product group Pack Opener and the duty "Opens packs". The
 catalogue's Commis gains that duty, so a customer whose file 06 lists COMMIS by code alone
 (Passport) gets it at its next import.
@@ -2546,5 +2547,8 @@ catalogue's Commis gains that duty, so a customer whose file 06 lists COMMIS by 
    - **`passport.store-keeper`**: Stock at the Main Store has no Opened tab.
    - **`passport.cdp`**: Stock → an item such as milk → Open a pack.
    - **Any SOP reader**: Me → SOPs → an SOP → ← Back → ← Back lands on Me.
+   - **`passport.chef`** (Avinash Kamat): Roster opens by person; his own row has
+     Off and "No shift type for Executive Chef here yet", the others one tile each; "By shift"
+     stays chosen while moving between days.
    - **`passport.laundry`**: Linen → each item's
      name whole, Sent to laundry and Came back under it.

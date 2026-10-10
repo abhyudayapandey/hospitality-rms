@@ -1,6 +1,6 @@
 # 097 — What the Passport demo walk found: meters, opened packs, Breakfast, Back, Linen
 
-Status: accepted · 2026-10-10 · migrations 20261212100000, 20261212110000
+Status: accepted · 2026-10-10 · migrations 20261212100000, 20261212110000, 20261212120000
 
 Walking the Passport demo as each role, the presenter found six things wrong. Two were not
 bugs: the room ready check is on the room attendant's To do from its first round (11:00 the
@@ -33,6 +33,16 @@ rest are decided here.
 6. **Linen at 380 px**: each item's name on its own line, the two numbers under it, labelled
    ("Sent to laundry", "Came back"); "Returned" on a uniform is a small button, not a full-width
    one.
+
+7. **A department head's roster opens by person** (DEPARTMENT_HEAD, SUPERVISOR); everyone else
+   by shift. "By shift" is `?view=shift` and holds while they move between days and weeks.
+   Home's open-slot counts open it by shift, since a slot is filled there.
+8. **Tiles are a person's own role's shift types.** Another role's shift is refused by the
+   database (ROLE_MISMATCH, never overridable), so someone whose role has no shift type in
+   the department (an executive chef) gets Off and "No shift type for Executive Chef here
+   yet" instead of tiles that would each be refused. A shift they have that no tile stands for
+   (added by hand) shows as its own lit tile with its times (`hr.roster_day` now returns each
+   person's shift name and times), so Off is lit only when they have no shift that day.
 
 A checklist added during the day gets its first round at its next time, never a round already
 overdue (unchanged, ADR 020).
