@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
-import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
+import { ErrorBox, primaryButton, StatusBox } from '@/components/messages';
 import { formatMoney } from '@/lib/format';
 import type { ItemOption } from '@/lib/inventory';
 import { PhotoField } from '@/components/photo-field';
