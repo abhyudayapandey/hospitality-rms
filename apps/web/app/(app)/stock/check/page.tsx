@@ -1,3 +1,4 @@
+import { InfoTip } from '@/components/info-tip';
 import { Empty } from '@/components/messages';
 import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
@@ -42,11 +43,11 @@ export default async function StockCheckPage({ searchParams }: { searchParams: S
       {canCount && !node.derived && data.open ? (
         <StartCheckButtons node={node.id} resume={data.open} />
       ) : null}
-      <p className="text-sm text-slate-600">
+      <InfoTip label="How a stock check works">
         The verifier counts what is on the shelves without seeing what should be there, then sees
         the differences, adds a photo to each, and finishes. A difference changes stock at once and
         tells the department head and the GM.
-      </p>
+      </InfoTip>
       {data.rows.length === 0 ? (
         <Empty>No items are set up here yet.</Empty>
       ) : (

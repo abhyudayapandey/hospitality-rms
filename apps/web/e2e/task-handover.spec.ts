@@ -67,12 +67,13 @@ test('the housekeeper gives pest control to her supervisor, who gives it on; eve
     await page.goto('/');
     await expect(page.getByTestId('handed-on-who')).toContainText(`${HS} · given today`);
 
-    // the supervisor: it is hers, from whom and since when; overdue when given
+    // the supervisor: it is hers, one line with a red dot for late; who gave it and that it
+    // was already overdue then are for those who follow it, not her (ADR 098)
     await signInAs(page, HS);
     await page.goto('/tasks');
     const row = page.getByRole('link', { name: /Pest control service/ }).first();
-    await expect(row.getByTestId('task-who')).toContainText(`You, from ${EH} · given today`);
-    await expect(row).toContainText('overdue when given');
+    await expect(row.getByTestId('task-late')).toBeVisible();
+    await expect(row).not.toContainText('overdue when given');
     await row.click();
     await page.waitForURL(`**/tasks/${task}`);
     await give(page, RA);

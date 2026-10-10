@@ -160,7 +160,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-slate-500">Batches here</h2>
         {data.held.length === 0 ? (
-          <Empty>No batches held here.</Empty>
+          <Empty>No batches here.</Empty>
         ) : (
           <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
             {data.held.map((b) => (

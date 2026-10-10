@@ -182,9 +182,9 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 - Handing a task on (ADR 074): a task is seen, and given to someone else, by its place's
   managers, the head of the department where whoever has it works (wherever it sits), and
   whoever handed it on (`ops.sees_task`, `ops.may_hand_on`); every assignment is recorded
-  (`ops.task_handover`, by a trigger) with `ops.task.assigned_at`. Every task list says who
-  has it ("You" for one's own), since when, and when it is due; "overdue when given" when it
-  reached them late; "Given to others" on To do and Home (done ones too, ADR 075). `ops.can_work`
+  (`ops.task_handover`, by a trigger) with `ops.task.assigned_at`. A list of others' tasks says
+  who has it, since when, and when it is due; "overdue when given" when it reached them late (to
+  those who follow it; one's own list is one line a task, ADR 099); "Given to others" on To do and Home (done ones too, ADR 075). `ops.can_work`
   is never null. With swaps for management only, staff see no Swaps tab at all.
 - Every role's day (ADR 075): a library checklist names the SOP roles that do it (`roles`);
   an outlet's copy goes to the first that works in its department there, else to whoever is
@@ -271,6 +271,10 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   tap instead of type, each person sees only their own work. A photo or file control sits above
   the button that finishes (`lib/photo-first.test.ts`); an event's supplies come by name to
   whoever sees the event (`ops.event_item_names`); the header is the name, then the job.
+  ADR 099: no welcome card; a task's who-and-when is under History (open for those who follow
+  it); one's own To do list is one line a task, done ones folded; a rule sits behind a "?"
+  (`InfoTip`); every number a frontline person enters has − / + (`Stepper`), a reading its safe
+  range first and coloured quick picks.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

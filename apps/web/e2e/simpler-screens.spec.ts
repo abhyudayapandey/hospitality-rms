@@ -125,14 +125,10 @@ test('Home offers Clock in only near a shift', async ({ page }) => {
   }
 });
 
-test('the welcome card shows once and is dismissed for good', async ({ page }) => {
+test('Home opens on the job, with no welcome card to read first', async ({ page }) => {
   await signInAs(page, 'Test Commis B 1.0', { expanded: false });
-  const card = page.getByTestId('first-run');
-  await expect(card).toBeVisible();
-  await card.getByTestId('first-run-done').click();
-  await expect(card).toHaveCount(0);
-  await page.reload();
-  await expect(page.getByTestId('first-run')).toHaveCount(0);
+  await expect(page.getByTestId('tasks-card')).toBeVisible();
+  await expect(page.getByText('Welcome', { exact: true })).toHaveCount(0);
 });
 
 test('the to-do list has one name in the bar and the heading', async ({ page }) => {

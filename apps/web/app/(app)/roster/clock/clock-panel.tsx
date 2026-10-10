@@ -1,5 +1,6 @@
 'use client';
 
+import { InfoTip } from '@/components/info-tip';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { ErrorBox, primaryButton, StatusBox } from '@/components/messages';
@@ -197,9 +198,9 @@ export function ClockPanel({
       )}
       <ErrorBox message={error} />
       <StatusBox message={status} />
-      <p className="text-xs text-slate-500">
+      <InfoTip label="Your location">
         Your location is used only to check you are at the outlet. It is kept for 90 days.
-      </p>
+      </InfoTip>
     </div>
   );
 }

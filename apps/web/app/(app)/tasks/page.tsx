@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Icon } from '@/components/icon';
 import { Empty } from '@/components/messages';
 import { TasksHeader } from '@/components/tasks-header';
 import { PollRefresh } from '@/components/use-polling';
@@ -6,14 +7,7 @@ import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { maintenanceList, myHandedOn, myTasks, taskTabs } from '@/lib/tasks';
-import {
-  GROUP_TITLES,
-  doneBy,
-  doneLately,
-  groupTasks,
-  myTaskWho,
-  type TaskGroup,
-} from '@/lib/tasks-view';
+import { GROUP_TITLES, doneBy, doneLately, groupTasks, myTaskWho } from '@/lib/tasks-view';
 import { TaskList } from './task-list';
 
 // My tasks (ADR 020): one-off tasks, checklist rounds, prep and expired batches that are
@@ -41,7 +35,6 @@ export default async function MyTasksPage() {
     return { tasks, given, tabs, fixes };
   });
   const groups = groupTasks(data.tasks);
-  const order: TaskGroup[] = ['overdue', 'today', 'upcoming', 'done'];
 
   return (
     <div className="space-y-4">
@@ -90,20 +83,61 @@ export default async function MyTasksPage() {
           </ul>
         </section>
       )}
-      {data.tasks.length === 0
-        ? data.given.length === 0 && <Empty>No tasks for you right now.</Empty>
-        : order
-            .filter((g) => groups[g].length > 0)
-            .map((g) => (
-              <section key={g} className="space-y-2">
-                <h2
-                  className={`text-sm font-semibold ${g === 'overdue' ? 'text-rose-700' : 'text-slate-500'}`}
-                >
-                  {GROUP_TITLES[g]}
-                </h2>
-                <TaskList tasks={groups[g]} testId={`tasks-${g}`} />
-              </section>
-            ))}
+      {data.tasks.length === 0 && data.given.length === 0 && (
+        <Empty>No tasks for you right now.</Empty>
+      )}
+      {(['overdue', 'today'] as const)
+        .filter((g) => groups[g].length > 0)
+        .map((g) => (
+          <section key={g} className="space-y-2">
+            <h2
+              className={`text-sm font-semibold ${g === 'overdue' ? 'text-rose-700' : 'text-slate-500'}`}
+            >
+              {GROUP_TITLES[g]}
+            </h2>
+            <TaskList tasks={groups[g]} testId={`tasks-${g}`} mine />
+          </section>
+        ))}
+      {/* what to do next sits under today's work, on the first screen, not under the done
+          ones (ADR 098) */}
+      <div className="grid grid-cols-2 gap-2">
+        {data.tabs.create && (
+          <Link
+            href="/tasks/new"
+            className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-700 font-medium text-white"
+          >
+            <Icon name="plus" className="size-5" />
+            New task
+          </Link>
+        )}
+        {data.tabs.maintenance && (
+          <Link
+            href="/tasks/maintenance/new"
+            className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white font-medium ring-1 ring-slate-300"
+          >
+            <Icon name="wrench" className="size-5" />
+            Report a problem
+          </Link>
+        )}
+      </div>
+      {groups.upcoming.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold text-slate-500">{GROUP_TITLES.upcoming}</h2>
+          <TaskList tasks={groups.upcoming} testId="tasks-upcoming" mine />
+        </section>
+      )}
+      {groups.done.length > 0 && (
+        // done ones fold into one row (ADR 098): they stay to be checked, out of the way
+        <details className="rounded-xl bg-white ring-1 ring-slate-200" data-testid="done-fold">
+          <summary className="flex min-h-14 cursor-pointer items-center gap-3 px-4 font-medium">
+            <span className="flex size-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+              <Icon name="check" className="size-6" />
+            </span>
+            {groups.done.length} done
+          </summary>
+          <TaskList tasks={groups.done} testId="tasks-done" mine />
+        </details>
+      )}
       {data.given.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-500">Given to others</h2>
@@ -120,25 +154,6 @@ export default async function MyTasksPage() {
           />
         </section>
       )}
-      {/* the list first, then what to do (ADR 051) */}
-      <div className="grid grid-cols-2 gap-2">
-        {data.tabs.create && (
-          <Link
-            href="/tasks/new"
-            className="flex min-h-12 items-center justify-center rounded-xl bg-brand-700 font-medium text-white"
-          >
-            New task
-          </Link>
-        )}
-        {data.tabs.maintenance && (
-          <Link
-            href="/tasks/maintenance/new"
-            className="flex min-h-12 items-center justify-center rounded-xl bg-white font-medium ring-1 ring-slate-300"
-          >
-            Report a problem
-          </Link>
-        )}
-      </div>
     </div>
   );
 }

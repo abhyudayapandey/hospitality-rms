@@ -9,6 +9,7 @@ import { receiveGoods } from '../../actions';
 import { BillFiles, type BillFile } from '../../bills/bill-files';
 import { formatQty } from '@/lib/qty';
 import { ItemThumb } from '@/components/item-thumb';
+import { Stepper } from '@/components/stepper';
 
 export interface ReceiveLine {
   item_id: string;
@@ -160,17 +161,18 @@ export function ReceiveForm({
                   </span>
                 </span>
               </p>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block space-y-1">
+              <div className="space-y-3">
+                <div className="space-y-1">
                   <span className="text-xs text-slate-600">Received ({l.base_uom})</span>
-                  <input
-                    aria-label={`Received ${l.name}`}
-                    inputMode="decimal"
+                  {/* nothing filled in (ADR 054): − / + from empty, or type it (ADR 098) */}
+                  <Stepper
                     value={qty[l.item_id] ?? ''}
-                    onChange={(e) => setQty((v) => ({ ...v, [l.item_id]: e.target.value }))}
-                    className={`${inputClass} text-right`}
+                    onChange={(x) => setQty((v) => ({ ...v, [l.item_id]: x }))}
+                    label={`Received ${l.name}`}
+                    unit={l.base_uom}
+                    min={0}
                   />
-                </label>
+                </div>
                 <label className="block space-y-1">
                   {/* the line's total on the bill, not a price per unit (ADR 053) */}
                   <span className="text-xs text-slate-600">Bill amount, total (₹)</span>

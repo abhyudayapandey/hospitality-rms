@@ -135,8 +135,8 @@ export function WeekActions({
       )}
       <p className="text-xs text-slate-500" data-testid="template-window">
         {w.drafts === 0 && w.toAdd === 0
-          ? `Template shifts for ${w.span} are all added.`
-          : `Template shifts are added for ${w.span} (tomorrow to day 7).`}
+          ? `The usual shifts for ${w.span} are all added.`
+          : `Adds the usual shifts for ${w.span}.`}
         {w.nextWeek && (w.drafts > 0 || done) ? (
           <>
             {' '}

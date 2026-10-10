@@ -2,18 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import {
-  ErrorBox,
-  StatusBox,
-  inputClass,
-  primaryButton,
-  secondaryButton,
-} from '@/components/messages';
+import { ErrorBox, StatusBox, primaryButton, secondaryButton } from '@/components/messages';
 import { formatMoney } from '@/lib/format';
 import { inputQty } from '@/lib/qty';
 import { useHydrated } from '@/lib/use-hydrated';
 import { checkMinibar } from '../actions';
 import { ItemThumb } from '@/components/item-thumb';
+import { Stepper } from '@/components/stepper';
 
 interface Item {
   id: string;
@@ -81,25 +76,30 @@ export function CheckForm({ room, items }: { room: string; items: Item[] }) {
       </button>
       <ul className="divide-y divide-slate-100">
         {used.map((i) => (
-          <li key={i.id} className="flex items-center justify-between gap-3 py-2">
-            <ItemThumb name={i.name} />
-            <span className="min-w-0 flex-1">
-              <span className="block font-medium">{i.name}</span>
-              <span className="block text-xs text-slate-500">
-                par {i.par} · {formatMoney(i.price)} each
-                {i.inStore < i.par && ` · store has ${inputQty(i.inStore)}`}
+          <li key={i.id} className="space-y-2 py-3">
+            <span className="flex items-center gap-3">
+              <ItemThumb name={i.name} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">{i.name}</span>
+                <span className="block text-xs text-slate-500">
+                  par {i.par} · {formatMoney(i.price)} each
+                  {i.inStore < i.par && ` · store has ${inputQty(i.inStore)}`}
+                </span>
               </span>
             </span>
-            <label className="flex shrink-0 items-center gap-2 text-sm">
-              <span className="text-slate-500">left</span>
-              <input
-                inputMode="decimal"
-                aria-label={`Left: ${i.name}`}
-                value={left[i.id] ?? ''}
-                onChange={(e) => setLeft({ ...left, [i.id]: e.target.value })}
-                className={`${inputClass} max-w-20 text-right`}
-              />
-            </label>
+            {/* how many are left, by − / + (ADR 098) */}
+            <span className="flex items-center gap-2">
+              <span className="w-10 shrink-0 text-sm text-slate-500">left</span>
+              <span className="min-w-0 flex-1">
+                <Stepper
+                  value={left[i.id] ?? ''}
+                  onChange={(x) => setLeft({ ...left, [i.id]: x })}
+                  label={`Left: ${i.name}`}
+                  min={0}
+                  start={i.par}
+                />
+              </span>
+            </span>
           </li>
         ))}
       </ul>

@@ -10,6 +10,7 @@ import {
 } from '@outlet-ops/domain';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
 import { ItemThumb } from '@/components/item-thumb';
+import { Stepper } from '@/components/stepper';
 import type { BreakageItem, BreakagePlace } from '@/lib/breakage';
 import { formatQty } from '@/lib/qty';
 import { useHydrated } from '@/lib/use-hydrated';
@@ -122,16 +123,16 @@ export function BreakageForm({
           </select>
         </span>
       </label>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block space-y-1">
+      <div className="space-y-3">
+        <div className="space-y-1">
           <span className="text-sm font-medium">How many{item ? ` (${item.unit})` : ''}</span>
-          <input
-            inputMode="decimal"
+          <Stepper
             value={qty}
-            onChange={(e) => setQty(e.target.value)}
-            className={inputClass}
+            onChange={setQty}
+            label={`How many${item ? ` (${item.unit})` : ''}`}
+            min={0}
           />
-        </label>
+        </div>
         <label className="block space-y-1">
           <span className="text-sm font-medium">How it broke</span>
           <select value={reason} onChange={(e) => setReason(e.target.value)} className={inputClass}>

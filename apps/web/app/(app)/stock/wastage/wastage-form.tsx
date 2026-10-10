@@ -10,6 +10,7 @@ import { PhotoField } from '@/components/photo-field';
 import { ACTION_QUEUE_EVENT, indexedDbActions, type QueuedWastage } from '@/lib/action-queue';
 import { askDiscard, getWastageUploadUrl, recordWastage } from '../actions';
 import { ItemThumb } from '@/components/item-thumb';
+import { Stepper } from '@/components/stepper';
 
 const REASONS = [
   ['spoiled', 'Spoiled'],
@@ -144,16 +145,16 @@ export function WastageForm({
           </select>
         </span>
       </label>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block space-y-1">
+      <div className="space-y-3">
+        <div className="space-y-1">
           <span className="text-sm font-medium">Quantity ({item?.base_uom})</span>
-          <input
-            inputMode="decimal"
+          <Stepper
             value={qty}
-            onChange={(e) => setQty(e.target.value)}
-            className={inputClass}
+            onChange={setQty}
+            label={`Quantity (${item?.base_uom ?? ''})`}
+            min={0}
           />
-        </label>
+        </div>
         <label className="block space-y-1">
           <span className="text-sm font-medium">Reason</span>
           <select value={reason} onChange={(e) => setReason(e.target.value)} className={inputClass}>
