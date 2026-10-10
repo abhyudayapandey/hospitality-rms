@@ -41,3 +41,34 @@ export function packOf(
   }
   return null;
 }
+
+// Opened packs by whole packs (ADR 102): file 10's pack size (in the item's stock unit) and
+// pack name. "1 tin = 400 ml", and a label's "2 tins · 800 ml".
+
+const SMALL: Record<string, [string, number]> = { l: ['ml', 1000], kg: ['g', 1000] };
+
+/** An amount in its stock unit, a litre under one in ml and a kilo under one in g: "400 ml". */
+export function packAmount(qty: string | number, uom: string): string {
+  const n = Number(qty);
+  const small = SMALL[uom];
+  if (small && Math.abs(n) < 1 && n !== 0) {
+    return `${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n * small[1])} ${small[0]}`;
+  }
+  return `${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(n)} ${uom}`;
+}
+
+/** "1 tin", "2 tins", "3 boxes"; "pack" when it has no name. */
+export function packCount(n: number, name: string | null | undefined): string {
+  const one = (name ?? '').trim() || 'pack';
+  if (n === 1) return `1 ${one}`;
+  const many = /(s|x|ch|sh)$/i.test(one) ? `${one}es` : `${one}s`;
+  return `${n} ${many}`;
+}
+
+/** How many whole packs a quantity is, or null when it is not a whole number of them. */
+export function wholePacks(qty: string | number, size: string | number): number | null {
+  const n = Number(qty) / Number(size);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const r = Math.round(n);
+  return Math.abs(n - r) <= 1e-6 ? r : null;
+}

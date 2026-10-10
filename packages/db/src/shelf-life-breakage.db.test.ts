@@ -136,6 +136,55 @@ describe('opened packs', () => {
     });
   });
 
+  it('by whole packs where the item has a pack size; free where it has none (ADR 102)', async () => {
+    await inRolledBackTx(async (c) => {
+      const store = ids.node(KITCHEN_STORE);
+      const cream = await item(c, 'FRESH-CREAM');
+      // file 10: a 200 ml carton of cream, stocked in litres
+      const [pack] = await run<{ pack_size: string; pack_name: string }>(
+        c,
+        'test.chef-de-partie.1.0',
+        `select pack_size::text, pack_name from inv.pack_items($1) where item_id = $2`,
+        [store, cream],
+      );
+      expect(pack).toEqual({ pack_size: '0.200000', pack_name: 'carton' });
+      // stock to open from, whatever the seed left
+      await c.query(
+        `insert into inv.stock_ledger (tenant_id, item_id, delivery_node_id, movement_type, qty,
+                                       unit_cost, ref_type)
+         values ($1, $2, $3, 'receipt', 5, 220, 'whole-packs-test')`,
+        [ids.tenant(), cream, store],
+      );
+      const [two] = await run<{ id: string }>(
+        c,
+        'test.chef-de-partie.1.0',
+        `select inv.open_pack($1, $2, 0.4) as id`,
+        [store, cream],
+      );
+      const [label] = await run<{ qty: string; pack_size: string; pack_name: string }>(
+        c,
+        'test.chef-de-partie.1.0',
+        `select qty::text, pack_size::text, pack_name from inv.pack_label($1)`,
+        [two!.id],
+      );
+      expect(label).toEqual({ qty: '0.400000', pack_size: '0.200000', pack_name: 'carton' });
+      for (const part of [0.3, 0.1, 0.25]) {
+        const r = await attemptAs(
+          c,
+          ids.user('test.chef-de-partie.1.0'),
+          `select inv.open_pack($1, $2, $3)`,
+          [store, cream, part],
+        );
+        expect(r.error, String(part)).toMatch(/NOT_WHOLE_PACKS/);
+      }
+      // no pack size: any quantity, as before
+      await c.query(`update inv.item set pack_size = null, pack_name = null where id = $1`, [
+        cream,
+      ]);
+      await run(c, 'test.chef-de-partie.1.0', `select inv.open_pack($1, $2, 0.3)`, [store, cream]);
+    });
+  });
+
   it("a commis opens packs in the kitchen's store, with no other stock access (ADR 097)", async () => {
     await inRolledBackTx(async (c) => {
       const store = ids.node(KITCHEN_STORE);

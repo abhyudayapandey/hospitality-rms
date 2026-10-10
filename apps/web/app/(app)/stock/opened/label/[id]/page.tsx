@@ -4,6 +4,7 @@ import { allergenText, FoodMark } from '@/components/food-mark';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatQty } from '@/lib/inventory';
+import { packAmount, packCount, wholePacks } from '@/lib/pack';
 import { packLabel, type PackLabel } from '@/lib/opened-packs';
 import { PrintButton } from '../../../orders/[id]/print/print-button';
 
@@ -90,7 +91,7 @@ export default async function PackLabelPage({ params }: { params: Promise<{ id: 
             {dot.day}, {when(label.use_by)}
           </dd>
           <dt className="text-slate-600">Quantity</dt>
-          <dd>{formatQty(label.qty, label.unit)}</dd>
+          <dd data-testid="label-qty">{labelQty(label)}</dd>
           <dt className="text-slate-600">Opened by</dt>
           <dd data-testid="label-opened-by">{label.opened_by ?? '–'}</dd>
           <dt className="text-slate-600">At</dt>
@@ -106,4 +107,17 @@ export default async function PackLabelPage({ params }: { params: Promise<{ id: 
       </div>
     </div>
   );
+}
+
+/** "1 tin · 400 ml" for an item opened by the pack (ADR 102); else the quantity. */
+function labelQty(l: {
+  qty: string;
+  unit: string;
+  pack_size: string | null;
+  pack_name: string | null;
+}): string {
+  const n = l.pack_size ? wholePacks(l.qty, l.pack_size) : null;
+  return n === null
+    ? formatQty(l.qty, l.unit)
+    : `${packCount(n, l.pack_name)} · ${packAmount(l.qty, l.unit)}`;
 }

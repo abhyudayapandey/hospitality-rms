@@ -277,6 +277,9 @@ export function validateBundle(b: Bundle): Issue[] {
       add(f('items'), i.line, 'item_code', `${i.item_code} is listed twice`);
     items.set(i.item_code, i);
     supplierRef(f('items'), i.line, 'preferred_supplier_code', i.preferred_supplier_code);
+    // ADR 102: a pack's name says what one pack_size is
+    if (i.pack_name && i.pack_size === undefined)
+      add(f('items'), i.line, 'pack_size', 'give the pack size with its pack name');
   }
   const stockPlace = (file: string, line: number, code: string) => {
     const d = dlv.get(code);
@@ -1451,6 +1454,21 @@ export function menuWarnings(b: Bundle): Issue[] {
     }
   }
   return warnings;
+}
+
+/**
+ * Not a blocker (ADR 102): an item with a shelf life once opened and no pack size is opened by
+ * any amount, not by whole packs. Add its pack size (and name) in file 10.
+ */
+export function packWarnings(b: Bundle): Issue[] {
+  return b.items
+    .filter((i) => i.open_shelf_life_hours !== undefined && i.pack_size === undefined)
+    .map((i) => ({
+      file: FILES.items.file,
+      row: i.line,
+      column: 'pack_size',
+      message: `${i.name} has a shelf life once opened but no pack size: it can be opened by any amount, not by whole packs`,
+    }));
 }
 
 /**
