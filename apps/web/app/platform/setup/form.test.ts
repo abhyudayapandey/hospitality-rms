@@ -33,6 +33,23 @@ describe('the set-up forms', () => {
     });
   });
 
+  it('which orders need approving: every, above an amount, else unusual ones', () => {
+    const at = (approval: string, above = '') =>
+      applyForm(
+        emptyDraft(),
+        'company',
+        fields([
+          ['approval', approval],
+          ['approvalAbove', above],
+        ]),
+        key,
+      ).draft.company.purchaseApproval;
+    expect(at('every')).toBe('every');
+    expect(at('above', '₹5,000')).toBe('above:5000');
+    expect(at('above', '')).toBe('');
+    expect(at('unusual', '5000')).toBe('');
+  });
+
   it('what they buy: a usual bundle unticked stays out; Events & compliance is in only when ticked', () => {
     const withCafe = applyForm(
       emptyDraft(),

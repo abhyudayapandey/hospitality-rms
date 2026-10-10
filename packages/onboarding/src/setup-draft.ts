@@ -118,6 +118,13 @@ export const SetupDraft = z.object({
       isTest: z.boolean().default(false),
       ownerName: str,
       ownerEmail: str,
+      /** Which orders need approving (ADR 092): '' (unusual ones), `every`, `above:<amount>`. */
+      purchaseApproval: z
+        .string()
+        .trim()
+        .regex(/^(|every|above:\d+)$/)
+        .catch('')
+        .default(''),
     })
     .default({
       name: '',
@@ -128,6 +135,7 @@ export const SetupDraft = z.object({
       isTest: false,
       ownerName: '',
       ownerEmail: '',
+      purchaseApproval: '',
     }),
   outlets: z.array(DraftOutlet).default([]),
   people: z.array(DraftPerson).default([]),
@@ -611,6 +619,11 @@ export function filesFromDraft(
   // compliance (every block in a bought bundle is on, Compliance included), each outlet's licences (to fill in) and its calendar jobs, which its manager
   // answers for and its kitchen head or chief engineer does (ADR 073), else the manager
   const plan = planFromDraft(draft);
+  if (draft.company.purchaseApproval) {
+    const c = edit(files, 'customer', ['purchase_approval']);
+    for (const r of c.rows) r['purchase_approval'] = draft.company.purchaseApproval;
+    c.save();
+  }
   if (!plan.daily_work) {
     for (const f of Object.keys(files)) if (f.startsWith('29_')) delete files[f];
   }

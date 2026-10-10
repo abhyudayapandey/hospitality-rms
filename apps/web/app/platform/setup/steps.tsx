@@ -125,6 +125,32 @@ export function CompanyStep({ id, draft }: { id: string; draft: SetupDraft }) {
           <input name="ownerEmail" type="email" defaultValue={c.ownerEmail} className={field} />
         </label>
       </fieldset>
+      <fieldset className={card}>
+        <legend className="px-1 font-semibold">Which orders need approving</legend>
+        <label className="block text-sm font-medium">
+          Orders to the suppliers
+          <select
+            name="approval"
+            defaultValue={
+              c.purchaseApproval.startsWith('above:') ? 'above' : c.purchaseApproval || 'unusual'
+            }
+            className={field}
+          >
+            <option value="unusual">Only unusual ones (off the menu or more than usual)</option>
+            <option value="every">Every order, by the GM</option>
+            <option value="above">Orders above an amount</option>
+          </select>
+        </label>
+        <label className="block text-sm font-medium">
+          The amount, ₹ (for &quot;above an amount&quot;)
+          <input
+            name="approvalAbove"
+            inputMode="numeric"
+            defaultValue={c.purchaseApproval.replace(/^above:/, '').replace(/^\D.*$/, '')}
+            className={field}
+          />
+        </label>
+      </fieldset>
       <label className="flex min-h-12 items-center gap-3 text-sm">
         <input
           type="checkbox"

@@ -26,6 +26,13 @@ export function fieldsOf(form: FormData): Fields {
 }
 
 const one = (f: Fields, k: string) => (f.get(k)?.[0] ?? '').trim();
+
+/** "Which orders need approving" (ADR 092): unusual ones, every one, or above an amount. */
+function purchaseApprovalOf(mode: string, above: string): string {
+  if (mode === 'every') return 'every';
+  const n = Math.round(Number(above.replace(/[^0-9.]/g, '')));
+  return mode === 'above' && n > 0 ? `above:${n}` : '';
+}
 const all = (f: Fields, k: string) => f.get(k) ?? [];
 
 export const isStep = (s: string): s is Step => (STEPS as readonly string[]).includes(s);
@@ -49,6 +56,7 @@ export function applyForm(
       isTest: one(f, 'isTest') === 'yes',
       ownerName: one(f, 'ownerName'),
       ownerEmail: one(f, 'ownerEmail').toLowerCase(),
+      purchaseApproval: purchaseApprovalOf(one(f, 'approval'), one(f, 'approvalAbove')),
     };
   }
   if (step === 'outlets') {

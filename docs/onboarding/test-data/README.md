@@ -70,6 +70,10 @@ Each access row means: this person has this access group at this place. It cover
 | `40_rooms.csv`                                     | Optional, any customer (ADR 072): a hotel's rooms, each with its floor, type and minibar set (blank: no minibar). Test Company: Hotel 1.0's rooms 101 to 202; 202 has none                                                                                                                                                                                                                                                                                                                                                |
 | `41_minibar_sets.csv`                              | Optional, any customer (ADR 072): each minibar set of an outlet, one row per item, with its par and the price charged to the guest, refilled from one store of the outlet. Test Company: Hotel 1.0's Standard set (beer, cola, tonic at par 2) from the Bar Store                                                                                                                                                                                                                                                         |
 | `42_minibar_checks_TEST_DATA_ONLY.csv`             | Test customers only (ADR 072): minibar checks of the past days, one row per item counted, as the person named; `charged_by` marks it added to the bill. The test customers have none; the Passport demo has a week                                                                                                                                                                                                                                                                                                        |
+| `43_meters.csv`                                    | Optional, any customer with Utilities (ADR 091): meters at a place (electricity, gas, water, diesel), their unit, the job role that reads them and when each day. Test Company: Hotel 1.0 Engineering's four, read by the Technician at 09:00                                                                                                                                                                                                                                                                             |
+| `44_room_contents.csv`                             | Optional, any customer with Rooms (ADR 094): what a room holds and how many, by room type or for one room (its own line wins). Counted, not stocked. Test Company: Hotel 1.0's Deluxe rooms, and room 201 with 4 bath towels                                                                                                                                                                                                                                                                                              |
+| `45_registers.csv`                                 | Optional, any customer with Registers (ADR 090): which registers are kept (`on`) and by which job roles (`roles`, blank: anyone who keeps registers there). Not listed: lost and found and incidents everywhere, the rest at hotels. Test Solo Bar Co. keeps only lost and found and incidents                                                                                                                                                                                                                            |
+| `46_sops.csv`                                      | Optional, any customer with Training (ADR 095): the SOP library, each at a place, for some job roles (blank: everyone there), whether it needs "I've read this", and its text. Test Company: Hotel 1.0 kitchen's handwashing and allergy SOPs, housekeeping's turndown                                                                                                                                                                                                                                                    |
 | `99_access_preview_GENERATED.csv`                  | Every resulting access grant, with place name, what it covers, and where it came from                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 ## The role catalogue (file 06, ADR 060)
@@ -435,3 +439,24 @@ The central kitchen's batches (file 26: 6,400 g on day -2, 3,200 g on day -1) an
 - **`photos/menu/`** beside the files holds dish photos named by the dish's code; Test Company's
   has `BUTTER-CHICKEN.jpg`. Zip the folder with the files: `cd test-company && zip -r
 ../test-company.zip *.csv photos` (ADR 078).
+
+## Building blocks, PR 2 to 4 (ADR 087 to 096)
+
+- **File 00** has an optional `purchase_approval`: `unusual` (blank, the default), `every`, or
+  `above:<amount>` at standard cost (ADR 092). New blocks are columns of their own (`logbook`,
+  `registers`, `utilities`, `audits`, `training`, `excise`, `shelf_life`, `breakage`, `rooms`,
+  `linen`; yes by default).
+- **File 10** has optional `discard_approval` (`gm`: thrown away only once the GM approves;
+  Test Company's single malt, ADR 092), `open_shelf_life_hours`, `storage` (dry, chilled,
+  frozen), `food_type` and `allergens` (the opened pack's label, ADR 093; milk, cream, ketchup,
+  wines and juice have one), and `excise` (yes for the 15 liquor, wine and beer items, ADR 096).
+- **File 11** has an optional `par_by_day` (`Mon-Thu 40; Fri-Sun 50`; days not listed keep
+  `par_level`). Test Company's onions at the Hotel 1.0 Kitchen Store (ADR 092).
+- **File 29** has optional `days` (the weekdays a step runs), `sign_off` (blank or `none`:
+  none; `up`, the role a level up, else the department head; `department_head`; `role:<JOB_ROLE>`), `for_each`
+  (`rooms`, or areas `Lobby; Corridor 1`) and `step_asks` (`food; thrown` on a reading), and
+  the scored step kinds `yesno` and `rating`, which make a checklist an audit; schedules may be
+  `monthly 1,16 09:00` or `nth Mon 1,3 10:00` (ADR 087, 088, 095). Test Company's Hotel 1.0 has
+  one of each: the kitchen deep clean by weekday, the linen check signed off up, engineering's
+  PPM on the 1st and 3rd Monday, the front office float twice a month, the room check per room,
+  public areas per area, the probe reading, a weekly service audit and the taste panel.

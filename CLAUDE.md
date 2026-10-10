@@ -248,6 +248,18 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   list or form that names items shows them; a new kind of item gets its words in the catalogue
   (the dry run lists those with none). Recipes and prep tasks say how many portions they make;
   a task's photos sit above the button that finishes it.
+- Building blocks round 2 (ADR 087 to 096; plan `docs/plans/building-blocks.md`): checklists take
+  a sign-off (file 29 `sign_off`, blank = none, `up`, `department_head`, `role:X`; the signer's
+  To do item approves or sends back), `monthly` / `nth` schedules, step `days`, a round `for_each`
+  room or area (a grid; room status) and `step_asks` on readings. New blocks, each with its
+  domain: Logbook & handover, Registers (file 45), Utilities (meters, file 43), Shelf life &
+  labels (opened packs, file 10 `open_shelf_life_hours`), Breakage (posted as consumption),
+  Rooms (contents, file 44, counted not stocked; breakfast by room), Linen & uniforms, Audits
+  (`yesno` and `rating` steps, a % score), Training & SOPs (file 46; "I've read this" per
+  version) and Excise (file 10 `excise`; the bar register and FLR come from the ledger, never
+  typed). Stock policies: file 11 `par_by_day`, file 10 `discard_approval` (`gm`), file 00
+  `purchase_approval`. Covers per meal go on the outlet's day report; the spend per cover is
+  its sales over them (`reports-reconcile`).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

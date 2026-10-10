@@ -4,6 +4,13 @@ The plan for four pull requests. Paste this whole document to whoever builds one
 say which PR is theirs. PR 1 comes first; PRs 2, 3 and 4 build on it and may then go in any
 order.
 
+**As built.** PR 1 is ADR 085. PRs 2 to 4 went in as one pull request, ADRs 087 to 096. Where it
+differs from the text below: a room or area grid is file 29 `for_each` (`rooms` or areas), a
+reading's extra questions are `step_asks`; a blank `sign_off` means none, so existing checklists
+stay as they are (`up` is what onboarding offers first); the opened pack's label uses file 10
+`food_type` and `allergens` (nuts are an allergen), as file 19 does; covers are given on the
+outlet's day report.
+
 ## Why
 
 Passport Hotel shared 38 of its own and its reference documents (SOPs, checklists, trackers,
