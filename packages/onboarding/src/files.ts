@@ -542,8 +542,17 @@ export const FILES = {
       allergens: allergenList,
       // ADR 096: under excise (liquor, wine, beer), in the bar register and the FLR
       excise: optYesNo,
+      // ADR 102: one pack's size in the base unit (a 400 ml tin of an item stocked in l: 0.4)
+      // and what a pack is called; a pack is opened whole
+      pack_size: optNum.refine((v) => v === undefined || v > 0, 'must be more than 0'),
+      pack_name: optional.refine(
+        (v) => v === undefined || (v.length <= 30 && /^[a-z][a-z ]*$/i.test(v)),
+        'a word such as tin, carton, bottle or packet',
+      ),
     }),
     optional: [
+      'pack_size',
+      'pack_name',
       'excise',
       'item_type',
       'receive_to',

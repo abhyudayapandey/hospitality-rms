@@ -24,6 +24,7 @@ export const ERROR_MESSAGES = {
   CHECK_LOCKED:
     'The counts are locked now that the differences are showing. Add photos, then finish.',
   CHECK_FINISHED: 'This stock check is already finished.',
+  NOT_WHOLE_PACKS: 'Open whole packs only. Say how many you opened.',
   COUNT_TOO_HIGH:
     "That's far more than this store ever holds of it. Check the number and count again.",
   MAKE_BY_TASK:

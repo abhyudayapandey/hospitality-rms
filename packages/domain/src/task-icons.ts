@@ -129,9 +129,37 @@ const RULES: readonly [RegExp, TaskIcon][] = [
   [/photo|picture/i, 'camera'],
 ];
 
+// A recipe's method step starts with what to do (ADR 100): the kitchen verb at its start comes
+// before any other word in it ("Boil the water" is a pot, not a tap; "Temper the mustard
+// seeds" is oil, not a thermometer). Only at the start, so "Clean the grill" stays a spray.
+const KITCHEN_VERBS: readonly [RegExp, TaskIcon][] = [
+  [
+    /^(slice|chop|dice|mince|cut|julienne|grate|peel|shred|trim|fillet|debone|crush|halve|quarter)\b/i,
+    'knife',
+  ],
+  [/^(deep[- ]fry|shallow[- ]fry|fry|saut[eé]|temper|heat (the |some )?oil)\b/i, 'oil'],
+  [/^(roast|bake|grill|toast|sear|char|broil|tandoor)\b/i, 'fire'],
+  [
+    /^(boil|simmer|blanch|cook|stew|reduce|stir|whisk|mix|knead|grind|blend|puree|purée|marinate|season|combine|fold|beat|melt|bring)\b/i,
+    'pot',
+  ],
+  [/^(strain|drain|rinse|soak|sieve)\b/i, 'tap'],
+  [/^(chill|refrigerate|cool (it|them|the|down)|freeze|set aside to cool)\b/i, 'fridge'],
+  [/^(plate|serve|portion)\b/i, 'plate'],
+  [/^(weigh|measure|pack)\b/i, 'box'],
+];
+
+// a checklist step about a cooking thing ("Grill cleaned", "Cut-off switch tested") is not cooking
+const NOT_COOKING =
+  /clean|wipe|sanitis|sanitiz|disinfect|check|test|inspect|log\b|\btemp(erature)?\b|°c/i;
+
 /** The picture for a step: the one it names, else one from its words, else by its kind. */
 export function stepIcon(label: string, kind: string, named?: string | null): TaskIcon {
   if (named && isTaskIcon(named)) return named;
+  const verb = NOT_COOKING.test(label)
+    ? undefined
+    : KITCHEN_VERBS.find(([re]) => re.test(label.trim()));
+  if (verb) return verb[1];
   const hit = RULES.find(([re]) => re.test(label));
   if (hit) return hit[1];
   if (kind === 'number') return 'thermometer';

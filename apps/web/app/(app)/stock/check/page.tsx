@@ -1,16 +1,20 @@
+import { Icon } from '@/components/icon';
 import { InfoTip } from '@/components/info-tip';
+import { ItemThumb } from '@/components/item-thumb';
 import { Empty } from '@/components/messages';
 import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { formatQty, supplyContext, type SearchParams } from '@/lib/inventory';
+import { shelfGroups } from '@/lib/shelves';
 import { StartCheckButtons } from './start-check';
 
 interface Row {
   item_id: string;
   name: string;
   unit: string;
+  category: string | null;
   shelf: string | null;
   on_hand: string;
   verified_at: Date | null;
@@ -19,7 +23,7 @@ interface Row {
 }
 
 // The stock check (INV-10, ADR 043). Everyone with STOCK_CHECK at the store sees each item's
-// Verified / Not verified tag, who verified it and when; the verifier also starts a check.
+// picture, a tick when verified (a clock when not yet), who verified it and when; the verifier also starts a check.
 export default async function StockCheckPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await supplyContext(searchParams, 'check');
   if (!ctx.node) return <NoSupplyAccess />;
@@ -28,7 +32,7 @@ export default async function StockCheckPage({ searchParams }: { searchParams: S
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
     const rows = await sql<Row>`
-      select item_id, name, unit, shelf, on_hand, verified_at, verified_by, difference
+      select item_id, name, unit, category, shelf, on_hand, verified_at, verified_by, difference
         from inv.stock_check_view(${node.id}::uuid)`.execute(tx);
     const open = await sql<{ id: string }>`
       select id from inv.stock_check
@@ -55,35 +59,53 @@ export default async function StockCheckPage({ searchParams }: { searchParams: S
           <h2 className="text-sm font-semibold text-slate-500">
             {verified} of {data.rows.length} verified
           </h2>
-          <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-            {data.rows.map((r) => (
-              <li key={r.item_id} className="flex items-center justify-between gap-3 px-4 py-3">
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{r.name}</span>
-                  <span className="text-xs text-slate-500">
-                    {/* the count is blind: the verifier is not shown what should be there */}
-                    {canCount ? r.unit : `${formatQty(r.on_hand, r.unit)} on record`}
-                    {r.shelf ? ` · ${r.shelf}` : ''}
-                  </span>
-                </span>
-                {r.verified_at ? (
-                  <span
-                    data-testid="tag-verified"
-                    className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800"
-                  >
-                    Verified · {r.verified_by ?? 'someone'} · {formatWhen(r.verified_at)}
-                  </span>
-                ) : (
-                  <span
-                    data-testid="tag-not-verified"
-                    className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600"
-                  >
-                    Not verified
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
+          {/* by shelf where the store has them (ADR 043, 101): the list walks the store */}
+          {shelfGroups(data.rows).map((g) => (
+            <div key={g.shelf ?? '-'} className="space-y-1" data-testid="check-shelf">
+              {g.shelf !== undefined ? (
+                <h3 className="px-1 pt-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                  {g.shelf ?? 'Other'}
+                </h3>
+              ) : null}
+              <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
+                {g.rows.map((r) => (
+                  <li key={r.item_id} className="flex items-center gap-3 px-4 py-3">
+                    <ItemThumb name={r.name} category={r.category} size="size-10" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{r.name}</span>
+                      <span className="block text-xs text-slate-500">
+                        {/* the count is blind: the verifier is not shown what should be there */}
+                        {canCount ? r.unit : `${formatQty(r.on_hand, r.unit)} on record`}
+                      </span>
+                      {r.verified_at ? (
+                        <span data-testid="tag-verified" className="block text-xs text-slate-500">
+                          {r.verified_by ?? 'someone'} · {formatWhen(r.verified_at)}
+                        </span>
+                      ) : null}
+                    </span>
+                    {r.verified_at ? (
+                      <span
+                        role="img"
+                        aria-label="Verified"
+                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700"
+                      >
+                        <Icon name="check" className="size-5" />
+                      </span>
+                    ) : (
+                      <span
+                        role="img"
+                        aria-label="Not verified"
+                        data-testid="tag-not-verified"
+                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500"
+                      >
+                        <Icon name="clock" className="size-5" />
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </section>
       )}
       {canCount && !node.derived && !data.open ? (

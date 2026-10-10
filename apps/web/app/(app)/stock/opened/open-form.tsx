@@ -5,6 +5,8 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { ItemThumb } from '@/components/item-thumb';
 import { formatQty } from '@/lib/qty';
+import { packAmount, packCount } from '@/lib/pack';
+import { Stepper } from '@/components/stepper';
 import { useHydrated } from '@/lib/use-hydrated';
 import { openPack } from '../actions';
 
@@ -14,13 +16,17 @@ export interface PackOption {
   base_uom: string;
   hours: number;
   on_hand: string;
+  pack_size: string | null;
+  pack_name: string | null;
 }
 
 const keeps = (h: number) => (h % 24 === 0 ? `${h / 24} days` : `${h} hours`);
 
 /**
  * Open a pack (ADR 093): which item and how much; it keeps its shelf life from now, and its
- * label opens to print. Nothing is filled in.
+ * label opens to print. An item with a pack size is opened by whole packs (ADR 102): "How
+ * many?" from 1, "1 tin = 400 ml", and the quantity is packs × the pack size. An item with
+ * none takes any amount, nothing filled in.
  */
 export function OpenPackForm({
   node,
@@ -39,6 +45,7 @@ export function OpenPackForm({
     items.some((i) => i.item_id === initial) ? initial! : '',
   );
   const [qty, setQty] = useState('');
+  const [packs, setPacks] = useState('1');
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);
   const item = items.find((i) => i.item_id === itemId);
@@ -46,8 +53,12 @@ export function OpenPackForm({
   const submit = () =>
     start(async () => {
       setError(null);
-      const n = Number(qty);
       if (!item) return setError('Choose what you opened.');
+      const many = Number(packs);
+      if (item.pack_size && (!Number.isInteger(many) || many <= 0)) {
+        return setError('Say how many you opened.');
+      }
+      const n = item.pack_size ? many * Number(item.pack_size) : Number(qty);
       if (!Number.isFinite(n) || n <= 0) return setError('Enter how much you opened.');
       const r = await openPack(node, item.item_id, n, key);
       if (!r.ok) return setError(r.message);
@@ -89,15 +100,32 @@ export function OpenPackForm({
           {formatQty(item.on_hand, item.base_uom)}.
         </p>
       )}
-      <label className="block space-y-1">
-        <span className="text-sm font-medium">How much ({item?.base_uom ?? 'in its unit'})</span>
-        <input
-          inputMode="decimal"
-          value={qty}
-          onChange={(e) => setQty(e.target.value)}
-          className={inputClass}
-        />
-      </label>
+      {item?.pack_size ? (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">How many?</p>
+          <p className="text-sm text-slate-600" data-testid="pack-size">
+            {packCount(1, item.pack_name)} = {packAmount(item.pack_size, item.base_uom)}
+          </p>
+          <Stepper
+            label={`How many ${item.name}`}
+            value={packs}
+            onChange={(v) => setPacks(v.replace(/[^0-9]/g, ''))}
+            min={1}
+            testId="pack-count"
+            unit={packCount(Number(packs) || 2, item.pack_name).replace(/^\d+ /, '')}
+          />
+        </div>
+      ) : (
+        <label className="block space-y-1">
+          <span className="text-sm font-medium">How much ({item?.base_uom ?? 'in its unit'})</span>
+          <input
+            inputMode="decimal"
+            value={qty}
+            onChange={(e) => setQty(e.target.value)}
+            className={inputClass}
+          />
+        </label>
+      )}
       <ErrorBox message={error} />
       <button type="submit" disabled={!hydrated || pending} className={primaryButton}>
         Open and print the label

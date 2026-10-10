@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { packOf } from './pack';
+import { packAmount, packCount, packOf, wholePacks } from './pack';
 
 describe('the pack on a count row (ADR 079)', () => {
   it('tells a bottle from a nip', () => {
@@ -16,5 +16,25 @@ describe('the pack on a count row (ADR 079)', () => {
     expect(packOf('kg', 'g', '1000')).toBeNull();
     expect(packOf('each', 'each', '1')).toBeNull();
     expect(packOf('bottle', null, null)).toBeNull();
+  });
+});
+
+describe('opened packs by whole packs (ADR 102)', () => {
+  it('says a pack in words a cook uses', () => {
+    expect(packAmount('0.4', 'l')).toBe('400 ml');
+    expect(packAmount(0.8, 'l')).toBe('800 ml');
+    expect(packAmount(1, 'l')).toBe('1 l');
+    expect(packAmount('0.5', 'kg')).toBe('500 g');
+    expect(packAmount(1, 'bottle')).toBe('1 bottle');
+    expect(packCount(1, 'tin')).toBe('1 tin');
+    expect(packCount(2, 'tin')).toBe('2 tins');
+    expect(packCount(3, 'box')).toBe('3 boxes');
+    expect(packCount(2, null)).toBe('2 packs');
+  });
+  it('counts whole packs only', () => {
+    expect(wholePacks('0.8', '0.4')).toBe(2);
+    expect(wholePacks('1.2', '0.4')).toBe(3);
+    expect(wholePacks('0.5', '0.4')).toBeNull();
+    expect(wholePacks(0, '0.4')).toBeNull();
   });
 });

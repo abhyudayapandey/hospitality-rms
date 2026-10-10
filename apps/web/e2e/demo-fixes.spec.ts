@@ -35,9 +35,9 @@ test('a commis opens a pack of milk from their own Opened packs screen', async (
     await page.getByTestId('me-opened').click();
     await page.waitForURL(/\/stock\/opened/);
     await main(page).getByLabel('What you opened').selectOption({ label: 'Test Milk (l)' });
-    await main(page)
-      .getByLabel(/^How much/)
-      .fill('1');
+    // milk comes in 1 l cartons: opened by the carton (ADR 102)
+    await expect(main(page).getByTestId('pack-size')).toHaveText('1 carton = 1 l');
+    await expect(main(page).getByLabel('How many Test Milk')).toHaveValue('1');
     await main(page).getByRole('button', { name: 'Open and print the label' }).click();
     await page.waitForURL(/\/stock\/opened\/label\//);
     await expect(page.getByTestId('label-opened-by')).toHaveText('Test Commis 1.0');

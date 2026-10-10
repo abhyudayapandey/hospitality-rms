@@ -122,8 +122,14 @@ test('Stock: the list first; the Main Store sends, asking is a small link', asyn
   await expect(
     page.getByTestId('stock-more').getByRole('link', { name: 'Ask for supplies' }),
   ).toBeVisible();
+  // the jobs come after the list (ADR 051); while the list runs past the screen they are
+  // pinned above the nav (ADR 101), and at the list's end they sit below its last row
+  await expect(jobs).toBeInViewport();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   const lastRow = page.getByTestId('stock-row').last();
-  expect((await jobs.boundingBox())!.y).toBeGreaterThan((await lastRow.boundingBox())!.y);
+  await expect(async () =>
+    expect((await jobs.boundingBox())!.y).toBeGreaterThan((await lastRow.boundingBox())!.y),
+  ).toPass();
 });
 
 test('Running low says what to do: ask for these, store by store', async ({ page }) => {

@@ -453,6 +453,10 @@ The central kitchen's batches (file 26: 6,400 g on day -2, 3,200 g on day -1) an
   Test Company's single malt, ADR 092), `open_shelf_life_hours`, `storage` (dry, chilled,
   frozen), `food_type` and `allergens` (the opened pack's label, ADR 093; milk, cream, ketchup,
   wines and juice have one), and `excise` (yes for the 15 liquor, wine and beer items, ADR 096).
+  Optional `pack_size` (one pack, in the item's base unit) and `pack_name` (tin, carton,
+  bottle, packet): a pack is opened whole (ADR 102). Every item with a shelf life once opened
+  has one: milk a 1 l carton, cream a 200 ml carton, ketchup a 1 kg bottle, wines a bottle,
+  juices a 1 l carton.
 - **File 11** has an optional `par_by_day` (`Mon-Thu 40; Fri-Sun 50`; days not listed keep
   `par_level`). Test Company's onions at the Hotel 1.0 Kitchen Store (ADR 092).
 - **File 29** has optional `days` (the weekdays a step runs), `sign_off` (blank or `none`:

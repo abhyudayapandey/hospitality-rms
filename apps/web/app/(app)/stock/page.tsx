@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ListSearch } from '@/components/list-search';
 import { Empty } from '@/components/messages';
 import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
+import { PinnedActions } from '@/components/pinned-actions';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
@@ -85,8 +86,22 @@ export default async function StockPage({ searchParams }: { searchParams: Search
                where core.can('PURCHASE_ORDERS', 'modify', null, x.id)`.execute(tx)
           ).rows
         : [];
+    // who sees a figure below zero (ADR 101): whoever may correct it (adjust stock or verify a
+    // stock check) at that store, by core.can; everyone else reads "Count needed"
+    const negStores = [
+      ...new Set(rows.filter((r) => Number(r.on_hand) < 0).map((r) => storeOfRow(r, node.id))),
+    ];
+    const figures = negStores.length
+      ? (
+          await sql<{ id: string }>`
+            select x.id::text from unnest(${negStores}::uuid[]) x(id)
+             where core.can('STOCK_ADJUSTMENTS', 'modify', null, x.id)
+                or core.can('STOCK_CHECK', 'modify', null, x.id)`.execute(tx)
+        ).rows.map((r) => r.id)
+      : [];
     return {
       rows,
+      figures: new Set(figures),
       dated,
       transit,
       last,
@@ -224,27 +239,40 @@ export default async function StockPage({ searchParams }: { searchParams: Search
                             {isLow(r) && lastsText(r) ? ` · ${lastsText(r)}` : ''}
                           </span>
                         </span>
-                        <span className="text-right">
-                          <span className="block font-semibold tabular-nums" data-testid="on-hand">
-                            {formatQty(r.on_hand, r.base_uom)}
+                        {Number(r.on_hand) < 0 && !data.figures.has(storeOf(r)) ? (
+                          <span
+                            data-testid="count-needed"
+                            className="flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 ring-1 ring-amber-200"
+                          >
+                            <Icon name="clipboard" className="size-4" />
+                            Count needed
                           </span>
-                          {Number(r.on_hand) < 0 && (
+                        ) : (
+                          <span className="text-right">
                             <span
-                              data-testid="below-zero"
-                              className="rounded-full bg-rose-100 px-2 text-xs font-semibold text-rose-900"
+                              className="block font-semibold tabular-nums"
+                              data-testid="on-hand"
                             >
-                              below zero: count it
+                              {formatQty(r.on_hand, r.base_uom)}
                             </span>
-                          )}
-                          {isLow(r) && Number(r.on_hand) >= 0 && (
-                            <span
-                              data-testid="running-low"
-                              className="rounded-full bg-rose-50 px-2 text-xs font-semibold text-rose-800"
-                            >
-                              running low
-                            </span>
-                          )}
-                        </span>
+                            {Number(r.on_hand) < 0 && (
+                              <span
+                                data-testid="below-zero"
+                                className="rounded-full bg-rose-100 px-2 text-xs font-semibold text-rose-900"
+                              >
+                                below zero: count it
+                              </span>
+                            )}
+                            {isLow(r) && Number(r.on_hand) >= 0 && (
+                              <span
+                                data-testid="running-low"
+                                className="rounded-full bg-rose-50 px-2 text-xs font-semibold text-rose-800"
+                              >
+                                running low
+                              </span>
+                            )}
+                          </span>
+                        )}
                       </Link>
                     </li>
                   ))}
@@ -253,23 +281,45 @@ export default async function StockPage({ searchParams }: { searchParams: Search
           ))}
         </div>
       )}
-      {/* Running low: ask for (or order) what is low, store by store (ADR 052) */}
-      {tab === 'low' && data.lowStores.length > 0 && (
-        <div className="space-y-2" data-testid="order-low">
-          {data.lowStores.map((st) => (
-            <Link
-              key={st.id}
-              href={`/stock/orders/new?node=${st.id}`}
-              className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 px-3 text-center font-medium text-white"
+      {/* the list first, then the store's jobs (ADR 051, 052); kept above the nav while the
+          list runs past the screen (ADR 101). Running low: ask for (or order) what is low,
+          store by store */}
+      {(actions.main.length > 0 || (tab === 'low' && data.lowStores.length > 0)) && (
+        <PinnedActions label="Main actions">
+          {tab === 'low' && data.lowStores.length > 0 ? (
+            <div className="space-y-2" data-testid="order-low">
+              {data.lowStores.map((st) => (
+                <Link
+                  key={st.id}
+                  href={`/stock/orders/new?node=${st.id}`}
+                  className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 px-3 text-center font-medium text-white"
+                >
+                  {st.main ? 'Order these' : 'Ask for these'}
+                  {all || data.lowStores.length > 1 ? ` · ${storeNames.get(st.id) ?? ''}` : ''}
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <nav
+              aria-label="Stock jobs"
+              className="grid gap-2"
+              style={{ gridTemplateColumns: `repeat(${actions.main.length}, minmax(0, 1fr))` }}
             >
-              {st.main ? 'Order these' : 'Ask for these'}
-              {all || data.lowStores.length > 1 ? ` · ${storeNames.get(st.id) ?? ''}` : ''}
-            </Link>
-          ))}
-        </div>
+              {actions.main.map((a) => (
+                <Link
+                  key={a.key}
+                  href={a.href}
+                  className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl bg-white px-1 py-1 text-center text-xs leading-tight font-medium shadow-sm ring-1 ring-slate-200"
+                >
+                  <Icon name={a.icon} className="size-6 text-brand-700" />
+                  {a.label}
+                </Link>
+              ))}
+            </nav>
+          )}
+        </PinnedActions>
       )}
-      {/* the list first, then the store's jobs (ADR 051, 052) */}
-      {actions.main.length > 0 && (
+      {tab === 'low' && data.lowStores.length > 0 && actions.main.length > 0 && (
         <nav aria-label="Stock jobs" className="grid grid-cols-2 gap-2">
           {actions.main.map((a) => (
             <Link

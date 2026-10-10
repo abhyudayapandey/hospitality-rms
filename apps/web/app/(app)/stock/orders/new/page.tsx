@@ -13,7 +13,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Sea
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
     const lines = await sql<OrderLine>`
-      select s.item_id, i.name, i.base_uom, s.on_hand, s.par_level, s.suggested_qty
+      select s.item_id, i.name, i.base_uom, s.on_hand, s.par_level, s.suggested_qty, i.category
         from inv.suggested_order(${ctx.node!.id}::uuid) s
         join inv.item i on i.id = s.item_id
        order by (s.suggested_qty > 0) desc, i.name`.execute(tx);

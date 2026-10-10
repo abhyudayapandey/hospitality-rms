@@ -23,6 +23,23 @@ describe('task and step icons', () => {
     expect(stepIcon('Something new', 'tick')).toBe('check');
   });
 
+  it('a recipe step by the kitchen verb it starts with (ADR 100)', () => {
+    expect(stepIcon('Slice the onions thin', 'tick')).toBe('knife');
+    expect(stepIcon('Chop the coriander', 'tick')).toBe('knife');
+    expect(stepIcon('Roast the cumin seeds', 'tick')).toBe('fire');
+    expect(stepIcon('Bake for 20 minutes', 'tick')).toBe('fire');
+    expect(stepIcon('Boil the water with salt', 'tick')).toBe('pot');
+    expect(stepIcon('Fry the onions until golden', 'tick')).toBe('oil');
+    expect(stepIcon('Temper mustard seeds and curry leaves', 'tick')).toBe('oil');
+    expect(stepIcon('Grind to a smooth paste', 'tick')).toBe('pot');
+    expect(stepIcon('Marinate the chicken for 2 hours', 'tick')).toBe('pot');
+    expect(stepIcon('Strain through a fine sieve', 'tick')).toBe('tap');
+    expect(stepIcon('Whisk the cream', 'tick')).toBe('pot');
+    // a checklist step about a cooking thing keeps its own picture
+    expect(stepIcon('Grill cleaned and degreased', 'tick')).toBe('spray');
+    expect(stepIcon('Cool room temperature', 'number')).toBe('thermometer');
+  });
+
   it('a named icon wins; an unknown name does not', () => {
     expect(stepIcon('Mop the floor', 'tick', 'bucket')).toBe('mop');
     expect(stepIcon('Mop the floor', 'tick', 'broom')).toBe('broom');

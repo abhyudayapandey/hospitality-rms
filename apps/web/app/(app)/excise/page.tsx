@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { BackLink } from '@/components/back-link';
+import { ItemThumb } from '@/components/item-thumb';
 import { Empty } from '@/components/messages';
 import { ViewTabs } from '@/components/view-tabs';
 import { requireUser } from '@/lib/auth/server';
@@ -146,7 +147,10 @@ function Register({ lines }: { lines: ExciseLine[] }) {
         const out = Number(l.sold) + Number(l.sent) + Number(l.used) + Number(l.wasted);
         return (
           <li key={l.item_id} className="space-y-1 px-4 py-3 text-sm" data-testid="excise-line">
-            <span className="block font-medium">{l.item}</span>
+            <span className="flex items-center gap-3">
+              <ItemThumb name={l.item} fallback="spirits" size="size-10" />
+              <span className="min-w-0 font-medium">{l.item}</span>
+            </span>
             <span className="grid grid-cols-4 gap-2 text-xs tabular-nums text-slate-600">
               <span>
                 Opening

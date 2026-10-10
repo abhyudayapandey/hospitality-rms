@@ -487,6 +487,15 @@ const OPENED: Record<string, [number, string, string, string]> = {
   'RED-WINE-750ML': [72, 'dry', 'veg', 'sulphites'],
   'WHITE-WINE-750ML': [72, 'chilled', 'veg', 'sulphites'],
 };
+// one pack, in the stock unit, and what it is called: a pack is opened whole (ADR 102)
+const PACKS: Record<string, [number, string]> = {
+  MILK: [1, 'carton'],
+  BUTTER: [0.5, 'pack'],
+  CHEESE: [1, 'block'],
+  'COCONUT-MILK': [0.4, 'tin'],
+  'RED-WINE-750ML': [1, 'bottle'],
+  'WHITE-WINE-750ML': [1, 'bottle'],
+};
 csv(
   '10_items.csv',
   [
@@ -505,6 +514,8 @@ csv(
     'food_type',
     'allergens',
     'excise',
+    'pack_size',
+    'pack_name',
   ],
   ITEMS.map((i) => [
     i.code,
@@ -523,6 +534,7 @@ csv(
     ...(OPENED[i.code] ?? ['', '', '', '']),
     // liquor, wine and beer are in the bar register and the FLR (ADR 096)
     ['Spirits', 'Beer', 'Wine'].includes(i.cat) || i.code === 'FENI-NIP-180ML' ? 'yes' : '',
+    ...(PACKS[i.code] ?? ['', '']),
   ]),
 );
 csv(

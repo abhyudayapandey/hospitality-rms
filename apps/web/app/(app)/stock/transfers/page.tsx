@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { ItemThumbs } from '@/components/item-thumb';
+import { PinnedActions } from '@/components/pinned-actions';
 import { withBack } from '@/lib/back';
 import { Empty } from '@/components/messages';
 import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
@@ -134,11 +136,14 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
                     </span>
                   </span>
                   {r.items && (
-                    <span
-                      className="mt-1 block truncate text-sm text-slate-700"
-                      data-testid="transfer-items"
-                    >
-                      {r.items}
+                    <span className="mt-1 flex items-center gap-2">
+                      <ItemThumbs names={r.items} />
+                      <span
+                        className="min-w-0 truncate text-sm text-slate-700"
+                        data-testid="transfer-items"
+                      >
+                        {r.items}
+                      </span>
                     </span>
                   )}
                   <span className="text-sm text-slate-600">{formatWhen(r.created_at)}</span>
@@ -160,22 +165,21 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
       )}
       {/* the list first, then what to do (ADR 051); any stock location they move stock at
           (audit #5). The Main Store gives stock out: Send stock leads, asking is the exception */}
+      {/* the main one kept in reach while the list runs past the screen (ADR 101) */}
+      {canMove && (
+        <PinnedActions label="Main actions">
+          <Link
+            href={mainStore ? `/stock/transfers/send${q}` : `/stock/transfers/new${q}`}
+            className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
+          >
+            {mainStore ? 'Send stock' : 'Request stock'}
+          </Link>
+        </PinnedActions>
+      )}
       {canMove && mainStore && (
         <Link
-          href={`/stock/transfers/send${q}`}
-          className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
-        >
-          Send stock
-        </Link>
-      )}
-      {canMove && (
-        <Link
           href={`/stock/transfers/new${q}`}
-          className={
-            mainStore
-              ? 'flex min-h-11 items-center justify-center text-sm font-medium text-brand-700 underline'
-              : 'flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white'
-          }
+          className="flex min-h-11 items-center justify-center text-sm font-medium text-brand-700 underline"
         >
           Request stock
         </Link>

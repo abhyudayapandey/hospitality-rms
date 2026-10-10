@@ -3,6 +3,7 @@ import { failure, taskIcon } from '@outlet-ops/domain';
 import { BackLink } from '@/components/back-link';
 import { Icon } from '@/components/icon';
 import { ItemThumb } from '@/components/item-thumb';
+import { MethodSteps } from '@/components/method-steps';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen, portionsText } from '@/lib/format';
@@ -361,22 +362,13 @@ function MakeIt({ recipe, unit, open }: { recipe: PrepRecipe; unit: string; open
       {open && recipe.method.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-500">Method</h2>
-          <ol
-            className="space-y-2 rounded-xl bg-white p-4 text-sm ring-1 ring-slate-200"
-            data-testid="prep-method"
-          >
-            {recipe.method.map((m) => (
-              <li key={m.step} className="flex gap-3">
-                <span className="font-semibold tabular-nums">{m.step}.</span>
-                <span>
-                  {m.instruction}
-                  {m.minutes ? (
-                    <span className="block text-xs text-slate-500">about {m.minutes} min</span>
-                  ) : null}
-                </span>
-              </li>
-            ))}
-          </ol>
+          <div data-testid="prep-method">
+            <MethodSteps
+              steps={recipe.method}
+              ingredients={recipe.ingredients}
+              testId="prep-method-step"
+            />
+          </div>
         </section>
       )}
       {recipe.batches.length > 0 && (

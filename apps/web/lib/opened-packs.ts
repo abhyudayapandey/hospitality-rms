@@ -31,6 +31,9 @@ export interface PackLabel {
   store: string;
   tz: string;
   status: 'open' | 'used' | 'thrown';
+  /** one pack in the stock unit and its name (ADR 102); null when opened by any amount */
+  pack_size: string | null;
+  pack_name: string | null;
 }
 
 export interface PackItem {
@@ -39,6 +42,8 @@ export interface PackItem {
   base_uom: string;
   hours: number;
   on_hand: string;
+  pack_size: string | null;
+  pack_name: string | null;
 }
 
 export async function openPacks(tx: Tx, store: string): Promise<OpenPack[]> {
@@ -52,7 +57,7 @@ export async function openPacks(tx: Tx, store: string): Promise<OpenPack[]> {
 export async function packLabel(tx: Tx, pack: string): Promise<PackLabel | null> {
   const r = await sql<PackLabel>`
     select id::text, name, qty::text, unit, food_type, allergens, storage, opened_at::text,
-           use_by::text, opened_by, store, tz, status
+           use_by::text, opened_by, store, tz, status, pack_size::text, pack_name
       from inv.pack_label(${pack}::uuid)`.execute(tx);
   return r.rows[0] ?? null;
 }
@@ -63,7 +68,7 @@ export async function packLabel(tx: Tx, pack: string): Promise<PackLabel | null>
  */
 export async function packItems(tx: Tx, store: string): Promise<PackItem[]> {
   const r = await sql<PackItem>`
-    select item_id::text, name, base_uom, hours, on_hand::text
+    select item_id::text, name, base_uom, hours, on_hand::text, pack_size::text, pack_name
       from inv.pack_items(${store}::uuid)`.execute(tx);
   return r.rows;
 }
