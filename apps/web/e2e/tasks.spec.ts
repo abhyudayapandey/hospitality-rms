@@ -160,8 +160,11 @@ test('an expired batch: reported, assigned by the chef, thrown away and remade, 
 test('staff see only their own tasks; task screens refuse them', async ({ page }) => {
   await signInAs(page, 'Test Server 3.0');
   await page.goto('/tasks');
-  // a task for their job role at Bar 3.0 (file 30)
-  await expect(page.getByTestId('tasks-upcoming')).toContainText('Wipe down the menu cards');
+  // a task for their job role at Bar 3.0 (file 30), due tomorrow from the load's UTC date:
+  // after 18:30 UTC that is already today in India, so it may sit under Today
+  await expect(
+    page.getByTestId(/^tasks-(today|upcoming)$/).filter({ hasText: 'Wipe down the menu cards' }),
+  ).toHaveCount(1);
   await expect(
     page.getByRole('navigation', { name: 'Tasks' }).getByRole('link', { name: 'Team' }),
   ).toHaveCount(0);
