@@ -2746,7 +2746,10 @@ is received as before.
      retired and its stock counted out (a test customer). The three Purchase & Stores people stay
      (an import never removes people): deactivate them in Admin → People if they should go. A
      stock request or order still open at the Main Store stops the import until it is finished
-     or withdrawn. **Apply**, then a second dry run shows no changes.
+     or withdrawn. A Passport loaded before this has two: its demo orders from Coastal Wines &
+     Spirits (part received) and Mapusa Wholesale Grocers (ordered). Close both first, as the
+     store keeper (`passport.presenter` → Show as Mahesh Talaulikar → Stock → Orders → the order
+     → **Close order**). **Apply**, then a second dry run shows no changes.
    - **The test customers** (test environment only): the step 7 zips. Test Company: no changes.
 5. Check, at 380 px:
    - **`passport.executive-housekeeper`**: Stock → Transfers → **Ask for stock**: 24 lager goes
