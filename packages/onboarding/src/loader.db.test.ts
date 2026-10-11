@@ -191,3 +191,30 @@ describe('rows for a store new to files 26 and 32, after the past week was loade
     });
   });
 });
+
+describe('rows added to file 26 for a store whose past week was loaded', () => {
+  // Passport, loaded before its file 26 gained batches: made now at their past day they
+  // would take their ingredients from today's shelves (INSUFFICIENT_STOCK)
+  it('are left out and said so; nothing else changes', async () => {
+    await inRolledBackTx(async (c) => {
+      const files = readCustomerDir(join(DATA, 'test-company'));
+      const name = Object.keys(files).find((f) => f.startsWith('26_'))!;
+      const [header, first] = files[name]!.split('\n');
+      const cells = first!.split(',');
+      const col = (h: string) => header!.split(',').indexOf(h);
+      cells[col('time')] = '05:55';
+      cells[col('quantity')] = '100000';
+      files[name] = `${files[name]!.trimEnd()}\n${cells.join(',')}\n`;
+      const r = await loadCustomer(c, files, { nested: true });
+      expect(r.issues).toEqual([]);
+      expect(r.counts['production batches']).toMatchObject({ created: 0 });
+      expect(r.warnings.map((w) => w.message)).toContain(
+        "1 batch is left out: a store's past week loads once, and these stores' batches were loaded before",
+      );
+      const made = await c.query(
+        `select 1 from inv.production where idempotency_key like '% 05:55 %'`,
+      );
+      expect(made.rowCount).toBe(0);
+    });
+  });
+});
