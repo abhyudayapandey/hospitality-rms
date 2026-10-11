@@ -7,6 +7,7 @@ import { addDays, localToInstant } from '@/lib/dates';
 import { saveEvent, type EventRequirementInput } from '../roster/actions';
 import type { EventFormOptions } from './options';
 import { ItemThumb } from '@/components/item-thumb';
+import { Icon } from '@/components/icon';
 
 export interface EventDraft {
   id: string;
@@ -182,7 +183,8 @@ export function EventForm({
         {e.roles.map((r, i) => (
           <div
             key={i}
-            className="grid grid-cols-4 gap-2 rounded-xl bg-white p-2 ring-1 ring-slate-200"
+            className="grid grid-cols-5 gap-2 rounded-xl bg-white p-2 ring-1 ring-slate-200"
+            data-testid="event-role-line"
           >
             <select
               aria-label="Role"
@@ -192,7 +194,7 @@ export function EventForm({
                   roles: e.roles.map((y, j) => (j === i ? { ...y, role_code: x.target.value } : y)),
                 })
               }
-              className={`${inputClass} col-span-3`}
+              className={`${inputClass} col-span-4`}
             >
               {options.roles.map((o) => (
                 <option key={o.code} value={o.code}>
@@ -233,6 +235,10 @@ export function EventForm({
               }
               className={`${inputClass} col-span-2`}
             />
+            <RemoveLine
+              label={`Remove ${options.roles.find((o) => o.code === r.role_code)?.name ?? 'staff'}`}
+              onRemove={() => set({ roles: e.roles.filter((_, j) => j !== i) })}
+            />
           </div>
         ))}
         <button
@@ -266,7 +272,7 @@ export function EventForm({
         ) : (
           <>
             {e.items.map((it, i) => (
-              <div key={i} className="flex items-center gap-2">
+              <div key={i} className="flex items-center gap-2" data-testid="event-item-line">
                 <ItemThumb
                   name={options.items.find((o) => o.id === it.item_id)?.name}
                   size="size-10"
@@ -303,6 +309,10 @@ export function EventForm({
                   }
                   className={`${inputClass} max-w-24 text-right`}
                 />
+                <RemoveLine
+                  label={`Remove ${options.items.find((o) => o.id === it.item_id)?.name ?? 'item'}`}
+                  onRemove={() => set({ items: e.items.filter((_, j) => j !== i) })}
+                />
               </div>
             ))}
             <button
@@ -323,5 +333,19 @@ export function EventForm({
       </button>
       <ErrorBox message={error} />
     </form>
+  );
+}
+
+/** Takes a staff or item line off the event (ADR 115); saving archives its requirement. */
+function RemoveLine({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onRemove}
+      aria-label={label}
+      className="flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-500 ring-1 ring-slate-200 active:bg-slate-100"
+    >
+      <Icon name="trash" className="size-5" />
+    </button>
   );
 }

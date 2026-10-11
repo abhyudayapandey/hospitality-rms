@@ -50,12 +50,13 @@ export const PURCHASE_ORDER: ProcessDef = {
   slaHours: 24,
 };
 
-// Two-sided: dispatch goes to whoever runs the from location, receipt to whoever runs the
-// to location: its store keeper, else hub manager, else outlet manager, else the account
-// owner, looked up within the location's own outlet or hub (core.site_group_node, ADR 009).
-// Each step is approved by the module RPC that posts its ledger leg (inv.dispatch_transfer,
-// inv.receive_transfer); after dispatch the goods are in transit and the request can no
-// longer be rejected or cancelled, only received (shortfall posts as transit_loss).
+// Dispatch goes to whoever runs the from location: its store keeper, else hub manager, else
+// outlet manager, else the account owner, looked up within the location's own outlet or hub
+// (core.site_group_node, ADR 009), approved by the module RPC that posts its ledger leg
+// (inv.dispatch_transfer); after dispatch the goods are in transit and the request can no
+// longer be rejected or cancelled. Every request to the Main Store waits for the GM first
+// (ADR 115). Receiving is a task for whoever asked (inv.after_dispatch): the receipt step only
+// runs for requests raised before ADR 115, whose payload says so.
 const RUNS_LOCATION = ['HUB_MANAGER', 'OUTLET_MANAGER'];
 export const TRANSFER: ProcessDef = {
   type: 'TRANSFER',
@@ -75,6 +76,13 @@ export const TRANSFER: ProcessDef = {
       when: { payload_true: 'unusual' },
     },
     {
+      step: 'gm_approval',
+      group: 'OUTLET_MANAGER',
+      scope: 'nearest_ancestor', // the outlet of the store that asks
+      fallback: ['AREA_MANAGER'],
+      when: { payload_true: 'main_store' },
+    },
+    {
       step: 'dispatch',
       group: 'STORE_KEEPER',
       scope: 'from_node',
@@ -88,6 +96,7 @@ export const TRANSFER: ProcessDef = {
       scope: 'to_node',
       fallback: RUNS_LOCATION,
       approveVia: 'module',
+      when: { payload_true: 'receipt_step' },
     },
   ],
   onApproved: 'inv.transfer.post',
