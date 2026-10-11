@@ -1,19 +1,18 @@
 import type { IconName } from '@/components/icon';
 
-// Room status (ADR 088): the codes hotels use, with their words. The database keeps the
+// Room status (ADR 088, 117): the codes hotels use, with their words; no house use (ADR 117). The database keeps the
 // same list (ops.room_status_name). People never see a code (ADR 104): each status is a word,
 // a colour and a picture on the room's tile.
 
-export type RoomTone = 'clean' | 'dirty' | 'guest' | 'arriving' | 'leaving' | 'closed' | 'house';
+export type RoomTone = 'clean' | 'dirty' | 'guest' | 'arriving' | 'leaving' | 'closed';
 
 export const ROOM_STATUSES = [
   { code: 'VC', name: 'Vacant clean', word: 'Clean', icon: 'check', tone: 'clean' },
   { code: 'VD', name: 'Vacant dirty', word: 'Dirty', icon: 'broom', tone: 'dirty' },
   { code: 'OCC', name: 'Occupied', word: 'Guest in', icon: 'user', tone: 'guest' },
   { code: 'ARR', name: 'Arriving', word: 'Arriving', icon: 'bell', tone: 'arriving' },
-  { code: 'DEP', name: 'Departing', word: 'Leaving', icon: 'out', tone: 'leaving' },
+  { code: 'DEP', name: 'Leaving', word: 'Leaving', icon: 'out', tone: 'leaving' },
   { code: 'OOO', name: 'Out of order', word: 'Out of order', icon: 'wrench', tone: 'closed' },
-  { code: 'HM', name: 'House use', word: 'House use', icon: 'lock', tone: 'house' },
 ] as const satisfies readonly {
   code: string;
   name: string;
@@ -42,8 +41,29 @@ export const ROOM_TONE: Record<RoomTone, string> = {
   arriving: 'bg-violet-50 text-violet-800 ring-violet-300',
   leaving: 'bg-brand-50 text-brand-800 ring-brand-200',
   closed: 'bg-rose-50 text-rose-800 ring-rose-300',
-  house: 'bg-slate-100 text-slate-700 ring-slate-300',
 };
+
+/** A status's details set on a room (ADR 117). */
+export interface RoomDetails {
+  at_time?: string | null;
+  reason?: string | null;
+  until?: string | null;
+  maintenance_id?: string | null;
+  maintenance_title?: string | null;
+}
+
+/** A status that carries a time (ADR 117): arriving and leaving rooms. */
+export const TIMED: readonly string[] = ['ARR', 'DEP'];
+
+/** The line under a room's number on its tile: "14:00", "till 20 Oct" (ADR 117). */
+export function roomDetail(r: { status: string; at_time?: string | null; until?: string | null }) {
+  if (TIMED.includes(r.status) && r.at_time) return r.at_time;
+  if (r.status === 'OOO' && r.until) {
+    const d = new Date(`${r.until}T00:00:00Z`);
+    return `till ${d.getUTCDate()} ${d.toLocaleString('en', { month: 'short', timeZone: 'UTC' })}`;
+  }
+  return null;
+}
 
 /** Rooms by floor, in the order given; one group with no name when no room has a floor. */
 export function byFloor<T extends { floor: string | null }>(
@@ -63,4 +83,14 @@ export function byFloor<T extends { floor: string | null }>(
 export function floorName(floor: string): string {
   if (!floor) return 'Rooms';
   return /^\d+$/.test(floor) ? `Floor ${floor}` : floor;
+}
+
+// Meals (ADR 121)
+export type Mode = 'buffet' | 'in_room';
+export type Meal = 'breakfast' | 'lunch' | 'dinner';
+
+/** What each way of serving is called: breakfast is a buffet, lunch and dinner the restaurant. */
+export function modeLabel(meal: Meal, mode: Mode): string {
+  if (mode === 'in_room') return 'In-room';
+  return meal === 'breakfast' ? 'Buffet' : 'Restaurant';
 }

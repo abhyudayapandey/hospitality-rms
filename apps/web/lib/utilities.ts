@@ -1,5 +1,6 @@
 import 'server-only';
 import { sql, type Tx } from './db';
+import type { DateRange } from './date-range';
 
 // Utilities (ADR 091): read through ops.* SECURITY DEFINER functions, which check UTILITIES at
 // the meter's place (rule 2).
@@ -53,12 +54,19 @@ export async function utilityMeters(tx: Tx, place: string): Promise<UtilityMeter
   ).rows;
 }
 
-export async function utilityDays(tx: Tx, place: string, days: number): Promise<UtilityDay[]> {
+export async function utilityDays(
+  tx: Tx,
+  place: string,
+  days: number,
+  /** these days instead of the last `days` (ADR 120) */
+  range: DateRange | null = null,
+): Promise<UtilityDay[]> {
+  const from = range ? sql`${range.from}::date` : sql`rpt.today(${place}::uuid) - ${days - 1}::int`;
+  const to = range ? sql`${range.to}::date` : sql`rpt.today(${place}::uuid)`;
   return (
     await sql<UtilityDay>`
       select meter_id, meter, kind, unit, day::text, reading::text, used::text
-        from ops.utility_days(${place}::uuid, rpt.today(${place}::uuid) - ${days - 1}::int,
-                              rpt.today(${place}::uuid))`.execute(tx)
+        from ops.utility_days(${place}::uuid, ${from}, ${to})`.execute(tx)
   ).rows;
 }
 

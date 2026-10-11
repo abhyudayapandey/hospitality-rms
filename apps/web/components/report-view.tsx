@@ -204,12 +204,15 @@ export function PeriodPicker({
   period,
   from,
   to,
+  today = false,
 }: {
   action: string;
   node: string;
   period: Period;
   from: string;
   to: string;
+  /** offer "Today" first (ADR 122) */
+  today?: boolean;
 }) {
   const chip = (on: boolean) =>
     `flex min-h-11 items-center rounded-full px-4 text-sm whitespace-nowrap ${
@@ -221,7 +224,7 @@ export function PeriodPicker({
         aria-label="Period"
         className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pr-10 [mask-image:linear-gradient(to_right,black_90%,transparent)]"
       >
-        {PERIODS.filter((p) => p.code !== 'custom').map((p) => (
+        {PERIODS.filter((p) => p.code !== 'custom' && (today || p.code !== 'today')).map((p) => (
           <Link
             key={p.code}
             href={`${action}?node=${node}&period=${p.code}`}

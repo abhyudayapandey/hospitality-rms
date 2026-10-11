@@ -4,8 +4,8 @@ import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from
 
 // Rooms (contents, breakfast) and Linen & uniforms (ADR 094) on Test Hotel 1.0: a Deluxe room
 // holds two bath towels (file 44) and room 201 four; a count is kept per room and item. The
-// day's breakfast is entered by front office and housekeeping and read by the kitchen and the
-// restaurant too. The laundry exchange keeps what is still at the laundry; uniforms are issued
+// day's meals are set by room by the restaurant (ADR 121) and read by the kitchen, front office
+// and housekeeping. The laundry exchange keeps what is still at the laundry; uniforms are issued
 // and returned.
 
 let ids: SeedIds;
@@ -132,75 +132,229 @@ describe('room contents', () => {
   });
 });
 
-describe('breakfast by mode', () => {
-  it('front office gives the totals and the rooms; housekeeping changes a room', async () => {
+const mealEnds = (c: PoolClient, meal: string, at: string) =>
+  c.query(
+    `update core.tenant set settings = settings || jsonb_build_object($2::text, $3::text)
+            where id = $1`,
+    [ids.tenant(), `${meal}_ends`, at],
+  );
+
+const mealRooms = async (c: PoolClient, lines: [string, number, string?][]) =>
+  JSON.stringify(
+    await Promise.all(
+      lines.map(async ([n, guests, note]) => ({ room_id: await room(c, n), guests, note })),
+    ),
+  );
+
+describe('meals by room (ADR 121)', () => {
+  it("the restaurant sets each meal by room; the guests are the rooms'; a 0 takes one off", async () => {
     await inRolledBackTx(async (c) => {
       const day = await nextBreakfast(c);
       await run(
         c,
-        'test.front-desk-executive.1.0',
-        `select ops.set_breakfast_total($1, $2, 'in_room', 3)`,
-        [ids.node(OUTLET), day],
+        'test.steward.1.0',
+        `select ops.set_meal_rooms($1, $2, 'breakfast', 'in_room', $3::jsonb)`,
+        [
+          ids.node(OUTLET),
+          day,
+          await mealRooms(c, [
+            ['101', 2, 'no onion'],
+            ['102', 1],
+          ]),
+        ],
       );
       await run(
         c,
-        'test.front-desk-executive.1.0',
-        `select ops.set_breakfast_total($1, $2, 'buffet', 20)`,
-        [ids.node(OUTLET), day],
+        'test.captain.1.0',
+        `select ops.set_meal_rooms($1, $2, 'breakfast', 'buffet', $3::jsonb)`,
+        [
+          ids.node(OUTLET),
+          day,
+          await mealRooms(c, [
+            ['201', 3],
+            ['202', 2],
+          ]),
+        ],
       );
+      // a guest calls: 102 has its breakfast in the restaurant after all
       await run(
         c,
-        'test.front-desk-executive.1.0',
-        `select ops.set_breakfast_room($1, $2, 'in_room', 2, 'no onion')`,
-        [await room(c, '101'), day],
+        'test.steward-b.1.0',
+        `select ops.set_meal_rooms($1, $2, 'breakfast', 'buffet', $3::jsonb)`,
+        [ids.node(OUTLET), day, await mealRooms(c, [['102', 1]])],
       );
-      // a guest calls housekeeping at night: one more in 102
-      await run(
-        c,
-        'test.room-attendant.1.0',
-        `select ops.set_breakfast_room($1, $2, 'in_room', 1, null)`,
-        [await room(c, '102'), day],
-      );
-      const rows = await run<{ mode: string; total: number; rooms: number }>(
+      const rows = await run<{ mode: string; total: number; rooms: number; n: number }>(
         c,
         'test.executive-chef.1.0',
-        `select mode, total, rooms from ops.breakfast_day($1, $2) order by mode`,
+        `select mode, total, rooms, jsonb_array_length(room_list) as n
+           from ops.breakfast_day($1, $2) order by mode`,
         [ids.node(OUTLET), day],
       );
       expect(rows).toEqual([
-        { mode: 'buffet', total: 20, rooms: 0 },
-        { mode: 'in_room', total: 3, rooms: 3 },
+        { mode: 'buffet', total: 6, rooms: 6, n: 3 },
+        { mode: 'in_room', total: 2, rooms: 2, n: 1 },
+      ]);
+      await run(
+        c,
+        'test.steward.1.0',
+        `select ops.set_meal_rooms($1, $2, 'breakfast', 'buffet', $3::jsonb)`,
+        [ids.node(OUTLET), day, await mealRooms(c, [['201', 0]])],
+      );
+      const after = await run<{ total: number; n: number }>(
+        c,
+        'test.steward.1.0',
+        `select total, jsonb_array_length(room_list) as n
+           from ops.meal_day($1, $2, 'breakfast') where mode = 'buffet'`,
+        [ids.node(OUTLET), day],
+      );
+      expect(after).toEqual([{ total: 3, n: 2 }]);
+    });
+  });
+
+  it('lunch and dinner are kept apart from breakfast, each with its own end', async () => {
+    await inRolledBackTx(async (c) => {
+      await mealEnds(c, 'lunch', '23:59:59');
+      await mealEnds(c, 'dinner', '00:00');
+      const next = await run<{ today: string; lunch: string; dinner: string }>(
+        c,
+        'test.steward.1.0',
+        `select today::text, lunch_next::text as lunch, dinner_next::text as dinner
+           from ops.meal_outlets() where outlet_id = $1`,
+        [ids.node(OUTLET)],
+      );
+      const day = (
+        await c.query<{ d: string }>(`select (now() at time zone ops.tz_of($1))::date::text as d`, [
+          ids.node(OUTLET),
+        ])
+      ).rows[0]!.d;
+      expect(next[0]!.lunch).toBe(day);
+      expect(next[0]!.dinner > day).toBe(true);
+      await run(
+        c,
+        'test.steward.1.0',
+        `select ops.set_meal_rooms($1, $2, 'lunch', 'in_room', $3::jsonb)`,
+        [ids.node(OUTLET), day, await mealRooms(c, [['101', 2]])],
+      );
+      const served = await attemptAs(
+        c,
+        ids.user('test.steward.1.0'),
+        `select ops.set_meal_rooms($1, $2, 'dinner', 'in_room', $3::jsonb)`,
+        [ids.node(OUTLET), day, await mealRooms(c, [['101', 2]])],
+      );
+      expect(served.error).toMatch(/BREAKFAST_SERVED/);
+      const totals = await run<{ meal: string; total: number | null }>(
+        c,
+        'test.executive-chef.1.0',
+        `select m.meal, d.total from (values ('breakfast'), ('lunch'), ('dinner')) m(meal)
+           cross join lateral ops.meal_day($1, $2, m.meal) d where d.mode = 'in_room'
+          order by m.meal`,
+        [ids.node(OUTLET), day],
+      );
+      expect(totals).toEqual([
+        { meal: 'breakfast', total: null },
+        { meal: 'dinner', total: null },
+        { meal: 'lunch', total: 2 },
       ]);
     });
   });
 
-  it('the kitchen and restaurant read it but do not change it; engineering does not see it', async () => {
+  it('the service team sets meals; the kitchen, front desk and housekeeping read; the bar and engineering do neither', async () => {
     await inRolledBackTx(async (c) => {
       const day = await nextBreakfast(c);
-      for (const who of ['test.executive-chef.1.0', 'test.steward.1.0']) {
-        const r = await attemptAs(c, ids.user(who), `select * from ops.breakfast_day($1, $2)`, [
-          ids.node(OUTLET),
-          day,
-        ]);
-        expect(r.error, who).toBeUndefined();
+      const lines = await mealRooms(c, [['101', 1]]);
+      for (const who of [
+        'test.executive-chef.1.0',
+        'test.front-desk-executive.1.0',
+        'test.room-attendant.1.0',
+      ]) {
+        const read = await run<{ can_edit: boolean }>(
+          c,
+          who,
+          `select can_edit from ops.meal_day($1, $2, 'breakfast')`,
+          [ids.node(OUTLET), day],
+        );
+        expect(
+          read.every((r) => !r.can_edit),
+          who,
+        ).toBe(true);
+        const set = await attemptAs(
+          c,
+          ids.user(who),
+          `select ops.set_meal_rooms($1, $2, 'breakfast', 'buffet', $3::jsonb)`,
+          [ids.node(OUTLET), day, lines],
+        );
+        expect(set.error, who).toMatch(/NOT_AUTHORISED/);
       }
-      const chef = await attemptAs(
-        c,
-        ids.user('test.executive-chef.1.0'),
-        `select ops.set_breakfast_total($1, $2, 'buffet', 5)`,
-        [ids.node(OUTLET), day],
-      );
-      expect(chef.error).toMatch(/NOT_AUTHORISED/);
+      // the service team picks from the rooms' numbers, without seeing the rooms (ROOMS view)
+      expect(
+        (await run(c, 'test.steward.1.0', `select * from ops.meal_rooms($1)`, [ids.node(OUTLET)]))
+          .length,
+      ).toBeGreaterThan(0);
+      expect(
+        (
+          await attemptAs(c, ids.user('test.steward.1.0'), `select * from ops.rooms($1)`, [
+            ids.node(OUTLET),
+          ])
+        ).error,
+      ).toMatch(/NOT_AUTHORISED/);
+      expect(
+        (
+          await attemptAs(
+            c,
+            ids.user('test.front-desk-executive.1.0'),
+            `select * from ops.meal_rooms($1)`,
+            [ids.node(OUTLET)],
+          )
+        ).error,
+      ).toMatch(/NOT_AUTHORISED/);
+      for (const who of ['test.steward.1.0', 'test.general-manager.1.0']) {
+        const r = await run<{ can_edit: boolean }>(
+          c,
+          who,
+          `select can_edit from ops.meal_day($1, $2, 'breakfast')`,
+          [ids.node(OUTLET), day],
+        );
+        expect(
+          r.every((x) => x.can_edit),
+          who,
+        ).toBe(true);
+      }
+      for (const who of ['test.bartender.1.0', 'test.technician.1.0']) {
+        const r = await attemptAs(
+          c,
+          ids.user(who),
+          `select ops.set_meal_rooms($1, $2, 'breakfast', 'buffet', $3::jsonb)`,
+          [ids.node(OUTLET), day, lines],
+        );
+        expect(r.error, who).toMatch(/NOT_AUTHORISED/);
+      }
       const tech = await attemptAs(
         c,
         ids.user('test.technician.1.0'),
-        `select * from ops.breakfast_day($1, $2)`,
+        `select * from ops.meal_day($1, $2, 'breakfast')`,
         [ids.node(OUTLET), day],
       );
       expect(tech.error).toMatch(/NOT_AUTHORISED/);
+      // a room of another outlet is no room here
+      const other = (
+        await c.query<{ id: string }>(
+          `select id from ops.room where org_node_id <> $1 and tenant_id = $2 limit 1`,
+          [ids.node(OUTLET), ids.tenant()],
+        )
+      ).rows[0];
+      if (other) {
+        const r = await attemptAs(
+          c,
+          ids.user('test.steward.1.0'),
+          `select ops.set_meal_rooms($1, $2, 'breakfast', 'buffet', $3::jsonb)`,
+          [ids.node(OUTLET), day, JSON.stringify([{ room_id: other.id, guests: 1 }])],
+        );
+        expect(r.error).toMatch(/NOT_FOUND/);
+      }
     });
   });
-  it('a breakfast that has been served is kept as it was; up to a week ahead may be given', async () => {
+
+  it('a meal that has been served is kept as it was; up to a week ahead may be given', async () => {
     await inRolledBackTx(async (c) => {
       // before it ends (12:00 by default) today's breakfast is the next one ...
       await breakfastEnds(c, '23:59:59');
@@ -210,43 +364,33 @@ describe('breakfast by mode', () => {
         ])
       ).rows[0]!.d;
       expect(await nextBreakfast(c)).toBe(day);
+      const set = (d: string, extra = 0) =>
+        attemptAs(
+          c,
+          ids.user('test.steward.1.0'),
+          `select ops.set_meal_rooms($1, $2::date + $4::int, 'breakfast', 'buffet', $3::jsonb)`,
+          [ids.node(OUTLET), d, JSON.stringify([]), extra],
+        );
       await run(
         c,
-        'test.front-desk-executive.1.0',
-        `select ops.set_breakfast_total($1, $2, 'buffet', 12)`,
-        [ids.node(OUTLET), day],
+        'test.steward.1.0',
+        `select ops.set_meal_rooms($1, $2, 'breakfast', 'buffet', $3::jsonb)`,
+        [ids.node(OUTLET), day, await mealRooms(c, [['101', 2]])],
       );
       // ... after it ends, tomorrow's is: today's is read, never changed
       await breakfastEnds(c, '00:00');
       const next = await nextBreakfast(c);
       expect(next > day).toBe(true);
-      for (const [sql, params] of [
-        [`select ops.set_breakfast_total($1, $2, 'buffet', 14)`, [ids.node(OUTLET), day]],
-        [`select ops.set_breakfast_room($1, $2, 'in_room', 2, null)`, [await room(c, '101'), day]],
-      ] as const) {
-        const r = await attemptAs(c, ids.user('test.front-desk-executive.1.0'), sql, [...params]);
-        expect(r.error).toMatch(/BREAKFAST_SERVED/);
-      }
-      const rows = await run<{ mode: string; total: number }>(
+      expect((await set(day)).error).toMatch(/BREAKFAST_SERVED/);
+      const rows = await run<{ total: number; can_edit: boolean }>(
         c,
-        'test.executive-chef.1.0',
-        `select mode, total from ops.breakfast_day($1, $2) where mode = 'buffet'`,
+        'test.steward.1.0',
+        `select total, can_edit from ops.meal_day($1, $2, 'breakfast') where mode = 'buffet'`,
         [ids.node(OUTLET), day],
       );
-      expect(rows).toEqual([{ mode: 'buffet', total: 12 }]);
-      await run(
-        c,
-        'test.front-desk-executive.1.0',
-        `select ops.set_breakfast_total($1, $2::date + 7, 'buffet', 30)`,
-        [ids.node(OUTLET), next],
-      );
-      const far = await attemptAs(
-        c,
-        ids.user('test.front-desk-executive.1.0'),
-        `select ops.set_breakfast_total($1, $2::date + 8, 'buffet', 30)`,
-        [ids.node(OUTLET), next],
-      );
-      expect(far.error).toMatch(/INVALID_VALUE/);
+      expect(rows).toEqual([{ total: 2, can_edit: false }]);
+      expect((await set(next, 7)).error).toBeUndefined();
+      expect((await set(next, 8)).error).toMatch(/INVALID_VALUE/);
     });
   });
 });

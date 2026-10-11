@@ -2,6 +2,7 @@ import 'server-only';
 import { addDays, localToday, weekStart } from './dates';
 import { sql, withUser, type Tx } from './db';
 import { myBriefing, type MyBriefing } from './briefing';
+import { lastHandovers, type LastHandover } from './handover';
 import {
   homeBreakfast,
   homeEvents,
@@ -137,6 +138,8 @@ export interface Today {
   push: PushDish[];
   /** today's briefing at their outlet (ADR 070); null when they work at none */
   briefing: MyBriefing | null;
+  /** the last shift handovers of my department I have not seen (ADR 118) */
+  handovers: LastHandover[];
   targets: Record<TargetKey, number>;
   /** Home's Compliance card (ADR 069): null when the company hasn't it or it isn't theirs */
   compliance: ComplianceInput | null;
@@ -377,6 +380,8 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     const push = atWork ? await myPushToday(tx) : [];
     // today's briefing: everyone who works at the outlet reads it (ADR 070)
     const briefing = atWork && shell.modules.has('briefing') ? await myBriefing(tx) : null;
+    // the shift before mine: its handover, until I have read it (ADR 118)
+    const handovers = atWork ? await lastHandovers(tx) : [];
     const plan = shell.home ? await planDay(tx, shell.home.id) : null;
     // the job's own cards (ADR 113)
     const rooms = await homeRooms(tx, shell);
@@ -449,6 +454,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       pos,
       push,
       briefing,
+      handovers,
       plan,
       rooms,
       minibar,

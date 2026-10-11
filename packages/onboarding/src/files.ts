@@ -958,6 +958,10 @@ export const FILES = {
           });
           return z.NEVER;
         }),
+      // ADR 118: optional, the same on every row of a checklist: yes for a shift handover, whose
+      // last round the next shift of its department reads on Home; blank: as its library
+      // checklist says (no for one of the company's own)
+      handover: z.union([z.literal('').transform(() => undefined), yesNo]).optional(),
       // ADR 088: optional, the same on every row of a checklist: `rooms` (each room of its
       // outlet, file 40) or named areas `Lobby; Pool deck`; blank: once
       for_each: z
@@ -1001,7 +1005,15 @@ export const FILES = {
           return z.NEVER;
         }),
     }),
-    optional: ['step_icon', 'from_library', 'days', 'sign_off', 'for_each', 'step_asks'],
+    optional: [
+      'step_icon',
+      'from_library',
+      'days',
+      'sign_off',
+      'for_each',
+      'step_asks',
+      'handover',
+    ],
   },
   // Test-only tasks (ADR 020): one-off tasks, open maintenance requests and prep lists.
   tasks: {
@@ -1227,12 +1239,13 @@ export const FILES = {
       room_type: optional,
       minibar_set: optional,
       // the room's status when it has none yet (ADR 114): VC clean, VD dirty, OCC guest in,
-      // ARR arriving, DEP leaving, OOO out of order, HM house use. Never changes a set one
+      // ARR arriving, DEP leaving, OOO out of order (ADR 117: no house use). Never changes a
+      // set one
       status: z
         .union([
           z.literal('').transform(() => undefined),
-          z.enum(['VC', 'VD', 'OCC', 'ARR', 'DEP', 'OOO', 'HM'], {
-            message: 'must be VC, VD, OCC, ARR, DEP, OOO or HM',
+          z.enum(['VC', 'VD', 'OCC', 'ARR', 'DEP', 'OOO'], {
+            message: 'must be VC, VD, OCC, ARR, DEP or OOO',
           }),
         ])
         .optional(),

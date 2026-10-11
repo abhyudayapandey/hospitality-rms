@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { requireUser } from '@/lib/auth/server';
 import { PLACE_COOKIE } from '@/lib/auth/session';
@@ -34,4 +35,11 @@ export async function rememberPlace(
     path: '/',
     maxAge: 90 * 24 * 60 * 60,
   });
+}
+
+/** I have read a shift handover (ADR 118): its card leaves my Home. */
+export async function seeHandover(task: string): Promise<void> {
+  const user = await requireUser();
+  await withUser(user.id, (tx) => sql`select ops.see_handover(${task}::uuid)`.execute(tx));
+  revalidatePath('/');
 }

@@ -29,7 +29,14 @@ import {
 } from '@/lib/today-view';
 import { listHref, stockHref } from '@/lib/stock-view';
 import { countDueText } from '@/lib/stock-hub';
-import { BreakfastCard, EventsCard, MinibarCard, RoomsCard, TomorrowCard } from './home-cards';
+import {
+  BreakfastCard,
+  EventsCard,
+  HandoverCard,
+  MinibarCard,
+  RoomsCard,
+  TomorrowCard,
+} from './home-cards';
 import { InboxItem } from './inbox/inbox-item';
 
 // Home is "Today" (UX-2), simplified for each role (UX-6, ADR 034): what the person must
@@ -123,6 +130,10 @@ export default async function Home() {
       )}
 
       {today.pos && <PosCard pos={today.pos} tz={tz} />}
+
+      {today.handovers.map((h) => (
+        <HandoverCard key={h.task_id} handover={h} tz={tz} />
+      ))}
 
       {(today.briefing || shell.domains.get('BRIEFING') === 'modify') && (
         <Briefing

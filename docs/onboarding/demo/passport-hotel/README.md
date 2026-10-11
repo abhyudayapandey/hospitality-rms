@@ -97,12 +97,20 @@ their minibars), then **Events & compliance** → **Compliance** → **On** (the
 calendar only show with it). Without Hotel the dry run says the minibar checks are not loaded.
 
 **4. Import**: **Import setup files** → `passport-hotel.zip` → **Upload and dry run**. It
-should report no problems and no warnings, with (new): org places 11 / 1 changed (the
-company root), delivery places 5, links 4, job roles 35, users 35, workers 35 / 1 changed (the owner's), items 80, item
+should report no problems and no warnings, with (new): org places 12 / 1 changed (the
+company root), delivery places 5, links 4, job roles 36, users 36, workers 36 / 1 changed (the owner's), items 80, item
 locations 92, menu items 34, rooms 27, minibar sets 2, minibar checks 54, sales days 7,
 purchase orders 5, attendance sessions 132, checklists 31, meters 5, room contents 17, SOPs 4.
 **Apply**, then a second dry run shows no
 changes.
+
+A Passport loaded before ADR 122: its re-import renames Purchase & Stores to **Purchase**,
+gives the Purchase Manager's job role its duties (she runs Purchase, sees the stock of every
+store and reads the bills; no store of her own) and puts Shreya Kenkre there (the same
+username, so she is updated, not added). One loaded from the ADR 115 files, which had no
+Purchase Manager, adds her: org places 1, job roles 1, users 1, workers 1, leave balances 3,
+pay rates 1. Either way the front office handover gains its steps and becomes the shift's
+handover (checklists 1 changed). Apply, then a second dry run shows no changes.
 
 A Passport loaded before ADR 115 has a Main Store, run by Purchase & Stores. Its re-import
 retires the Main Store (its stock counted out: a test customer) and gives the hotel its rules
@@ -117,18 +125,19 @@ Mini Bar store is retired and its stock counted out (a test customer only). A st
 or order still open at the Mini Bar stops the import until it is finished or withdrawn.
 
 **5. Logins (the printed sheet)**: the customer's page → **Logins** → tick **Set passwords
-by the Test<Role>!12 rule** → **Create 36 username logins** (the 35
+by the Test<Role>!12 rule** → **Create 37 username logins** (the 36
 imported people and the owner) → **Print the login sheet** (and
 download the CSV once, if you want a copy; nothing keeps the passwords). Each person's
 password is `Test` + their job title without spaces + `!12`:
 
-| Who                                | Username                  | Password                |
-| ---------------------------------- | ------------------------- | ----------------------- |
-| Demo Presenter (you, in the pitch) | `passport.presenter`      | `TestAccountOwner!12`   |
-| Sainath, General Manager           | `passport.gm`             | `TestGeneralManager!12` |
-| Dylan Coutinho, Bar Manager        | `passport.bar-manager`    | `TestBarManager!12`     |
-| Savio Dias, Room Attendant         | `passport.room-attendant` | `TestRoomAttendant!12`  |
-| Kunal Sawant, Cashier              | `passport.cashier`        | `TestCashier!12`        |
+| Who                                | Username                    | Password                 |
+| ---------------------------------- | --------------------------- | ------------------------ |
+| Demo Presenter (you, in the pitch) | `passport.presenter`        | `TestAccountOwner!12`    |
+| Sainath, General Manager           | `passport.gm`               | `TestGeneralManager!12`  |
+| Dylan Coutinho, Bar Manager        | `passport.bar-manager`      | `TestBarManager!12`      |
+| Savio Dias, Room Attendant         | `passport.room-attendant`   | `TestRoomAttendant!12`   |
+| Kunal Sawant, Cashier              | `passport.cashier`          | `TestCashier!12`         |
+| Shreya Kenkre, Purchase Manager    | `passport.purchase-manager` | `TestPurchaseManager!12` |
 
 The owner, Ashesh Sajnani, signs in as `test.ashesh-sajnani` with `TestAccountOwner!12`. The
 import refuses files whose account owners don't include the customer's (`ownersInFiles`), so

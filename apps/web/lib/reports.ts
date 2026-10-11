@@ -11,6 +11,7 @@ export type ReportCode =
   | 'menu_engineering'
   | 'stock_position'
   | 'purchasing'
+  | 'movements'
   | 'central_kitchen'
   | 'people'
   | 'my_week';
@@ -54,6 +55,12 @@ export const REPORTS: Readonly<Record<ReportCode, { title: string; href: string;
       href: '/reports/purchasing',
       blurb: 'Price changes and how fully and on time suppliers deliver.',
     },
+    // ADR 122: the GM's and purchase manager's day, week or month of stock in and out
+    movements: {
+      title: 'Stock movements',
+      href: '/reports/movements',
+      blurb: 'What was ordered, received and sent between stores, for any days.',
+    },
     // R-3 (ADR 030)
     central_kitchen: {
       title: 'Central kitchen',
@@ -77,7 +84,7 @@ export const REPORT_GROUPS: readonly { title: string; reports: readonly ReportCo
   { title: 'How are we doing?', reports: ['league', 'outlet_flash', 'department', 'my_week'] },
   {
     title: 'What does it cost?',
-    reports: ['cost_of_sales', 'purchasing', 'stock_position', 'central_kitchen'],
+    reports: ['cost_of_sales', 'purchasing', 'movements', 'stock_position', 'central_kitchen'],
   },
   { title: 'What do we sell?', reports: ['menu_engineering'] },
   { title: 'Our people', reports: ['people'] },
@@ -342,6 +349,7 @@ export const SECTIONS: Readonly<Record<ReportCode, readonly [string, readonly st
   league: [],
   menu_engineering: [],
   purchasing: [],
+  movements: [],
 };
 
 const group = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
@@ -416,9 +424,11 @@ export function sectionRows(rows: readonly MeasureRow[], measures: readonly stri
 // The cost controller's reports (R-2, ADR 028)
 // ---------------------------------------------------------------------------------------
 
-export type Period = 'yesterday' | 'week' | 'four_weeks' | 'month' | 'custom';
+export type Period = 'today' | 'yesterday' | 'week' | 'four_weeks' | 'month' | 'custom';
 
 export const PERIODS: readonly { code: Period; label: string }[] = [
+  // only where a report asks for it (Stock movements, ADR 122): the others are about whole days
+  { code: 'today', label: 'Today' },
   { code: 'yesterday', label: 'Yesterday' },
   { code: 'week', label: 'Last 7 days' },
   { code: 'four_weeks', label: 'Last 4 weeks' },
@@ -444,6 +454,7 @@ export function periodRange(
   from?: string,
   to?: string,
 ): { period: Period; from: string; to: string } {
+  if (period === 'today') return { period, from: today, to: today };
   if (period === 'yesterday') {
     const y = shift(today, -1);
     return { period, from: y, to: y };

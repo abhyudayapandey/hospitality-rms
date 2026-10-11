@@ -88,12 +88,13 @@ describe('the Passport Hotel demo', () => {
         contents: n('room contents'),
         sops: n('SOPs'),
       }).toEqual({
-        org: [11, 1],
+        // with Purchase (ADR 122)
+        org: [12, 1],
         delivery: [5, 0],
         links: [4, 0],
-        roles: [35, 0],
-        users: [35, 0],
-        workers: [35, 1],
+        roles: [36, 0],
+        users: [36, 0],
+        workers: [36, 1],
         items: [80, 0],
         locations: [92, 0],
         menu: [34, 0],
@@ -278,6 +279,7 @@ describe('the Passport Hotel demo', () => {
         'FRONT_OFFICE_MANAGER',
         'GENERAL_MANAGER',
         'HR_EXECUTIVE',
+        'PURCHASE_MANAGER',
         'SALES_MANAGER',
       ]);
     });

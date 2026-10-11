@@ -99,6 +99,7 @@ describe('the cost controller reports (ADR 028)', () => {
       'menu_engineering',
       'stock_position',
       'purchasing',
+      'movements',
       'central_kitchen',
       'people',
       'my_week',

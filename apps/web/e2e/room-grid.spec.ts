@@ -43,11 +43,21 @@ test('the front desk marks a room arriving; the attendant checks it on the grid'
     const sheet = page.getByTestId('room-sheet');
     await expect(sheet).not.toContainText(/VC|VD|OCC|ARR/);
     await sheet.getByRole('button', { name: 'Arriving' }).click();
+    // when they arrive (ADR 117): kept for the next shift, on the tile
+    await sheet.getByTestId('room-status-details').getByLabel('Arriving at').fill('14:30');
+    await sheet.getByRole('button', { name: 'Save' }).click();
     await expect(sheet).toHaveCount(0);
     await expect(main(page).locator('[data-testid="room"][data-room="101"]')).toHaveAttribute(
       'data-status',
       'ARR',
     );
+    await expect(
+      main(page).locator('[data-testid="room"][data-room="101"]').getByTestId('room-detail'),
+    ).toHaveText('14:30');
+    // the chips filter the rooms
+    await main(page).locator('[data-testid="room-filter"][data-status="ARR"]').click();
+    await page.waitForURL(/status=ARR/);
+    await expect(main(page).locator('[data-testid="room"][data-status="VC"]')).toHaveCount(0);
     await expect(page.getByTestId('room-counts')).toContainText('1 arriving');
 
     await signInAs(page, 'Test Room Attendant 1.0');

@@ -295,11 +295,12 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     show: (i) => can(i, 'BREAKAGE'),
   },
   {
-    // the day's breakfast guests by mode (ADR 094): front office and housekeeping keep it, the
-    // kitchen and restaurant of a hotel with rooms read it; nobody else gets the tile (ADR 097)
+    // breakfast, lunch and dinner by room (ADR 094, 121): the service team sets them, front
+    // office, housekeeping and the kitchen of a hotel with rooms read them; nobody else gets the
+    // tile (ADR 097)
     key: 'breakfast',
     href: '/breakfast',
-    label: 'Breakfast',
+    label: 'Meals',
     icon: 'plate',
     show: (i) => i.breakfast === true,
   },

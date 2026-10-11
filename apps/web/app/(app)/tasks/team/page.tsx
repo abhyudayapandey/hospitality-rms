@@ -4,6 +4,8 @@ import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { addDays, localDate, localToday, weekStart } from '@/lib/dates';
 import { withUser } from '@/lib/db';
+import { ListDays } from '@/components/date-range';
+import { listDays } from '@/lib/list-days';
 import { placesFor } from '@/lib/places';
 import type { SearchParams } from '@/lib/params';
 import { completion, taskTabs, teamTasks, type Completion } from '@/lib/tasks';
@@ -20,12 +22,22 @@ export default async function TeamTasksPage({ searchParams }: { searchParams: Se
   const tz = place?.timezone ?? 'Asia/Kolkata';
   const today = localToday(tz);
   const thisWeek = weekStart(today);
-  const data = await withUser(user.id, async (tx) => ({
-    tabs: await taskTabs(tx),
-    tasks: place ? await teamTasks(tx, place.id, addDays(today, -7), today) : [],
-    now: place ? await completion(tx, place.id, thisWeek) : [],
-    last: place ? await completion(tx, place.id, addDays(thisWeek, -7)) : [],
-  }));
+  const sp = await searchParams;
+  const data = await withUser(user.id, async (tx) => {
+    // days chosen (ADR 120): every task due on them, done or not
+    const days = place ? await listDays(tx, sp, place.id) : null;
+    const range = days?.range ?? null;
+    return {
+      range,
+      listToday: days?.today ?? today,
+      tabs: await taskTabs(tx),
+      tasks: place
+        ? await teamTasks(tx, place.id, range?.from ?? addDays(today, -7), range?.to ?? today)
+        : [],
+      now: place ? await completion(tx, place.id, thisWeek) : [],
+      last: place ? await completion(tx, place.id, addDays(thisWeek, -7)) : [],
+    };
+  });
   const todays = data.tasks.filter((t) => !t.overdue && localDate(t.due_at, tz) === today);
   const overdue = data.tasks.filter((t) => t.overdue);
   const listed = (ts: typeof data.tasks) =>
@@ -53,20 +65,40 @@ export default async function TeamTasksPage({ searchParams }: { searchParams: Se
       ) : (
         <>
           <CompletionTable now={data.now} last={data.last} />
-          {overdue.length > 0 && (
+          <ListDays
+            path="/tasks/team"
+            params={{ node: place.id }}
+            range={data.range}
+            today={data.listToday}
+            list="team_tasks"
+          />
+          {data.range ? (
             <section className="space-y-2">
-              <h2 className="text-sm font-semibold text-rose-700">Overdue</h2>
-              <TaskList tasks={listed(overdue)} testId="team-overdue" />
+              <h2 className="text-sm font-semibold text-slate-500">Due on these days</h2>
+              {data.tasks.length === 0 ? (
+                <Empty>No tasks were due on these days.</Empty>
+              ) : (
+                <TaskList tasks={listed(data.tasks)} testId="team-days" />
+              )}
             </section>
+          ) : (
+            <>
+              {overdue.length > 0 && (
+                <section className="space-y-2">
+                  <h2 className="text-sm font-semibold text-rose-700">Overdue</h2>
+                  <TaskList tasks={listed(overdue)} testId="team-overdue" />
+                </section>
+              )}
+              <section className="space-y-2">
+                <h2 className="text-sm font-semibold text-slate-500">Today</h2>
+                {todays.length === 0 ? (
+                  <Empty>Nothing due today.</Empty>
+                ) : (
+                  <TaskList tasks={listed(todays)} testId="team-today" />
+                )}
+              </section>
+            </>
           )}
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold text-slate-500">Today</h2>
-            {todays.length === 0 ? (
-              <Empty>Nothing due today.</Empty>
-            ) : (
-              <TaskList tasks={listed(todays)} testId="team-today" />
-            )}
-          </section>
         </>
       )}
     </div>

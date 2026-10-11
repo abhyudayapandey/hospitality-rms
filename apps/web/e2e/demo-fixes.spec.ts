@@ -10,7 +10,7 @@ test.use({ viewport: { width: 380, height: 900 } });
 
 const main = (page: Page) => page.locator('main');
 
-test('the Breakfast tile: front office and a hotel kitchen, not engineering or a bar kitchen', async ({
+test('the Meals tile: front office and a hotel kitchen, not engineering or a bar kitchen', async ({
   page,
 }) => {
   for (const [who, shown] of [

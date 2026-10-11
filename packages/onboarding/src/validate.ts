@@ -515,6 +515,7 @@ function validateTasks(
         'assign_to',
         'sign_off',
         'for_each',
+        'handover',
       ] as const) {
         if (JSON.stringify(first[col]) !== JSON.stringify(t[col])) {
           add(file, t.line, col, `differs from line ${first.line} of ${t.template_code}`);

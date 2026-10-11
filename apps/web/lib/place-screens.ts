@@ -41,6 +41,7 @@ export const PLACE_SCREENS = [
   'menu_engineering',
   'stock_position',
   'purchasing',
+  'movements',
   'central_kitchen',
   'people',
 ] as const;
@@ -54,6 +55,7 @@ export const REPORT_SCREENS = [
   'menu_engineering',
   'stock_position',
   'purchasing',
+  'movements',
   'central_kitchen',
   'people',
 ] as const;

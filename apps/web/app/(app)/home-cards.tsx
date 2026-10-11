@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Icon } from '@/components/icon';
 import { addDays, formatDay, formatSpan, localDate } from '@/lib/dates';
-import { formatMoney } from '@/lib/format';
+import { formatWhen } from '@/lib/format';
 import type {
   HomeBreakfast,
   HomeEvent,
@@ -9,9 +9,10 @@ import type {
   HomeRooms,
   HomeTomorrow,
 } from '@/lib/home-work';
-import { usedWords } from '@/lib/minibar';
-import { ChargedButton } from './minibar/charged-button';
+import { ChargeRow } from './minibar/charge-row';
 import { RoomGrid, RoomLegend } from './rooms/status-picker';
+import { SeenButton } from './seen-button';
+import { handoverAnswer, type LastHandover } from '@/lib/handover';
 
 // A person's own job on Home (ADR 113): their rooms, the minibar bills to post, the next
 // breakfast, the events coming up and, in the evening, tomorrow's roster. Each card opens the
@@ -46,7 +47,7 @@ export function RoomsCard({ rooms }: { rooms: HomeRooms }) {
   return (
     <section aria-label="Rooms now" className={`${card} space-y-3`} data-testid="home-rooms">
       <h2 className={cardTitle}>Rooms now · {rooms.all.length}</h2>
-      <RoomLegend rooms={rooms.all} />
+      <RoomLegend rooms={rooms.all} filter={{ current: null, base: href }} />
       <div className="flex flex-wrap gap-x-4">
         <Link href={href} className={more}>
           Open rooms <Icon name="chevron" className="size-4" />
@@ -81,16 +82,14 @@ export function MinibarCard({ minibar }: { minibar: HomeMinibar }) {
         </h2>
         <ul className="mt-2 divide-y divide-slate-100">
           {rows.slice(0, 3).map((r) => (
-            <li key={r.id} className="space-y-2 py-2" data-testid="home-charge">
-              <p className="flex items-baseline justify-between gap-2">
-                <span className="min-w-0">
-                  <span className="font-bold tabular-nums">Room {r.room}</span>{' '}
-                  <span className="text-sm text-slate-600">{usedWords(r.used)}</span>
-                </span>
-                <span className="shrink-0 font-semibold tabular-nums">{formatMoney(r.charge)}</span>
-              </p>
-              <ChargedButton id={r.id} />
-            </li>
+            <ChargeRow
+              key={r.id}
+              id={r.id}
+              room={r.room}
+              charge={r.charge}
+              used={r.used}
+              checked={`Checked ${formatWhen(r.checked_at)}${r.checked_by ? ` by ${r.checked_by}` : ''}`}
+            />
           ))}
         </ul>
         {rows.length > 3 && (
@@ -230,6 +229,55 @@ export function TomorrowCard({ tomorrow: t }: { tomorrow: HomeTomorrow }) {
           </span>
         </Link>
       </div>
+    </section>
+  );
+}
+
+/**
+ * The shift before mine (ADR 118): its handover checklist as a card, every step's answer and
+ * the note in large text, until I tap "Seen".
+ */
+export function HandoverCard({ handover, tz }: { handover: LastHandover; tz: string }) {
+  const at = new Date(handover.done_at).toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: tz,
+  });
+  return (
+    <section
+      aria-label="Last handover"
+      className="space-y-3 rounded-2xl bg-amber-50 p-4 text-amber-950 shadow-sm ring-2 ring-amber-300"
+      data-testid="home-handover"
+    >
+      <div>
+        <h2 className="text-xs font-semibold tracking-wide uppercase">Last handover</h2>
+        <p className="text-lg font-semibold">{handover.title}</p>
+        <p className="text-sm">
+          {handover.done_by ?? 'Someone'} · {handover.place} · {at}
+        </p>
+      </div>
+      <ul className="divide-y divide-amber-200 text-sm">
+        {handover.steps.map((s, i) => (
+          <li key={i} className="flex items-baseline justify-between gap-3 py-1.5">
+            <span>{s.label}</span>
+            <span
+              className={`shrink-0 text-right font-semibold ${!s.done || s.flagged ? 'text-rose-800' : ''}`}
+            >
+              {handoverAnswer(s)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {handover.note && (
+        <p
+          className="rounded-xl bg-white p-3 text-base whitespace-pre-line ring-1 ring-amber-300"
+          data-testid="home-handover-note"
+        >
+          {handover.note}
+        </p>
+      )}
+      <SeenButton task={handover.task_id} />
     </section>
   );
 }

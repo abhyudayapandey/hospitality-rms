@@ -5,6 +5,8 @@ import { ViewTabs } from '@/components/view-tabs';
 import { requireUser } from '@/lib/auth/server';
 import { businessDate, formatDay } from '@/lib/dates';
 import { withUser } from '@/lib/db';
+import { ListDays } from '@/components/date-range';
+import { listDays } from '@/lib/list-days';
 import { formatWhen } from '@/lib/format';
 import { laundry, linenItems, linenPlaces, uniforms } from '@/lib/linen';
 import { isUuid, param, type SearchParams } from '@/lib/params';
@@ -36,16 +38,28 @@ export default async function LinenPage({ searchParams }: { searchParams: Search
   const view = asks === 'uniforms' ? 'uniforms' : asks === 'receive' ? 'receive' : 'send';
   // the 04:00 business day (ADR 057), as ops.record_laundry checks it
   const day = businessDate(new Date());
-  const data = await withUser(user.id, async (tx) =>
-    view !== 'uniforms'
-      ? { rows: await laundry(tx, place.place_id), items: await linenItems(tx, place.place_id) }
-      : { held: await uniforms(tx, place.place_id) },
-  );
+  const { data, range, listToday } = await withUser(user.id, async (tx) => {
+    // the days before: the last 14, or the days chosen (ADR 120)
+    const { range, today: listToday } = await listDays(tx, sp, place.place_id);
+    return {
+      range,
+      listToday,
+      data:
+        view !== 'uniforms'
+          ? {
+              rows: await laundry(tx, place.place_id),
+              items: await linenItems(tx, place.place_id),
+              past: range ? await laundry(tx, place.place_id, range) : null,
+            }
+          : { held: await uniforms(tx, place.place_id) },
+    };
+  });
   const href = (p: string, v = view) => `/linen?place=${p}&view=${v}`;
   const atLaundry = data.rows
     ? [...new Map(data.rows.map((r) => [r.item_id, r])).values()].filter((r) => r.at_laundry !== 0)
     : [];
-  const days = data.rows ? [...new Set(data.rows.map((r) => r.day))] : [];
+  const pastRows = data.rows ? (data.past ?? data.rows) : [];
+  const days = [...new Set(pastRows.map((r) => r.day))];
   // the last day each item went out: "since Thu"
   const since = (item: string) => {
     const d = data.rows?.find((r) => r.item_id === item && r.sent > 0)?.day;
@@ -126,16 +140,25 @@ export default async function LinenPage({ searchParams }: { searchParams: Search
           )}
         </section>
       )}
+      {data.rows && (
+        <ListDays
+          path="/linen"
+          params={{ place: place.place_id, view }}
+          range={range}
+          today={listToday}
+          list="laundry"
+        />
+      )}
       {data.rows && days.length > 0 && (
-        <details className="space-y-2" data-testid="laundry-days">
+        <details className="space-y-2" data-testid="laundry-days" open={range !== null}>
           <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-slate-500">
-            Days before ({Math.min(days.length, 14)})
+            {range ? 'Days' : 'Days before'} ({range ? days.length : Math.min(days.length, 14)})
           </summary>
-          {days.slice(0, 14).map((d) => (
+          {(range ? days : days.slice(0, 14)).map((d) => (
             <section key={d} className="space-y-1">
               <h3 className="text-sm font-semibold text-slate-500">{formatDay(d)}</h3>
               <ul className="divide-y divide-slate-100 rounded-xl bg-white text-sm ring-1 ring-slate-200">
-                {data.rows
+                {pastRows
                   .filter((r) => r.day === d)
                   .map((r) => (
                     <li key={r.item_id} className="flex justify-between gap-3 px-4 py-2">

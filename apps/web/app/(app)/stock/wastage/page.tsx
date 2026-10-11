@@ -7,6 +7,9 @@ import { formatQty, itemOptions, param, supplyContext, type SearchParams } from 
 import { photosEnabled } from '@/lib/photos';
 import { WastageForm } from './wastage-form';
 import { ItemThumb } from '@/components/item-thumb';
+import { ListDays } from '@/components/date-range';
+import { listDays } from '@/lib/list-days';
+import { wastageList } from '@/lib/wastage-list';
 
 export default async function WastagePage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await supplyContext(searchParams, 'wastage');
@@ -19,22 +22,10 @@ export default async function WastagePage({ searchParams }: { searchParams: Sear
     const items = await itemOptions(tx, ctx.node!.id);
     const t = await sql<{ v: string }>`
       select inv.wastage_threshold(${ctx.node!.id}::uuid) as v`.execute(tx);
-    const recent = await sql<{
-      id: string;
-      item_id: string;
-      name: string;
-      base_uom: string;
-      qty: string;
-      reason: string;
-      value: string;
-      outcome: string;
-      created_at: Date;
-    }>`
-      select wl.id, wl.item_id::text, i.name, i.base_uom, wl.qty, wl.reason, wl.value, wl.outcome, wl.created_at
-        from inv.wastage_line wl join inv.item i on i.id = wl.item_id
-       where wl.delivery_node_id = ${ctx.node!.id}::uuid
-       order by wl.created_at desc limit 10`.execute(tx);
-    return { items, threshold: Number(t.rows[0]!.v), recent: recent.rows };
+    const { range, today } = await listDays(tx, sp, ctx.node!.id);
+    // the latest ten, or every line on the days chosen (ADR 120)
+    const recent = await wastageList(tx, ctx.node!.id, range, range ? 500 : 10);
+    return { items, threshold: Number(t.rows[0]!.v), recent, range, today };
   });
   return (
     <div className="space-y-4">
@@ -49,9 +40,20 @@ export default async function WastagePage({ searchParams }: { searchParams: Sear
         initial={{ item: param(sp, 'item'), qty: param(sp, 'qty'), reason: param(sp, 'reason') }}
       />
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-slate-500">Recent wastage</h2>
+        <h2 className="text-sm font-semibold text-slate-500">
+          {data.range ? 'Wastage' : 'Recent wastage'}
+        </h2>
+        <ListDays
+          path="/stock/wastage"
+          params={{ node: ctx.node.id }}
+          range={data.range}
+          today={data.today}
+          list="wastage"
+        />
         {data.recent.length === 0 ? (
-          <Empty>No wastage recorded here yet.</Empty>
+          <Empty>
+            {data.range ? 'No wastage on these days.' : 'No wastage recorded here yet.'}
+          </Empty>
         ) : (
           <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
             {data.recent.map((r) => (

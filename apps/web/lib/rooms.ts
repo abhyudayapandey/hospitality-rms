@@ -24,6 +24,13 @@ export interface RoomRow {
   given_to: string | null;
   given_to_name: string | null;
   mine: boolean;
+  /** the status's details (ADR 117): arriving or leaving at; out of order why, till, request */
+  at_time: string | null;
+  reason: string | null;
+  until: string | null;
+  maintenance_id: string | null;
+  maintenance_title: string | null;
+  maintenance_status: string | null;
 }
 
 export async function roomOutlets(tx: Tx): Promise<RoomOutlet[]> {
@@ -32,9 +39,10 @@ export async function roomOutlets(tx: Tx): Promise<RoomOutlet[]> {
 
 export async function rooms(tx: Tx, outlet: string): Promise<RoomRow[]> {
   return (
-    await sql<RoomRow>`select *, given_to::text as given_to from ops.rooms(${outlet}::uuid)`.execute(
-      tx,
-    )
+    await sql<RoomRow>`
+      select *, given_to::text as given_to, until::text as until,
+             maintenance_id::text as maintenance_id
+        from ops.rooms(${outlet}::uuid)`.execute(tx)
   ).rows;
 }
 
@@ -134,5 +142,57 @@ export async function breakfastDay(tx: Tx, outlet: string, day: string): Promise
     await sql<BreakfastMode>`
       select mode, total, rooms, room_list, can_edit
         from ops.breakfast_day(${outlet}::uuid, ${day}::date)`.execute(tx)
+  ).rows;
+}
+
+// Meals (ADR 121): breakfast, lunch and dinner by room, set by the outlet's service team.
+
+export type MealCode = 'breakfast' | 'lunch' | 'dinner';
+export const MEALS: readonly MealCode[] = ['breakfast', 'lunch', 'dinner'];
+export const isMeal = (s: string | undefined): s is MealCode =>
+  !!s && (MEALS as readonly string[]).includes(s);
+
+export interface MealOutlet {
+  outlet_id: string;
+  name: string;
+  today: string;
+  /** each meal still to come: today's until it is over, then tomorrow's */
+  breakfast_next: string;
+  lunch_next: string;
+  dinner_next: string;
+  /** I am on its service team (or work at the outlet): I set its meals */
+  can_edit: boolean;
+}
+
+export async function mealOutlets(tx: Tx): Promise<MealOutlet[]> {
+  return (
+    await sql<MealOutlet>`
+      select outlet_id::text, name, today::text, breakfast_next::text, lunch_next::text,
+             dinner_next::text, can_edit
+        from ops.meal_outlets()`.execute(tx)
+  ).rows;
+}
+
+export async function mealDay(
+  tx: Tx,
+  outlet: string,
+  day: string,
+  meal: MealCode,
+): Promise<BreakfastMode[]> {
+  return (
+    await sql<BreakfastMode>`
+      select mode, total, rooms, room_list, can_edit
+        from ops.meal_day(${outlet}::uuid, ${day}::date, ${meal})`.execute(tx)
+  ).rows;
+}
+
+/** The rooms the service team picks a meal's rooms from (ADR 121): number and floor only. */
+export async function mealRooms(
+  tx: Tx,
+  outlet: string,
+): Promise<{ room_id: string; number: string; floor: string | null }[]> {
+  return (
+    await sql<{ room_id: string; number: string; floor: string | null }>`
+      select room_id::text, number, floor from ops.meal_rooms(${outlet}::uuid)`.execute(tx)
   ).rows;
 }

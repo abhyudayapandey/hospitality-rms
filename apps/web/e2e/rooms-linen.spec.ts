@@ -2,15 +2,15 @@ import { expect, test, type Page } from '@playwright/test';
 import { asMigrator, placeId, signInAs } from './helpers';
 
 // Rooms (contents, breakfast) and Linen & uniforms (ADR 094) at 380 px on Test Hotel 1.0. A
-// room attendant counts room 101 and is a towel short; front office gives today's breakfast and
-// a room, which the executive chef reads; the laundry attendant records the exchange and issues
+// room attendant counts room 101 and is a towel short; the restaurant gives the next breakfast
+// by room, which the executive chef and the front desk read (ADR 121); the laundry attendant records the exchange and issues
 // a uniform. Who may is proved in packages/db/src/rooms-linen.db.test.ts.
 
 test.use({ viewport: { width: 380, height: 900 } });
 
 const main = (page: Page) => page.locator('main');
 
-test('a room is counted; breakfast is given and read', async ({ page }) => {
+test('a room is counted; breakfast is given by room and read', async ({ page }) => {
   const outlet = await placeId('TEST-HOTEL-1.0');
   const started = new Date();
   try {
@@ -40,46 +40,58 @@ test('a room is counted; breakfast is given and read', async ({ page }) => {
         .getByTestId('room-counted'),
     ).toContainText('counted 1 each');
 
-    // breakfast (ADR 110): the next one opens, buffet first, a room is two unless changed
-    await signInAs(page, 'Test Front Desk Executive 1.0');
+    // meals (ADR 110, 121): the next breakfast opens, buffet first; the restaurant adds rooms
+    // as tiles, each with its guests inside, and saves
+    await signInAs(page, 'Test Steward 1.0');
     await page.goto(`/breakfast?outlet=${outlet}`);
     await expect(main(page).getByTestId('breakfast-buffet')).toBeVisible();
     await expect(main(page).locator('section[data-testid^="breakfast-"]').first()).toHaveAttribute(
       'data-testid',
       'breakfast-buffet',
     );
-    await main(page).getByRole('textbox', { name: 'Buffet guests' }).fill('18');
+    await main(page).getByTestId('breakfast-add-buffet').click();
+    const picker = main(page).getByTestId('breakfast-add');
+    await picker.getByRole('button', { name: 'Room 101' }).click();
+    await picker.getByRole('button', { name: 'Room 201' }).click();
+    await picker.getByRole('button', { name: 'One more in room 201' }).click();
+    await picker.getByTestId('breakfast-picked').click();
+    await expect(
+      main(page).getByTestId('breakfast-buffet').getByTestId('breakfast-by-room'),
+    ).toHaveText('3 guests in 2 rooms');
     await main(page).getByTestId('breakfast-add-in_room').click();
-    await main(page)
-      .getByTestId('breakfast-add')
-      .getByRole('group', { name: 'Room' })
-      .getByRole('button', { name: 'Room 102' })
-      .click();
-    await main(page).getByLabel('Note for the kitchen (optional)').fill('no onion');
-    await main(page).getByRole('button', { name: 'Add room 102 · 2 guests' }).click();
-    await expect(main(page).getByRole('textbox', { name: 'In-room guests' })).toHaveValue('2');
+    await expect(picker.getByRole('button', { name: 'Room 101' })).toHaveCount(0);
+    await picker.getByRole('button', { name: 'Room 102' }).click();
+    await picker.getByTestId('breakfast-picked').click();
     await main(page)
       .getByRole('button', { name: /^Save / })
       .click();
     await expect(main(page).getByRole('status')).toHaveText('Saved.');
-    // the next day starts from its own numbers, never this one's
+    // the next day starts from its own rooms, never this one's
     const dayLinks = main(page)
       .getByRole('navigation', { name: 'Day' })
       .getByTestId('breakfast-day');
     await dayLinks.last().click();
     await page.waitForURL(/day=/);
-    await expect(main(page).getByRole('textbox', { name: 'Buffet guests' })).toHaveValue('');
+    await expect(main(page).getByTestId('breakfast-room')).toHaveCount(0);
+    // lunch is its own meal; another day is never a later one
+    await main(page).getByRole('link', { name: 'Lunch' }).click();
+    await page.waitForURL(/meal=lunch/);
+    await expect(main(page).getByTestId('breakfast-buffet')).toContainText('Restaurant');
+    await main(page).getByTestId('breakfast-other-day').click();
+    await expect(main(page).getByRole('textbox', { name: 'Day' })).toHaveAttribute('max', /\d{4}-/);
 
-    await signInAs(page, 'Test Executive Chef 1.0');
-    await page.goto(`/breakfast?outlet=${outlet}`);
-    await expect(
-      main(page).getByTestId('breakfast-in_room').getByTestId('breakfast-total'),
-    ).toContainText('2 guests · 2 by room');
-    await expect(
-      main(page).getByTestId('breakfast-buffet').getByTestId('breakfast-total'),
-    ).toContainText('18 guests');
-    await expect(main(page).getByTestId('breakfast-room')).toContainText('no onion');
-    await expect(main(page).getByRole('button', { name: /^Save / })).toHaveCount(0);
+    // the kitchen reads it and changes nothing; the front desk too
+    for (const who of ['Test Executive Chef 1.0', 'Test Front Desk Executive 1.0']) {
+      await signInAs(page, who);
+      await page.goto(`/breakfast?outlet=${outlet}`);
+      await expect(
+        main(page).getByTestId('breakfast-buffet').getByTestId('breakfast-total'),
+      ).toContainText('3 guests · 2 rooms');
+      await expect(
+        main(page).getByTestId('breakfast-in_room').getByTestId('breakfast-total'),
+      ).toContainText('1 guest · 1 room');
+      await expect(main(page).getByRole('button', { name: /^Save / })).toHaveCount(0);
+    }
   } finally {
     await asMigrator(`delete from ops.room_count where org_node_id = $1 and created_at >= $2`, [
       outlet,

@@ -1,6 +1,7 @@
 import 'server-only';
 import { weekStart } from './dates';
 import { sql, type Tx } from './db';
+import type { RoomDetails } from './rooms-view';
 import { breakfastDay, breakfastOutlets, givesRooms, roomOutlets, rooms } from './rooms';
 import { minibarPlaces, minibarRooms, minibarToCharge, type ToChargeRow } from './minibar';
 import type { Shell } from './shell';
@@ -19,6 +20,7 @@ export interface HomeRooms {
     floor: string | null;
     status: string;
     can_set: boolean;
+    details?: RoomDetails;
   }[];
   /** every room's status, for the board */
   all: { status: string }[];
@@ -70,6 +72,13 @@ export async function homeRooms(tx: Tx, shell: Shell): Promise<HomeRooms | null>
         floor: r.floor,
         status: r.status,
         can_set: r.can_set,
+        details: {
+          at_time: r.at_time,
+          reason: r.reason,
+          until: r.until,
+          maintenance_id: r.maintenance_id,
+          maintenance_title: r.maintenance_title,
+        },
       })),
     all: list.map((r) => ({ status: r.status })),
     gives: await givesRooms(tx, o.outlet_id),

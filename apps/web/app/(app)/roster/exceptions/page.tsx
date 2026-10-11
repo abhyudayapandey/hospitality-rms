@@ -7,8 +7,11 @@ import { requireUser } from '@/lib/auth/server';
 import { formatDay, formatSpan } from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import { param, type SearchParams } from '@/lib/inventory';
+import { ListDays } from '@/components/date-range';
+import { listDays } from '@/lib/list-days';
 import {
   EXCEPTION_LABEL,
+  inRange,
   exceptionSelfies,
   exceptions,
   exceptionsAll,
@@ -53,16 +56,23 @@ export default async function ExceptionsPage({ searchParams }: { searchParams: S
   // "All departments" (ADR 048): what Home's attendance issues count opens
   const all = param(sp, 'all') === '1' && ctx.nodes.length > 1;
   const user = await requireUser();
-  const { rows, selfies } = await withUser(user.id, async (tx) => {
-    const rows = all
-      ? await exceptionsAll(
-          tx,
-          ctx.nodes.map((n) => n.id),
-          status,
-        )
-      : await exceptions(tx, node.id, status);
+  const { rows, selfies, range, today } = await withUser(user.id, async (tx) => {
+    // the days chosen, by the shift's own day (ADR 120)
+    const { range, today } = await listDays(tx, sp, node.id);
+    const rows = inRange(
+      all
+        ? await exceptionsAll(
+            tx,
+            ctx.nodes.map((n) => n.id),
+            status,
+          )
+        : await exceptions(tx, node.id, status),
+      range,
+    );
     return {
       rows,
+      range,
+      today,
       selfies: await exceptionSelfies(
         tx,
         rows.map((r) => r.id),
@@ -97,7 +107,7 @@ export default async function ExceptionsPage({ searchParams }: { searchParams: S
         {(['open', 'closed'] as const).map((s) => (
           <Link
             key={s}
-            href={`/roster/exceptions?node=${node.id}${all ? '&all=1' : ''}&status=${s}`}
+            href={`/roster/exceptions?node=${node.id}${all ? '&all=1' : ''}&status=${s}${range ? `&from=${range.from}&to=${range.to}` : ''}`}
             aria-current={s === status ? 'page' : undefined}
             className={`flex min-h-11 items-center justify-center rounded-lg ${
               s === status
@@ -109,8 +119,21 @@ export default async function ExceptionsPage({ searchParams }: { searchParams: S
           </Link>
         ))}
       </div>
+      <ListDays
+        path="/roster/exceptions"
+        params={{ node: node.id, all: all ? '1' : undefined, status }}
+        range={range}
+        today={today}
+        list="attendance_exceptions"
+      />
       {rows.length === 0 ? (
-        <Empty>{status === 'open' ? 'Nothing to review.' : 'Nothing resolved yet.'}</Empty>
+        <Empty>
+          {range
+            ? 'Nothing on these days.'
+            : status === 'open'
+              ? 'Nothing to review.'
+              : 'Nothing resolved yet.'}
+        </Empty>
       ) : (
         <div className="space-y-4" data-testid="exceptions">
           {groups.map((g) => (

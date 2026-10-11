@@ -1,59 +1,77 @@
 import Link from 'next/link';
 import { BackLink } from '@/components/back-link';
+import { ExportLink } from '@/components/date-range';
 import { Icon } from '@/components/icon';
 import { Empty } from '@/components/messages';
+import { ViewTabs } from '@/components/view-tabs';
 import { requireUser } from '@/lib/auth/server';
 import { addDays, formatDay, isIsoDate } from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import { isUuid, param, type SearchParams } from '@/lib/params';
-import { breakfastDay, breakfastOutlets, rooms } from '@/lib/rooms';
-import { BreakfastForm } from './breakfast-forms';
+import { isMeal, mealDay, mealOutlets, mealRooms, type MealCode } from '@/lib/rooms';
+import { modeLabel, type Mode } from '@/lib/rooms-view';
+import { MealForm } from './breakfast-forms';
 
-// Breakfast (ADR 094, 110): the next breakfast first. Before the outlet's breakfast ends (12:00
-// unless the company says otherwise) that is today's, after it tomorrow's. A breakfast that has
-// been served is read only, and any earlier day can be opened for a look back. Buffet comes
-// first, with room numbers only when wanted; in-room is the rooms and their guests.
-const MODES = [
-  ['buffet', 'Buffet'],
-  ['in_room', 'In-room'],
-] as const;
+// Meals (ADR 094, 110, 121): breakfast, lunch and dinner, each the next one first. Before a meal
+// is over (breakfast 12:00, lunch 16:00, dinner 23:30 unless the company says otherwise) that is
+// today's, after it tomorrow's. Its guests are its rooms'; the team that serves it sets them
+// (Restaurant or Buffet, then In-room), everyone else who follows it reads them. A meal that has
+// been served is read only, and any earlier day can be opened for a look back, never a later
+// one (those are the chips).
+const MODES: readonly Mode[] = ['buffet', 'in_room'];
+const MEAL_WORDS: Record<MealCode, string> = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+};
 
-export default async function BreakfastPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function MealsPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const user = await requireUser();
-  const outlets = await withUser(user.id, (tx) => breakfastOutlets(tx));
+  const outlets = await withUser(user.id, (tx) => mealOutlets(tx));
   const asked = param(sp, 'outlet');
   const outlet = outlets.find((o) => isUuid(asked) && o.outlet_id === asked) ?? outlets[0];
   if (!outlet) {
     return (
       <div className="space-y-4">
         <BackLink />
-        <h1 className="text-xl font-semibold">Breakfast</h1>
-        <Empty>You don&apos;t see any hotel&apos;s breakfast.</Empty>
+        <h1 className="text-xl font-semibold">Meals</h1>
+        <Empty>You don&apos;t see any hotel&apos;s meals.</Empty>
       </div>
     );
   }
-  const next = outlet.next_day;
+  const askedMeal = param(sp, 'meal');
+  const meal: MealCode = isMeal(askedMeal) ? askedMeal : 'breakfast';
+  const next = outlet[`${meal}_next`];
   const askedDay = param(sp, 'day');
-  const day = askedDay && isIsoDate(askedDay) ? askedDay : next;
-  const modes = await withUser(user.id, (tx) => breakfastDay(tx, outlet.outlet_id, day));
-  const mayChange = modes.some((m) => m.can_edit);
-  const open = mayChange && day >= next && day <= addDays(next, 7);
-  const roomList = open ? await withUser(user.id, (tx) => rooms(tx, outlet.outlet_id)) : [];
-  const href = (d: string) => `/breakfast?outlet=${outlet.outlet_id}&day=${d}`;
+  const day = askedDay && isIsoDate(askedDay) && askedDay <= addDays(next, 7) ? askedDay : next;
+  const modes = await withUser(user.id, (tx) => mealDay(tx, outlet.outlet_id, day, meal));
+  const open = modes.some((m) => m.can_edit) && day >= next;
+  const roomList = open ? await withUser(user.id, (tx) => mealRooms(tx, outlet.outlet_id)) : [];
+  const href = (d: string, m: MealCode = meal) =>
+    `/breakfast?outlet=${outlet.outlet_id}&meal=${m}&day=${d}`;
   const served = day < next;
   const word = (d: string) =>
     d === outlet.today ? 'Today' : d === addDays(outlet.today, 1) ? 'Tomorrow' : null;
-  // the chips: the last one served (when today's is over), the next two, then any other day
+  // the chips: the last one served (when today's is over), the next two
   const chips = [...(next > outlet.today ? [outlet.today] : []), next, addDays(next, 1)];
   const byMode = Object.fromEntries(modes.map((m) => [m.mode, m]));
   return (
     <div className="space-y-4">
       <BackLink />
       <div>
-        <h1 className="text-xl font-semibold">Breakfast</h1>
+        <h1 className="text-xl font-semibold">Meals</h1>
         <p className="text-sm text-slate-600">{outlet.name}</p>
       </div>
+      <ViewTabs
+        label="Meal"
+        current={meal}
+        tabs={(['breakfast', 'lunch', 'dinner'] as const).map((m) => ({
+          key: m,
+          label: MEAL_WORDS[m],
+          href: href(outlet[`${m}_next`], m),
+        }))}
+      />
       <nav aria-label="Day" className="flex flex-wrap gap-2">
         {chips.map((d) => (
           <Link
@@ -83,12 +101,14 @@ export default async function BreakfastPage({ searchParams }: { searchParams: Se
           </summary>
           <form method="get" className="flex w-full items-center gap-2">
             <input type="hidden" name="outlet" value={outlet.outlet_id} />
+            <input type="hidden" name="meal" value={meal} />
+            {/* a look back: never a day after today (ADR 121) */}
             <input
               type="date"
               name="day"
               aria-label="Day"
-              defaultValue={day}
-              max={addDays(next, 7)}
+              defaultValue={day <= outlet.today ? day : outlet.today}
+              max={outlet.today}
               className="min-h-11 flex-1 rounded-xl border border-slate-300 bg-white px-3"
             />
             <button
@@ -102,29 +122,40 @@ export default async function BreakfastPage({ searchParams }: { searchParams: Se
       </nav>
       {day === next && next > outlet.today && (
         <p className="text-sm text-slate-600" data-testid="breakfast-why-tomorrow">
-          Today&apos;s breakfast is over, so this opens on tomorrow.
+          Today&apos;s {MEAL_WORDS[meal].toLowerCase()} is over, so this opens on tomorrow.
         </p>
       )}
+      {/* the last 30 days of this meal, room by room (ADR 120) */}
+      <ExportLink
+        list="meals"
+        params={{
+          outlet: outlet.outlet_id,
+          meal,
+          from: addDays(day <= outlet.today ? day : outlet.today, -29),
+          to: day <= outlet.today ? day : outlet.today,
+        }}
+        label="Download 30 days"
+      />
       {served && (
         <p className="text-sm text-slate-600" data-testid="breakfast-served">
           Served. This is what was given; it can&apos;t be changed.
         </p>
       )}
       {open ? (
-        <BreakfastForm
-          key={day}
+        <MealForm
+          key={`${meal}-${day}`}
           outlet={outlet.outlet_id}
           day={day}
+          meal={meal}
           saveLabel={
             word(day) === 'Today'
-              ? "Save today's breakfast"
+              ? `Save today's ${MEAL_WORDS[meal].toLowerCase()}`
               : word(day) === 'Tomorrow'
-                ? "Save tomorrow's breakfast"
+                ? `Save tomorrow's ${MEAL_WORDS[meal].toLowerCase()}`
                 : `Save ${formatDay(day)}`
           }
-          modes={MODES.map(([m]) => ({
+          modes={MODES.map((m) => ({
             mode: m,
-            total: byMode[m]?.total ?? null,
             rooms: (byMode[m]?.room_list ?? []).map((r) => ({
               room_id: r.room_id,
               number: r.number,
@@ -135,18 +166,22 @@ export default async function BreakfastPage({ searchParams }: { searchParams: Se
           rooms={roomList.map((r) => ({ room_id: r.room_id, number: r.number, floor: r.floor }))}
         />
       ) : (
-        MODES.map(([m, label]) => {
+        MODES.map((m) => {
           const mode = byMode[m];
           return (
             <section key={m} className="space-y-2" data-testid={`breakfast-${m}`}>
               <h2 className="flex items-baseline justify-between font-semibold">
                 <span className="inline-flex items-center gap-2">
                   <Icon name={m === 'in_room' ? 'bed' : 'plate'} className="size-5" />
-                  {label}
+                  {modeLabel(meal, m)}
                 </span>
                 <span className="text-sm font-normal text-slate-600" data-testid="breakfast-total">
-                  {mode?.total == null ? 'no total yet' : `${mode.total} guests`}
-                  {mode && mode.rooms > 0 && ` · ${mode.rooms} by room`}
+                  {mode?.total == null
+                    ? 'no rooms yet'
+                    : `${mode.total} ${mode.total === 1 ? 'guest' : 'guests'}`}
+                  {mode &&
+                    mode.rooms > 0 &&
+                    ` · ${mode.room_list.length} ${mode.room_list.length === 1 ? 'room' : 'rooms'}`}
                 </span>
               </h2>
               {mode && mode.room_list.length > 0 && (

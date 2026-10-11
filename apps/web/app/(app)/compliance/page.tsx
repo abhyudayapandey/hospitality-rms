@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ExportLink } from '@/components/date-range';
 import { repeatOf, repeatWords } from '@outlet-ops/domain';
 import { Empty, secondaryButton } from '@/components/messages';
 import { ModuleGate } from '@/components/module-gate';
@@ -93,6 +94,12 @@ async function Compliance({ searchParams }: { searchParams: SearchParams }) {
           { key: 'jobs', label: 'Regular jobs', count: counts.items, href: href('jobs') },
         ]}
       />
+      {tab !== 'action' && rows.length > 0 && (
+        <ExportLink
+          list="compliance"
+          params={{ node: place.id, all: all ? '1' : undefined, tab }}
+        />
+      )}
       {rows.length === 0 ? (
         <Empty>
           {tab === 'action'

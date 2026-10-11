@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { Empty } from '@/components/messages';
 import { ViewTabs } from '@/components/view-tabs';
+import { DateRangePicker, ExportLink } from '@/components/date-range';
+import { readRange } from '@/lib/date-range';
 import { requireUser } from '@/lib/auth/server';
-import { addDays, businessDate } from '@/lib/dates';
+import { businessDate } from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import { formatMoney, formatWhen } from '@/lib/format';
 import { Icon } from '@/components/icon';
@@ -11,6 +13,7 @@ import {
   isMinibarTab,
   minibarPlaces,
   minibarRooms,
+  minibarCharged,
   minibarToCharge,
   minibarUsage,
   type MinibarRoomRow,
@@ -28,8 +31,6 @@ import { UsedLines } from './used-lines';
 // what is to charge when there is any (ADR 112); an attendant's own rooms come first and the
 // rest fold under them (ADR 111).
 
-const PERIODS = [7, 30] as const;
-
 export default async function MinibarPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const user = await requireUser();
@@ -45,8 +46,10 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
     );
   }
   const raw = param(sp, 'tab');
-  const days = param(sp, 'days') === '30' ? 30 : 7;
   const today = businessDate(new Date());
+  // the days shown on Added to bills and Charged to guests (ADR 120): any two days, the last 7
+  // by default
+  const range = readRange({ from: param(sp, 'from'), to: param(sp, 'to') }, today);
   const { rooms, charge } = await withUser(user.id, async (tx) => ({
     rooms: await minibarRooms(tx, place.outlet_id),
     charge: place.bills ? await minibarToCharge(tx, place.outlet_id) : [],
@@ -58,13 +61,17 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
     : place.bills && (charge.length > 0 || !place.can_check)
       ? 'charge'
       : 'rooms';
-  const tab: MinibarTab = askedTab === 'charge' && !place.bills ? 'rooms' : askedTab;
+  const tab: MinibarTab =
+    (askedTab === 'charge' || askedTab === 'history') && !place.bills ? 'rooms' : askedTab;
   const usage =
     tab === 'usage'
-      ? await withUser(user.id, (tx) =>
-          minibarUsage(tx, place.outlet_id, addDays(today, 1 - days), today),
-        )
+      ? await withUser(user.id, (tx) => minibarUsage(tx, place.outlet_id, range.from, range.to))
       : [];
+  const history =
+    tab === 'history'
+      ? await withUser(user.id, (tx) => minibarCharged(tx, place.outlet_id, range.from, range.to))
+      : [];
+  const rangeParams = { outlet: place.outlet_id, tab };
   const href = (t: MinibarTab, extra = '') => `/minibar?outlet=${place.outlet_id}&tab=${t}${extra}`;
   const mineOnly = rooms.filter((r) => r.mine);
   const counted = mineOnly.length > 0 ? mineOnly : rooms;
@@ -108,6 +115,10 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
             ? [{ key: 'charge', label: 'To charge', count: charge.length, href: href('charge') }]
             : []),
           { key: 'rooms', label: 'Rooms', count: rooms.length, href: href('rooms') },
+          // what was added to bills, by whom and when (ADR 119): for whoever bills them
+          ...(place.bills
+            ? [{ key: 'history', label: 'Added to bills', href: href('history') }]
+            : []),
           { key: 'usage', label: 'Charged to guests', href: href('usage') },
         ]}
       />
@@ -141,24 +152,52 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
           </ul>
         ))}
 
+      {tab === 'history' && (
+        <div className="space-y-3">
+          <DateRangePicker path="/minibar" params={rangeParams} range={range} today={today} />
+          {history.length === 0 ? (
+            <Empty>Nothing was added to bills in these days.</Empty>
+          ) : (
+            <>
+              <p className="text-sm text-slate-600" data-testid="minibar-history-total">
+                {history.length} bill{history.length === 1 ? '' : 's'},{' '}
+                {formatMoney(history.reduce((s, c) => s + Number(c.charge), 0))}
+              </p>
+              <ul className="space-y-2" data-testid="minibar-history">
+                {history.map((c) => (
+                  <li
+                    key={c.id}
+                    data-testid="minibar-charged"
+                    className="rounded-xl bg-white ring-1 ring-slate-200"
+                  >
+                    <details>
+                      <summary className="flex min-h-12 cursor-pointer items-center justify-between gap-2 px-4">
+                        <span className="font-medium">Room {c.room}</span>
+                        <span className="font-semibold tabular-nums">{formatMoney(c.charge)}</span>
+                      </summary>
+                      <div className="space-y-1 border-t border-slate-100 px-4 pb-3">
+                        <UsedLines used={c.used} prices />
+                        <p className="text-xs text-slate-500">
+                          Checked {formatWhen(c.checked_at)}
+                          {c.checked_by && ` by ${c.checked_by}`} · added to the bill{' '}
+                          {formatWhen(c.charged_at)}
+                          {c.charged_by && ` by ${c.charged_by}`}
+                        </p>
+                      </div>
+                    </details>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <ExportLink list="minibar_charged" params={{ outlet: place.outlet_id, ...range }} />
+        </div>
+      )}
+
       {tab === 'usage' && (
         <div className="space-y-3">
-          <nav aria-label="Period" className="flex gap-2">
-            {PERIODS.map((d) => (
-              <Link
-                key={d}
-                href={href('usage', `&days=${d}`)}
-                aria-current={d === days ? 'page' : undefined}
-                className={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium ring-1 ${
-                  d === days
-                    ? 'bg-brand-700 text-white ring-brand-700'
-                    : 'bg-white text-slate-700 ring-slate-300'
-                }`}
-              >
-                Last {d} days
-              </Link>
-            ))}
-          </nav>
+          <DateRangePicker path="/minibar" params={rangeParams} range={range} today={today} />
+          <ExportLink list="minibar_usage" params={{ outlet: place.outlet_id, ...range }} />
           {usage.length === 0 ? (
             <Empty>Nothing was taken from the minibars in these days.</Empty>
           ) : (
