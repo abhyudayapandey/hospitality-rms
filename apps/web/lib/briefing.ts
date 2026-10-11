@@ -70,10 +70,10 @@ export interface PlaceNote {
   written_at: string;
 }
 
-export async function briefingAt(tx: Tx, place: string): Promise<PlaceNote[]> {
+export async function briefingAt(tx: Tx, place: string, day: string): Promise<PlaceNote[]> {
   const r = await sql<PlaceNote>`
     select id, part, body, off_dishes, written_by, written_at::text
-      from ops.briefing_at(${place}::uuid)`.execute(tx);
+      from ops.briefing_at(${place}::uuid, ${day}::date)`.execute(tx);
   return r.rows;
 }
 
@@ -83,8 +83,8 @@ export interface Dish {
   menu: string;
 }
 
-export async function briefingDishes(tx: Tx, place: string): Promise<Dish[]> {
+export async function briefingDishes(tx: Tx, place: string, day: string): Promise<Dish[]> {
   const r = await sql<Dish>`
-    select id, name, menu from ops.briefing_dishes(${place}::uuid)`.execute(tx);
+    select id, name, menu from ops.briefing_dishes(${place}::uuid, ${day}::date)`.execute(tx);
   return r.rows;
 }

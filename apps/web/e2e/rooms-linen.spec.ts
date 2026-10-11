@@ -40,30 +40,46 @@ test('a room is counted; breakfast is given and read', async ({ page }) => {
         .getByTestId('room-counted'),
     ).toContainText('counted 1 each');
 
+    // breakfast (ADR 110): the next one opens, buffet first, a room is two unless changed
     await signInAs(page, 'Test Front Desk Executive 1.0');
     await page.goto(`/breakfast?outlet=${outlet}`);
-    await main(page).getByRole('textbox', { name: 'In-room' }).fill('3');
-    await main(page).getByRole('textbox', { name: 'Buffet' }).fill('18');
-    await main(page).getByRole('button', { name: 'Save the totals' }).click();
-    await expect(
-      main(page).getByTestId('breakfast-buffet').getByTestId('breakfast-total'),
-    ).toContainText('18 guests');
+    await expect(main(page).getByTestId('breakfast-buffet')).toBeVisible();
+    await expect(main(page).locator('section[data-testid^="breakfast-"]').first()).toHaveAttribute(
+      'data-testid',
+      'breakfast-buffet',
+    );
+    await main(page).getByRole('textbox', { name: 'Buffet guests' }).fill('18');
+    await main(page).getByTestId('breakfast-add-in_room').click();
     await main(page)
+      .getByTestId('breakfast-add')
       .getByRole('group', { name: 'Room' })
       .getByRole('button', { name: 'Room 102' })
       .click();
-    await main(page).getByLabel('Guests').fill('2');
-    await main(page).getByLabel('Note (optional)').fill('no onion');
-    await main(page).getByRole('button', { name: 'Save the room' }).click();
-    await expect(main(page).getByTestId('breakfast-room')).toContainText('Room 102');
+    await main(page).getByLabel('Note for the kitchen (optional)').fill('no onion');
+    await main(page).getByRole('button', { name: 'Add room 102 · 2 guests' }).click();
+    await expect(main(page).getByRole('textbox', { name: 'In-room guests' })).toHaveValue('2');
+    await main(page)
+      .getByRole('button', { name: /^Save / })
+      .click();
+    await expect(main(page).getByRole('status')).toHaveText('Saved.');
+    // the next day starts from its own numbers, never this one's
+    const dayLinks = main(page)
+      .getByRole('navigation', { name: 'Day' })
+      .getByTestId('breakfast-day');
+    await dayLinks.last().click();
+    await page.waitForURL(/day=/);
+    await expect(main(page).getByRole('textbox', { name: 'Buffet guests' })).toHaveValue('');
 
     await signInAs(page, 'Test Executive Chef 1.0');
     await page.goto(`/breakfast?outlet=${outlet}`);
     await expect(
       main(page).getByTestId('breakfast-in_room').getByTestId('breakfast-total'),
-    ).toContainText('3 guests · 2 by room');
+    ).toContainText('2 guests · 2 by room');
+    await expect(
+      main(page).getByTestId('breakfast-buffet').getByTestId('breakfast-total'),
+    ).toContainText('18 guests');
     await expect(main(page).getByTestId('breakfast-room')).toContainText('no onion');
-    await expect(main(page).getByRole('button', { name: 'Save the totals' })).toHaveCount(0);
+    await expect(main(page).getByRole('button', { name: /^Save / })).toHaveCount(0);
   } finally {
     await asMigrator(`delete from ops.room_count where org_node_id = $1 and created_at >= $2`, [
       outlet,
@@ -79,12 +95,17 @@ test('the laundry exchange and a uniform', async ({ page }) => {
   try {
     await signInAs(page, 'Test Laundry Attendant 1.0');
     await page.goto(`/linen?place=${hk}`);
+    // sending and taking back are two moments (ADR 113): Send asks only for what goes out
     await main(page).getByLabel('Test Bath Towel sent').fill('30');
+    await main(page).getByRole('button', { name: 'Save what went out' }).click();
+    await main(page).getByRole('link', { name: 'Receive (1 out)' }).click();
+    await page.waitForURL(/view=receive/);
+    const towel = main(page).getByTestId('receive-line').filter({ hasText: 'Test Bath Towel' });
+    await expect(towel).toContainText('30 out');
     await main(page).getByLabel('Test Bath Towel back').fill('12');
-    await main(page).getByRole('button', { name: "Save today's exchange" }).click();
-    await expect(
-      main(page).getByTestId('at-laundry').filter({ hasText: 'Test Bath Towel' }),
-    ).toContainText('18');
+    await expect(towel.getByTestId('receive-short')).toHaveText('18 short');
+    await main(page).getByRole('button', { name: 'Save what came back' }).click();
+    await expect(towel).toContainText('18 out');
 
     await main(page).getByRole('link', { name: 'Uniforms' }).click();
     await page.waitForURL(/view=uniforms/);

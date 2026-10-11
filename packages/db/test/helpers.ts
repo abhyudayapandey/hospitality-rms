@@ -16,6 +16,18 @@ export const migratorPool = new pg.Pool({
   options,
 });
 
+/**
+ * The test data's day as SQL (`'2026-10-10'::date`): the business day in India, as the loader
+ * counts it (04:00 to 04:00, ADR 046). Between 00:00 and 04:00 IST it is a day before
+ * current_date.
+ */
+export async function businessDay(): Promise<string> {
+  const { rows } = await migratorPool.query<{ d: string }>(
+    `select ((now() at time zone 'Asia/Kolkata') - interval '4 hours')::date::text as d`,
+  );
+  return `'${rows[0]!.d}'::date`;
+}
+
 export async function closePools(): Promise<void> {
   await Promise.all([appPool.end(), migratorPool.end()]);
 }

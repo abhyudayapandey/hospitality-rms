@@ -5,10 +5,10 @@ import { LEAVE_STATUS, leaveIcon } from '@/lib/leave-icons';
 import { PeopleHeader } from '@/components/people-header';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
-import { formatDay, localToday } from '@/lib/dates';
+import { addDays, formatDay, localToday } from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import type { SearchParams } from '@/lib/inventory';
-import { balances, myLeave, myWorker, peopleContext } from '@/lib/people';
+import { balances, myLeave, myShifts, myWorker, peopleContext } from '@/lib/people';
 import { LeaveForm } from './leave-form';
 import { ModuleOff } from '@/components/module-gate';
 
@@ -19,7 +19,16 @@ export default async function LeavePage({ searchParams }: { searchParams: Search
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
     const worker = await myWorker(tx);
-    return worker ? { worker, balances: await balances(tx, null), leave: await myLeave(tx) } : null;
+    if (!worker) return null;
+    const today = localToday(ctx.tz);
+    // the days they work next, for two weeks: leave starts on one of those (ADR 112)
+    const shifts = await myShifts(tx, addDays(today, 1), 14);
+    return {
+      worker,
+      balances: await balances(tx, null),
+      leave: await myLeave(tx),
+      shiftDays: [...new Set(shifts.map((s) => s.local_date))].slice(0, 10),
+    };
   });
   return (
     <div className="space-y-4">
@@ -49,9 +58,20 @@ export default async function LeavePage({ searchParams }: { searchParams: Search
                 </li>
               ))}
           </ul>
+          {/* the balances, then asking for leave from your shifts (ADR 112), then the requests */}
+          <LeaveForm
+            today={localToday(ctx.tz)}
+            shiftDays={data.shiftDays}
+            types={data.balances.map((b) => ({
+              id: b.leave_type_id,
+              name: b.name,
+              icon: leaveIcon(b.code, b.name),
+              available: b.available_days === null ? null : Number(b.available_days),
+            }))}
+          />
           <h2 className="text-sm font-semibold text-slate-700">My requests</h2>
           {data.leave.length === 0 ? (
-            <Empty icon="umbrella">No leave yet</Empty>
+            <p className="text-sm text-slate-500">None yet.</p>
           ) : (
             <ul className="space-y-2" data-testid="my-leave">
               {data.leave.map((l) => (
@@ -80,16 +100,6 @@ export default async function LeavePage({ searchParams }: { searchParams: Search
               ))}
             </ul>
           )}
-          {/* the balances and requests first, then asking for leave (ADR 051, 053) */}
-          <LeaveForm
-            today={localToday(ctx.tz)}
-            types={data.balances.map((b) => ({
-              id: b.leave_type_id,
-              name: b.name,
-              icon: leaveIcon(b.code, b.name),
-              available: b.available_days === null ? null : Number(b.available_days),
-            }))}
-          />
         </>
       )}
     </div>

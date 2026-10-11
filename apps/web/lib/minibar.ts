@@ -33,6 +33,8 @@ export interface MinibarRoomRow {
   status: string;
   /** a minibar, not checked today, a guest in, arriving or leaving */
   due_today: boolean;
+  /** given to me today (ADR 111) */
+  mine: boolean;
 }
 
 export interface MinibarItem {

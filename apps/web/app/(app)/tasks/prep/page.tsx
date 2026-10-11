@@ -4,8 +4,10 @@ import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { placesFor } from '@/lib/places';
 import type { SearchParams } from '@/lib/params';
-import { assignablePeople, jobRolesAt, prepSuggestions, taskTabs } from '@/lib/tasks';
+import { peopleOnShift, jobRolesAt, prepSuggestions, taskTabs } from '@/lib/tasks';
 import { PrepForm } from './prep-form';
+import { planDay } from '@/lib/today';
+import { addDays } from '@/lib/dates';
 
 // Prep list (ADR 020): for each item made at the store, its par, what is on hand and not
 // expired, what events in the next 48 hours need and what open prep tasks will still make;
@@ -16,8 +18,10 @@ export default async function PrepPage({ searchParams }: { searchParams: SearchP
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
     const tabs = await taskTabs(tx);
-    if (!place) return { tabs, lines: [], team: null, people: [], roles: [], canCreate: false };
+    if (!place)
+      return { tabs, lines: [], team: null, people: [], roles: [], canCreate: false, plan: null };
     const lines = await prepSuggestions(tx, place.id);
+    const plan = await planDay(tx, place.id);
     const t = await sql<{ team: string | null; ok: boolean }>`
       select ops.team_of_store(${place.id}::uuid) as team,
              coalesce(core.can('TASKS', 'modify', ops.team_of_store(${place.id}::uuid), null), false)
@@ -29,7 +33,8 @@ export default async function PrepPage({ searchParams }: { searchParams: SearchP
       lines,
       team,
       canCreate,
-      people: canCreate && team ? await assignablePeople(tx, team) : [],
+      plan,
+      people: canCreate && team ? await peopleOnShift(tx, team) : [],
       roles: canCreate && team ? await jobRolesAt(tx, team) : [],
     };
   });
@@ -55,6 +60,11 @@ export default async function PrepPage({ searchParams }: { searchParams: SearchP
         <PrepForm
           store={place.id}
           tz={place.timezone ?? 'Asia/Kolkata'}
+          plan={{
+            today: data.plan!.today,
+            day: data.plan!.day,
+            tomorrow: addDays(data.plan!.today, 1),
+          }}
           lines={data.lines}
           canCreate={data.canCreate}
           people={data.people}

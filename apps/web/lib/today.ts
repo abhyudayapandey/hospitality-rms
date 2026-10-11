@@ -1,7 +1,19 @@
 import 'server-only';
 import { addDays, localToday, weekStart } from './dates';
-import { sql, withUser } from './db';
+import { sql, withUser, type Tx } from './db';
 import { myBriefing, type MyBriefing } from './briefing';
+import {
+  homeBreakfast,
+  homeEvents,
+  homeMinibar,
+  homeRooms,
+  homeTomorrow,
+  type HomeBreakfast,
+  type HomeEvent,
+  type HomeMinibar,
+  type HomeRooms,
+  type HomeTomorrow,
+} from './home-work';
 import { inboxEntries, type InboxEntry } from './inbox';
 import { expiryList } from './inventory';
 import { navProfile, type NavProfile } from './nav';
@@ -25,6 +37,7 @@ import { listHref } from './stock-view';
 import {
   attentionGroups,
   currentShift,
+  laterShift,
   type AttentionCount,
   type AttentionGroup,
   type ComplianceInput,
@@ -51,6 +64,8 @@ export interface TodayNumbers {
   report: 'outlet_flash' | 'department';
   place: { id: string; name: string };
   rows: MeasureRow[];
+  /** before today's sales are in: yesterday's whole day (ADR 112) */
+  yesterday?: { day: string; rows: MeasureRow[] } | null;
   /** department: people rostered now who haven't clocked in */
   notIn?: number;
 }
@@ -101,6 +116,8 @@ export interface MyRepair {
 export interface Today {
   profile: NavProfile;
   shift: MyShift | null;
+  /** with no shift in the next day: the next one within the week (ADR 112) */
+  nextShift: MyShift | null;
   punch: OpenPunch | null;
   tasks: MyTask[];
   /** what they gave to someone else that is still to do (ADR 074) */
@@ -123,6 +140,33 @@ export interface Today {
   targets: Record<TargetKey, number>;
   /** Home's Compliance card (ADR 069): null when the company hasn't it or it isn't theirs */
   compliance: ComplianceInput | null;
+  /** the business day now and the day to plan (ADR 112): tomorrow from the evening */
+  plan: PlanDay | null;
+  /** the person's own job on Home (ADR 113) */
+  rooms: HomeRooms | null;
+  minibar: HomeMinibar | null;
+  breakfast: HomeBreakfast | null;
+  events: HomeEvent[];
+  /** from the evening, tomorrow's roster where they build it */
+  tomorrow: HomeTomorrow | null;
+}
+
+export interface PlanDay {
+  today: string;
+  day: string;
+  /** after the evening starts (18:00 by default), the day to plan is tomorrow */
+  evening: boolean;
+}
+
+/** The day to plan at a place (ADR 112): ops.plan_day, in the place's time zone. */
+export async function planDay(tx: Tx, place: string): Promise<PlanDay> {
+  const r = (
+    await sql<{ today: string; day: string }>`
+      select rpt.today(${place}::uuid)::text as today, ops.plan_day(${place}::uuid)::text as day`.execute(
+      tx,
+    )
+  ).rows[0]!;
+  return { ...r, evening: r.day !== r.today };
 }
 
 /** Approvals shown on Home; the rest are one tap away. */
@@ -136,7 +180,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     const now = new Date();
     const today = localToday(tz, now);
     const shifts =
-      atWork && shell.domains.has('ROSTER') ? await myShifts(tx, addDays(today, -1), 2) : [];
+      atWork && shell.domains.has('ROSTER') ? await myShifts(tx, addDays(today, -1), 9) : [];
     const punch = atWork ? await openPunch(tx) : null;
     // what is still to do (a done task stays on the To do list, not on Home, ADR 075)
     const tasks = shell.domains.has('TASKS')
@@ -333,6 +377,16 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     const push = atWork ? await myPushToday(tx) : [];
     // today's briefing: everyone who works at the outlet reads it (ADR 070)
     const briefing = atWork && shell.modules.has('briefing') ? await myBriefing(tx) : null;
+    const plan = shell.home ? await planDay(tx, shell.home.id) : null;
+    // the job's own cards (ADR 113)
+    const rooms = await homeRooms(tx, shell);
+    const minibar = await homeMinibar(tx, shell);
+    const breakfast = await homeBreakfast(tx, shell);
+    const events = await homeEvents(tx, shell);
+    const tomorrow =
+      plan?.evening && shell.domains.get('ROSTER') === 'modify'
+        ? await homeTomorrow(tx, plan.day)
+        : null;
 
     let numbers: TodayNumbers | null = null;
     let leagueTable: TodayLeague | null = null;
@@ -351,7 +405,15 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       const o = outlets[0];
       if (o) {
         const day = await reportToday(tx, o.id);
-        numbers = { report: 'outlet_flash', place: o, rows: await outletFlash(tx, o.id, day) };
+        const rows = await outletFlash(tx, o.id, day);
+        const sold = Number(rows.find((r) => r.measure === 'sales')?.value ?? 0) > 0;
+        const before = addDays(day, -1);
+        numbers = {
+          report: 'outlet_flash',
+          place: o,
+          rows,
+          yesterday: sold ? null : { day: before, rows: await outletFlash(tx, o.id, before) },
+        };
       } else {
         const d = (await reportPlaces(tx, 'department'))[0];
         if (d) {
@@ -366,11 +428,14 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
         }
       }
     }
+    // a compliance reminder is a row of the Compliance card, never a task as well (ADR 113)
+    const onCard = new Set((compliance?.rows ?? []).flatMap((r) => (r.task_id ? [r.task_id] : [])));
     return {
       profile,
       shift: currentShift(shifts, now),
+      nextShift: laterShift(shifts, now),
       punch,
-      tasks,
+      tasks: tasks.filter((t) => !onCard.has(t.id)),
       handedOn,
       repairs,
       approvals: { shown: inbox.slice(0, HOME_APPROVALS), total: inbox.length, toAssign: assign },
@@ -384,6 +449,12 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       pos,
       push,
       briefing,
+      plan,
+      rooms,
+      minibar,
+      breakfast,
+      events,
+      tomorrow,
       targets: (await companySettings(tx)).targets,
     };
   });

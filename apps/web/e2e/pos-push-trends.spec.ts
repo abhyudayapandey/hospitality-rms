@@ -36,7 +36,8 @@ test('the cashier imports the day and matches the codes not on the menu yet', as
   await signInAs(page, 'Test Cashier 3.0');
   // their end-of-day job is on Home, first
   await expect(page.getByTestId('pos-card')).toBeVisible();
-  await expect(page.getByTestId('tile-posImport')).toBeVisible();
+  // once: the card, never a tile too (ADR 113)
+  await expect(page.getByTestId('tile-posImport')).toHaveCount(0);
 
   await page.goto(`/menu/sales/import?date=${DAY}`);
   await expect(page.getByTestId('pos-outlet')).toHaveText('Test Bar 3.0');

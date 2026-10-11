@@ -61,6 +61,7 @@ export default async function CostOfSales({ searchParams }: { searchParams: Sear
   const { places, place, range, totals, items, expired, parts, labour, targets } = data;
   const top = topLosses(items);
   const notCounted = items.filter((i) => !i.counted);
+  const noCount = items.length > 0 && notCounted.length === items.length;
   const stores = new Set(items.map((i) => i.store_id));
   return (
     <div className="space-y-4">
@@ -75,6 +76,26 @@ export default async function CostOfSales({ searchParams }: { searchParams: Sear
         from={range.from}
         to={range.to}
       />
+      {noCount && (
+        // with no count, food cost is the recipes' alone and a loss can't be seen (ADR 114):
+        // say so before the figures, so a low cost doesn't read as good news
+        <section
+          className="space-y-1 rounded-xl bg-amber-50 p-4 text-amber-900 ring-1 ring-amber-300"
+          data-testid="no-count"
+        >
+          <h2 className="font-semibold">No count in this period</h2>
+          <p className="text-sm">
+            Food cost is worked out from the recipes only. What was lost isn&apos;t known until the
+            stock is counted.
+          </p>
+          <Link
+            href="/stock/count"
+            className="inline-flex min-h-11 items-center font-semibold underline"
+          >
+            Count the stock
+          </Link>
+        </section>
+      )}
       <ReportSections
         report="cost_of_sales"
         rows={totals}
@@ -87,7 +108,11 @@ export default async function CostOfSales({ searchParams }: { searchParams: Sear
       <section aria-label="Lost the most" className="space-y-2">
         <h2 className="text-sm font-semibold text-slate-700">Lost the most at the count</h2>
         {top.length === 0 ? (
-          <Empty>Nothing was lost at a count in this period.</Empty>
+          <Empty>
+            {noCount
+              ? 'Nothing was counted in this period.'
+              : 'Nothing was lost at a count in this period.'}
+          </Empty>
         ) : (
           <ul
             className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"

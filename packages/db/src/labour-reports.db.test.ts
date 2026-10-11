@@ -1,6 +1,12 @@
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
+import {
+  businessDay,
+  closePools,
+  inRolledBackTx,
+  loadSeedIds,
+  type SeedIds,
+} from '../test/helpers';
 import { as } from '../test/report-access';
 
 // The R-3 figures on the test data (ADR 030), as the test data README states them:
@@ -13,8 +19,12 @@ import { as } from '../test/report-access';
 // here from the sessions.
 
 let ids: SeedIds;
+// The load's day: the loader counts from the business day (04:00 to 04:00 in India, ADR
+// 046), so before 04:00 it is still yesterday. Every day here counts back from it.
+let D = '';
 beforeAll(async () => {
   ids = await loadSeedIds();
+  D = await businessDay();
 });
 afterAll(closePools);
 
@@ -27,7 +37,7 @@ async function rows<T extends object>(c: PoolClient, user: string, sql: string, 
 /** test.commis.1.0 works 13 hours on each of the last 7 days: what is over 48 a week. */
 async function commisOvertime(c: PoolClient): Promise<number> {
   const { rows: days } = await c.query<{ week: string }>(
-    `select hr.week_start(current_date - d)::text as week from generate_series(1, 7) d`,
+    `select hr.week_start(${D} - d)::text as week from generate_series(1, 7) d`,
   );
   const perWeek = new Map<string, number>();
   for (const d of days) perWeek.set(d.week, (perWeek.get(d.week) ?? 0) + 13);
@@ -48,7 +58,7 @@ describe('labour cost on the test data', () => {
         c,
         'test.general-manager.1.0',
         `select l.org_node_id as code, l.part, l.days, l.people, l.hours::text, l.cost::text
-           from rpt.labour_cost($1, current_date - 7, current_date - 1) l`,
+           from rpt.labour_cost($1, ${D} - 7, ${D} - 1) l`,
         [ids.node('TEST-HOTEL-1.0')],
       );
       // rows carry the place's id: match them by its code
@@ -89,7 +99,7 @@ describe('labour cost on the test data', () => {
         'test.general-manager.1.0',
         `select hourly_cost::text as hourly, salary_cost::text as salary,
                 overtime_hours::text as overtime
-           from rpt.labour_cost($1, current_date - 7, current_date - 1) where part = 'outlet'`,
+           from rpt.labour_cost($1, ${D} - 7, ${D} - 1) where part = 'outlet'`,
         [ids.node('TEST-HOTEL-1.0')],
       );
       expect(t).toMatchObject({ hourly: '99825.00', salary: '365400.00' });
@@ -108,12 +118,12 @@ describe('labour cost on the test data', () => {
       );
       expect(set.error).toBeUndefined();
       // the stored days follow at the next rebuild (the nightly job)
-      await c.query('select rpt.rebuild(current_date - 35, current_date - 2)');
+      await c.query(`select rpt.rebuild(${D} - 35, ${D} - 2)`);
       const [t] = await rows<{ hourly: string; salary: string }>(
         c,
         'test.general-manager.1.0',
         `select hourly_cost::text as hourly, salary_cost::text as salary
-           from rpt.labour_cost($1, current_date - 7, current_date - 1) where part = 'outlet'`,
+           from rpt.labour_cost($1, ${D} - 7, ${D} - 1) where part = 'outlet'`,
         [ids.node('TEST-HOTEL-1.0')],
       );
       // test.commis.1.0 is paid ₹125 an hour (file 34) and is the only one with overtime
@@ -129,7 +139,7 @@ describe('labour cost on the test data', () => {
           await rows<{ measure: string; value: string | null }>(
             c,
             'test.general-manager.1.0',
-            'select measure, value::text from rpt.outlet_flash($1, current_date - 2)',
+            `select measure, value::text from rpt.outlet_flash($1, ${D} - 2)`,
             [ids.node('TEST-HOTEL-1.0')],
           )
         ).map((x) => [x.measure, x.value]),
@@ -152,7 +162,7 @@ describe('labour cost on the test data', () => {
       const r = await rows<{ value: string }>(
         c,
         'test.general-manager.1.0',
-        `select value::text from rpt.department_day($1, current_date - 2)
+        `select value::text from rpt.department_day($1, ${D} - 2)
           where measure = 'labour_cost'`,
         [ids.node('TEST-HOTEL-1.0-KITCHEN')],
       );
@@ -169,7 +179,7 @@ describe('labour cost on the test data', () => {
           await rows<{ part: string; value: string | null }>(
             c,
             'test.general-manager.1.0',
-            'select part, value::text from rpt.cost_breakdown($1, current_date - 7, current_date - 1)',
+            `select part, value::text from rpt.cost_breakdown($1, ${D} - 7, ${D} - 1)`,
             [hotel],
           )
         ).map((x) => [x.part, Number(x.value)]),
@@ -188,7 +198,7 @@ describe('labour cost on the test data', () => {
       expect(parts.get('transit_loss')).toBe(0);
       const actual = await c.query<{ cost: string }>(
         `select sum(actual_cost)::text as cost
-           from menu.cost_calc($1, rpt.cost_stores($1), current_date - 7, current_date - 1)`,
+           from menu.cost_calc($1, rpt.cost_stores($1), ${D} - 7, ${D} - 1)`,
         [hotel],
       );
       // as the GM sees it (every store of the outlet)
@@ -197,7 +207,7 @@ describe('labour cost on the test data', () => {
       ]);
       const asGm = await c.query<{ cost: string }>(
         `select sum(actual_cost)::text as cost
-           from menu.cost_calc($1, rpt.cost_stores($1), current_date - 7, current_date - 1)`,
+           from menu.cost_calc($1, rpt.cost_stores($1), ${D} - 7, ${D} - 1)`,
         [hotel],
       );
       expect(Number(asGm.rows[0]!.cost ?? actual.rows[0]!.cost)).toBeCloseTo(
@@ -210,7 +220,7 @@ describe('labour cost on the test data', () => {
       const cc = await rows<{ part: string }>(
         c,
         'test.cost-controller.1.0',
-        'select part from rpt.cost_breakdown($1, current_date - 7, current_date - 1)',
+        `select part from rpt.cost_breakdown($1, ${D} - 7, ${D} - 1)`,
         [hotel],
       );
       expect(cc.map((x) => x.part)).not.toContain('labour');
@@ -228,7 +238,7 @@ describe('the central kitchen on the test data', () => {
           await rows<{ measure: string; value: string }>(
             c,
             'test.central-kitchen-manager',
-            'select measure, value::text from rpt.kitchen_summary($1, current_date - 6, current_date)',
+            `select measure, value::text from rpt.kitchen_summary($1, ${D} - 6, ${D})`,
             [store],
           )
         ).map((x) => [x.measure, x.value]),
@@ -245,7 +255,7 @@ describe('the central kitchen on the test data', () => {
         c,
         'test.central-kitchen-manager',
         `select sku, planned::numeric(14,0)::text as planned, made::numeric(14,0)::text as made,
-                batches from rpt.kitchen_production($1, current_date - 6, current_date)`,
+                batches from rpt.kitchen_production($1, ${D} - 6, ${D})`,
         [store],
       );
       expect(made).toEqual([
@@ -261,7 +271,7 @@ describe('the central kitchen on the test data', () => {
         c,
         'test.central-kitchen-manager',
         `select d.store_id as code, d.fill_pct::text, d.transit_loss::text, d.short_lines
-           from rpt.kitchen_dispatch($1, current_date - 6, current_date) d
+           from rpt.kitchen_dispatch($1, ${D} - 6, ${D}) d
           order by d.store_name`,
         [store],
       );
@@ -304,7 +314,7 @@ describe('the central kitchen on the test data', () => {
         'test.executive-chef.1.1',
         `select from_name, requested_value::text, received_value::text, fill_pct::text,
                 transit_loss::text, short_lines
-           from rpt.transfers_in($1, current_date - 6, current_date)`,
+           from rpt.transfers_in($1, ${D} - 6, ${D})`,
         [ids.node('TEST-HOTEL-1.1-KITCHEN-STORE')],
       );
       // 4,000 g asked for, 3,600 g sent, 3,400 g arrived
@@ -332,7 +342,7 @@ describe('the People report on the test data', () => {
             await rows<{ measure: string; value: string | null }>(
               c,
               u,
-              'select measure, value::text from rpt.people_summary($1, current_date - 7, current_date - 1)',
+              `select measure, value::text from rpt.people_summary($1, ${D} - 7, ${D} - 1)`,
               [hotel],
             )
           ).map((x) => [x.measure, x.value]),
@@ -351,7 +361,7 @@ describe('the People report on the test data', () => {
       await c.query(
         `with w as (select * from hr.worker where owner_user_id = $1),
               s as (insert into hr.shift (tenant_id, org_node_id, local_date, start_at, end_at, role_code)
-                    select tenant_id, org_node_id, current_date - 1, now() - interval '30 hours',
+                    select tenant_id, org_node_id, ${D} - 1, now() - interval '30 hours',
                            now() - interval '22 hours', role_code from w returning *)
          insert into hr.attendance_exception (tenant_id, org_node_id, worker_id, owner_user_id,
                                               shift_id, local_date, kind, detail)
@@ -360,9 +370,7 @@ describe('the People report on the test data', () => {
         [ids.user('test.commis.1.0')],
       );
       const flags = (u: string) =>
-        rows(c, u, 'select * from rpt.people_flags($1, current_date - 7, current_date - 1)', [
-          hotel,
-        ]);
+        rows(c, u, `select * from rpt.people_flags($1, ${D} - 7, ${D} - 1)`, [hotel]);
       expect((await flags('test.hr-executive.1.0')).length).toBeGreaterThan(0);
       expect(await flags('test.account-owner')).toEqual([]);
     });

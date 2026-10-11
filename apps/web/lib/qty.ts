@@ -2,7 +2,8 @@
 // The database keeps 6 (a 100 ml pour from a 750 ml bottle, ADR 015); the screen never shows
 // them. No server imports, so forms can use it too.
 
-const UNIT_DECIMALS: Record<string, number> = { g: 0, ml: 0 };
+// things counted one by one show whole (ADR 114): a roll is a roll, not 51.9 of them
+const UNIT_DECIMALS: Record<string, number> = { g: 0, ml: 0, each: 0, pc: 0, pcs: 0 };
 
 /** "1,234.5 kg", "0.96 kg", "250 g", "-5.3 kg". */
 export function formatQty(qty: string | number, uom: string): string {

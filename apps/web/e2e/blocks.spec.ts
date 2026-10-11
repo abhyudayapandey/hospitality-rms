@@ -16,7 +16,7 @@ test('a company without Events and Swaps: they are gone from Roster and Home, an
   await page.goto('/roster/my');
   await expect(
     page.getByRole('navigation', { name: 'Me', exact: true }).getByRole('link'),
-  ).toHaveText(['My shifts', 'Clock', 'Leave']);
+  ).toHaveText(['Shifts', 'Clock', 'Leave']);
   await expect(page.getByRole('link', { name: 'Swap', exact: true })).toHaveCount(0);
   await expect(page.getByTestId('events-this-week')).toHaveCount(0);
   await page.goto('/events');

@@ -1,9 +1,10 @@
+import { addDays, localToday } from '../lib/dates';
 import { expect, test } from '@playwright/test';
 import { asMigrator, signInAs } from './helpers';
 
 // Fewer words, tap instead of type (ADR 099), at 380 px: a reading shows its safe range first
 // and coloured numbers to tap; a task's who-and-when sits under History; one's own To do list
-// is one line a task with done ones folded; leave starts from Today and a length.
+// is one line a task with done ones folded; leave starts from the shifts you work (ADR 112).
 
 test.use({ viewport: { width: 380, height: 900 } });
 
@@ -68,11 +69,16 @@ test('the To do list: one line a task, done ones folded into one row', async ({ 
   await expect(main(page).getByRole('link', { name: 'Report a problem' })).toBeVisible();
 });
 
-test('leave: Today and 2 days fill the dates', async ({ page }) => {
+test('leave: tap the type and your shifts; it never starts on today', async ({ page }) => {
   await signInAs(page, 'Test Commis 1.0');
   await page.goto('/leave');
-  const picks = main(page).getByTestId('leave-picks');
-  await picks.getByRole('button', { name: 'Tomorrow' }).click();
-  await picks.getByRole('button', { name: '2 days' }).click();
+  const form = page.getByRole('form', { name: 'Request leave' });
+  await expect(form.getByRole('group', { name: 'Type' }).getByRole('button').first()).toBeVisible();
+  const today = localToday('Asia/Kolkata');
+  await expect(form.getByLabel('From', { exact: true })).not.toHaveValue(today);
+  const fold = form.getByTestId('leave-dates');
+  if ((await fold.getAttribute('open')) === null) await fold.locator('summary').click();
+  const from = await form.getByLabel('From', { exact: true }).inputValue();
+  await form.getByLabel('To', { exact: true }).fill(addDays(from, 1));
   await expect(main(page).getByRole('button', { name: /Request 2 days/ })).toBeVisible();
 });

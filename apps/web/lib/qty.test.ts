@@ -10,6 +10,8 @@ describe('quantities show at most 2 decimals (ADR 054)', () => {
     expect(formatQty('1234.5', 'l')).toBe('1,234.5 l');
     expect(formatQty('250.4', 'g')).toBe('250 g');
     expect(formatQty('2', 'each')).toBe('2 each');
+    // counted one by one: whole (ADR 114)
+    expect(formatQty('51.9', 'each')).toBe('52 each');
   });
   it('fills a box with a plain number', () => {
     expect(inputQty('4.800000')).toBe('4.8');

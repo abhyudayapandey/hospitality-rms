@@ -320,17 +320,12 @@ describe('stock position', () => {
         [ids.node(KITCHEN)],
       );
       expect(s.stock_value).toBe(Number(rows[0]!.v));
-      // first used 6 days before the load day: 7 days of use, so days on hand show. Before
-      // 04:00 the business day is still yesterday (ADR 023): one day fewer so far
-      const lag = (
-        await c.query<{ n: number }>(`select current_date - rpt.today($1) as n`, [
-          ids.node(KITCHEN),
-        ])
-      ).rows[0]!.n;
-      expect(s.basis_days).toBe(7 - lag);
-      expect(by.get('PANEER')!.basis_days).toBe(7 - lag);
-      // days on hand need 7 days of use: none yet before 04:00 on the load day
-      expect(lag === 0 ? Number(s.days_on_hand) > 0 : s.days_on_hand === null).toBe(true);
+      // first used 6 days before the load day: 7 days of use, so days on hand show. The
+      // loader counts its days from the business day (04:00 to 04:00, ADR 046), as
+      // rpt.today does, so this holds at any hour
+      expect(s.basis_days).toBe(7);
+      expect(by.get('PANEER')!.basis_days).toBe(7);
+      expect(Number(s.days_on_hand)).toBeGreaterThan(0);
       // nothing but opening stock: dead (decided 2 Oct); used this week: not dead
       expect(by.get('MUTTON')!.dead).toBe(true);
       expect(by.get('MUTTON')!.days_on_hand).toBeNull();

@@ -1711,11 +1711,11 @@ each; re-running one rebuilds its zip). Only the numbered files are included, so
 passwords file (`TEST_LOGINS_do_not_commit.csv`) and the README never are:
 
 ```sh
-(cd docs/onboarding/test-data/test-company && zip -q -FS ~/test-company.zip [0-9][0-9]_*.csv)
+(cd docs/onboarding/test-data/test-company && zip -q -FS -r ~/test-company.zip [0-9][0-9]_*.csv photos)
 (cd docs/onboarding/test-data/test-solo-bar-co && zip -q -FS ~/test-solo-bar-co.zip [0-9][0-9]_*.csv)
 ```
 
-`test-company.zip` holds 41 files, `test-solo-bar-co.zip` 29.
+`test-company.zip` holds 49 CSV files and its one menu photo (`photos/menu/`), `test-solo-bar-co.zip` 30 CSV files. `-FS` makes a rebuilt zip match the folder, so a file taken out does not linger in it.
 
 **2. Create each customer**: `/platform` → **New customer**. Fill in exactly:
 
@@ -2688,3 +2688,35 @@ lists them by code alone (Passport) gets them at its next import.
      pay.
    - **`passport.sales-manager`** (Leon Almeida): Events → New event saves an event at the
      hotel.
+
+## Releasing real use: breakfast, rooms given, the day to plan, Homes, forms and demo data (ADR 110 to 114)
+
+Four migrations: `20261217100000_breakfast_day_rooms_given` (the next breakfast, a new table
+`ops.room_assignment` with RLS and audit, giving rooms), `20261217110000_plan_day_briefing_tomorrow`
+(the day to plan, tomorrow's briefing), `20261217120000_homes_forms` (breakfast readers,
+`ops.event_staffing`, `ops.on_shift_today`) and `20261217130000_test_past_roster` (test customers
+only: a past roster, past orders on their day). An access change: a new business table and
+functions that check `ROOMS`, `TASKS` and `EVENTS`, so run "RLS equivalence (all users)" before
+merging.
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual.
+4. Re-import (rebuild each zip first: `-FS` makes it match the folder):
+   - **Passport**: `cd docs/onboarding/demo/passport-hotel && zip -q -FS ../passport-hotel.zip *.csv`.
+     Its files were regenerated (`pnpm --filter @outlet-ops/onboarding passport-demo`): rooms
+     gain a status, file 25 adds the past week and this week, batches are daily. On a customer
+     already loaded the past week and its batches do not load again (they load once, with the
+     attendance); this week's shifts and the room statuses do. For the whole picture, load it
+     on a fresh customer.
+   - **The test customers** (test environment only): the step 7 zips. Test Company: no changes.
+5. Check, at 380 px, in the evening:
+   - **`passport.front-desk`**: Breakfast opens on tomorrow, today's read only; Home shows the
+     minibar charges to post and tomorrow's breakfast.
+   - **`passport.executive-housekeeper`**: Home has the room board and "Give rooms"; give two
+     rooms to the room attendant for tomorrow.
+   - **`passport.room-attendant`**: Rooms shows "Your rooms" with "Other rooms" folded below.
+   - **`passport.gm`**: Home shows only departments in the red; the briefing card writes
+     tomorrow's; Cost of sales says "No count in this period" where nothing was counted.
+   - **`passport.commis`**: Home has Make, Recipes, Shifts & leave and Report a problem; Report
+     a problem is a photo and taps.

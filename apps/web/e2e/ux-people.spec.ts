@@ -12,8 +12,9 @@ test("Me: a server's own day first, the rest under More; no two tiles share a pi
   await signInAs(page, 'Test Server 3.0');
   await page.goto('/me');
   const tiles = page.getByTestId('me-tiles');
-  await expect(tiles.getByTestId('me-clock')).toBeVisible();
-  await expect(tiles.getByTestId('me-leave')).toBeVisible();
+  // one Shifts & leave tile: Clock and Leave are its tabs (ADR 113)
+  await expect(tiles.getByTestId('me-shifts')).toBeVisible();
+  await expect(tiles.getByTestId('me-clock')).toHaveCount(0);
   // what every shift worker may open is folded
   await expect(page.getByTestId('me-logbook')).toHaveCount(0);
   await page.getByTestId('me-more').click();
@@ -32,9 +33,11 @@ test('Me: a commis has Make, Recipes and Opened packs first', async ({ page }) =
   await signInAs(page, 'Test Commis 1.0');
   await page.goto('/me');
   const tiles = page.getByTestId('me-tiles');
-  for (const k of ['clock', 'make', 'menu', 'opened']) {
+  for (const k of ['make', 'menu', 'opened', 'shifts']) {
     await expect(tiles.getByTestId(`me-${k}`), k).toBeVisible();
   }
+  // their own work comes first (ADR 113)
+  await expect(tiles.locator('a').first()).toHaveAttribute('data-testid', 'me-make');
   await expect(tiles.getByTestId('me-menu').locator('svg')).toHaveAttribute('data-icon', 'chefHat');
 });
 

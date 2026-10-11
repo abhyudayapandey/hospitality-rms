@@ -177,6 +177,38 @@ describe('the Passport Hotel demo', () => {
           `select count(*)::int n from ops.room where tenant_id = $1 and minibar_set_id is not null`,
         ),
       ).toBe(27);
+      // the demo looks like a working hotel (ADR 114): a morning's room states, nothing in a
+      // store below zero, every past clock-in on a rostered shift, and people rostered today
+      expect(
+        await one(`select count(distinct status)::int n from ops.room_status where tenant_id = $1`),
+      ).toBeGreaterThanOrEqual(5);
+      expect(
+        (
+          await c.query<{ sku: string; on_hand: string }>(
+            `select i.sku, s.on_hand::text from inv.stock_level s join inv.item i on i.id = s.item_id
+              where i.tenant_id = $1 and s.on_hand < 0 order by i.sku`,
+            [tenant.id],
+          )
+        ).rows,
+      ).toEqual([]);
+      expect(
+        await one(
+          `select count(*)::int n from hr.attendance a
+            where a.tenant_id = $1 and a.in_key like 'test-data att %'
+              and not exists (select 1 from hr.shift_assignment x
+                                join hr.shift s on s.id = x.shift_id and s.status = 'published'
+                               where x.worker_id = a.worker_id and x.status = 'assigned'
+                                 and x.start_at < a.clock_out_at and x.end_at > a.clock_in_at)`,
+        ),
+      ).toBe(0);
+      expect(
+        await one(
+          `select count(*)::int n from hr.shift_assignment x
+             join hr.shift s on s.id = x.shift_id and s.status = 'published'
+            where x.tenant_id = $1 and x.status = 'assigned'
+              and s.local_date = rpt.business_date(now(), ops.tz_of(s.org_node_id))`,
+        ),
+      ).toBeGreaterThan(10);
       expect(
         await one(
           `select count(*)::int n from ops.minibar_check where tenant_id = $1 and charged_at is null`,

@@ -4,7 +4,7 @@ import { PeopleHeader } from '@/components/people-header';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { formatDay, formatSpan, localDate, localToday, localToInstant } from '@/lib/dates';
-import { withUser } from '@/lib/db';
+import { sql, withUser } from '@/lib/db';
 import type { SearchParams } from '@/lib/inventory';
 import { events, peopleContext } from '@/lib/people';
 import { jobTitles } from '@/lib/job-titles';
@@ -19,7 +19,22 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
   const user = await requireUser();
   const title = await withUser(user.id, jobTitles);
   const from = localToInstant(localToday(ctx.tz), '00:00', ctx.tz);
-  const rows = await withUser(user.id, (tx) => events(tx, node.id, from));
+  const { rows, staff } = await withUser(user.id, async (tx) => {
+    const rows = await events(tx, node.id, from);
+    // whether each event has its people (ADR 114): rostered against needed, by job role
+    const staff =
+      rows.length > 0
+        ? (
+            await sql<{ id: string; needed: number; rostered: number }>`
+              select e.id::text, coalesce(sum(s.needed), 0)::int as needed,
+                     coalesce(sum(least(s.rostered, s.needed)), 0)::int as rostered
+                from unnest(${rows.map((r) => r.id)}::uuid[]) e(id)
+                left join lateral ops.event_staffing(e.id) s on true
+               group by e.id`.execute(tx)
+          ).rows
+        : [];
+    return { rows, staff: new Map(staff.map((x) => [x.id, x])) };
+  });
   return (
     <div className="space-y-4">
       <PollRefresh />
@@ -50,11 +65,30 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
                       <span className="text-xs text-slate-500">covers</span>
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {e.status}
-                    {roles.length > 0 &&
-                      ` · ${roles.map((r) => `${r.headcount} ${title(r.role_code)}`).join(', ')}`}
-                    {items.length > 0 && ` · ${items.length} item${items.length === 1 ? '' : 's'}`}
+                  <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    {(() => {
+                      const st = staff.get(e.id);
+                      if (!st || st.needed === 0) return null;
+                      const short = st.rostered < st.needed;
+                      return (
+                        <span
+                          className={`rounded-full px-2 py-0.5 font-semibold tabular-nums ${
+                            short ? 'bg-rose-50 text-rose-800' : 'bg-emerald-50 text-emerald-800'
+                          }`}
+                          data-testid="event-staffed"
+                          title={roles
+                            .map((r) => `${r.headcount} ${title(r.role_code)}`)
+                            .join(', ')}
+                        >
+                          {st.rostered} of {st.needed} rostered
+                        </span>
+                      );
+                    })()}
+                    {items.length > 0 && (
+                      <span>
+                        {items.length} {items.length === 1 ? 'item' : 'items'}
+                      </span>
+                    )}
                   </p>
                 </Link>
               </li>

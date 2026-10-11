@@ -17,12 +17,16 @@ test('the GM approves throwing away the single malt; a bartender throws it away'
   try {
     await signInAs(page, 'Test Head Bartender 1.0');
     await page.goto(`/stock/wastage?node=${store}`);
-    await main(page).getByLabel('Item').selectOption({ label: 'Test Single Malt 750ml (bottle)' });
+    await main(page).getByLabel('Find an item').fill('Single Malt');
+    await main(page).getByRole('button', { name: 'Test Single Malt 750ml' }).click();
     await expect(main(page).getByTestId('needs-gm')).toBeVisible();
     await main(page)
       .getByLabel(/^Quantity/)
       .fill('1');
-    await main(page).getByLabel('Reason').selectOption('damaged');
+    await main(page)
+      .getByRole('group', { name: 'Reason' })
+      .getByRole('button', { name: 'Damaged' })
+      .click();
     await main(page).getByRole('button', { name: 'Ask the GM' }).click();
     await expect(main(page).getByText(/Once the GM approves/)).toBeVisible();
 

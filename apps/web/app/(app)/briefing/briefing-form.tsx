@@ -26,10 +26,16 @@ const MAX = 1000;
 /** The note at one place for a part of today: what to say, and the dishes that are off. */
 export function BriefingForm({
   place,
+  day,
+  when,
   notes,
   dishes,
 }: {
   place: string;
+  /** the business day it is for: today or tomorrow (ADR 112) */
+  day: string;
+  /** "today" or "tomorrow", for the words */
+  when: 'today' | 'tomorrow';
   notes: PlaceNote[];
   dishes: Dish[];
 }) {
@@ -70,10 +76,10 @@ export function BriefingForm({
       if (!body.trim() && off.length === 0) {
         return setError('Write something, or pick the dishes that are off today.');
       }
-      const r = await saveBriefing({ place, part, body, offDishes: off, idempotencyKey: key });
+      const r = await saveBriefing({ place, part, body, offDishes: off, idempotencyKey: key, day });
       if (!r.ok) return setError(r.message);
       setKey(crypto.randomUUID());
-      setStatus('Saved. Everyone at the outlet sees it on Home.');
+      setStatus(`Saved. Everyone at the outlet sees it on Home ${when}.`);
       router.refresh();
     });
 

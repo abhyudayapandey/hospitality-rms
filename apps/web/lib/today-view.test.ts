@@ -176,7 +176,7 @@ describe('attentionGroups (DB-2)', () => {
       {
         key: 'd-Test Hotel & Bar 1.0-Kitchen',
         label: 'Kitchen',
-        lines: [{ kind: 'openSlots', href, n: 5, text: 'open shifts this week' }],
+        lines: [{ kind: 'openSlots', href, n: 5, text: 'open shifts in the next 7 days' }],
         total: 5,
         tone: 'warn',
       },

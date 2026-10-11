@@ -24,7 +24,9 @@ import { UsedLines } from './used-lines';
 // The rooms' minibars (ADR 072, 104): every room as a tile, those due a check today first;
 // what is still to be added to guests' bills (for whoever bills them: the front desk and the
 // managers); and what was charged to guests. One screen, its tabs (ADR 048). When a room was
-// last checked, and by whom, is on the room's own page.
+// last checked, and by whom, is on the room's own page. Whoever bills the minibars opens on
+// what is to charge when there is any (ADR 112); an attendant's own rooms come first and the
+// rest fold under them (ADR 111).
 
 const PERIODS = [7, 30] as const;
 
@@ -43,20 +45,30 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
     );
   }
   const raw = param(sp, 'tab');
-  const askedTab: MinibarTab = isMinibarTab(raw) ? raw : 'rooms';
-  const tab: MinibarTab = askedTab === 'charge' && !place.bills ? 'rooms' : askedTab;
   const days = param(sp, 'days') === '30' ? 30 : 7;
   const today = businessDate(new Date());
-  const { rooms, charge, usage } = await withUser(user.id, async (tx) => ({
+  const { rooms, charge } = await withUser(user.id, async (tx) => ({
     rooms: await minibarRooms(tx, place.outlet_id),
     charge: place.bills ? await minibarToCharge(tx, place.outlet_id) : [],
-    usage:
-      tab === 'usage'
-        ? await minibarUsage(tx, place.outlet_id, addDays(today, 1 - days), today)
-        : [],
   }));
+  // each opens on what they do here (ADR 113): the front desk on To charge, even when nothing
+  // waits; whoever checks minibars as well, on To charge only when something does
+  const askedTab: MinibarTab = isMinibarTab(raw)
+    ? raw
+    : place.bills && (charge.length > 0 || !place.can_check)
+      ? 'charge'
+      : 'rooms';
+  const tab: MinibarTab = askedTab === 'charge' && !place.bills ? 'rooms' : askedTab;
+  const usage =
+    tab === 'usage'
+      ? await withUser(user.id, (tx) =>
+          minibarUsage(tx, place.outlet_id, addDays(today, 1 - days), today),
+        )
+      : [];
   const href = (t: MinibarTab, extra = '') => `/minibar?outlet=${place.outlet_id}&tab=${t}${extra}`;
-  const checkedToday = rooms.filter((r) => r.checked_today).length;
+  const mineOnly = rooms.filter((r) => r.mine);
+  const counted = mineOnly.length > 0 ? mineOnly : rooms;
+  const checkedToday = counted.filter((r) => r.checked_today).length;
   const toCharge = charge.reduce((s, c) => s + Number(c.charge), 0);
 
   return (
@@ -82,7 +94,8 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
       <div>
         <h1 className="text-xl font-semibold">Minibars</h1>
         <p className="text-sm text-slate-600" data-testid="minibar-summary">
-          {checkedToday} of {rooms.length} rooms checked today
+          {checkedToday} of {mineOnly.length > 0 ? 'your ' : ''}
+          {counted.length} rooms checked today
           {place.bills && toCharge > 0 && ` · ${formatMoney(toCharge)} to add to bills`}
         </p>
       </div>
@@ -90,11 +103,11 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
         label="Minibar view"
         current={tab}
         tabs={[
-          { key: 'rooms', label: 'Rooms', count: rooms.length, href: href('rooms') },
-          // the rupees to add to bills are for whoever bills them (ADR 104)
+          // the rupees to add to bills are for whoever bills them (ADR 104), first for them
           ...(place.bills
             ? [{ key: 'charge', label: 'To charge', count: charge.length, href: href('charge') }]
             : []),
+          { key: 'rooms', label: 'Rooms', count: rooms.length, href: href('rooms') },
           { key: 'usage', label: 'Charged to guests', href: href('usage') },
         ]}
       />
@@ -195,6 +208,26 @@ function rupees(n: number): string {
  * sees what is still to charge on the tile.
  */
 function MinibarTiles({ rooms, bills }: { rooms: MinibarRoomRow[]; bills: boolean }) {
+  const mine = rooms.filter((r) => r.mine);
+  if (mine.length === 0) return <DueThenFloors rooms={rooms} bills={bills} />;
+  const others = rooms.filter((r) => !r.mine);
+  return (
+    <div className="space-y-4">
+      <section className="space-y-3" data-testid="minibar-mine">
+        <h2 className="font-semibold">Your rooms ({mine.length})</h2>
+        <DueThenFloors rooms={mine} bills={bills} />
+      </section>
+      <details className="space-y-3" data-testid="minibar-others">
+        <summary className="flex min-h-11 cursor-pointer items-center font-semibold">
+          Other rooms ({others.length})
+        </summary>
+        <DueThenFloors rooms={others} bills={bills} />
+      </details>
+    </div>
+  );
+}
+
+function DueThenFloors({ rooms, bills }: { rooms: MinibarRoomRow[]; bills: boolean }) {
   const due = rooms.filter((r) => r.due_today);
   const rest = rooms.filter((r) => !r.due_today);
   const tile = (r: MinibarRoomRow) => {

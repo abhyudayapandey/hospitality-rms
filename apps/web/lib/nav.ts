@@ -106,11 +106,17 @@ export type NavProfile = 'outlet' | 'department' | 'store' | 'cost' | 'frontline
 export function navProfile(groups: ReadonlySet<string>): NavProfile {
   const any = (...g: string[]) => g.some((x) => groups.has(x));
   if (any('OUTLET_MANAGER', 'AREA_MANAGER', 'HUB_MANAGER')) return 'outlet';
-  if (any('DEPARTMENT_HEAD', 'SUPERVISOR')) return 'department';
+  if (any('DEPARTMENT_HEAD')) return 'department';
+  // a user administrator who is otherwise frontline keeps the frontline nav; so does a shift
+  // lead (a bell captain, a captain): they work the floor and give out its tasks from Tasks,
+  // with no roster or department figures of their own (ADR 113)
+  const floor = [...groups].every(
+    (g) => FRONTLINE.has(g) || g === 'USER_ADMIN' || g === 'SUPERVISOR',
+  );
+  if (any('SUPERVISOR') && !floor) return 'department';
   if (any('STORE_KEEPER')) return 'store';
   if (any('COST_CONTROLLER')) return 'cost';
-  // a user administrator who is otherwise frontline keeps the frontline nav
-  if ([...groups].every((g) => FRONTLINE.has(g) || g === 'USER_ADMIN')) return 'frontline';
+  if (floor) return 'frontline';
   return 'office';
 }
 

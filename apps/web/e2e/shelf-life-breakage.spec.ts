@@ -16,7 +16,10 @@ test('an opened pack is labelled, listed and used up', async ({ page }) => {
   try {
     await signInAs(page, 'Test Chef de Partie 1.0');
     await page.goto(`/stock/opened?node=${store}`);
-    await main(page).getByLabel('What you opened').selectOption({ label: 'Test Milk (l)' });
+    await main(page)
+      .getByRole('group', { name: 'What you opened' })
+      .getByRole('button', { name: 'Test Milk', exact: true })
+      .click();
     await expect(main(page).getByTestId('pack-keeps')).toContainText('Keeps 2 days once opened');
     // milk comes in 1 l cartons: opened by the carton (ADR 102)
     await expect(main(page).getByTestId('pack-size')).toHaveText('1 carton = 1 l');

@@ -29,6 +29,7 @@ import {
 } from '@/lib/today-view';
 import { listHref, stockHref } from '@/lib/stock-view';
 import { countDueText } from '@/lib/stock-hub';
+import { BreakfastCard, EventsCard, MinibarCard, RoomsCard, TomorrowCard } from './home-cards';
 import { InboxItem } from './inbox/inbox-item';
 
 // Home is "Today" (UX-2), simplified for each role (UX-6, ADR 034): what the person must
@@ -58,14 +59,9 @@ export default async function Home() {
     ? homeTiles(screenInput(shell)).map((t) => ({
         ...t,
         badge:
-          t.key === 'tasks'
-            ? {
-                n: tasks.total + today.repairs.length,
-                tone: tasks.shown.some((x) => x.overdue) ? 'bad' : 'brand',
-              }
-            : t.key === 'make'
-              ? { n: today.tasks.filter((x) => x.kind === 'prep').length, tone: 'brand' }
-              : null,
+          t.key === 'make'
+            ? { n: today.tasks.filter((x) => x.kind === 'prep').length, tone: 'brand' }
+            : null,
       }))
     : [];
 
@@ -115,6 +111,17 @@ export default async function Home() {
           </section>
         ))}
 
+      {!today.shift && !today.punch && today.nextShift && (
+        // nothing in the next day: when they work next (ADR 112), never an empty Home
+        <section aria-label="Your next shift" className={card} data-testid="next-shift">
+          <h2 className={cardTitle}>Your next shift</h2>
+          <p className="mt-2 text-lg font-semibold">{shiftLine(today.nextShift, now, tz)}</p>
+          <Link href="/roster/my" className="mt-2 block text-sm font-medium text-brand-700">
+            See my shifts
+          </Link>
+        </section>
+      )}
+
       {today.pos && <PosCard pos={today.pos} tz={tz} />}
 
       {(today.briefing || shell.domains.get('BRIEFING') === 'modify') && (
@@ -122,15 +129,26 @@ export default async function Home() {
           briefing={today.briefing}
           canWrite={shell.domains.get('BRIEFING') === 'modify'}
           tz={tz}
+          plan={today.plan}
         />
       )}
 
       {today.push.length > 0 && <PushToday push={today.push} tz={tz} />}
 
+      {today.tomorrow && <TomorrowCard tomorrow={today.tomorrow} />}
+
       {(((frontline || tasks.total > 0) && shell.domains.has('TASKS')) ||
         today.repairs.length > 0) && (
         <NextTask tasks={tasks} repairs={today.repairs} tz={tz} frontline={frontline} />
       )}
+
+      {/* the person's own job (ADR 113): their rooms, minibars, breakfast and events */}
+      {today.rooms && <RoomsCard rooms={today.rooms} />}
+      {today.minibar && <MinibarCard minibar={today.minibar} />}
+      {today.breakfast && (today.breakfast.canEdit || today.profile === 'department') && (
+        <BreakfastCard breakfast={today.breakfast} />
+      )}
+      {today.events.length > 0 && <EventsCard events={today.events} tz={tz} />}
 
       {today.handedOn.length > 0 && <HandedOnCard tasks={today.handedOn} />}
 
@@ -272,11 +290,32 @@ function Briefing({
   briefing,
   canWrite,
   tz,
+  plan,
 }: {
   briefing: Today['briefing'];
   canWrite: boolean;
   tz: string;
+  plan: Today['plan'];
 }) {
+  // from the evening its writers write tomorrow's (ADR 112); today's is over
+  if (canWrite && plan?.evening) {
+    return (
+      <section aria-label="Tomorrow's briefing" className={card} data-testid="briefing">
+        <h2 className={`${cardTitle} flex items-center gap-1.5`}>
+          <Icon name="clipboard" className="size-4 text-brand-700" />
+          Tomorrow&apos;s briefing
+        </h2>
+        <Link
+          href={`/briefing?day=${plan.day}`}
+          className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-brand-700"
+          data-testid="briefing-tomorrow"
+        >
+          <Icon name="plus" className="size-4" />
+          Write tomorrow&apos;s briefing
+        </Link>
+      </section>
+    );
+  }
   const notes = briefing?.notes ?? [];
   return (
     <section aria-label="Today's briefing" className={card} data-testid="briefing">
@@ -459,7 +498,7 @@ function NextTask({
       {!next && repairs.length > 0 ? null : !next ? (
         <p className="mt-2 flex items-center gap-2 text-slate-600">
           <Icon name="check" className="size-5 text-emerald-700" />
-          Nothing due today
+          Nothing left for today
         </p>
       ) : (
         <>
@@ -728,7 +767,11 @@ const DEPT_FACT = {
  * one fact in its colour; a tap opens that department.
  */
 function Attention({ today }: { today: Today }) {
-  const tiles = departmentTiles(today.attention ?? []);
+  // a GM's Home names only the departments in the red (ADR 113): eleven tiles mostly saying
+  // "open shifts" is a wall; a department head still sees theirs, green or not
+  const tiles = departmentTiles(today.attention ?? []).filter(
+    (t) => today.profile !== 'outlet' || t.tone === 'bad',
+  );
   if (tiles.length === 0) return null;
   return (
     <section aria-label="Departments" className="space-y-2" data-testid="attention-card">
@@ -746,7 +789,9 @@ function Attention({ today }: { today: Today }) {
             >
               <Icon name={t.icon} className="size-7 shrink-0 text-slate-700" />
               <span className="min-w-0">
-                <span className="block truncate text-sm font-semibold">{t.label}</span>
+                <span className="block text-sm leading-tight font-semibold break-words">
+                  {t.label}
+                </span>
                 <span
                   className={`block text-sm font-medium ${DEPT_FACT[t.tone]}`}
                   data-testid="dept-fact"
@@ -826,18 +871,27 @@ function Numbers({
   numbers: TodayNumbers;
   targets: Record<TargetKey, number>;
 }) {
-  const by = new Map(numbers.rows.map((r) => [r.measure, r]));
-  // before the day's sales are in, ₹0 and "–" for cost read as broken (ADR 098): say so, and
-  // keep only what is already true, the wastage
-  const noSales = numbers.report === 'outlet_flash' && !(Number(by.get('sales')?.value ?? 0) > 0);
+  const today = new Map(numbers.rows.map((r) => [r.measure, r]));
+  // before the day's sales are in, ₹0 and "–" for cost read as broken (ADR 098); show
+  // yesterday's whole day instead when it had sales (ADR 112), else only today's wastage
+  const noSales =
+    numbers.report === 'outlet_flash' && !(Number(today.get('sales')?.value ?? 0) > 0);
+  const yesterday =
+    noSales &&
+    numbers.yesterday &&
+    numbers.yesterday.rows.some((r) => r.measure === 'sales' && Number(r.value) > 0)
+      ? numbers.yesterday
+      : null;
+  const by = yesterday ? new Map(yesterday.rows.map((r) => [r.measure, r])) : today;
   const tiles: { key: string; row: MeasureRow | undefined; label?: string }[] =
     numbers.report === 'outlet_flash'
-      ? (noSales ? ['wastage'] : ['sales', 'food_cost_pct', 'bar_cost_pct', 'wastage']).map(
-          (k) => ({
-            key: k,
-            row: by.get(k),
-          }),
-        )
+      ? (noSales && !yesterday
+          ? ['wastage']
+          : ['sales', 'food_cost_pct', 'bar_cost_pct', 'wastage']
+        ).map((k) => ({
+          key: k,
+          row: by.get(k),
+        }))
       : [
           { key: 'shifts', row: by.get('shifts'), label: 'On shift today' },
           {
@@ -854,8 +908,16 @@ function Numbers({
       : `/reports/department?node=${numbers.place.id}`;
   return (
     <section aria-label="Today's numbers" className={card} data-testid="numbers-card">
-      <h2 className={cardTitle}>Today so far · {numbers.place.name}</h2>
-      {noSales && (
+      <h2 className={cardTitle}>
+        {yesterday ? `Yesterday, ${formatDay(yesterday.day)}` : 'Today so far'} ·{' '}
+        {numbers.place.name}
+      </h2>
+      {yesterday && (
+        <p className="mt-1 text-xs text-slate-500" data-testid="numbers-yesterday">
+          Today&apos;s sales come in at the end of the day.
+        </p>
+      )}
+      {noSales && !yesterday && (
         <p
           className="mt-2 flex items-center gap-2 text-sm text-slate-600"
           data-testid="no-sales-yet"

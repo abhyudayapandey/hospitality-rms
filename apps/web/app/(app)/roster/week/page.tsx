@@ -4,7 +4,15 @@ import { Empty } from '@/components/messages';
 import { PeopleHeader } from '@/components/people-header';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
-import { addDays, formatDay, formatSpan, isIsoDate, localToday, weekStart } from '@/lib/dates';
+import {
+  addDays,
+  formatDay,
+  formatSpan,
+  isIsoDate,
+  localToday,
+  planningWeekDay,
+  weekStart,
+} from '@/lib/dates';
 import { sql, withUser } from '@/lib/db';
 import { param, type SearchParams } from '@/lib/inventory';
 import { peopleContext, weekRoster, type RosterShift } from '@/lib/people';
@@ -30,7 +38,10 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
   const node = ctx.node;
   const sp = await searchParams;
   const asked = param(sp, 'week');
-  const monday = weekStart(isIsoDate(asked) ? asked : localToday(ctx.tz));
+  // the week still to plan (ADR 112): from Friday evening, next week
+  const monday = weekStart(
+    isIsoDate(asked) ? asked : planningWeekDay(localToday(ctx.tz), new Date(), ctx.tz),
+  );
   const user = await requireUser();
   const title = await withUser(user.id, jobTitles);
   // "All departments" (ADR 048): every department's shifts, in a section each; Home's open

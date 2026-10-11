@@ -135,10 +135,17 @@ test('manager builds and publishes; approved leave drops the shift after both ap
   await expect(page.getByTestId('unread-count')).toBeVisible();
   await page.goto('/leave');
   const form = page.getByRole('form', { name: 'Request leave' });
-  await form.getByLabel('Type').selectOption({ label: 'Unpaid Leave' });
+  await form
+    .getByRole('group', { name: 'Type' })
+    .getByRole('button', { name: /Unpaid Leave/ })
+    .click();
+  // the dates fold is open already when there are no shifts to tap
+  if ((await form.getByTestId('leave-dates').getAttribute('open')) === null) {
+    await form.getByTestId('leave-dates').locator('summary').click();
+  }
   await form.getByLabel('From', { exact: true }).fill(FRIDAY);
   await form.getByLabel('To', { exact: true }).fill(FRIDAY);
-  await expect(form.getByTestId('leave-days')).toHaveText('1 calendar day');
+  await expect(form.getByTestId('leave-days')).toContainText('1 calendar day');
   await form.getByRole('button', { name: 'Request 1 day' }).click();
   await expect(form.getByRole('status')).toContainText('Leave requested');
   await expect(page.getByTestId('my-leave').locator('li').first()).toContainText(
@@ -456,7 +463,7 @@ test('Roster is Me and Team: staff see only Me; the manager switches; HR has Tea
   await page.goto('/roster');
   await page.waitForURL('**/roster/my');
   await expect(sides(page)).toHaveCount(0);
-  await expect(tabs(page, 'Me')).toHaveText(['My shifts', 'Clock', 'Leave', 'Swaps']);
+  await expect(tabs(page, 'Me')).toHaveText(['Shifts', 'Clock', 'Leave', 'Swaps']);
 
   // the bar manager: Roster opens on Team; the switch goes to Me and back
   await signInAs(page, 'Test Bar Manager 3.0');
@@ -475,7 +482,7 @@ test('Roster is Me and Team: staff see only Me; the manager switches; HR has Tea
   );
   await sides(page).getByRole('link', { name: 'Me' }).click();
   await page.waitForURL('**/roster/my');
-  await expect(tabs(page, 'Me')).toHaveText(['My shifts', 'Clock', 'Leave', 'Swaps']);
+  await expect(tabs(page, 'Me')).toHaveText(['Shifts', 'Clock', 'Leave', 'Swaps']);
   await sides(page).getByRole('link', { name: 'Team' }).click();
   await page.waitForURL(/\/roster\/week/);
 
@@ -560,7 +567,14 @@ test('the sole owner: own leave approved at the top of the chain; the admin page
   await signInAs(page, 'Test Bar Manager');
   await page.goto('/leave');
   const form = page.getByRole('form', { name: 'Request leave' });
-  await form.getByLabel('Type').selectOption({ label: 'Unpaid Leave' });
+  await form
+    .getByRole('group', { name: 'Type' })
+    .getByRole('button', { name: /Unpaid Leave/ })
+    .click();
+  // the dates fold is open already when there are no shifts to tap
+  if ((await form.getByTestId('leave-dates').getAttribute('open')) === null) {
+    await form.getByTestId('leave-dates').locator('summary').click();
+  }
   await form.getByLabel('From', { exact: true }).fill(day);
   await form.getByLabel('To', { exact: true }).fill(day);
   await form.getByRole('button', { name: 'Request 1 day' }).click();

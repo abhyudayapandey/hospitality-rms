@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { Icon } from '@/components/icon';
+import { formatDay } from '@/lib/dates';
 import { ErrorBox, primaryButton, secondaryButton, StatusBox } from '@/components/messages';
 import { addTemplateShifts, discardDrafts, publishWeek, unassignShift } from '../actions';
 
@@ -87,7 +88,7 @@ export function WeekActions({
           className="flex min-h-20 w-full items-center justify-center gap-3 rounded-xl bg-brand-700 px-4 text-lg font-semibold text-white disabled:opacity-50"
         >
           <Icon name="calendar" className="size-8" />
-          Fill this week from the usual shifts
+          Fill the week of {formatDay(monday)} from the usual shifts
         </button>
         <ErrorBox message={error} />
       </div>

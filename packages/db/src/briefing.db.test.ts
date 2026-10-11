@@ -405,3 +405,46 @@ describe('the write screen', () => {
     });
   });
 });
+
+describe("tomorrow's briefing (ADR 112)", () => {
+  it("a writer writes tomorrow's in the evening; nobody reads it on Home until tomorrow", async () => {
+    await inRolledBackTx(async (c) => {
+      const place = ids.node(`${BAR}-KITCHEN`);
+      const tomorrow = (
+        await c.query<{ d: string }>(`select (rpt.today($1) + 1)::text as d`, [place])
+      ).rows[0]!.d;
+      const w = await attemptAs<{ id: string }>(
+        c,
+        ids.user('test.head-cook.3.0'),
+        'select ops.save_briefing($1, $2, $3, $4, null, $5) id',
+        [place, 'day', 'Fish delivery late tomorrow', [], tomorrow],
+      );
+      expect(w.error).toBeUndefined();
+      const at = await attemptAs<{ body: string }>(
+        c,
+        ids.user('test.head-cook.3.0'),
+        'select body from ops.briefing_at($1, $2)',
+        [place, tomorrow],
+      );
+      expect(at.rows!.map((r) => r.body)).toEqual(['Fish delivery late tomorrow']);
+      const today = await attemptAs<{ body: string }>(
+        c,
+        ids.user('test.head-cook.3.0'),
+        'select body from ops.briefing_at($1)',
+        [place],
+      );
+      expect(today.rows!.map((r) => r.body)).not.toContain('Fish delivery late tomorrow');
+      expect((await home(c, 'test.cook.3.0')).map((n) => n.body)).not.toContain(
+        'Fish delivery late tomorrow',
+      );
+      // only today or tomorrow
+      const later = await attemptAs(
+        c,
+        ids.user('test.head-cook.3.0'),
+        'select ops.save_briefing($1, $2, $3, $4, null, $5::date + 1) id',
+        [place, 'day', 'Too far', [], tomorrow],
+      );
+      expect(later.error).toMatch(/INVALID_VALUE/);
+    });
+  });
+});

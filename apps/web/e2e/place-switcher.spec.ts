@@ -37,16 +37,24 @@ test('the general manager sees only stores on Stock and only departments on Rost
   await expect(page.getByTestId('week-summary')).not.toHaveText(/^0 shifts/);
 });
 
-test('reporting a problem starts where you work, with a way to pick elsewhere (UX U-8)', async ({
+test('reporting a problem starts where you work, with a tap for elsewhere or a room (ADR 113)', async ({
   page,
 }) => {
-  await signInAs(page, 'Test Commis 1.0');
+  await signInAs(page, 'Test Front Desk Executive 1.0');
   await page.goto('/tasks/maintenance/new');
-  const bar = page.getByTestId('place-switcher');
-  await expect(bar.getByTestId('viewing')).toHaveText('Test Hotel & Bar 1.0 – Kitchen');
-  await expect(bar.getByRole('combobox', { name: 'Place' })).toHaveCount(0);
-  await bar.getByRole('button', { name: 'Change' }).click();
-  await expect(bar.getByRole('combobox', { name: 'Place' })).toBeVisible();
+  const where = page.getByRole('group', { name: 'Where' });
+  // where they work is chosen; nothing else is guessed
+  await expect(where.getByRole('button', { pressed: true })).toHaveCount(1);
+  await expect(
+    page.getByRole('group', { name: 'What is wrong' }).getByRole('button', { pressed: true }),
+  ).toHaveCount(0);
+  // a room by its number
+  await where.getByRole('button', { name: 'A room' }).click();
+  await page.getByRole('group', { name: 'Room' }).getByRole('button', { name: 'Room 101' }).click();
+  await expect(page.getByRole('button', { name: 'Room 101' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
 });
 
 test('the choice is remembered per screen, and tabs carry the place where it fits', async ({

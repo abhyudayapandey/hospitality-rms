@@ -4,7 +4,15 @@ import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { isUuid, param, type SearchParams } from '@/lib/params';
-import { roomContents, roomOutlets, rooms, type RoomContentRow } from '@/lib/rooms';
+import {
+  givesRooms,
+  roomContents,
+  roomOutlets,
+  rooms,
+  type RoomContentRow,
+  type RoomRow,
+} from '@/lib/rooms';
+import { Icon } from '@/components/icon';
 import { ViewTabs } from '@/components/view-tabs';
 import { formatQty } from '@/lib/qty';
 import { ItemThumb } from '@/components/item-thumb';
@@ -14,6 +22,8 @@ import { RoomGrid, RoomLegend } from './status-picker';
 // by floor; front office and housekeeping tap one to change it (or on the room check's grid).
 // How many rooms have each status first, as the legend.
 // The Contents tab: what each room should hold and what was last counted there.
+// Rooms given to me today come first (ADR 111), every other room folded under them, so an
+// attendant still sees and helps with the rest. Whoever gives out rooms has "Give rooms".
 export default async function RoomsPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const user = await requireUser();
@@ -29,10 +39,21 @@ export default async function RoomsPage({ searchParams }: { searchParams: Search
     );
   }
   const view = param(sp, 'view') === 'contents' ? 'contents' : 'status';
-  const { list, contents } = await withUser(user.id, async (tx) => ({
+  const { list, contents, gives } = await withUser(user.id, async (tx) => ({
     list: await rooms(tx, place.outlet_id),
     contents: view === 'contents' ? await roomContents(tx, place.outlet_id) : [],
+    gives: await givesRooms(tx, place.outlet_id),
   }));
+  const tile = (r: RoomRow) => ({
+    room_id: r.room_id,
+    number: r.number,
+    floor: r.floor,
+    status: r.status,
+    can_set: r.can_set,
+    who: r.mine ? null : r.given_to_name,
+  });
+  const mine = list.filter((r) => r.mine);
+  const others = list.filter((r) => !r.mine);
   const tabs = (
     <ViewTabs
       label="Rooms"
@@ -73,16 +94,37 @@ export default async function RoomsPage({ searchParams }: { searchParams: Search
         <Contents rows={contents} outlet={place.outlet_id} />
       ) : (
         <>
-          <RoomLegend rooms={list} />
-          <RoomGrid
-            rooms={list.map((r) => ({
-              room_id: r.room_id,
-              number: r.number,
-              floor: r.floor,
-              status: r.status,
-              can_set: r.can_set,
-            }))}
-          />
+          {mine.length > 0 ? (
+            <>
+              <section className="space-y-3" data-testid="my-rooms">
+                <h2 className="font-semibold">Your rooms ({mine.length})</h2>
+                <RoomLegend rooms={mine} />
+                <RoomGrid rooms={mine.map(tile)} />
+              </section>
+              <details className="space-y-3" data-testid="other-rooms">
+                <summary className="flex min-h-11 cursor-pointer items-center font-semibold">
+                  Other rooms ({others.length})
+                </summary>
+                <RoomLegend rooms={others} />
+                <RoomGrid rooms={others.map(tile)} />
+              </details>
+            </>
+          ) : (
+            <>
+              <RoomLegend rooms={list} />
+              <RoomGrid rooms={list.map(tile)} />
+            </>
+          )}
+          {gives && (
+            <Link
+              href={`/rooms/give?outlet=${place.outlet_id}`}
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl font-semibold ring-1 ring-slate-300"
+              data-testid="give-rooms"
+            >
+              <Icon name="people" className="size-5" />
+              Give rooms
+            </Link>
+          )}
         </>
       )}
     </div>

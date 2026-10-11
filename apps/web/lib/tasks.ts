@@ -253,10 +253,31 @@ export interface Person {
   name: string;
   job_role: string | null;
   place_name: string;
+  /** on shift there today (ADR 113); undefined where it isn't asked */
+  on_shift?: boolean;
 }
 
 export async function assignablePeople(tx: Tx, node: string): Promise<Person[]> {
   return (await sql<Person>`select * from ops.assignable_people(${node}::uuid)`.execute(tx)).rows;
+}
+
+/**
+ * The people a task made now can go to (ADR 113): those on shift there today first, marked, then
+ * the rest. A task for today is given to someone who is in.
+ */
+export async function peopleOnShift(tx: Tx, node: string): Promise<Person[]> {
+  const people = await assignablePeople(tx, node);
+  const on = new Set(
+    (
+      await sql<{
+        id: string;
+      }>`select x::text as id from ops.on_shift_today(${node}::uuid) x`.execute(tx)
+    ).rows.map((r) => r.id),
+  );
+  return [
+    ...people.filter((p) => on.has(p.user_id)).map((p) => ({ ...p, on_shift: true })),
+    ...people.filter((p) => !on.has(p.user_id)).map((p) => ({ ...p, on_shift: false })),
+  ];
 }
 
 export interface JobRole {

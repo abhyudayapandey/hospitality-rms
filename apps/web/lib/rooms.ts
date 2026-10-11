@@ -20,6 +20,10 @@ export interface RoomRow {
   set_at: Date | null;
   set_by_name: string | null;
   can_set: boolean;
+  /** whose the room is today (ADR 111), and whether it is mine */
+  given_to: string | null;
+  given_to_name: string | null;
+  mine: boolean;
 }
 
 export async function roomOutlets(tx: Tx): Promise<RoomOutlet[]> {
@@ -27,7 +31,44 @@ export async function roomOutlets(tx: Tx): Promise<RoomOutlet[]> {
 }
 
 export async function rooms(tx: Tx, outlet: string): Promise<RoomRow[]> {
-  return (await sql<RoomRow>`select * from ops.rooms(${outlet}::uuid)`.execute(tx)).rows;
+  return (
+    await sql<RoomRow>`select *, given_to::text as given_to from ops.rooms(${outlet}::uuid)`.execute(
+      tx,
+    )
+  ).rows;
+}
+
+// Rooms given to people for a day (ADR 111)
+
+export interface RoomPerson {
+  user_id: string;
+  name: string;
+  role_name: string;
+}
+
+export async function givesRooms(tx: Tx, outlet: string): Promise<boolean> {
+  return (await sql<{ v: boolean }>`select ops.gives_rooms(${outlet}::uuid) as v`.execute(tx))
+    .rows[0]!.v;
+}
+
+export async function roomPeople(tx: Tx, outlet: string): Promise<RoomPerson[]> {
+  return (
+    await sql<RoomPerson>`
+      select user_id::text, name, role_name from ops.room_people(${outlet}::uuid)
+       order by name`.execute(tx)
+  ).rows;
+}
+
+export async function roomAssignments(
+  tx: Tx,
+  outlet: string,
+  day: string,
+): Promise<{ room_id: string; user_id: string; name: string }[]> {
+  return (
+    await sql<{ room_id: string; user_id: string; name: string }>`
+      select room_id::text, user_id::text, name
+        from ops.room_assignments(${outlet}::uuid, ${day}::date)`.execute(tx)
+  ).rows;
 }
 
 // Room contents and breakfast (ADR 094)
@@ -59,6 +100,8 @@ export interface BreakfastOutlet {
   outlet_id: string;
   name: string;
   today: string;
+  /** the breakfast still to come (ADR 110): today's until it ends, then tomorrow's */
+  next_day: string;
 }
 
 export interface BreakfastRoom {
@@ -80,7 +123,9 @@ export interface BreakfastMode {
 export async function breakfastOutlets(tx: Tx): Promise<BreakfastOutlet[]> {
   return (
     await sql<BreakfastOutlet>`
-      select outlet_id::text, name, today::text from ops.breakfast_outlets()`.execute(tx)
+      select outlet_id::text, name, today::text, next_day::text from ops.breakfast_outlets()`.execute(
+      tx,
+    )
   ).rows;
 }
 

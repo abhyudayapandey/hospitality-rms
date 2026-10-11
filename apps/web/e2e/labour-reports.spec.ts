@@ -11,10 +11,11 @@ test('the GM: people cost and its share of the total cost on Outlet today, by de
   page,
 }) => {
   const hotel = await placeId('TEST-HOTEL-1.0');
-  // the same day as the DB test: days in the test data count from the load date
+  // the same day as the DB test: days in the test data count from the load's business day
+  // (04:00 to 04:00 in India, as the loader counts it)
   const day = (
     await asMigrator<{ day: string }>(
-      "select ((now() at time zone 'Asia/Kolkata')::date - 2)::text as day",
+      "select (((now() at time zone 'Asia/Kolkata') - interval '4 hours')::date - 2)::text as day",
       [],
     )
   )[0]!.day;

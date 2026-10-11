@@ -52,6 +52,7 @@ export const ERROR_MESSAGES = {
   NOT_A_TEST_CUSTOMER: 'Only a test company can have a demo presenter.',
   // the rooms' minibars (ADR 072)
   NO_MINIBAR: 'This room has no minibar.',
+  BREAKFAST_SERVED: "That breakfast has been served, so it can't be changed now.",
   // R-4, PO-4 (ADR 031, 032)
   INVALID_SETTING:
     'Check the values: targets are 0 to 100%, popularity 10 to 100%, overtime 1× to 3×.',

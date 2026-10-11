@@ -811,8 +811,13 @@ export const FILES = {
       roster_node_code: code,
       shift_name: text,
       job_role_code: text,
-      // 1 = the week starting next Monday, 2 = the week after
-      week: int.refine((v) => v >= 1 && v <= 4, 'must be 1 to 4'),
+      // 1 = the week starting next Monday, 2 = the week after; 0 = this week from today;
+      // -1 = the past seven days, on the days file 35 has the person clocking in (ADR 114)
+      week: z
+        .string()
+        .regex(/^-?\d+$/, 'must be a whole number')
+        .transform(Number)
+        .refine((v) => v >= -1 && v <= 4, 'must be -1 to 4'),
       days,
       username: text,
       rostered_by: text,
@@ -1174,7 +1179,18 @@ export const FILES = {
       floor: optional,
       room_type: optional,
       minibar_set: optional,
+      // the room's status when it has none yet (ADR 114): VC clean, VD dirty, OCC guest in,
+      // ARR arriving, DEP leaving, OOO out of order, HM house use. Never changes a set one
+      status: z
+        .union([
+          z.literal('').transform(() => undefined),
+          z.enum(['VC', 'VD', 'OCC', 'ARR', 'DEP', 'OOO', 'HM'], {
+            message: 'must be VC, VD, OCC, ARR, DEP, OOO or HM',
+          }),
+        ])
+        .optional(),
     }),
+    optional: ['status'],
   },
   // File 42 (test customers only): minibar checks of the past week, one row per item counted.
   minibarChecks: {
