@@ -91,6 +91,28 @@ describe('the set-up forms', () => {
     expect(applyForm(off, 'review', fields([]), key).draft.bundlesOff).toEqual(['people']);
   });
 
+  it('outlets: who approves stock requests and purchases; the default is kept as blank', () => {
+    const save = (request: string, purchase: string) =>
+      applyForm(
+        emptyDraft(),
+        'outlets',
+        fields([
+          ['op', 'save'],
+          ['tile', 'hotel'],
+          ['name', 'Passport'],
+          ['requestApproval', request],
+          ['purchaseApprover', purchase],
+        ]),
+        key,
+      ).draft.outlets[0]!;
+    expect(save('gm', 'gm')).toMatchObject({ requestApproval: 'gm', purchaseApprover: 'gm' });
+    expect(save('none', 'department_head')).toMatchObject({
+      requestApproval: 'none',
+      purchaseApprover: '',
+    });
+    expect(save('unusual', 'boss')).toMatchObject({ requestApproval: '', purchaseApprover: '' });
+  });
+
   it('outlets: add, change keeps answers, a new kind starts again, remove', () => {
     let d = applyForm(
       emptyDraft(),

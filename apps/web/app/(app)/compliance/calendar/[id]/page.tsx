@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { everyWords, failure } from '@outlet-ops/domain';
+import { failure, repeatOf, repeatWords } from '@outlet-ops/domain';
 import { ModuleGate } from '@/components/module-gate';
 import { requireUser } from '@/lib/auth/server';
 import {
@@ -77,7 +77,7 @@ async function Job({ params }: { params: Promise<{ id: string }> }) {
       <header className="space-y-1">
         <h1 className="text-xl font-semibold">{j.name}</h1>
         <p className="text-sm text-slate-600">
-          {j.place_name} · {everyWords(j.every_months)}
+          {j.place_name} · {repeatWords(repeatOf(j))}
         </p>
         <p className="text-sm text-slate-600" data-testid="job-people">
           {jobPeople(j)}
@@ -150,7 +150,7 @@ async function Job({ params }: { params: Promise<{ id: string }> }) {
                   id: j.id,
                   node: j.org_node_id,
                   name: j.name,
-                  every_months: j.every_months,
+                  repeat: repeatOf(j),
                   next_due: j.next_due,
                   owner_role: j.owner_role,
                   doer_role: j.doer_role,

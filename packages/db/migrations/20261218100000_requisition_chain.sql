@@ -228,33 +228,49 @@ begin
   return v_id;
 end $$;
 
--- Where each item a store may ask for comes from (the form groups them), null for what no
--- other store keeps (bought instead).
-create function inv.ask_sources(p_to uuid)
-returns table (item_id uuid, source_id uuid, source_name text)
+-- What a store may ask for, and where each comes from (the form groups them by store): what it
+-- keeps, and from a Main Store what that may give it (ADR 083). No source: no other store keeps
+-- it, so it is bought instead.
+create function inv.ask_items(p_to uuid)
+returns table (item_id uuid, name text, base_uom text, on_hand numeric, avg_cost numeric,
+               item_group text, par_level numeric, source_id uuid, source_name text,
+               source_on_hand numeric)
 language plpgsql stable security definer
-set search_path = pg_catalog, core, inv
+set search_path = pg_catalog, core, inv, wf
 as $$
 declare
   v_main uuid;
 begin
-  if not core.can('TRANSFERS', 'modify', null, p_to) then
-    perform inv.fail('NOT_AUTHORISED', 'TRANSFERS at ' || p_to);
-  end if;
+  perform wf.me();
+  perform inv.require('TRANSFERS', 'modify', p_to);
   select s.id into v_main from inv.transfer_sources(p_to) s
    where inv.is_main_store(s.id) and s.id <> p_to order by s.id limit 1;
   return query
-    select n.item_id, src.id, inv.short_name(src.id)
-      from inv.item_node n
+    with wanted as (
+      select n.item_id from inv.item_node n
+       where n.delivery_node_id = p_to and n.archived_at is null
+      union
+      select x.item_id from inv.sendable_items(v_main, p_to) x where v_main is not null
+    )
+    select i.id, i.name, i.base_uom, coalesce(s.on_hand, 0), coalesce(s.avg_cost, 0),
+           inv.item_group(i.id, p_to), coalesce(t.par_level, 0), src.id,
+           case when src.id is not null then inv.short_name(src.id) end,
+           coalesce(ss.on_hand, 0)
+      from wanted w
+      join inv.item i on i.id = w.item_id and i.archived_at is null
+      left join inv.item_node t on t.item_id = i.id and t.delivery_node_id = p_to
+                               and t.archived_at is null
+      left join inv.stock_level s on s.item_id = i.id and s.delivery_node_id = p_to
       left join lateral (
         select coalesce(v_main,
-                        (select s.id from inv.transfer_sources(p_to) s
-                          where s.kind = 'store' and s.id <> p_to
+                        (select o.id from inv.transfer_sources(p_to) o
+                          where o.kind = 'store' and o.id <> p_to
                             and exists (select 1 from inv.item_node x
-                                         where x.item_id = n.item_id
-                                           and x.delivery_node_id = s.id and x.archived_at is null)
-                          order by core.node_name(s.id) limit 1)) as id) src on true
-     where n.delivery_node_id = p_to and n.archived_at is null;
+                                         where x.item_id = i.id and x.delivery_node_id = o.id
+                                           and x.archived_at is null)
+                          order by core.node_name(o.id) limit 1)) as id) src on true
+      left join inv.stock_level ss on ss.item_id = i.id and ss.delivery_node_id = src.id
+     order by inv.own_group(inv.item_group(i.id, p_to), p_to) desc, i.name;
 end $$;
 
 -- One ask: a request to each store the items come from. Returns them.
@@ -386,6 +402,125 @@ begin
    where task_id = v_t.id and kind = 'send';
   perform ops.settle(v_t.id);
   return v_t.transfer_id;
+end $$;
+
+-- What the person may do with a request now, for its page: send it, give it to someone or order
+-- it (whoever runs the store it comes from), receive it (whoever asked, or runs the store it is
+-- for), and to whom it is given.
+create function inv.request_actions(p_transfer uuid)
+returns table (may_send boolean, may_receive boolean, given_to text, send_task uuid)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, inv, ops, wf
+as $$
+declare
+  v_t inv.transfer;
+  v_me uuid := core.current_user_id();
+  v_task ops.task;
+begin
+  select * into v_t from inv.transfer where id = p_transfer and tenant_id = core.my_tenant();
+  if not found or not inv.may_follow(p_transfer) then
+    return;
+  end if;
+  select * into v_task from ops.task
+   where transfer_id = p_transfer and kind = 'send' and status in ('open', 'in_progress')
+   order by created_at desc limit 1;
+  return query select
+    v_t.dispatched_at is null and v_t.status = 'submitted'
+      and inv.my_transfer_step(p_transfer) is not distinct from 'dispatch',
+    v_t.dispatched_at is not null and v_t.received_at is null and v_t.status = 'submitted'
+      and (inv.my_transfer_step(p_transfer) is not distinct from 'receipt'
+           or (not exists (select 1 from wf.step_instance s
+                            where s.request_id = v_t.wf_request_id and s.step = 'receipt'
+                              and s.state in ('pending', 'waiting'))
+               and (exists (select 1 from ops.task k where k.transfer_id = p_transfer
+                               and k.kind = 'receive' and k.status in ('open', 'in_progress')
+                               and k.assignee_user_id = v_me)
+                    or core.can('TRANSFERS', 'modify', null, v_t.to_node_id)))),
+    (select display_name from core.app_user where id = v_task.assignee_user_id),
+    v_task.id;
+end $$;
+
+-- Whom the store may give the sending to: the team that runs it.
+create function inv.send_people(p_transfer uuid)
+returns table (id uuid, name text)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, inv, ops, hr, wf
+as $$
+declare
+  v_t inv.transfer := inv.require_sender(p_transfer);
+  v_team uuid := ops.team_of_store(v_t.from_node_id);
+begin
+  return query
+    select distinct on (u.display_name, u.id) u.id, u.display_name
+      from hr.worker w
+      join core.app_user u on u.id = w.owner_user_id
+      join core.hierarchy_node h on h.id = w.org_node_id
+      join core.hierarchy_node team on team.id = coalesce(v_team, v_t.from_node_id)
+     where w.status = 'active' and w.tenant_id = v_t.tenant_id
+       and h.path operator(extensions.<@) team.path
+     order by u.display_name, u.id;
+end $$;
+
+-- A send task's lines: what was asked for and what the store has.
+create function ops.send_task_lines(p_task uuid)
+returns table (item_id uuid, name text, base_uom text, asked numeric, at_store numeric,
+               sent numeric)
+language sql stable security definer
+set search_path = pg_catalog, core, ops, inv
+as $$
+  select tl.item_id, i.name, i.base_uom, tl.requested_qty, coalesce(sl.on_hand, 0),
+         tl.dispatched_qty
+    from ops.task t
+    join inv.transfer_line tl on tl.transfer_id = t.transfer_id
+    join inv.item i on i.id = tl.item_id
+    left join inv.stock_level sl on sl.item_id = tl.item_id and sl.delivery_node_id = tl.from_node_id
+   where t.id = p_task and t.kind = 'send' and t.tenant_id = core.my_tenant()
+     and (t.assignee_user_id = core.current_user_id() or t.assigned_by = core.current_user_id()
+          or core.can('TASKS', 'view', t.org_node_id, null)
+          or core.can('TRANSFERS', 'view', null, tl.from_node_id))
+   order by i.name;
+$$;
+
+-- An order's approval as its page shows it (ADR 115): waiting for whom and why, whether the
+-- viewer may approve it there, who approved it, and an order whose workflow failed (stuck
+-- after approval) said plainly rather than left "waiting for approval".
+create function inv.po_approval(p_po uuid)
+returns table (request_id uuid, state text, waiting_for text, why text, may_act boolean,
+               approved_by text, failure text)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, inv, wf
+as $$
+declare
+  v_po inv.purchase_order;
+  v_r wf.request;
+  v_me uuid := core.current_user_id();
+  v_may boolean;
+begin
+  select * into v_po from inv.purchase_order where id = p_po and tenant_id = core.my_tenant();
+  if not found then
+    return;
+  end if;
+  select * into v_r from wf.request where id = v_po.wf_request_id;
+  if not found then
+    return;
+  end if;
+  v_may := exists (select 1 from wf.step_instance s
+                    where s.request_id = v_r.id and s.state = 'pending' and v_r.state = 'in_approval'
+                      and wf.can_act_on_step(v_me, s, v_r.process_type));
+  if not (v_may or v_po.created_by = v_me
+          or core.can('PURCHASE_ORDERS', 'view', null, v_po.delivery_node_id)
+          or core.can('PURCHASE_ORDERS', 'view', null, inv.order_desk(v_po.delivery_node_id))) then
+    return;
+  end if;
+  return query select
+    v_r.id, v_r.state,
+    case when v_r.state = 'in_approval'
+         then inv.people_words(inv.step_people(v_r.id, v_r.current_step)) end,
+    v_r.payload ->> 'why', v_may,
+    (select u.display_name from wf.step_instance s join core.app_user u on u.id = s.actor_id
+      where s.request_id = v_r.id and s.state = 'approved'
+      order by s.acted_at desc limit 1),
+    case when v_r.state = 'failed' then coalesce(v_r.failure_code, 'an error') end;
 end $$;
 
 -- After dispatch with no receipt step (every request from ADR 115 on): whoever asked gets it
@@ -1034,12 +1169,14 @@ revoke execute on function inv.short_name(uuid), inv.transfer_items_text(uuid, b
   from public;
 revoke execute on function inv.stock_source(uuid, uuid), inv.ask_for_stock(uuid, jsonb, text, text),
   inv.give_send(uuid, uuid), inv.send_request(uuid, jsonb), ops.send_by_task(uuid, jsonb),
-  inv.ask_sources(uuid), inv.order_for_request(uuid, jsonb),
+  inv.ask_items(uuid), inv.request_actions(uuid), inv.send_people(uuid),
+  ops.send_task_lines(uuid), inv.po_approval(uuid), inv.order_for_request(uuid, jsonb),
   inv.request_now(uuid), inv.request_story(uuid)
   from public;
 grant execute on function inv.stock_source(uuid, uuid), inv.ask_for_stock(uuid, jsonb, text, text),
   inv.give_send(uuid, uuid), inv.send_request(uuid, jsonb), ops.send_by_task(uuid, jsonb),
-  inv.ask_sources(uuid), inv.order_for_request(uuid, jsonb),
+  inv.ask_items(uuid), inv.request_actions(uuid), inv.send_people(uuid),
+  ops.send_task_lines(uuid), inv.po_approval(uuid), inv.order_for_request(uuid, jsonb),
   inv.request_now(uuid), inv.request_story(uuid)
   to app_rw;
 
@@ -1108,7 +1245,11 @@ drop function inv.may_follow(uuid);
 drop function inv.after_step();
 drop function inv.after_goods_receipt();
 drop function inv.order_for_request(uuid, jsonb);
-drop function inv.ask_sources(uuid);
+drop function inv.po_approval(uuid);
+drop function ops.send_task_lines(uuid);
+drop function inv.send_people(uuid);
+drop function inv.request_actions(uuid);
+drop function inv.ask_items(uuid);
 drop function inv.after_receive(uuid);
 drop function inv.after_dispatch(uuid);
 drop function ops.send_by_task(uuid, jsonb);

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { everyWords } from '@outlet-ops/domain';
+import { repeatOf, repeatWords } from '@outlet-ops/domain';
 import { Empty, secondaryButton } from '@/components/messages';
 import { ModuleGate } from '@/components/module-gate';
 import { PlaceSwitcher } from '@/components/place-switcher';
@@ -184,7 +184,7 @@ function JobItem({ j }: { j: JobRow }) {
           </span>
         </span>
         <span className="mt-1 block text-sm text-slate-600">
-          {everyWords(j.every_months)}
+          {repeatWords(repeatOf(j))}
           {j.last_done && ` · last done ${dayWords(j.last_done)}`}
         </span>
         <span className="block text-sm text-slate-600" data-testid="job-people">

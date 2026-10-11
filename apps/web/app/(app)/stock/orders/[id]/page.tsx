@@ -23,6 +23,8 @@ import { SendCard } from './send-card';
 import { BillForm } from '../../bills/bill-form';
 import { CloseOrder, WithdrawRequest } from './close-order';
 import { ItemThumb } from '@/components/item-thumb';
+import { RequestDecision } from '@/components/request-decision';
+import { RequestNow } from '../../transfers/[id]/request-story';
 
 const CHANNEL = { whatsapp: 'on WhatsApp', email: 'by email', print: 'printed' } as const;
 
@@ -167,7 +169,21 @@ export default async function OrderPage({
             select id, name from inv.supplier where archived_at is null order by name`.execute(tx)
           ).rows
         : [];
+    // its approval: for whom it waits, whether this person approves it here (ADR 115)
+    const approval = (
+      await sql<{
+        request_id: string;
+        state: string;
+        waiting_for: string | null;
+        why: string | null;
+        may_act: boolean;
+        approved_by: string | null;
+        failure: string | null;
+      }>`select request_id::text, state, waiting_for, why, may_act, approved_by, failure
+           from inv.po_approval(${id}::uuid)`.execute(tx)
+    ).rows[0];
     return {
+      approval: approval ?? null,
       po: row ? { ...row, phone: contact?.phone ?? null, email: contact?.email ?? null } : row,
       canPlace,
       viaDesk: facts.rows[0]?.via_desk ?? false,
@@ -278,6 +294,29 @@ export default async function OrderPage({
           </p>
         )}
       </div>
+      {data.approval && po.progress === 'awaiting_approval' && (
+        <section className="space-y-2" data-testid="po-approval">
+          {data.approval.state === 'failed' ? (
+            <RequestNow
+              stage="stuck"
+              words={`It could not go through (${data.approval.failure}). Ask for it again, or tell your manager.`}
+            />
+          ) : data.approval.state === 'in_approval' ? (
+            <RequestNow
+              stage="waiting_approval"
+              words={`Waiting for ${data.approval.waiting_for ?? 'approval'} to approve${data.approval.why ? `: ${data.approval.why}` : ''}`}
+            />
+          ) : (
+            <RequestNow
+              stage="being_ordered"
+              words={`Approved${data.approval.approved_by ? ` by ${data.approval.approved_by}` : ''}. It reaches the store in a minute.`}
+            />
+          )}
+          {data.approval.may_act && (
+            <RequestDecision requestId={data.approval.request_id} back={`/stock/orders/${po.id}`} />
+          )}
+        </section>
+      )}
       {canSend && (
         <SendCard
           po={po.id}

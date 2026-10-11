@@ -19,7 +19,9 @@ export interface MyTask {
     | 'minibar_bill'
     | 'sign_off'
     | 'handover'
-    | 'discard';
+    | 'discard'
+    | 'send'
+    | 'ask';
   title: string;
   org_node_id: string;
   place_name: string;

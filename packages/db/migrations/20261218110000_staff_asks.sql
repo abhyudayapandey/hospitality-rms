@@ -374,6 +374,60 @@ begin
      limit least(greatest(coalesce(p_limit, 30), 1), 200);
 end $$;
 
+-- What a frontline person may ask for at a store their team uses: what it keeps, and how much
+-- of each it has.
+create function inv.ask_store_items(p_store uuid)
+returns table (item_id uuid, name text, base_uom text, on_hand numeric)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, inv
+as $$
+begin
+  if not exists (select 1 from inv.my_ask_stores() s where s.id = p_store) then
+    perform inv.fail('NOT_AUTHORISED', 'ask the store your team uses');
+  end if;
+  return query
+    select i.id, i.name, i.base_uom, coalesce(sl.on_hand, 0)
+      from inv.item_node n
+      join inv.item i on i.id = n.item_id and i.archived_at is null
+      left join inv.stock_level sl on sl.item_id = i.id and sl.delivery_node_id = p_store
+     where n.delivery_node_id = p_store and n.archived_at is null
+     order by i.name;
+end $$;
+
+-- An ask as its page shows it: who asked what of which store, and whether the viewer acts on it.
+create function inv.staff_ask_detail(p_ask uuid)
+returns table (store_id uuid, store text, asked_by text, note text, status text,
+               created_at timestamptz, may_act boolean, lines jsonb)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, inv
+as $$
+begin
+  perform wf.me();
+  if not inv.may_follow_ask(p_ask) then
+    perform inv.fail('NOT_AUTHORISED', 'follow this');
+  end if;
+  return query
+    select a.delivery_node_id, inv.short_name(a.delivery_node_id), u.display_name, a.note,
+           a.status, a.created_at,
+           a.status in ('asked', 'asked_on') and a.asked_by <> core.current_user_id()
+             and (core.can('TRANSFERS', 'modify', null, a.delivery_node_id)
+                  or core.current_user_id() = any (inv.ask_heads(p_ask))),
+           (select jsonb_agg(jsonb_build_object('item_id', l.item_id, 'name', i.name,
+                                                'base_uom', i.base_uom, 'qty', l.qty,
+                                                'at_store', coalesce(sl.on_hand, 0))
+                             order by i.name)
+              from inv.staff_ask_line l
+              join inv.item i on i.id = l.item_id
+              left join inv.stock_level sl on sl.item_id = l.item_id
+                                          and sl.delivery_node_id = a.delivery_node_id
+             where l.ask_id = a.id)
+      from inv.staff_ask a join core.app_user u on u.id = a.asked_by
+     where a.id = p_ask;
+end $$;
+
+revoke execute on function inv.ask_store_items(uuid), inv.staff_ask_detail(uuid) from public;
+grant execute on function inv.ask_store_items(uuid), inv.staff_ask_detail(uuid) to app_rw;
+
 revoke execute on function inv.staff_ask_items_text(uuid), inv.ask_heads(uuid),
   inv.ask_tell(uuid, uuid[], text, text), inv.require_ask_head(uuid), inv.may_follow_ask(uuid)
   from public;
@@ -406,6 +460,8 @@ select core.patch_function('inv.after_receive(uuid)',
                          'Arrived at the ' || inv.short_name(v_t.to_node_id), v_items);
   end if;
 $x$, '');
+drop function inv.staff_ask_detail(uuid);
+drop function inv.ask_store_items(uuid);
 drop function inv.my_staff_asks(int);
 drop function inv.staff_ask_story(uuid);
 drop function inv.staff_ask_now(uuid);

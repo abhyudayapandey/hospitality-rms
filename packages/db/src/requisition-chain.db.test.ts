@@ -60,9 +60,10 @@ async function approveEveryPurchase(c: PoolClient) {
 
 async function requestOf(c: PoolClient, table: 'transfer' | 'purchase_order', id: string) {
   return (
-    await c.query<{ r: string }>(`select wf_request_id::text as r from inv.${table} where id = $1`, [
-      id,
-    ])
+    await c.query<{ r: string }>(
+      `select wf_request_id::text as r from inv.${table} where id = $1`,
+      [id],
+    )
   ).rows[0]!.r;
 }
 
@@ -309,7 +310,7 @@ describe('with a Main Store, a department asks it (ADR 115)', () => {
       const src = await rows<{ source_name: string }>(
         c,
         ASKER,
-        `select distinct source_name from inv.ask_sources($1)`,
+        `select distinct source_name from inv.ask_items($1)`,
         [ids.node(HK)],
       );
       expect(src).toEqual([{ source_name: 'Main Store' }]);
@@ -331,11 +332,40 @@ describe('with a Main Store, a department asks it (ADR 115)', () => {
       expect(asked.words).toMatch(/Main Store/);
       expect(asked.story[0]).toMatch(/Asked by Test Executive Housekeeper 1\.0/);
 
+      // what each may do on its page: the keeper sends; whoever asked waits
+      const actions = (who: string) =>
+        one<{ may_send: boolean; may_receive: boolean; given_to: string | null }>(
+          c,
+          who,
+          `select may_send, may_receive, given_to from inv.request_actions($1)`,
+          [t],
+        );
+      expect(await actions(KEEPER)).toEqual({ may_send: true, may_receive: false, given_to: null });
+      expect(await actions(ASKER)).toEqual({ may_send: false, may_receive: false, given_to: null });
+      // whom the keeper may give it to: the Stores team; no one else may ask
+      expect(
+        (await rows<{ name: string }>(c, KEEPER, `select name from inv.send_people($1)`, [t])).map(
+          (r) => r.name,
+        ),
+      ).toContain('Test Purchase Manager 1.0');
+      expect(await fails(c, ASKER, `select * from inv.send_people($1)`, [t])).toMatch(
+        /NOT_AUTHORISED/,
+      );
+
       // given to the purchase manager: a task for them; whoever asked is told who brings it
       await one(c, KEEPER, `select inv.give_send($1, $2) as id`, [t, ids.user(PURCHASE_MANAGER)]);
       const [send] = await tasks(c, PURCHASE_MANAGER, t);
       expect(send?.kind).toBe('send');
       expect((await seen(c, ASKER, t)).words).toMatch(/Test Purchase Manager 1\.0/);
+      expect((await actions(KEEPER)).given_to).toBe('Test Purchase Manager 1.0');
+      const sendLines = await rows<{ asked: string; at_store: string }>(
+        c,
+        PURCHASE_MANAGER,
+        `select asked::int::text as asked, at_store::int::text as at_store
+           from ops.send_task_lines($1)`,
+        [send!.id],
+      );
+      expect(sendLines).toEqual([{ asked: '12', at_store: '40' }]);
 
       await one(c, PURCHASE_MANAGER, `select ops.send_by_task($1, null) as id`, [send!.id]);
       expect(await onHand(c, item, MAIN)).toBe(28);
@@ -344,6 +374,8 @@ describe('with a Main Store, a department asks it (ADR 115)', () => {
       const [receive] = await tasks(c, ASKER, t);
       expect(receive?.kind).toBe('receive');
       expect(await told(c, ASKER)).toContainEqual(expect.stringMatching(/On the way/));
+      expect((await actions(ASKER)).may_receive).toBe(true);
+      expect((await actions(KEEPER)).may_receive).toBe(false);
       expect((await seen(c, ASKER, t)).stage).toBe('on_the_way');
 
       await one(c, ASKER, `select ops.receive_sent($1, $2::jsonb) as id`, [
@@ -378,9 +410,7 @@ describe('with a Main Store, a department asks it (ADR 115)', () => {
         ).rows[0]!.p,
       ).toBe('to_order');
       expect((await seen(c, ASKER, t)).words).toMatch(/ordered|supplier/i);
-      expect(await told(c, ASKER)).toContainEqual(
-        expect.stringMatching(/Main Store is buying it/),
-      );
+      expect(await told(c, ASKER)).toContainEqual(expect.stringMatching(/Main Store is buying it/));
 
       await buyAndReceive(c, KEEPER, po, item, 24);
       expect(await onHand(c, item, MAIN)).toBe(24);
@@ -418,7 +448,9 @@ describe('with a Main Store, a department asks it (ADR 115)', () => {
       expect(await told(c, GM)).toContainEqual(expect.stringMatching(/To approve/));
       const waiting = await seen(c, ASKER, t);
       expect(waiting.stage).toBe('waiting_approval');
-      expect(waiting.words).toMatch(/Main Store is buying it: waiting for Test General Manager 1\.0.* to approve/);
+      expect(waiting.words).toMatch(
+        /Main Store is buying it: waiting for Test General Manager 1\.0.* to approve/,
+      );
 
       await one(c, GM, `select wf.act($1, 'reject', 'buy it next week') as s`, [
         await requestOf(c, 'purchase_order', po),
@@ -530,7 +562,9 @@ describe('with no Main Store, a department asks the store that keeps it (ADR 115
       await execute(c);
       await buyAndReceive(c, BAR_MANAGER, po, item, 10);
       expect(await onHand(c, item, BAR)).toBe(12);
-      expect(await told(c, ASKER)).toContainEqual(expect.stringMatching(/Arrived at the Bar Store/));
+      expect(await told(c, ASKER)).toContainEqual(
+        expect.stringMatching(/Arrived at the Bar Store/),
+      );
       expect(await todo(c, BAR_MANAGER)).toContain(t);
       await one(c, BAR_MANAGER, `select inv.send_request($1, null) as s`, [t]);
       await execute(c);
@@ -582,7 +616,7 @@ describe('with no Main Store, a department asks the store that keeps it (ADR 115
       const src = await rows<{ item_id: string; source_id: string | null }>(
         c,
         ASKER,
-        `select item_id::text, source_id::text from inv.ask_sources($1) where item_id = $2`,
+        `select item_id::text, source_id::text from inv.ask_items($1) where item_id = $2`,
         [ids.node(HK), item],
       );
       expect(src).toEqual([{ item_id: item, source_id: null }]);
@@ -685,7 +719,28 @@ describe('a frontline person asks their department head, and follows it', () => 
         `select id::text from inv.my_ask_stores()`,
       );
       expect(stores.map((s) => s.id)).toContain(ids.node(HK));
+      const keeps = await rows<{ item_id: string; on_hand: string }>(
+        c,
+        ATTENDANT,
+        `select item_id::text, on_hand::int::text as on_hand from inv.ask_store_items($1)`,
+        [ids.node(HK)],
+      );
+      expect(keeps).toContainEqual({ item_id: item, on_hand: '10' });
       const ask = await raise(c, item, 6);
+      // its page: the head acts on it, the attendant follows it
+      const detail = (who: string) =>
+        one<{ may_act: boolean; asked_by: string; lines: { qty: number }[] }>(
+          c,
+          who,
+          `select may_act, asked_by, lines from inv.staff_ask_detail($1)`,
+          [ask],
+        );
+      expect(await detail(ATTENDANT)).toMatchObject({
+        may_act: false,
+        asked_by: 'Test Room Attendant 1.0',
+        lines: [expect.objectContaining({ qty: 6, at_store: 10 })],
+      });
+      expect((await detail(ASKER)).may_act).toBe(true);
       const task = await headTask(c, ask);
       expect(task?.assignee).toBe(ids.user(ASKER));
       expect(await told(c, ASKER)).toContainEqual(
@@ -773,7 +828,13 @@ describe('a frontline person asks their department head, and follows it', () => 
       expect(await fails(c, ATTENDANT, `select inv.give_staff_ask($1, null)`, [ask])).toMatch(
         /NOT_AUTHORISED/,
       );
-      // a bartender may not ask the housekeeping store
+      // a bartender may not ask the housekeeping store, nor see what it keeps
+      expect(
+        await fails(c, BARTENDER, `select * from inv.ask_store_items($1)`, [ids.node(HK)]),
+      ).toMatch(/NOT_AUTHORISED/);
+      expect(await fails(c, BARTENDER, `select * from inv.staff_ask_detail($1)`, [ask])).toMatch(
+        /NOT_AUTHORISED/,
+      );
       expect(
         await fails(c, BARTENDER, `select inv.raise_staff_ask($1, $2::jsonb)`, [
           ids.node(HK),
@@ -784,6 +845,65 @@ describe('a frontline person asks their department head, and follows it', () => 
       expect(
         await rows<{ n: number }>(c, ATTENDANT, `select count(*)::int as n from inv.staff_ask`),
       ).toEqual([{ n: 0 }]);
+    });
+  });
+});
+
+// The over-par order that "showed waiting for approval, with no way to approve it": its page
+// says for whom it waits and lets that person approve it there, and an order whose workflow
+// failed says so instead of waiting forever (ADR 115).
+describe("an order's approval, on its page", () => {
+  it('names who approves, lets them approve, then says who did; a failed one says it failed', async () => {
+    await inRolledBackTx(async (c) => {
+      // every purchase approved, by the department head (the default approver)
+      await outletRules(c, { purchase_approval: 'every' });
+      const item = await lager(c);
+      const po = (
+        await one<{ id: string }>(
+          c,
+          ASKER,
+          `select inv.request_supplies($1, $2::jsonb, null, null) as id`,
+          [ids.node(HK), JSON.stringify([{ item_id: item, qty: 500 }])],
+        )
+      ).id;
+      const approval = (who: string) =>
+        one<{
+          state: string;
+          waiting_for: string | null;
+          may_act: boolean;
+          approved_by: string | null;
+          failure: string | null;
+        }>(
+          c,
+          who,
+          `select state, waiting_for, may_act, approved_by, failure from inv.po_approval($1)`,
+          [po],
+        );
+      // whoever asked heads the department, so the GM approves it, and both see that
+      const asked = await approval(ASKER);
+      expect(asked).toMatchObject({ state: 'in_approval', may_act: false });
+      expect(asked.waiting_for).toMatch(/Test General Manager 1\.0/);
+      expect((await approval(GM)).may_act).toBe(true);
+      await one(c, GM, `select wf.act($1, 'approve', null) as s`, [
+        await requestOf(c, 'purchase_order', po),
+      ]);
+      expect(await approval(ASKER)).toMatchObject({
+        state: 'approved',
+        may_act: false,
+        approved_by: 'Test General Manager 1.0',
+      });
+      await execute(c);
+      expect((await approval(ASKER)).state).toBe('completed');
+      // stuck: the workflow failed
+      await c.query(
+        `update wf.request set state = 'failed', failure_code = 'HANDLER_NOT_FOUND' where id = $1`,
+        [await requestOf(c, 'purchase_order', po)],
+      );
+      expect((await approval(ASKER)).failure).toBe('HANDLER_NOT_FOUND');
+      // someone of another outlet sees nothing
+      expect(
+        await rows(c, 'test.bar-manager.3.0', `select * from inv.po_approval($1)`, [po]),
+      ).toEqual([]);
     });
   });
 });

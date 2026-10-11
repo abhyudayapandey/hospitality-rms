@@ -164,6 +164,19 @@ describe('the set-up draft', () => {
     expect(readDraft({ company: { purchaseApproval: 'often' } }).company.purchaseApproval).toBe('');
   });
 
+  it("how stock is approved goes on the outlet's supply point in file 02; the defaults leave it out", () => {
+    const plain = filesFromDraft(cafe(), '2026-10-01');
+    expect(parseCsv(plain['02_delivery_nodes.csv']!).header).not.toContain('request_approval');
+    const d = hotel();
+    d.outlets[0] = { ...d.outlets[0]!, requestApproval: 'gm', purchaseApprover: 'gm' };
+    const files = filesFromDraft(d, '2026-10-01');
+    const supply = rows(files, '02_').find((r) => r['node_code'] === 'GH-ONE-SUPPLY');
+    expect(supply).toMatchObject({ request_approval: 'gm', purchase_approver: 'gm' });
+    expect(rows(files, '02_').filter((r) => r['request_approval'])).toHaveLength(1);
+    // and the loader reads it back
+    expect(readBundle(files).issues).toEqual([]);
+  });
+
   it('cover answers become file 37, and the lines say what moves', () => {
     const d = cafe();
     d.outlets[0]!.tile = 'restaurant';

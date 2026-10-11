@@ -180,7 +180,10 @@ export function taskIcon(title: string, kind: string): TaskIcon {
     case 'compliance':
       return 'shield';
     case 'receive':
+    case 'send':
       return 'truck';
+    case 'ask':
+      return 'box';
     case 'minibar_refill':
       return 'fridge';
     case 'minibar_bill':

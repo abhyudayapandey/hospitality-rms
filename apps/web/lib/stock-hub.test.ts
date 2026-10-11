@@ -23,7 +23,7 @@ describe('hubActions', () => {
       'Count',
       'Record wastage',
       'Ask for supplies',
-      'Request stock',
+      'Ask for stock',
     ]);
     expect(main[0]!.href).toBe('/stock/count?node=n1');
     expect(more).toEqual([]);
@@ -32,7 +32,7 @@ describe('hubActions', () => {
     const { main, more } = hubActions({ ...every, mainStore: true }, 'node=m');
     expect(main.map((a) => a.label)).toEqual(['Send stock', 'Count', 'Record wastage']);
     expect(main[0]!.href).toBe('/stock/transfers/send?node=m');
-    expect(more.map((a) => a.label)).toEqual(['Ask for supplies', 'Request stock']);
+    expect(more.map((a) => a.label)).toEqual(['Ask for supplies', 'Ask for stock']);
   });
   it('shows only what the person may do', () => {
     const none = { adjust: false, order: false, request: false };

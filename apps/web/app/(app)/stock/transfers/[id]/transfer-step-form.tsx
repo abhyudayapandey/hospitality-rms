@@ -36,11 +36,14 @@ export function TransferStepForm({
   requestId,
   mode,
   lines,
+  gm = false,
 }: {
   transfer: string;
   requestId: string;
   mode: 'dispatch' | 'receive' | 'approve' | null;
   lines: TransferLine[];
+  /** the GM's approval, which this outlet asks for on every request (ADR 115) */
+  gm?: boolean;
 }) {
   const router = useRouter();
   const [qty, setQty] = useState<Record<string, string>>(() =>
@@ -79,7 +82,7 @@ export function TransferStepForm({
       setError(null);
       const r = await actOnRequest(requestId, 'approve', crypto.randomUUID());
       if (r.ok) {
-        setDone('Approved. It goes to the store keeper now.');
+        setDone('Approved. It goes to the store now.');
         router.refresh();
       } else setError(r.message);
     });
@@ -110,8 +113,9 @@ export function TransferStepForm({
     >
       {mode === 'approve' && (
         <p className="rounded-lg bg-violet-50 p-3 text-sm text-violet-900">
-          This request is off the menu or more than usual, so it needs your approval before the
-          store keeper issues it.
+          {gm
+            ? 'Every request here needs your approval before the store sends it.'
+            : 'This request is off the menu or more than usual, so it needs your approval before the store keeper issues it.'}
         </p>
       )}
       {mode === 'receive' && !done && (

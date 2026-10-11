@@ -1,5 +1,14 @@
 import Link from 'next/link';
-import { ALWAYS_ON, EXTRA_BY_CODE, TILES, TILE_BY_CODE } from '@outlet-ops/domain';
+import {
+  ALWAYS_ON,
+  EXTRA_BY_CODE,
+  PURCHASE_APPROVER_WORDS,
+  PURCHASE_APPROVERS,
+  REQUEST_APPROVAL_WORDS,
+  REQUEST_APPROVALS,
+  TILES,
+  TILE_BY_CODE,
+} from '@outlet-ops/domain';
 import {
   COMPANY_ROLES,
   UNITS,
@@ -329,6 +338,46 @@ export function OutletsStep({
               className={field}
             />
           </label>
+          <fieldset className="space-y-2">
+            <legend className="font-medium">Who approves a department’s request for stock?</legend>
+            <p className="text-sm text-slate-600">
+              With a Main Store (the Stores department), departments ask it; without one, they ask
+              the department that keeps it.
+            </p>
+            {REQUEST_APPROVALS.map((a) => (
+              <label
+                key={a}
+                className="flex min-h-12 items-center gap-3 rounded-lg p-2 ring-1 ring-slate-200"
+              >
+                <input
+                  type="radio"
+                  name="requestApproval"
+                  value={a}
+                  defaultChecked={(editing?.requestApproval || 'unusual') === a}
+                  className="size-5"
+                />
+                {REQUEST_APPROVAL_WORDS[a]}
+              </label>
+            ))}
+          </fieldset>
+          <fieldset className="space-y-2">
+            <legend className="font-medium">Who approves a purchase?</legend>
+            {PURCHASE_APPROVERS.map((a) => (
+              <label
+                key={a}
+                className="flex min-h-12 items-center gap-3 rounded-lg p-2 ring-1 ring-slate-200"
+              >
+                <input
+                  type="radio"
+                  name="purchaseApprover"
+                  value={a}
+                  defaultChecked={(editing?.purchaseApprover || 'department_head') === a}
+                  className="size-5"
+                />
+                {PURCHASE_APPROVER_WORDS[a]}
+              </label>
+            ))}
+          </fieldset>
           <button type="submit" name="go" value="stay" className={primaryButton}>
             Save outlet
           </button>

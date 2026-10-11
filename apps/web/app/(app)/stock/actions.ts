@@ -328,6 +328,85 @@ export async function receiveTransfer(
 }
 
 /**
+ * Asks for stock (ADR 115): each item goes to the store it comes from by the outlet's rules
+ * (the Main Store, else the store that keeps it); one request per store.
+ */
+export async function askForStock(
+  to: string,
+  lines: Line[],
+  note: string,
+  idempotencyKey: string,
+): Promise<ActionResult<{ ids: string[] }>> {
+  return run('ask_for_stock', async (tx) => {
+    const r = await sql<{ ids: string[] }>`
+      select inv.ask_for_stock(${to}::uuid, ${json(cleanLines(lines))}::jsonb, ${note || null},
+                               ${idempotencyKey})::text[] as ids`.execute(tx);
+    return { ids: r.rows[0]!.ids };
+  });
+}
+
+/** The store gives the sending to someone of its team: a task for them (ADR 115). */
+export async function giveSend(transfer: string, person: string): Promise<ActionResult<null>> {
+  return run('give_send', async (tx) => {
+    await sql`select inv.give_send(${transfer}::uuid, ${person}::uuid)`.execute(tx);
+    return null;
+  });
+}
+
+/** The store is short: it orders the rest from a supplier for this request (ADR 115). */
+export async function orderForRequest(transfer: string): Promise<ActionResult<{ id: string }>> {
+  return run('order_for_request', async (tx) => {
+    const r = await sql<{ id: string }>`
+      select inv.order_for_request(${transfer}::uuid, null) as id`.execute(tx);
+    return { id: r.rows[0]!.id };
+  });
+}
+
+/** The person given it sends it, saying what they took (ADR 115). */
+export async function sendByTask(task: string, lines: Line[] | null): Promise<ActionResult<null>> {
+  return run('send_by_task', async (tx) => {
+    await sql`select ops.send_by_task(${task}::uuid,
+                                      ${lines ? json(cleanLines(lines)) : null}::jsonb)`.execute(
+      tx,
+    );
+    return null;
+  });
+}
+
+/** A frontline person asks their department head for something (ADR 115). */
+export async function raiseStaffAsk(
+  store: string,
+  lines: Line[],
+  note: string,
+  idempotencyKey: string,
+): Promise<ActionResult<{ id: string }>> {
+  return run('raise_staff_ask', async (tx) => {
+    const r = await sql<{ id: string }>`
+      select inv.raise_staff_ask(${store}::uuid, ${json(cleanLines(lines))}::jsonb,
+                                 ${note || null}, ${idempotencyKey}) as id`.execute(tx);
+    return { id: r.rows[0]!.id };
+  });
+}
+
+/** The head acts on what someone asked: gives it, asks for it on their behalf, or says no. */
+export async function actOnStaffAsk(
+  ask: string,
+  action: 'give' | 'ask' | 'close',
+  note: string,
+): Promise<ActionResult<null>> {
+  return run(`staff_ask_${action}`, async (tx) => {
+    if (action === 'give') {
+      await sql`select inv.give_staff_ask(${ask}::uuid, ${note || null})`.execute(tx);
+    } else if (action === 'ask') {
+      await sql`select inv.ask_for_staff(${ask}::uuid)`.execute(tx);
+    } else {
+      await sql`select inv.close_staff_ask(${ask}::uuid, ${note})`.execute(tx);
+    }
+    return null;
+  });
+}
+
+/**
  * A presigned POST for one wastage photo at `node`. Access is decided in SQL:
  * core.can(STOCK_ADJUSTMENTS, modify) at the node (rule 2); the key embeds the tenant
  * and node, and record_wastage accepts only keys under that prefix.

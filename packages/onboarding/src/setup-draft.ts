@@ -19,6 +19,8 @@ import {
   type BundleCode,
   type ExtraCode,
   type Level,
+  PURCHASE_APPROVERS,
+  REQUEST_APPROVALS,
 } from '@outlet-ops/domain';
 import { parseCsv, writeCsv } from './csv';
 import {
@@ -88,6 +90,18 @@ const DraftOutlet = z.object({
   roles: z.record(z.string(), RoleAnswer).default({}),
   /** Starter items by `DEPT:ITEM`: left out, or a par. */
   stock: z.record(z.string(), z.object({ off: z.boolean().default(false), par: str })).default({}),
+  /**
+   * Who approves a department's request for stock, and a purchase that needs approving (ADR
+   * 115): '' is the default (the department head: an unusual request; a purchase).
+   */
+  requestApproval: z
+    .enum(['', ...REQUEST_APPROVALS])
+    .catch('')
+    .default(''),
+  purchaseApprover: z
+    .enum(['', ...PURCHASE_APPROVERS])
+    .catch('')
+    .default(''),
   /** The customer's own items, per department store. */
   ownItems: z
     .array(z.object({ department: z.string(), name: str, unit: z.enum(UNITS), par: str }))
@@ -568,6 +582,24 @@ export function filesFromDraft(
     });
     files = r.files;
     plans.set(o.key, r.plan);
+  }
+
+  // how stock is asked for and approved at each outlet (ADR 115): on its supply point's row
+  const ruled = draft.outlets.filter((o) => o.requestApproval || o.purchaseApprover);
+  if (ruled.length) {
+    const dlv = edit(files, 'deliveryNodes', ['request_approval', 'purchase_approver']);
+    for (const o of ruled) {
+      const row = dlv.rows.find((r) => r['node_code'] === `${codes.get(o.key)!}-SUPPLY`);
+      if (row) {
+        row['request_approval'] = o.requestApproval;
+        row['purchase_approver'] = o.purchaseApprover;
+      }
+    }
+    for (const r of dlv.rows) {
+      r['request_approval'] ??= '';
+      r['purchase_approver'] ??= '';
+    }
+    dlv.save();
   }
 
   // where clock-in works

@@ -1,4 +1,9 @@
-import { TILE_BY_CODE, type ExtraCode } from '@outlet-ops/domain';
+import {
+  PURCHASE_APPROVERS,
+  REQUEST_APPROVALS,
+  TILE_BY_CODE,
+  type ExtraCode,
+} from '@outlet-ops/domain';
 import {
   STEPS,
   UNITS,
@@ -15,6 +20,11 @@ import {
 // to the draft. Pure, so the rules are unit-tested; the route saves and moves on.
 
 export type Fields = Map<string, string[]>;
+
+/** One of `options`, or '' for the default or anything else. */
+function choice<T extends string>(options: readonly T[], v: string, byDefault: T): T | '' {
+  return v !== byDefault && (options as readonly string[]).includes(v) ? (v as T) : '';
+}
 
 export function fieldsOf(form: FormData): Fields {
   const f: Fields = new Map();
@@ -92,6 +102,13 @@ export function applyForm(
           area: one(f, 'area'),
           location: one(f, 'location'),
           radius: one(f, 'radius'),
+          // ADR 115: how stock is approved here; the default (and anything unknown) is ''
+          requestApproval: choice(REQUEST_APPROVALS, one(f, 'requestApproval'), 'unusual'),
+          purchaseApprover: choice(
+            PURCHASE_APPROVERS,
+            one(f, 'purchaseApprover'),
+            'department_head',
+          ),
         };
         if (!next.departments) delete next.departments;
         d.outlets = old
