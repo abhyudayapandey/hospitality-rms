@@ -60,7 +60,7 @@ test('two-leg transfer: asked, sent by the central kitchen store keeper, receive
   expect(await onHand(page, 'POTATOES', store)).toBeCloseTo(before + 3.5, 2);
 });
 
-test('store to store in one outlet: the main store keeper sends, the kitchen’s keeper receives', async ({
+test('store to store in one outlet: the main store keeper sends, whoever asked receives', async ({
   page,
 }) => {
   const kitchen = await placeId('TEST-HOTEL-1.0-KITCHEN-STORE');
@@ -85,9 +85,9 @@ test('store to store in one outlet: the main store keeper sends, the kitchen’s
   await page.getByRole('button', { name: 'Send' }).click();
   await expect(page.getByTestId('transfer-progress')).toHaveText('in transit');
 
-  await signInAs(page, 'Test Executive Chef 1.0');
-  await page.goto('/inbox');
-  await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
+  // whoever asked receives it (ADR 115), on the request
+  await signInAs(page, 'Test Sous Chef 1.0');
+  await page.goto(`/stock/transfers/${id}?node=${kitchen}`);
   // nothing filled in (ADR 052): a shortfall is counted, not assumed away
   const rice = page.getByRole('textbox', { name: 'Received Test Basmati Rice' });
   await expect(rice).toHaveValue('');

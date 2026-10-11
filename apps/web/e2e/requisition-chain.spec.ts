@@ -99,7 +99,7 @@ test('a room attendant asks their head, who gives it; the attendant sees it give
   await signInAs(page, 'Test Executive Housekeeper 1.0');
   await page.goto(`/stock/asks/${ask}`);
   await expect(page.getByTestId('ask-lines')).toContainText('Test Hand Towel');
-  await page.getByRole('button', { name: 'Give it' }).click();
+  await page.getByRole('button', { name: 'Give it', exact: true }).click();
   await expect(page.getByTestId('request-now')).toHaveAttribute('data-stage', 'given');
 
   // the attendant follows it to the end

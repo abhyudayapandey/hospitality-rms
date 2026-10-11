@@ -201,6 +201,18 @@ under **To order** on the To do list: a supplier (optional, kept for the record)
 date, one order per supplier when items come from several. Then it is under **To receive**
 until it is received. The department is told when it is ordered and when it is received.
 
+**Asking for stock** (ADR 115). A department asks for items and quantities, and each goes to the
+store it comes from by the outlet's shape: the Main Store where there is one, else the store that
+keeps it (housekeeping's beer from the Bar), else a central kitchen; nobody picks a store. Who
+approves is the outlet's own rule, chosen at onboarding (file 02, the set-up wizard): the
+department head for an unusual request (the default), the GM for every one, or no one; and the
+same for its purchases. The store sends it, gives it to someone of its team (a "send" task: "I
+took all of it"), or buys what is short for it; whoever asked receives it, and follows it the
+whole way on the request ("Waiting for Sainath to approve", "Dylan is bringing it from the Bar",
+What happened). A frontline person asks their department head (Me → Ask for something), who gives
+it, asks for it, or says why not; they follow it under What I asked for. An order's page names
+whom it waits for, and that person approves it there.
+
 **The Main Store keeper** (ADR 051). Orders is one list: the Main Store's own orders and the
 departments' requests the keeper orders and receives, with tabs To order, To receive and
 Received whose counts match their lists. Receiving fills nothing in: what arrived and the amount
