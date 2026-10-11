@@ -3327,10 +3327,13 @@ class Loader {
           `select id from ops.task_step where task_id = $1 order by position`,
           [id],
         );
+        // a test customer's past task, replayed: no camera, so no photos (ADR 127)
+        await this.c.query(`select set_config('app.replay', 'on', true)`);
         for (const step of s.rows) {
           await this.c.query(`select ops.complete_step($1, $2, '{"done": true}')`, [id, step.id]);
         }
         await this.c.query(`select ops.complete_task($1)`, [id]);
+        await this.c.query(`select set_config('app.replay', '', true)`);
       });
     }
   }

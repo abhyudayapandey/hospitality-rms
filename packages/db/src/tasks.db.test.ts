@@ -8,6 +8,8 @@ import {
   loadSeedIds,
   resetRole,
   type SeedIds,
+  photoKey,
+  stepPhoto,
 } from '../test/helpers';
 
 // How tasks behave (Prompt 11b, ADR 020): schedules, the tasks job, flagged readings,
@@ -304,7 +306,7 @@ describe('working through a checklist', () => {
         attemptAs<{ r: { flagged: boolean } }>(
           c,
           ids.user('test.commis.1.0'),
-          'select ops.complete_step($1, $2, $3::jsonb) as r',
+          `select ops.complete_step($1, $2, ${stepPhoto()} || $3::jsonb) as r`,
           [task, steps[i], JSON.stringify(value)],
         );
       expect((await step({ number: 3 })).rows![0]!.r.flagged).toBe(false);
@@ -328,8 +330,14 @@ describe('working through a checklist', () => {
         /INVALID_PHOTO/,
       );
       expect((await keep(photo(KITCHEN).replace('/routine/', '/keep/'))).error).toBeUndefined();
-      // a photo is needed where the step says so, and must be for this place
-      expect((await step({ done: true }, 1)).error).toMatch(/PHOTO_REQUIRED/);
+      // every step needs a photo (ADR 127), and it must be for this place
+      const bare = await attemptAs(
+        c,
+        ids.user('test.commis.1.0'),
+        `select ops.complete_step($1, $2, '{"done": true}'::jsonb)`,
+        [task, steps[1]],
+      );
+      expect(bare.error).toMatch(/PHOTO_REQUIRED/);
       expect((await step({ done: true, photo_key: photo('TEST-HOTEL-1.0-BAR') }, 1)).error).toMatch(
         /INVALID_PHOTO/,
       );
@@ -345,21 +353,24 @@ describe('working through a checklist', () => {
           task,
         ]);
       expect((await done()).error).toMatch(/STEPS_INCOMPLETE/);
-      await run(c, 'test.commis.1.0', 'select ops.complete_step($1, $2, $3::jsonb)', [
-        task,
-        steps[0],
-        JSON.stringify({ number: 4 }),
-      ]);
-      await run(c, 'test.commis.1.0', 'select ops.complete_step($1, $2, $3::jsonb)', [
-        task,
-        steps[1],
-        JSON.stringify({ done: true, photo_key: photo(KITCHEN) }),
-      ]);
-      await run(c, 'test.commis.1.0', 'select ops.complete_step($1, $2, $3::jsonb)', [
-        task,
-        steps[2],
-        JSON.stringify({ text: 'Fryer oil changed' }),
-      ]);
+      await run(
+        c,
+        'test.commis.1.0',
+        `select ops.complete_step($1, $2, ${stepPhoto()} || $3::jsonb)`,
+        [task, steps[0], JSON.stringify({ number: 4 })],
+      );
+      await run(
+        c,
+        'test.commis.1.0',
+        `select ops.complete_step($1, $2, ${stepPhoto()} || $3::jsonb)`,
+        [task, steps[1], JSON.stringify({ done: true, photo_key: photo(KITCHEN) })],
+      );
+      await run(
+        c,
+        'test.commis.1.0',
+        `select ops.complete_step($1, $2, ${stepPhoto()} || $3::jsonb)`,
+        [task, steps[2], JSON.stringify({ text: 'Fryer oil changed' })],
+      );
       expect((await done()).error).toBeUndefined();
       const [d] = await run<{ d: { status: string; steps: { done_by_name: string }[] } }>(
         c,
@@ -413,6 +424,8 @@ describe('working through a checklist', () => {
         );
       const [a] = await create(`${monday} 10:00+05:30`);
       await create(`${monday} 11:00+05:30`);
+      // a task with no steps: a photo of it done first (ADR 127)
+      await run(c, 'test.commis.1.0', `select ops.add_task_photo($1, ${photoKey()})`, [a!.id]);
       await run(c, 'test.commis.1.0', 'select ops.complete_task($1)', [a!.id]);
       const after = await kitchen(monday);
       // done late (after its due time): done, not on time

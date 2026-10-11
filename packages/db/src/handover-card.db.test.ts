@@ -1,6 +1,13 @@
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
+import {
+  attemptAs,
+  closePools,
+  inRolledBackTx,
+  loadSeedIds,
+  type SeedIds,
+  stepPhoto,
+} from '../test/helpers';
 
 // The shift handover (ADR 118) on Test Hotel 1.0's front office: a checklist marked as a
 // handover is read by the next shift of its department, every answer and the note, until they
@@ -53,8 +60,14 @@ async function handoverDone(c: PoolClient, note: string | null) {
       [ids.tenant(), ids.node(FO), task],
     )
   ).rows;
-  await as(c, A, `select ops.complete_step($1, $2, '{"done": true}')`, [task, steps[0]!.id]);
-  await as(c, A, `select ops.complete_step($1, $2, '{"number": 5000}')`, [task, steps[1]!.id]);
+  await as(c, A, `select ops.complete_step($1, $2, ${stepPhoto()} || '{"done": true}'::jsonb)`, [
+    task,
+    steps[0]!.id,
+  ]);
+  await as(c, A, `select ops.complete_step($1, $2, ${stepPhoto()} || '{"number": 5000}'::jsonb)`, [
+    task,
+    steps[1]!.id,
+  ]);
   await as(c, A, `select ops.complete_task($1, $2)`, [task, note]);
   return task;
 }

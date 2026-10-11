@@ -8,6 +8,7 @@ import {
   loadSeedIds,
   resetRole,
   type SeedIds,
+  stepPhoto,
 } from '../test/helpers';
 
 // Utilities (ADR 091): the daily meter round, its readings kept, use by day and by month; who
@@ -72,18 +73,20 @@ describe('utilities', () => {
         'Water inlet',
       ]);
       for (const [i, s] of steps.entries()) {
-        await run(c, 'test.technician.1.0', `select ops.complete_step($1, $2, $3::jsonb)`, [
-          task,
-          s.id,
-          JSON.stringify({ number: 1100 + i * 10 }),
-        ]);
+        await run(
+          c,
+          'test.technician.1.0',
+          `select ops.complete_step($1, $2, ${stepPhoto()} || $3::jsonb)`,
+          [task, s.id, JSON.stringify({ number: 1100 + i * 10 })],
+        );
       }
       // saving again corrects the reading, never adds a second
-      await run(c, 'test.technician.1.0', `select ops.complete_step($1, $2, $3::jsonb)`, [
-        task,
-        steps[0]!.id,
-        JSON.stringify({ number: 1150 }),
-      ]);
+      await run(
+        c,
+        'test.technician.1.0',
+        `select ops.complete_step($1, $2, ${stepPhoto()} || $3::jsonb)`,
+        [task, steps[0]!.id, JSON.stringify({ number: 1150 })],
+      );
       const today = await run<{ meter: string; used: string }>(
         c,
         'test.chief-engineer.1.0',
