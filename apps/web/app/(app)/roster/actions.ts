@@ -90,9 +90,9 @@ export async function setDayShift(
   accept: string[] = [],
 ): Promise<ActionResult<null>> {
   return run('set_day_shift', async (tx) => {
-    // any shift type of the department (ADR 128): another role's gives them its times
+    // any shift type of the department, another role's too (ADR 128, 130)
     await sql`
-      select hr.set_day_shift_any(${worker}::uuid, ${day}::date, ${template}::uuid,
+      select hr.set_day_shift(${worker}::uuid, ${day}::date, ${template}::uuid,
                                   ${accept}::text[])`.execute(tx);
     return null;
   });

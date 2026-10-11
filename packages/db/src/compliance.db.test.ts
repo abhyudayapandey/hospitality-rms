@@ -362,6 +362,33 @@ describe('the calendar', () => {
       expect((await places('test.account-owner')).length).toBeGreaterThan(3);
     });
   });
+
+  it("a licence's and a job's own page open for the department that sees them, not for others (ADR 130)", async () => {
+    await inRolledBackTx(async (c) => {
+      const noc = await c.query<{ id: string }>(
+        `select l.id from ops.licence l join core.hierarchy_node n on n.id = l.org_node_id
+          where n.code = $1 and l.kind = 'FIRE_NOC' and l.archived_at is null`,
+        [H10],
+      );
+      const lift = await jobId(c, 'Lift rescue drill');
+      const open = (who: string, fn: string, id: string) =>
+        attemptAs(c, ids.user(who), `select * from ${fn}($1)`, [id]);
+      // the chief engineer renews the fire NOC and answers for the lift drill: both open
+      expect(
+        (await open('test.chief-engineer.1.0', 'ops.licence_history', noc.rows[0]!.id)).error,
+      ).toBeUndefined();
+      expect(
+        (await open('test.chief-engineer.1.0', 'ops.compliance_history', lift)).error,
+      ).toBeUndefined();
+      // a cook, nothing of theirs: refused as if it were not there
+      expect((await open('test.commis.1.0', 'ops.licence_history', noc.rows[0]!.id)).error).toMatch(
+        /NOT_FOUND/,
+      );
+      expect((await open('test.commis.1.0', 'ops.compliance_history', lift)).error).toMatch(
+        /NOT_FOUND/,
+      );
+    });
+  });
 });
 
 describe("Home's Compliance card (ADR 069 addendum)", () => {

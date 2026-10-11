@@ -163,7 +163,6 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       CHECKLIST_TEMPLATES: v,
       LOGBOOK: m,
       REGISTERS: m,
-      UTILITIES: v,
       AUDITS: v,
       TRAINING: v,
     },
@@ -188,7 +187,6 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       MAINTENANCE: m,
       LOGBOOK: m,
       REGISTERS: m,
-      UTILITIES: m,
       AUDITS: m,
       TRAINING: m,
     },
@@ -202,8 +200,8 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: { RECIPES_TEAM: v, DERIVED_MENU: v },
   },
   {
-    // the meters they read and their readings (ADR 124): a technician, without the department
-    // head's say over them
+    // the meters and their readings: Engineering's (ADR 124, 130). Its chief engineer, shift
+    // engineers and technicians hold it; the GM and area managers see them as managers
     code: 'METER_READER',
     name: 'Meter Reader',
     kind: 'role',

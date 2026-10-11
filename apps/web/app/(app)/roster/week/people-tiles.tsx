@@ -42,18 +42,19 @@ const KIND: Record<TileType['shift_type'], string> = {
 };
 
 /**
- * The roster by person (ADR 082, 128): one row each, a tile per shift type of the department
- * (their own role's first; another role's gives them a shift of their own with its times), a
- * Custom tile (from a time to a time) and Off. A tap puts them on it for the day; the database
- * runs every roster rule again, and a warning (rest, weekly hours) asks before going ahead. A
- * shift they have that no tile stands for (custom, or added by hand) shows as its own tile,
- * theirs, so Off is lit only when they have no shift that day (ADR 097).
+ * The roster by person (ADR 082, 128, 130): one row each, a tile per shift type of the
+ * department (their own role's first), a Custom tile (from a time to a time) and Off. A tap
+ * puts them on that type for the day and lights its tile; tapping it again changes nothing. The
+ * database runs every roster rule again, and a warning (rest, weekly hours) asks before going
+ * ahead. A shift they have that no tile stands for (custom, or added by hand) shows as its own
+ * tile, theirs, so Off is lit only when they have no shift that day (ADR 097).
  */
+
+const key = (t: TileType) => `${t.name}|${t.start}|${t.end}|${t.shift_type}`;
 
 /** Every shift type of the department, their own role's first, one tile per name and times. */
 export function tilesFor(types: readonly TileType[], role: string): TileType[] {
   const mine = types.filter((t) => t.role_code === role);
-  const key = (t: TileType) => `${t.name}|${t.start}|${t.end}|${t.shift_type}`;
   const seen = new Set(mine.map(key));
   const others: TileType[] = [];
   for (const t of types) {
@@ -144,11 +145,12 @@ export function PeopleTiles({
         {people.map((p) => {
           const tiles = tilesFor(types, p.role_code);
           const off = p.shift_id === null;
-          // their shift that day when no tile stands for it (added by hand, or another role's)
-          const other =
-            !off && !tiles.some((t) => t.template_id === p.template_id)
-              ? (types.find((t) => t.template_id === p.template_id) ?? null)
-              : null;
+          // the type they are on (a tile may stand for an identical type of another role)
+          const theirs = types.find((t) => t.template_id === p.template_id) ?? null;
+          const isOn = (t: TileType) =>
+            p.template_id === t.template_id || (theirs !== null && key(theirs) === key(t));
+          // their shift that day when no tile stands for it (added by hand)
+          const other = !off && theirs && !tiles.some(isOn) ? theirs : null;
           return (
             <li
               key={p.worker_id}
@@ -163,7 +165,7 @@ export function PeopleTiles({
               </p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {tiles.map((t) => {
-                  const on = p.template_id === t.template_id;
+                  const on = isOn(t);
                   return (
                     <button
                       key={t.template_id}

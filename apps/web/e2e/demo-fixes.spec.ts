@@ -124,6 +124,36 @@ test("a department head's roster opens by person; the GM's by shift", async ({ p
   await expect(page.getByTestId('view-shift')).toHaveAttribute('aria-current', 'page');
 });
 
+test("a manager puts themselves on another role's shift type: that tile lights, a second tap adds nothing (ADR 130)", async ({
+  page,
+}) => {
+  const kitchen = await placeId('TEST-HOTEL-1.0-KITCHEN');
+  const [{ day = '' } = {}] = await asMigrator<{ day: string }>(
+    `select (date_trunc('week', now() at time zone 'Asia/Kolkata')::date + 39)::text as day`,
+    [],
+  );
+  await signInAs(page, 'Test Executive Chef 1.0');
+  await page.goto(`/roster/week?node=${kitchen}&week=${day}&day=${day}&view=people`);
+  const row = page.getByTestId('person-row').filter({ hasText: 'Test Executive Chef 1.0' });
+  const tile = row.locator('[data-testid="shift-tile"][data-type="straight"]').first();
+  const before = await page.getByTestId('week-summary').textContent();
+  await tile.click();
+  await expect(tile).toHaveAttribute('aria-pressed', 'true');
+  // no second tile of the same shift stands beside it, and Off is not lit
+  await expect(row.locator('[data-type="other"]')).toHaveCount(0);
+  await expect(row.locator('[data-type="off"]')).toHaveAttribute('aria-pressed', 'false');
+  const summary = await page.getByTestId('week-summary').textContent();
+  // tapping it again changes nothing
+  await tile.click({ force: true });
+  await expect(tile).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('week-summary')).toHaveText(summary!);
+  // and Off leaves no empty draft behind
+  await row.locator('[data-type="off"]').click();
+  await expect(row.locator('[data-type="off"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(tile).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByTestId('week-summary')).toHaveText(before!);
+});
+
 test('a custom shift: a day, from a time to a time, shown as theirs (ADR 128)', async ({
   page,
 }) => {
