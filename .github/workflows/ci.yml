@@ -2,7 +2,7 @@ name: CI
 
 # Three kinds of job run side by side (about 6 minutes instead of 21):
 #   static  lint, typecheck, unit tests, CDK synth; no database
-#   db      the DB tests in 2 shards; in each, 2 workers on their own copies of the
+#   db      the DB tests in 3 shards; in each, 2 workers on their own copies of the
 #           seeded database (packages/db/test/worker-databases.ts)
 #   e2e     Playwright in 3 shards, each with its own seeded database; shard 1 also
 #           proves the production build refuses dev auth
@@ -58,7 +58,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
     services:
       postgres:
         image: postgres:16
@@ -100,9 +100,9 @@ jobs:
           -c "select pg_reload_conf()"
       - run: pnpm db:migrate
       - run: pnpm db:seed
-      - name: DB tests (shard ${{ matrix.shard }} of 2)
+      - name: DB tests (shard ${{ matrix.shard }} of 3)
         run: >-
-          pnpm exec vitest run --project db --shard=${{ matrix.shard }}/2
+          pnpm exec vitest run --project db --shard=${{ matrix.shard }}/3
           --reporter=default --reporter=json --outputFile=db-times.json
       # each file's seconds on CI's machines, for the shard weights (sequencer.ts, ADR 052)
       - name: DB test times (shard ${{ matrix.shard }})

@@ -1924,13 +1924,17 @@ csv(
   [...templates.values()],
 );
 const OFF = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// each person's place in the rota sets their day off. The receiving clerk had slot 20 before the
+// stores team left (ADR 115): those after keep their slot, so a re-import keeps the days already
+// rostered for them (a moved day off would put them over the weekly cap)
+const slot = (i: number) => (i >= 20 ? i + 1 : i);
 csv(
   '25_shifts_TEST_DATA_ONLY.csv',
   ['roster_node_code', 'shift_name', 'job_role_code', 'week', 'days', 'username', 'rostered_by'],
   // the past seven days as worked (file 35), today to Sunday, and next week (ADR 114)
   [-1, 0, 1].flatMap((week) =>
     SHIFTS.map(([user, dept, shift], i) => {
-      const off = i % 7;
+      const off = slot(i) % 7;
       const days = OFF.filter((_, j) => j !== off);
       // six days, as runs of consecutive days
       const runs: string[] = [];
@@ -1952,7 +1956,7 @@ csv(
 const ATTENDANCE: Cell[][] = [];
 for (const [i, [user, , , start, end]] of SHIFTS.entries()) {
   for (let d = -7; d <= -1; d++) {
-    if ((d + 7 + i) % 7 === 0) continue; // a day off
+    if ((d + 7 + slot(i)) % 7 === 0) continue; // a day off
     if (user === 'bar-back' && d === -2) continue; // no-show
     const late = (i + d) % 9 === 0 ? 14 : pick(0, 6);
     const [h, m] = start.split(':').map(Number) as [number, number];

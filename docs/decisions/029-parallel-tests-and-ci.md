@@ -46,11 +46,11 @@ slowest files start first. Stale weights only make shards less even.
 
 **CI as parallel jobs** (`.github/workflows/ci.yml`):
 
-| Job      | Runs                                                                               |
-| -------- | ---------------------------------------------------------------------------------- |
-| `static` | lint, typecheck, unit tests, CDK synth; no database                                |
-| `db` ×2  | half the DB test files each (`--shard`), 2 workers on their own database copies    |
-| `e2e` ×3 | a third of the Playwright files each (`--shard`), each job its own seeded database |
+| Job      | Runs                                                                                  |
+| -------- | ------------------------------------------------------------------------------------- |
+| `static` | lint, typecheck, unit tests, CDK synth; no database                                   |
+| `db` ×3  | a third of the DB test files each (`--shard`), 2 workers on their own database copies |
+| `e2e` ×3 | a third of the Playwright files each (`--shard`), each job its own seeded database    |
 
 - Shard 1 of e2e also runs the production dev-auth check, after its build.
 - The Next.js build cache is kept between runs.
