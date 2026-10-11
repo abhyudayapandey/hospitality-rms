@@ -462,22 +462,24 @@ class Loader {
           `${type} places`,
           `insert into core.hierarchy_node (tenant_id, type, kind, name, code, parent_id, timezone,
                                             outlet_format, holds_stock, is_main_store,
-                                            department_type)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, coalesce($9, false), coalesce($10, false), $11)
+                                            department_type, stock_rules)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, coalesce($9, false), coalesce($10, false), $11,
+                   $12::jsonb)
            on conflict (tenant_id, code) where code is not null do update
               set name = excluded.name, kind = excluded.kind, parent_id = excluded.parent_id,
                   timezone = excluded.timezone, outlet_format = excluded.outlet_format,
                   holds_stock = excluded.holds_stock, is_main_store = excluded.is_main_store,
-                  department_type = excluded.department_type, archived_at = null
+                  department_type = excluded.department_type,
+                  stock_rules = excluded.stock_rules, archived_at = null
             where (core.hierarchy_node.name, core.hierarchy_node.kind,
                    core.hierarchy_node.parent_id, core.hierarchy_node.timezone,
                    core.hierarchy_node.outlet_format, core.hierarchy_node.holds_stock,
                    core.hierarchy_node.is_main_store, core.hierarchy_node.department_type,
-                   core.hierarchy_node.archived_at)
+                   core.hierarchy_node.stock_rules, core.hierarchy_node.archived_at)
                   is distinct from (excluded.name, excluded.kind, excluded.parent_id,
                                     excluded.timezone, excluded.outlet_format,
                                     excluded.holds_stock, excluded.is_main_store,
-                                    excluded.department_type, null)
+                                    excluded.department_type, excluded.stock_rules, null)
            returning id, xmax = 0 as inserted`,
           [
             this.tenant,
@@ -491,6 +493,16 @@ class Loader {
             d ? d.holds_stock : null,
             d ? d.is_main_store : null,
             o?.department_type ?? null,
+            // ADR 115: the outlet's rules for its stores, only those the file sets
+            JSON.stringify(
+              d
+                ? Object.fromEntries(
+                    (['request_approval', 'purchase_approval', 'purchase_approver'] as const)
+                      .filter((k) => d[k] !== undefined)
+                      .map((k) => [k, d[k]]),
+                  )
+                : {},
+            ),
           ],
         );
         const id = (

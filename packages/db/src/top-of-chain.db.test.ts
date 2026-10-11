@@ -155,15 +155,17 @@ describe('the sole owner’s own requests', () => {
       expect((await steps(c, req)).map((s) => [s.step, s.state, s.top_of_chain])).toEqual([
         // lemons are a menu ingredient here in a usual quantity: no approval (TR-3, ADR 044)
         ['approval', 'skipped', false],
+        ['gm_approval', 'skipped', false],
         ['dispatch', 'pending', true],
-        ['receipt', 'waiting', true],
+        ['receipt', 'skipped', false],
       ]);
       expect(
         (await as<{ s: string }>(c, OWNER, 'select inv.dispatch_transfer($1) as s', [t])).s,
-      ).toBe('in_approval');
+      ).toBe('approved');
+      // receiving is the asker's task, not a workflow step (ADR 115)
       expect(
         (await as<{ s: string }>(c, OWNER, 'select inv.receive_transfer($1) as s', [t])).s,
-      ).toBe('approved');
+      ).toBe('completed');
     });
   });
 });

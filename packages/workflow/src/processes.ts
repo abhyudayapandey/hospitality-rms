@@ -44,6 +44,15 @@ export const PURCHASE_ORDER: ProcessDef = {
       fallback: ['AREA_MANAGER'], // a sole GM who is also the department head: the area manager
       when: { payload_true: 'unusual' },
     },
+    // ADR 115: where the department head is the one asking (an order for a stock request, or a
+    // department buying for itself at an outlet with no Main Store), the GM approves instead
+    {
+      step: 'gm_approval',
+      group: 'OUTLET_MANAGER',
+      scope: 'nearest_ancestor',
+      fallback: ['AREA_MANAGER'],
+      when: { payload_true: 'gm' },
+    },
   ],
   onApproved: 'inv.po.release',
   onRejected: 'inv.po.reject',
@@ -54,8 +63,8 @@ export const PURCHASE_ORDER: ProcessDef = {
 // outlet manager, else the account owner, looked up within the location's own outlet or hub
 // (core.site_group_node, ADR 009), approved by the module RPC that posts its ledger leg
 // (inv.dispatch_transfer); after dispatch the goods are in transit and the request can no
-// longer be rejected or cancelled. Every request to the Main Store waits for the GM first
-// (ADR 115). Receiving is a task for whoever asked (inv.after_dispatch): the receipt step only
+// longer be rejected or cancelled. Between departments of an outlet with no Main Store the GM
+// approves first (ADR 115). Receiving is a task for whoever asked (inv.after_dispatch): the receipt step only
 // runs for requests raised before ADR 115, whose payload says so.
 const RUNS_LOCATION = ['HUB_MANAGER', 'OUTLET_MANAGER'];
 export const TRANSFER: ProcessDef = {
@@ -80,7 +89,7 @@ export const TRANSFER: ProcessDef = {
       group: 'OUTLET_MANAGER',
       scope: 'nearest_ancestor', // the outlet of the store that asks
       fallback: ['AREA_MANAGER'],
-      when: { payload_true: 'main_store' },
+      when: { payload_true: 'gm' },
     },
     {
       step: 'dispatch',

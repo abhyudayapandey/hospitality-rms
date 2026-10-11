@@ -193,6 +193,7 @@ describe('PO-5: which orders need an approval', () => {
       expect(po.state).toBe('approved');
       expect(await steps(c, po.request)).toEqual([
         { step: 'department_approval', state: 'skipped' },
+        { step: 'gm_approval', state: 'skipped' },
       ]);
     });
   });
@@ -275,6 +276,7 @@ describe('PO-5: which orders need an approval', () => {
       );
       expect(await steps(c, rows[0]!.r)).toEqual([
         { step: 'department_approval', state: 'skipped' },
+        { step: 'gm_approval', state: 'skipped' },
       ]);
       expect(await inbox(c, ARIA)).not.toContain(rows[0]!.r);
     });
@@ -390,8 +392,10 @@ describe('TR-3: request for material', () => {
       expect(r.kind).toBe('rfm');
       expect(await steps(c, r.request)).toEqual([
         { step: 'approval', state: 'skipped' },
+        { step: 'gm_approval', state: 'skipped' },
         { step: 'dispatch', state: 'pending' },
-        { step: 'receipt', state: 'waiting' },
+        // receiving is whoever asked's task now (ADR 115)
+        { step: 'receipt', state: 'skipped' },
       ]);
       expect(await inbox(c, CK_KEEPER)).toContain(r.request); // the store keeper issues it
     });

@@ -226,6 +226,8 @@ describe('purchase order routing', () => {
           scope: 'TEST-BAR-3.0-SUPPLY', // Kim is the department head and asked: the GM
           grp: 'OUTLET_MANAGER',
         },
+        // ADR 115: the GM approves instead only where the outlet says so
+        { step: 'gm_approval', state: 'skipped', scope: null, grp: 'OUTLET_MANAGER' },
       ]);
       expect(await inbox(c, OLIVIA)).toContain(id);
       expect(await actOk(c, OLIVIA, id, 'approve')).toBe('approved');
@@ -243,6 +245,8 @@ describe('purchase order routing', () => {
           scope: 'TEST-BAR-3.0-SUPPLY', // Kim is the department head and asked: the GM
           grp: 'OUTLET_MANAGER',
         },
+        // ADR 115: the GM approves instead only where the outlet says so
+        { step: 'gm_approval', state: 'skipped', scope: null, grp: 'OUTLET_MANAGER' },
       ]);
       expect(await actOk(c, OLIVIA, id, 'approve')).toBe('approved');
       expect(await outbox(c, id)).toEqual([{ handler: 'inv.po.release', status: 'pending' }]);
@@ -253,7 +257,7 @@ describe('purchase order routing', () => {
     await inRolledBackTx(async (c) => {
       const id = await submitOk(c, KIM, po(60_000));
       expect(await actOk(c, OLIVIA, id, 'reject')).toBe('rejected');
-      expect((await steps(c, id)).map((s) => s.state)).toEqual(['rejected']);
+      expect((await steps(c, id)).map((s) => s.state)).toEqual(['rejected', 'skipped']);
       expect(await outbox(c, id)).toEqual([{ handler: 'inv.po.reject', status: 'pending' }]);
       expect((await act(c, ARIA, id, 'approve')).error).toBe('INVALID_STATE');
     });
@@ -264,7 +268,7 @@ describe('purchase order routing', () => {
       const id = await submitOk(c, KIM, po(10_000));
       expect((await act(c, OLIVIA, id, 'cancel')).error).toBe('NOT_AUTHORISED');
       expect(await actOk(c, KIM, id, 'cancel')).toBe('cancelled');
-      expect((await steps(c, id)).map((s) => s.state)).toEqual(['cancelled']);
+      expect((await steps(c, id)).map((s) => s.state)).toEqual(['cancelled', 'skipped']);
       // cancel runs onRejected too, so the subject (e.g. the PO) closes
       expect(await outbox(c, id)).toEqual([{ handler: 'inv.po.reject', status: 'pending' }]);
       expect((await act(c, OLIVIA, id, 'approve')).error).toBe('INVALID_STATE');
@@ -301,6 +305,8 @@ describe('purchase order routing', () => {
           scope: 'TEST-AREA-MUMBAI',
           grp: 'AREA_MANAGER',
         },
+        // ADR 115: the GM approves instead only where the outlet says so
+        { step: 'gm_approval', state: 'skipped', scope: null, grp: 'OUTLET_MANAGER' },
       ]);
       expect(await inbox(c, OLIVIA)).not.toContain(id);
       expect((await act(c, OLIVIA, id, 'approve')).error).toBe('SEGREGATION_OF_DUTIES');
@@ -319,6 +325,8 @@ describe('purchase order routing', () => {
           scope: 'TEST-AREA-MUMBAI',
           grp: 'AREA_MANAGER',
         },
+        // ADR 115: the GM approves instead only where the outlet says so
+        { step: 'gm_approval', state: 'skipped', scope: null, grp: 'OUTLET_MANAGER' },
       ]);
       expect(await actOk(c, ARIA, id, 'approve')).toBe('approved');
       const claimed = await c.query<{ outbox_id: string; handler: string }>(
@@ -337,7 +345,7 @@ describe('purchase order routing', () => {
         'select skip_reason from wf.step_instance where request_id = $1 order by seq',
         [id],
       );
-      expect(rows.map((r) => r.skip_reason)).toEqual([null]);
+      expect(rows.map((r) => r.skip_reason)).toEqual([null, expect.any(String)]);
     });
   });
 
@@ -532,7 +540,7 @@ describe('subject-derived nodes and amount', () => {
         [id],
       );
       expect(rows).toEqual([{ amount: '60000.00', node: 'TEST-BAR-3.0-KITCHEN-STORE' }]);
-      expect((await steps(c, id)).map((s) => s.state)).toEqual(['pending']);
+      expect((await steps(c, id)).map((s) => s.state)).toEqual(['pending', 'skipped']);
     });
   });
 
@@ -595,6 +603,8 @@ describe('two-sided transfer', () => {
     delivery: 'TEST-BAR-3.0-KITCHEN-STORE',
     from: 'TEST-CENTRAL-KITCHEN-STORE',
     to: 'TEST-BAR-3.0-KITCHEN-STORE',
+    // a request raised before ADR 115 kept its receipt step; the engine still runs those
+    payload: { receipt_step: true },
   });
 
   async function approveViaModule(c: PoolClient, who: string, id: string): Promise<string> {
@@ -610,6 +620,7 @@ describe('two-sided transfer', () => {
       expect(await steps(c, id)).toEqual([
         // TR-3: only a request for material that is unusual needs the department head first
         { step: 'approval', state: 'skipped', scope: null, grp: 'DEPARTMENT_HEAD' },
+        { step: 'gm_approval', state: 'skipped', scope: null, grp: 'OUTLET_MANAGER' },
         {
           step: 'dispatch',
           state: 'pending',
@@ -764,6 +775,7 @@ describe('escalation', () => {
         delivery: 'TEST-BAR-3.0-KITCHEN-STORE',
         from: 'TEST-CENTRAL-KITCHEN-STORE',
         to: 'TEST-BAR-3.0-KITCHEN-STORE',
+        payload: { receipt_step: true },
       });
       await makeOverdue(c, id, 25); // TRANSFER SLA is 24 h
       const un = await c.query<{ request_id: string; step: string }>(
@@ -773,7 +785,7 @@ describe('escalation', () => {
       expect(un.rows).toEqual([{ request_id: id, step: 'dispatch' }]);
       const escalated = await c.query<{ n: number }>('select wf.escalate_overdue() as n');
       expect(escalated.rows[0]!.n).toBe(0);
-      expect((await steps(c, id))[1]).toMatchObject({
+      expect((await steps(c, id))[2]).toMatchObject({
         state: 'pending',
         scope: 'TEST-CENTRAL-KITCHEN-STORE',
       });
@@ -832,9 +844,10 @@ describe('wf tables under RLS', () => {
         );
         return r.error ?? Number(r.rows[0]!.n);
       };
-      expect(await see(KIM)).toBe(2);
-      expect(await see(OLIVIA)).toBe(2);
-      expect(await see(ARIA)).toBe(2); // DERIVED_PURCHASE_ORDERS
+      // the request and its two steps (the GM's skipped)
+      expect(await see(KIM)).toBe(3);
+      expect(await see(OLIVIA)).toBe(3);
+      expect(await see(ARIA)).toBe(3); // DERIVED_PURCHASE_ORDERS
       expect(await see(HUGO)).toBe(0); // HUB_MANAGER does not descend
       expect(await see(SAM)).toBe(0);
     });

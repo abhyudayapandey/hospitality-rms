@@ -1,18 +1,34 @@
 -- migrate:up
 -- A department asks for stock and follows it to the end (ADR 115).
 --
---   * One ask (inv.ask_for_stock) goes to the store that keeps each item: another department's
---     store of the outlet that keeps it (the Bar for lager), else the Main Store.
---   * Every request to the Main Store waits for the GM (TRANSFER step gm_approval, product
---     code); a department head's "unusual" step is for requests between departments only.
+--   * One ask (inv.ask_for_stock) goes to the Main Store where the outlet has one. Where it has
+--     none (Passport), it goes to the department's store that keeps the item (the Bar for
+--     lager); what no other store keeps, the department buys itself.
+--   * Each outlet's rules, chosen at onboarding (file 02's outlet row, the set-up wizard),
+--     kept on its supply point (core.hierarchy_node.stock_rules, read by inv.stock_rule):
+--       request_approval: unusual (the default: the department head, for a request off the
+--         menu or more than usual, ADR 044), gm (the GM approves every request), none;
+--       purchase_approval: which purchases are approved (the company's rule, file 00, unless
+--         the outlet has its own: unusual, every, above:<amount>);
+--       purchase_approver: department_head (the default) or gm.
 --   * Whoever runs the store sends it, or gives it to someone (inv.give_send: a "send" task,
---     done by ops.send_by_task). Short, it asks the Main Store (inv.ask_main_store) or, at the
---     Main Store, orders from a supplier (inv.order_for_request); both are linked to the
---     request they fill (for_transfer_id) and the store is told when the stock arrives.
+--     done by ops.send_by_task). Short, it orders it from a supplier (inv.order_for_request),
+--     linked to the request it fills (for_transfer_id), approved by the outlet's rules. The
+--     store is told when the stock arrives.
 --   * Receiving is a task for whoever asked (rule 7 kept receipt from them as a workflow step:
 --     it went to the GM). The receipt step stays in the definition for requests already open.
 --   * Everyone in the chain is told what reaches them; whoever asked sees where it is now
 --     (inv.request_now) and its story (inv.request_story).
+
+alter table core.hierarchy_node
+  add column stock_rules jsonb not null default '{}'
+    check (jsonb_typeof(stock_rules) = 'object'
+           and stock_rules - array['request_approval', 'purchase_approval', 'purchase_approver']
+               = '{}'::jsonb
+           and coalesce(stock_rules ->> 'request_approval', 'unusual') in ('unusual', 'gm', 'none')
+           and coalesce(stock_rules ->> 'purchase_approval', 'unusual') ~ '^(unusual|every|above:[0-9]+)$'
+           and coalesce(stock_rules ->> 'purchase_approver', 'department_head')
+               in ('department_head', 'gm'));
 
 alter table inv.transfer
   add column for_transfer_id uuid references inv.transfer (id),
@@ -38,6 +54,47 @@ language sql stable security definer
 set search_path = pg_catalog, core
 as $$
   select regexp_replace(core.node_name(p_node), '^.*\s[–-]\s', '');
+$$;
+
+-- An outlet's rule for its stores (ADR 115): the nearest place up the supply tree that sets it,
+-- else, for purchase_approval, the company's (file 00), else the default.
+create function inv.stock_rule(p_node uuid, p_key text) returns text
+language sql stable security definer
+set search_path = pg_catalog, core, extensions
+as $$
+  select coalesce(
+    (select a.stock_rules ->> p_key
+       from core.hierarchy_node n
+       join core.hierarchy_node a on a.tenant_id = n.tenant_id and a.path @> n.path
+      where n.id = p_node and a.stock_rules ? p_key
+      order by nlevel(a.path) desc limit 1),
+    case when p_key = 'purchase_approval'
+         then core.settings_of((select tenant_id from core.hierarchy_node where id = p_node))
+                ->> 'purchase_approval' end,
+    case p_key when 'purchase_approver' then 'department_head' else 'unusual' end);
+$$;
+
+-- Whether a request between two stores of an outlet waits for the GM: the outlet's rule.
+create function inv.transfer_needs_gm(p_from uuid, p_to uuid) returns boolean
+language sql stable security definer
+set search_path = pg_catalog, core, inv
+as $$
+  select inv.stock_rule(p_to, 'request_approval') = 'gm'
+     and exists (select 1 from core.hierarchy_node f join core.hierarchy_node t
+                                on t.parent_id is not distinct from f.parent_id
+                  where f.id = p_from and t.id = p_to);
+$$;
+
+-- What an order's workflow carries (ADR 092, 115): whether it is approved is the outlet's
+-- purchase rule; who approves it, its department head or the GM, the outlet's approver.
+create function inv.po_payload(p_node uuid, p_lines jsonb) returns jsonb
+language sql stable security definer
+set search_path = pg_catalog, core, inv
+as $$
+  select jsonb_build_object('unusual', x.needs and not x.gm, 'gm', x.needs and x.gm,
+                            'why', inv.order_why(p_node, p_lines))
+    from (select inv.order_unusual(p_node, p_lines) as needs,
+                 inv.stock_rule(p_node, 'purchase_approver') = 'gm' as gm) x;
 $$;
 
 -- "12 × Test Lager Beer 330ml, 10 × Bath towel": what a request asks for (or sent).
@@ -141,36 +198,63 @@ as $$
                (select created_by from inv.transfer where id = p_transfer)];
 $$;
 
--- Which store a department asks for an item: another store of its outlet that keeps it (the one
--- such store), else the Main Store, else any store it may ask that keeps it.
+-- Which store a department asks for an item: the Main Store where its outlet has one; else
+-- the other store of the outlet that keeps it (NO_STORE_KEEPS_IT: the department buys it).
 create function inv.stock_source(p_to uuid, p_item uuid) returns uuid
 language plpgsql stable security definer
 set search_path = pg_catalog, core, inv
 as $$
 declare
-  v_ids uuid[];
-  v_main uuid;
+  v_id uuid;
 begin
   if not (core.can('TRANSFERS', 'view', null, p_to) or core.can('TRANSFERS', 'modify', null, p_to)) then
     perform inv.fail('NOT_AUTHORISED', 'TRANSFERS at ' || p_to);
   end if;
-  select coalesce(array_agg(s.id), '{}') into v_ids
+  select s.id into v_id from inv.transfer_sources(p_to) s
+   where inv.is_main_store(s.id) and s.id <> p_to
+   order by s.id limit 1;
+  if v_id is not null then
+    return v_id;
+  end if;
+  select s.id into v_id
     from inv.transfer_sources(p_to) s
-   where s.kind = 'store' and s.id <> p_to and not inv.is_main_store(s.id)
+   where s.kind = 'store' and s.id <> p_to
      and exists (select 1 from inv.item_node x where x.item_id = p_item
-                    and x.delivery_node_id = s.id and x.archived_at is null);
-  if cardinality(v_ids) = 1 then
-    return v_ids[1];
+                    and x.delivery_node_id = s.id and x.archived_at is null)
+   order by core.node_name(s.id) limit 1;
+  if v_id is null then
+    perform inv.fail('NO_STORE_KEEPS_IT', 'no other store here keeps it: buy it');
+  end if;
+  return v_id;
+end $$;
+
+-- Where each item a store may ask for comes from (the form groups them), null for what no
+-- other store keeps (bought instead).
+create function inv.ask_sources(p_to uuid)
+returns table (item_id uuid, source_id uuid, source_name text)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, inv
+as $$
+declare
+  v_main uuid;
+begin
+  if not core.can('TRANSFERS', 'modify', null, p_to) then
+    perform inv.fail('NOT_AUTHORISED', 'TRANSFERS at ' || p_to);
   end if;
   select s.id into v_main from inv.transfer_sources(p_to) s
-   where inv.is_main_store(s.id) and s.id <> p_to limit 1;
-  if v_main is not null then
-    return v_main;
-  end if;
-  if cardinality(v_ids) > 0 then
-    return v_ids[1];
-  end if;
-  perform inv.fail('INVALID_SUBJECT', 'no store of this outlet keeps it');
+   where inv.is_main_store(s.id) and s.id <> p_to order by s.id limit 1;
+  return query
+    select n.item_id, src.id, inv.short_name(src.id)
+      from inv.item_node n
+      left join lateral (
+        select coalesce(v_main,
+                        (select s.id from inv.transfer_sources(p_to) s
+                          where s.kind = 'store' and s.id <> p_to
+                            and exists (select 1 from inv.item_node x
+                                         where x.item_id = n.item_id
+                                           and x.delivery_node_id = s.id and x.archived_at is null)
+                          order by core.node_name(s.id) limit 1)) as id) src on true
+     where n.delivery_node_id = p_to and n.archived_at is null;
 end $$;
 
 -- One ask: a request to each store the items come from. Returns them.
@@ -385,52 +469,108 @@ begin
   end if;
 end $$;
 
--- Short at a department's store: ask the Main Store for what is short (or what is given).
-create function inv.ask_main_store(p_transfer uuid, p_lines jsonb default null) returns uuid
+-- Receives a request that has no receipt step (ADR 115) at a time: what arrived of what was
+-- sent, the rest posted as lost on the way; its receive task is done. No access check here:
+-- inv.receive_request checks; the test data's past receipts come through here too.
+create function inv.receive_request_at(p_transfer uuid, p_lines jsonb, p_at timestamptz)
+returns uuid
+language plpgsql security definer
+set search_path = pg_catalog, core, inv, ops
+as $$
+declare
+  v_tr inv.transfer;
+  v_l inv.transfer_line;
+  v_qty numeric;
+  v_me uuid := core.current_user_id();
+begin
+  select * into v_tr from inv.transfer where id = p_transfer for update;
+  if v_tr.dispatched_at is null or v_tr.received_at is not null or v_tr.status <> 'submitted' then
+    perform inv.fail('INVALID_STATE', 'not on the way');
+  end if;
+  if jsonb_typeof(coalesce(p_lines, '[]')) <> 'array'
+     or exists (select 1 from jsonb_to_recordset(coalesce(p_lines, '[]')) as l(item_id uuid, qty numeric)
+                 where l.qty is null or l.qty < 0
+                    or not exists (select 1 from inv.transfer_line tl
+                                    where tl.transfer_id = p_transfer and tl.item_id = l.item_id
+                                      and l.qty <= tl.dispatched_qty)) then
+    perform inv.fail('INVALID_QUANTITY', 'what arrived, at most what was sent');
+  end if;
+  for v_l in select * from inv.transfer_line where transfer_id = p_transfer order by id loop
+    v_qty := coalesce((select (e ->> 'qty')::numeric from jsonb_array_elements(coalesce(p_lines, '[]')) e
+                        where (e ->> 'item_id')::uuid = v_l.item_id limit 1), v_l.dispatched_qty);
+    if v_l.dispatched_qty > 0 then
+      perform inv.post_at(v_l.item_id, v_tr.to_node_id, 'transfer_in', v_l.dispatched_qty,
+                          v_l.unit_cost, 'transfer', p_transfer, p_at);
+    end if;
+    if v_l.dispatched_qty > v_qty then
+      perform inv.post_at(v_l.item_id, v_tr.to_node_id, 'wastage', v_qty - v_l.dispatched_qty,
+                          v_l.unit_cost, 'transfer', p_transfer, p_at, 'transit_loss');
+    end if;
+    update inv.transfer_line set received_qty = v_qty where id = v_l.id;
+  end loop;
+  update inv.transfer set received_at = p_at, received_by = v_me, status = 'completed'
+   where id = p_transfer;
+  update ops.task set status = 'done', completed_by = v_me, completed_at = now()
+   where transfer_id = p_transfer and kind = 'receive' and status in ('open', 'in_progress');
+  perform inv.after_receive(p_transfer);
+  return p_transfer;
+end $$;
+
+-- Receiving from the request's page: whoever has its receive task, or runs the store it is for.
+create function inv.receive_request(p_transfer uuid, p_lines jsonb) returns uuid
+language plpgsql security definer
+set search_path = pg_catalog, core, inv, ops, wf
+as $$
+declare
+  v_tr inv.transfer;
+  v_me uuid := (wf.me()).id;
+begin
+  select * into v_tr from inv.transfer where id = p_transfer and tenant_id = core.my_tenant();
+  if not found
+     or not (exists (select 1 from ops.task k where k.transfer_id = p_transfer and k.kind = 'receive'
+                        and k.status in ('open', 'in_progress') and k.assignee_user_id = v_me)
+             or core.can('TRANSFERS', 'modify', null, v_tr.to_node_id)) then
+    perform inv.fail('NOT_AUTHORISED', 'receive this');
+  end if;
+  if exists (select 1 from wf.step_instance where request_id = v_tr.wf_request_id
+                and step = 'receipt' and state = 'pending') then
+    perform inv.receive_transfer(p_transfer, p_lines, null);
+    return p_transfer;
+  end if;
+  return inv.receive_request_at(p_transfer, p_lines, now());
+end $$;
+
+-- Receiving from the transfers screens: through the receipt step when the request has one (raised
+-- before ADR 115), else as inv.receive_request does.
+create or replace function inv.receive_transfer(p_transfer uuid, p_lines jsonb default '[]',
+                                                p_comment text default null)
+returns text
 language plpgsql security definer
 set search_path = pg_catalog, core, inv, wf
 as $$
-declare
-  v_t inv.transfer := inv.require_sender(p_transfer);
-  v_main uuid := inv.order_desk(v_t.from_node_id);
-  v_lines jsonb := p_lines;
-  v_id uuid;
 begin
-  if v_main = v_t.from_node_id then
-    perform inv.fail('INVALID_SUBJECT', 'this is the Main Store: order it from a supplier');
+  if exists (select 1 from inv.transfer t
+               join wf.step_instance s on s.request_id = t.wf_request_id
+              where t.id = p_transfer and s.step = 'receipt' and s.state = 'pending') then
+    return inv.receive_transfer_at(p_transfer, p_lines, p_comment, now());
   end if;
-  select id into v_id from inv.transfer
-   where for_transfer_id = p_transfer and status in ('draft', 'submitted') and received_at is null;
-  if found then
-    return v_id;
-  end if;
-  if v_lines is null then
-    select jsonb_agg(jsonb_build_object('item_id', x.item_id, 'qty', x.qty)) into v_lines
-      from (select tl.item_id,
-                   coalesce(nullif(greatest(tl.requested_qty - coalesce(sl.on_hand, 0), 0), 0),
-                            tl.requested_qty) as qty
-              from inv.transfer_line tl
-              left join inv.stock_level sl on sl.item_id = tl.item_id
-                                          and sl.delivery_node_id = v_t.from_node_id
-             where tl.transfer_id = p_transfer
-               and tl.requested_qty > coalesce(sl.on_hand, 0)) x;
-    if v_lines is null then
-      select jsonb_agg(jsonb_build_object('item_id', item_id, 'qty', requested_qty)) into v_lines
-        from inv.transfer_line where transfer_id = p_transfer;
-    end if;
-  end if;
-  v_id := inv.request_transfer(v_main, v_t.from_node_id, v_lines, null);
-  update inv.transfer set for_transfer_id = p_transfer,
-                          note = 'For the ' || inv.short_name(v_t.to_node_id) || '''s request'
-   where id = v_id;
-  perform inv.tell(p_transfer, inv.askers(p_transfer), 'stock_request',
-                   'The ' || inv.short_name(v_t.from_node_id) || ' is short: it asked the Main Store',
-                   inv.transfer_items_text(v_id));
-  return v_id;
+  perform inv.receive_request(p_transfer, p_lines);
+  return 'completed';
 end $$;
 
--- At the Main Store, short: order it from a supplier for this request. The GM approved the
--- request, so the order goes straight to the order desk.
+-- The test data's past receipts: through the receipt step when the request has one
+select core.patch_function('inv.record_test_transfer_receipt(uuid,jsonb,timestamp with time zone)',
+  $x$  return inv.receive_transfer_at(p_transfer, p_lines, null, p_at);$x$,
+  $x$  if exists (select 1 from inv.transfer t
+               join wf.step_instance s on s.request_id = t.wf_request_id
+              where t.id = p_transfer and s.step = 'receipt' and s.state = 'pending') then
+    return inv.receive_transfer_at(p_transfer, p_lines, null, p_at);
+  end if;
+  perform inv.receive_request_at(p_transfer, p_lines, p_at);
+  return 'completed';$x$);
+
+-- Short: the store orders it from a supplier for this request, by the company's purchase rule
+-- (inv.po_payload: if it needs approving, the GM approves it).
 create function inv.order_for_request(p_transfer uuid, p_lines jsonb default null) returns uuid
 language plpgsql security definer
 set search_path = pg_catalog, core, inv, wf
@@ -472,15 +612,16 @@ begin
     from jsonb_to_recordset(v_lines) as l(item_id uuid, qty numeric)
     left join inv.stock_level sl on sl.item_id = l.item_id and sl.delivery_node_id = v_t.from_node_id;
   v_request := wf.submit('PURCHASE_ORDER', 'inv.purchase_order', v_po.id,
-                         jsonb_build_object('unusual', false));
+                         inv.po_payload(v_t.from_node_id, v_lines));
   update inv.purchase_order set status = 'submitted', wf_request_id = v_request
    where id = v_po.id;
   perform inv.tell(p_transfer, inv.askers(p_transfer), 'stock_request',
-                   'The Main Store is buying it from a supplier', inv.transfer_items_text(p_transfer));
+                   'The ' || inv.short_name(v_t.from_node_id) || ' is buying it from a supplier',
+                   inv.transfer_items_text(p_transfer));
   return v_po.id;
 end $$;
 
--- Goods in for an order a request waits on: whoever runs the Main Store is told to send it on.
+-- Goods in for an order a request waits on: whoever runs the store is told to send it on.
 create function inv.after_goods_receipt() returns trigger
 language plpgsql security definer
 set search_path = pg_catalog, core, inv, wf
@@ -535,6 +676,26 @@ begin
                        v_r.payload ->> 'why', '/stock/orders/' || po.id)
       from inv.purchase_order po, unnest(inv.step_people(new.request_id, new.step)) u
      where po.id = v_r.subject_id;
+    return null;
+  end if;
+  -- an order for a request approved or not: whoever asked hears it, and the store if not
+  if v_r.process_type = 'PURCHASE_ORDER' and tg_op = 'UPDATE'
+     and new.state in ('approved', 'rejected') and old.state is distinct from new.state then
+    select t.* into v_t from inv.purchase_order po join inv.transfer t on t.id = po.for_transfer_id
+     where po.id = v_r.subject_id;
+    if found then
+      select display_name into v_who from core.app_user where id = new.actor_id;
+      perform inv.tell(v_t.id,
+                       inv.askers(v_t.id)
+                         || case when new.state = 'rejected'
+                                 then inv.step_people(v_t.wf_request_id, 'dispatch') else '{}' end,
+                       'stock_request',
+                       case when new.state = 'approved'
+                            then 'Order approved by ' || coalesce(v_who, 'the GM')
+                            else 'Order not approved by ' || coalesce(v_who, 'the GM') end
+                         || ': ' || inv.transfer_items_text(v_t.id),
+                       new.comment);
+    end if;
     return null;
   end if;
   if v_r.process_type <> 'TRANSFER' then
@@ -642,7 +803,7 @@ begin
     words := 'Waiting for ' || inv.people_words(inv.step_people(v_r.id, v_step)) || ' to approve';
     return;
   end if;
-  -- with the store it comes from: given to someone, waiting on the Main Store or a supplier
+  -- with the store it comes from: given to someone, waiting on another request or an order
   select * into v_task from ops.task
    where transfer_id = p_transfer and kind = 'send' and status in ('open', 'in_progress')
    order by created_at desc limit 1;
@@ -658,7 +819,9 @@ begin
   if v_up is not null and p_depth < 5 then
     select n.words into v_up_words from inv.now_of(v_up, p_depth + 1) n;
     stage := 'waiting_upstream';
-    words := 'The ' || inv.short_name(v_t.from_node_id) || ' asked the Main Store: ' || v_up_words;
+    words := 'The ' || inv.short_name(v_t.from_node_id) || ' asked the '
+             || inv.short_name((select from_node_id from inv.transfer where id = v_up)) || ': '
+             || v_up_words;
     return;
   end if;
   select * into v_po from inv.purchase_order po
@@ -666,6 +829,20 @@ begin
      and not exists (select 1 from inv.goods_receipt g where g.po_id = po.id)
    order by po.created_at desc limit 1;
   if found then
+    select * into v_r from wf.request where id = v_po.wf_request_id;
+    if v_r.state = 'failed' then
+      stage := 'stuck';
+      words := 'The order could not go through: ' || coalesce(v_r.failure_code, 'an error')
+               || '. Order it again.';
+      return;
+    end if;
+    if v_po.status = 'submitted' and v_r.state = 'in_approval'
+       and v_r.current_step in ('department_approval', 'gm_approval') then
+      stage := 'waiting_approval';
+      words := 'The ' || inv.short_name(v_t.from_node_id) || ' is buying it: waiting for '
+               || inv.people_words(inv.step_people(v_r.id, v_r.current_step)) || ' to approve';
+      return;
+    end if;
     stage := 'being_ordered';
     words := case when v_po.ordered_at is null then 'Being ordered from a supplier'
                   else 'Ordered from ' || coalesce((select name from inv.supplier
@@ -675,7 +852,15 @@ begin
   end if;
   stage := 'with_store';
   words := 'With the ' || inv.short_name(v_t.from_node_id) || ': '
-           || inv.people_words(inv.step_people(v_r.id, 'dispatch'));
+           || inv.people_words(inv.step_people(v_r.id, 'dispatch'))
+           || coalesce((select '. The order was not approved'
+                               || coalesce(' by ' || u.display_name, '')
+                          from inv.purchase_order po
+                          join wf.step_instance s on s.request_id = po.wf_request_id
+                                                 and s.state = 'rejected'
+                          left join core.app_user u on u.id = s.actor_id
+                         where po.for_transfer_id = p_transfer and po.status = 'rejected'
+                         order by s.acted_at desc limit 1), '');
 end $$;
 
 create function inv.request_now(p_transfer uuid) returns table (stage text, words text)
@@ -719,7 +904,7 @@ begin
       from wf.step_instance s
      where s.request_id = v_t.wf_request_id and s.step in ('approval', 'gm_approval')
        and s.state in ('approved', 'rejected') and s.actor_id is not null;
-  -- what it waited on: a request to the Main Store, an order from a supplier
+  -- what it waited on: another store's request, an order from a supplier
   for v_up in select id from inv.transfer where for_transfer_id = p_transfer order by created_at loop
     if p_depth < 5 then
       return query select * from inv.story_of(v_up, p_depth + 1);
@@ -728,6 +913,16 @@ begin
   return query
     select po.created_at, v_base + 30, 'Being ordered from a supplier'
       from inv.purchase_order po where po.for_transfer_id = p_transfer
+    union all
+    select s.acted_at, v_base + 31,
+           case when s.state = 'approved' then 'Order approved by ' else 'Order not approved by ' end
+             || u.display_name || coalesce(': ' || nullif(s.comment, ''), '')
+      from inv.purchase_order po
+      join wf.step_instance s on s.request_id = po.wf_request_id
+                             and s.step in ('department_approval', 'gm_approval')
+                             and s.state in ('approved', 'rejected')
+      join core.app_user u on u.id = s.actor_id
+     where po.for_transfer_id = p_transfer
     union all
     select po.ordered_at, v_base + 32,
            'Ordered from ' || coalesce(su.name, 'a supplier')
@@ -773,14 +968,36 @@ begin
                 order by s.at, s.rank;
 end $$;
 
--- Every request to the Main Store waits for the GM (gm_approval); between departments, an
--- unusual one waits for the department head as before.
+-- The outlet's request_approval: the GM approves every request (gm_approval), or the department
+-- head an unusual request for material as before (ADR 044), or no one.
 select core.patch_function('inv.request_transfer(uuid,uuid,jsonb,text)',
   $x$jsonb_build_object('unusual',
                            v_rfm and exists (select 1 from inv.unusual_calc(p_to, p_lines)),$x$,
-  $x$jsonb_build_object('main_store', inv.is_main_store(p_from), 'unusual',
-                           v_rfm and not inv.is_main_store(p_from)
+  $x$jsonb_build_object('gm', inv.transfer_needs_gm(p_from, p_to), 'unusual',
+                           v_rfm and inv.stock_rule(p_to, 'request_approval') = 'unusual'
                              and exists (select 1 from inv.unusual_calc(p_to, p_lines)),$x$);
+
+-- Which purchases are approved: the outlet's rule, else the company's (inv.stock_rule).
+select core.patch_function('inv.order_unusual(uuid,jsonb)',
+$x$  v_rule text := coalesce(core.settings_of((select tenant_id from core.hierarchy_node
+                                             where id = p_node)) ->> 'purchase_approval',
+                          'unusual');$x$,
+$x$  v_rule text := inv.stock_rule(p_node, 'purchase_approval');$x$);
+select core.patch_function('inv.order_why(uuid,jsonb)',
+$x$  v_rule text := coalesce(core.settings_of((select tenant_id from core.hierarchy_node
+                                             where id = p_node)) ->> 'purchase_approval',
+                          'unusual');$x$,
+$x$  v_rule text := inv.stock_rule(p_node, 'purchase_approval');$x$);
+
+-- A purchase order or supply request: approved by the outlet's rules (inv.po_payload).
+select core.patch_function('inv.request_supplies(uuid,jsonb,text,text)',
+  $x$                         jsonb_build_object('unusual', inv.order_unusual(p_node, p_lines),
+                           'why', inv.order_why(p_node, p_lines)));$x$,
+  $x$                         inv.po_payload(p_node, p_lines));$x$);
+select core.patch_function('inv.create_po(uuid,uuid,jsonb,text,text)',
+  $x$                         jsonb_build_object('unusual', inv.order_unusual(p_node, p_lines),
+                           'why', inv.order_why(p_node, p_lines)));$x$,
+  $x$                         inv.po_payload(p_node, p_lines));$x$);
 
 -- Dispatch with no receipt step: whoever asked gets it to receive
 select core.patch_function('inv.dispatch_transfer_at(uuid,jsonb,text,timestamp with time zone)',
@@ -804,7 +1021,12 @@ select core.patch_function('ops.receive_sent(uuid,jsonb)',
   perform inv.after_receive(v_tr.id);
   return v_tr.id;$x$);
 
+revoke execute on function inv.receive_request_at(uuid, jsonb, timestamptz) from public;
+revoke execute on function inv.receive_request(uuid, jsonb) from public;
+grant execute on function inv.receive_request(uuid, jsonb) to app_rw;
 revoke execute on function inv.short_name(uuid), inv.transfer_items_text(uuid, boolean),
+  inv.stock_rule(uuid, text), inv.transfer_needs_gm(uuid, uuid),
+  inv.po_payload(uuid, jsonb),
   inv.people_words(uuid[]), inv.step_people(uuid, text), inv.root_transfer(uuid),
   inv.tell(uuid, uuid[], text, text, text), inv.askers(uuid), inv.require_sender(uuid),
   inv.after_dispatch(uuid), inv.after_receive(uuid), inv.after_goods_receipt(),
@@ -812,12 +1034,12 @@ revoke execute on function inv.short_name(uuid), inv.transfer_items_text(uuid, b
   from public;
 revoke execute on function inv.stock_source(uuid, uuid), inv.ask_for_stock(uuid, jsonb, text, text),
   inv.give_send(uuid, uuid), inv.send_request(uuid, jsonb), ops.send_by_task(uuid, jsonb),
-  inv.ask_main_store(uuid, jsonb), inv.order_for_request(uuid, jsonb),
+  inv.ask_sources(uuid), inv.order_for_request(uuid, jsonb),
   inv.request_now(uuid), inv.request_story(uuid)
   from public;
 grant execute on function inv.stock_source(uuid, uuid), inv.ask_for_stock(uuid, jsonb, text, text),
   inv.give_send(uuid, uuid), inv.send_request(uuid, jsonb), ops.send_by_task(uuid, jsonb),
-  inv.ask_main_store(uuid, jsonb), inv.order_for_request(uuid, jsonb),
+  inv.ask_sources(uuid), inv.order_for_request(uuid, jsonb),
   inv.request_now(uuid), inv.request_story(uuid)
   to app_rw;
 
@@ -832,12 +1054,50 @@ $x$, '');
 select core.patch_function('inv.dispatch_transfer_at(uuid,jsonb,text,timestamp with time zone)',
   $x$  perform inv.after_dispatch(p_transfer);
 $x$, '');
+select core.patch_function('inv.order_why(uuid,jsonb)',
+$x$  v_rule text := inv.stock_rule(p_node, 'purchase_approval');$x$,
+$x$  v_rule text := coalesce(core.settings_of((select tenant_id from core.hierarchy_node
+                                             where id = p_node)) ->> 'purchase_approval',
+                          'unusual');$x$);
+select core.patch_function('inv.order_unusual(uuid,jsonb)',
+$x$  v_rule text := inv.stock_rule(p_node, 'purchase_approval');$x$,
+$x$  v_rule text := coalesce(core.settings_of((select tenant_id from core.hierarchy_node
+                                             where id = p_node)) ->> 'purchase_approval',
+                          'unusual');$x$);
+select core.patch_function('inv.create_po(uuid,uuid,jsonb,text,text)',
+  $x$                         inv.po_payload(p_node, p_lines));$x$,
+  $x$                         jsonb_build_object('unusual', inv.order_unusual(p_node, p_lines),
+                           'why', inv.order_why(p_node, p_lines)));$x$);
+select core.patch_function('inv.request_supplies(uuid,jsonb,text,text)',
+  $x$                         inv.po_payload(p_node, p_lines));$x$,
+  $x$                         jsonb_build_object('unusual', inv.order_unusual(p_node, p_lines),
+                           'why', inv.order_why(p_node, p_lines)));$x$);
 select core.patch_function('inv.request_transfer(uuid,uuid,jsonb,text)',
-  $x$jsonb_build_object('main_store', inv.is_main_store(p_from), 'unusual',
-                           v_rfm and not inv.is_main_store(p_from)
+  $x$jsonb_build_object('gm', inv.transfer_needs_gm(p_from, p_to), 'unusual',
+                           v_rfm and inv.stock_rule(p_to, 'request_approval') = 'unusual'
                              and exists (select 1 from inv.unusual_calc(p_to, p_lines)),$x$,
   $x$jsonb_build_object('unusual',
                            v_rfm and exists (select 1 from inv.unusual_calc(p_to, p_lines)),$x$);
+select core.patch_function('inv.record_test_transfer_receipt(uuid,jsonb,timestamp with time zone)',
+  $x$  if exists (select 1 from inv.transfer t
+               join wf.step_instance s on s.request_id = t.wf_request_id
+              where t.id = p_transfer and s.step = 'receipt' and s.state = 'pending') then
+    return inv.receive_transfer_at(p_transfer, p_lines, null, p_at);
+  end if;
+  perform inv.receive_request_at(p_transfer, p_lines, p_at);
+  return 'completed';$x$,
+  $x$  return inv.receive_transfer_at(p_transfer, p_lines, null, p_at);$x$);
+drop function inv.receive_transfer(uuid, jsonb, text);
+create function inv.receive_transfer(p_transfer uuid, p_lines jsonb default '[]',
+                                     p_comment text default null)
+returns text
+language sql security definer
+set search_path = pg_catalog, core, inv, wf
+as $$ select inv.receive_transfer_at(p_transfer, p_lines, p_comment, now()) $$;
+revoke execute on function inv.receive_transfer(uuid, jsonb, text) from public;
+grant execute on function inv.receive_transfer(uuid, jsonb, text) to app_rw;
+drop function inv.receive_request(uuid, jsonb);
+drop function inv.receive_request_at(uuid, jsonb, timestamptz);
 drop trigger request_step_told on wf.step_instance;
 drop trigger request_goods_in on inv.goods_receipt;
 drop function inv.request_story(uuid);
@@ -848,7 +1108,7 @@ drop function inv.may_follow(uuid);
 drop function inv.after_step();
 drop function inv.after_goods_receipt();
 drop function inv.order_for_request(uuid, jsonb);
-drop function inv.ask_main_store(uuid, jsonb);
+drop function inv.ask_sources(uuid);
 drop function inv.after_receive(uuid);
 drop function inv.after_dispatch(uuid);
 drop function ops.send_by_task(uuid, jsonb);
@@ -864,6 +1124,9 @@ drop function inv.step_people(uuid, text);
 drop function inv.people_words(uuid[]);
 drop function inv.transfer_items_text(uuid, boolean);
 drop function inv.short_name(uuid);
+drop function inv.po_payload(uuid, jsonb);
+drop function inv.transfer_needs_gm(uuid, uuid);
+drop function inv.stock_rule(uuid, text);
 delete from ops.task_step where kind = 'send';
 delete from ops.task where kind = 'send';
 alter table ops.task drop constraint task_kind_check;
@@ -878,3 +1141,4 @@ drop index inv.purchase_order_for;
 drop index inv.transfer_for;
 alter table inv.purchase_order drop column for_transfer_id;
 alter table inv.transfer drop column note, drop column for_transfer_id;
+alter table core.hierarchy_node drop column stock_rules;

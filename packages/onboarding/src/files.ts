@@ -15,6 +15,8 @@ import {
   isTaskIcon,
   TASK_ICONS,
   REGISTER_CODES,
+  PURCHASE_APPROVERS,
+  REQUEST_APPROVALS,
 } from '@outlet-ops/domain';
 import { CsvError, parseCsv } from './csv';
 
@@ -405,7 +407,31 @@ export const FILES = {
       timezone: optTimezone,
       holds_stock: yesNo,
       is_main_store: yesNo,
+      // ADR 115: an outlet's rules for its stores, on its outlet (or hub) row; blank: the default
+      // who approves a department's request for stock: unusual (the department head, for one
+      // off the menu or more than usual), gm (the GM, every one) or none
+      request_approval: z
+        .enum(['', ...REQUEST_APPROVALS], 'must be unusual, gm or none')
+        .default('')
+        .transform((v) => v || undefined),
+      // which purchases are approved here: blank (the company's rule, file 00), unusual, every
+      // or above:<amount>
+      purchase_approval: z
+        .string()
+        .default('')
+        .transform((v, ctx) => {
+          if (v === '') return undefined;
+          if (v === 'unusual' || v === 'every' || /^above:\d+$/.test(v)) return v;
+          ctx.addIssue({ code: 'custom', message: 'must be unusual, every or above:<amount>' });
+          return z.NEVER;
+        }),
+      // who approves them: department_head (blank) or gm
+      purchase_approver: z
+        .enum(['', ...PURCHASE_APPROVERS], 'must be department_head or gm')
+        .default('')
+        .transform((v) => v || undefined),
     }),
+    optional: ['request_approval', 'purchase_approval', 'purchase_approver'],
   },
   nodeLinks: {
     file: '03_node_links.csv',
