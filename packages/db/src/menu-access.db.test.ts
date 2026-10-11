@@ -440,7 +440,11 @@ describe('screen reads follow the same rules', () => {
     // they compared each recipe with visible_recipe_ids() inline, re-running it per row
     // (9 s for a cost controller's Menu page); migration 20261019100000
     await inRolledBackTx(async (c) => {
-      for (const u of ['test.cost-controller.1.0', 'test.general-manager.1.0', 'test.sous-chef.1.0']) {
+      for (const u of [
+        'test.cost-controller.1.0',
+        'test.general-manager.1.0',
+        'test.sous-chef.1.0',
+      ]) {
         const who = ids.user(u);
         const started = Date.now();
         const list = await attemptAs<{ recipe_id: string }>(

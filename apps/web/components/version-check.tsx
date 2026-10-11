@@ -8,10 +8,26 @@ const MINE = process.env.NEXT_PUBLIC_BUILD_ID ?? '';
 /**
  * After a deploy, someone who kept the app open is still running the old code. This asks the
  * server which build it runs when the app comes back to the screen and every 5 minutes, and
- * offers a reload when it differs (ADR 055).
+ * offers a reload when it differs (ADR 055). Until then the next tap on a link loads the new
+ * build itself, never the old code's copy of the screen (ADR 126: the installed app showed an
+ * older Me for a few seconds).
  */
 export function VersionCheck() {
   const [stale, setStale] = useState(false);
+
+  useEffect(() => {
+    if (!stale) return;
+    const go = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      const a = (e.target as Element | null)?.closest?.('a[href]');
+      if (!(a instanceof HTMLAnchorElement) || a.target || a.origin !== location.origin) return;
+      e.preventDefault();
+      e.stopPropagation();
+      location.assign(a.href);
+    };
+    document.addEventListener('click', go, true);
+    return () => document.removeEventListener('click', go, true);
+  }, [stale]);
 
   useEffect(() => {
     if (!MINE) return;

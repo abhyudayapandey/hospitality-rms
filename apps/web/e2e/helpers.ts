@@ -354,16 +354,8 @@ export async function storeKeeperCover(on: boolean, task = on): Promise<void> {
   }
 }
 
-/**
- * A tile on Me (ADR 106): the person's own tiles are shown, the rest are under "More", opened
- * here when the tile is not among the first.
- */
+/** A tile on Me (ADR 106, 125): every tile is shown, none folded. */
 export async function meTile(page: Page, key: string) {
   await expect(page.getByTestId('me-tiles')).toBeVisible();
-  const tile = page.getByTestId(`me-${key}`);
-  const more = page.getByTestId('me-more');
-  if ((await tile.count()) === 0 && (await more.count()) > 0) {
-    if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
-  }
-  return tile;
+  return page.getByTestId(`me-${key}`);
 }

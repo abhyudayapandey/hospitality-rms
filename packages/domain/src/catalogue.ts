@@ -805,12 +805,13 @@ const WARE_TYPES: ReadonlySet<DepartmentType> = new Set(['kitchen', 'service', '
 
 /**
  * Every role. Whoever works, leads or runs a kitchen, service or housekeeping department also
- * looks after its linen and breakage (HANDLES_LINEN); engineering, the front office, security
- * and the offices do not (ADR 124).
+ * looks after its linen and breakage (HANDLES_LINEN); engineering, the front office, security,
+ * the offices and the cash desk do not (ADR 124).
  */
 export const ROLES: readonly RoleDef[] = ROLE_LIST.map((r) => {
   const type = DEPARTMENTS.find((d) => d.code === r.home)?.type;
-  const works = r.duties.some((d) => d === W || d === L || d === D);
+  const works =
+    r.duties.some((d) => d === W || d === L || d === D) && !r.duties.includes('UPLOADS_POS_SALES');
   return type && WARE_TYPES.has(type) && works
     ? { ...r, duties: [...r.duties, 'HANDLES_LINEN'] }
     : r;

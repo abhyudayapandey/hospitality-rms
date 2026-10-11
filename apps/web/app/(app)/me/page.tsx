@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { Icon } from '@/components/icon';
-import { MeMore } from '@/components/me-more';
 import { SignOutButton } from '@/components/sign-out-button';
 import { visibleNav } from '@/lib/nav';
 import { meTiles, type Screen } from '@/lib/screens';
@@ -8,10 +7,10 @@ import { loadShell, screenInput } from '@/lib/shell';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 
-// Me (UX-6, ADR 034, 106): the person's own tiles first (Clock, My shifts, Leave, SOPs, Report
-// a problem, then the work their duties give them), every other screen they can open under
-// "More". The bottom nav keeps three to five tabs; nothing is lost, it is here. Each tile needs
-// the same access as the screen it opens.
+// Me (UX-6, ADR 034, 106, 125): every screen the person can open, nothing folded away: their own
+// work first, then their day (Shifts & leave, SOPs, Report a problem), then the rest. The
+// bottom nav keeps three to five tabs; nothing is lost, it is here. Each tile needs the same
+// access as the screen it opens.
 export default async function MePage() {
   const shell = await loadShell();
   const input = screenInput(shell);
@@ -47,8 +46,7 @@ export default async function MePage() {
     <div className="space-y-5">
       <h1 className="text-xl font-semibold">Me</h1>
       <ul className="grid grid-cols-3 gap-2" data-testid="me-tiles">
-        {mine.map(tile)}
-        {more.length > 0 && <MeMore count={more.length}>{more.map(tile)}</MeMore>}
+        {[...mine, ...more].map(tile)}
       </ul>
       {asks.stores && (
         <Link

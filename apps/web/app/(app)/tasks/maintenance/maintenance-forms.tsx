@@ -16,6 +16,24 @@ import {
   startMaintenance,
 } from '../actions';
 
+// Where it is, as pictures (ADR 125): a location, never a department
+const WHERE_ICON: Record<string, IconName> = {
+  room: 'bed',
+  common_areas: 'home',
+  restaurant: 'plate',
+  bar: 'glass',
+  kitchen: 'pot',
+  banquet_hall: 'people',
+  pool: 'pool',
+  terrace: 'sun',
+  garden: 'leaf',
+  parking: 'truck',
+  store: 'box',
+  laundry: 'towel',
+  staff_area: 'user',
+  outside: 'palm',
+};
+
 // What is wrong, as pictures (ADR 113): most problems are one of these
 const WHAT: readonly { word: string; icon: IconName }[] = [
   { word: 'Leak', icon: 'tap' },
@@ -27,18 +45,20 @@ const WHAT: readonly { word: string; icon: IconName }[] = [
 ];
 
 /**
- * Anyone reports a problem where they work (ADR 113): a photo first, then what is wrong and
- * where as taps, a room by its number; a note only if they want one.
+ * Anyone reports a problem where they work (ADR 113, 125): a photo first, then what is wrong and
+ * where it is as taps (a location: a room by its number, the parking, the kitchen); a note only
+ * if they want one. It goes to whoever handles maintenance at their outlet.
  */
 export function ReportForm({
   place,
-  places,
+  wheres,
   rooms,
   photos,
 }: {
+  /** where they work: the request is raised there */
   place: string;
-  /** the places they may report at, as "where" chips (short names) */
-  places: { id: string; name: string }[];
+  /** the locations at their outlet (ops.maintenance_wheres), in order */
+  wheres: { code: string; word: string }[];
   /** the outlet's rooms, when it has them */
   rooms: { room_id: string; number: string; floor: string | null }[];
   photos: boolean;
@@ -48,9 +68,9 @@ export function ReportForm({
   const [pending, start] = useTransition();
   const [what, setWhat] = useState<string | null>(null);
   const [other, setOther] = useState('');
-  const [where, setWhere] = useState(place);
+  const [where, setWhere] = useState<string | null>(null);
   const [room, setRoom] = useState<string | null>(null);
-  const [inRoom, setInRoom] = useState(false);
+  const inRoom = where === 'room';
   const [description, setDescription] = useState('');
   const [photoKey, setPhotoKey] = useState<string | null>(null);
   const [key] = useState(() => crypto.randomUUID());
@@ -61,8 +81,11 @@ export function ReportForm({
     start(async () => {
       setError(null);
       if (!title) return setError('Say what is wrong.');
+      if (!where) return setError('Say where it is.');
+      if (inRoom && !room) return setError('Tap the room.');
       const r = await raiseMaintenance({
-        place: where,
+        place,
+        location: where,
         title: what === 'Other' && room ? `${title} (room ${room})` : title,
         description,
         photoKey,
@@ -71,10 +94,6 @@ export function ReportForm({
       if (!r.ok) return setError(r.message);
       router.push(`/tasks/maintenance/${r.data.id}`);
     });
-  const chip = (on: boolean) =>
-    `flex min-h-11 items-center gap-1.5 rounded-full px-4 text-sm font-medium ring-1 ${
-      on ? 'bg-brand-700 text-white ring-brand-700' : 'bg-white text-slate-800 ring-slate-300'
-    }`;
   return (
     <form
       className="space-y-4 rounded-xl bg-white p-4 ring-1 ring-slate-200"
@@ -85,7 +104,7 @@ export function ReportForm({
     >
       {photos && (
         <PhotoField
-          node={where}
+          node={place}
           photoKey={photoKey}
           onChange={setPhotoKey}
           getUploadUrl={getMaintenanceUploadUrl}
@@ -123,36 +142,30 @@ export function ReportForm({
           </label>
         )}
       </div>
-      {(places.length > 1 || rooms.length > 0) && (
+      {wheres.length > 0 && (
         <div role="group" aria-label="Where" className="space-y-2">
           <span className="text-sm font-medium">Where</span>
-          <div className="flex flex-wrap gap-2">
-            {places.length > 1 &&
-              places.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  aria-pressed={where === p.id && !inRoom}
-                  onClick={() => {
-                    setWhere(p.id);
-                    setInRoom(false);
-                    setRoom(null);
-                  }}
-                  className={chip(where === p.id && !inRoom)}
-                >
-                  {p.name}
-                </button>
-              ))}
-            {rooms.length > 0 && (
+          <div className="grid grid-cols-3 gap-2">
+            {wheres.map((w) => (
               <button
+                key={w.code}
                 type="button"
-                aria-pressed={inRoom}
-                onClick={() => setInRoom(true)}
-                className={chip(inRoom)}
+                aria-pressed={where === w.code}
+                data-testid={`where-${w.code}`}
+                onClick={() => {
+                  setWhere(w.code);
+                  if (w.code !== 'room') setRoom(null);
+                }}
+                className={`flex min-h-18 flex-col items-center justify-center gap-1 rounded-xl text-sm font-medium ring-1 ${
+                  where === w.code
+                    ? 'bg-brand-700 text-white ring-brand-700'
+                    : 'bg-white text-slate-800 ring-slate-300'
+                }`}
               >
-                <Icon name="bed" className="size-4" />A room
+                <Icon name={WHERE_ICON[w.code] ?? 'dots'} className="size-6" />
+                {w.word}
               </button>
-            )}
+            ))}
           </div>
           {inRoom && (
             <div role="group" aria-label="Room" className="space-y-2">
@@ -189,7 +202,11 @@ export function ReportForm({
         />
       </label>
       <ErrorBox message={error} />
-      <button type="submit" disabled={!hydrated || pending || !title} className={primaryButton}>
+      <button
+        type="submit"
+        disabled={!hydrated || pending || !title || !where || (inRoom && !room)}
+        className={primaryButton}
+      >
         Send to maintenance
       </button>
     </form>

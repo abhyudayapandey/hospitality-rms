@@ -514,11 +514,10 @@ function isOwn(s: Screen, i: ScreenInput): boolean {
 }
 
 /**
- * Me's tiles for one person (ADR 106, 113): first the work their own duties give them (a
+ * Me's tiles for one person (ADR 106, 113, 125): first the work their own duties give them (a
  * housekeeper's rooms, a commis's Make), then Shifts & leave, SOPs and Report a problem where
- * they have them; the rest under "More". `hide` leaves out what the bottom nav already offers.
- * Nothing is folded when fewer than three would be on either side (an account owner's few
- * screens, a short list of extras).
+ * they have them (`mine`); then every other screen they may open (`more`). Me shows both, in
+ * that order, nothing folded. `hide` leaves out what the bottom nav already offers.
  */
 export function meTiles(
   i: ScreenInput,
@@ -536,10 +535,7 @@ export function meTiles(
     .sort((a, b) => rank(a.s.key) - rank(b.s.key) || a.n - b.n)
     .map((x) => x.s);
   const mine = [...own, ...day];
-  const more = all.filter((s) => !mine.includes(s));
-  return mine.length < 3 || more.length < 3
-    ? { mine: [...mine, ...more], more: [] }
-    : { mine, more };
+  return { mine, more: all.filter((s) => !mine.includes(s)) };
 }
 
 /**
