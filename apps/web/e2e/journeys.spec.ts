@@ -99,13 +99,20 @@ test('open my next task (commis)', async ({ page }) => {
   const j = await start(page, 'Test Commis 1.0');
   await j.go(page.getByTestId('tasks-card').getByRole('link').first());
   await page.waitForURL(/\/tasks\/[0-9a-f-]{36}/);
-  await j.last(
-    page
-      .getByRole('button')
-      .filter({ hasText: /^(Done|Save|Record the batch)$/ })
-      .first(),
-  );
-  j.done('Open my next task', 'Commis', { there: 1, form: 1 });
+  // a step takes a photo with the live camera first (ADR 127): two taps
+  const last = page
+    .getByRole('button')
+    .filter({ hasText: /^(Done|Save|Record the batch)$/ })
+    .first();
+  await last.waitFor();
+  const camera = page.locator('main').getByTestId('photo-camera').first();
+  if (await camera.isVisible()) {
+    await j.tap(camera);
+    await j.tap(page.getByTestId('live-camera').getByRole('button', { name: 'Take photo' }));
+    await expect(page.getByRole('button', { name: 'Take it again' }).first()).toBeVisible();
+  }
+  await j.last(last);
+  j.done('Open my next task', 'Commis', { there: 1, form: 3 });
 });
 
 test('report a problem (commis)', async ({ page }) => {
@@ -118,8 +125,10 @@ test('report a problem (commis)', async ({ page }) => {
       .getByRole('group', { name: 'What is wrong' })
       .getByRole('button', { name: 'AC or fridge' }),
   );
+  // where it is, as a picture (ADR 125)
+  await j.tap(page.getByRole('group', { name: 'Where' }).getByRole('button', { name: 'Kitchen' }));
   await j.last(page.getByRole('button', { name: 'Send to maintenance' }));
-  j.done('Report a problem', 'Commis', { there: 2, form: 2 });
+  j.done('Report a problem', 'Commis', { there: 2, form: 3 });
 });
 
 test('record wastage (store keeper)', async ({ page }) => {

@@ -276,7 +276,12 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         )
       ) : (
         (task.steps.length > 0 || task.can_work) && (
-          <TaskWork task={task} canWork={task.can_work} photos={photosEnabled()} />
+          <TaskWork
+            task={task}
+            canWork={task.can_work}
+            photos={photosEnabled()}
+            photoCount={photos.length}
+          />
         )
       )}
       {open && task.can_hand_on && (

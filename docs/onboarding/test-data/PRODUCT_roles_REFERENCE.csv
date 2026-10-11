@@ -69,7 +69,7 @@ STORE_KEEPER,Store Keeper,Storekeeper,leads_shift,STORES-TEAM,KEEPS_MAIN_STORE; 
 RECEIVING_CLERK,Receiving Clerk,,works,STORES-TEAM,USES_MAIN_STORE; WORKS_SHIFTS,,Hotel
 CHIEF_ENGINEER,Chief Engineer,,runs_department,ENGINEERING,RUNS_DEPARTMENT,,Hotel
 SHIFT_ENGINEER,Shift Engineer,Assistant Engineer,leads_shift,ENGINEERING,LEADS_SHIFT; WORKS_SHIFTS,,Hotel
-TECHNICIAN,Technician,,works,ENGINEERING,WORKS_SHIFTS,,Hotel
+TECHNICIAN,Technician,,works,ENGINEERING,WORKS_SHIFTS; READS_METERS,,Hotel
 SECURITY_SUPERVISOR,Security Supervisor,Security Manager; Security Head,runs_department,SECURITY,RUNS_DEPARTMENT,,Hotel; Bar
 SECURITY_GUARD,Security Guard,Bouncer,works,SECURITY,WORKS_SHIFTS,,Hotel; Bar
 HR_EXECUTIVE,HR Executive,,works,ADMIN-FINANCE,RUNS_OUTLET_HR; WORKS_SHIFTS,,Hotel

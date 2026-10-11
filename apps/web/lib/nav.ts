@@ -99,6 +99,10 @@ const FRONTLINE = new Set([
   'MINIBAR_KEEPER',
   // opens packs and labels them (a commis, ADR 097)
   'PACK_OPENER',
+  // their department's linen and breakage, the meters, the recipes they cook from (ADR 123, 124)
+  'WARE_KEEPER',
+  'METER_READER',
+  'RECIPE_READER',
 ]);
 
 export type NavProfile = 'outlet' | 'department' | 'store' | 'cost' | 'frontline' | 'office';

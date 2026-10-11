@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { asMigrator, signInAs } from './helpers';
+import { asMigrator, signInAs, takePhoto } from './helpers';
 
 // A second signature (ADR 087) at 380 px, on Test Hotel 1.0's linen room count (file 29
 // `sign_off` = up). The room attendant counts and finishes it; the housekeeping supervisor,
@@ -35,8 +35,10 @@ async function linenRound(): Promise<string> {
 async function count(page: Page, task: string, towels: string, sheets: string) {
   await page.goto(`/tasks/${task}`);
   await main(page).getByLabel('Bath towels on the shelf').fill(towels);
+  await takePhoto(main(page));
   await main(page).getByRole('button', { name: 'Save' }).click();
   await main(page).getByLabel('Bed sheets on the shelf').fill(sheets);
+  await takePhoto(main(page));
   // under 80 is out of range: say what was done about it (ADR 088)
   if (Number(sheets) < 80) {
     await main(page).getByLabel('What did you do about it?').fill('Asked the laundry for more');

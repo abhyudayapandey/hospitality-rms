@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import pg from 'pg';
 import { HANDLERS, runOnce } from '@outlet-ops/workflow';
 import { execFileSync } from 'node:child_process';
@@ -358,4 +358,25 @@ export async function storeKeeperCover(on: boolean, task = on): Promise<void> {
 export async function meTile(page: Page, key: string) {
   await expect(page.getByTestId('me-tiles')).toBeVisible();
   return page.getByTestId(`me-${key}`);
+}
+
+/**
+ * Takes a step's or a task's photo with the live camera (a fake one here; ADR 127): every step
+ * needs one, and there is no gallery to pick from.
+ */
+export async function takePhoto(scope: Locator) {
+  await scope.getByTestId('photo-camera').click();
+  const shoot = scope.getByTestId('live-camera').getByRole('button', { name: 'Take photo' });
+  await expect(shoot).toBeEnabled();
+  await shoot.click();
+  await expect(scope.getByRole('button', { name: 'Take it again' })).toBeVisible();
+}
+
+/** A task with no steps takes a photo of the job done before it is marked done (ADR 127). */
+export async function addTaskPhoto(page: Page) {
+  await page.locator('main').getByRole('button', { name: 'Add a photo' }).click();
+  const form = page.getByTestId('task-photo-form');
+  await takePhoto(form);
+  await form.getByRole('button', { name: 'Save the photo' }).click();
+  await expect(page.getByTestId('task-photos').locator('li')).not.toHaveCount(0);
 }

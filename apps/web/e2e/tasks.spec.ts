@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { asMigrator, placeId, signInAs } from './helpers';
+import { asMigrator, placeId, signInAs, takePhoto } from './helpers';
 
 // Tasks, maintenance and expired batches (ADR 020), on the test customers' data (files 29
 // to 32): who gives out work, who does it, and what their leads see.
@@ -40,6 +40,9 @@ test('the executive chef gives the commis a task; an out-of-range reading is fla
   await main(page).getByRole('link', { name: title }).click();
   await main(page).getByRole('textbox', { name: 'Blast chiller' }).fill('9');
   await expect(main(page)).toContainText('Outside 0 to 5 °C');
+  // every step takes a photo with the live camera (ADR 127)
+  await expect(main(page).getByRole('button', { name: 'Save' })).toBeDisabled();
+  await takePhoto(main(page));
   // what was done about it, before it is saved (ADR 088)
   await main(page).getByRole('button', { name: 'Save' }).click();
   await expect(main(page).getByRole('alert')).toContainText('Say what you did about it.');
@@ -48,6 +51,7 @@ test('the executive chef gives the commis a task; an out-of-range reading is fla
   await expect(main(page).getByRole('status')).toHaveText(
     'Outside the range: your lead has been told.',
   );
+  await takePhoto(main(page));
   await main(page).getByRole('button', { name: 'Done' }).click();
   await main(page).getByRole('button', { name: 'Mark task done' }).click();
   await expect(page.getByTestId('task-status')).toHaveText(/^Done/);
@@ -69,6 +73,11 @@ test('a problem goes to Engineering, who assigns the technician', async ({ page 
   // what is wrong is a tap; "Other" asks for the words (ADR 113)
   await main(page).getByRole('button', { name: 'Other' }).click();
   await main(page).getByRole('textbox', { name: 'What is wrong' }).fill(title);
+  // where it is: a location, not a department (ADR 125)
+  await main(page)
+    .getByRole('group', { name: 'Where' })
+    .getByRole('button', { name: 'Kitchen' })
+    .click();
   await main(page).getByRole('button', { name: 'Send to maintenance' }).click();
   await expect(page.getByTestId('repair-status')).toContainText(
     'Handled by Test Hotel & Bar 1.0 – Engineering · not assigned yet',
@@ -101,7 +110,7 @@ test('a problem goes to Engineering, who assigns the technician', async ({ page 
     .click();
   await main(page).getByRole('button', { name: 'Start the repair' }).click();
   await expect(page.getByTestId('repair-status')).toContainText('in progress with');
-  // closing needs a photo of the fix (no photo bucket in this environment)
+  // closing needs a photo of the fix
   await expect(main(page).getByRole('button', { name: 'Mark fixed' })).toBeDisabled();
 });
 

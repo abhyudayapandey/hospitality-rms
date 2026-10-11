@@ -46,14 +46,18 @@ export function TaskWork({
   task,
   canWork,
   photos,
+  photoCount = 0,
 }: {
   task: TaskDetail;
   canWork: boolean;
   photos: boolean;
+  /** the task's own photos: a task with no steps takes one before it is done (ADR 127) */
+  photoCount?: number;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const hydrated = useHydrated();
+  const needsPhoto = task.steps.length === 0 && photoCount === 0;
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const open = task.status === 'open' || task.status === 'in_progress';
@@ -166,10 +170,15 @@ export function TaskWork({
             <input value={note} onChange={(e) => setNote(e.target.value)} className={inputClass} />
           </label>
           <ErrorBox message={error} />
+          {needsPhoto && (
+            <p className="text-sm text-amber-900" data-testid="task-needs-photo">
+              Take a photo of the job done first.
+            </p>
+          )}
           <button
             type="button"
             onClick={finish}
-            disabled={!hydrated || pending}
+            disabled={!hydrated || pending || needsPhoto}
             className={primaryButton}
           >
             Mark task done
@@ -329,7 +338,8 @@ function StepInputs({
   const [food, setFood] = useState('');
   const [thrown, setThrown] = useState<boolean | null>(null);
   const [key] = useState(() => crypto.randomUUID());
-  const needsPhoto = step.kind === 'photo' || step.photo_required;
+  // every step takes a photo with the live camera (ADR 127); a batch or a discard keeps its own
+  const needsPhoto = (step.kind !== 'batch' && step.kind !== 'discard') || step.photo_required;
   // asked and approved (ADR 092), not an expired batch
   const approved = task.kind === 'discard';
   const num = Number(value);
@@ -552,7 +562,7 @@ function StepInputs({
           className={`${inputClass} min-h-20 py-2`}
         />
       )}
-      {/* any step may take a photo (ADR 079); some need one */}
+      {/* every step takes a photo (ADR 079, 127) */}
       {step.kind !== 'discard' && step.kind !== 'batch' && photoField('task')}
       {step.kind === 'discard' && (
         <>
