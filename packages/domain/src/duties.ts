@@ -126,6 +126,19 @@ export const DUTIES: readonly DutyDef[] = [
     atAnotherDepartment: true,
   },
   {
+    code: 'READS_RECIPES',
+    name: "Reads the department's recipes",
+    does: "Sees the recipes, menu prices and costs of what the department makes and sells",
+    grants: [{ group: 'RECIPE_READER', scope: 'home_department' }],
+    atAnotherDepartment: true,
+  },
+  {
+    code: 'HANDLES_LINEN',
+    name: 'Looks after linen and breakage',
+    does: "Swaps the department's linen with the laundry and records what breaks there",
+    grants: [{ group: 'WARE_KEEPER', scope: 'home_department' }],
+  },
+  {
     code: 'WRITES_SHIFT_BRIEFING',
     name: 'Writes the shift briefing',
     does: "Writes today's note for the outlet's shift: specials, dishes that are off, guests to know about, targets",
@@ -147,7 +160,7 @@ export const DUTIES: readonly DutyDef[] = [
   {
     code: 'WORKS_SHIFTS',
     name: 'Works shifts in the department',
-    does: "Sees the department's roster, events and recipes",
+    does: "Sees the department's roster and events",
     grants: [{ group: 'STAFF', scope: 'home_department' }],
   },
   {

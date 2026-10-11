@@ -172,6 +172,8 @@ describe('job roles from the catalogue', () => {
       'LEADS_SHIFT SUPERVISOR@home_department',
       'USES_DEPARTMENT_STORE STOCK_USER@department_store',
       'WORKS_SHIFTS STAFF@home_department',
+      'READS_RECIPES RECIPE_READER@home_department',
+      'HANDLES_LINEN WARE_KEEPER@home_department',
     ]);
     const bar = roles.filter((r) => r.job_role_code === 'BAR_MANAGER');
     expect(
@@ -180,7 +182,7 @@ describe('job roles from the catalogue', () => {
           `${r.outlet_format} ${r.usual_department} ${r.default_duties.map((a) => a.duty).join(',')}`,
       ),
     ).toEqual([
-      'any BAR RUNS_DEPARTMENT,KEEPS_DEPARTMENT_STORE,WRITES_SHIFT_BRIEFING',
+      'any BAR RUNS_DEPARTMENT,KEEPS_DEPARTMENT_STORE,WRITES_SHIFT_BRIEFING,READS_RECIPES,HANDLES_LINEN',
       'bar_pub (outlet) RUNS_OUTLET,RUNS_OUTLET',
     ]);
   });
@@ -239,7 +241,7 @@ describe('job roles from the catalogue', () => {
       // Bar 3.0's Host works in its floor service (a bar has no restaurant)
       'test-company HOST: department FLOOR-SERVICE',
       // the solo bar's Head Bartender keeps the bar store: there is no Bar Manager to
-      'test-solo-bar-co HEAD_BARTENDER: duties LEADS_SHIFT; KEEPS_DEPARTMENT_STORE; WORKS_SHIFTS',
+      'test-solo-bar-co HEAD_BARTENDER: duties LEADS_SHIFT; KEEPS_DEPARTMENT_STORE; WORKS_SHIFTS; HANDLES_LINEN',
     ]);
   });
 
