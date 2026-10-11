@@ -293,8 +293,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   are tiles, two to a row, one fact each (red runs low, amber waits, green "All done" where they
   run it), each from an existing line and opening that department; a count is said once.
   ADR 106: Me shows first Clock, My shifts, Leave, SOPs, Report a problem, then the tiles of
-  the person's own work (access above what every shift worker holds, `meTiles`), the rest under
-  More; every tile its own picture (`me-tiles.test.ts`). ADR 107: an empty roster week is one
+  the person's own work (access above what every shift worker holds, `meTiles`), then the rest,
+  nothing folded (ADR 125); every tile its own picture (`me-tiles.test.ts`). ADR 107: an empty roster week is one
   "Fill this week" button, By person / By shift a switch, the clock one camera button. ADR 108:
   shift types, notifications, clock rows and people (initials) carry pictures. ADR 109: the
   accountant reads bills and purchasing (`READS_BILLS`), the sales manager plans events.
@@ -332,6 +332,20 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   a list's query is one lib function its screen and download share). Reports → Stock movements
   (`rpt.stock_movements`) is every order, receipt and transfer of a store or an outlet's stores
   for any days, for whoever opens purchasing there; the Purchase Manager reads bills.
+- Kitchens, technicians, photos and words (ADR 123 to 129): menu prices and recipes are read
+  by the GM, account owner, restaurant manager, sous chef and up, bar and F&B managers and the
+  cost controller (duty `READS_RECIPES`, group `RECIPE_READER`); a cook sees only their prep
+  task's recipe. The technician's Daily rounds; meters twice a day at a hotel, else at the end
+  of the shift (file 43 `read_at`), readings late or early in red (`ops.utility_readings`);
+  `READS_METERS`; linen and breakage only for a department's own people (`HANDLES_LINEN`); a
+  department sees the licences and jobs its roles answer for (`ops.department_sees`). A repair
+  says where as a picture (`MAINTENANCE_WHERE`, `ops.maintenance_wheres`). A stale app loads
+  the next page in full. Every step of every task, and a task with no steps, takes a photo from
+  the live camera only, never the gallery (`PHOTO_REQUIRED`; `PHOTO_DIR` keeps them on disk
+  where there is no bucket, dev and e2e only). Fire extinguishers are licences with a location
+  and a type. The roster offers every shift type and a custom shift (`hr.set_custom_shift`).
+  The app's words read at Flesch-Kincaid grade 6 or lower, no sentence over 20 words
+  (`lib/plain-language.test.ts`).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in
