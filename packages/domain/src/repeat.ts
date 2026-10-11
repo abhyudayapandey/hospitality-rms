@@ -88,7 +88,11 @@ function dayNumber(word: string): number | null {
  * none of these.
  */
 export function parseRepeat(text: string): Repeat | null {
-  const t = text.trim().toLowerCase().replace(/\s+/g, ' ').replace(/ of (each|every) month$/, '');
+  const t = text
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/ of (each|every) month$/, '');
   let m = /^every (week|2 weeks|other week|fortnight) on (\w+)$/.exec(t);
   if (m) {
     const day = dayNumber(m[2]!);

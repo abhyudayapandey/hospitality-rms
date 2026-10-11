@@ -19,9 +19,8 @@ PASSPORT-ASSAGAO-BAR,Evening,BAR_BACK,-1,"Mon-Tue,Thu-Sun",passport.bar-back,pas
 PASSPORT-ASSAGAO-IN-ROOM-DINING,Evening,IRD_ORDER_TAKER,-1,"Mon-Wed,Fri-Sun",passport.ird,passport.restaurant-manager
 PASSPORT-ASSAGAO-CASHIER,Evening,CASHIER,-1,"Mon-Thu,Sat-Sun",passport.cashier,passport.gm
 PASSPORT-ASSAGAO-ENGINEERING,Day,TECHNICIAN,-1,"Mon-Fri,Sun",passport.technician,passport.chief-engineer
-PASSPORT-ASSAGAO-STORES-TEAM,Day,RECEIVING_CLERK,-1,Mon-Sat,passport.receiving,passport.purchase-manager
-PASSPORT-ASSAGAO-BANQUETS,Event,BANQUET_CAPTAIN,-1,Tue-Sun,passport.banquet-captain,passport.banquet-manager
-PASSPORT-ASSAGAO-BANQUETS,Event,BANQUET_SERVER,-1,"Mon,Wed-Sun",passport.banquet-server,passport.banquet-manager
+PASSPORT-ASSAGAO-BANQUETS,Event,BANQUET_CAPTAIN,-1,Mon-Sat,passport.banquet-captain,passport.banquet-manager
+PASSPORT-ASSAGAO-BANQUETS,Event,BANQUET_SERVER,-1,Tue-Sun,passport.banquet-server,passport.banquet-manager
 PASSPORT-ASSAGAO-FRONT-OFFICE,Morning,FRONT_DESK_EXECUTIVE,0,Tue-Sun,passport.front-desk,passport.front-office-manager
 PASSPORT-ASSAGAO-FRONT-OFFICE,Morning,BELL_CAPTAIN,0,"Mon,Wed-Sun",passport.bell-captain,passport.front-office-manager
 PASSPORT-ASSAGAO-HOUSEKEEPING,Day,HOUSEKEEPING_SUPERVISOR,0,"Mon-Tue,Thu-Sun",passport.housekeeping-supervisor,passport.executive-housekeeper
@@ -42,9 +41,8 @@ PASSPORT-ASSAGAO-BAR,Evening,BAR_BACK,0,"Mon-Tue,Thu-Sun",passport.bar-back,pass
 PASSPORT-ASSAGAO-IN-ROOM-DINING,Evening,IRD_ORDER_TAKER,0,"Mon-Wed,Fri-Sun",passport.ird,passport.restaurant-manager
 PASSPORT-ASSAGAO-CASHIER,Evening,CASHIER,0,"Mon-Thu,Sat-Sun",passport.cashier,passport.gm
 PASSPORT-ASSAGAO-ENGINEERING,Day,TECHNICIAN,0,"Mon-Fri,Sun",passport.technician,passport.chief-engineer
-PASSPORT-ASSAGAO-STORES-TEAM,Day,RECEIVING_CLERK,0,Mon-Sat,passport.receiving,passport.purchase-manager
-PASSPORT-ASSAGAO-BANQUETS,Event,BANQUET_CAPTAIN,0,Tue-Sun,passport.banquet-captain,passport.banquet-manager
-PASSPORT-ASSAGAO-BANQUETS,Event,BANQUET_SERVER,0,"Mon,Wed-Sun",passport.banquet-server,passport.banquet-manager
+PASSPORT-ASSAGAO-BANQUETS,Event,BANQUET_CAPTAIN,0,Mon-Sat,passport.banquet-captain,passport.banquet-manager
+PASSPORT-ASSAGAO-BANQUETS,Event,BANQUET_SERVER,0,Tue-Sun,passport.banquet-server,passport.banquet-manager
 PASSPORT-ASSAGAO-FRONT-OFFICE,Morning,FRONT_DESK_EXECUTIVE,1,Tue-Sun,passport.front-desk,passport.front-office-manager
 PASSPORT-ASSAGAO-FRONT-OFFICE,Morning,BELL_CAPTAIN,1,"Mon,Wed-Sun",passport.bell-captain,passport.front-office-manager
 PASSPORT-ASSAGAO-HOUSEKEEPING,Day,HOUSEKEEPING_SUPERVISOR,1,"Mon-Tue,Thu-Sun",passport.housekeeping-supervisor,passport.executive-housekeeper
@@ -65,6 +63,5 @@ PASSPORT-ASSAGAO-BAR,Evening,BAR_BACK,1,"Mon-Tue,Thu-Sun",passport.bar-back,pass
 PASSPORT-ASSAGAO-IN-ROOM-DINING,Evening,IRD_ORDER_TAKER,1,"Mon-Wed,Fri-Sun",passport.ird,passport.restaurant-manager
 PASSPORT-ASSAGAO-CASHIER,Evening,CASHIER,1,"Mon-Thu,Sat-Sun",passport.cashier,passport.gm
 PASSPORT-ASSAGAO-ENGINEERING,Day,TECHNICIAN,1,"Mon-Fri,Sun",passport.technician,passport.chief-engineer
-PASSPORT-ASSAGAO-STORES-TEAM,Day,RECEIVING_CLERK,1,Mon-Sat,passport.receiving,passport.purchase-manager
-PASSPORT-ASSAGAO-BANQUETS,Event,BANQUET_CAPTAIN,1,Tue-Sun,passport.banquet-captain,passport.banquet-manager
-PASSPORT-ASSAGAO-BANQUETS,Event,BANQUET_SERVER,1,"Mon,Wed-Sun",passport.banquet-server,passport.banquet-manager
+PASSPORT-ASSAGAO-BANQUETS,Event,BANQUET_CAPTAIN,1,Mon-Sat,passport.banquet-captain,passport.banquet-manager
+PASSPORT-ASSAGAO-BANQUETS,Event,BANQUET_SERVER,1,Tue-Sun,passport.banquet-server,passport.banquet-manager

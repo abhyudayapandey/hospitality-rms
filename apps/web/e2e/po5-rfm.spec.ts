@@ -27,13 +27,12 @@ test('a request for material off the menu waits for the department head, with wh
   page,
 }) => {
   const store = await placeId(PLACE.store);
-  const ck = await placeId(PLACE.centralKitchen);
   await signInAs(page, 'Test Cook 3.0');
   await page.goto(`/stock/transfers/new?node=${store}`);
-  await page.getByRole('combobox', { name: 'From' }).selectOption(ck);
-  await page.getByRole('textbox', { name: 'Request Test Aluminium Foil Roll' }).fill('2');
+  // the central kitchen keeps it (nothing at the outlet does): asked of it (ADR 115)
+  await page.getByRole('textbox', { name: 'Ask for Test Aluminium Foil Roll' }).fill('2');
   await expect(page.getByTestId('unusual-needs')).toContainText('not on the menu');
-  await page.getByRole('button', { name: 'Request 1 item' }).click();
+  await page.getByRole('button', { name: 'Ask for 1 item' }).click();
   await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
   await expect(page.getByTestId('transfer-kind')).toHaveText('Request for material');

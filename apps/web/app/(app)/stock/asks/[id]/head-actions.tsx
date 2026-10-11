@@ -11,7 +11,15 @@ import { actOnStaffAsk } from '../../actions';
  * for it (the store is short: the outlet's chain), or say no, with why. Asked for already:
  * give it once it arrives.
  */
-export function HeadActions({ ask, status, short }: { ask: string; status: string; short: boolean }) {
+export function HeadActions({
+  ask,
+  status,
+  short,
+}: {
+  ask: string;
+  status: string;
+  short: boolean;
+}) {
   const router = useRouter();
   const hydrated = useHydrated();
   const [pending, start] = useTransition();

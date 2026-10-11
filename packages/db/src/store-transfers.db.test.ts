@@ -213,9 +213,7 @@ describe('whoever asked receives it (ADR 115)', () => {
       expect((await attemptAs(c, ids.user('test.solo.bartender'), RECEIVE, [t])).error).toBe(
         'NOT_AUTHORISED',
       );
-      expect((await as<{ s: string }>(c, 'test.solo.head-cook', RECEIVE, [t])).s).toBe(
-        'completed',
-      );
+      expect((await as<{ s: string }>(c, 'test.solo.head-cook', RECEIVE, [t])).s).toBe('completed');
       expect(await onHand(c, lemons, 'TEST-SOLO-BAR-KITCHEN-STORE')).toBeGreaterThanOrEqual(2);
     });
   });

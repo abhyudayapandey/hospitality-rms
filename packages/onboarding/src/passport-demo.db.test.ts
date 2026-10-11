@@ -88,24 +88,24 @@ describe('the Passport Hotel demo', () => {
         contents: n('room contents'),
         sops: n('SOPs'),
       }).toEqual({
-        org: [12, 1],
-        delivery: [6, 0],
-        links: [5, 0],
-        roles: [38, 0],
-        users: [38, 0],
-        workers: [38, 1],
+        org: [11, 1],
+        delivery: [5, 0],
+        links: [4, 0],
+        roles: [35, 0],
+        users: [35, 0],
+        workers: [35, 1],
         items: [80, 0],
-        locations: [109, 0],
+        locations: [92, 0],
         menu: [34, 0],
         rooms: [27, 0],
         sets: [2, 0],
-        checks: [53, 0],
+        checks: [54, 0],
         sales: [7, 0],
         orders: [5, 0],
-        attendance: [138, 0],
-        // 28 daily ones, the room ready check, the service audit, the taste panel and the
+        attendance: [132, 0],
+        // 27 daily ones, the room ready check, the service audit, the taste panel and the
         // technician's meter round (ADR 088, 091, 095)
-        checklists: [32, 0],
+        checklists: [31, 0],
         meters: [5, 0],
         contents: [17, 0],
         sops: [4, 0],
@@ -256,8 +256,7 @@ describe('the Passport Hotel demo', () => {
         ),
       ).toBe(0);
       // everyone who works shifts has a daily checklist of their own role's (ADR 075); only
-      // the managers, the office and the store keeper (receiving and sending is his day) have
-      // none; the executive chef's taste panel and the restaurant manager's service audit are
+      // the managers and the office have none; the executive chef's taste panel and the restaurant manager's service audit are
       // theirs (ADR 095)
       const without = await c.query<{ role_code: string }>(
         `select distinct w.role_code from hr.worker w
@@ -279,9 +278,7 @@ describe('the Passport Hotel demo', () => {
         'FRONT_OFFICE_MANAGER',
         'GENERAL_MANAGER',
         'HR_EXECUTIVE',
-        'PURCHASE_MANAGER',
         'SALES_MANAGER',
-        'STORE_KEEPER',
       ]);
     });
   });

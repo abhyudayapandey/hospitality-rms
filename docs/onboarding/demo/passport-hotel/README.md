@@ -14,13 +14,15 @@ past week, the licences and their numbers.
 - **The hotel and its departments**, as the hotel runs them: Front Office; Housekeeping
   (with the in-room minibars and the pool); Kitchen (one kitchen for everything); Restaurant;
   Bar (Layover on the roof and the Mini Bar in the lobby); In-Room Dining; Sales, Events &
-  Banquets (with Jet Lag); Cashier; Engineering & Maintenance; Purchase & Stores; Admin &
-  Finance.
-- **Stores**: the Main Store (Purchase & Stores), the Kitchen Store, the **Bar** and the
-  Housekeeping Store, which also refills the in-room minibars. The bar is one department with
+  Banquets (with Jet Lag); Cashier; Engineering & Maintenance; Admin & Finance.
+- **Stores**: the Kitchen Store, the **Bar** and the Housekeeping Store, which also refills the
+  in-room minibars. There is **no Main Store and no store keeper** (ADR 115): a department asks
+  the department that keeps it (housekeeping asks the Bar for beer), the GM approving every
+  request, and buys what no other store keeps itself, the GM approving every purchase. These
+  are the hotel's rules on its supply point's row in file 02. The bar is one department with
   one store for Layover on the roof and the Mini Bar in the lobby, so everyone asks "Bar"
   (ADR 083).
-- **One person per job role**: 37 people, plus **Demo Presenter**, who may show the app as
+- **One person per job role**: 34 people, plus **Demo Presenter**, who may show the app as
   anyone (`demo_presenter` in file 07, ADR 071). The owner is Ashesh Sajnani (`test.ashesh-sajnani`), the GM Sainath. Usernames are `passport.<role>`, e.g. `passport.gm`, `passport.bar-manager`.
 - **Menus**: Mini Bar signatures and classics, Layover cocktails, beer and wine, breakfast
   (Ros omelette with poi), Layover's kitchen, in-room dining, pool snacks: 34 dishes, each
@@ -95,12 +97,19 @@ their minibars), then **Events & compliance** → **Compliance** → **On** (the
 calendar only show with it). Without Hotel the dry run says the minibar checks are not loaded.
 
 **4. Import**: **Import setup files** → `passport-hotel.zip` → **Upload and dry run**. It
-should report no problems and no warnings, with (new): org places 12 / 1 changed (the
-company root), delivery places 6, links 5, job roles 38, users 38, workers 38 / 1 changed (the owner's), items 80, item
-locations 109, menu items 34, rooms 27, minibar sets 2, minibar checks 53, sales days 7,
-purchase orders 5, attendance sessions 138, checklists 32, meters 5, room contents 17, SOPs 4.
+should report no problems and no warnings, with (new): org places 11 / 1 changed (the
+company root), delivery places 5, links 4, job roles 35, users 35, workers 35 / 1 changed (the owner's), items 80, item
+locations 92, menu items 34, rooms 27, minibar sets 2, minibar checks 54, sales days 7,
+purchase orders 5, attendance sessions 132, checklists 31, meters 5, room contents 17, SOPs 4.
 **Apply**, then a second dry run shows no
 changes.
+
+A Passport loaded before ADR 115 has a Main Store, run by Purchase & Stores. Its re-import
+retires the Main Store (its stock counted out: a test customer) and gives the hotel its rules
+(the GM approves every request and every purchase). The Purchase & Stores department and its
+three people (Shreya Kenkre, Mahesh Talaulikar, Sandeep Volvoikar) stay, as an import never
+removes people: deactivate them in Admin → People if they should go. A stock request or order
+still open at the Main Store stops the import until it is finished or withdrawn.
 
 A Passport loaded before ADR 083 has two bar stores. Its re-import retires the Mini Bar (lobby)
 store, renames the other "Bar" and moves the Mini Bar's 7 dishes to it: a warning says the
@@ -108,7 +117,7 @@ Mini Bar store is retired and its stock counted out (a test customer only). A st
 or order still open at the Mini Bar stops the import until it is finished or withdrawn.
 
 **5. Logins (the printed sheet)**: the customer's page → **Logins** → tick **Set passwords
-by the Test<Role>!12 rule** → **Create 39 username logins** (the 38
+by the Test<Role>!12 rule** → **Create 36 username logins** (the 35
 imported people and the owner) → **Print the login sheet** (and
 download the CSV once, if you want a copy; nothing keeps the passwords). Each person's
 password is `Test` + their job title without spaces + `!12`:

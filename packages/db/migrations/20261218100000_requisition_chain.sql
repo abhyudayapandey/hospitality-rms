@@ -198,8 +198,40 @@ as $$
                (select created_by from inv.transfer where id = p_transfer)];
 $$;
 
--- Which store a department asks for an item: the Main Store where its outlet has one; else
--- the other store of the outlet that keeps it (NO_STORE_KEEPS_IT: the department buys it).
+-- Where a store's ask for an item goes (no access check): with a Main Store at its outlet, the
+-- Main Store when it keeps it, else a central kitchen that keeps it, else the Main Store (it
+-- buys it); with none, another store of the outlet that keeps it, else a central kitchen that
+-- keeps it. Null: no store keeps it, so it is bought.
+create function inv.source_for(p_to uuid, p_item uuid) returns uuid
+language sql stable security definer
+set search_path = pg_catalog, core, inv
+as $$
+  with src as (
+    select s.id,
+           inv.is_main_store(s.id) as main,
+           n.parent_id is not distinct from t.parent_id as here,
+           exists (select 1 from inv.item_node x
+                    where x.item_id = p_item and x.delivery_node_id = s.id
+                      and x.archived_at is null) as keeps,
+           n.name
+      from inv.transfer_sources(p_to) s
+      join core.hierarchy_node n on n.id = s.id
+      join core.hierarchy_node t on t.id = p_to
+     where s.id <> p_to
+  ), ranked as (
+    select id, name,
+           case when exists (select 1 from src where main and here)
+                then case when main and here and keeps then 0
+                          when not here and keeps then 1
+                          when main and here then 2 end
+                else case when here and keeps then 0
+                          when keeps then 1 end end as rank
+      from src
+  )
+  select id from ranked where rank is not null order by rank, name limit 1;
+$$;
+
+-- Which store a department asks for an item (inv.source_for), for whoever may ask there.
 create function inv.stock_source(p_to uuid, p_item uuid) returns uuid
 language plpgsql stable security definer
 set search_path = pg_catalog, core, inv
@@ -210,18 +242,7 @@ begin
   if not (core.can('TRANSFERS', 'view', null, p_to) or core.can('TRANSFERS', 'modify', null, p_to)) then
     perform inv.fail('NOT_AUTHORISED', 'TRANSFERS at ' || p_to);
   end if;
-  select s.id into v_id from inv.transfer_sources(p_to) s
-   where inv.is_main_store(s.id) and s.id <> p_to
-   order by s.id limit 1;
-  if v_id is not null then
-    return v_id;
-  end if;
-  select s.id into v_id
-    from inv.transfer_sources(p_to) s
-   where s.kind = 'store' and s.id <> p_to
-     and exists (select 1 from inv.item_node x where x.item_id = p_item
-                    and x.delivery_node_id = s.id and x.archived_at is null)
-   order by core.node_name(s.id) limit 1;
+  v_id := inv.source_for(p_to, p_item);
   if v_id is null then
     perform inv.fail('NO_STORE_KEEPS_IT', 'no other store here keeps it: buy it');
   end if;
@@ -254,21 +275,19 @@ begin
     )
     select i.id, i.name, i.base_uom, coalesce(s.on_hand, 0), coalesce(s.avg_cost, 0),
            inv.item_group(i.id, p_to), coalesce(t.par_level, 0), src.id,
-           case when src.id is not null then inv.short_name(src.id) end,
+           -- the outlet's own stores by their short names ("Bar"), a central kitchen in full
+           case when src.id is null then null
+                when (select parent_id from core.hierarchy_node where id = src.id)
+                     is not distinct from (select parent_id from core.hierarchy_node where id = p_to)
+                then inv.short_name(src.id)
+                else core.node_name(src.id) end,
            coalesce(ss.on_hand, 0)
       from wanted w
       join inv.item i on i.id = w.item_id and i.archived_at is null
       left join inv.item_node t on t.item_id = i.id and t.delivery_node_id = p_to
                                and t.archived_at is null
       left join inv.stock_level s on s.item_id = i.id and s.delivery_node_id = p_to
-      left join lateral (
-        select coalesce(v_main,
-                        (select o.id from inv.transfer_sources(p_to) o
-                          where o.kind = 'store' and o.id <> p_to
-                            and exists (select 1 from inv.item_node x
-                                         where x.item_id = i.id and x.delivery_node_id = o.id
-                                           and x.archived_at is null)
-                          order by core.node_name(o.id) limit 1)) as id) src on true
+      left join lateral (select inv.source_for(p_to, i.id) as id) src on true
       left join inv.stock_level ss on ss.item_id = i.id and ss.delivery_node_id = src.id
      order by inv.own_group(inv.item_group(i.id, p_to), p_to) desc, i.name;
 end $$;
@@ -1160,6 +1179,7 @@ revoke execute on function inv.receive_request_at(uuid, jsonb, timestamptz) from
 revoke execute on function inv.receive_request(uuid, jsonb) from public;
 grant execute on function inv.receive_request(uuid, jsonb) to app_rw;
 revoke execute on function inv.short_name(uuid), inv.transfer_items_text(uuid, boolean),
+  inv.source_for(uuid, uuid),
   inv.stock_rule(uuid, text), inv.transfer_needs_gm(uuid, uuid),
   inv.po_payload(uuid, jsonb),
   inv.people_words(uuid[]), inv.step_people(uuid, text), inv.root_transfer(uuid),
@@ -1258,6 +1278,7 @@ drop function inv.give_send(uuid, uuid);
 drop function inv.require_sender(uuid);
 drop function inv.ask_for_stock(uuid, jsonb, text, text);
 drop function inv.stock_source(uuid, uuid);
+drop function inv.source_for(uuid, uuid);
 drop function inv.askers(uuid);
 drop function inv.tell(uuid, uuid[], text, text, text);
 drop function inv.root_transfer(uuid);

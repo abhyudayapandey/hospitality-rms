@@ -137,9 +137,10 @@ describe('how a regular job repeats (ADR 116)', () => {
       await c.query(`select * from ops.compliance_tick()`);
       const reminded = async (id: string) =>
         (
-          await c.query(`select 1 from ops.task where compliance_item_id = $1 and status = 'open'`, [
-            id,
-          ])
+          await c.query(
+            `select 1 from ops.task where compliance_item_id = $1 and status = 'open'`,
+            [id],
+          )
         ).rowCount;
       expect(await reminded(weeklySoon)).toBe(1);
       expect(await reminded(weeklyLater)).toBe(0);

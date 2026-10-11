@@ -306,14 +306,23 @@ describe('with a Main Store, a department asks it (ADR 115)', () => {
       );
       expect(r.ids).toHaveLength(1);
       expect((await transferOf(c, r.ids[0]!)).from_code).toBe(MAIN);
-      // the form's grouping says the same
-      const src = await rows<{ source_name: string }>(
+      // the form's grouping says the same; what the Main Store does not keep comes from the
+      // central kitchen when it does, else the Main Store buys it
+      const src = await rows<{ item_id: string; source_name: string }>(
         c,
         ASKER,
-        `select distinct source_name from inv.ask_items($1)`,
+        `select item_id::text, source_name from inv.ask_items($1) where item_id = any ($2)`,
+        [ids.node(HK), [item, towel]],
+      );
+      expect(src.map((r) => r.source_name)).toEqual(['Main Store', 'Main Store']);
+      const elsewhere = await rows<{ n: number }>(
+        c,
+        ASKER,
+        `select count(*)::int as n from inv.ask_items($1)
+          where source_name not in ('Main Store', 'Test Central Kitchen – Store')`,
         [ids.node(HK)],
       );
-      expect(src).toEqual([{ source_name: 'Main Store' }]);
+      expect(elsewhere).toEqual([{ n: 0 }]);
     });
   });
 

@@ -10,23 +10,21 @@ async function onHand(page: Page, sku: string, node: string): Promise<number> {
   return parseFloat(text!.replace(/,/g, ''));
 }
 
-test('two-leg transfer: requested, sent by the central kitchen store keeper, received short at the store', async ({
+test('two-leg transfer: asked, sent by the central kitchen store keeper, received short by whoever asked', async ({
   page,
 }) => {
   const store = await placeId(PLACE.store);
-  const ck = await placeId(PLACE.centralKitchen);
   await signInAs(page, 'Test Head Cook 3.0');
   const before = await onHand(page, 'POTATOES', store);
 
+  // nobody picks a store (ADR 115): the outlet's bar keeps no potatoes, the central kitchen does
   await page.goto(`/stock/transfers/new?node=${store}`);
-  const from = page.getByRole('combobox', { name: 'From' });
-  // the outlet's other store comes first, then the central kitchen
-  await expect(from).toHaveValue(await placeId('TEST-BAR-3.0-BAR-STORE'));
-  // the list is what the chosen store keeps (ADR 083): the bar keeps no potatoes
-  await expect(page.getByRole('textbox', { name: 'Request Test Potatoes' })).toHaveCount(0);
-  await from.selectOption(ck);
-  await page.getByRole('textbox', { name: 'Request Test Potatoes' }).fill('4');
-  await page.getByRole('button', { name: 'Request 1 item' }).click();
+  await expect(page.getByRole('combobox', { name: 'From' })).toHaveCount(0);
+  await expect(page.getByTestId('from-Test Central Kitchen – Store')).toContainText(
+    'Test Potatoes',
+  );
+  await page.getByRole('textbox', { name: 'Ask for Test Potatoes' }).fill('4');
+  await page.getByRole('button', { name: 'Ask for 1 item' }).click();
   await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
   await expect(page.getByTestId('transfer-progress')).toHaveText('waiting to be sent');
@@ -45,18 +43,19 @@ test('two-leg transfer: requested, sent by the central kitchen store keeper, rec
   await expect(page.getByRole('status')).toHaveText('Sent. It is now in transit.');
   await expect(page.getByTestId('transfer-progress')).toHaveText('in transit');
 
-  // the head cook runs the kitchen store but asked for it (rule 7): the outlet manager receives
-  await signInAs(page, 'Test Bar Manager 3.0');
-  await page.goto('/inbox');
-  await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
+  // whoever asked receives it (ADR 115): it is a task for them, not a step for someone else
+  await signInAs(page, 'Test Head Cook 3.0');
+  await page.goto(`/stock/transfers/${id}?node=${store}`);
+  await expect(page.getByTestId('request-now')).toContainText('On the way');
   await expect(page.getByRole('button', { name: 'Reject' })).toHaveCount(0); // in transit
   await page.getByRole('textbox', { name: 'Received Test Potatoes' }).fill('3.5');
   await page.getByRole('button', { name: 'Confirm receipt' }).click();
   await expect(page.getByRole('status')).toHaveText('Received.');
 
-  await runExecutor(); // inv.transfer.post completes it
+  await runExecutor();
   await page.reload();
   await expect(page.getByTestId('transfer-progress')).toHaveText('received');
+  await expect(page.getByTestId('request-story')).toContainText('Received by Test Head Cook 3.0');
   // +4 in, -0.5 transit loss
   expect(await onHand(page, 'POTATOES', store)).toBeCloseTo(before + 3.5, 2);
 });
@@ -65,24 +64,18 @@ test('store to store in one outlet: the main store keeper sends, the kitchen’s
   page,
 }) => {
   const kitchen = await placeId('TEST-HOTEL-1.0-KITCHEN-STORE');
-  const main = await placeId('TEST-HOTEL-1.0-MAIN-STORE');
   await signInAs(page, 'Test Sous Chef 1.0');
   const before = await onHand(page, 'BASMATI-RICE', kitchen);
 
   // a store asks for stock from its transfers screen (audit #5: it used to want an outlet)
   await page.goto(`/stock/transfers?node=${kitchen}`);
-  await page.getByRole('link', { name: 'Request stock' }).click();
+  await page.getByRole('link', { name: 'Ask for stock' }).click();
   await page.waitForURL(/\/stock\/transfers\/new/);
-  await expect(page.getByRole('button', { name: 'Add quantities to request' })).toBeDisabled();
-  const from = page.getByRole('combobox', { name: 'From' });
-  // only this hotel's stores and the central kitchen: never another outlet
-  const offered = await from
-    .locator('option')
-    .evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value));
-  expect(offered).not.toContain(await placeId('TEST-HOTEL-1.1-MAIN-STORE'));
-  await from.selectOption(main);
-  await page.getByRole('textbox', { name: 'Request Test Basmati Rice' }).fill('2');
-  await page.getByRole('button', { name: 'Request 1 item' }).click();
+  await expect(page.getByRole('button', { name: 'Add how many you need' })).toBeDisabled();
+  // the hotel has a Main Store: everything it keeps is asked of it (ADR 115)
+  await expect(page.getByTestId('from-Main Store')).toContainText('Test Basmati Rice');
+  await page.getByRole('textbox', { name: 'Ask for Test Basmati Rice' }).fill('2');
+  await page.getByRole('button', { name: 'Ask for 1 item' }).click();
   await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
 

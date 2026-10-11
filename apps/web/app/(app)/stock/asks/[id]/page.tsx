@@ -22,7 +22,13 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
           note: string | null;
           status: string;
           may_act: boolean;
-          lines: { item_id: string; name: string; base_uom: string; qty: number; at_store: number }[];
+          lines: {
+            item_id: string;
+            name: string;
+            base_uom: string;
+            qty: number;
+            at_store: number;
+          }[];
         }>`select store, asked_by, note, status, may_act, lines
              from inv.staff_ask_detail(${id}::uuid)`.execute(tx)
       ).rows[0];

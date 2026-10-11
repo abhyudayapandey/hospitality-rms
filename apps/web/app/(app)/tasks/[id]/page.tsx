@@ -51,18 +51,20 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   let photos: (TaskPhoto & { url: string | null })[];
   let minibar: MinibarTaskCheck | null;
   let send: SendLine[];
-  let askPage: string | null = null;
+  let askPage: string | null;
   try {
-    ({ task, people, sent, about, recipe, photos, minibar, send } = await withUser(
+    ({ task, people, sent, about, recipe, photos, minibar, send, askPage } = await withUser(
       user.id,
       async (tx) => {
         const t = await taskDetail(tx, id);
         // what a frontline person asked for (ADR 115): its own page, where the head acts on it
-        if (t.kind === 'ask') {
-          const a = await sql<{ ask: string | null }>`
-            select staff_ask_id::text as ask from ops.task where id = ${id}::uuid`.execute(tx);
-          askPage = a.rows[0]?.ask ?? null;
-        }
+        const askPage =
+          t.kind === 'ask'
+            ? ((
+                await sql<{ ask: string | null }>`
+                  select staff_ask_id::text as ask from ops.task where id = ${id}::uuid`.execute(tx)
+              ).rows[0]?.ask ?? null)
+            : null;
         // the task's own photos, kept 30 days (ADR 079)
         const ph = await taskPhotos(tx, id);
         const urls = await itemPhotoUrls(
@@ -112,6 +114,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
           people: p,
           sent: lines,
           send: toSend,
+          askPage,
           about: c,
           recipe: r,
           minibar: m,
