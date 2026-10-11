@@ -125,10 +125,12 @@ test('report a problem (commis)', async ({ page }) => {
       .getByRole('group', { name: 'What is wrong' })
       .getByRole('button', { name: 'AC or fridge' }),
   );
-  // where it is, as a picture (ADR 125)
-  await j.tap(page.getByRole('group', { name: 'Where' }).getByRole('button', { name: 'Kitchen' }));
+  // where it is starts at their own kitchen (ADR 125)
+  await expect(
+    page.getByRole('group', { name: 'Where' }).getByRole('button', { name: 'Kitchen' }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await j.last(page.getByRole('button', { name: 'Send to maintenance' }));
-  j.done('Report a problem', 'Commis', { there: 2, form: 3 });
+  j.done('Report a problem', 'Commis', { there: 2, form: 2 });
 });
 
 test('record wastage (store keeper)', async ({ page }) => {

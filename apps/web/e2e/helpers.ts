@@ -365,9 +365,12 @@ export async function meTile(page: Page, key: string) {
  * needs one, and there is no gallery to pick from.
  */
 export async function takePhoto(scope: Locator) {
-  await scope.getByTestId('photo-camera').click();
   const shoot = scope.getByTestId('live-camera').getByRole('button', { name: 'Take photo' });
-  await expect(shoot).toBeEnabled();
+  // a screen still refreshing after the last step can drop the first tap: tap until it opens
+  await expect(async () => {
+    if (!(await shoot.isVisible())) await scope.getByTestId('photo-camera').click();
+    await expect(shoot).toBeEnabled({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
   await shoot.click();
   await expect(scope.getByRole('button', { name: 'Take it again' })).toBeVisible();
 }

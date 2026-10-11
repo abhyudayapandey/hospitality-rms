@@ -1,4 +1,4 @@
-import { maintenanceWhereWord } from '@outlet-ops/domain';
+import { maintenanceWhereWord, whereForPlace } from '@outlet-ops/domain';
 import { BackLink } from '@/components/back-link';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
@@ -36,6 +36,11 @@ export default async function ReportProblemPage({ searchParams }: { searchParams
           place={place.id}
           wheres={roomList.length > 0 ? wheres : wheres.filter((w) => w.code !== 'room')}
           rooms={roomList.map((r) => ({ room_id: r.room_id, number: r.number, floor: r.floor }))}
+          start={
+            wheres.some((w) => w.code === whereForPlace(place.code))
+              ? whereForPlace(place.code)
+              : null
+          }
           photos={photosEnabled()}
         />
       ) : (

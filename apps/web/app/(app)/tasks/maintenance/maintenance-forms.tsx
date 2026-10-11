@@ -54,6 +54,7 @@ export function ReportForm({
   wheres,
   rooms,
   photos,
+  start = null,
 }: {
   /** where they work: the request is raised there */
   place: string;
@@ -62,13 +63,15 @@ export function ReportForm({
   /** the outlet's rooms, when it has them */
   rooms: { room_id: string; number: string; floor: string | null }[];
   photos: boolean;
+  /** where the person works, chosen to start with (their department's own location) */
+  start?: string | null;
 }) {
   const router = useRouter();
   const hydrated = useHydrated();
-  const [pending, start] = useTransition();
+  const [pending, begin] = useTransition();
   const [what, setWhat] = useState<string | null>(null);
   const [other, setOther] = useState('');
-  const [where, setWhere] = useState<string | null>(null);
+  const [where, setWhere] = useState<string | null>(start);
   const [room, setRoom] = useState<string | null>(null);
   const inRoom = where === 'room';
   const [description, setDescription] = useState('');
@@ -78,7 +81,7 @@ export function ReportForm({
   const title =
     what === 'Other' ? other.trim() : what ? `${what}${room ? ` in room ${room}` : ''}` : '';
   const submit = () =>
-    start(async () => {
+    begin(async () => {
       setError(null);
       if (!title) return setError('Say what is wrong.');
       if (!where) return setError('Say where it is.');

@@ -33,3 +33,27 @@ export const MAINTENANCE_WHERE_CODES: readonly string[] = MAINTENANCE_WHERE.map(
 export function maintenanceWhereWord(code: string | null | undefined): string | null {
   return MAINTENANCE_WHERE.find((w) => w.code === code)?.word ?? null;
 }
+
+/** Departments whose place is not one of their own: the front office works in the lobby. */
+const DEPARTMENT_WHERE: Readonly<Record<string, string>> = {
+  FRONT_OFFICE: 'common_areas',
+  SECURITY: 'common_areas',
+  ENGINEERING: 'staff_area',
+  STORES: 'store',
+  PURCHASE: 'store',
+};
+
+/**
+ * Where a person who works at this place most likely points (ADR 125): its department's own
+ * location (a kitchen's people, the kitchen). A place code ends in its department's catalogue
+ * code (TEST-HOTEL-1.0-KITCHEN, PASSPORT-ASSAGAO-FRONT-OFFICE).
+ */
+export function whereForPlace(placeCode: string | null | undefined): string | null {
+  if (!placeCode) return null;
+  const codes = [...MAINTENANCE_WHERE.map((w) => w.department), ...Object.keys(DEPARTMENT_WHERE)]
+    .filter((d): d is string => Boolean(d))
+    .sort((a, b) => b.length - a.length);
+  const dept = codes.find((d) => placeCode.toUpperCase().endsWith(`-${d.replaceAll('_', '-')}`));
+  if (!dept) return null;
+  return DEPARTMENT_WHERE[dept] ?? MAINTENANCE_WHERE.find((w) => w.department === dept)!.code;
+}

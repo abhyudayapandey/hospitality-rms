@@ -17,14 +17,13 @@ async function recipeId(sku: string): Promise<string> {
   return rows[0]!.id;
 }
 
-test('a commis reads kitchen recipes and procedures, with no costs and no bar recipes', async ({
+test('a sous chef reads kitchen recipes and procedures, and no bar recipes; a commis none', async ({
   page,
 }) => {
-  await signInAs(page, 'Test Commis 1.0');
-  await page.goto('/menu');
+  // recipes are for the kitchen's managers (ADR 123)
+  await signInAs(page, 'Test Sous Chef 1.0');
+  await page.goto('/menu/recipes');
   const main = page.locator('main');
-  await expect(main.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible();
-  await expect(main.getByRole('link', { name: 'Menu costs' })).toHaveCount(0);
   await expect(page.locator('[data-code="GINGER-GARLIC-PASTE"]')).toBeVisible();
   await expect(page.locator('[data-code="NEGRONI-BATCH"]')).toHaveCount(0);
 
@@ -35,12 +34,14 @@ test('a commis reads kitchen recipes and procedures, with no costs and no bar re
   await expect(page.getByTestId('step')).toHaveCount(0);
   await page.getByTestId('tab-recipe').click();
   await expect(page.getByTestId('step').first()).toBeVisible();
-  await expect(page.getByTestId('line-cost')).toHaveCount(0);
-  await expect(main).not.toContainText('₹');
-  await expect(main.getByRole('link', { name: 'Change recipe' })).toHaveCount(0);
 
   // a batched cocktail's page is refused, not just hidden from the list
   await page.goto(`/menu/recipes/${await recipeId('NEGRONI-BATCH')}`);
+  await expect(main).toContainText("You can't open this recipe.");
+
+  // a commis sees a recipe only on the prep task it is given
+  await signInAs(page, 'Test Commis 1.0');
+  await page.goto(`/menu/recipes/${await recipeId('GINGER-GARLIC-PASTE')}`);
   await expect(main).toContainText("You can't open this recipe.");
 });
 

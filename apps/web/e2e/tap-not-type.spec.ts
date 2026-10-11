@@ -1,6 +1,6 @@
 import { addDays, localToday } from '../lib/dates';
 import { expect, test } from '@playwright/test';
-import { asMigrator, signInAs } from './helpers';
+import { asMigrator, signInAs, takePhoto } from './helpers';
 
 // Fewer words, tap instead of type (ADR 099), at 380 px: a reading shows its safe range first
 // and coloured numbers to tap; a task's who-and-when sits under History; one's own To do list
@@ -45,6 +45,8 @@ test('a reading: the safe range first, a number tapped, and the task done', asyn
     // − and + move it by one
     await main(page).getByRole('button', { name: 'More', exact: true }).click();
     await expect(main(page).getByRole('textbox', { name: 'Walk-in chiller' })).toHaveValue('4');
+    // a photo of every step (ADR 127)
+    await takePhoto(main(page));
     await main(page).getByRole('button', { name: 'Save' }).click();
     await expect(main(page).getByText('Acceptable: 0 to 5 °C')).toBeVisible();
   } finally {
