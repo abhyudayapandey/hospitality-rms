@@ -10,7 +10,7 @@ import { loadShell } from '@/lib/shell';
 export default async function ModulesPage() {
   const shell = await loadShell();
   if (!shell.domains.has('USER_ACCESS') && !shell.domains.has('COMPANY_SETTINGS')) {
-    return <p className="text-slate-700">You don&apos;t have access to administration.</p>;
+    return <p className="text-slate-700">You can&apos;t open Admin.</p>;
   }
   const user = await requireUser();
   const plan = new Set(

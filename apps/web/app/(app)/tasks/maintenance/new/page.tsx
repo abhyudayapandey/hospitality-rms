@@ -1,24 +1,32 @@
+import { maintenanceWhereWord, whereForPlace } from '@outlet-ops/domain';
 import { BackLink } from '@/components/back-link';
 import { requireUser } from '@/lib/auth/server';
-import { withUser } from '@/lib/db';
+import { sql, withUser } from '@/lib/db';
 import { photosEnabled } from '@/lib/photos';
 import { placesFor } from '@/lib/places';
 import type { SearchParams } from '@/lib/params';
 import { roomOutlets, rooms } from '@/lib/rooms';
 import { ReportForm } from '../maintenance-forms';
 
-// Report a problem (ADR 052, 113): one form, no tabs. Where they work is chosen; any other place
-// they may report at, and a hotel's rooms, are a tap away.
+// Report a problem (ADR 052, 113, 125): one form, no tabs. Raised where they work; where the
+// problem is, is a location at their outlet (a room by its number, the parking, the kitchen).
 export default async function ReportProblemPage({ searchParams }: { searchParams: SearchParams }) {
-  const { places, place, shell } = await placesFor('report', searchParams);
+  const { place, shell } = await placesFor('report', searchParams);
   const user = await requireUser();
-  const roomList =
-    place && shell.domains.has('ROOMS')
-      ? await withUser(user.id, async (tx) => {
-          const o = (await roomOutlets(tx))[0];
-          return o ? rooms(tx, o.outlet_id) : [];
-        })
-      : [];
+  const { roomList, wheres } = place
+    ? await withUser(user.id, async (tx) => {
+        const o = shell.domains.has('ROOMS') ? (await roomOutlets(tx))[0] : undefined;
+        const w = await sql<{ code: string }>`
+          select w as code from ops.maintenance_wheres(${place.id}::uuid) w`.execute(tx);
+        return {
+          roomList: o ? await rooms(tx, o.outlet_id) : [],
+          wheres: w.rows.map((r) => ({
+            code: r.code,
+            word: maintenanceWhereWord(r.code) ?? r.code,
+          })),
+        };
+      })
+    : { roomList: [], wheres: [] };
   return (
     <div className="space-y-4">
       <BackLink />
@@ -26,8 +34,13 @@ export default async function ReportProblemPage({ searchParams }: { searchParams
       {place ? (
         <ReportForm
           place={place.id}
-          places={places.map((p) => ({ id: p.id, name: placeShort(p.name) }))}
+          wheres={roomList.length > 0 ? wheres : wheres.filter((w) => w.code !== 'room')}
           rooms={roomList.map((r) => ({ room_id: r.room_id, number: r.number, floor: r.floor }))}
+          start={
+            wheres.some((w) => w.code === whereForPlace(place.code))
+              ? whereForPlace(place.code)
+              : null
+          }
           photos={photosEnabled()}
         />
       ) : (
@@ -37,10 +50,4 @@ export default async function ReportProblemPage({ searchParams }: { searchParams
       )}
     </div>
   );
-}
-
-/** "Test Bar 3.0 – Kitchen" -> "Kitchen": the outlet is already known. */
-function placeShort(name: string): string {
-  const i = name.lastIndexOf(' – ');
-  return i >= 0 ? name.slice(i + 3) : name;
 }

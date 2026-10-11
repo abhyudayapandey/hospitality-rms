@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { asMigrator, placeId, signInAs } from './helpers';
 
-// Vendor bills (BIL-1 to BIL-3, ADR 050) through the real screens. There is no photo bucket in
-// this environment, so a file cannot be uploaded here: the form says so, and the bill the GM
-// reads is put in place as the migrator. Who may add and see bills, the files and the order's
+// Vendor bills (BIL-1 to BIL-3, ADR 050) through the real screens. Files are kept on this
+// machine here (PHOTO_DIR, ADR 127), not in a bucket; the bill the GM reads is put in place as
+// the migrator. Who may add and see bills, the files and the order's
 // store are in vendor-bills.db.test.ts.
 
-test('the store keeper opens the service bill form; without storage it says so instead of saving', async ({
+test('the store keeper opens the service bill form; a bill needs its photo or PDF', async ({
   page,
 }) => {
   const main = await placeId('TEST-HOTEL-1.0-MAIN-STORE');
@@ -28,7 +28,8 @@ test('the store keeper opens the service bill form; without storage it says so i
     mimeType: 'application/pdf',
     buffer: Buffer.from('%PDF-1.4\n%%EOF\n'),
   });
-  await expect(page.getByTestId('bill-form').getByRole('alert')).toHaveText('Uploads are off.');
+  await expect(page.getByTestId('bill-files')).toContainText('bill.pdf');
+  await expect(page.getByTestId('bill-form').getByRole('alert')).toHaveCount(0);
 });
 
 test('the GM sees every bill across the stores, opens one and archives it with a reason', async ({

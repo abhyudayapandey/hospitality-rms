@@ -22,6 +22,9 @@ export interface LicenceRow {
   files: string[];
   renewed_from: string | null;
   open_task: string | null;
+  /** where it is and what it is (ADR 127): a fire extinguisher's place and type */
+  location: string | null;
+  equipment_type: string | null;
 }
 
 export interface JobRow {
@@ -77,7 +80,7 @@ export async function licences(tx: Tx, node: string | null): Promise<LicenceRow[
     await sql<LicenceRow>`
       select id, org_node_id, place_name, kind, name, number, authority,
              issued_on::text, expires_on::text, days_left, renewal_role, renewal_role_name,
-             files, renewed_from::text, open_task
+             files, renewed_from::text, open_task, location, equipment_type
         from ops.licences(${node}::uuid)`.execute(tx)
   ).rows;
 }

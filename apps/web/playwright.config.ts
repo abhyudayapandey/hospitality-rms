@@ -1,3 +1,4 @@
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
@@ -14,6 +15,7 @@ try {
 }
 const prodPort = Number(process.env.E2E_PORT ?? 3100);
 const devPort = Number(process.env.E2E_DEV_PORT ?? 3101);
+const photoDir = process.env.PHOTO_DIR || join(tmpdir(), 'outlet-ops-e2e-photos');
 const executablePath = process.env.PW_CHROMIUM_PATH; // local override for a preinstalled browser
 // clock-in takes the selfie from the live camera (ADR 076): a fake one, allowed without asking
 const cameraArgs = ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'];
@@ -55,6 +57,8 @@ export default defineConfig({
         PORT: String(prodPort),
         BIND_HOST: '127.0.0.1',
         APP_URL: `http://127.0.0.1:${prodPort}`,
+        // no bucket here: every step's photo is kept on this machine (ADR 127)
+        PHOTO_DIR: photoDir,
       },
     },
     {
@@ -62,7 +66,7 @@ export default defineConfig({
       url: `http://localhost:${devPort}/login`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
-      env: { DEV_AUTH_STUB: 'true', APP_URL: `http://localhost:${devPort}` },
+      env: { DEV_AUTH_STUB: 'true', APP_URL: `http://localhost:${devPort}`, PHOTO_DIR: photoDir },
     },
   ],
 });

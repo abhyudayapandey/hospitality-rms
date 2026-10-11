@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { asMigrator, signInAs } from './helpers';
+import { asMigrator, signInAs, takePhoto } from './helpers';
 
 // A round for each room, and each room's status (ADR 088), at 380 px on Test Hotel 1.0. The
 // front desk marks a room arriving on the Rooms screen; the room attendant's room check is a
@@ -68,18 +68,17 @@ test('the front desk marks a room arriving; the attendant checks it on the grid'
     await row.getByRole('button', { name: 'Dirty' }).click();
     await expect(row.locator('summary').first()).toContainText('Dirty');
     await expect(row.locator('summary').first()).not.toContainText('VD');
-    await row
-      .getByTestId('step')
-      .filter({ hasText: 'Bed made' })
-      .getByRole('button', { name: 'Done' })
-      .click();
-    await row.getByLabel('101: Bath towels').fill('2');
-    await row.getByRole('button', { name: 'Save' }).click();
-    await row
-      .getByTestId('step')
-      .filter({ hasText: 'Toiletries topped up' })
-      .getByRole('button', { name: 'Done' })
-      .click();
+    // a photo of every step of every room (ADR 127)
+    const bed = row.getByTestId('step').filter({ hasText: 'Bed made' });
+    await takePhoto(bed);
+    await bed.getByRole('button', { name: 'Done' }).click();
+    const towels = row.getByTestId('step').filter({ hasText: 'Bath towels' });
+    await towels.getByLabel('101: Bath towels').fill('2');
+    await takePhoto(towels);
+    await towels.getByRole('button', { name: 'Save' }).click();
+    const toiletries = row.getByTestId('step').filter({ hasText: 'Toiletries topped up' });
+    await takePhoto(toiletries);
+    await toiletries.getByRole('button', { name: 'Done' }).click();
     await expect(row.locator('summary').first()).toContainText('✓ done');
     // the next room is open now
     await expect(main(page).locator('[data-testid="grid-row"][data-row="102"]')).toHaveAttribute(

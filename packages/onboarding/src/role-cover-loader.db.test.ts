@@ -47,6 +47,7 @@ describe('who covers it (file 37)', () => {
       expect(covered(first.access)).toEqual([
         'test.commis.3.0 BRIEFING_WRITER@TEST-BAR-3.0-KITCHEN covers Executive Chef',
         'test.commis.3.0 DEPARTMENT_HEAD@TEST-BAR-3.0-KITCHEN covers Executive Chef',
+        'test.commis.3.0 RECIPE_READER@TEST-BAR-3.0-KITCHEN covers Executive Chef',
         'test.commis.3.0 STORE_KEEPER@TEST-BAR-3.0-KITCHEN-STORE covers Executive Chef',
         'test.front-desk-executive.2.0 STORE_KEEPER@TEST-GUEST-HOUSE-2.0-SUPPLY covers Store Keeper',
       ]);
@@ -83,6 +84,7 @@ describe('who covers it (file 37)', () => {
       expect(covered(without.access)).toEqual([
         'test.commis.3.0 BRIEFING_WRITER@TEST-BAR-3.0-KITCHEN covers Executive Chef',
         'test.commis.3.0 DEPARTMENT_HEAD@TEST-BAR-3.0-KITCHEN covers Executive Chef',
+        'test.commis.3.0 RECIPE_READER@TEST-BAR-3.0-KITCHEN covers Executive Chef',
         'test.commis.3.0 STORE_KEEPER@TEST-BAR-3.0-KITCHEN-STORE covers Executive Chef',
       ]);
     });

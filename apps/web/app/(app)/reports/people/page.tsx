@@ -177,9 +177,9 @@ export default async function PeopleReport({ searchParams }: { searchParams: Sea
 
       <p className="text-xs text-slate-500">
         {formatDay(range.from)} to {formatDay(range.to)}, at most 93 days. People are counted at
-        their home place. Overtime is hours over the weekly limit. Leave left is this year&apos;s;
-        its value is a day&apos;s pay (8 hours for hourly staff) and is shown only for leave held by
-        3 or more paid people.
+        their home place. Overtime is hours over the weekly limit. Leave left is this year&apos;s.
+        Its value is a day&apos;s pay (8 hours for hourly staff). It shows only where 3 or more paid
+        people hold that leave.
       </p>
     </div>
   );

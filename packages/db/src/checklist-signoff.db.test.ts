@@ -8,6 +8,7 @@ import {
   loadSeedIds,
   resetRole,
   type SeedIds,
+  stepPhoto,
 } from '../test/helpers';
 
 // Checklists, part 1 (ADR 087): a second signature, monthly and nth-weekday schedules, and
@@ -93,7 +94,7 @@ async function finish(c: PoolClient, who: string, task: string) {
     [task],
   );
   for (const s of steps.rows) {
-    await run(c, who, `select ops.complete_step($1, $2, $3::jsonb)`, [
+    await run(c, who, `select ops.complete_step($1, $2, ${stepPhoto()} || $3::jsonb)`, [
       task,
       s.id,
       JSON.stringify(s.kind === 'number' ? { number: 3 } : { done: true }),

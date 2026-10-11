@@ -57,8 +57,8 @@ export function LabourByDepartment({ rows }: { rows: LabourRow[] }) {
         </li>
       </ul>
       <p className="text-xs text-slate-500">
-        A department with fewer than 3 paid people that day is counted in Other departments, so no
-        one&apos;s pay can be worked out.
+        A department with fewer than 3 paid people that day goes under Other departments. That way
+        no one&apos;s pay can be worked out.
       </p>
     </section>
   );

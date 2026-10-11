@@ -134,9 +134,9 @@ export default async function StockPosition({ searchParams }: { searchParams: Se
       </details>
       <CsvLink report="stock_items" node={place.id} label="Every item as CSV" />
       <p className="text-xs text-slate-500">
-        Use is stock that left for sales, production, other use, wastage and transfers, over the
-        last 28 days (fewer while the store is new, at least 7). Opening stock doesn&apos;t count as
-        a movement.
+        Use is stock that left for sales, production, other use, wastage and transfers. It covers
+        the last 28 days (fewer while the store is new, at least 7). Opening stock doesn&apos;t
+        count as a movement.
       </p>
     </div>
   );

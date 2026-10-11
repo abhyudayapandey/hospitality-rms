@@ -320,6 +320,8 @@ export async function createPrepTasks(input: {
 
 export async function raiseMaintenance(input: {
   place: string;
+  /** where the problem is (ADR 125), a MAINTENANCE_WHERE code */
+  location: string | null;
   title: string;
   description: string;
   photoKey: string | null;
@@ -329,7 +331,8 @@ export async function raiseMaintenance(input: {
     await requireModule(tx, 'maintenance');
     const r = await sql<{ id: string }>`
       select ops.raise_maintenance(${input.place}::uuid, ${input.title}, ${input.description},
-                                   ${input.photoKey}, ${input.idempotencyKey}) as id`.execute(tx);
+                                   ${input.photoKey}, ${input.idempotencyKey},
+                                   ${input.location}::text) as id`.execute(tx);
     return { id: r.rows[0]!.id };
   });
 }

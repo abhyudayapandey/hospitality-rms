@@ -1,3 +1,4 @@
+import { maintenanceWhereWord } from '@outlet-ops/domain';
 import { BackLink } from '@/components/back-link';
 import { Icon } from '@/components/icon';
 import { requireUser } from '@/lib/auth/server';
@@ -48,7 +49,7 @@ export default async function MaintenanceRequestPage({
         {/* one line: where and from whom; who handles it and how it got there are under
             History, open for those who assign it (ADR 098) */}
         <p className="text-sm text-slate-600">
-          {r.place_name} · from {r.reported_by_name}
+          {maintenanceWhereWord(r.location) ?? r.place_name} · from {r.reported_by_name}
         </p>
         {r.description && <p className="text-sm whitespace-pre-line">{r.description}</p>}
         {r.photo_key && <p className="text-xs text-slate-500">Photo added</p>}

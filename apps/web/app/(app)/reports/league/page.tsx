@@ -154,9 +154,9 @@ export default async function LeagueReport({ searchParams }: { searchParams: Sea
       <p className="text-xs text-slate-500">
         {formatDay(range.from)} to {formatDay(range.to)}, at most 35 days. Food, drinks and wastage
         are a share of sales. People cost % and Materials % are each a share of the total cost (raw
-        materials plus people), so they add up to 100. Red is more than 2 points worse than the
-        target. They show only where you see labour cost, and not for an outlet with fewer than 3
-        paid people.
+        materials plus people). They add up to 100. Red is more than 2 points worse than the target.
+        They show only where you see labour cost, and not for an outlet with fewer than 3 paid
+        people.
       </p>
     </div>
   );

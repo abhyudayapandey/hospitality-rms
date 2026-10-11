@@ -1,6 +1,13 @@
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
+import {
+  attemptAs,
+  closePools,
+  inRolledBackTx,
+  loadSeedIds,
+  photoKey,
+  type SeedIds,
+} from '../test/helpers';
 
 // Done stays in view (ADR 075). A task that is done does not vanish: it stays on the To do
 // list of whoever did it, and of everyone its job role (or shift) was given to, under Done,
@@ -75,6 +82,10 @@ describe('a done task stays in view', () => {
       expect((await mine(c, RA_B, task))?.status).toBe('open');
       expect(await mine(c, RA_OTHER, task)).toBeUndefined();
 
+      // a task with no steps takes a photo of the job done (ADR 127)
+
+      await ok(c, RA, `select ops.add_task_photo($1, ${photoKey()})`, [task]);
+
       await ok(c, RA, `select ops.complete_task($1)`, [task]);
 
       const own = await mine(c, RA, task);
@@ -94,6 +105,8 @@ describe('a done task stays in view', () => {
   it('stays for the business day it was done and the next, then leaves the list', () =>
     inRolledBackTx(async (c) => {
       const task = await roleTask(c);
+      // a task with no steps takes a photo of the job done (ADR 127)
+      await ok(c, RA, `select ops.add_task_photo($1, ${photoKey()})`, [task]);
       await ok(c, RA, `select ops.complete_task($1)`, [task]);
       const doneOn = (days: number) =>
         c.query(
@@ -117,6 +130,8 @@ describe('a done task stays in view', () => {
     inRolledBackTx(async (c) => {
       const task = await roleTask(c);
       await ok(c, EH, `select ops.reassign_task($1, $2)`, [task, ids.user(HS)]);
+      // a task with no steps takes a photo of the job done (ADR 127)
+      await ok(c, HS, `select ops.add_task_photo($1, ${photoKey()})`, [task]);
       await ok(c, HS, `select ops.complete_task($1)`, [task]);
       const given = await ok<{
         id: string;

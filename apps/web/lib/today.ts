@@ -206,18 +206,20 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     let compliance: ComplianceInput | null = null;
     if (shell.modules.has('compliance')) {
       const keeps = shell.domains.has('COMPLIANCE');
+      // their department's licences and jobs, read only (ADR 124): the card, all clear or not
+      const sees = keeps || shell.compliance;
       const rows = (
         await sql<ComplianceRow>`
           select kind, id, task_id, place_name, name, days_left, own
             from ops.compliance_attention()`.execute(tx)
       ).rows;
-      const recorded = keeps
+      const recorded = sees
         ? (
             await sql<{ n: number }>`
               select licences + items as n from ops.compliance_counts(null)`.execute(tx)
           ).rows[0]!.n
         : 0;
-      if (keeps || rows.length > 0) compliance = { keeps, recorded, rows };
+      if (sees || rows.length > 0) compliance = { keeps, recorded, rows };
     }
 
     let attention: AttentionGroup[] | null = null;

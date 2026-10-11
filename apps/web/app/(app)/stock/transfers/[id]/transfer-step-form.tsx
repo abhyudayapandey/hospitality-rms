@@ -115,7 +115,7 @@ export function TransferStepForm({
         <p className="rounded-lg bg-violet-50 p-3 text-sm text-violet-900">
           {gm
             ? 'Every request here needs your approval before the store sends it.'
-            : 'This request is off the menu or more than usual, so it needs your approval before the store keeper issues it.'}
+            : 'This request is off the menu or more than usual. It needs your approval before the store keeper sends it.'}
         </p>
       )}
       {mode === 'receive' && !done && (

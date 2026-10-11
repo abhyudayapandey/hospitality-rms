@@ -105,8 +105,10 @@ export interface RoleDef {
 const W = 'WORKS_SHIFTS';
 const L = 'LEADS_SHIFT';
 const D = 'RUNS_DEPARTMENT';
+/** Recipes, menu prices and costs: the kitchen's and the bar's managers only (ADR 123). */
+const R = 'READS_RECIPES';
 
-export const ROLES: readonly RoleDef[] = [
+const ROLE_LIST: readonly RoleDef[] = [
   // company and area
   {
     code: 'ACCOUNT_OWNER',
@@ -207,7 +209,7 @@ export const ROLES: readonly RoleDef[] = [
     code: 'EXECUTIVE_CHEF',
     title: 'Executive Chef',
     home: 'KITCHEN',
-    duties: [D, 'KEEPS_DEPARTMENT_STORE', 'WRITES_SHIFT_BRIEFING'],
+    duties: [D, 'KEEPS_DEPARTMENT_STORE', 'WRITES_SHIFT_BRIEFING', R],
     sops: ['H'],
   },
   {
@@ -215,14 +217,14 @@ export const ROLES: readonly RoleDef[] = [
     title: 'Head Cook',
     alsoCalled: ['Head Chef'],
     home: 'KITCHEN',
-    duties: [D, 'KEEPS_DEPARTMENT_STORE', 'WRITES_SHIFT_BRIEFING'],
+    duties: [D, 'KEEPS_DEPARTMENT_STORE', 'WRITES_SHIFT_BRIEFING', R],
     sops: ['R', 'B'],
   },
   {
     code: 'EXECUTIVE_SOUS_CHEF',
     title: 'Executive Sous Chef',
     home: 'KITCHEN',
-    duties: [L, 'USES_DEPARTMENT_STORE', W],
+    duties: [L, 'USES_DEPARTMENT_STORE', W, R],
     sops: ['H'],
   },
   {
@@ -230,7 +232,7 @@ export const ROLES: readonly RoleDef[] = [
     title: 'Sous Chef',
     alsoCalled: ['Shift Lead'],
     home: 'KITCHEN',
-    duties: [L, 'USES_DEPARTMENT_STORE', W],
+    duties: [L, 'USES_DEPARTMENT_STORE', W, R],
     sops: ['R', 'C', 'H'],
   },
   {
@@ -292,7 +294,7 @@ export const ROLES: readonly RoleDef[] = [
     code: 'BAR_MANAGER',
     title: 'Bar Manager',
     home: 'BAR',
-    duties: [D, 'KEEPS_DEPARTMENT_STORE', 'WRITES_SHIFT_BRIEFING'],
+    duties: [D, 'KEEPS_DEPARTMENT_STORE', 'WRITES_SHIFT_BRIEFING', R],
     formatDuties: { bar_pub: ['RUNS_OUTLET'] },
     formatHome: { bar_pub: '(outlet)' },
     sops: ['B', 'H'],
@@ -320,7 +322,7 @@ export const ROLES: readonly RoleDef[] = [
     code: 'HEAD_BREWER',
     title: 'Head Brewer',
     home: 'BREWHOUSE',
-    duties: [D, 'KEEPS_DEPARTMENT_STORE'],
+    duties: [D, 'KEEPS_DEPARTMENT_STORE', R],
     sops: ['B'],
   },
   {
@@ -343,6 +345,9 @@ export const ROLES: readonly RoleDef[] = [
       `${D}@department:BANQUETS`,
       'PLANS_EVENTS',
       'WRITES_SHIFT_BRIEFING',
+      R,
+      `${R}@department:BAR`,
+      `${R}@department:BANQUETS`,
     ],
     sops: ['H'],
   },
@@ -351,7 +356,7 @@ export const ROLES: readonly RoleDef[] = [
     title: 'Restaurant Manager',
     alsoCalled: ['Outlet Manager'],
     home: 'RESTAURANT',
-    duties: [D, 'PLANS_EVENTS', 'WRITES_SHIFT_BRIEFING'],
+    duties: [D, 'PLANS_EVENTS', 'WRITES_SHIFT_BRIEFING', R],
     sops: ['H'],
   },
   {
@@ -600,7 +605,13 @@ export const ROLES: readonly RoleDef[] = [
     duties: [L, W],
     sops: ['H'],
   },
-  { code: 'TECHNICIAN', title: 'Technician', home: 'ENGINEERING', duties: [W], sops: ['H'] },
+  {
+    code: 'TECHNICIAN',
+    title: 'Technician',
+    home: 'ENGINEERING',
+    duties: [W, 'READS_METERS'],
+    sops: ['H'],
+  },
   {
     code: 'SECURITY_SUPERVISOR',
     title: 'Security Supervisor',
@@ -794,6 +805,23 @@ export const ROLES: readonly RoleDef[] = [
     sops: ['Q'],
   },
 ];
+
+/** The departments whose people swap linen with the laundry and break crockery (ADR 124). */
+const WARE_TYPES: ReadonlySet<DepartmentType> = new Set(['kitchen', 'service', 'housekeeping']);
+
+/**
+ * Every role. Whoever works, leads or runs a kitchen, service or housekeeping department also
+ * looks after its linen and breakage (HANDLES_LINEN); engineering, the front office, security,
+ * the offices and the cash desk do not (ADR 124).
+ */
+export const ROLES: readonly RoleDef[] = ROLE_LIST.map((r) => {
+  const type = DEPARTMENTS.find((d) => d.code === r.home)?.type;
+  const works =
+    r.duties.some((d) => d === W || d === L || d === D) && !r.duties.includes('UPLOADS_POS_SALES');
+  return type && WARE_TYPES.has(type) && works
+    ? { ...r, duties: [...r.duties, 'HANDLES_LINEN'] }
+    : r;
+});
 
 export const ROLE_BY_CODE: ReadonlyMap<string, RoleDef> = new Map(ROLES.map((r) => [r.code, r]));
 

@@ -162,7 +162,9 @@ function LicenceItem({ l, all }: { l: LicenceRow; all: boolean }) {
           </span>
         </span>
         <span className="mt-1 block truncate text-sm text-slate-600">
-          {[l.number, l.expires_on && `to ${dayWords(l.expires_on)}`].filter(Boolean).join(' · ')}
+          {[l.location, l.equipment_type, l.number, l.expires_on && `to ${dayWords(l.expires_on)}`]
+            .filter(Boolean)
+            .join(' · ')}
           {` · renewed by the ${l.renewal_role_name}`}
         </span>
       </Link>

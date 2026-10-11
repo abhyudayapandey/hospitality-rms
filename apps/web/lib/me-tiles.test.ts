@@ -31,11 +31,9 @@ function inputFor(duties: readonly string[], home: string): ScreenInput {
     domains: new Set(access.keys()),
     access,
     production,
-    // a recipe to read: where things are made, or menu costs
-    menu:
-      production ||
-      access.has('MENU') ||
-      (makes && ['RECIPES', 'RECIPES_TEAM'].some((d) => access.has(d))),
+    // a recipe to read: only those who hold a recipe or menu grant (ADR 123); a cook reads
+    // the recipe of a prep task on the task
+    menu: ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM'].some((d) => access.has(d)),
     reports: navProfile(groups) === 'frontline' ? 'mine' : 'business',
     atWork: !['(company)', '(area)'].includes(home),
     swapsManagersOnly: true,
@@ -58,26 +56,24 @@ const role = (code: string) => {
 const DAY = ['shifts', 'sops', 'problem'];
 
 describe('Me tiles per person (ADR 106)', () => {
-  it("a pool attendant: his department's store, then his day; the rest under More", () => {
+  it("a pool attendant: his department's store, then his day, then the rest", () => {
     const t = tiles(['WORKS_SHIFTS', 'USES_DEPARTMENT_STORE'], 'HOUSEKEEPING');
     expect(t.mine).toEqual(['stock', ...DAY]);
-    // what every shift worker may open is still there, folded
-    expect(t.more).toEqual(
-      expect.arrayContaining(['logbook', 'registers', 'breakage', 'linen', 'events', 'count']),
-    );
+    // what every shift worker may open follows, shown too (ADR 125)
+    expect(t.more).toEqual(expect.arrayContaining(['logbook', 'registers', 'events', 'count']));
   });
 
-  it('a commis: Make, the recipes and opened packs', () => {
-    expect(role('COMMIS').mine).toEqual(['make', 'menu', 'opened', ...DAY]);
+  it('a commis: Make, opened packs, linen and breakage; no recipes (ADR 123)', () => {
+    expect(role('COMMIS').mine).toEqual(['make', 'opened', 'linen', 'breakage', ...DAY]);
   });
 
-  it('a server, a security guard: their day only', () => {
-    expect(role('SERVER').mine).toEqual(DAY);
+  it('a server: linen and breakage, then their day; a security guard: their day only', () => {
+    expect(role('SERVER').mine).toEqual(['linen', 'breakage', ...DAY]);
     expect(role('SECURITY_GUARD').mine).toEqual(DAY);
   });
 
   it('a room attendant: rooms and minibars first; a cashier: importing sales', () => {
-    expect(role('ROOM_ATTENDANT').mine).toEqual(['rooms', 'minibar', ...DAY]);
+    expect(role('ROOM_ATTENDANT').mine).toEqual(['rooms', 'minibar', 'linen', 'breakage', ...DAY]);
     expect(role('CASHIER').mine).toEqual(['posImport', ...DAY]);
   });
 

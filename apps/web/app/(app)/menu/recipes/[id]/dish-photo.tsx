@@ -44,6 +44,7 @@ export function DishPhoto({ dish, has }: { dish: string; has: boolean }) {
         onChange={setKey}
         getUploadUrl={getDishUploadUrl}
         label="Dish photo"
+        gallery
       />
       <ErrorBox message={error} />
       <button

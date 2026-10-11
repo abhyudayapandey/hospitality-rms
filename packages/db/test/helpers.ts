@@ -136,6 +136,15 @@ export async function attemptAs<T extends object = Record<string, unknown>>(
   text: string,
   params: unknown[] = [],
 ): Promise<Attempt<T>> {
+  // a task photo's key names the task's place (stepPhoto): looked up here, as the owner, since
+  // the person doing the task may not read the task table itself
+  if (text.includes('test.task_node') && typeof params[0] === 'string') {
+    const r = await c.query<{ n: string }>(
+      'select org_node_id::text as n from ops.task where id = $1',
+      [params[0]],
+    );
+    await c.query(`select set_config('test.task_node', $1, true)`, [r.rows[0]?.n ?? '']);
+  }
   await actAs(c, 'app_rw', userId);
   await c.query('savepoint attempt');
   try {
@@ -264,3 +273,14 @@ export async function newPlatformAdmin(c: pg.PoolClient, sub = 'platform-sub-1')
   await c.query(`select set_config('app.platform_admin_id', '', true)`);
   return r.rows[0]!.id;
 }
+
+/**
+ * A photo for a task step or a task (ADR 127), in SQL: a key the database takes for the task
+ * passed as $1 (the app uploads the picture; the tests only need its key; attemptAs looks up
+ * the task's place). Append it to a step's value:
+ * `ops.complete_step($1, $2, $3::jsonb || ${stepPhoto()})`.
+ */
+export const photoKey = () =>
+  `format('tasks/routine/%s/%s/%s.jpg', core.my_tenant(), current_setting('test.task_node'),
+          gen_random_uuid())`;
+export const stepPhoto = () => `jsonb_build_object('photo_key', ${photoKey()})`;

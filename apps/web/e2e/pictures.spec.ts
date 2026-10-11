@@ -86,7 +86,7 @@ test('the prep list gives each name its own line, with its picture', async ({ pa
 test("a recipe says how many portions a batch makes, and shows each ingredient's picture", async ({
   page,
 }) => {
-  await signInAs(page, 'Test Commis 1.0');
+  await signInAs(page, 'Test Sous Chef 1.0');
   await page.goto('/menu/recipes');
   await page
     .getByRole('link', { name: /Mint Chutney/ })

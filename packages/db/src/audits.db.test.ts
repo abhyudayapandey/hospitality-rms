@@ -8,6 +8,7 @@ import {
   loadSeedIds,
   resetRole,
   type SeedIds,
+  stepPhoto,
 } from '../test/helpers';
 
 // Audits & taste panels (ADR 095): Test Company's Hotel 1.0 has a weekly service audit (yes, no
@@ -60,16 +61,17 @@ describe('audits', () => {
     await inRolledBackTx(async (c) => {
       const { task, steps } = await nextRound(c, 'HOTEL-1.0-TASTE-PANEL');
       for (const [i, n] of [4, 5, 3].entries()) {
-        await run(c, 'test.executive-chef.1.0', `select ops.complete_step($1, $2, $3::jsonb)`, [
-          task,
-          steps[i]!.id,
-          JSON.stringify({ number: n }),
-        ]);
+        await run(
+          c,
+          'test.executive-chef.1.0',
+          `select ops.complete_step($1, $2, ${stepPhoto()} || $3::jsonb)`,
+          [task, steps[i]!.id, JSON.stringify({ number: n })],
+        );
       }
       const bad = await attemptAs(
         c,
         ids.user('test.executive-chef.1.0'),
-        `select ops.complete_step($1, $2, $3::jsonb)`,
+        `select ops.complete_step($1, $2, ${stepPhoto()} || $3::jsonb)`,
         [task, steps[0]!.id, JSON.stringify({ number: 6 })],
       );
       expect(bad.error).toMatch(/INVALID_VALUE/);
@@ -88,11 +90,12 @@ describe('audits', () => {
     await inRolledBackTx(async (c) => {
       const { task, steps } = await nextRound(c, 'HOTEL-1.0-SERVICE-AUDIT');
       for (const [i, a] of ['yes', 'yes', 'no', 'na'].entries()) {
-        await run(c, 'test.restaurant-manager.1.0', `select ops.complete_step($1, $2, $3::jsonb)`, [
-          task,
-          steps[i]!.id,
-          JSON.stringify({ answer: a }),
-        ]);
+        await run(
+          c,
+          'test.restaurant-manager.1.0',
+          `select ops.complete_step($1, $2, ${stepPhoto()} || $3::jsonb)`,
+          [task, steps[i]!.id, JSON.stringify({ answer: a })],
+        );
       }
       await run(c, 'test.restaurant-manager.1.0', `select ops.complete_task($1)`, [task]);
       const [s] = await run<{ score: string }>(

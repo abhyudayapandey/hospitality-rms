@@ -99,8 +99,8 @@ export function GroupForm({ initial }: { initial: GroupFormValue | null }) {
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">Requests and approvals like</legend>
         <p className="text-xs text-slate-500">
-          People with this group get the requests and approvals of these roles where it is given, as
-          if they held them. Nobody approves their own request.
+          People with this group get the requests and approvals of these roles where it is given. It
+          is as if they held them. Nobody approves their own request.
         </p>
         <ul className="grid grid-cols-1 gap-1">
           {CARRIABLE_ROLES.map((r) => (

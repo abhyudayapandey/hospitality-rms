@@ -90,9 +90,26 @@ export async function setDayShift(
   accept: string[] = [],
 ): Promise<ActionResult<null>> {
   return run('set_day_shift', async (tx) => {
+    // any shift type of the department (ADR 128): another role's gives them its times
     await sql`
-      select hr.set_day_shift(${worker}::uuid, ${day}::date, ${template}::uuid,
-                              ${accept}::text[])`.execute(tx);
+      select hr.set_day_shift_any(${worker}::uuid, ${day}::date, ${template}::uuid,
+                                  ${accept}::text[])`.execute(tx);
+    return null;
+  });
+}
+
+/** A custom shift (ADR 128): on a day, from a time to a time; the roster rules run on it. */
+export async function setCustomShift(
+  worker: string,
+  day: string,
+  start: string,
+  end: string,
+  accept: string[] = [],
+): Promise<ActionResult<null>> {
+  return run('set_custom_shift', async (tx) => {
+    await sql`
+      select hr.set_custom_shift(${worker}::uuid, ${day}::date, ${start}::time, ${end}::time,
+                                 ${accept}::text[])`.execute(tx);
     return null;
   });
 }

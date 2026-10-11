@@ -92,6 +92,18 @@ async function Licence({ params }: { params: Promise<{ id: string }> }) {
         </p>
       </header>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-xl bg-white p-4 text-sm ring-1 ring-slate-200">
+        {l.location && (
+          <>
+            <dt className="text-slate-500">Where</dt>
+            <dd data-testid="licence-location">{l.location}</dd>
+          </>
+        )}
+        {l.equipment_type && (
+          <>
+            <dt className="text-slate-500">Type</dt>
+            <dd>{l.equipment_type}</dd>
+          </>
+        )}
         <dt className="text-slate-500">Number</dt>
         <dd>{l.number ?? '—'}</dd>
         <dt className="text-slate-500">Issued by</dt>
@@ -155,6 +167,8 @@ async function Licence({ params }: { params: Promise<{ id: string }> }) {
                   name: l.name,
                   number: l.number ?? '',
                   authority: l.authority ?? '',
+                  location: l.location ?? '',
+                  equipment_type: l.equipment_type ?? '',
                   issued_on: l.issued_on,
                   expires_on: l.expires_on,
                   renewal_role: l.renewal_role,

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { LICENCE_KINDS } from '@outlet-ops/domain';
+import { EXTINGUISHER_TYPES, FIRE_EXTINGUISHER, LICENCE_KINDS } from '@outlet-ops/domain';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { saveLicence, type LicenceInput } from './actions';
@@ -48,6 +48,7 @@ export function LicenceForm({
   const known = LICENCE_KINDS.find((k) => k.code === kind);
   const [name, setName] = useState(existing?.name ?? known?.name ?? '');
   const [authority, setAuthority] = useState(existing?.authority ?? known?.authority ?? '');
+  const extinguisher = kind === FIRE_EXTINGUISHER;
   const [files, setFiles] = useState<DocumentFile[]>(
     (existing?.files ?? []).map((key, i) => ({ key, name: `Document ${i + 1}` })),
   );
@@ -75,6 +76,8 @@ export function LicenceForm({
               expires_on: field(f, 'expires_on') || null,
               renewal_role: field(f, 'renewal_role'),
               files: files.map((x) => x.key),
+              location: extinguisher ? field(f, 'location') : '',
+              equipment_type: extinguisher ? field(f, 'equipment_type') : '',
             },
             existing ? undefined : key,
           );
@@ -109,6 +112,8 @@ export function LicenceForm({
             if (k) {
               setName(k.name);
               setAuthority(k.authority);
+            } else if (e.target.value === FIRE_EXTINGUISHER) {
+              setName('Fire extinguisher');
             }
           }}
           className={inputClass}
@@ -118,10 +123,40 @@ export function LicenceForm({
               {k.name}
             </option>
           ))}
+          <option value={FIRE_EXTINGUISHER}>Fire extinguisher</option>
           <option value={OTHER}>Another licence</option>
         </select>
       </label>
-      {kind === OTHER && (
+      {extinguisher && (
+        <>
+          <label className="block text-sm font-medium">
+            Where it is
+            <input
+              name="location"
+              required
+              defaultValue={existing?.location ?? ''}
+              placeholder="Kitchen"
+              className={inputClass}
+            />
+          </label>
+          <label className="block text-sm font-medium">
+            Type
+            <select
+              name="equipment_type"
+              required
+              defaultValue={existing?.equipment_type ?? EXTINGUISHER_TYPES[0]}
+              className={inputClass}
+            >
+              {EXTINGUISHER_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </label>
+        </>
+      )}
+      {(kind === OTHER || extinguisher) && (
         <label className="block text-sm font-medium">
           Its name
           <input

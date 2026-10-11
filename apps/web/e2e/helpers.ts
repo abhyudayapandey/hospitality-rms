@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import pg from 'pg';
 import { HANDLERS, runOnce } from '@outlet-ops/workflow';
 import { execFileSync } from 'node:child_process';
@@ -354,16 +354,32 @@ export async function storeKeeperCover(on: boolean, task = on): Promise<void> {
   }
 }
 
-/**
- * A tile on Me (ADR 106): the person's own tiles are shown, the rest are under "More", opened
- * here when the tile is not among the first.
- */
+/** A tile on Me (ADR 106, 125): every tile is shown, none folded. */
 export async function meTile(page: Page, key: string) {
   await expect(page.getByTestId('me-tiles')).toBeVisible();
-  const tile = page.getByTestId(`me-${key}`);
-  const more = page.getByTestId('me-more');
-  if ((await tile.count()) === 0 && (await more.count()) > 0) {
-    if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
-  }
-  return tile;
+  return page.getByTestId(`me-${key}`);
+}
+
+/**
+ * Takes a step's or a task's photo with the live camera (a fake one here; ADR 127): every step
+ * needs one, and there is no gallery to pick from.
+ */
+export async function takePhoto(scope: Locator) {
+  const shoot = scope.getByTestId('live-camera').getByRole('button', { name: 'Take photo' });
+  // a screen still refreshing after the last step can drop the first tap: tap until it opens
+  await expect(async () => {
+    if (!(await shoot.isVisible())) await scope.getByTestId('photo-camera').click();
+    await expect(shoot).toBeEnabled({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
+  await shoot.click();
+  await expect(scope.getByRole('button', { name: 'Take it again' })).toBeVisible();
+}
+
+/** A task with no steps takes a photo of the job done before it is marked done (ADR 127). */
+export async function addTaskPhoto(page: Page) {
+  await page.locator('main').getByRole('button', { name: 'Add a photo' }).click();
+  const form = page.getByTestId('task-photo-form');
+  await takePhoto(form);
+  await form.getByRole('button', { name: 'Save the photo' }).click();
+  await expect(page.getByTestId('task-photos').locator('li')).not.toHaveCount(0);
 }

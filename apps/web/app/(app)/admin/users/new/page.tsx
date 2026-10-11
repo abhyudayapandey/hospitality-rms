@@ -19,7 +19,7 @@ export default async function NewUserPage() {
       ).rows,
     }));
   } catch {
-    return <p className="text-slate-700">You don&apos;t have access to administration.</p>;
+    return <p className="text-slate-700">You can&apos;t open Admin.</p>;
   }
   return (
     <div className="space-y-4">

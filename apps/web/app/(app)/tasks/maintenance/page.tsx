@@ -1,3 +1,4 @@
+import { maintenanceWhereWord } from '@outlet-ops/domain';
 import Link from 'next/link';
 import { Empty } from '@/components/messages';
 import { TasksHeader } from '@/components/tasks-header';
@@ -119,7 +120,8 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
                       <span className="min-w-0">
                         <span className="block truncate font-medium">{r.title}</span>
                         <span className="block truncate text-xs text-slate-500">
-                          {r.place_name} · reported {formatWhen(r.created_at)}
+                          {maintenanceWhereWord(r.location) ?? r.place_name} · reported{' '}
+                          {formatWhen(r.created_at)}
                         </span>
                         {r.assigned_to_name && (
                           <span

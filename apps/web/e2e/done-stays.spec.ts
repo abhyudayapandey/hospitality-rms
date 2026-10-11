@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { asMigrator, signInAs } from './helpers';
+import { addTaskPhoto, asMigrator, signInAs } from './helpers';
 
 // Done stays in view (ADR 075) at 380 px, on Test Hotel 1.0. A task for the room
 // attendants' job role: one does it and it stays on her To do list under Done, "Done by you";
@@ -28,6 +28,7 @@ async function roleTask(title: string): Promise<string> {
 
 async function markDone(page: Page, task: string) {
   await page.goto(`/tasks/${task}`);
+  await addTaskPhoto(page);
   await main(page).getByRole('button', { name: 'Mark task done' }).click();
   await expect(page.getByTestId('task-status')).toHaveText(/^Done/);
 }
@@ -54,6 +55,7 @@ test('a done task stays on the To do list, saying who did it; the other attendan
     await theirs.click();
     await expect(page.getByTestId('task-status')).toHaveText(/^Done/);
   } finally {
+    await asMigrator(`delete from ops.task_photo where task_id = $1`, [task]);
     await asMigrator(`delete from ops.task where id = $1`, [task]);
   }
 });
@@ -88,6 +90,7 @@ test('what was given to someone else stays under Given to others, marked done', 
     await expect(card).toContainText(`Done by ${HS}, today`);
     await expect(card).toContainText('Done');
   } finally {
+    await asMigrator(`delete from ops.task_photo where task_id = $1`, [task]);
     await asMigrator(`delete from ops.task where id = $1`, [task]);
   }
 });

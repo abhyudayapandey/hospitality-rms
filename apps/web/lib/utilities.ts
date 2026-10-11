@@ -77,3 +77,36 @@ export async function utilityMonths(tx: Tx, place: string): Promise<UtilityMonth
         from ops.utility_months(${place}::uuid)`.execute(tx)
   ).rows;
 }
+
+export interface UtilityReading {
+  meter_id: string;
+  read_at: string;
+  day: string;
+  /** HH:MM where the meter is */
+  read_time: string;
+  value: string;
+  /** since the reading before; null for a meter's first */
+  used: string | null;
+  /** when its round was due, HH:MM; null for a reading not from a round */
+  due_time: string | null;
+  /** taken more than 30 minutes before or after it was due (ADR 124) */
+  off_time: boolean;
+  read_by: string | null;
+}
+
+/** Every reading of the place's meters on these days, newest first, with its time (ADR 124). */
+export async function utilityReadings(
+  tx: Tx,
+  place: string,
+  days: number,
+  range: DateRange | null = null,
+): Promise<UtilityReading[]> {
+  const from = range ? sql`${range.from}::date` : sql`rpt.today(${place}::uuid) - ${days - 1}::int`;
+  const to = range ? sql`${range.to}::date` : sql`rpt.today(${place}::uuid)`;
+  return (
+    await sql<UtilityReading>`
+      select meter_id, read_at::text, day::text, read_time, value::text, used::text, due_time, off_time,
+             read_by
+        from ops.utility_readings(${place}::uuid, ${from}, ${to})`.execute(tx)
+  ).rows;
+}

@@ -16,6 +16,8 @@ export interface ScreenInput extends NavInput {
   swapsManagersOnly?: boolean;
   /** keeps or reads a hotel's breakfast (Shell.breakfast, ADR 097) */
   breakfast?: boolean;
+  /** their department's licences and jobs are on the register (Shell.compliance, ADR 124) */
+  compliance?: boolean;
 }
 
 export type ScreenKey =
@@ -358,7 +360,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/compliance',
     label: 'Compliance',
     icon: 'shield',
-    show: (i) => can(i, 'COMPLIANCE'),
+    show: (i) => can(i, 'COMPLIANCE') || i.compliance === true,
   },
   {
     // the Team side of Roster: roster builders, and people above outlet level
@@ -503,6 +505,9 @@ function isOwn(s: Screen, i: ScreenInput): boolean {
     // recipes for those who make what is in them, or who see the recipes of the stores they use
     case 'menu':
       return i.production || ['MENU', 'DERIVED_MENU', 'RECIPES'].some((d) => ownWork(i, d));
+    // their department's licences and jobs (ADR 124)
+    case 'compliance':
+      return i.compliance === true || ownWork(i, 'COMPLIANCE');
     // reading the sales is not a day's work; keeping them is (ADR 113)
     case 'sales':
       return can(i, 'SALES', 'modify');
@@ -514,11 +519,10 @@ function isOwn(s: Screen, i: ScreenInput): boolean {
 }
 
 /**
- * Me's tiles for one person (ADR 106, 113): first the work their own duties give them (a
+ * Me's tiles for one person (ADR 106, 113, 125): first the work their own duties give them (a
  * housekeeper's rooms, a commis's Make), then Shifts & leave, SOPs and Report a problem where
- * they have them; the rest under "More". `hide` leaves out what the bottom nav already offers.
- * Nothing is folded when fewer than three would be on either side (an account owner's few
- * screens, a short list of extras).
+ * they have them (`mine`); then every other screen they may open (`more`). Me shows both, in
+ * that order, nothing folded. `hide` leaves out what the bottom nav already offers.
  */
 export function meTiles(
   i: ScreenInput,
@@ -536,10 +540,7 @@ export function meTiles(
     .sort((a, b) => rank(a.s.key) - rank(b.s.key) || a.n - b.n)
     .map((x) => x.s);
   const mine = [...own, ...day];
-  const more = all.filter((s) => !mine.includes(s));
-  return mine.length < 3 || more.length < 3
-    ? { mine: [...mine, ...more], more: [] }
-    : { mine, more };
+  return { mine, more: all.filter((s) => !mine.includes(s)) };
 }
 
 /**

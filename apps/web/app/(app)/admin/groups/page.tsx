@@ -18,7 +18,7 @@ export default async function GroupsPage() {
     groups = null;
   }
   if (groups === null) {
-    return <p className="text-slate-700">You don&apos;t have access to administration.</p>;
+    return <p className="text-slate-700">You can&apos;t open Admin.</p>;
   }
   const owner = shell.domains.get('COMPANY_SETTINGS') === 'modify';
   const roleName = (code: string) => CARRIABLE_ROLES.find((r) => r.code === code)?.name ?? code;

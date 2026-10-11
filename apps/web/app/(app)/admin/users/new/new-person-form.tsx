@@ -116,7 +116,7 @@ export function NewPersonForm({
             checked={p.loginType === 'username'}
             onChange={() => set({ loginType: 'username' })}
           />
-          Username and password (a temporary password you hand over)
+          A login ID and a first password you give them
         </label>
         <label className="flex min-h-11 items-center gap-2">
           <input

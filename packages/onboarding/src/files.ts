@@ -19,6 +19,8 @@ import {
   REQUEST_APPROVALS,
   EVERY_MONTHS,
   parseRepeat,
+  EXTINGUISHER_TYPES,
+  FIRE_EXTINGUISHER,
 } from '@outlet-ops/domain';
 import { CsvError, parseCsv } from './csv';
 
@@ -1149,16 +1151,31 @@ export const FILES = {
   licences: {
     file: '38_licences.csv',
     required: false,
-    schema: z.object({
-      place_code: code,
-      kind: z.string().regex(/^[A-Z][A-Z0-9_]*$/, 'must be a kind like FSSAI or OTHER'),
-      name: text,
-      number: optional,
-      authority: optional,
-      issued_on: optDate,
-      expires_on: optDate,
-      renewal_role: code,
-    }),
+    schema: z
+      .object({
+        place_code: code,
+        kind: z.string().regex(/^[A-Z][A-Z0-9_]*$/, 'must be a kind like FSSAI or OTHER'),
+        name: text,
+        number: optional,
+        authority: optional,
+        issued_on: optDate,
+        expires_on: optDate,
+        renewal_role: code,
+        // where it is and what it is (ADR 127): a fire extinguisher's place and type
+        location: optional,
+        equipment_type: optional,
+      })
+      .refine(
+        (l) =>
+          l.kind !== FIRE_EXTINGUISHER ||
+          l.equipment_type === undefined ||
+          (EXTINGUISHER_TYPES as readonly string[]).includes(l.equipment_type),
+        {
+          path: ['equipment_type'],
+          message: `a fire extinguisher's type must be ${EXTINGUISHER_TYPES.join(', ')}`,
+        },
+      ),
+    optional: ['location', 'equipment_type'],
   },
   // The compliance calendar (ADR 069): recurring statutory jobs of an outlet or a department,
   // every 1 to 36 months, or (ADR 116) `repeat` in words instead: "every week on Monday",
@@ -1284,9 +1301,11 @@ export const FILES = {
     }),
     optional: ['room_type', 'room_number'],
   },
-  // Meters (ADR 091): electricity, gas, water and diesel meters at a place (the outlet or a
-  // department, usually Engineering), the job role that reads them and when each day. Keyed by
-  // meter_code; a later load corrects one.
+  // Meters (ADR 091, 124): electricity, gas, water and diesel meters at a place (the outlet or a
+  // department, usually Engineering), the job role that reads them and when each day: one or
+  // more times (`08:00 20:00`), or `end_of_shift` (before the reader's last shift there ends).
+  // Blank: every 12 hours at a hotel (open round the clock), else at the end of the shift.
+  // Keyed by meter_code; a later load corrects one.
   meters: {
     file: '43_meters.csv',
     required: false,
@@ -1300,7 +1319,16 @@ export const FILES = {
       ),
       unit: text,
       read_by: code,
-      read_at: z.union([z.literal('').transform(() => '09:00'), time]),
+      read_at: z.union([
+        z.literal('').transform(() => 'auto'),
+        z.literal('end_of_shift'),
+        z
+          .string()
+          .regex(
+            /^([01]\d|2[0-3]):[0-5]\d( ([01]\d|2[0-3]):[0-5]\d)*$/,
+            'must be times like 08:00 20:00, or end_of_shift',
+          ),
+      ]),
     }),
     optional: ['read_at'],
   },

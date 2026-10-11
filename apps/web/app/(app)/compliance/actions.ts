@@ -68,6 +68,9 @@ export interface LicenceInput {
   name: string;
   number: string;
   authority: string;
+  /** where it is and what it is (ADR 127), for a fire extinguisher */
+  location?: string;
+  equipment_type?: string;
   issued_on: string | null;
   expires_on: string | null;
   renewal_role: string;
@@ -84,7 +87,8 @@ export async function saveLicence(
                               ${input.name}, ${input.number}, ${input.authority},
                               ${input.issued_on}::date, ${input.expires_on}::date,
                               ${input.renewal_role}, ${input.files}::text[],
-                              ${idempotencyKey ?? null}) as id`.execute(tx);
+                              ${idempotencyKey ?? null}, ${input.location ?? ''},
+                              ${input.equipment_type ?? ''}) as id`.execute(tx);
     return { id: r.rows[0]!.id };
   });
 }

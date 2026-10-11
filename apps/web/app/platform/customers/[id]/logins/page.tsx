@@ -75,8 +75,8 @@ export default async function LoginsPage({ params }: { params: Promise<{ id: str
         <h2 className="font-semibold">People with an email</h2>
         <p className="text-sm text-slate-600">
           They get an email invitation and set their own password. At most {invites.daily_limit}{' '}
-          invitations go out a day, for all customers together (our email service&apos;s limit); the
-          rest go by themselves over the next days.
+          invitations go out a day, for all customers together. That is our email service&apos;s
+          limit. The rest go by themselves over the next days.
         </p>
         <p className="text-sm" data-testid="invite-summary">
           {invites.invited} invited, {invites.waiting} still to send · {invites.sent_last_day} of{' '}

@@ -48,8 +48,8 @@ export default async function StockCheckPage({ searchParams }: { searchParams: S
         <StartCheckButtons node={node.id} resume={data.open} />
       ) : null}
       <InfoTip label="How a stock check works">
-        The verifier counts what is on the shelves without seeing what should be there, then sees
-        the differences, adds a photo to each, and finishes. A difference changes stock at once and
+        The checker counts what is on the shelves without seeing what should be there. Then they see
+        the differences, add a photo of each, and finish. A difference changes stock at once and
         tells the department head and the GM.
       </InfoTip>
       {data.rows.length === 0 ? (

@@ -320,6 +320,8 @@ export interface Maintenance {
   place_node_id: string;
   assigned_at: Date | null;
   assigned_by_name: string | null;
+  /** where the problem is (ADR 125), a MAINTENANCE_WHERE code; null on older requests */
+  location: string | null;
 }
 
 /** Requests the person reads: their own, their department's queue, assigned or managed. */

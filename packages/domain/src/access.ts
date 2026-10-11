@@ -91,7 +91,9 @@ export const DOMAINS: readonly DomainDef[] = [
   { code: 'DERIVED_STOCK_ADJUSTMENTS', tree: 'org' },
   { code: 'DERIVED_PURCHASE_ORDERS', tree: 'org' },
   { code: 'DERIVED_TRANSFERS', tree: 'org' },
-  { code: 'DERIVED_MENU', tree: 'org' },
+  // menus, prices and recipes through the places below a grant; admin so the Account Owner may
+  // read every outlet's menu (ADR 123)
+  { code: 'DERIVED_MENU', tree: 'org', admin: true },
   { code: 'DERIVED_PRODUCTION', tree: 'org' },
   { code: 'DERIVED_SALES', tree: 'org' },
   { code: 'AUDIT', tree: 'org' },
@@ -144,12 +146,9 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: {
       ROSTER: v,
       EVENTS: v,
-      RECIPES_TEAM: v,
       MAINTENANCE: v,
       LOGBOOK: m,
       REGISTERS: m,
-      BREAKAGE: m,
-      LINEN: m,
     },
   },
   {
@@ -160,13 +159,10 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       ROSTER: v,
       ATTENDANCE: v,
       EVENTS: v,
-      RECIPES_TEAM: v,
       TASKS: m,
       CHECKLIST_TEMPLATES: v,
       LOGBOOK: m,
       REGISTERS: m,
-      BREAKAGE: m,
-      LINEN: m,
       UTILITIES: v,
       AUDITS: v,
       TRAINING: v,
@@ -185,8 +181,6 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       WORKERS: v,
       EVENTS: v,
       AI_RECOMMENDATIONS: v,
-      RECIPES_TEAM: v,
-      DERIVED_MENU: v,
       DERIVED_PRODUCTION: v,
       DERIVED_SALES: v,
       TASKS: m,
@@ -194,12 +188,34 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       MAINTENANCE: m,
       LOGBOOK: m,
       REGISTERS: m,
-      BREAKAGE: m,
-      LINEN: m,
       UTILITIES: m,
       AUDITS: m,
       TRAINING: m,
     },
+  },
+  {
+    // the recipes and menu costs of the department's own places: its managers only, never
+    // whoever works or leads a shift there (ADR 123)
+    code: 'RECIPE_READER',
+    name: 'Recipe Reader',
+    kind: 'role',
+    grants: { RECIPES_TEAM: v, DERIVED_MENU: v },
+  },
+  {
+    // the meters they read and their readings (ADR 124): a technician, without the department
+    // head's say over them
+    code: 'METER_READER',
+    name: 'Meter Reader',
+    kind: 'role',
+    grants: { UTILITIES: v },
+  },
+  {
+    // the department's linen and uniforms with the laundry, and what breaks there: kitchen,
+    // service and housekeeping teams, not engineering or the front office (ADR 124)
+    code: 'WARE_KEEPER',
+    name: 'Linen & Breakage',
+    kind: 'role',
+    grants: { LINEN: m, BREAKAGE: m },
   },
   {
     // records batches at the department's store, for items made there; nothing else
@@ -256,7 +272,6 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       STOCK_ADJUSTMENTS: m,
       TRANSFERS: m,
       PURCHASE_ORDERS: v,
-      RECIPES: v,
       PRODUCTION: m,
       SHELF_LIFE: m,
     },
@@ -273,7 +288,6 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       PURCHASE_ORDERS: m,
       BILLS: m,
       AI_RECOMMENDATIONS: v,
-      RECIPES: v,
       PRODUCTION: m,
       SHELF_LIFE: m,
       EXCISE: m,
@@ -405,6 +419,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       PURCHASE_ORDERS: v,
       BILLS: v,
       TRANSFERS: m,
+      // the central kitchen's manager: the recipes and costs of what it makes (ADR 123)
       RECIPES: v,
       MENU: v,
       PRODUCTION: m,
@@ -464,6 +479,8 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       REPORTS: v,
       // every outlet's licences and compliance calendar, read-only (ADR 069)
       COMPLIANCE: v,
+      // every outlet's menus, prices and recipes, read-only (ADR 123)
+      DERIVED_MENU: v,
     },
   },
   {

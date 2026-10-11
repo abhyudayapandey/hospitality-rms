@@ -8,6 +8,7 @@ import {
   loadSeedIds,
   resetRole,
   type SeedIds,
+  stepPhoto,
 } from '../test/helpers';
 
 // Checklists, part 2 (ADR 088): what was done about a reading out of range, the food probed,
@@ -129,11 +130,12 @@ describe('readings', () => {
       const task = await round(c, 'HOTEL-1.0-KITCHEN-PROBE');
       const [s] = await steps(c, task);
       const step = (v: object) =>
-        attemptAs(c, ids.user('test.commis.1.0'), `select ops.complete_step($1, $2, $3::jsonb)`, [
-          task,
-          s!.id,
-          JSON.stringify(v),
-        ]);
+        attemptAs(
+          c,
+          ids.user('test.commis.1.0'),
+          `select ops.complete_step($1, $2, ${stepPhoto()} || $3::jsonb)`,
+          [task, s!.id, JSON.stringify(v)],
+        );
       // the probe asks which food, and whether out-of-date food was thrown away
       expect((await step({ number: 70, thrown: false })).error).toMatch(/INVALID_VALUE/);
       expect((await step({ number: 70, food: 'Dal makhani' })).error).toMatch(/INVALID_VALUE/);

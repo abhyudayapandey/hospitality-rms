@@ -143,22 +143,27 @@ describe("a dish's method and its sub-recipes (item 8)", () => {
       const dal = await dish(c, 'DAL-TADKA');
       await addMethod(c, dal, ids.tenant());
       const recipe = await recipeOf(c, dal);
-      const commis = await attemptAs<{ step: number; instruction: string }>(
+      const sous = await attemptAs<{ step: number; instruction: string }>(
         c,
-        ids.user('test.commis.1.0'),
+        ids.user('test.sous-chef.1.0'),
         'select step, instruction from inv.recipe_method($1)',
         [recipe],
       );
-      expect(commis.rows?.map((s) => s.step)).toEqual([1, 2]);
-      // under RLS the commis sees the same rows straight from the table
+      expect(sous.rows?.map((s) => s.step)).toEqual([1, 2]);
+      // under RLS the sous chef sees the same rows straight from the table
       const direct = await attemptAs(
         c,
-        ids.user('test.commis.1.0'),
+        ids.user('test.sous-chef.1.0'),
         'select step from inv.prep_procedure where menu_item_id = $1',
         [dal],
       );
       expect(direct.rows?.length).toBe(2);
-      for (const who of ['test.solo.bar-manager', 'test.housekeeping-supervisor.1.0']) {
+      // a commis reads a recipe only on a prep task they were given (ADR 123)
+      for (const who of [
+        'test.solo.bar-manager',
+        'test.housekeeping-supervisor.1.0',
+        'test.commis.1.0',
+      ]) {
         const r = await attemptAs(c, ids.user(who), 'select * from inv.recipe_method($1)', [
           recipe,
         ]);

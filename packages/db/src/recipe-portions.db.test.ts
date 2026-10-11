@@ -32,7 +32,7 @@ describe('portions (ADR 084)', () => {
     await inRolledBackTx(async (c) => {
       const rows = await ok<{ code: string; batch_portions: string | null }>(
         c,
-        'test.commis.1.0',
+        'test.sous-chef.1.0',
         `select code, batch_portions::text from inv.my_recipes() where kind = 'prep'`,
       );
       const by = new Map(rows.map((r) => [r.code, r.batch_portions]));

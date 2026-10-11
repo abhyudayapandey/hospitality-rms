@@ -8,6 +8,7 @@ import {
   loadSeedIds,
   resetRole,
   type SeedIds,
+  stepPhoto,
 } from '../test/helpers';
 
 // Tasks, checklists, maintenance and expired batches (Prompt 11b, ADR 020): who may create,
@@ -98,7 +99,7 @@ const completeStep = (c: PoolClient, who: string, task: string, step: string, va
   attemptAs<{ r: { flagged: boolean } }>(
     c,
     ids.user(who),
-    'select ops.complete_step($1, $2, $3::jsonb) as r',
+    `select ops.complete_step($1, $2, ${stepPhoto()} || $3::jsonb) as r`,
     [task, step, JSON.stringify(value)],
   );
 

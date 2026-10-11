@@ -48,7 +48,7 @@ export default async function ExceptionsPage({ searchParams }: { searchParams: S
   const ctx = await peopleContext(searchParams, 'exceptions');
   if (!ctx.node) {
     // staff see their own exceptions on My shifts (audit #10)
-    return <p className="text-slate-600">You don&apos;t review attendance anywhere.</p>;
+    return <p className="text-slate-600">You don&apos;t check anyone&apos;s clock-ins.</p>;
   }
   const node = ctx.node;
   const sp = await searchParams;

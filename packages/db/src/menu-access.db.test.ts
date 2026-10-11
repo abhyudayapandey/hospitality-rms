@@ -2,12 +2,12 @@ import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
 
-// Menu, recipes and costs (Prompt 9a, ADR 014). Who reads what, enforced by RLS:
-//  - a recipe and its procedure: whoever holds stock access at a store that makes it (prep)
-//    or sells it (menu item), or works in a department linked to such a store (kitchen
-//    staff -> kitchen store, bar staff -> bar store); managers with cost access (MENU) also
-//    read every recipe used at their stores, received prep included. Housekeeping, front
-//    office and security read none.
+// Menu, recipes and costs (Prompt 9a, ADR 014, 123). Who reads what, enforced by RLS:
+//  - a recipe and its procedure: the managers of a department linked to a store that makes or
+//    sells it (READS_RECIPES: executive and sous chefs, the bar manager, the restaurant and F&B
+//    managers), the central kitchen's manager, and whoever has cost access (MENU: the outlet's
+//    managers, cost controllers, area managers, the account owner). Nobody who only works or
+//    leads a shift, and no store keeper; a cook given a prep task reads its recipe on the task.
 //  - prices and costs: MENU view at the store (department heads through their linked store,
 //    outlet managers, cost controllers, hub managers, area managers); never staff or store
 //    keepers.
@@ -68,17 +68,26 @@ const BAR = [
 ];
 const BATCHED = ['NEGRONI-BATCH', 'OLD-FASHIONED-BATCH', 'HOUSE-SANGRIA-BATCH'];
 
-describe('recipes are read only where they are made or sold', () => {
-  it('a room attendant, a front desk executive and a security guard read no recipes', async () => {
+describe('recipes are read only by the managers of where they are made or sold', () => {
+  // ADR 123: whoever works or leads a shift reads no recipe, prices or costs; a cook given a
+  // prep task reads that task's recipe through ops.prep_task_recipe (make-by-task.db.test.ts)
+  it('frontline staff, shift leads and store keepers read no recipes', async () => {
     await inRolledBackTx(async (c) => {
       for (const who of [
         'test.room-attendant.1.0',
         'test.front-desk-executive.1.0',
         'test.security-guard.1.0',
-        // guest house staff hold STAFF on the outlet itself, linked to its only store (its
-        // Front Desk Executive covers the Store Keeper, ADR 066, so reads what a keeper does)
         'test.room-attendant.2.0',
         'test.security-guard.2.0',
+        'test.bartender.1.0',
+        'test.head-bartender.1.0',
+        'test.bar-back.1.0',
+        'test.commis.1.0',
+        'test.chef-de-partie.1.0',
+        'test.kitchen-steward.1.0',
+        'test.cook.2.0',
+        'test.central-kitchen-commis',
+        'test.store-keeper.1.0',
       ]) {
         for (const t of ['inv.recipe', 'inv.recipe_line', 'inv.prep_procedure', 'menu.menu_item']) {
           expect(await count(c, who, t), `${who} ${t}`).toBe(0);
@@ -87,55 +96,44 @@ describe('recipes are read only where they are made or sold', () => {
     });
   });
 
-  it('a bartender reads bar recipes but not kitchen ones', async () => {
+  it('the bar manager reads bar recipes but not kitchen ones', async () => {
     await inRolledBackTx(async (c) => {
-      const seen = await readable(c, 'test.bartender.1.0');
+      const seen = await readable(c, 'test.bar-manager.1.0');
       for (const code of BAR) expect(seen, code).toContain(code);
       for (const code of KITCHEN) expect(seen, code).not.toContain(code);
       expect(seen).not.toContain('MAKHANI-GRAVY');
     });
   });
 
-  it('a commis reads kitchen recipes but not batched cocktails', async () => {
+  it('a sous chef and the executive chef read kitchen recipes but not batched cocktails', async () => {
     await inRolledBackTx(async (c) => {
-      const seen = await readable(c, 'test.commis.1.0');
-      for (const code of KITCHEN) expect(seen, code).toContain(code);
-      for (const code of [...BATCHED, 'SUGAR-SYRUP', 'MOJITO'])
-        expect(seen, code).not.toContain(code);
-      // made at the central kitchen and received here: kitchen staff don't make it
-      expect(seen).not.toContain('MAKHANI-GRAVY');
+      for (const who of ['test.sous-chef.1.0', 'test.executive-chef.1.0']) {
+        const seen = await readable(c, who);
+        for (const code of KITCHEN) expect(seen, `${who} ${code}`).toContain(code);
+        for (const code of [...BATCHED, 'SUGAR-SYRUP', 'MOJITO'])
+          expect(seen, `${who} ${code}`).not.toContain(code);
+      }
     });
   });
 
   it('reads the lines and procedure steps of exactly the readable recipes', async () => {
     await inRolledBackTx(async (c) => {
-      const procs = await attemptAs<{ sku: string }>(
-        c,
-        ids.user('test.commis.1.0'),
-        `select distinct i.sku from inv.prep_procedure p
-           join inv.recipe r on r.prep_item_id = p.prep_item_id
-           left join inv.item i on i.id = p.prep_item_id`,
-      );
-      expect(procs.error).toBeUndefined();
-      // inv.item is stock catalogue (it carries standard costs): a commis has no stock access
-      expect(procs.rows!.every((r) => r.sku === null)).toBe(true);
-      const n = await count(c, 'test.commis.1.0', 'inv.prep_procedure');
-      // and the methods of the dishes the commis reads (ADR 078)
-      const dishes = [...(await readable(c, 'test.commis.1.0'))];
+      const n = await count(c, 'test.sous-chef.1.0', 'inv.prep_procedure');
+      // and the methods of the dishes they read (ADR 078)
+      const dishes = [...(await readable(c, 'test.sous-chef.1.0'))];
       const expected = await c.query<{ n: number }>(
         `select count(*)::int as n from inv.prep_procedure p
            left join inv.item i on i.id = p.prep_item_id
            left join menu.menu_item m on m.id = p.menu_item_id
            join core.tenant t on t.id = p.tenant_id
           where t.code = 'TEST-COMPANY'
-            and (i.sku in ('GINGER-GARLIC-PASTE', 'MINT-CHUTNEY', 'STEAMED-RICE')
-                 or m.code = any($1::text[]))`,
+            and (i.sku = any($1::text[]) or m.code = any($1::text[]))`,
         [dishes],
       );
       expect(expected.rows[0]!.n).toBeGreaterThan(10);
       expect(n).toBe(expected.rows[0]!.n);
-      const lines = await count(c, 'test.bartender.1.0', 'inv.recipe_line');
-      const visible = await readable(c, 'test.bartender.1.0');
+      const lines = await count(c, 'test.bar-manager.1.0', 'inv.recipe_line');
+      const visible = await readable(c, 'test.bar-manager.1.0');
       const all = await c.query<{ n: number }>(
         `select count(*)::int as n from inv.recipe_line l where l.recipe_id = any($1::uuid[])`,
         [
@@ -148,12 +146,11 @@ describe('recipes are read only where they are made or sold', () => {
     });
   });
 
-  it('the central kitchen commis reads the gravies made there, through the production team’s link', async () => {
+  it('the central kitchen manager reads the gravies made there; its commis does not', async () => {
     await inRolledBackTx(async (c) => {
-      const seen = await readable(c, 'test.central-kitchen-commis');
+      const seen = await readable(c, 'test.central-kitchen-manager');
       expect(seen).toContain('MAKHANI-GRAVY');
       expect(seen).toContain('ONION-TOMATO-MASALA');
-      // made at the hotels, not here; and nothing is sold from the central kitchen
       for (const code of [
         'GINGER-GARLIC-PASTE',
         'STEAMED-RICE',
@@ -162,14 +159,24 @@ describe('recipes are read only where they are made or sold', () => {
       ]) {
         expect(seen, code).not.toContain(code);
       }
+      expect((await readable(c, 'test.central-kitchen-commis')).size).toBe(0);
     });
   });
 
-  it('a cook with stock access at the guest house store reads its food recipes', async () => {
+  it('the account owner reads every recipe and price in the company, and edits none', async () => {
     await inRolledBackTx(async (c) => {
-      const seen = await readable(c, 'test.cook.2.0');
-      expect(seen).toContain('STEAMED-RICE');
-      expect(seen).not.toContain('NEGRONI-BATCH');
+      const seen = await readable(c, 'test.account-owner');
+      for (const code of [...KITCHEN, ...BAR, ...BATCHED, 'MAKHANI-GRAVY']) {
+        expect(seen, code).toContain(code);
+      }
+      expect([...seen].filter((s) => s.startsWith('SOLO:'))).toEqual([]);
+      const places = await attemptAs<{ can_edit: boolean }>(
+        c,
+        ids.user('test.account-owner'),
+        'select * from menu.my_menu_places()',
+      );
+      expect(places.rows!.length).toBeGreaterThan(2);
+      expect(places.rows!.every((p) => !p.can_edit)).toBe(true);
     });
   });
 
@@ -433,7 +440,11 @@ describe('screen reads follow the same rules', () => {
     // they compared each recipe with visible_recipe_ids() inline, re-running it per row
     // (9 s for a cost controller's Menu page); migration 20261019100000
     await inRolledBackTx(async (c) => {
-      for (const u of ['test.cost-controller.1.0', 'test.general-manager.1.0', 'test.commis.1.0']) {
+      for (const u of [
+        'test.cost-controller.1.0',
+        'test.general-manager.1.0',
+        'test.sous-chef.1.0',
+      ]) {
         const who = ids.user(u);
         const started = Date.now();
         const list = await attemptAs<{ recipe_id: string }>(
@@ -470,16 +481,13 @@ describe('screen reads follow the same rules', () => {
     });
   });
 
-  it('a commis lists and opens kitchen recipes, with names but no costs', async () => {
+  it('a sous chef lists and opens kitchen recipes; a commis lists none', async () => {
     await inRolledBackTx(async (c) => {
-      const who = ids.user('test.commis.1.0');
+      const who = ids.user('test.sous-chef.1.0');
       const list = await attemptAs<{ code: string }>(c, who, 'select * from inv.my_recipes()');
       const codes = list.rows!.map((r) => r.code);
       expect(codes).toContain('GINGER-GARLIC-PASTE');
       expect(codes).not.toContain('NEGRONI-BATCH');
-      expect(
-        Object.keys(list.rows![0]!).some((k) => k.includes('cost') || k.includes('price')),
-      ).toBe(false);
       const card = await attemptAs<{ name: string }>(c, who, 'select * from inv.recipe_card($1)', [
         await recipeOf(c, 'GINGER-GARLIC-PASTE'),
       ]);
@@ -488,13 +496,15 @@ describe('screen reads follow the same rules', () => {
         await recipeOf(c, 'NEGRONI-BATCH'),
       ]);
       expect(batch.error).toMatch(/NOT_AUTHORISED/);
-      const costs = await attemptAs(c, who, 'select * from inv.recipe_line_costs($1, $2)', [
+      const commis = ids.user('test.commis.1.0');
+      const none = await attemptAs<{ code: string }>(c, commis, 'select * from inv.my_recipes()');
+      expect(none.rows ?? []).toEqual([]);
+      const card2 = await attemptAs(c, commis, 'select * from inv.recipe_card($1)', [
         await recipeOf(c, 'GINGER-GARLIC-PASTE'),
-        ids.node('TEST-HOTEL-1.0-KITCHEN-STORE'),
       ]);
-      expect(costs.error).toMatch(/NOT_AUTHORISED/);
+      expect(card2.error).toMatch(/NOT_AUTHORISED/);
       for (const fn of ['inv.recipe_ingredients()', 'menu.my_menu_places()']) {
-        const r = await attemptAs<{ n: number }>(c, who, `select count(*)::int as n from ${fn}`);
+        const r = await attemptAs<{ n: number }>(c, commis, `select count(*)::int as n from ${fn}`);
         expect(r.error ?? r.rows[0]!.n, fn).toSatisfy(
           (v: unknown) => v === 0 || /NOT_AUTHORISED/.test(String(v)),
         );

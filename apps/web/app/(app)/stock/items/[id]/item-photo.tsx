@@ -44,6 +44,7 @@ export function ItemPhoto({ item, has }: { item: string; has: boolean }) {
         onChange={setKey}
         getUploadUrl={getItemUploadUrl}
         label="Item photo"
+        gallery
       />
       <ErrorBox message={error} />
       <button

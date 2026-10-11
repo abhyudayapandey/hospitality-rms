@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { asMigrator, signInAs } from './helpers';
+import { asMigrator, signInAs, takePhoto } from './helpers';
 
 // Audits & taste panels (ADR 095) at 380 px: Test Hotel 1.0's taste panel (file 29, 1 to 5) is
 // made a day ahead by the tasks job; the executive chef rates it 4, 5 and 3 and the GM reads
@@ -34,6 +34,7 @@ test('the chef rates the taste panel; the GM reads its score', async ({ page }) 
     ] as const) {
       const step = main(page).getByTestId('step').filter({ hasText: label });
       await step.getByText(n, { exact: true }).click();
+      await takePhoto(step);
       await step.getByRole('button', { name: 'Save' }).click();
       await expect(step).toContainText(`${n} of 5`);
     }

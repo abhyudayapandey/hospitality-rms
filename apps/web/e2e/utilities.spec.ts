@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { asMigrator, signInAs } from './helpers';
+import { asMigrator, signInAs, takePhoto } from './helpers';
 
 // Utilities (ADR 091, 097) at 380 px on Test Hotel 1.0. The technician's meter round is on his To
 // do list; he reads the four meters, and the chief engineer sees today's readings. Who may is
@@ -45,6 +45,7 @@ test('the technician reads the meters; the chief engineer sees the readings', as
       ['Water inlet', '902'],
     ] as const) {
       await main(page).getByLabel(label).fill(value);
+      await takePhoto(main(page));
       await main(page).getByRole('button', { name: 'Save' }).click();
       await expect(main(page).getByTestId('step').filter({ hasText: label })).toContainText(
         '✓ done',

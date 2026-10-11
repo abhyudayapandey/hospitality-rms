@@ -1,6 +1,13 @@
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
+import {
+  attemptAs,
+  closePools,
+  inRolledBackTx,
+  loadSeedIds,
+  photoKey,
+  type SeedIds,
+} from '../test/helpers';
 
 // Handing a task on (ADR 074). Test Hotel 1.0 is the Passport Hotel case: its pest control
 // sits at the hotel itself, the General Manager answers for it and the Executive
@@ -286,6 +293,8 @@ describe('every way a task is assigned records who gave it to whom, and when', (
       expect(await history(c, task)).toEqual([]);
       expect(await assignedAt(c, task)).not.toBeNull();
       // doing it takes it (the first to start takes it)
+      // a task with no steps takes a photo of the job done (ADR 127)
+      await ok(c, RA, `select ops.add_task_photo($1, ${photoKey()})`, [task]);
       await ok(c, RA, `select ops.complete_task($1)`, [task]);
       expect(await history(c, task)).toEqual([
         { from_user: null, to_user: ids.user(RA), by_user: ids.user(RA) },
@@ -301,6 +310,8 @@ describe('every way a task is assigned records who gave it to whom, and when', (
   it('done: the maker of a task for someone else is told; the one who did it is not', async () => {
     await inRolledBackTx(async (c) => {
       const task = await create(c, GM, HOTEL, { mode: 'person', user_id: ids.user(RA) });
+      // a task with no steps takes a photo of the job done (ADR 127)
+      await ok(c, RA, `select ops.add_task_photo($1, ${photoKey()})`, [task]);
       await ok(c, RA, `select ops.complete_task($1)`, [task]);
       expect(await notes(c, GM, 'task_done', 'Polish the lobby brass')).toEqual([
         { title: 'Done: Polish the lobby brass', body: 'By Test Room Attendant 1.0' },

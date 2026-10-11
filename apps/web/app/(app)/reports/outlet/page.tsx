@@ -61,9 +61,9 @@ export default async function OutletReport({ searchParams }: { searchParams: Sea
       {covers && <Covers outlet={place.id} day={day} rows={covers} />}
       <p className="text-xs text-slate-500">
         Business day 04:00 to 04:00. Cost is the recipe cost of what sold; sales come from the daily
-        sales entry until the POS import. People cost is hours worked at the hourly rate, and a
-        day&apos;s pay (a year&apos;s salary over 365) for salaried staff; overtime at the normal
-        rate.
+        sales entry until the POS import. People cost is hours worked at the hourly rate. For
+        salaried staff it is a day&apos;s pay (a year&apos;s salary over 365). Overtime is at the
+        normal rate.
       </p>
     </div>
   );

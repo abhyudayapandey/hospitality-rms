@@ -63,7 +63,7 @@ export default async function AdminPage() {
   });
 
   if (people === null && roles === null) {
-    return <p className="text-slate-700">You don&apos;t have access to administration.</p>;
+    return <p className="text-slate-700">You can&apos;t open Admin.</p>;
   }
   return (
     <div className="space-y-6">
@@ -74,9 +74,9 @@ export default async function AdminPage() {
           data-testid="sole-owner"
           className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-200"
         >
-          You are the only account owner. Sensitive access you grant applies at once, and your own
-          requests are approved at once, since nobody else can approve them. Adding a second account
-          owner turns approvals on.
+          You are the only account owner. Sensitive access you give works at once. Your own requests
+          are approved at once too, as nobody else can approve them. Adding a second account owner
+          turns approvals on.
         </p>
       )}
       {/* a menu of equals: none looks chosen */}
@@ -155,11 +155,11 @@ export default async function AdminPage() {
         <>
           <details data-testid="role-details">
             <summary className="min-h-11 cursor-pointer py-2 font-semibold">
-              Role assignments and domain policies
+              Who holds which group, and the rules
             </summary>
             <div className="space-y-4 pt-2">
               <section>
-                <h2 className="mb-2 font-semibold">Role assignments</h2>
+                <h2 className="mb-2 font-semibold">Who holds which group</h2>
                 <p className="mb-2 text-sm text-slate-600">
                   Read-only. Change someone&apos;s access from People.
                 </p>
@@ -176,14 +176,14 @@ export default async function AdminPage() {
                       <div className="p-3 text-sm">
                         <span className="font-medium">{a.user_name}</span> ·{' '}
                         {groupLabel(a.group_code)} at {a.node_name} ({a.node_type})
-                        {a.include_descendants ? '' : ', this node only'}
+                        {a.include_descendants ? '' : ', this place only'}
                       </div>
                     ),
                   }))}
                 />
               </section>
               <section>
-                <h2 className="mb-2 font-semibold">Domain policies</h2>
+                <h2 className="mb-2 font-semibold">The rules</h2>
                 <FilterList
                   limit={10}
                   searchFrom={10}
