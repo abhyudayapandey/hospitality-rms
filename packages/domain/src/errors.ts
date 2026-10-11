@@ -98,7 +98,7 @@ export const ERROR_MESSAGES = {
   REASON_REQUIRED: 'Give a reason.',
   INVALID_CUSTOMER_CODE: 'Customer codes are 2 to 40 capital letters, digits or dashes.',
   INVALID_CUSTOMER:
-    'Fill in the company name and the owner’s name, and their email (email login) or a valid username (username login, no email).',
+    'Fill in the company name and the owner’s name. Add their email, or a login ID if they have no email.',
   CUSTOMER_CODE_TAKEN: 'That customer code is already in use.',
   CUSTOMER_MISMATCH: 'These files are for a different customer (file 00 names another code).',
   CUSTOMER_SUSPENDED: 'This customer is suspended. Reactivate it first.',
@@ -115,7 +115,7 @@ export const ERROR_MESSAGES = {
   UPLOAD_NOT_UTF8: 'Save the CSV files as UTF-8 and upload them again.',
   UPLOAD_NO_CUSTOMER_FILE: 'The upload needs 00_customer.csv.',
   UPLOAD_PHOTO:
-    "A dish photo in photos/menu is named after its dish's code and is a JPEG, PNG or WebP of 2 MB at most.",
+    "Name each dish photo in photos/menu after its dish's code. Use a JPEG, PNG or WebP of 2 MB at most.",
   LAST_ACCOUNT_OWNER: 'The organisation must keep at least one active Account Owner.',
   JOB_ROLE_SCOPE: "This job role's default access doesn't fit the person's place.",
   // who covers it (file 37, Admin → Who does what; ADR 061, 065)

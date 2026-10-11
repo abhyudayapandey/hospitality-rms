@@ -77,9 +77,9 @@ test('everyone in both test customers gets three to five tabs', async ({ page })
 test('admin screen refuses users without administration rights even by URL', async ({ page }) => {
   await signInAs(page, 'Test Head Cook 3.0');
   await page.goto('/admin');
-  await expect(page.getByRole('main')).toContainText("You don't have access to administration.");
+  await expect(page.getByRole('main')).toContainText("You can't open Admin.");
   await page.goto('/admin/users');
-  await expect(page.getByRole('main')).toContainText("You don't have access to administration.");
+  await expect(page.getByRole('main')).toContainText("You can't open Admin.");
   await signInAs(page, 'Test Auditor');
   await page.goto('/admin');
   await expect(page.getByTestId('assignments')).toContainText('Test Head Cook 3.0');

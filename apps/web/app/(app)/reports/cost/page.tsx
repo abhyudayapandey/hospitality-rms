@@ -188,8 +188,8 @@ export default async function CostOfSales({ searchParams }: { searchParams: Sear
       )}
       <p className="text-xs text-slate-500">
         {formatDay(range.from)} to {formatDay(range.to)}, whole days. Cost % is cost over sales
-        before tax; &ldquo;by recipe&rdquo; is what the recipes say the sales used, and the actual
-        adds wastage, other use and what was lost at the count. Highlighted: a loss beyond the
+        before tax; &ldquo;by recipe&rdquo; is what the recipes say the sales used. The actual adds
+        wastage, other use and what was lost at the count. Highlighted: a loss beyond the
         item&apos;s count tolerance.
       </p>
     </div>
