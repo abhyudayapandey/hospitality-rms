@@ -605,7 +605,13 @@ const ROLE_LIST: readonly RoleDef[] = [
     duties: [L, W],
     sops: ['H'],
   },
-  { code: 'TECHNICIAN', title: 'Technician', home: 'ENGINEERING', duties: [W], sops: ['H'] },
+  {
+    code: 'TECHNICIAN',
+    title: 'Technician',
+    home: 'ENGINEERING',
+    duties: [W, 'READS_METERS'],
+    sops: ['H'],
+  },
   {
     code: 'SECURITY_SUPERVISOR',
     title: 'Security Supervisor',

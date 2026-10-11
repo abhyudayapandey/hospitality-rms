@@ -23,7 +23,15 @@ beforeAll(async () => {
 afterAll(closePools);
 
 /** Groups that make someone frontline: they never see business numbers. */
-const FRONTLINE = new Set(['SELF', 'STAFF', 'STOCK_USER', 'PRODUCTION_TEAM']);
+const FRONTLINE = new Set([
+  'SELF',
+  'STAFF',
+  'STOCK_USER',
+  'PRODUCTION_TEAM',
+  'WARE_KEEPER',
+  'METER_READER',
+  'PACK_OPENER',
+]);
 
 /** The store reports: a stock-holding store, for the people who answer for its cost. */
 const storeRule = (n: string) => `${n}.type = 'delivery' and ${n}.holds_stock
@@ -220,7 +228,8 @@ describe('reports: who opens what (every user)', () => {
         'TEST-HOTEL-1.0-KITCHEN-STORE',
       ]);
       expect(await pl('test.executive-chef.1.0', 'department')).toEqual(['TEST-HOTEL-1.0-KITCHEN']);
-      expect(await r('test.sous-chef.1.0')).toEqual(['department', 'my_week']);
+      // a sous chef reads the kitchen's recipes and costs (ADR 123), so its cost reports too
+      expect(await r('test.sous-chef.1.0')).toEqual(await r('test.executive-chef.1.0'));
       expect(await r('test.hr-admin')).toEqual(['department', 'people', 'my_week']);
       expect(await pl('test.hr-admin', 'people')).toContain('TEST-COMPANY');
       // the HR executive keeps the outlet's records: the People report there, no costs

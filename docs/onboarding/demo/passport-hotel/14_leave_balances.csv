@@ -107,3 +107,12 @@ passport.banquet-server,EARNED_LEAVE,2026,18,2
 passport.purchase-manager,CASUAL_LEAVE,2026,12,2
 passport.purchase-manager,SICK_LEAVE,2026,12,1
 passport.purchase-manager,EARNED_LEAVE,2026,18,3
+passport.security-supervisor,CASUAL_LEAVE,2026,12,0
+passport.security-supervisor,SICK_LEAVE,2026,12,3
+passport.security-supervisor,EARNED_LEAVE,2026,18,2
+passport.security-day,CASUAL_LEAVE,2026,12,1
+passport.security-day,SICK_LEAVE,2026,12,1
+passport.security-day,EARNED_LEAVE,2026,18,0
+passport.security-night,CASUAL_LEAVE,2026,12,2
+passport.security-night,SICK_LEAVE,2026,12,2
+passport.security-night,EARNED_LEAVE,2026,18,6

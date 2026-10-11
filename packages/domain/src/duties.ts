@@ -128,9 +128,15 @@ export const DUTIES: readonly DutyDef[] = [
   {
     code: 'READS_RECIPES',
     name: "Reads the department's recipes",
-    does: "Sees the recipes, menu prices and costs of what the department makes and sells",
+    does: 'Sees the recipes, menu prices and costs of what the department makes and sells',
     grants: [{ group: 'RECIPE_READER', scope: 'home_department' }],
     atAnotherDepartment: true,
+  },
+  {
+    code: 'READS_METERS',
+    name: 'Reads the meters',
+    does: "Reads the department's meters and sees their readings",
+    grants: [{ group: 'METER_READER', scope: 'home_department' }],
   },
   {
     code: 'HANDLES_LINEN',

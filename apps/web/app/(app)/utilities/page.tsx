@@ -9,12 +9,14 @@ import { withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { LIST_PAGE } from '@/lib/list-page';
 import { isUuid, param, type SearchParams } from '@/lib/params';
-import { utilityDays, utilityMeters, utilityMonths, utilityPlaces } from '@/lib/utilities';
+import { utilityMeters, utilityMonths, utilityPlaces, utilityReadings } from '@/lib/utilities';
 
-// Utilities (ADR 091, 097): every meter of the place, read yet or not, and its use from the
-// daily readings: the last 60 days, newest first (30, then "Show more"), then month by month for
-// the last year. The readings come from the meter round on the To do list of whoever reads them,
-// and are kept for good.
+// Utilities (ADR 091, 097, 124): every meter of the place, read yet or not, and every reading
+// with its time and what was used since the one before: the last 60 days or any days picked
+// (one day, or from and to), newest first (30, then "Show more"); a reading taken more than 30
+// minutes from when it was due shows its time in red. Then month by month for the last year.
+// The readings come from the meter round on the To do list of whoever reads them, and are kept
+// for good.
 const DAYS = 60;
 const num = (v: string) =>
   new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(Number(v));
@@ -34,12 +36,12 @@ export default async function UtilitiesPage({ searchParams }: { searchParams: Se
       </div>
     );
   }
-  const { meters, days, months, range, today } = await withUser(user.id, async (tx) => {
+  const { meters, readings, months, range, today } = await withUser(user.id, async (tx) => {
     // the last 60 days, or the days chosen (ADR 120)
     const { range, today } = await listDays(tx, sp, place.place_id);
     return {
       meters: await utilityMeters(tx, place.place_id),
-      days: await utilityDays(tx, place.place_id, DAYS, range),
+      readings: await utilityReadings(tx, place.place_id, DAYS, range),
       months: await utilityMonths(tx, place.place_id),
       range,
       today,
@@ -86,7 +88,7 @@ export default async function UtilitiesPage({ searchParams }: { searchParams: Se
         <Empty>There are no meters here.</Empty>
       ) : (
         meters.map((m) => {
-          const rows = days.filter((d) => d.meter_id === m.meter_id).reverse();
+          const rows = readings.filter((d) => d.meter_id === m.meter_id);
           const shown = all === m.meter_id ? rows : rows.slice(0, LIST_PAGE);
           return (
             <section key={m.meter_id} className="space-y-2" data-testid="meter">
@@ -113,15 +115,25 @@ export default async function UtilitiesPage({ searchParams }: { searchParams: Se
                     <thead>
                       <tr className="text-left text-xs text-slate-500">
                         <th className="px-3 py-2 font-medium">Day</th>
+                        <th className="px-3 py-2 font-medium">Time</th>
                         <th className="px-3 py-2 text-right font-medium">Reading</th>
                         <th className="px-3 py-2 text-right font-medium">Used</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {shown.map((d) => (
-                        <tr key={d.day} data-testid="meter-day">
+                        <tr key={d.read_at} data-testid="meter-day">
                           <td className="px-3 py-2">{dayWords(d.day)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{num(d.reading)}</td>
+                          <td
+                            className={`px-3 py-2 tabular-nums ${d.off_time ? 'font-semibold text-rose-700' : ''}`}
+                            data-testid={d.off_time ? 'reading-off-time' : undefined}
+                          >
+                            {d.read_time}
+                            {d.off_time && d.due_time && (
+                              <span className="block text-xs font-normal">due {d.due_time}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums">{num(d.value)}</td>
                           <td
                             className={`px-3 py-2 text-right tabular-nums ${d.used !== null && Number(d.used) < 0 ? 'text-rose-700' : ''}`}
                           >

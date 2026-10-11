@@ -867,17 +867,19 @@ class Loader {
                          and archived_at is null),
               upd as (update ops.licence l
                          set kind = $3, number = $5, authority = $6, issued_on = $7,
-                             expires_on = $8, renewal_role = $9,
+                             expires_on = $8, renewal_role = $9, location = $10,
+                             equipment_type = $11,
                              noticed = case when l.expires_on is distinct from $8 then null
                                             else l.noticed end
                         where l.id = (select id from cur)
                           and (l.kind, l.number, l.authority, l.issued_on, l.expires_on,
-                               l.renewal_role)
-                              is distinct from ($3, $5, $6, $7::date, $8::date, $9)
+                               l.renewal_role, l.location, l.equipment_type)
+                              is distinct from ($3, $5, $6, $7::date, $8::date, $9, $10, $11)
                        returning l.id, false as inserted),
               ins as (insert into ops.licence (tenant_id, org_node_id, kind, name, number,
-                                               authority, issued_on, expires_on, renewal_role)
-                      select $1, $2, $3, $4, $5, $6, $7, $8, $9
+                                               authority, issued_on, expires_on, renewal_role,
+                                               location, equipment_type)
+                      select $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
                        where not exists (select 1 from cur)
                       returning id, true as inserted)
          select * from upd union all select * from ins`,
@@ -891,6 +893,8 @@ class Loader {
           l.issued_on ?? null,
           l.expires_on ?? null,
           l.renewal_role,
+          l.location ?? null,
+          l.equipment_type ?? null,
         ],
       );
       await nobody(FILES.licences.file, l.line, 'renewal_role', l.place_code, l.renewal_role);
@@ -3137,11 +3141,12 @@ class Loader {
          returning id, xmax = 0 as inserted`,
         [this.tenant, this.nodes.get(m.place_code), m.meter_code, m.name, m.kind, m.unit],
       );
-      const key = `${m.place_code}|${m.read_by}|${m.read_at}`;
+      const key = `${m.place_code}|${m.read_by}|${await this.meterTimes(m.place_code, m.read_by, m.read_at)}`;
       rounds.set(key, [...(rounds.get(key) ?? []), m]);
     }
     for (const [key, meters] of rounds) {
-      const [place, role, at] = key.split('|') as [string, string, string];
+      const [place, role, times] = key.split('|') as [string, string, string];
+      const at = times.split(' ')[0]!;
       const ids = await this.c.query<{ id: string; code: string }>(
         `select id, code from ops.meter where tenant_id = $1 and code = any ($2)`,
         [this.tenant, meters.map((m) => m.meter_code)],
@@ -3158,7 +3163,7 @@ class Loader {
             meter: idOf.get(m.meter_code),
           })),
       );
-      const schedule = JSON.stringify({ kind: 'daily', times: [at] });
+      const schedule = JSON.stringify({ kind: 'daily', times: times.split(' ') });
       const assign = JSON.stringify({ mode: 'job_role', role });
       await this.upsert(
         'checklists',
@@ -3182,6 +3187,34 @@ class Loader {
         ],
       );
     }
+  }
+
+  /**
+   * When a meter round is due (ADR 124), as `HH:MM HH:MM`: the times file 43 gives; at the end
+   * of the reader's last shift there (`end_of_shift`: 30 minutes before it ends, from file 16);
+   * blank, every 12 hours at a hotel, which never closes, else at the end of the shift.
+   */
+  private async meterTimes(place: string, role: string, readAt: string): Promise<string> {
+    let mode = readAt;
+    if (mode === 'auto') {
+      const r = await this.c.query<{ f: string | null }>(
+        `select o.outlet_format as f from core.hierarchy_node o
+          where o.id = core.nearest($1, array['outlet'])`,
+        [this.nodes.get(place)],
+      );
+      mode = r.rows[0]?.f === 'hotel' ? '08:00 20:00' : 'end_of_shift';
+    }
+    if (mode !== 'end_of_shift') return mode;
+    const mins = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+    const here = this.b.shiftTemplates.filter((t) => t.roster_node_code === place);
+    const theirs = here.filter((t) => t.job_role_code === role);
+    const ends = (theirs.length ? theirs : here).map((t) => {
+      const end = mins(t.end_time);
+      return end <= mins(t.start_time) ? end + 24 * 60 : end;
+    });
+    if (!ends.length) return '21:30';
+    const due = (Math.max(...ends) - 30 + 24 * 60) % (24 * 60);
+    return `${String(Math.floor(due / 60)).padStart(2, '0')}:${String(due % 60).padStart(2, '0')}`;
   }
 
   /** File 46 (ADR 095): the SOP library; an SOP no longer listed is archived. */

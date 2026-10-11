@@ -123,6 +123,21 @@ export const LICENCE_KINDS: readonly LicenceKind[] = [
   },
 ];
 
+/**
+ * Fire extinguishers (ADR 127): each one a licence of kind FIRE_EXTINGUISHER with where it hangs
+ * and its type, so its refill or expiry date is on the Compliance card. The database takes these
+ * types only (ops.extinguisher_types()).
+ */
+export const FIRE_EXTINGUISHER = 'FIRE_EXTINGUISHER';
+export const EXTINGUISHER_TYPES = [
+  'CO2',
+  'ABC powder',
+  'Foam',
+  'Water',
+  'Wet chemical',
+  'Clean agent',
+] as const;
+
 export const CALENDAR_JOBS: readonly CalendarJob[] = [
   {
     code: 'PEST-CONTROL',

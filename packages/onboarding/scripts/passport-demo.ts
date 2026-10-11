@@ -51,7 +51,12 @@ const q = (v: Cell) => {
 };
 const files: Record<string, string> = {};
 function csv(name: string, header: string[], rows: Cell[][]) {
-  files[name] = [header.join(','), ...rows.map((r) => r.map(q).join(','))].join('\n') + '\n';
+  // a row may leave out its last, optional columns
+  const full = (r: Cell[]) => [
+    ...r,
+    ...Array<Cell>(Math.max(0, header.length - r.length)).fill(''),
+  ];
+  files[name] = [header.join(','), ...rows.map((r) => full(r).map(q).join(','))].join('\n') + '\n';
 }
 
 // ---------------------------------------------------------------------------------------
@@ -91,6 +96,9 @@ const DEPTS: [code: string, name: string, type: string][] = [
   // code is the one Purchase & Stores had, so a hotel loaded before keeps the same department
   ['STORES-TEAM', 'Purchase', 'other'],
   ['ADMIN-FINANCE', 'Admin & Finance', 'other'],
+  // round the clock in two 12-hour shifts (Security SOP.docx, ADR 124); last, so a hotel loaded
+  // before keeps its places as they were
+  ['SECURITY', 'Security', 'other'],
 ];
 csv(
   '01_org_nodes.csv',
@@ -227,6 +235,10 @@ const PEOPLE: Person[] = [
   // the purchase manager, back with a Purchase department and no store (ADR 122); last, so
   // everyone else's joining day stays as loaded
   P('purchase-manager', 'Shreya Kenkre', 'PURCHASE_MANAGER', 'STORES-TEAM', 58000),
+  // the security team (ADR 124): a supervisor and a guard for each 12-hour shift
+  P('security-supervisor', 'Santosh Naik', 'SECURITY_SUPERVISOR', 'SECURITY', 32000),
+  P('security-day', 'Mahesh Gaonkar', 'SECURITY_GUARD', 'SECURITY', 19000),
+  P('security-night', 'Anil Parsekar', 'SECURITY_GUARD', 'SECURITY', 19000),
 ];
 const U = (user: string) => `passport.${user}`;
 // added after the hotel's first load (ADR 122)
@@ -1891,6 +1903,7 @@ const headOf: Record<string, string> = {
   CASHIER: 'gm',
   ENGINEERING: 'chief-engineer',
   BANQUETS: 'banquet-manager',
+  SECURITY: 'security-supervisor',
 };
 const templates = new Map<string, Cell[]>();
 for (const [user, dept, shift, start, end] of SHIFTS) {
@@ -1913,6 +1926,33 @@ templates.set('RESTAURANT Split', [
   '15:00',
   '18:00',
   '',
+]);
+// security round the clock, 08:00 to 20:00 and 20:00 to 08:00 (Security SOP section 4)
+templates.set('SECURITY Day', [
+  D('SECURITY'),
+  'Day',
+  '08:00',
+  '20:00',
+  'SECURITY_GUARD',
+  1,
+  'Mon-Sun',
+  '',
+  '',
+  '',
+  60,
+]);
+templates.set('SECURITY Night', [
+  D('SECURITY'),
+  'Night',
+  '20:00',
+  '08:00',
+  'SECURITY_GUARD',
+  1,
+  'Mon-Sun',
+  '',
+  '',
+  '',
+  60,
 ]);
 templates.set('BAR Panzer', [
   D('BAR'),
@@ -2169,7 +2209,166 @@ const LISTS: List[] = [
   fromLibrary('TURNDOWN', 'HOUSEKEEPING', 'role:ROOM_ATTENDANT'),
   fromLibrary('LOBBY-WASHROOM', 'HOUSEKEEPING', 'role:PUBLIC_AREA_ATTENDANT'),
   fromLibrary('LAUNDRY-ROUND', 'HOUSEKEEPING', 'role:LAUNDRY_ATTENDANT'),
-  fromLibrary('PLANT-ROUND', 'ENGINEERING', 'role:TECHNICIAN'),
+  // Engineering from Passport's own sheets (Maintenance_Checklist.xlsx, Weekly maintenance
+  // Checklist.xlsx; ADR 124): the daily rounds of the plant, the rooms' fittings room by room,
+  // and the weekly check the Chief Engineer signs off. The meters are their own round (file 43).
+  [
+    'PLANT-ROUND',
+    D('ENGINEERING'),
+    'Daily rounds',
+    'daily 08:00',
+    'role:TECHNICIAN',
+    [
+      ['Infinity pool motor running', 'tick'],
+      ['Rooftop bar fridge cold', 'tick'],
+      ['Restaurant fridge cold', 'tick'],
+      ['Generator: diesel level checked', 'tick'],
+      ['STP running normally', 'tick'],
+      ['Water reservoir filled to level, no leaks', 'tick'],
+      ['Fire safety equipment in place', 'tick'],
+      ['Lift working', 'tick'],
+      ['Pest traps checked', 'tick'],
+      ['Fresh-air ducts clear', 'tick'],
+      ['Exhaust ducts clear', 'tick'],
+      ['Phone lines working', 'tick'],
+      ['Other problems', 'text'],
+    ],
+  ],
+  [
+    'ROOM-MAINTENANCE',
+    D('ENGINEERING'),
+    'Room fittings check',
+    'daily 10:00',
+    'role:TECHNICIAN',
+    [
+      ['AC working', 'tick'],
+      ['Plumbing: no leaks', 'tick'],
+      ['Lights working', 'tick'],
+      ['Minibar fridge cold', 'tick'],
+      ['Jacuzzi working', 'tick'],
+      ['Bathroom fittings', 'tick'],
+      ['TV and remote working', 'tick'],
+      ['Door lock battery', 'tick'],
+      ['Wi-Fi working', 'tick'],
+    ],
+    undefined,
+    { forEach: 'rooms' },
+  ],
+  // Security from Passport's own SOP and Daily Security Checklist.xlsx (ADR 124): the shift's
+  // checklist the supervisor signs off, the 04:00 opening, the lights at dusk and at closing,
+  // the hourly night patrol and the handover at each change of shift
+  [
+    'SECURITY-SHIFT',
+    D('SECURITY'),
+    'Daily security checklist',
+    'daily 09:00 21:00',
+    'role:SECURITY_GUARD',
+    [
+      ['Entrance watched', 'tick'],
+      ['CCTV working', 'tick'],
+      ['Guest IDs checked', 'tick'],
+      ['Emergency exits clear', 'tick'],
+      ['Fire alarm working', 'tick'],
+      ['Perimeter walked', 'tick'],
+      ['Rooftop bar locked up', 'tick'],
+      ['Restaurant locked up', 'tick'],
+      ['Infinity pool watched', 'tick'],
+      ['Parking checked', 'tick'],
+      ['Visitor log kept', 'tick'],
+      ['Incidents written down', 'tick'],
+      ['Notes', 'text'],
+    ],
+    undefined,
+    { signOff: 'department_head' },
+  ],
+  [
+    'SECURITY-OPENING',
+    D('SECURITY'),
+    'Morning opening',
+    'daily 04:00',
+    'role:SECURITY_GUARD',
+    [
+      ['Water pump on at 04:00', 'tick'],
+      ['Tanks filling, no odd sounds', 'tick'],
+      ['Pump off when the tanks are full', 'tick'],
+      ['Main gate and parking checked', 'tick'],
+      ['Bar entrance, pool deck and rooftop checked', 'tick'],
+      ['Service lane, back and garbage areas checked', 'tick'],
+      ['Broken lights, leaks or open doors', 'text'],
+    ],
+  ],
+  [
+    'SECURITY-LIGHTS-ON',
+    D('SECURITY'),
+    'Lights on at sunset',
+    'daily 18:30',
+    'role:SECURITY_GUARD',
+    [
+      ['Entrance lights and hotel sign on', 'tick'],
+      ['Parking and path lights on', 'tick'],
+      ['Garden and lobby outside lights on', 'tick'],
+      ['Floor lights as per the lights SOP', 'tick'],
+      ['Back area lights on', 'tick'],
+      ['Every light working', 'tick'],
+    ],
+  ],
+  [
+    'SECURITY-LIGHTS-OFF',
+    D('SECURITY'),
+    'Lights at closing',
+    'daily 23:30',
+    'role:SECURITY_GUARD',
+    [
+      ['Decorative and garden lights off', 'tick'],
+      ['Café and bar lights off after closing', 'tick'],
+      ['Security and reception lights left on', 'tick'],
+      ['Emergency lights never switched off', 'tick'],
+    ],
+  ],
+  fromLibrary(
+    'SECURITY-PATROL',
+    'SECURITY',
+    'role:SECURITY_GUARD',
+    'daily 21:00 22:00 23:00 00:00 01:00 02:00 03:00 05:00 06:00',
+  ),
+  [
+    'SECURITY-HANDOVER',
+    D('SECURITY'),
+    'Security handover',
+    'daily 07:45 19:45',
+    'role:SECURITY_GUARD',
+    [
+      ['Log book read', 'tick'],
+      ['Keys handed over', 'tick'],
+      ['Open incidents passed on', 'tick'],
+      ['Lost and found passed on', 'tick'],
+      ['Emergency equipment in place', 'tick'],
+      ['VIP guests and events told', 'tick'],
+    ],
+    undefined,
+    { handover: true },
+  ],
+  [
+    'WEEKLY-MAINTENANCE',
+    D('ENGINEERING'),
+    'Weekly maintenance',
+    'weekly Mon 10:00',
+    'role:TECHNICIAN',
+    [
+      ['Infinity pool checked', 'tick'],
+      ['Rooftop bar equipment', 'tick'],
+      ['Restaurant equipment', 'tick'],
+      ['Generator serviced and run', 'tick'],
+      ['STP checked', 'tick'],
+      ['Water tank: level and leaks', 'tick'],
+      ['Fire safety equipment', 'tick'],
+      ['Lift checked', 'tick'],
+      ['Pest control done', 'tick'],
+      ['Other problems', 'text'],
+    ],
+    undefined,
+    { signOff: 'department_head' },
+  ],
   // ADR 088: each room in a grid, signed off by the supervisor (one level up, ADR 087)
   [
     'HK-ROOM-READY',
@@ -2367,8 +2566,45 @@ csv(
 );
 csv(
   '38_licences.csv',
-  ['place_code', 'kind', 'name', 'number', 'authority', 'issued_on', 'expires_on', 'renewal_role'],
   [
+    'place_code',
+    'kind',
+    'name',
+    'number',
+    'authority',
+    'issued_on',
+    'expires_on',
+    'renewal_role',
+    'location',
+    'equipment_type',
+  ],
+  [
+    // the fire extinguishers (ADR 127): each with where it hangs and its type, refilled by
+    // Engineering before its date; the kitchen's wet chemical one is due soon, the generator
+    // room's is past its date
+    ...(
+      [
+        [1, 'Kitchen', 'Wet chemical', 20],
+        [2, 'Kitchen', 'CO2', 140],
+        [3, 'Restaurant', 'ABC powder', 200],
+        [4, 'Rooftop bar', 'CO2', 75],
+        [5, 'Reception', 'ABC powder', 260],
+        [6, 'Generator room', 'CO2', -6],
+        [7, 'First floor corridor', 'ABC powder', 300],
+        [8, 'Pool deck', 'ABC powder', 160],
+      ] as const
+    ).map(([n, where, type, left]) => [
+      H,
+      'FIRE_EXTINGUISHER',
+      `Fire extinguisher ${n}`,
+      `FE-${String(n).padStart(3, '0')}`,
+      'Goa Fire Safety Services',
+      day(left - 365),
+      day(left),
+      'CHIEF_ENGINEER',
+      where,
+      type,
+    ]),
     [
       H,
       'FSSAI',
@@ -2593,7 +2829,8 @@ csv(
 );
 
 // ---------------------------------------------------------------------------------------
-// Meters and SOPs (ADR 091, 095)
+// Meters and SOPs (ADR 091, 095); the hotel never closes, so the meters are read every 12
+// hours (read_at blank, ADR 124)
 // ---------------------------------------------------------------------------------------
 
 csv(
@@ -2607,7 +2844,7 @@ csv(
       'electricity',
       'kWh',
       'TECHNICIAN',
-      '08:00',
+      '',
     ],
     [
       D('ENGINEERING'),
@@ -2616,11 +2853,28 @@ csv(
       'electricity',
       'kWh',
       'TECHNICIAN',
-      '08:00',
+      '',
     ],
-    [D('ENGINEERING'), 'PASSPORT-LPG', 'Kitchen LPG', 'gas', 'kg', 'TECHNICIAN', '08:00'],
-    [D('ENGINEERING'), 'PASSPORT-WATER', 'Water inlet', 'water', 'kL', 'TECHNICIAN', '08:00'],
-    [D('ENGINEERING'), 'PASSPORT-DG', 'Generator diesel', 'diesel', 'L', 'TECHNICIAN', '08:00'],
+    [D('ENGINEERING'), 'PASSPORT-LPG', 'Kitchen LPG', 'gas', 'kg', 'TECHNICIAN', ''],
+    [D('ENGINEERING'), 'PASSPORT-WATER', 'Water inlet', 'water', 'kL', 'TECHNICIAN', ''],
+    [D('ENGINEERING'), 'PASSPORT-DG', 'Generator diesel', 'diesel', 'L', 'TECHNICIAN', ''],
+  ],
+);
+// the registers the Security SOP keeps (section 22, ADR 124): security writes the gate's,
+// the front desk the lost and found and the keys too, engineering the fire equipment
+const SEC = 'SECURITY_GUARD; SECURITY_SUPERVISOR';
+csv(
+  '45_registers.csv',
+  ['register', 'on', 'roles'],
+  [
+    ['lost_found', 'yes', `FRONT_DESK_EXECUTIVE; ${SEC}`],
+    ['incidents', 'yes', ''],
+    ['visitors', 'yes', SEC],
+    ['vehicles', 'yes', SEC],
+    ['staff_movement', 'yes', SEC],
+    ['keys', 'yes', `FRONT_DESK_EXECUTIVE; ${SEC}`],
+    ['leads', 'yes', ''],
+    ['fire_equipment', 'yes', `CHIEF_ENGINEER; TECHNICIAN; ${SEC}`],
   ],
 );
 csv(

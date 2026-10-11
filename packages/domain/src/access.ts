@@ -202,6 +202,14 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: { RECIPES_TEAM: v, DERIVED_MENU: v },
   },
   {
+    // the meters they read and their readings (ADR 124): a technician, without the department
+    // head's say over them
+    code: 'METER_READER',
+    name: 'Meter Reader',
+    kind: 'role',
+    grants: { UTILITIES: v },
+  },
+  {
     // the department's linen and uniforms with the laundry, and what breaks there: kitchen,
     // service and housekeeping teams, not engineering or the front office (ADR 124)
     code: 'WARE_KEEPER',
@@ -411,8 +419,9 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       PURCHASE_ORDERS: v,
       BILLS: v,
       TRANSFERS: m,
-      // the central kitchen's manager: the recipes of what it makes (ADR 123)
+      // the central kitchen's manager: the recipes and costs of what it makes (ADR 123)
       RECIPES: v,
+      MENU: v,
       PRODUCTION: m,
       SHELF_LIFE: m,
     },
