@@ -136,7 +136,8 @@ test("a manager puts themselves on another role's shift type: that tile lights, 
   await page.goto(`/roster/week?node=${kitchen}&week=${day}&day=${day}&view=people`);
   const row = page.getByTestId('person-row').filter({ hasText: 'Test Executive Chef 1.0' });
   const tile = row.locator('[data-testid="shift-tile"][data-type="straight"]').first();
-  const before = await page.getByTestId('week-summary').textContent();
+  // an empty week has no summary line until it has a shift
+  await expect(page.getByTestId('week-summary')).toHaveCount(0);
   await tile.click();
   await expect(tile).toHaveAttribute('aria-pressed', 'true');
   // no second tile of the same shift stands beside it, and Off is not lit
@@ -147,11 +148,11 @@ test("a manager puts themselves on another role's shift type: that tile lights, 
   await tile.click({ force: true });
   await expect(tile).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('week-summary')).toHaveText(summary!);
-  // and Off leaves no empty draft behind
+  // and Off leaves no empty draft behind: the week is empty again
   await row.locator('[data-type="off"]').click();
   await expect(row.locator('[data-type="off"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(tile).toHaveAttribute('aria-pressed', 'false');
-  await expect(page.getByTestId('week-summary')).toHaveText(before!);
+  await expect(page.getByTestId('week-summary')).toHaveCount(0);
 });
 
 test('a custom shift: a day, from a time to a time, shown as theirs (ADR 128)', async ({
