@@ -1,5 +1,10 @@
 import { join } from 'node:path';
-import { closePools, inRolledBackTx } from '@outlet-ops/db/test-helpers';
+import {
+  asPlatform,
+  closePools,
+  inRolledBackTx,
+  newPlatformAdmin,
+} from '@outlet-ops/db/test-helpers';
 import type { PoolClient } from 'pg';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { loadCustomer } from './apply';
@@ -288,6 +293,69 @@ describe('the Passport Hotel demo', () => {
         // signs off the guards' checklists (ADR 124)
         'SECURITY_SUPERVISOR',
       ]);
+    });
+  });
+
+  it('starts again (ADR 130): emptied, then its files import as for a new customer', async () => {
+    await inRolledBackTx(async (c) => {
+      if (!(await c.query(`select 1 from core.tenant where code = 'PASSPORT-TEST'`)).rowCount) {
+        await c.query('set local role platform_loader');
+        await createCustomer(c, PASSPORT, { nested: true });
+        await c.query('reset role');
+        await plan(c);
+      }
+      const files = readCustomerDir(DIR);
+      await c.query('set local role platform_loader');
+      expect((await loadCustomer(c, files, { nested: true })).ok).toBe(true);
+      await c.query('reset role');
+      const t = (
+        await c.query<{ id: string; name: string }>(
+          `select id, name from core.tenant where code = 'PASSPORT-TEST'`,
+        )
+      ).rows[0]!;
+      const admin = await newPlatformAdmin(c);
+      const reset = await asPlatform(c, admin, 'select platform.reset_test_customer($1, $2)', [
+        t.id,
+        t.name,
+      ]);
+      expect(reset.error).toBeUndefined();
+      // the plan stays: Hotel and Compliance are still on
+      const settings = (
+        await c.query<{ s: { bundles?: Record<string, boolean> } }>(
+          `select settings s from core.tenant where id = $1`,
+          [t.id],
+        )
+      ).rows[0]!.s;
+      expect(settings.bundles?.hotel).toBe(true);
+      await c.query('set local role platform_loader');
+      const dry = await loadCustomer(c, files, { nested: true, dryRun: true });
+      expect(dry.issues).toEqual([]);
+      expect(dry.warnings).toEqual([]);
+      const n = (e: string) => [dry.counts[e]?.created ?? 0, dry.counts[e]?.updated ?? 0];
+      // everything new, the company root and the owner too: nothing old is left to change
+      expect({
+        org: n('org places'),
+        roles: n('job roles'),
+        users: n('users'),
+        workers: n('workers'),
+        checklists: n('checklists'),
+        shifts: n('shifts'),
+        tasks: n('tasks'),
+        licences: n('licences'),
+      }).toEqual({
+        org: [14, 0],
+        roles: [39, 0],
+        users: [40, 0],
+        workers: [40, 0],
+        checklists: [39, 0],
+        shifts: [489, 0],
+        tasks: [2, 0],
+        licences: [14, 0],
+      });
+      expect((await loadCustomer(c, files, { nested: true })).ok).toBe(true);
+      const again = await loadCustomer(c, files, { nested: true, dryRun: true });
+      expect(Object.entries(again.counts).filter(([, x]) => x.created || x.updated)).toEqual([]);
+      await c.query('reset role');
     });
   });
 });
