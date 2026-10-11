@@ -320,6 +320,18 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   for something, `inv.staff_ask`). An order's page names its approver and lets them approve
   (`inv.po_approval`). Passport has no Main Store. Compliance jobs also repeat weekly, every 2
   weeks or on the nth weekday (ADR 116, file 39 `repeat`).
+- Front desk and lists (ADR 117 to 122): a room's status carries its time (Arriving, Leaving)
+  or, out of order, a reason, an until day and its repair (`ops.set_room_status(room, status,
+  details)`); no House use; Rooms' chips filter. A handover checklist (file 29 `handover`) is a
+  card on the next shift's Home until Seen (`ops.last_handovers`); a task's note is
+  `done_note`; Booking leads is a register. Minibar charges are rows on Home with More and
+  Added to bill, and a History tab. Meals (breakfast, lunch, dinner) are by room only, set by
+  the outlet's service team (`ops.serves_meals`, `ops.set_meal_rooms`), never a later day
+  looked back on. Every list takes any two days (`ListDays`, `rpt.days_window`, opening as it
+  was until days are picked) and downloads what it shows (`/export/<list>`, `lib/exports.ts`;
+  a list's query is one lib function its screen and download share). Reports → Stock movements
+  (`rpt.stock_movements`) is every order, receipt and transfer of a store or an outlet's stores
+  for any days, for whoever opens purchasing there; the Purchase Manager reads bills.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

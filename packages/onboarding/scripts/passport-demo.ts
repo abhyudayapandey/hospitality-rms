@@ -87,8 +87,9 @@ const DEPTS: [code: string, name: string, type: string][] = [
   ['BANQUETS', 'Sales, Events & Banquets', 'service'],
   ['CASHIER', 'Cashier', 'other'],
   ['ENGINEERING', 'Engineering & Maintenance', 'other'],
-  // the purchase manager buys for the hotel; there is no Main Store to run (ADR 115, 122)
-  ['PURCHASE', 'Purchase', 'other'],
+  // the purchase manager's, with no store: there is no Main Store to run (ADR 115, 122); its
+  // code is the one Purchase & Stores had, so a hotel loaded before keeps the same department
+  ['STORES-TEAM', 'Purchase', 'other'],
   ['ADMIN-FINANCE', 'Admin & Finance', 'other'],
 ];
 csv(
@@ -216,7 +217,6 @@ const PEOPLE: Person[] = [
   P('cashier', 'Kunal Sawant', 'CASHIER', 'CASHIER', 26000),
   P('chief-engineer', 'Prakash Chodankar', 'CHIEF_ENGINEER', 'ENGINEERING', 68000),
   P('technician', 'Vinay Harmalkar', 'TECHNICIAN', 'ENGINEERING', 24000),
-  P('purchase-manager', 'Shreya Kenkre', 'PURCHASE_MANAGER', 'PURCHASE', 58000),
   P('accountant', 'Neha Sardesai', 'ACCOUNTANT', 'ADMIN-FINANCE', 48000),
   P('cost-controller', 'Rahul Bandodkar', 'COST_CONTROLLER', 'ADMIN-FINANCE', 52000),
   P('hr', 'Fatima Shaikh', 'HR_EXECUTIVE', 'ADMIN-FINANCE', 38000),
@@ -224,8 +224,13 @@ const PEOPLE: Person[] = [
   P('banquet-manager', 'Gail Lobo', 'BANQUET_MANAGER', 'BANQUETS', 60000),
   P('banquet-captain', 'Vishal Kudalkar', 'BANQUET_CAPTAIN', 'BANQUETS', 30000),
   P('banquet-server', 'Melissa Vaz', 'BANQUET_SERVER', 'BANQUETS', 19000),
+  // the purchase manager, back with a Purchase department and no store (ADR 122); last, so
+  // everyone else's joining day stays as loaded
+  P('purchase-manager', 'Shreya Kenkre', 'PURCHASE_MANAGER', 'STORES-TEAM', 58000),
 ];
 const U = (user: string) => `passport.${user}`;
+// added after the hotel's first load (ADR 122)
+const LATER = new Set([U('purchase-manager')]);
 
 // catalogue roles by code alone (ADR 060); the hotel's own pool attendant in full
 // IRD_MANAGER: the hotel has none; the Restaurant Manager covers it (file 37)
@@ -236,7 +241,10 @@ csv(
   roleCodes.map((r) =>
     r === 'POOL_ATTENDANT'
       ? [r, 'Pool Attendant', 'any', 'HOUSEKEEPING', 'WORKS_SHIFTS; USES_DEPARTMENT_STORE']
-      : [r, '', 'any', '', ''],
+      : r === 'PURCHASE_MANAGER'
+        ? // no Main Store to keep (ADR 115): what was bought, received and moved (ADR 122)
+          [r, '', 'any', 'STORES-TEAM', 'RUNS_DEPARTMENT; SEES_OUTLET_STOCK; READS_BILLS']
+        : [r, '', 'any', '', ''],
   ),
 );
 csv(
@@ -1821,11 +1829,21 @@ csv(
 csv(
   '14_leave_balances.csv',
   ['username', 'leave_type_code', 'year', 'entitled_days', 'used_days'],
-  PEOPLE.filter((p) => p.user !== U('presenter')).flatMap((p) => [
-    [p.user, 'CASUAL_LEAVE', TODAY.slice(0, 4), 12, pick(0, 5)],
-    [p.user, 'SICK_LEAVE', TODAY.slice(0, 4), 12, pick(0, 3)],
-    [p.user, 'EARNED_LEAVE', TODAY.slice(0, 4), 18, pick(0, 6)],
-  ]),
+  // people added after the hotel went live take no random numbers, so everyone else's
+  // days (and the activity drawn after them) stay as they were loaded
+  PEOPLE.filter((p) => p.user !== U('presenter')).flatMap((p) =>
+    LATER.has(p.user)
+      ? [
+          [p.user, 'CASUAL_LEAVE', TODAY.slice(0, 4), 12, 2],
+          [p.user, 'SICK_LEAVE', TODAY.slice(0, 4), 12, 1],
+          [p.user, 'EARNED_LEAVE', TODAY.slice(0, 4), 18, 3],
+        ]
+      : [
+          [p.user, 'CASUAL_LEAVE', TODAY.slice(0, 4), 12, pick(0, 5)],
+          [p.user, 'SICK_LEAVE', TODAY.slice(0, 4), 12, pick(0, 3)],
+          [p.user, 'EARNED_LEAVE', TODAY.slice(0, 4), 18, pick(0, 6)],
+        ],
+  ),
 );
 csv(
   '15_roster_settings.csv',

@@ -28,7 +28,7 @@ interface Move {
 async function as<T extends object>(c: PoolClient, user: string, sql: string, params: unknown[]) {
   const r = await attemptAs<T>(c, ids.user(user), sql, params);
   if (r.error !== undefined) throw new Error(`${user}: ${r.error}`);
-  return r.rows!;
+  return r.rows;
 }
 
 const period = async (c: PoolClient) =>
@@ -125,8 +125,16 @@ describe('stock movements', () => {
           places.map((p) => p.code),
           who,
         ).toEqual(expect.arrayContaining([HOTEL, KS, 'TEST-HOTEL-1.0-BAR-STORE']));
-        const reports = await as<{ report: string }>(c, who, `select report from rpt.my_reports()`, []);
-        expect(reports.map((r) => r.report), who).toContain('movements');
+        const reports = await as<{ report: string }>(
+          c,
+          who,
+          `select report from rpt.my_reports()`,
+          [],
+        );
+        expect(
+          reports.map((r) => r.report),
+          who,
+        ).toContain('movements');
         await moves(c, who, HOTEL, from, to);
       }
       const acct = await as<{ code: string }>(

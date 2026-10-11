@@ -2763,3 +2763,52 @@ is received as before.
      where it is until it is given.
    - **A regular job** (Compliance → Regular jobs → Add): Every week / Every 2 weeks / A day of
      the month; the list says "Every week on Monday".
+
+## Releasing the front desk round: room details, the shift handover, meals by room, minibar history, Stock movements and downloads (ADR 117 to 122)
+
+Six migrations: `20261219100000_room_details` (`ops.room_status` gains `at_time`, `reason`,
+`until`, `maintenance_id`; House use rooms become Vacant clean; `ops.set_room_status` takes
+details), `20261219110000_handover_card` (`ops.checklist_template.handover`, `ops.task.done_note`,
+the Booking leads register, a new table `ops.handover_seen` with RLS and audit),
+`20261219120000_minibar_history`, `20261219130000_meals` (`meal` on `ops.breakfast` and
+`ops.breakfast_room`, their unique indexes now include it), `20261219140000_stock_movements`
+(`rpt.stock_movements`, `movements` in `rpt.can_open`, `rpt.report_places` and
+`rpt.my_reports`) and `20261219150000_list_days` (`rpt.days_window`). An access change: the
+Purchase Manager's catalogue role gains READS_BILLS (Test Company's file 06 too, its 99 preview
+regenerated), a new table and new report access, so run "RLS equivalence (all users)" before
+merging. Who sets breakfast changes: the outlet's service team (restaurant, in-room dining,
+banquets; not a bar on its own) and whoever works at the outlet itself, no longer front office
+or housekeeping, who read it. No new settings are needed (`lunch_ends` 16:00 and `dinner_ends`
+23:30 are the defaults).
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual.
+4. Re-import (rebuild each zip first: `-FS` makes it match the folder):
+   - **Passport**: `cd docs/onboarding/demo/passport-hotel && zip -q -FS ../passport-hotel.zip *.csv`.
+     The dry run: Purchase & Stores renamed **Purchase** (org places 1 changed), the Purchase
+     Manager's job role with its duties, Shreya Kenkre in Purchase (the same username: changed,
+     not added) and the front office handover's new steps (checklists 1 changed). **Apply**, then
+     a second dry run shows no changes. Then Logins → create the missing username login for
+     `passport.purchase-manager` (password `TestPurchaseManager!12`) if she has none.
+   - **The test customers** (test environment only): the step 7 zips. Test Company: its two
+     Purchase Managers gain ACCOUNTS at their outlet's supply point (job role access 2 new).
+5. Check, at 380 px:
+   - **`passport.front-desk`**: Rooms → tap a room → **Arriving** asks the time; **Out of
+     order** asks why, until when and the repair (or "Report it to maintenance now"); the chips
+     at the top filter the rooms. Finish **Front office handover** with a note: the task shows
+     the note as a card.
+   - **Another front desk login** (or Show as the front office manager): Home has the **Last
+     handover** card with every step and the note; **Seen** removes it. Registers → **Booking
+     leads**: add one, close it Booked or Lost.
+   - **`passport.front-desk`** Home: each minibar charge is a row with More and **Added to
+     bill**; Minibars → **History** lists what was added, with dates and **Download**.
+   - **`passport.captain`** (restaurant): Me → **Meals**: Breakfast / Lunch / Dinner; **Add
+     rooms** opens the room tiles, − / + in each; save. **Other day** offers no day after today.
+     The front desk and the chef read it and cannot change it.
+   - **`passport.purchase-manager`** and **`passport.gm`**: Reports → **Stock movements** →
+     All stores, Today / 7 days / This month or two dates; each line opens to its items;
+     **Download CSV**.
+   - Any list (Stock → Orders, Transfers, Bills, Wastage; Registers; Logbook; Utilities; Linen;
+     Team tasks; Attendance exceptions): **Pick dates** narrows it, **All dates** goes back,
+     **Download** saves what it shows.

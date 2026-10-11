@@ -61,7 +61,7 @@ export default async function RoomsPage({ searchParams }: { searchParams: Search
   });
   // a status's chip shows only its rooms (ADR 117)
   const askedStatus = param(sp, 'status');
-  const only = list.some((r) => r.status === askedStatus) ? askedStatus! : null;
+  const only = list.some((r) => r.status === askedStatus) ? askedStatus : null;
   const shown = (rs: RoomRow[]) => (only ? rs.filter((r) => r.status === only) : rs);
   const filterHref = (st: string | null) =>
     `/rooms?outlet=${place.outlet_id}${st ? `&status=${st}` : ''}`;

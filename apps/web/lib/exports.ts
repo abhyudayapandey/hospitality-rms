@@ -396,7 +396,7 @@ export const EXPORTS: Record<string, Run> = {
         e.local_date,
         e.place_name,
         e.worker_name,
-        EXCEPTION_LABEL[e.kind as keyof typeof EXCEPTION_LABEL] ?? e.kind,
+        EXCEPTION_LABEL[e.kind] ?? e.kind,
         e.status,
         e.resolution_note,
       ]),

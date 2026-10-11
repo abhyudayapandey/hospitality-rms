@@ -17,7 +17,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ list: string }>
   try {
     const sheet = await withUser(user.id, (tx) => run(tx, q));
     // a byte-order mark, so Excel reads ₹ and names as UTF-8
-    return new NextResponse(`﻿${toCsv(sheet.header, sheet.rows)}`, {
+    return new NextResponse(`\uFEFF${toCsv(sheet.header, sheet.rows)}`, {
       headers: {
         'content-type': 'text/csv; charset=utf-8',
         'content-disposition': `attachment; filename="${csvName(sheet.name)}"`,

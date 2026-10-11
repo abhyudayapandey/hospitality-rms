@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Icon } from '@/components/icon';
 import { addDays, formatDay, formatSpan, localDate } from '@/lib/dates';
-import { formatMoney, formatWhen } from '@/lib/format';
+import { formatWhen } from '@/lib/format';
 import type {
   HomeBreakfast,
   HomeEvent,

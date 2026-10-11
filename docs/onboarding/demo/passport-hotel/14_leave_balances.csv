@@ -104,3 +104,6 @@ passport.banquet-captain,EARNED_LEAVE,2026,18,1
 passport.banquet-server,CASUAL_LEAVE,2026,12,4
 passport.banquet-server,SICK_LEAVE,2026,12,3
 passport.banquet-server,EARNED_LEAVE,2026,18,2
+passport.purchase-manager,CASUAL_LEAVE,2026,12,2
+passport.purchase-manager,SICK_LEAVE,2026,12,1
+passport.purchase-manager,EARNED_LEAVE,2026,18,3

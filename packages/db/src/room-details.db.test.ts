@@ -118,7 +118,8 @@ describe('a room status with its details (ADR 117)', () => {
       const r = await room(c, '101');
       expect((await set(c, DESK, r, 'HM')).error).toMatch(/INVALID_VALUE/);
       expect(
-        (await c.query(`select ops.room_status_name('HM') is null as gone`)).rows[0].gone,
+        (await c.query<{ gone: boolean }>(`select ops.room_status_name('HM') is null as gone`))
+          .rows[0]!.gone,
       ).toBe(true);
     });
   });

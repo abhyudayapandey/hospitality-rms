@@ -961,7 +961,7 @@ export const FILES = {
       // ADR 118: optional, the same on every row of a checklist: yes for a shift handover, whose
       // last round the next shift of its department reads on Home; blank: as its library
       // checklist says (no for one of the company's own)
-      handover: z.union([z.literal('').transform(() => undefined), yesNo]),
+      handover: z.union([z.literal('').transform(() => undefined), yesNo]).optional(),
       // ADR 088: optional, the same on every row of a checklist: `rooms` (each room of its
       // outlet, file 40) or named areas `Lobby; Pool deck`; blank: once
       for_each: z
@@ -1005,7 +1005,15 @@ export const FILES = {
           return z.NEVER;
         }),
     }),
-    optional: ['step_icon', 'from_library', 'days', 'sign_off', 'for_each', 'step_asks', 'handover'],
+    optional: [
+      'step_icon',
+      'from_library',
+      'days',
+      'sign_off',
+      'for_each',
+      'step_asks',
+      'handover',
+    ],
   },
   // Test-only tasks (ADR 020): one-off tasks, open maintenance requests and prep lists.
   tasks: {

@@ -105,8 +105,12 @@ describe('the shift handover (ADR 118)', () => {
       const task = await handoverDone(c, 'All quiet');
       await as(c, ATTENDANT, `select ops.see_handover($1)`, [task]);
       expect(
-        (await c.query(`select count(*)::int n from ops.handover_seen where task_id = $1`, [task]))
-          .rows[0].n,
+        (
+          await c.query<{ n: number }>(
+            `select count(*)::int n from ops.handover_seen where task_id = $1`,
+            [task],
+          )
+        ).rows[0]!.n,
       ).toBe(0);
       await as(c, B, `select ops.see_handover($1)`, [task]);
       expect(await cards(c, B)).toEqual([]);

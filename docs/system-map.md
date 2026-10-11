@@ -134,7 +134,7 @@ roles, starter checklists and starter items, added to the customer's files and d
 import. Platform console → Outlet templates shows what each starts with.
 
 **The test customers follow the SOPs** (ADR 066). Their people hold the SOPs' roles (a
-hotel's Purchase Manager heads Stores; a bar's Accountant verifies its stock checks), and a
+hotel's Purchase Manager heads Stores and reads its bills and Stock movements (ADR 122); a bar's Accountant verifies its stock checks), and a
 test checks every test outlet against its template. Guest House 2.0's Front Desk covers its
 Store Keeper; the Solo Bar's Kitchen Steward is not done.
 
@@ -296,8 +296,10 @@ who presented, and nothing touches a login meanwhile.
   orders need approving (unusual, every, above an amount) (ADR 092).
 - _Shelf life & labels_ (SHELF_LIFE): an opened pack's use-by and its label with day dot;
   _Breakage_ (BREAKAGE): what broke, where and how, posted as consumption (ADR 093).
-- _Rooms_ (ROOMS): what each room should hold, counted not stocked; breakfast by room and buffet
-  for front office and housekeeping, read by the kitchen and restaurant. _Linen & uniforms_
+- _Rooms_ (ROOMS): what each room should hold, counted not stocked; each room's status with its
+  time, or why it is out of order, until when and its repair (ADR 117); breakfast, lunch and
+  dinner by room, set by the restaurant (service) team and read by the kitchen, front office and
+  housekeeping (ADR 121). _Linen & uniforms_
   (LINEN): the laundry exchange and uniforms issued (ADR 094).
 - _Audits_ (AUDITS): yes/no and 1 to 5 checklists scored as a %; _Training & SOPs_ (TRAINING):
   Me → SOPs with "I've read this" per version, sessions with attendance and scores (ADR 095).
