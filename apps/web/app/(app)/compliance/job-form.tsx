@@ -2,7 +2,16 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { CALENDAR_JOBS, everyWords } from '@outlet-ops/domain';
+import {
+  CALENDAR_JOBS,
+  EVERY_MONTHS,
+  NTHS,
+  WEEKDAYS,
+  everyWords,
+  nthWords,
+  repeatWords,
+  type Repeat,
+} from '@outlet-ops/domain';
 import { ErrorBox, inputClass, primaryButton, secondaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { archiveJob, archiveLicence, saveJob, type JobInput } from './actions';
@@ -14,7 +23,19 @@ const field = (f: FormData, name: string) => {
   return typeof v === 'string' ? v : '';
 };
 
-const EVERY = [1, 2, 3, 4, 6, 12, 24, 36] as const;
+/** How a job repeats, as chips (ADR 116). */
+const KINDS = [
+  { key: 'months', label: 'Months' },
+  { key: 'week', label: 'Every week' },
+  { key: 'fortnight', label: 'Every 2 weeks' },
+  { key: 'nth', label: 'A day of the month' },
+] as const;
+type Kind = (typeof KINDS)[number]['key'];
+
+const chip = (on: boolean) =>
+  `flex min-h-11 items-center justify-center rounded-full px-3 text-sm font-medium ring-1 ${
+    on ? 'bg-brand-700 text-white ring-brand-700' : 'bg-white text-slate-700 ring-slate-300'
+  }`;
 
 /**
  * Adds a regular job or changes one (ADR 069, 073): what it is (the library's jobs suggest
@@ -40,7 +61,19 @@ export function JobForm({
   const [error, setError] = useState<string | null>(null);
   const [node, setNode] = useState(existing?.node ?? places[0]?.id ?? '');
   const [name, setName] = useState(existing?.name ?? '');
-  const [every, setEvery] = useState(existing?.every_months ?? 6);
+  const first: Repeat = existing?.repeat ?? { kind: 'months', months: 6 };
+  const [kind, setKind] = useState<Kind>(
+    first.kind === 'weeks' ? (first.weeks === 2 ? 'fortnight' : 'week') : first.kind,
+  );
+  const [every, setEvery] = useState(first.kind === 'months' ? first.months : 6);
+  const [weekday, setWeekday] = useState(first.kind === 'months' ? 1 : first.weekday);
+  const [nth, setNth] = useState(first.kind === 'nth' ? first.nth : 1);
+  const repeat: Repeat =
+    kind === 'months'
+      ? { kind: 'months', months: every }
+      : kind === 'nth'
+        ? { kind: 'nth', nth, weekday }
+        : { kind: 'weeks', weeks: kind === 'fortnight' ? 2 : 1, weekday };
   const [proof, setProof] = useState(existing?.needs_proof ?? true);
   const [key] = useState(() => crypto.randomUUID());
   const here = roles[node] ?? [];
@@ -59,7 +92,7 @@ export function JobForm({
               id: existing?.id ?? null,
               node,
               name,
-              every_months: every,
+              repeat,
               next_due: field(f, 'next_due'),
               owner_role: field(f, 'owner_role'),
               doer_role: field(f, 'doer_role') || null,
@@ -98,6 +131,7 @@ export function JobForm({
             setName(e.target.value);
             const lib = CALENDAR_JOBS.find((j) => j.name === e.target.value);
             if (lib) {
+              setKind('months');
               setEvery(lib.everyMonths);
               setProof(lib.needsProof);
             }
@@ -110,21 +144,72 @@ export function JobForm({
           ))}
         </datalist>
       </label>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="block text-sm font-medium">
-          How often
-          <select
-            value={every}
-            onChange={(e) => setEvery(Number(e.target.value))}
-            className={inputClass}
-          >
-            {EVERY.map((m) => (
-              <option key={m} value={m}>
-                {everyWords(m)}
-              </option>
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">How often</legend>
+        <div className="grid grid-cols-2 gap-2" role="group" aria-label="Repeats">
+          {KINDS.map((k) => (
+            <button
+              key={k.key}
+              type="button"
+              aria-pressed={kind === k.key}
+              onClick={() => setKind(k.key)}
+              className={chip(kind === k.key)}
+            >
+              {k.label}
+            </button>
+          ))}
+        </div>
+        {kind === 'months' && (
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Every how many months">
+            {EVERY_MONTHS.map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={every === m}
+                onClick={() => setEvery(m)}
+                className={chip(every === m)}
+              >
+                {everyWords(m).replace('Every ', '')}
+              </button>
             ))}
-          </select>
-        </label>
+          </div>
+        )}
+        {kind === 'nth' && (
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Which one in the month">
+            {NTHS.map((n) => (
+              <button
+                key={n}
+                type="button"
+                aria-pressed={nth === n}
+                onClick={() => setNth(n)}
+                className={chip(nth === n)}
+              >
+                {nthWords(n)}
+              </button>
+            ))}
+          </div>
+        )}
+        {kind !== 'months' && (
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Which day">
+            {WEEKDAYS.map((d, i) => (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={weekday === i + 1}
+                aria-label={d}
+                onClick={() => setWeekday(i + 1)}
+                className={chip(weekday === i + 1)}
+              >
+                {d.slice(0, 3)}
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="text-sm text-slate-600" data-testid="repeat-words">
+          {repeatWords(repeat)}
+        </p>
+      </fieldset>
+      <div className="grid grid-cols-1 gap-2">
         <label className="block text-sm font-medium">
           Next due
           <input
@@ -165,7 +250,15 @@ export function JobForm({
           ))}
         </select>
         <span className="mt-1 block text-xs font-normal text-slate-500">
-          Their To do list gets it 14 days before it is due; they can give it to someone there.
+          Their To do list gets it before it is due (
+          {kind === 'months'
+            ? '14 days'
+            : kind === 'nth'
+              ? 'a week'
+              : kind === 'fortnight'
+                ? '3 days'
+                : 'the day'}{' '}
+          before); they can give it to someone there.
         </span>
       </label>
       <label className="flex min-h-12 items-center gap-3 text-sm">

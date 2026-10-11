@@ -102,7 +102,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   and its list is as long as the row's count.
 - Supply requests (ADR 049): the requester gives items and quantities only; the Main Store's
   keeper picks the supplier (optional) and the delivery date (`inv.place_order`), and the
-  department is told when it is ordered and received. Approval only for unusual requests.
+  department is told when it is ordered and received. Approval only for unusual requests,
+  unless the outlet's rules ask for more (ADR 115).
 - Vendor bills (ADR 050): a bill sits at a store (`BILLS`, delivery tree): a goods bill at its
   order's store, added by whoever receives it; a service bill at a store the person keeps.
   Photos or PDFs under `bills/`; money data, bills included, is kept 7 years. Archived, never
@@ -309,6 +310,16 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   gets the frontline Home. Forms choose nothing for the person (`ItemPicker`, chips); person
   pickers put who is on shift today first (`ops.on_shift_today`). File 25 weeks -1 and 0 and
   file 40 `status` make a demo look worked (`hr.record_test_assignment`, test customers only).
+- Stock requests follow the stock (ADR 115): one ask (`inv.ask_for_stock`), routed by the outlet's
+  shape (a Main Store: ask it; none: the store that keeps it; nobody picks a store), approved by
+  the outlet's rules from file 02's outlet row or the wizard (`stock_rules`: `request_approval`
+  unusual / gm / none, `purchase_approval`, `purchase_approver` department_head / gm; read with
+  `inv.stock_rule`). The store sends it, gives it to someone (a send task) or buys what is short
+  for it; receiving is whoever asked's task; everyone in the chain is told and whoever asked sees
+  where it is (`inv.request_now`, `inv.request_story`). Frontline staff ask their head (Me → Ask
+  for something, `inv.staff_ask`). An order's page names its approver and lets them approve
+  (`inv.po_approval`). Passport has no Main Store. Compliance jobs also repeat weekly, every 2
+  weeks or on the nth weekday (ADR 116, file 39 `repeat`).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

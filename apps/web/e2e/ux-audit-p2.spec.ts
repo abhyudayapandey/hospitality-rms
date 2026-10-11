@@ -12,7 +12,7 @@ test('asking for supplies: nothing filled in, have and keep on each line, says w
   await page.goto(`/stock/orders/new?node=${kitchen}`);
   // the Main Store orders the kitchen's supplies (F26), and says where to ask for stock (F14)
   await expect(page.getByTestId('who-orders')).toContainText('Main Store orders it');
-  await expect(page.getByTestId('who-orders')).toContainText('use Request stock');
+  await expect(page.getByTestId('who-orders')).toContainText('use Ask for stock');
   for (const input of await page.getByRole('textbox', { name: /^Quantity / }).all()) {
     await expect(input).toHaveValue('');
   }

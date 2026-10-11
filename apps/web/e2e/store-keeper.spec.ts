@@ -83,9 +83,9 @@ test('Send stock: it leaves the Main Store, the person who gets the task confirm
   const main = await placeId('TEST-HOTEL-1.0-MAIN-STORE');
   await signInAs(page, 'Test Store Keeper 1.0');
   await page.goto(`/stock/transfers?node=${main}`);
-  // the Main Store gives stock out: Send stock leads, Request stock is a small link
+  // the Main Store gives stock out: Send stock leads, Ask for stock is a small link
   await expect(page.getByRole('link', { name: 'Send stock' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Request stock' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Ask for stock' })).toBeVisible();
   await page.getByRole('link', { name: 'Send stock' }).click();
   await page.getByTestId('send-to').getByRole('link', { name: 'Kitchen Store' }).click();
   await page.waitForURL(/to=/);
@@ -143,6 +143,6 @@ test('every store sees the Main Store’s materials, grouped: the bar gets ketch
     await expect(page.getByRole('textbox', { name: `Send ${item}` })).toBeVisible();
   }
   await signInAs(page, 'Test Bar Manager 1.0');
-  await page.goto(`/stock/transfers/new?node=${bar}&from=${main}`);
-  await expect(page.getByRole('textbox', { name: 'Request Test Tomato Ketchup' })).toBeVisible();
+  await page.goto(`/stock/transfers/new?node=${bar}`);
+  await expect(page.getByRole('textbox', { name: 'Ask for Test Tomato Ketchup' })).toBeVisible();
 });

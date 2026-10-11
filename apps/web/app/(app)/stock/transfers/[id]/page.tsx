@@ -7,6 +7,8 @@ import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { param, supplyContext, TRANSFER_PROGRESS, type SearchParams } from '@/lib/inventory';
 import { TransferStepForm, type TransferLine } from './transfer-step-form';
+import { RequestNow, RequestStory } from './request-story';
+import { SenderTools } from './sender-tools';
 
 export default async function TransferPage({
   params,
@@ -44,21 +46,44 @@ export default async function TransferPage({
                  tl.received_qty
             from inv.transfer_line tl join inv.item i on i.id = tl.item_id
            where tl.transfer_id = ${id}::uuid order by i.name`.execute(tx);
-    return { t: t.rows[0], lines: lines.rows };
+    if (!t.rows[0]) return { t: undefined, lines: [], now: null, story: [], act: null, people: [] };
+    // where it is now and what happened (ADR 115), for whoever may follow it
+    const now = (
+      await sql<{ stage: string; words: string }>`
+        select stage, words from inv.request_now(${id}::uuid)`.execute(tx)
+    ).rows[0];
+    const story = (
+      await sql<{ at: Date; words: string }>`
+        select at, words from inv.request_story(${id}::uuid)`.execute(tx)
+    ).rows;
+    const act = (
+      await sql<{
+        may_send: boolean;
+        may_receive: boolean;
+        given_to: string | null;
+      }>`select may_send, may_receive, given_to from inv.request_actions(${id}::uuid)`.execute(tx)
+    ).rows[0];
+    const people = act?.may_send
+      ? (
+          await sql<{ id: string; name: string }>`
+            select id::text, name from inv.send_people(${id}::uuid)`.execute(tx)
+        ).rows
+      : [];
+    return { t: t.rows[0], lines: lines.rows, now: now ?? null, story, act: act ?? null, people };
   });
   // readable with TRANSFERS rights, or while a step of it waits for this user (ADR 009)
   if (!data.t)
     return ctx.can('TRANSFERS') ? <Empty>Transfer not found.</Empty> : <NoSupplyAccess />;
-  const { t, lines } = data;
+  const { t, lines, now, story, act, people } = data;
   const [label, style] = TRANSFER_PROGRESS[t.progress] ?? [t.progress, ''];
   // Which side the user can act for is decided in SQL (the step they may act on), never here:
   // whoever runs the sending or the receiving location, through the approval chain.
   const mode =
     t.my_step === 'dispatch'
       ? 'dispatch'
-      : t.my_step === 'receipt'
+      : t.my_step === 'receipt' || act?.may_receive
         ? 'receive'
-        : t.my_step === 'approval'
+        : t.my_step === 'approval' || t.my_step === 'gm_approval'
           ? 'approve'
           : null;
   return (
@@ -101,7 +126,18 @@ export default async function TransferPage({
           {t.received_at && ` · received ${formatWhen(t.received_at)}`}
         </p>
       </div>
-      <TransferStepForm transfer={t.id} requestId={t.wf_request_id} mode={mode} lines={lines} />
+      {now && <RequestNow stage={now.stage} words={now.words} />}
+      <TransferStepForm
+        transfer={t.id}
+        requestId={t.wf_request_id}
+        mode={mode}
+        lines={lines}
+        gm={t.my_step === 'gm_approval'}
+      />
+      {mode === 'dispatch' && (
+        <SenderTools transfer={t.id} people={people} givenTo={act?.given_to ?? null} />
+      )}
+      <RequestStory story={story} />
     </div>
   );
 }

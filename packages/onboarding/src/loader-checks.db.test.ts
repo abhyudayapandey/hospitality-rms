@@ -303,6 +303,122 @@ describe('loader errors', () => {
       expect(await tenantCount(c, 'TEST-COMPANY')).toBe(before);
     });
   });
+
+  it('regular jobs repeat by months or in words (ADR 116); one of the two', async () => {
+    await inRolledBackTx(async (c) => {
+      const file = '39_compliance_calendar.csv';
+      const rows = base[file]!.trimEnd().split('\n');
+      // the first job: weekly on Monday instead of monthly
+      const withRepeat = (months: string, repeat: string) => ({
+        ...base,
+        [file]:
+          [
+            `${rows[0]},repeat`,
+            ...rows.slice(1).map((r, i) => {
+              if (i > 0) return `${r},`;
+              const cols = r.split(',');
+              cols[2] = months;
+              return `${cols.join(',')},${repeat}`;
+            }),
+          ].join('\n') + '\n',
+      });
+      const garbled = await loadCustomer(c, withRepeat('', 'now and then'), { nested: true });
+      expect(garbled.issues).toContainEqual(
+        expect.objectContaining({ file, row: 2, column: 'repeat' }),
+      );
+      const neither = await loadCustomer(c, withRepeat('', ''), { nested: true });
+      expect(neither.issues).toContainEqual(
+        expect.objectContaining({ file, row: 2, column: 'every_months' }),
+      );
+      const both = await loadCustomer(c, withRepeat('1', 'every week on Monday'), {
+        nested: true,
+      });
+      expect(both.issues).toContainEqual(
+        expect.objectContaining({ file, row: 2, column: 'every_months' }),
+      );
+      const weekly = withRepeat('', 'every week on Monday');
+      expect((await loadCustomer(c, weekly, { nested: true })).issues).toEqual([]);
+      const job = await c.query(
+        `select every_months, every_weeks, nth, on_weekday from ops.compliance_item i
+          join core.hierarchy_node n on n.id = i.org_node_id
+         where n.code = 'TEST-HOTEL-1.0' and i.name = 'Pest control service'`,
+      );
+      expect(job.rows).toEqual([{ every_months: null, every_weeks: 1, nth: null, on_weekday: 1 }]);
+      // the 2nd Tuesday, then back to every month
+      await loadCustomer(c, withRepeat('', '2nd Tuesday of each month'), { nested: true });
+      expect(
+        (
+          await c.query(
+            `select nth, on_weekday from ops.compliance_item where name = 'Pest control service'
+                and org_node_id = (select id from core.hierarchy_node where code = 'TEST-HOTEL-1.0')`,
+          )
+        ).rows,
+      ).toEqual([{ nth: 2, on_weekday: 2 }]);
+      expect((await loadCustomer(c, base, { nested: true })).issues).toEqual([]);
+    });
+  });
+
+  it("an outlet's stock rules (ADR 115): on its outlet row only, known values; loaded and kept", async () => {
+    await inRolledBackTx(async (c) => {
+      const file = '02_delivery_nodes.csv';
+      const withRules = (row: string, rules: string) => {
+        const rows = base[file]!.trimEnd().split('\n');
+        return {
+          ...base,
+          [file]:
+            [
+              `${rows[0]},request_approval,purchase_approval,purchase_approver`,
+              ...rows.slice(1).map((r) => (r.startsWith(`${row},`) ? `${r},${rules}` : `${r},,,`)),
+            ].join('\n') + '\n',
+        };
+      };
+      const bad = await loadCustomer(c, withRules('TEST-HOTEL-1.0-SUPPLY', 'always,weekly,boss'), {
+        nested: true,
+      });
+      expect(bad.issues.map((i) => [i.row, i.column])).toEqual([
+        [4, 'request_approval'],
+        [4, 'purchase_approval'],
+        [4, 'purchase_approver'],
+      ]);
+      const onStore = await loadCustomer(c, withRules('TEST-HOTEL-1.0-MAIN-STORE', 'gm,,'), {
+        nested: true,
+      });
+      expect(onStore.issues).toContainEqual(
+        expect.objectContaining({ file, row: 5, column: 'request_approval' }),
+      );
+
+      const good = withRules('TEST-HOTEL-1.0-SUPPLY', 'gm,every,gm');
+      expect((await loadCustomer(c, good, { nested: true })).issues).toEqual([]);
+      const rules = await c.query<{ r: object }>(
+        `select stock_rules as r from core.hierarchy_node where code = 'TEST-HOTEL-1.0-SUPPLY'`,
+      );
+      expect(rules.rows[0]!.r).toEqual({
+        request_approval: 'gm',
+        purchase_approval: 'every',
+        purchase_approver: 'gm',
+      });
+      // read by its stores
+      const read = await c.query<{ k: string; v: string }>(
+        `select k, inv.stock_rule(n.id, k) as v from core.hierarchy_node n,
+                unnest(array['request_approval', 'purchase_approval', 'purchase_approver']) k
+          where n.code = 'TEST-HOTEL-1.0-BAR-STORE' order by k`,
+      );
+      expect(read.rows).toEqual([
+        { k: 'purchase_approval', v: 'every' },
+        { k: 'purchase_approver', v: 'gm' },
+        { k: 'request_approval', v: 'gm' },
+      ]);
+      // again: nothing changes; without the columns: back to the defaults
+      expect(
+        (await loadCustomer(c, good, { nested: true })).counts['delivery places']!.updated,
+      ).toBe(0);
+      await loadCustomer(c, base, { nested: true });
+      const after = await c.query<{ r: object }>(
+        `select stock_rules as r from core.hierarchy_node where code = 'TEST-HOTEL-1.0-SUPPLY'`,
+      );
+      expect(after.rows[0]!.r).toEqual({});
+    });
+  });
 });
 
 describe('approvers (ADR 009)', () => {

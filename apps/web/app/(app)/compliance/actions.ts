@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { failure, type ActionResult } from '@outlet-ops/domain';
+import { failure, repeatColumns, type ActionResult, type Repeat } from '@outlet-ops/domain';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser, type Tx } from '@/lib/db';
 import {
@@ -117,7 +117,8 @@ export interface JobInput {
   id: string | null;
   node: string;
   name: string;
-  every_months: number;
+  /** every N months, every week or 2 weeks on a day, or the nth weekday (ADR 116) */
+  repeat: Repeat;
   next_due: string;
   owner_role: string;
   /** who does it, when not the accountable role (ADR 073) */
@@ -129,13 +130,16 @@ export async function saveJob(
   input: JobInput,
   idempotencyKey?: string,
 ): Promise<ActionResult<{ id: string }>> {
+  const rule = Object.fromEntries(
+    Object.entries(repeatColumns(input.repeat)).filter(([, v]) => v !== null),
+  );
   return run('save_compliance_item', async (tx) => {
     const r = await sql<{ id: string }>`
-      select ops.save_compliance_item(${input.id}::uuid, ${input.node}::uuid, ${input.name},
-                                      ${input.every_months}, ${input.next_due}::date,
-                                      ${input.owner_role}, ${input.needs_proof},
-                                      ${input.doer_role || null},
-                                      ${idempotencyKey ?? null}) as id`.execute(tx);
+      select ops.save_compliance_job(${input.id}::uuid, ${input.node}::uuid, ${input.name},
+                                     ${JSON.stringify(rule)}::jsonb, ${input.next_due}::date,
+                                     ${input.owner_role}, ${input.needs_proof},
+                                     ${input.doer_role || null},
+                                     ${idempotencyKey ?? null}) as id`.execute(tx);
     return { id: r.rows[0]!.id };
   });
 }

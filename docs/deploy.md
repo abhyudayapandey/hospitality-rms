@@ -2720,3 +2720,43 @@ merging.
      tomorrow's; Cost of sales says "No count in this period" where nothing was counted.
    - **`passport.commis`**: Home has Make, Recipes, Shifts & leave and Report a problem; Report
      a problem is a photo and taps.
+
+## Releasing requests that follow the stock, each outlet's rules, and compliance repeats (ADR 115, 116)
+
+Three migrations: `20261218100000_requisition_chain` (a new column `core.hierarchy_node.stock_rules`,
+`inv.transfer.for_transfer_id` and `note`, `inv.purchase_order.for_transfer_id`, the chain's
+functions and two triggers), `20261218110000_staff_asks` (new tables `inv.staff_ask` and
+`inv.staff_ask_line` with RLS and audit, read through functions only) and
+`20261218120000_compliance_repeat` (`ops.compliance_item` gains `every_weeks`, `nth`,
+`on_weekday`). The process definitions change (TRANSFER `gm_approval` on payload `gm`, receipt
+only for older requests; PURCHASE_ORDER `gm_approval`): the deploy syncs them as usual. An access
+change: new tables and functions that check `TRANSFERS`, `PURCHASE_ORDERS` and `TASKS`, so run
+"RLS equivalence (all users)" before merging.
+
+Requests already open keep their steps: a request raised before this keeps its receipt step and
+is received as before.
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual.
+4. Re-import (rebuild each zip first: `-FS` makes it match the folder):
+   - **Passport**: `cd docs/onboarding/demo/passport-hotel && zip -q -FS ../passport-hotel.zip *.csv`.
+     Its files were regenerated: no Main Store and no Purchase & Stores team, and its supply
+     point's row sets the hotel's rules (`gm`, `every`, `gm`). The dry run says the Main Store is
+     retired and its stock counted out (a test customer). The three Purchase & Stores people stay
+     (an import never removes people): deactivate them in Admin → People if they should go. A
+     stock request or order still open at the Main Store stops the import until it is finished
+     or withdrawn. **Apply**, then a second dry run shows no changes.
+   - **The test customers** (test environment only): the step 7 zips. Test Company: no changes.
+5. Check, at 380 px:
+   - **`passport.executive-housekeeper`**: Stock → Transfers → **Ask for stock**: 24 lager goes
+     to the Bar by itself; the request reads "Waiting for Sainath to approve".
+   - **`passport.gm`**: To do has it; **Approve**. An over-par purchase's page names who
+     approves it and has Approve / Reject.
+   - **`passport.bar-manager`**: the request → **Give to someone** → the bar back, whose To do
+     says "I took all of it"; then the housekeeper confirms what arrived, and the request's
+     **What happened** lists every step.
+   - **`passport.room-attendant`**: Me → **Ask for something**: their head gets it; the ask shows
+     where it is until it is given.
+   - **A regular job** (Compliance → Regular jobs → Add): Every week / Every 2 weeks / A day of
+     the month; the list says "Every week on Monday".

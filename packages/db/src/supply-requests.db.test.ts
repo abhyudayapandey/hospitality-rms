@@ -133,7 +133,8 @@ describe('raising a supply request', () => {
           where p.id = $1`,
         [id],
       );
-      expect(steps.rows.map((r) => r.step)).toEqual(['department_approval']);
+      // the GM's step is there for an outlet whose rules name the GM (ADR 115), skipped here
+      expect(steps.rows.map((r) => r.step)).toEqual(['department_approval', 'gm_approval']);
     });
   });
 });

@@ -172,7 +172,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
             href={mainStore ? `/stock/transfers/send${q}` : `/stock/transfers/new${q}`}
             className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
           >
-            {mainStore ? 'Send stock' : 'Request stock'}
+            {mainStore ? 'Send stock' : 'Ask for stock'}
           </Link>
         </PinnedActions>
       )}
@@ -181,7 +181,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
           href={`/stock/transfers/new${q}`}
           className="flex min-h-11 items-center justify-center text-sm font-medium text-brand-700 underline"
         >
-          Request stock
+          Ask for stock
         </Link>
       )}
     </div>

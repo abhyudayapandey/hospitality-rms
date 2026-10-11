@@ -106,7 +106,24 @@ export function validateBundle(b: Bundle): Issue[] {
     }
   }
   const mains = new Map<string, number>();
+  // a regular job repeats one way (ADR 116): every N months, or its repeat in words
+  for (const j of b.complianceCalendar) {
+    if ((j.every_months === undefined) === (j.repeat === undefined)) {
+      add(
+        f('complianceCalendar'),
+        j.line,
+        'every_months',
+        'give every_months or repeat (one of them)',
+      );
+    }
+  }
   for (const n of b.deliveryNodes) {
+    // an outlet's rules for its stores (ADR 115) sit on its outlet or hub row
+    for (const k of ['request_approval', 'purchase_approval', 'purchase_approver'] as const) {
+      if (n[k] && n.kind !== 'outlet' && n.kind !== 'hub') {
+        add(f('deliveryNodes'), n.line, k, 'set on the outlet’s row, not a store’s');
+      }
+    }
     if (n.is_main_store && n.kind !== 'store') {
       add(f('deliveryNodes'), n.line, 'is_main_store', 'only a store can be the main store');
     }

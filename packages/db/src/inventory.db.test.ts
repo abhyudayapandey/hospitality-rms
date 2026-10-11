@@ -622,11 +622,10 @@ describe('two-leg transfer', () => {
       expect(await onHand(c, f, 'T-ONION', 'kitchen')).toBe(0);
       expect(await progress()).toBe('in_transit');
 
-      // In transit: cannot be rejected or cancelled, only received.
-      expect(await error(c, OLIVIA, `select wf.act($1, 'reject')`, [req])).toBe(
-        'IRREVERSIBLE_STEP',
-      );
-      expect(await error(c, KIM, `select wf.act($1, 'cancel')`, [req])).toBe('IRREVERSIBLE_STEP');
+      // In transit: cannot be rejected or cancelled, only received (ADR 115: once sent, its
+      // workflow is done; receiving is whoever asked's task).
+      expect(await error(c, OLIVIA, `select wf.act($1, 'reject')`, [req])).toBe('INVALID_STATE');
+      expect(await error(c, KIM, `select wf.act($1, 'cancel')`, [req])).toBe('INVALID_STATE');
       const receive = `select inv.receive_transfer($1, $2::jsonb) as s`;
       expect(
         await error(c, OLIVIA, receive, [t.id, lines([{ item_id: f.item('T-ONION'), qty: 9 }])]),
@@ -637,7 +636,7 @@ describe('two-leg transfer', () => {
         t.id,
         lines([{ item_id: f.item('T-ONION'), qty: 7 }]),
       ]);
-      expect(r.s).toBe('approved');
+      expect(r.s).toBe('completed');
       expect(await onHand(c, f, 'T-ONION', 'kitchen')).toBe(7);
       expect(await onHand(c, f, 'T-GARLIC', 'kitchen')).toBe(2);
 

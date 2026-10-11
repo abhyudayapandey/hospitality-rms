@@ -7,6 +7,7 @@ import {
   coverWarnings,
   missingBundleNotes,
   MODULE_CODES,
+  repeatColumns,
   TEMPLATE_BY_FORMAT,
 } from '@outlet-ops/domain';
 import type { ClientBase } from 'pg';
@@ -21,6 +22,14 @@ import {
 } from './files';
 import { checkDishPhotos, UploadError } from './upload';
 import { menuWarnings, packWarnings, pictureWarnings, validateBundle } from './validate';
+
+/** A file 39 job's rule as its columns (ADR 116): its `repeat`, else every N months. */
+function rule(j: {
+  every_months?: number | undefined;
+  repeat?: Parameters<typeof repeatColumns>[0] | undefined;
+}) {
+  return repeatColumns(j.repeat ?? { kind: 'months', months: j.every_months ?? 1 });
+}
 
 // Loads one customer's onboarding files (ADR 009): validate, then write everything in one
 // transaction. Every write is an upsert on the natural key (codes, usernames), so loading
@@ -462,22 +471,24 @@ class Loader {
           `${type} places`,
           `insert into core.hierarchy_node (tenant_id, type, kind, name, code, parent_id, timezone,
                                             outlet_format, holds_stock, is_main_store,
-                                            department_type)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, coalesce($9, false), coalesce($10, false), $11)
+                                            department_type, stock_rules)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, coalesce($9, false), coalesce($10, false), $11,
+                   $12::jsonb)
            on conflict (tenant_id, code) where code is not null do update
               set name = excluded.name, kind = excluded.kind, parent_id = excluded.parent_id,
                   timezone = excluded.timezone, outlet_format = excluded.outlet_format,
                   holds_stock = excluded.holds_stock, is_main_store = excluded.is_main_store,
-                  department_type = excluded.department_type, archived_at = null
+                  department_type = excluded.department_type,
+                  stock_rules = excluded.stock_rules, archived_at = null
             where (core.hierarchy_node.name, core.hierarchy_node.kind,
                    core.hierarchy_node.parent_id, core.hierarchy_node.timezone,
                    core.hierarchy_node.outlet_format, core.hierarchy_node.holds_stock,
                    core.hierarchy_node.is_main_store, core.hierarchy_node.department_type,
-                   core.hierarchy_node.archived_at)
+                   core.hierarchy_node.stock_rules, core.hierarchy_node.archived_at)
                   is distinct from (excluded.name, excluded.kind, excluded.parent_id,
                                     excluded.timezone, excluded.outlet_format,
                                     excluded.holds_stock, excluded.is_main_store,
-                                    excluded.department_type, null)
+                                    excluded.department_type, excluded.stock_rules, null)
            returning id, xmax = 0 as inserted`,
           [
             this.tenant,
@@ -491,6 +502,16 @@ class Loader {
             d ? d.holds_stock : null,
             d ? d.is_main_store : null,
             o?.department_type ?? null,
+            // ADR 115: the outlet's rules for its stores, only those the file sets
+            JSON.stringify(
+              d
+                ? Object.fromEntries(
+                    (['request_approval', 'purchase_approval', 'purchase_approver'] as const)
+                      .filter((k) => d[k] !== undefined)
+                      .map((k) => [k, d[k]]),
+                  )
+                : {},
+            ),
           ],
         );
         const id = (
@@ -884,17 +905,20 @@ class Loader {
               upd as (update ops.compliance_item i
                          set every_months = $4, next_due = $5, owner_role = $6,
                              needs_proof = $7, library_code = $8, library_version = $9,
-                             doer_role = $10
+                             doer_role = $10, every_weeks = $11, nth = $12, on_weekday = $13
                         where i.id = (select id from cur)
                           and (i.every_months, i.next_due, i.owner_role, i.needs_proof,
-                               i.library_code, i.library_version, i.doer_role)
+                               i.library_code, i.library_version, i.doer_role, i.every_weeks,
+                               i.nth, i.on_weekday)
                               is distinct from ($4::int, $5::date, $6, $7::boolean, $8, $9::int,
-                                                $10::text)
+                                                $10::text, $11::smallint, $12::smallint,
+                                                $13::smallint)
                        returning i.id, false as inserted),
               ins as (insert into ops.compliance_item (tenant_id, org_node_id, name, every_months,
                                                        next_due, owner_role, needs_proof,
-                                                       library_code, library_version, doer_role)
-                      select $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+                                                       library_code, library_version, doer_role,
+                                                       every_weeks, nth, on_weekday)
+                      select $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
                        where not exists (select 1 from cur)
                       returning id, true as inserted)
          select * from upd union all select * from ins`,
@@ -902,7 +926,7 @@ class Loader {
           this.tenant,
           this.nodes.get(j.place_code),
           j.name,
-          j.every_months,
+          rule(j).every_months,
           j.next_due,
           j.owner_role,
           j.needs_proof,
@@ -910,6 +934,9 @@ class Loader {
           j.from_library?.version ?? null,
           // the accountable role doing it itself is no separate doer
           j.doer_role && j.doer_role !== j.owner_role ? j.doer_role : null,
+          rule(j).every_weeks,
+          rule(j).nth,
+          rule(j).on_weekday,
         ],
       );
       await nobody(FILES.complianceCalendar.file, j.line, 'owner_role', j.place_code, j.owner_role);

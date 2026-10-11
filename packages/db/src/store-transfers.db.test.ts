@@ -3,9 +3,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
 
 // Store-level transfers (ADR 009, Prompt 7 item 6): between stores of one outlet and from
-// the central kitchen to an outlet's store. Dispatch and receipt go to whoever runs the
-// sending and the receiving location (store keeper, hub manager, outlet manager, account
-// owner), looked up within that location's own outlet or hub.
+// the central kitchen to an outlet's store. Dispatch goes to whoever runs the sending location
+// (store keeper, hub manager, outlet manager, account owner), looked up within that location's
+// own outlet or hub. Receiving is whoever asked's task, or whoever runs the receiving store
+// (ADR 115); never the sending side.
 
 let ids: SeedIds;
 beforeAll(async () => {
@@ -80,7 +81,6 @@ describe('between stores of the same outlet', () => {
       const t = r.rows![0]!.id;
       expect(await route(c, t)).toEqual([
         { step: 'dispatch', grp: 'STORE_KEEPER', place: 'TEST-HOTEL-1.0-MAIN-STORE' },
-        { step: 'receipt', grp: 'STORE_KEEPER', place: 'TEST-HOTEL-1.0-KITCHEN-STORE' },
       ]);
       // the kitchen's keeper cannot dispatch from the main store, nor the GM (not their step)
       for (const who of ['test.executive-chef.1.0', 'test.general-manager.1.0']) {
@@ -93,7 +93,7 @@ describe('between stores of the same outlet', () => {
         'NOT_AUTHORISED',
       );
       expect((await as<{ s: string }>(c, 'test.executive-chef.1.0', RECEIVE, [t])).s).toBe(
-        'approved',
+        'completed',
       );
       expect(await onHand(c, rice, 'TEST-HOTEL-1.0-MAIN-STORE')).toBeCloseTo(main - 2);
       expect(await onHand(c, rice, 'TEST-HOTEL-1.0-KITCHEN-STORE')).toBeCloseTo(kitchen + 2);
@@ -146,11 +146,10 @@ describe('central kitchen to an outlet', () => {
       const t = r.rows![0]!.id;
       expect(await route(c, t)).toEqual([
         { step: 'dispatch', grp: 'STORE_KEEPER', place: 'TEST-CENTRAL-KITCHEN-STORE' },
-        { step: 'receipt', grp: 'STORE_KEEPER', place: 'TEST-GUEST-HOUSE-2.0-SUPPLY' },
       ]);
       await as(c, 'test.central-kitchen-store-keeper', DISPATCH, [t]);
       expect((await as<{ s: string }>(c, 'test.front-desk-executive.2.0', RECEIVE, [t])).s).toBe(
-        'approved',
+        'completed',
       );
     });
   });
@@ -167,11 +166,6 @@ describe('central kitchen to an outlet', () => {
         rice,
       );
       const t = r.rows![0]!.id;
-      expect((await route(c, t))[1]).toEqual({
-        step: 'receipt',
-        grp: 'STORE_KEEPER',
-        place: 'TEST-HOTEL-1.0-KITCHEN-STORE',
-      });
       await as(c, 'test.central-kitchen-store-keeper', DISPATCH, [t]);
       expect(
         (await attemptAs(c, ids.user('test.central-kitchen-store-keeper'), RECEIVE, [t])).error,
@@ -186,16 +180,9 @@ describe('central kitchen to an outlet', () => {
   });
 });
 
-describe('fallback to the account owner', () => {
-  it('Solo Bar: with no one else to receive, the owner does, without any stock rights', async () => {
+describe('whoever asked receives it (ADR 115)', () => {
+  it('Solo Bar: the head cook who asked gets it to receive, though rule 7 kept the old receipt step from them', async () => {
     await inRolledBackTx(async (c) => {
-      const owner = 'test.solo.bar-manager';
-      // the owner is only the account owner here: no outlet manager assignment
-      await c.query(
-        `delete from core.role_assignment ra using core.security_group g
-          where g.id = ra.group_id and g.code <> 'ACCOUNT_OWNER' and ra.user_id = $1`,
-        [ids.user(owner)],
-      );
       const lemons = await item(c, 'LEMONS', 'TEST-SOLO-COMPANY');
       await c.query(
         `insert into inv.stock_ledger (tenant_id, item_id, delivery_node_id, movement_type, qty,
@@ -203,7 +190,6 @@ describe('fallback to the account owner', () => {
          select tenant_id, $1, $2, 'receipt', 10, 5, 'test' from inv.item where id = $1`,
         [lemons, ids.node('TEST-SOLO-BAR-BAR-STORE')],
       );
-      // the head cook runs the kitchen store and asks for it, so cannot receive it (rule 7)
       const r = await request(
         c,
         'test.solo.head-cook',
@@ -215,23 +201,19 @@ describe('fallback to the account owner', () => {
       const t = r.rows![0]!.id;
       expect((await route(c, t)).map((s) => [s.step, s.grp])).toEqual([
         ['dispatch', 'STORE_KEEPER'],
-        ['receipt', 'ACCOUNT_OWNER'],
       ]);
-      const can = await attemptAs<{ ok: boolean }>(
-        c,
-        ids.user(owner),
-        `select core.can('TRANSFERS', 'view', null, $1) as ok`,
-        [ids.node('TEST-SOLO-BAR-KITCHEN-STORE')],
-      );
-      expect(can.rows![0]!.ok).toBe(false);
       await as(c, 'test.solo.head-bartender', DISPATCH, [t]);
-      // pending for them: the owner sees the transfer, receives it, then no longer sees it
-      const sees = async () =>
-        (await attemptAs(c, ids.user(owner), 'select id from inv.transfer where id = $1', [t]))
-          .rows!.length;
-      expect(await sees()).toBe(1);
-      expect((await as<{ s: string }>(c, owner, RECEIVE, [t])).s).toBe('approved');
-      expect(await sees()).toBe(0);
+      const task = await c.query<{ assignee: string }>(
+        `select assignee_user_id::text as assignee from ops.task
+          where transfer_id = $1 and kind = 'receive' and status = 'open'`,
+        [t],
+      );
+      expect(task.rows).toEqual([{ assignee: ids.user('test.solo.head-cook') }]);
+      // the bartender who sent it cannot also receive it
+      expect((await attemptAs(c, ids.user('test.solo.bartender'), RECEIVE, [t])).error).toBe(
+        'NOT_AUTHORISED',
+      );
+      expect((await as<{ s: string }>(c, 'test.solo.head-cook', RECEIVE, [t])).s).toBe('completed');
       expect(await onHand(c, lemons, 'TEST-SOLO-BAR-KITCHEN-STORE')).toBeGreaterThanOrEqual(2);
     });
   });

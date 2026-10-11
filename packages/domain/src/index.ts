@@ -12,6 +12,8 @@ export * from './checklists';
 export * from './templates';
 export * from './cover';
 export * from './compliance';
+export * from './repeat';
+export * from './stock-rules';
 export * from './food-label';
 export * from './task-icons';
 export * from './pictures';

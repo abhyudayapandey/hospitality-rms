@@ -428,11 +428,32 @@ test('events: the manager plans one with staff needed; staff read it on My shift
   await form.getByLabel('Name').fill(name);
   await form.getByLabel('Date').fill(addDays(localToday('Asia/Kolkata'), 2));
   await form.getByLabel('Covers').fill('35');
+  // two lines, then the second taken off again (ADR 115): only the first is saved
   await form.getByRole('button', { name: 'Add staff' }).click();
-  await form.getByLabel('Role').selectOption({ label: 'Server' });
-  await form.getByLabel('Headcount').fill('3');
+  await form.getByRole('button', { name: 'Add staff' }).click();
+  const lines = form.getByTestId('event-role-line');
+  await expect(lines).toHaveCount(2);
+  await lines.nth(0).getByLabel('Role').selectOption({ label: 'Server' });
+  await lines.nth(0).getByLabel('Headcount').fill('3');
+  await lines
+    .nth(1)
+    .getByRole('button', { name: /^Remove / })
+    .click();
+  await expect(lines).toHaveCount(1);
   await form.getByRole('button', { name: 'Create event' }).click();
   await page.waitForURL(/\/events\/[0-9a-f-]{36}/);
+  await expect(page.getByTestId('event-requirements')).toContainText('3 × Server');
+  await expect(page.getByTestId('event-requirements').getByRole('listitem')).toHaveCount(1);
+  // and on the saved event: take the line off, save, and the event needs no one
+  const edit = page.getByRole('form', { name: 'Event' });
+  await edit.getByTestId('event-role-line').getByRole('button', { name: 'Remove Server' }).click();
+  await edit.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByTestId('event-requirements').getByRole('listitem')).toHaveCount(0);
+  // put it back for the staff below
+  await edit.getByRole('button', { name: 'Add staff' }).click();
+  await edit.getByLabel('Role').selectOption({ label: 'Server' });
+  await edit.getByLabel('Headcount').fill('3');
+  await edit.getByRole('button', { name: 'Save changes' }).click();
   await expect(page.getByTestId('event-requirements')).toContainText('3 × Server');
 
   // Events is on the Team side, which staff don't have: they see the week's events on My

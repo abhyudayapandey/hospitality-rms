@@ -34,7 +34,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Sea
         {data.desk
           ? `The ${data.desk.split(' – ').pop()} orders it, picks the supplier and tells you when it will arrive.`
           : 'You order it here: pick the supplier and the delivery date once it is approved.'}{' '}
-        For stock another store already has, use Request stock.
+        For stock another store already has, use Ask for stock.
       </p>
       <NewOrderForm node={ctx.node.id} lines={data.lines} />
     </div>

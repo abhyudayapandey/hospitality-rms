@@ -29,7 +29,11 @@ export interface JobRow {
   org_node_id: string;
   place_name: string;
   name: string;
-  every_months: number;
+  every_months: number | null;
+  /** how it repeats when not by months (ADR 116): from ops.compliance_repeat */
+  every_weeks?: number | null;
+  nth?: number | null;
+  on_weekday?: number | null;
   next_due: string;
   days_left: number;
   owner_role: string;
@@ -79,13 +83,28 @@ export async function licences(tx: Tx, node: string | null): Promise<LicenceRow[
 }
 
 export async function complianceJobs(tx: Tx, node: string | null): Promise<JobRow[]> {
-  return (
+  const rows = (
     await sql<JobRow>`
       select id, org_node_id, place_name, name, every_months, next_due::text, days_left,
              owner_role, owner_role_name, needs_proof, last_done::text, last_files, open_task,
              doer_role, doer_role_name, with_name, outlet_id, with_since
         from ops.compliance_items(${node}::uuid)`.execute(tx)
   ).rows;
+  if (rows.length === 0) return rows;
+  // how each repeats (ADR 116): weekly and nth-weekday jobs keep it beside every_months
+  const rules = new Map(
+    (
+      await sql<{
+        id: string;
+        every_months: number | null;
+        every_weeks: number | null;
+        nth: number | null;
+        on_weekday: number | null;
+      }>`select id::text, every_months, every_weeks, nth, on_weekday
+           from ops.compliance_repeat(${rows.map((r) => r.id)}::uuid[])`.execute(tx)
+    ).rows.map((r) => [r.id, r]),
+  );
+  return rows.map((r) => ({ ...r, ...rules.get(r.id) }));
 }
 
 export async function complianceCounts(tx: Tx, node: string | null): Promise<ComplianceCounts> {

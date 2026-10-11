@@ -87,7 +87,6 @@ const DEPTS: [code: string, name: string, type: string][] = [
   ['BANQUETS', 'Sales, Events & Banquets', 'service'],
   ['CASHIER', 'Cashier', 'other'],
   ['ENGINEERING', 'Engineering & Maintenance', 'other'],
-  ['STORES-TEAM', 'Purchase & Stores', 'other'],
   ['ADMIN-FINANCE', 'Admin & Finance', 'other'],
 ];
 csv(
@@ -102,22 +101,45 @@ csv(
 
 const NET = 'PASSPORT-SUPPLY-NETWORK';
 const SUPPLY = D('SUPPLY');
-const MAIN = D('MAIN-STORE');
 const KS = D('KITCHEN-STORE');
 // one store for the bar, serving Layover on the roof and the Mini Bar in the lobby (ADR 083);
 // its code is from when they were two
 const BAR_STORE = D('LAYOVER-BAR-STORE');
 const HK = D('HOUSEKEEPING-STORE');
+// No Main Store and no store keeper (ADR 115): a department asks the department that keeps it
+// (housekeeping asks the Bar for beer), the GM approving every request, and buys what no other
+// store keeps itself, the GM approving every purchase. Chosen per outlet on its row.
 csv(
   '02_delivery_nodes.csv',
-  ['node_code', 'name', 'kind', 'parent_code', 'timezone', 'holds_stock', 'is_main_store'],
   [
-    [NET, 'Passport Hotel – Supply Network', 'network', '', '', 'no', 'no'],
-    [SUPPLY, 'Passport Hotel – Supply Point', 'outlet', NET, TZ, 'no', 'no'],
-    [MAIN, 'Main Store', 'store', SUPPLY, TZ, 'yes', 'yes'],
-    [KS, 'Kitchen Store', 'store', SUPPLY, TZ, 'yes', 'no'],
-    [BAR_STORE, 'Bar', 'store', SUPPLY, TZ, 'yes', 'no'],
-    [HK, 'Housekeeping Store (with the in-room minibars)', 'store', SUPPLY, TZ, 'yes', 'no'],
+    'node_code',
+    'name',
+    'kind',
+    'parent_code',
+    'timezone',
+    'holds_stock',
+    'is_main_store',
+    'request_approval',
+    'purchase_approval',
+    'purchase_approver',
+  ],
+  [
+    [NET, 'Passport Hotel – Supply Network', 'network', '', '', 'no', 'no', '', '', ''],
+    [SUPPLY, 'Passport Hotel – Supply Point', 'outlet', NET, TZ, 'no', 'no', 'gm', 'every', 'gm'],
+    [KS, 'Kitchen Store', 'store', SUPPLY, TZ, 'yes', 'no', '', '', ''],
+    [BAR_STORE, 'Bar', 'store', SUPPLY, TZ, 'yes', 'no', '', '', ''],
+    [
+      HK,
+      'Housekeeping Store (with the in-room minibars)',
+      'store',
+      SUPPLY,
+      TZ,
+      'yes',
+      'no',
+      '',
+      '',
+      '',
+    ],
   ],
 );
 csv(
@@ -125,7 +147,6 @@ csv(
   ['org_node_code', 'delivery_node_code', 'note'],
   [
     [H, SUPPLY, 'The hotel and its supply point'],
-    [D('STORES-TEAM'), MAIN, 'Purchase & Stores runs the Main Store'],
     [D('KITCHEN'), KS, 'The kitchen uses the Kitchen Store'],
     [
       D('BAR'),
@@ -193,9 +214,6 @@ const PEOPLE: Person[] = [
   P('cashier', 'Kunal Sawant', 'CASHIER', 'CASHIER', 26000),
   P('chief-engineer', 'Prakash Chodankar', 'CHIEF_ENGINEER', 'ENGINEERING', 68000),
   P('technician', 'Vinay Harmalkar', 'TECHNICIAN', 'ENGINEERING', 24000),
-  P('purchase-manager', 'Shreya Kenkre', 'PURCHASE_MANAGER', 'STORES-TEAM', 58000),
-  P('store-keeper', 'Mahesh Talaulikar', 'STORE_KEEPER', 'STORES-TEAM', 30000),
-  P('receiving', 'Sandeep Volvoikar', 'RECEIVING_CLERK', 'STORES-TEAM', 22000),
   P('accountant', 'Neha Sardesai', 'ACCOUNTANT', 'ADMIN-FINANCE', 48000),
   P('cost-controller', 'Rahul Bandodkar', 'COST_CONTROLLER', 'ADMIN-FINANCE', 52000),
   P('hr', 'Fatima Shaikh', 'HR_EXECUTIVE', 'ADMIN-FINANCE', 38000),
@@ -642,31 +660,11 @@ const HK_ITEMS: [string, number][] = [
   ['TOILET-ROLL', 250],
   ['POOL-CHLORINE', 25],
 ];
-const MAIN_ITEMS: [string, number][] = [
-  ['RED-RICE', 100],
-  ['FLOUR', 50],
-  ['SUGAR', 50],
-  ['OIL', 60],
-  ['COCONUT-OIL', 20],
-  ['FENI-750ML', 24],
-  ['GIN-750ML', 18],
-  ['VODKA-750ML', 12],
-  ['TEQUILA-750ML', 12],
-  ['BOURBON-750ML', 6],
-  ['LAGER-330ML', 240],
-  ['TONIC-200ML', 144],
-  ['WATER-1L', 300],
-  ['SHAMPOO-30ML', 600],
-  ['SOAP-40G', 600],
-  ['TOILET-ROLL', 400],
-  ['CASHEWS-100G', 60],
-];
 type Loc = { item: string; store: string; par: number; shelf?: string; order?: number };
 const LOCS: Loc[] = [
   ...KITCHEN_ITEMS.map(([item, par]) => ({ item, store: KS, par })),
   ...BAR_ITEMS.map(([item, par, shelf], i) => ({ item, store: BAR_STORE, par, shelf, order: i })),
   ...HK_ITEMS.map(([item, par]) => ({ item, store: HK, par })),
-  ...MAIN_ITEMS.map(([item, par]) => ({ item, store: MAIN, par })),
 ];
 const KEPT = new Set(LOCS.map((l) => `${l.item} ${l.store}`));
 csv(
@@ -1687,47 +1685,48 @@ csv(
     ['PO-2', KS, 'SUP-PRODUCE', 'ONIONS', 20, 34, -4, U('chef'), U('gm'), -3, 20, U('cdp')],
     ['PO-2', KS, 'SUP-PRODUCE', 'TOMATOES', 15, 42, -4, U('chef'), U('gm'), -3, 15, U('cdp')],
     ['PO-2', KS, 'SUP-PRODUCE', 'LIMES', 100, 4, -4, U('chef'), U('gm'), -3, 100, U('cdp')],
+    // the Bar buys its own (no Main Store, ADR 115), the GM approving every purchase
     [
       'PO-3',
-      MAIN,
+      BAR_STORE,
       'SUP-SPIRITS',
       'FENI-750ML',
       24,
       650,
       -5,
-      U('store-keeper'),
+      U('bar-manager'),
       U('gm'),
       -3,
       24,
-      U('receiving'),
+      U('head-bartender'),
     ],
     [
       'PO-3',
-      MAIN,
+      BAR_STORE,
       'SUP-SPIRITS',
       'TEQUILA-750ML',
       12,
       3200,
       -5,
-      U('store-keeper'),
+      U('bar-manager'),
       U('gm'),
       -3,
       10,
-      U('receiving'),
+      U('head-bartender'),
     ],
     [
       'PO-3',
-      MAIN,
+      BAR_STORE,
       'SUP-SPIRITS',
       'LAGER-330ML',
       240,
       88,
       -5,
-      U('store-keeper'),
+      U('bar-manager'),
       U('gm'),
       -3,
       240,
-      U('receiving'),
+      U('head-bartender'),
     ],
     [
       'PO-4',
@@ -1757,22 +1756,35 @@ csv(
       20,
       U('housekeeping-supervisor'),
     ],
-    // ordered yesterday, arriving today: the store keeper receives it in the pitch
+    // ordered yesterday for the minibars, arriving today: housekeeping receives it in the pitch
     [
       'PO-5',
-      MAIN,
+      HK,
       'SUP-GROCERY',
       'CASHEWS-100G',
       40,
       140,
       -1,
-      U('store-keeper'),
+      U('executive-housekeeper'),
       U('gm'),
       '',
       '',
       '',
     ],
-    ['PO-5', MAIN, 'SUP-GROCERY', 'WATER-1L', 240, 20, -1, U('store-keeper'), U('gm'), '', '', ''],
+    [
+      'PO-5',
+      HK,
+      'SUP-GROCERY',
+      'WATER-1L',
+      240,
+      20,
+      -1,
+      U('executive-housekeeper'),
+      U('gm'),
+      '',
+      '',
+      '',
+    ],
   ],
 );
 
@@ -1844,7 +1856,6 @@ const SHIFTS: [string, string, string, string, string][] = [
   ['ird', 'IN-ROOM-DINING', 'Evening', '15:00', '23:00'],
   ['cashier', 'CASHIER', 'Evening', '15:00', '23:00'],
   ['technician', 'ENGINEERING', 'Day', '09:00', '17:00'],
-  ['receiving', 'STORES-TEAM', 'Day', '08:00', '16:00'],
   ['banquet-captain', 'BANQUETS', 'Event', '15:00', '23:00'],
   ['banquet-server', 'BANQUETS', 'Event', '15:00', '23:00'],
 ];
@@ -1858,7 +1869,6 @@ const headOf: Record<string, string> = {
   'IN-ROOM-DINING': 'restaurant-manager',
   CASHIER: 'gm',
   ENGINEERING: 'chief-engineer',
-  'STORES-TEAM': 'purchase-manager',
   BANQUETS: 'banquet-manager',
 };
 const templates = new Map<string, Cell[]>();
@@ -2126,7 +2136,6 @@ const LISTS: List[] = [
   fromLibrary('TURNDOWN', 'HOUSEKEEPING', 'role:ROOM_ATTENDANT'),
   fromLibrary('LOBBY-WASHROOM', 'HOUSEKEEPING', 'role:PUBLIC_AREA_ATTENDANT'),
   fromLibrary('LAUNDRY-ROUND', 'HOUSEKEEPING', 'role:LAUNDRY_ATTENDANT'),
-  fromLibrary('RECEIVING-CHECK', 'STORES-TEAM', 'role:RECEIVING_CLERK'),
   fromLibrary('PLANT-ROUND', 'ENGINEERING', 'role:TECHNICIAN'),
   // ADR 088: each room in a grid, signed off by the supervisor (one level up, ADR 087)
   [

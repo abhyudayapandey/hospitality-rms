@@ -42,9 +42,11 @@ describe('process definitions', () => {
     }
   });
 
-  it('has orders approved by the department head (or the GM) only when unusual, and no value limit (ADR 049)', () => {
+  it('has orders approved by the department head (or the GM) only when the rules say, and no value limit (ADR 049, 115)', () => {
     expect(PURCHASE_ORDER.steps.map((s) => [s.step, s.group, s.when])).toEqual([
       ['department_approval', 'DEPARTMENT_HEAD', { payload_true: 'unusual' }],
+      // the outlet's rules name the GM as the approver (ADR 115)
+      ['gm_approval', 'OUTLET_MANAGER', { payload_true: 'gm' }],
     ]);
     expect(PURCHASE_ORDER.steps[0]).toMatchObject({
       escalateTo: 'OUTLET_MANAGER',
@@ -60,10 +62,12 @@ describe('process definitions', () => {
     });
   });
 
-  it('scopes TRANSFER dispatch to the from node and receipt to the to node', () => {
-    expect(TRANSFER.steps.slice(1).map((s) => [s.step, s.scope])).toEqual([
-      ['dispatch', 'from_node'],
-      ['receipt', 'to_node'],
+  it('scopes TRANSFER dispatch to the from node and receipt to the to node; the GM first where the outlet says so (ADR 115)', () => {
+    expect(TRANSFER.steps.slice(1).map((s) => [s.step, s.scope, s.when])).toEqual([
+      ['gm_approval', 'nearest_ancestor', { payload_true: 'gm' }],
+      ['dispatch', 'from_node', undefined],
+      // receiving is whoever asked's task now; the step runs for requests raised before
+      ['receipt', 'to_node', { payload_true: 'receipt_step' }],
     ]);
   });
 

@@ -80,7 +80,7 @@ export function hubActions(a: HubAccess, q: string): { main: HubAction[]; more: 
   } as const;
   const request = {
     key: 'request',
-    label: 'Request stock',
+    label: 'Ask for stock',
     href: `/stock/transfers/new?${q}`,
     icon: 'box',
     ok: a.request,

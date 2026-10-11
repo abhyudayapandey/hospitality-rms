@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { failure, taskIcon } from '@outlet-ops/domain';
 import { BackLink } from '@/components/back-link';
 import { Icon } from '@/components/icon';
@@ -33,6 +34,7 @@ import {
 import { AddTaskPhoto } from './task-photos';
 import { MinibarTask, type MinibarTaskCheck } from './minibar-task';
 import { ReassignTask, ReceiveSent, SentLines, type SentLine } from './receive-sent';
+import { SendTask, type SendLine } from './send-task';
 
 // One task (ADR 020): its steps for whoever works on it, and for task managers there who
 // it is with. A reported expired batch shows the lead whom to give the discard to. Who has
@@ -48,11 +50,21 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   let recipe: PrepRecipe | null;
   let photos: (TaskPhoto & { url: string | null })[];
   let minibar: MinibarTaskCheck | null;
+  let send: SendLine[];
+  let askPage: string | null;
   try {
-    ({ task, people, sent, about, recipe, photos, minibar } = await withUser(
+    ({ task, people, sent, about, recipe, photos, minibar, send, askPage } = await withUser(
       user.id,
       async (tx) => {
         const t = await taskDetail(tx, id);
+        // what a frontline person asked for (ADR 115): its own page, where the head acts on it
+        const askPage =
+          t.kind === 'ask'
+            ? ((
+                await sql<{ ask: string | null }>`
+                  select staff_ask_id::text as ask from ops.task where id = ${id}::uuid`.execute(tx)
+              ).rows[0]?.ask ?? null)
+            : null;
         // the task's own photos, kept 30 days (ADR 079)
         const ph = await taskPhotos(tx, id);
         const urls = await itemPhotoUrls(
@@ -88,10 +100,21 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
                   from ops.minibar_task_check(${id}::uuid)`.execute(tx)
               ).rows[0] ?? null)
             : null;
+        // stock to take to whoever asked (ADR 115): what was asked, what the store has
+        const toSend =
+          t.kind === 'send'
+            ? (
+                await sql<SendLine>`
+                select item_id::text, name, base_uom, asked::text, at_store::text, sent::text
+                  from ops.send_task_lines(${id}::uuid)`.execute(tx)
+              ).rows
+            : [];
         return {
           task: t,
           people: p,
           sent: lines,
+          send: toSend,
+          askPage,
           about: c,
           recipe: r,
           minibar: m,
@@ -106,6 +129,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       </p>
     );
   }
+  if (askPage) redirect(`/stock/asks/${askPage}`);
   const open = task.status === 'open' || task.status === 'in_progress';
   const mine = task.assignee_user_id === user.id;
   const late = open && new Date(task.due_at).getTime() < Date.now();
@@ -228,6 +252,8 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
           <TaskWork task={task} canWork={false} photos={false} />
           {open && task.can_work && <SignOffWork task={task} />}
         </>
+      ) : task.kind === 'send' ? (
+        <SendTask task={task.id} lines={send} canWork={open && task.can_work} />
       ) : task.kind === 'receive' ? (
         open && task.can_work ? (
           <ReceiveSent task={task.id} lines={sent} />
@@ -274,9 +300,12 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
           {task.handovers.length > 0 && <History task={task} />}
         </div>
       </details>
-      {open && task.can_manage && !about && task.kind !== 'expiry' && task.kind !== 'receive' && (
-        <CancelTask task={task.id} />
-      )}
+      {open &&
+        task.can_manage &&
+        !about &&
+        task.kind !== 'expiry' &&
+        task.kind !== 'receive' &&
+        task.kind !== 'send' && <CancelTask task={task.id} />}
     </div>
   );
 }
