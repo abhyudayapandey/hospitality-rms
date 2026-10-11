@@ -16,6 +16,8 @@ export interface ScreenInput extends NavInput {
   swapsManagersOnly?: boolean;
   /** keeps or reads a hotel's breakfast (Shell.breakfast, ADR 097) */
   breakfast?: boolean;
+  /** their department's licences and jobs are on the register (Shell.compliance, ADR 124) */
+  compliance?: boolean;
 }
 
 export type ScreenKey =
@@ -358,7 +360,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/compliance',
     label: 'Compliance',
     icon: 'shield',
-    show: (i) => can(i, 'COMPLIANCE'),
+    show: (i) => can(i, 'COMPLIANCE') || i.compliance === true,
   },
   {
     // the Team side of Roster: roster builders, and people above outlet level
@@ -503,6 +505,9 @@ function isOwn(s: Screen, i: ScreenInput): boolean {
     // recipes for those who make what is in them, or who see the recipes of the stores they use
     case 'menu':
       return i.production || ['MENU', 'DERIVED_MENU', 'RECIPES'].some((d) => ownWork(i, d));
+    // their department's licences and jobs (ADR 124)
+    case 'compliance':
+      return i.compliance === true || ownWork(i, 'COMPLIANCE');
     // reading the sales is not a day's work; keeping them is (ADR 113)
     case 'sales':
       return can(i, 'SALES', 'modify');

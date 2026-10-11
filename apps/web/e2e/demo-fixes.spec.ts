@@ -110,16 +110,41 @@ test("a department head's roster opens by person; the GM's by shift", async ({ p
   await page.goto(`/roster/week?node=${kitchen}`);
   await expect(page.getByTestId('view-people')).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('person-row').first()).toBeVisible();
-  // no kitchen shift type is the executive chef's: Off, and a line saying so, not the other
-  // roles' tiles a tap would be refused (ADR 097)
+  // no kitchen shift type is the executive chef's, but every one of the kitchen's is offered,
+  // with Custom and Off (ADR 128)
   const chef = page.getByTestId('person-row').filter({ hasText: 'Test Executive Chef 1.0' });
-  await expect(chef.getByTestId('no-shift-types')).toBeVisible();
-  await expect(chef.getByTestId('shift-tile')).toHaveCount(1);
-  await expect(chef.getByTestId('shift-tile')).toHaveAttribute('data-type', 'off');
+  expect(
+    await chef.locator('[data-testid="shift-tile"][data-type="straight"]').count(),
+  ).toBeGreaterThan(0);
+  await expect(chef.locator('[data-type="custom"]')).toBeVisible();
+  await expect(chef.locator('[data-type="off"]')).toBeVisible();
 
   await signInAs(page, 'Test General Manager 1.0');
   await page.goto(`/roster/week?node=${kitchen}`);
   await expect(page.getByTestId('view-shift')).toHaveAttribute('aria-current', 'page');
+});
+
+test('a custom shift: a day, from a time to a time, shown as theirs (ADR 128)', async ({
+  page,
+}) => {
+  const kitchen = await placeId('TEST-HOTEL-1.0-KITCHEN');
+  const [{ day = '' } = {}] = await asMigrator<{ day: string }>(
+    `select (date_trunc('week', now() at time zone 'Asia/Kolkata')::date + 38)::text as day`,
+    [],
+  );
+  await signInAs(page, 'Test Executive Chef 1.0');
+  await page.goto(`/roster/week?node=${kitchen}&week=${day}&day=${day}&view=people`);
+  const row = page.getByTestId('person-row').filter({ hasText: 'Test Commis 1.0' }).first();
+  await row.locator('[data-type="custom"]').click();
+  const form = row.getByTestId('custom-shift');
+  await form.getByLabel('From').fill('10:30');
+  await form.getByLabel('To').fill('15:30');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect(row.locator('[data-type="other"]')).toContainText('10:30–15:30');
+  await expect(row.locator('[data-type="off"]')).toHaveAttribute('aria-pressed', 'false');
+  // and back to Off
+  await row.locator('[data-type="off"]').click();
+  await expect(row.locator('[data-type="off"]')).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('a shift added by hand shows as theirs on the roster by person, not as Off', async ({

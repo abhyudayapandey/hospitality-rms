@@ -302,6 +302,71 @@ describe('the tiles (hr.set_day_shift)', () => {
     });
   });
 
+  it("another role's shift type gives them a shift of their own with its times; a custom shift (ADR 128)", async () => {
+    await inRolledBackTx(async (c) => {
+      const monday = await mondayAhead(c, 6);
+      const w = await worker(c, 'test.steward-b.1.0');
+      const as = (sql: string, params: unknown[] = []) =>
+        attemptAs(c, ids.user(MANAGER), sql, params);
+      const dinner = await template(c, RESTAURANT, 'Dinner', 'CAPTAIN');
+      const t = await c.query<{ s: string; e: string }>(
+        `select to_char(start_time, 'HH24:MI') s, to_char(end_time, 'HH24:MI') e
+           from hr.shift_template where id = $1`,
+        [dinner],
+      );
+      expect(
+        (await as('select hr.set_day_shift_any($1, $2::date, $3)', [w, monday, dinner])).error,
+      ).toBeUndefined();
+      const read = async (day: string) => {
+        const r = await as(`select hr.roster_day($1, $2::date) as d`, [ids.node(RESTAURANT), day]);
+        return (
+          r.rows![0] as {
+            d: {
+              people: {
+                worker_id: string;
+                template_id: string | null;
+                start: string;
+                end: string;
+              }[];
+            };
+          }
+        ).d.people.find((p) => p.worker_id === w)!;
+      };
+      expect(await read(monday)).toMatchObject({
+        template_id: null,
+        start: t.rows[0]!.s,
+        end: t.rows[0]!.e,
+      });
+      // a custom shift replaces it, and the rules run on it as on any assignment
+      expect(
+        (await as(`select hr.set_custom_shift($1, $2::date, '10:30', '15:30')`, [w, monday])).error,
+      ).toBeUndefined();
+      expect(await read(monday)).toMatchObject({ template_id: null, start: '10:30', end: '15:30' });
+      const shifts = await c.query<{ n: number }>(
+        `select count(*)::int n from hr.shift_assignment a join hr.shift s on s.id = a.shift_id
+          where a.worker_id = $1 and a.status = 'assigned' and s.local_date = $2::date`,
+        [w, monday],
+      );
+      expect(shifts.rows[0]!.n).toBe(1);
+      // overnight, but never longer than 16 hours, and only by whoever builds the roster
+      expect(
+        (
+          await as(`select hr.set_custom_shift($1, $2::date, '06:00', '23:30')`, [
+            w,
+            addDays(monday, 1),
+          ])
+        ).error,
+      ).toMatch(/INVALID_VALUE/);
+      const steward = await attemptAs(
+        c,
+        ids.user('test.steward.1.0'),
+        `select hr.set_custom_shift($1, $2::date, '10:00', '14:00')`,
+        [w, addDays(monday, 2)],
+      );
+      expect(steward.error).toMatch(/NOT_AUTHORISED/);
+    });
+  });
+
   it('a full shift takes one more for the manager; nobody else may set tiles', async () => {
     await inRolledBackTx(async (c) => {
       const monday = await mondayAhead(c, 5);

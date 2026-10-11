@@ -55,6 +55,8 @@ export interface Shell {
   reports: NavInput['reports'];
   /** they keep or read a hotel's breakfast somewhere (ops.breakfast_outlets, ADR 094, 097) */
   breakfast: boolean;
+  /** their department has licences or regular jobs on the Compliance register (ADR 124) */
+  compliance: boolean;
 }
 
 const MENU_DOMAINS = ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM'];
@@ -66,7 +68,7 @@ const MENU_DOMAINS = ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM'];
  * reads it; every screen still checks access in the database.
  */
 const NAV_TTL_MS = 5 * 60_000;
-type NavFlags = Pick<Shell, 'menu' | 'production' | 'reports' | 'breakfast'>;
+type NavFlags = Pick<Shell, 'menu' | 'production' | 'reports' | 'breakfast' | 'compliance'>;
 const navFlags = new Map<string, { at: number; v: NavFlags }>();
 
 async function cachedNavFlags(key: string, load: () => Promise<NavFlags>): Promise<NavFlags> {
@@ -146,6 +148,12 @@ export const loadShell = cache(async (): Promise<Shell> => {
           ? await sql<{ v: boolean }>`
               select exists (select 1 from ops.breakfast_outlets()) as v`.execute(tx)
           : null;
+        // Compliance for someone without the register: their department's licences and jobs
+        const compliance =
+          modules.has('compliance') && !has('COMPLIANCE')
+            ? await sql<{ v: boolean }>`
+                select ops.sees_department_compliance() as v`.execute(tx)
+            : null;
         // frontline staff have only their own week; others ask rpt.my_reports() (ADR 023)
         const listed =
           navProfile(groupSet) === 'frontline'
@@ -165,6 +173,7 @@ export const loadShell = cache(async (): Promise<Shell> => {
           production: production?.rows[0]?.v ?? false,
           reports,
           breakfast: breakfast?.rows[0]?.v ?? false,
+          compliance: compliance?.rows[0]?.v ?? false,
         };
       },
     );
@@ -203,5 +212,6 @@ export function screenInput(shell: Shell): ScreenInput {
     atWork: shell.home?.at_workplace ?? false,
     swapsManagersOnly: shell.swapsManagersOnly,
     breakfast: shell.breakfast,
+    compliance: shell.compliance,
   };
 }
