@@ -7,6 +7,8 @@ import { withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { isUuid, param, type SearchParams } from '@/lib/params';
 import { registerEntries, registerPlaces } from '@/lib/registers';
+import { ListDays } from '@/components/date-range';
+import { listDays } from '@/lib/list-days';
 import { loadShell } from '@/lib/shell';
 import { CloseEntry } from './close-entry';
 import { EntryForm } from './entry-form';
@@ -37,7 +39,11 @@ export default async function RegistersPage({ searchParams }: { searchParams: Se
   const askedReg = param(sp, 'register');
   const register = askedReg && mine.includes(askedReg) ? askedReg : mine[0]!;
   const def = registerDef(register)!;
-  const entries = await withUser(user.id, (tx) => registerEntries(tx, place.place_id, register));
+  const { entries, range, today } = await withUser(user.id, async (tx) => {
+    // the open ones and the last 30 days, or what was written on the days chosen (ADR 120)
+    const { range, today } = await listDays(tx, sp, place.place_id);
+    return { entries: await registerEntries(tx, place.place_id, register, range), range, today };
+  });
   const href = (r: string, p = place.place_id) => `/registers?place=${p}&register=${r}`;
   return (
     <div className="space-y-4">
@@ -81,8 +87,19 @@ export default async function RegistersPage({ searchParams }: { searchParams: Se
         ))}
       </nav>
       <p className="text-sm text-slate-600">{def.what}</p>
+      <ListDays
+        path="/registers"
+        params={{ place: place.place_id, register }}
+        range={range}
+        today={today}
+        list="registers"
+      />
       {entries.length === 0 ? (
-        <Empty>Nothing in this register this month.</Empty>
+        <Empty>
+          {range
+            ? 'Nothing written in this register on these days.'
+            : 'Nothing in this register this month.'}
+        </Empty>
       ) : (
         <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
           {entries.map((e) => (

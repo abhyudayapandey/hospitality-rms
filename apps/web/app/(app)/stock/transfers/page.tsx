@@ -13,6 +13,9 @@ import { ViewTabs } from '@/components/view-tabs';
 import { listHref } from '@/lib/stock-view';
 import { LIST_PAGE, listLimit } from '@/lib/list-page';
 import { ShowMore } from '@/components/show-more';
+import { ListDays } from '@/components/date-range';
+import { listDays } from '@/lib/list-days';
+import { transferList } from '@/lib/transfer-list';
 
 export default async function TransfersPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await supplyContext(searchParams, 'transfers');
@@ -36,40 +39,21 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
     ));
   const tab = raw === 'send' || (raw !== 'all' && mainStore) ? 'send' : 'all';
   const limit = listLimit(param(sp, 'n'), mainStore ? 10 : LIST_PAGE);
-  const scope = all
-    ? sql`(from_node_id = any(${ids}::uuid[]) or to_node_id = any(${ids}::uuid[]))`
-    : sql`(from_node_id = ${node.id}::uuid or to_node_id = ${node.id}::uuid)`;
-  // waiting to be sent from these stores: what the To send tab lists
-  const sending = sql`(progress = 'awaiting_dispatch' and ${
-    all ? sql`from_node_id = any(${ids}::uuid[])` : sql`from_node_id = ${node.id}::uuid`
-  })`;
-  const { rows: fetched, toSend } = await withUser(user.id, async (tx) => {
-    const r = await sql<{
-      id: string;
-      from_node_id: string;
-      to_node_id: string;
-      from_name: string;
-      to_name: string;
-      progress: string;
-      kind: string;
-      created_at: Date;
-      items: string | null;
-    }>`
-      select t.id, t.from_node_id, t.to_node_id, t.from_name, t.to_name, t.progress, t.kind,
-             t.created_at,
-             -- what is in it (ADR 053)
-             (select string_agg(i.name, ', ' order by i.name)
-                from inv.transfer_line l join inv.item i on i.id = l.item_id
-               where l.transfer_id = t.id) as items
-        from inv.transfer_summary t
-       where ${scope} and (${tab === 'send'} = false or ${sending})
-       order by created_at desc limit ${limit + 1}`.execute(tx);
-    // counted in SQL with no limit, with the To send tab's own filter (ADR 052)
-    const toSend = await sql<{ n: number }>`
-      select count(*)::int as n from inv.transfer_summary where ${scope} and ${sending}`.execute(
-      tx,
-    );
-    return { rows: r.rows, toSend: toSend.rows[0]?.n ?? 0 };
+  const {
+    rows: fetched,
+    toSend,
+    range,
+    today,
+  } = await withUser(user.id, async (tx) => {
+    const { range, today } = await listDays(tx, sp, node.id);
+    const r = await transferList(tx, {
+      nodes: all ? ids : [node.id],
+      node: node.id,
+      tab,
+      limit,
+      range,
+    });
+    return { ...r, range, today };
   });
   const rows = fetched.slice(0, limit);
   // "Test Hotel & Bar 1.0 – Kitchen Store" → "Kitchen Store": the outlet is the screen's (ADR 053)
@@ -94,15 +78,22 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
             key: 'all',
             label: 'All transfers',
             // the Main Store's default is To send, so All says so
-            href: `${listHref('/stock/transfers', { all, node: node.id })}${mainStore ? '&tab=all' : ''}`,
+            href: `${listHref('/stock/transfers', { all, node: node.id, range })}${mainStore ? '&tab=all' : ''}`,
           },
           {
             key: 'send',
             label: 'To send',
             count: toSend,
-            href: listHref('/stock/transfers', { all, node: node.id, tab: 'send' }),
+            href: listHref('/stock/transfers', { all, node: node.id, tab: 'send', range }),
           },
         ]}
+      />
+      <ListDays
+        path="/stock/transfers"
+        params={{ node: node.id, all: all ? '1' : undefined, tab }}
+        range={range}
+        today={today}
+        list="transfers"
       />
       {rows.length === 0 ? (
         <Empty>
@@ -118,7 +109,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
                 <Link
                   href={withBack(
                     `/stock/transfers/${r.id}?node=${outgoing ? r.from_node_id : r.to_node_id}`,
-                    `${listHref('/stock/transfers', { all, node: node.id, tab })}${mainStore && tab === 'all' ? '&tab=all' : ''}`,
+                    `${listHref('/stock/transfers', { all, node: node.id, tab, range })}${mainStore && tab === 'all' ? '&tab=all' : ''}`,
                   )}
                   className="block rounded-xl bg-white p-4 ring-1 ring-slate-200"
                 >
@@ -156,6 +147,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
       {fetched.length > limit && (
         <ShowMore
           href={listHref('/stock/transfers', {
+            range,
             all,
             node: node.id,
             tab,

@@ -11,6 +11,7 @@ import {
   priceChanges,
   reportToday,
   stockItems,
+  stockMovements,
   supplierFill,
 } from '@/lib/report-data';
 import { capRange, periodRange } from '@/lib/reports';
@@ -224,6 +225,42 @@ const EXPORTS: Record<string, { days: number; run: Export }> = {
         r.transit_loss,
         r.short_lines,
       ]),
+    }),
+  },
+  // Stock movements (ADR 122): one row per item of each order, receipt or transfer
+  movements: {
+    days: 366,
+    run: async (tx, node, from, to) => ({
+      header: [
+        'day',
+        'kind',
+        'store',
+        'from_or_to',
+        'direction',
+        'status',
+        'by',
+        'item',
+        'unit',
+        'qty',
+        'received_qty',
+        'value',
+      ],
+      rows: (await stockMovements(tx, node, from, to)).flatMap((m) =>
+        m.lines.map((l) => [
+          m.day,
+          m.kind,
+          m.store,
+          m.other,
+          m.direction,
+          m.status,
+          m.by_name,
+          l.item,
+          l.unit,
+          l.qty,
+          l.received ?? null,
+          l.value,
+        ]),
+      ),
     }),
   },
 };

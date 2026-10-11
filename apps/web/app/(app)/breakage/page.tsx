@@ -6,6 +6,7 @@ import {
   type BrokenBy,
 } from '@outlet-ops/domain';
 import { BackLink } from '@/components/back-link';
+import { ExportLink } from '@/components/date-range';
 import { ItemThumb } from '@/components/item-thumb';
 import { Empty } from '@/components/messages';
 import { requireUser } from '@/lib/auth/server';
@@ -85,6 +86,7 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
             {log.length} {log.length === 1 ? 'entry' : 'entries'} · {formatMoney(total)}
           </span>
         </h2>
+        {log.length > 0 && <ExportLink list="breakage" params={{ place: place.place_id, month }} />}
         {log.length === 0 ? (
           <Empty>Nothing broken this month.</Empty>
         ) : (

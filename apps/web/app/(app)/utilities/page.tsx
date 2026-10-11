@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { BackLink } from '@/components/back-link';
 import { Empty } from '@/components/messages';
 import { ShowMore } from '@/components/show-more';
+import { ListDays } from '@/components/date-range';
+import { listDays } from '@/lib/list-days';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
@@ -32,11 +34,17 @@ export default async function UtilitiesPage({ searchParams }: { searchParams: Se
       </div>
     );
   }
-  const { meters, days, months } = await withUser(user.id, async (tx) => ({
-    meters: await utilityMeters(tx, place.place_id),
-    days: await utilityDays(tx, place.place_id, DAYS),
-    months: await utilityMonths(tx, place.place_id),
-  }));
+  const { meters, days, months, range, today } = await withUser(user.id, async (tx) => {
+    // the last 60 days, or the days chosen (ADR 120)
+    const { range, today } = await listDays(tx, sp, place.place_id);
+    return {
+      meters: await utilityMeters(tx, place.place_id),
+      days: await utilityDays(tx, place.place_id, DAYS, range),
+      months: await utilityMonths(tx, place.place_id),
+      range,
+      today,
+    };
+  });
   // the meter whose days are all shown ("Show more")
   const all = param(sp, 'all');
   const monthMeters = [...new Map(months.map((m) => [m.meter_id, m])).values()];
@@ -67,6 +75,13 @@ export default async function UtilitiesPage({ searchParams }: { searchParams: Se
           ))}
         </nav>
       )}
+      <ListDays
+        path="/utilities"
+        params={{ place: place.place_id }}
+        range={range}
+        today={today}
+        list="utilities"
+      />
       {meters.length === 0 ? (
         <Empty>There are no meters here.</Empty>
       ) : (
@@ -87,7 +102,11 @@ export default async function UtilitiesPage({ searchParams }: { searchParams: Se
               </div>
               {rows.length === 0 ? (
                 // a meter never read says so above; one read long ago says how long
-                m.last_reading !== null && <Empty>No readings in the last {DAYS} days.</Empty>
+                m.last_reading !== null && (
+                  <Empty>
+                    {range ? 'No readings on these days.' : `No readings in the last ${DAYS} days.`}
+                  </Empty>
+                )
               ) : (
                 <>
                   <table className="w-full rounded-xl bg-white text-sm ring-1 ring-slate-200">
@@ -113,7 +132,9 @@ export default async function UtilitiesPage({ searchParams }: { searchParams: Se
                     </tbody>
                   </table>
                   {shown.length < rows.length && (
-                    <ShowMore href={`/utilities?place=${place.place_id}&all=${m.meter_id}`} />
+                    <ShowMore
+                      href={`/utilities?place=${place.place_id}&all=${m.meter_id}${range ? `&from=${range.from}&to=${range.to}` : ''}`}
+                    />
                   )}
                 </>
               )}

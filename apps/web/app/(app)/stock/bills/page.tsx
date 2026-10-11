@@ -3,36 +3,19 @@ import { Empty } from '@/components/messages';
 import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
 import { ViewTabs } from '@/components/view-tabs';
 import { requireUser } from '@/lib/auth/server';
-import { sql, withUser } from '@/lib/db';
+import { withUser } from '@/lib/db';
 import { formatMoney } from '@/lib/format';
 import { param, supplyContext, type SearchParams } from '@/lib/inventory';
 import { listHref } from '@/lib/stock-view';
+import { ListDays } from '@/components/date-range';
+import { BILL_TABS, billList, type BillTab } from '@/lib/bill-list';
+import { listDays } from '@/lib/list-days';
 
 // Vendor bills (BIL-3, ADR 050): every bill at the person's stores, for goods and services,
 // and the orders received without one. "All stores" first when there are several (ADR 038).
 
-const TABS = ['all', 'goods', 'services', 'waiting'] as const;
-type Tab = (typeof TABS)[number];
-
-interface BillRow {
-  id: string;
-  kind: 'goods' | 'service';
-  supplier: string | null;
-  bill_no: string | null;
-  bill_date: Date;
-  amount: string;
-  description: string | null;
-  store_id: string;
-}
-
-interface WaitingRow {
-  id: string;
-  supplier: string | null;
-  store_id: string;
-  /** what was received and what it cost (the receipts), never the order's estimate */
-  received: string;
-  released_at: Date | null;
-}
+const TABS = BILL_TABS;
+type Tab = BillTab;
 
 const day = (d: Date | null) =>
   d
@@ -49,44 +32,16 @@ export default async function BillsPage({ searchParams }: { searchParams: Search
   const node = ctx.node;
   const nodes = all ? ctx.nodes.map((n) => n.id) : [node.id];
   const user = await requireUser();
-  const { bills, waiting, count, sum } = await withUser(user.id, async (tx) => {
-    const b = await sql<BillRow>`
-      select b.id, b.kind, coalesce(s.name, b.supplier_name) as supplier, b.bill_no, b.bill_date,
-             b.amount, b.description, b.delivery_node_id::text as store_id
-        from inv.bill b
-        left join inv.supplier s on s.id = b.supplier_id
-       where b.delivery_node_id = any(${nodes}::uuid[]) and b.archived_at is null
-         and (${tab} not in ('goods', 'services')
-              or b.kind = case ${tab} when 'goods' then 'goods' else 'service' end)
-       order by b.bill_date desc, b.created_at desc
-       limit 50`.execute(tx);
-    // orders received in the last 60 days with no bill yet
-    const w = await sql<WaitingRow>`
-      select po.id, s.name as supplier, po.delivery_node_id::text as store_id,
-             inv.po_received_value(po.id) as received, po.released_at
-        from inv.purchase_order_summary po
-        left join inv.supplier s on s.id = po.supplier_id
-       where po.delivery_node_id = any(${nodes}::uuid[])
-         and po.received_qty > 0
-         and po.released_at > now() - interval '60 days'
-         and not exists (select 1 from inv.bill b where b.po_id = po.id and b.archived_at is null)
-       order by po.released_at desc
-       limit 50`.execute(tx);
-    // the count and the total of every bill in the tab, not only the 50 shown (ADR 053)
-    const t = await sql<{ n: number; total: string | null }>`
-      select count(*)::int as n, sum(b.amount) as total from inv.bill b
-       where b.delivery_node_id = any(${nodes}::uuid[]) and b.archived_at is null
-         and (${tab} not in ('goods', 'services')
-              or b.kind = case ${tab} when 'goods' then 'goods' else 'service' end)`.execute(tx);
+  const { bills, waiting, count, sum, range, today } = await withUser(user.id, async (tx) => {
+    const { range, today } = await listDays(tx, sp, node.id);
     return {
-      bills: b.rows,
-      waiting: w.rows,
-      count: t.rows[0]?.n ?? 0,
-      sum: Number(t.rows[0]?.total ?? 0),
+      ...(await billList(tx, { nodes, node: node.id, tab, limit: 50, range })),
+      range,
+      today,
     };
   });
   const names = new Map(ctx.nodes.map((n) => [n.id, n.name]));
-  const href = (t: Tab) => listHref('/stock/bills', { all, node: node.id, tab: t });
+  const href = (t: Tab) => listHref('/stock/bills', { all, node: node.id, tab: t, range });
   return (
     <div className="space-y-4">
       <SupplyHeader
@@ -109,6 +64,13 @@ export default async function BillsPage({ searchParams }: { searchParams: Search
             href: href('waiting'),
           },
         ]}
+      />
+      <ListDays
+        path="/stock/bills"
+        params={{ node: node.id, all: all ? '1' : undefined, tab: tab === 'all' ? undefined : tab }}
+        range={range}
+        today={today}
+        list="bills"
       />
       {tab === 'waiting' ? (
         waiting.length === 0 ? (

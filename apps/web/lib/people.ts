@@ -270,6 +270,14 @@ export async function exceptions(
 }
 
 /** Exceptions at several places at once ("All departments", ADR 048): each exactly once. */
+/** The exceptions of the days chosen, by the shift's own day (ADR 120); all when none. */
+export function inRange<T extends { local_date: string }>(
+  rows: T[],
+  range: { from: string; to: string } | null,
+): T[] {
+  return range ? rows.filter((r) => r.local_date >= range.from && r.local_date <= range.to) : rows;
+}
+
 export async function exceptionsAll(
   tx: Tx,
   nodes: readonly string[],

@@ -20,6 +20,9 @@ import { LIST_PAGE, listLimit } from '@/lib/list-page';
 import { ShowMore } from '@/components/show-more';
 import { ViewTabs } from '@/components/view-tabs';
 import { listHref } from '@/lib/stock-view';
+import { ListDays } from '@/components/date-range';
+import { listDays } from '@/lib/list-days';
+import { ORDER_TABS, orderList, type OrderTab } from '@/lib/order-list';
 
 // Orders (ADR 048, 049, 051, 052): one list with the store's own orders and, for the Main
 // Store's keeper, the departments' requests they order and receive (the order desk). Tabs:
@@ -27,33 +30,8 @@ import { listHref } from '@/lib/stock-view';
 // is the whole list, counted in SQL; the list shows a page at a time. The list comes first;
 // asking for supplies is below it, a secondary link for the Main Store.
 
-const TABS = ['all', 'to_order', 'receive', 'received'] as const;
-type Tab = (typeof TABS)[number];
-
-interface Row {
-  id: string;
-  supplier: string | null;
-  store_id: string;
-  store: string;
-  progress: string;
-  created_at: Date;
-  /** the day it is due (ADR 049) */
-  expected_on: string | null;
-  items: string | null;
-  value: string | null;
-  bill_missing: boolean;
-  desk: boolean;
-  /** a department's order its Main Store places and receives: no ₹, "on the way" (ADR 052) */
-  follow: boolean;
-}
-
-// which tab a progress belongs to; closed orders (the rest is not coming) are done
-const BUCKET = sql`case progress when 'to_order' then 'to_order'
-                                 when 'released' then 'receive'
-                                 when 'partially_received' then 'receive'
-                                 when 'received' then 'received'
-                                 when 'closed' then 'received'
-                                 else 'other' end`;
+const TABS = ORDER_TABS;
+type Tab = OrderTab;
 
 export default async function OrdersPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await supplyContext(searchParams, 'orders');
@@ -67,44 +45,23 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
   const node = ctx.node;
   const nodes = all ? ctx.nodes.map((n) => n.id) : [node.id];
   const asked = (TABS as readonly string[]).includes(raw ?? '') ? (raw as Tab) : 'all';
-  const { rows, counts, mainStore, follows } = await withUser(user.id, async (tx) => {
-    // the store's own orders and the departments' requests this person orders and receives
-    // for (ADR 049); counted with no limit, listed a page at a time (ADR 052)
-    const scope = sql`
-      with o as (
-        select po.id, s.name as supplier, po.delivery_node_id as store_id,
-               core.node_name(po.delivery_node_id) as store, po.progress, po.created_at,
-               (select string_agg(i.name, ', ' order by i.name)
-                  from inv.purchase_order_line pl join inv.item i on i.id = pl.item_id
-                 where pl.po_id = po.id) as items,
-               false as desk
-          from inv.purchase_order_summary po
-          left join inv.supplier s on s.id = po.supplier_id
-         where po.delivery_node_id = any(${nodes}::uuid[])
-        union all
-        select d.po_id, d.supplier, d.store_id, d.store, d.progress, d.created_at, d.items, true
-          from inv.desk_order_list() d
-         where not (d.store_id = any(${nodes}::uuid[])))
-      select *, ${BUCKET} as bucket from o`;
-    const c = await sql<{ bucket: string; n: number }>`
-      select bucket, count(*)::int as n from (${scope}) x group by bucket`.execute(tx);
-    const r = await sql<Row>`
-      select id, supplier, store_id::text, store, progress, created_at, items, desk,
-             (select p.expected_on::text from inv.purchase_order p where p.id = x.id)
-               as expected_on,
-             inv.po_received_value(id) as value,
-             coalesce(inv.po_bill_missing(id), false) as bill_missing,
-             inv.follows_order(id) as follow
-        from (${scope}) x
-       where ${asked} = 'all' or bucket = ${asked}
-       order by created_at desc, id
-       limit ${limit + 1}`.execute(tx);
+  const { rows, counts, mainStore, follows, range, today } = await withUser(user.id, async (tx) => {
+    const { range, today } = await listDays(tx, sp, node.id);
+    const { rows, counts } = await orderList(tx, {
+      nodes,
+      node: node.id,
+      tab: asked,
+      limit,
+      range,
+    });
     const facts = await sql<{ m: boolean; follows: boolean }>`
       select inv.is_main_store(${node.id}::uuid) as m,
              inv.follows_store(${node.id}::uuid) as follows`.execute(tx);
     return {
-      rows: r.rows,
-      counts: new Map(c.rows.map((x) => [x.bucket, x.n])),
+      rows,
+      counts,
+      range,
+      today,
       mainStore: facts.rows[0]?.m ?? false,
       follows: !all && (facts.rows[0]?.follows ?? false),
     };
@@ -113,7 +70,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
   const showToOrder = count('to_order') > 0;
   const tab: Tab = asked !== 'to_order' || showToOrder ? asked : 'all';
   const list = tab === asked ? rows.slice(0, limit) : [];
-  const href = (t: Tab) => listHref('/stock/orders', { all, node: node.id, tab: t });
+  const href = (t: Tab) => listHref('/stock/orders', { all, node: node.id, tab: t, range });
   const canAsk = !all && ctx.can('PURCHASE_ORDERS', 'modify') && !node.derived;
   const ask = `/stock/orders/new?node=${node.id}`;
   return (
@@ -150,6 +107,13 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
           { key: 'received', label: 'Received', count: count('received'), href: href('received') },
         ]}
       />
+      <ListDays
+        path="/stock/orders"
+        params={{ node: node.id, all: all ? '1' : undefined, tab: tab === 'all' ? undefined : tab }}
+        range={range}
+        today={today}
+        list="orders"
+      />
       {list.length === 0 ? (
         <Empty>
           {tab === 'receive'
@@ -176,7 +140,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
                 <Link
                   href={withBack(
                     `/stock/orders/${r.id}?node=${r.desk ? node.id : r.store_id}`,
-                    listHref('/stock/orders', { all, node: node.id, tab }),
+                    listHref('/stock/orders', { all, node: node.id, tab, range }),
                   )}
                   className="block rounded-xl bg-white p-4 ring-1 ring-slate-200"
                 >
@@ -239,7 +203,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
       )}
       {tab === asked && rows.length > limit && (
         <ShowMore
-          href={listHref('/stock/orders', { all, node: node.id, tab, n: limit + LIST_PAGE })}
+          href={listHref('/stock/orders', { all, node: node.id, tab, n: limit + LIST_PAGE, range })}
         />
       )}
       {canAsk &&

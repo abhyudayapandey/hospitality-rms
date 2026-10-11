@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { formatDay } from '@/lib/dates';
 import { quickRanges, rangeQuery, type DateRange } from '@/lib/date-range';
 import { Icon } from './icon';
 
@@ -97,5 +98,71 @@ export function ExportLink({
       <Icon name="down" className="size-4" />
       {label}
     </a>
+  );
+}
+
+/**
+ * A long list's days and its download (ADR 120): folded to "Pick dates" until days are chosen,
+ * then "1 Oct to 10 Oct" with "All dates" to go back to the whole list. The download holds the
+ * list as it is shown: its tab, its place and its days.
+ */
+export function ListDays({
+  path,
+  params,
+  range,
+  today,
+  list,
+}: {
+  path: string;
+  params: Record<string, string | undefined>;
+  range: DateRange | null;
+  today: string;
+  /** the export's name in lib/exports.ts */
+  list?: string;
+}) {
+  const kept = Object.fromEntries(
+    Object.entries(params).filter(([k]) => k !== 'from' && k !== 'to' && k !== 'n'),
+  );
+  const clear = new URLSearchParams(
+    Object.entries(kept).filter((e): e is [string, string] => !!e[1]),
+  ).toString();
+  return (
+    <div className="space-y-2" data-testid="list-days">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <details open={range !== null} className="min-w-0 flex-1">
+          <summary className="inline-flex min-h-11 cursor-pointer items-center gap-1 text-sm text-slate-700 underline">
+            <Icon name="calendar" className="size-4" />
+            {range
+              ? range.from === range.to
+                ? formatDay(range.from)
+                : `${formatDay(range.from)} to ${formatDay(range.to)}`
+              : 'Pick dates'}
+          </summary>
+          <div className="mt-2 space-y-2">
+            <DateRangePicker
+              path={path}
+              params={kept}
+              range={range ?? { from: today, to: today }}
+              today={today}
+            />
+            {range && (
+              <Link
+                href={`${path}${clear ? `?${clear}` : ''}`}
+                className="inline-flex min-h-11 items-center text-sm text-slate-700 underline"
+                data-testid="all-dates"
+              >
+                All dates
+              </Link>
+            )}
+          </div>
+        </details>
+        {list && (
+          <ExportLink
+            list={list}
+            params={{ ...kept, ...(range ? { from: range.from, to: range.to } : {}) }}
+          />
+        )}
+      </div>
+    </div>
   );
 }

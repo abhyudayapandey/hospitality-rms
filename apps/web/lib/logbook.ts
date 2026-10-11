@@ -1,5 +1,6 @@
 import 'server-only';
 import { sql, type Tx } from './db';
+import type { DateRange } from './date-range';
 
 // Logbook & handover (ADR 089): read through ops.* SECURITY DEFINER functions, which check
 // LOGBOOK at the place (rule 2).
@@ -38,8 +39,21 @@ export async function logbookPlaces(tx: Tx): Promise<LogbookPlace[]> {
   return (await sql<LogbookPlace>`select * from ops.logbook_places()`.execute(tx)).rows;
 }
 
-export async function logbook(tx: Tx, place: string): Promise<LogEntry[]> {
-  return (await sql<LogEntry>`select * from ops.logbook(${place}::uuid)`.execute(tx)).rows;
+export async function logbook(
+  tx: Tx,
+  place: string,
+  /** only what was written on these days (ADR 120); else the last two days */
+  range: DateRange | null = null,
+): Promise<LogEntry[]> {
+  if (!range) {
+    return (await sql<LogEntry>`select * from ops.logbook(${place}::uuid)`.execute(tx)).rows;
+  }
+  return (
+    await sql<LogEntry>`
+      select l.* from ops.logbook(${place}::uuid, current_date - ${range.from}::date + 2) l
+       where rpt.days_window(${place}::uuid, ${range.from}::date, ${range.to}::date)
+             @> l.written_at`.execute(tx)
+  ).rows;
 }
 
 export async function logbookTargets(tx: Tx, place: string): Promise<LogbookTargets> {

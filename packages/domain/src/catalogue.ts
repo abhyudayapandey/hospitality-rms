@@ -564,7 +564,8 @@ export const ROLES: readonly RoleDef[] = [
     title: 'Purchase Manager',
     alsoCalled: ['Store Manager', 'Stores Manager', 'Purchase Executive', 'Purchase Officer'],
     home: 'STORES-TEAM',
-    duties: [D, 'KEEPS_MAIN_STORE', 'SEES_OUTLET_STOCK'],
+    // and what was bought, received and moved: the bills and the stock movements (ADR 122)
+    duties: [D, 'KEEPS_MAIN_STORE', 'SEES_OUTLET_STOCK', 'READS_BILLS'],
     sops: ['R', 'H'],
   },
   {

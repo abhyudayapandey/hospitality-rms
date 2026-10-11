@@ -1,5 +1,6 @@
 import 'server-only';
 import { sql, type Tx } from './db';
+import type { DateRange } from './date-range';
 
 // Registers (ADR 090): read through ops.* SECURITY DEFINER functions, which check REGISTERS at
 // the place and who keeps each register (rule 2).
@@ -34,10 +35,21 @@ export async function registerEntries(
   tx: Tx,
   place: string,
   register: string,
+  /** only what was written on these days (ADR 120); else the open ones and the last 30 days */
+  range: DateRange | null = null,
 ): Promise<RegisterEntry[]> {
+  if (!range) {
+    return (
+      await sql<RegisterEntry>`select * from ops.register_entries(${place}::uuid, ${register})`.execute(
+        tx,
+      )
+    ).rows;
+  }
   return (
-    await sql<RegisterEntry>`select * from ops.register_entries(${place}::uuid, ${register})`.execute(
-      tx,
-    )
+    await sql<RegisterEntry>`
+      select e.* from ops.register_entries(${place}::uuid, ${register},
+                                           current_date - ${range.from}::date + 2) e
+       where rpt.days_window(${place}::uuid, ${range.from}::date, ${range.to}::date)
+             @> e.written_at`.execute(tx)
   ).rows;
 }

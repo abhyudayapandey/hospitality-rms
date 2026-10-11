@@ -1005,7 +1005,7 @@ export const FILES = {
           return z.NEVER;
         }),
     }),
-    optional: ['step_icon', 'from_library', 'days', 'sign_off', 'for_each', 'step_asks'],
+    optional: ['step_icon', 'from_library', 'days', 'sign_off', 'for_each', 'step_asks', 'handover'],
   },
   // Test-only tasks (ADR 020): one-off tasks, open maintenance requests and prep lists.
   tasks: {

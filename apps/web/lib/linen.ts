@@ -1,5 +1,6 @@
 import 'server-only';
 import { sql, type Tx } from './db';
+import type { DateRange } from './date-range';
 
 // Linen & uniforms (ADR 094): read through ops.* SECURITY DEFINER functions, which check LINEN
 // at the place (rule 2).
@@ -48,11 +49,19 @@ export async function linenItems(
   ).rows;
 }
 
-export async function laundry(tx: Tx, place: string): Promise<LaundryRow[]> {
+export async function laundry(
+  tx: Tx,
+  place: string,
+  /** only these days (ADR 120); else the last 14 */
+  range: DateRange | null = null,
+): Promise<LaundryRow[]> {
   return (
     await sql<LaundryRow>`
       select day::text, item_id::text, item, sent, received, at_laundry
-        from ops.laundry(${place}::uuid)`.execute(tx)
+        from ops.laundry(${place}::uuid,
+                         ${range ? sql`current_date - ${range.from}::date + 2` : sql`14`})
+       where ${range === null} or day between ${range?.from ?? null}::date
+                                          and ${range?.to ?? null}::date`.execute(tx)
   ).rows;
 }
 

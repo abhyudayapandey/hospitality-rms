@@ -3,6 +3,8 @@ import { BackLink } from '@/components/back-link';
 import { Empty } from '@/components/messages';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
+import { ListDays } from '@/components/date-range';
+import { listDays } from '@/lib/list-days';
 import { formatWhen } from '@/lib/format';
 import { logbook, logbookPlaces, logbookTargets } from '@/lib/logbook';
 import { isUuid, param, type SearchParams } from '@/lib/params';
@@ -31,10 +33,16 @@ export default async function LogbookPage({ searchParams }: { searchParams: Sear
       </div>
     );
   }
-  const { entries, targets } = await withUser(user.id, async (tx) => ({
-    entries: await logbook(tx, place.place_id),
-    targets: place.can_write ? await logbookTargets(tx, place.place_id) : null,
-  }));
+  const { entries, targets, range, today } = await withUser(user.id, async (tx) => {
+    // what holds now and the last two days' handovers, or what was written on the days chosen
+    const { range, today } = await listDays(tx, sp, place.place_id);
+    return {
+      entries: await logbook(tx, place.place_id, range),
+      targets: place.can_write ? await logbookTargets(tx, place.place_id) : null,
+      range,
+      today,
+    };
+  });
   const logs = entries.filter((e) => e.kind === 'log');
   const handovers = entries.filter((e) => e.kind === 'handover');
   return (
@@ -62,10 +70,17 @@ export default async function LogbookPage({ searchParams }: { searchParams: Sear
           ))}
         </nav>
       )}
+      <ListDays
+        path="/logbook"
+        params={{ place: place.place_id }}
+        range={range}
+        today={today}
+        list="logbook"
+      />
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-slate-500">Logs</h2>
         {logs.length === 0 ? (
-          <Empty>No logs holding now.</Empty>
+          <Empty>{range ? 'No logs written on these days.' : 'No logs holding now.'}</Empty>
         ) : (
           <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
             {logs.map((e) => (
@@ -85,7 +100,9 @@ export default async function LogbookPage({ searchParams }: { searchParams: Sear
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-slate-500">Handovers</h2>
         {handovers.length === 0 ? (
-          <Empty>No handovers in the last two days.</Empty>
+          <Empty>
+            {range ? 'No handovers on these days.' : 'No handovers in the last two days.'}
+          </Empty>
         ) : (
           <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
             {handovers.map((e) => (

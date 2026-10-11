@@ -52,6 +52,8 @@ export function listHref(
     day?: string | null;
     /** how many rows to show ("Show more", ADR 052) */
     n?: number | null;
+    /** the days the list was narrowed to (ADR 120) */
+    range?: { from: string; to: string } | null;
   } = {},
 ): string {
   const q: string[] = [];
@@ -61,5 +63,6 @@ export function listHref(
   if (o.week) q.push(`week=${o.week}`);
   if (o.day) q.push(`day=${o.day}`);
   if (o.n) q.push(`n=${o.n}`);
+  if (o.range) q.push(`from=${o.range.from}`, `to=${o.range.to}`);
   return q.length > 0 ? `${path}?${q.join('&')}` : path;
 }

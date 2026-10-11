@@ -49,6 +49,7 @@ const PLACED = [
   'menu_engineering',
   'stock_position',
   'purchasing',
+  'movements',
   'central_kitchen',
   'people',
 ] as const;
@@ -78,6 +79,14 @@ const RULES: Record<string, string> = {
   // and whoever reads the store's bills (an accountant, ADR 109)
   purchasing: `(${STORE_RULE}) or (n.type = 'delivery' and n.holds_stock
                                     and core.can('BILLS', 'view', null, n.id))`,
+  // ADR 122: purchasing's stores, and all of an outlet's together where two or more open
+  movements: `(n.type = 'delivery' and n.holds_stock
+                and (${STORE_RULE} or core.can('BILLS', 'view', null, n.id)))
+              or (n.type = 'delivery' and n.kind in ('outlet', 'hub')
+                  and (select count(*) from core.hierarchy_node s
+                        where s.type = 'delivery' and s.archived_at is null
+                          and core.stock_site(s.id) = n.id
+                          and (${storeRule('s')} or core.can('BILLS', 'view', null, s.id))) >= 2)`,
   // R-3 (ADR 030): a central kitchen's store, for its cost people
   central_kitchen: `${STORE_RULE}
     and exists (select 1 from core.node_link l
@@ -171,6 +180,7 @@ describe('reports: who opens what (every user)', () => {
         'menu_engineering',
         'stock_position',
         'purchasing',
+        'movements',
         'people',
         'my_week',
       ]);
@@ -183,6 +193,7 @@ describe('reports: who opens what (every user)', () => {
         'menu_engineering',
         'stock_position',
         'purchasing',
+        'movements',
         'my_week',
       ]);
       expect(await pl('test.cost-controller.1.0', 'stock_position')).toEqual(
@@ -202,6 +213,7 @@ describe('reports: who opens what (every user)', () => {
         'menu_engineering',
         'stock_position',
         'purchasing',
+        'movements',
         'my_week',
       ]);
       expect(await pl('test.executive-chef.1.0', 'stock_position')).toEqual([
@@ -221,6 +233,7 @@ describe('reports: who opens what (every user)', () => {
       expect(await r('test.central-kitchen-store-keeper')).toEqual([
         'stock_position',
         'purchasing',
+        'movements',
         'central_kitchen',
         'my_week',
       ]);
@@ -278,6 +291,7 @@ describe('reports: who opens what (every user)', () => {
         'outlet_flash',
         'stock_position',
         'purchasing',
+        'movements',
         'my_week',
       ]);
       for (const fn of [

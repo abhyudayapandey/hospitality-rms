@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { BackLink } from '@/components/back-link';
+import { ExportLink } from '@/components/date-range';
 import { Icon } from '@/components/icon';
 import { Empty } from '@/components/messages';
 import { ViewTabs } from '@/components/view-tabs';
@@ -123,6 +124,17 @@ export default async function MealsPage({ searchParams }: { searchParams: Search
           Today&apos;s {MEAL_WORDS[meal].toLowerCase()} is over, so this opens on tomorrow.
         </p>
       )}
+      {/* the last 30 days of this meal, room by room (ADR 120) */}
+      <ExportLink
+        list="meals"
+        params={{
+          outlet: outlet.outlet_id,
+          meal,
+          from: addDays(day <= outlet.today ? day : outlet.today, -29),
+          to: day <= outlet.today ? day : outlet.today,
+        }}
+        label="Download 30 days"
+      />
       {served && (
         <p className="text-sm text-slate-600" data-testid="breakfast-served">
           Served. This is what was given; it can&apos;t be changed.

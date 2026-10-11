@@ -87,6 +87,8 @@ const DEPTS: [code: string, name: string, type: string][] = [
   ['BANQUETS', 'Sales, Events & Banquets', 'service'],
   ['CASHIER', 'Cashier', 'other'],
   ['ENGINEERING', 'Engineering & Maintenance', 'other'],
+  // the purchase manager buys for the hotel; there is no Main Store to run (ADR 115, 122)
+  ['PURCHASE', 'Purchase', 'other'],
   ['ADMIN-FINANCE', 'Admin & Finance', 'other'],
 ];
 csv(
@@ -214,6 +216,7 @@ const PEOPLE: Person[] = [
   P('cashier', 'Kunal Sawant', 'CASHIER', 'CASHIER', 26000),
   P('chief-engineer', 'Prakash Chodankar', 'CHIEF_ENGINEER', 'ENGINEERING', 68000),
   P('technician', 'Vinay Harmalkar', 'TECHNICIAN', 'ENGINEERING', 24000),
+  P('purchase-manager', 'Shreya Kenkre', 'PURCHASE_MANAGER', 'PURCHASE', 58000),
   P('accountant', 'Neha Sardesai', 'ACCOUNTANT', 'ADMIN-FINANCE', 48000),
   P('cost-controller', 'Rahul Bandodkar', 'COST_CONTROLLER', 'ADMIN-FINANCE', 52000),
   P('hr', 'Fatima Shaikh', 'HR_EXECUTIVE', 'ADMIN-FINANCE', 38000),

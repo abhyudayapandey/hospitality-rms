@@ -738,3 +738,44 @@ export async function bdReadings(tx: Tx, report: string, node: string, from: str
       from rpt.bd_readings(${report}, ${node}::uuid, ${from}::date, ${to}::date)`.execute(tx);
   return r.rows;
 }
+
+// ---------------------------------------------------------------------------------------
+// Stock movements (ADR 122)
+// ---------------------------------------------------------------------------------------
+
+export interface MovementLine {
+  item: string;
+  unit: string;
+  qty: string;
+  /** transfers: what arrived, null while on the way */
+  received?: string | null;
+  value: string;
+}
+
+export interface Movement {
+  kind: 'ordered' | 'received' | 'transfer';
+  id: string;
+  at: string;
+  day: string;
+  store: string;
+  other: string | null;
+  direction: 'in' | 'out' | 'within';
+  status: string | null;
+  value: string;
+  by_name: string | null;
+  lines: MovementLine[];
+}
+
+/** What was ordered, received and sent between stores at a store, or all of an outlet's. */
+export async function stockMovements(
+  tx: Tx,
+  place: string,
+  from: string,
+  to: string,
+): Promise<Movement[]> {
+  const r = await sql<Movement>`
+    select kind, id::text, at::text, day::text, store, other, direction, status, value::text,
+           by_name, lines
+      from rpt.stock_movements(${place}::uuid, ${from}::date, ${to}::date)`.execute(tx);
+  return r.rows;
+}

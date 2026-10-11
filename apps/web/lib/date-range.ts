@@ -55,3 +55,18 @@ export function rangeQuery(params: Record<string, string | undefined>, r: DateRa
   q.set('to', r.to);
   return q.toString();
 }
+
+/**
+ * A list's own days, when asked (?from=&to=): null keeps the whole list (paged, ADR 052), so a
+ * list opens as it always has and narrows only when someone picks days. Made sensible as above.
+ */
+export function askedRange(
+  asked: { from?: string | undefined; to?: string | undefined },
+  today: string,
+  maxDays = 366,
+): DateRange | null {
+  const from = asked.from && isIsoDate(asked.from) ? asked.from : undefined;
+  const to = asked.to && isIsoDate(asked.to) ? asked.to : undefined;
+  if (!from && !to) return null;
+  return readRange({ from: from ?? to, to: to ?? from }, today, 1, maxDays);
+}
