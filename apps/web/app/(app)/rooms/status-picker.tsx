@@ -380,7 +380,8 @@ export function RoomLegend({
   filter,
 }: {
   rooms: { status: string }[];
-  filter?: { current: string | null; href: (status: string | null) => string };
+  /** the chips as links (a server page passes strings, never a function): `base` + `&status=` */
+  filter?: { current: string | null; base: string };
 }) {
   const counts = ROOM_STATUSES.map((s) => ({
     ...s,
@@ -407,7 +408,7 @@ export function RoomLegend({
         return (
           <li key={s.code}>
             <Link
-              href={filter.href(on ? null : s.code)}
+              href={on ? filter.base : `${filter.base}&status=${s.code}`}
               aria-current={on ? 'true' : undefined}
               data-testid="room-filter"
               data-status={s.code}
@@ -421,7 +422,7 @@ export function RoomLegend({
       {filter?.current && (
         <li>
           <Link
-            href={filter.href(null)}
+            href={filter.base}
             className="inline-flex min-h-11 items-center px-2 text-sm font-medium underline"
           >
             All rooms

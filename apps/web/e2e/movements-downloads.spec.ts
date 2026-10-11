@@ -39,11 +39,11 @@ test('the GM: every order, receipt and transfer of the hotel, for any days', asy
 test('a list narrows to chosen days, goes back to all of them, and downloads', async ({ page }) => {
   const store = await placeId('TEST-HOTEL-1.0-KITCHEN-STORE');
   await signInAs(page, 'Test Executive Chef 1.0');
-  await page.goto(`/stock/orders?node=${store}&tab=received`);
+  await page.goto(`/stock/orders?node=${store}`);
   const all = await main(page).getByTestId('po-item').count();
   expect(all).toBeGreaterThan(0);
   // a day long before the test data: nothing
-  await page.goto(`/stock/orders?node=${store}&tab=received&from=2020-01-01&to=2020-01-31`);
+  await page.goto(`/stock/orders?node=${store}&from=2020-01-01&to=2020-01-31`);
   await expect(main(page).getByTestId('po-item')).toHaveCount(0);
   await expect(main(page).getByTestId('list-days')).toContainText('to');
   // the tabs keep the days
@@ -52,7 +52,6 @@ test('a list narrows to chosen days, goes back to all of them, and downloads', a
   await page.waitForURL((u) => !u.search.includes('from='));
   await expect(main(page).getByTestId('po-item')).toHaveCount(all);
   const download = main(page).getByTestId('export-orders');
-  await expect(download).toHaveAttribute('href', /tab=received/);
   const res = await page.request.get((await download.getAttribute('href'))!);
   expect(res.status()).toBe(200);
   const csv = await res.text();

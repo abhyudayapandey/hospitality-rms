@@ -49,10 +49,7 @@ export function RoomsCard({ rooms }: { rooms: HomeRooms }) {
       <h2 className={cardTitle}>Rooms now · {rooms.all.length}</h2>
       <RoomLegend
         rooms={rooms.all}
-        filter={{
-          current: null,
-          href: (st) => `${href}${st ? `&status=${st}` : ''}`,
-        }}
+        filter={{ current: null, base: href }}
       />
       <div className="flex flex-wrap gap-x-4">
         <Link href={href} className={more}>

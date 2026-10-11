@@ -250,10 +250,29 @@ as $$
    order by n.name;
 $$;
 
+-- The rooms the service team picks from: number and floor only (they need not see the rooms'
+-- status or who looks after them).
+create function ops.meal_rooms(p_outlet uuid)
+returns table (room_id uuid, number text, floor text)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, ops
+as $$
+begin
+  if not ops.serves_meals(p_outlet) then
+    perform ops.fail('NOT_AUTHORISED', 'the outlet''s service team sets its meals');
+  end if;
+  return query
+    select r.id, r.number, r.floor from ops.room r
+     where r.org_node_id = p_outlet and r.archived_at is null
+     order by r.floor nulls first, r.number;
+end $$;
+
 revoke execute on function ops.meal_ends(uuid, text), ops.meal_next(uuid, text),
   ops.serves_meals(uuid), ops.check_meal_day(uuid, date, text),
   ops.set_meal_rooms(uuid, date, text, text, jsonb), ops.meal_day(uuid, date, text),
   ops.meal_outlets() from public;
+revoke execute on function ops.meal_rooms(uuid) from public;
+grant execute on function ops.meal_rooms(uuid) to app_rw;
 grant execute on function ops.meal_next(uuid, text), ops.serves_meals(uuid),
   ops.set_meal_rooms(uuid, date, text, text, jsonb), ops.meal_day(uuid, date, text),
   ops.meal_outlets() to app_rw;
@@ -372,6 +391,7 @@ as $$
          end;
 $$;
 
+drop function ops.meal_rooms(uuid);
 drop function ops.meal_outlets();
 drop function ops.meal_day(uuid, date, text);
 drop function ops.set_meal_rooms(uuid, date, text, text, jsonb);

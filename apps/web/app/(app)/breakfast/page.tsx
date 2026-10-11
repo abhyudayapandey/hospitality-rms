@@ -8,7 +8,7 @@ import { requireUser } from '@/lib/auth/server';
 import { addDays, formatDay, isIsoDate } from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import { isUuid, param, type SearchParams } from '@/lib/params';
-import { isMeal, mealDay, mealOutlets, rooms, type MealCode } from '@/lib/rooms';
+import { isMeal, mealDay, mealOutlets, mealRooms, type MealCode } from '@/lib/rooms';
 import { MealForm, modeLabel, type Mode } from './breakfast-forms';
 
 // Meals (ADR 094, 110, 121): breakfast, lunch and dinner, each the next one first. Before a meal
@@ -46,7 +46,7 @@ export default async function MealsPage({ searchParams }: { searchParams: Search
   const day = askedDay && isIsoDate(askedDay) && askedDay <= addDays(next, 7) ? askedDay : next;
   const modes = await withUser(user.id, (tx) => mealDay(tx, outlet.outlet_id, day, meal));
   const open = modes.some((m) => m.can_edit) && day >= next;
-  const roomList = open ? await withUser(user.id, (tx) => rooms(tx, outlet.outlet_id)) : [];
+  const roomList = open ? await withUser(user.id, (tx) => mealRooms(tx, outlet.outlet_id)) : [];
   const href = (d: string, m: MealCode = meal) =>
     `/breakfast?outlet=${outlet.outlet_id}&meal=${m}&day=${d}`;
   const served = day < next;

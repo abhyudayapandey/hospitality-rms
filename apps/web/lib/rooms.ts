@@ -185,3 +185,14 @@ export async function mealDay(
         from ops.meal_day(${outlet}::uuid, ${day}::date, ${meal})`.execute(tx)
   ).rows;
 }
+
+/** The rooms the service team picks a meal's rooms from (ADR 121): number and floor only. */
+export async function mealRooms(
+  tx: Tx,
+  outlet: string,
+): Promise<{ room_id: string; number: string; floor: string | null }[]> {
+  return (
+    await sql<{ room_id: string; number: string; floor: string | null }>`
+      select room_id::text, number, floor from ops.meal_rooms(${outlet}::uuid)`.execute(tx)
+  ).rows;
+}

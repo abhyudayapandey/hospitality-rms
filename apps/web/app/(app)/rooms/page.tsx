@@ -63,8 +63,6 @@ export default async function RoomsPage({ searchParams }: { searchParams: Search
   const askedStatus = param(sp, 'status');
   const only = list.some((r) => r.status === askedStatus) ? askedStatus : null;
   const shown = (rs: RoomRow[]) => (only ? rs.filter((r) => r.status === only) : rs);
-  const filterHref = (st: string | null) =>
-    `/rooms?outlet=${place.outlet_id}${st ? `&status=${st}` : ''}`;
   const mine = shown(list.filter((r) => r.mine));
   const others = shown(list.filter((r) => !r.mine));
   const tabs = (
@@ -107,7 +105,7 @@ export default async function RoomsPage({ searchParams }: { searchParams: Search
         <Contents rows={contents} outlet={place.outlet_id} />
       ) : (
         <>
-          <RoomLegend rooms={list} filter={{ current: only, href: filterHref }} />
+          <RoomLegend rooms={list} filter={{ current: only, base: `/rooms?outlet=${place.outlet_id}` }} />
           {list.some((r) => r.mine) ? (
             <>
               <section className="space-y-3" data-testid="my-rooms">

@@ -285,6 +285,28 @@ describe('meals by room (ADR 121)', () => {
         );
         expect(set.error, who).toMatch(/NOT_AUTHORISED/);
       }
+      // the service team picks from the rooms' numbers, without seeing the rooms (ROOMS view)
+      expect(
+        (await run(c, 'test.steward.1.0', `select * from ops.meal_rooms($1)`, [ids.node(OUTLET)]))
+          .length,
+      ).toBeGreaterThan(0);
+      expect(
+        (
+          await attemptAs(c, ids.user('test.steward.1.0'), `select * from ops.rooms($1)`, [
+            ids.node(OUTLET),
+          ])
+        ).error,
+      ).toMatch(/NOT_AUTHORISED/);
+      expect(
+        (
+          await attemptAs(
+            c,
+            ids.user('test.front-desk-executive.1.0'),
+            `select * from ops.meal_rooms($1)`,
+            [ids.node(OUTLET)],
+          )
+        ).error,
+      ).toMatch(/NOT_AUTHORISED/);
       for (const who of ['test.steward.1.0', 'test.general-manager.1.0']) {
         const r = await run<{ can_edit: boolean }>(
           c,
