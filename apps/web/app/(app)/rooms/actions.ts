@@ -89,33 +89,22 @@ export async function countRoom(
   });
 }
 
-/** The day's breakfast total for a mode (front office, ADR 094). */
-export async function setBreakfastTotal(
+/**
+ * A meal's rooms for a mode (ADR 121): each room's guests, 0 taking it off. The outlet's
+ * service team sets them; ops.set_meal_rooms checks who and when.
+ */
+export async function setMealRooms(
   outlet: string,
   day: string,
+  meal: string,
   mode: string,
-  guests: number,
-): Promise<ActionResult<null>> {
-  return roomsAction('set_breakfast_total', async (tx) => {
-    await sql`select ops.set_breakfast_total(${outlet}::uuid, ${day}::date, ${mode}, ${guests})`.execute(
-      tx,
-    );
-    return null;
-  });
-}
-
-/** A room's breakfast that day: how many and how; 0 takes it off the list. */
-export async function setBreakfastRoom(
-  room: string,
-  day: string,
-  mode: string,
-  guests: number,
-  note: string,
-): Promise<ActionResult<null>> {
-  return roomsAction('set_breakfast_room', async (tx) => {
-    await sql`select ops.set_breakfast_room(${room}::uuid, ${day}::date, ${mode}, ${guests},
-                                            ${note})`.execute(tx);
-    return null;
+  rooms: { room_id: string; guests: number; note: string }[],
+): Promise<ActionResult<number>> {
+  return roomsAction('set_meal_rooms', async (tx) => {
+    const r = await sql<{ n: number }>`
+      select ops.set_meal_rooms(${outlet}::uuid, ${day}::date, ${meal}, ${mode},
+                                ${JSON.stringify(rooms)}::jsonb) as n`.execute(tx);
+    return r.rows[0]!.n;
   });
 }
 

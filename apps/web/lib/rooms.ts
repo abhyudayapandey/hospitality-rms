@@ -144,3 +144,44 @@ export async function breakfastDay(tx: Tx, outlet: string, day: string): Promise
         from ops.breakfast_day(${outlet}::uuid, ${day}::date)`.execute(tx)
   ).rows;
 }
+
+// Meals (ADR 121): breakfast, lunch and dinner by room, set by the outlet's service team.
+
+export type MealCode = 'breakfast' | 'lunch' | 'dinner';
+export const MEALS: readonly MealCode[] = ['breakfast', 'lunch', 'dinner'];
+export const isMeal = (s: string | undefined): s is MealCode =>
+  !!s && (MEALS as readonly string[]).includes(s);
+
+export interface MealOutlet {
+  outlet_id: string;
+  name: string;
+  today: string;
+  /** each meal still to come: today's until it is over, then tomorrow's */
+  breakfast_next: string;
+  lunch_next: string;
+  dinner_next: string;
+  /** I am on its service team (or work at the outlet): I set its meals */
+  can_edit: boolean;
+}
+
+export async function mealOutlets(tx: Tx): Promise<MealOutlet[]> {
+  return (
+    await sql<MealOutlet>`
+      select outlet_id::text, name, today::text, breakfast_next::text, lunch_next::text,
+             dinner_next::text, can_edit
+        from ops.meal_outlets()`.execute(tx)
+  ).rows;
+}
+
+export async function mealDay(
+  tx: Tx,
+  outlet: string,
+  day: string,
+  meal: MealCode,
+): Promise<BreakfastMode[]> {
+  return (
+    await sql<BreakfastMode>`
+      select mode, total, rooms, room_list, can_edit
+        from ops.meal_day(${outlet}::uuid, ${day}::date, ${meal})`.execute(tx)
+  ).rows;
+}
