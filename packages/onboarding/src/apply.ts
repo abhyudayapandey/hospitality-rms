@@ -2492,7 +2492,7 @@ class Loader {
       const loaded = bases.values().next().value ?? this.today;
       const baseOf = (store: string) => bases.get(store) ?? (made.has(store) ? this.today : loaded);
       await this.prepTasks(baseOf);
-      await this.production(baseOf);
+      await this.production(baseOf, new Set(bases.keys()));
       await this.linkPastBatches(baseOf);
       return;
     }
@@ -2599,8 +2599,18 @@ class Loader {
     }
   }
 
-  /** File 26: batches made at a past time (inv.record_test_production, test customers only). */
-  private async production(baseOf: (store: string) => string = () => this.today) {
+  /**
+   * File 26: batches made at a past time (inv.record_test_production, test customers only).
+   * A store's past week loads once, like files 27 and 28: on a later load a row for a store
+   * whose batches were loaded before, but not this one, is left out and said so. Made now, at
+   * its past day, it would take its ingredients from today's shelves, which that week's sales
+   * have already used (INSUFFICIENT_STOCK).
+   */
+  private async production(
+    baseOf: (store: string) => string = () => this.today,
+    loadedBefore: ReadonlySet<string> = new Set(),
+  ) {
+    let left = 0;
     for (const p of this.b.production) {
       this.step(FILES.production.file, p.line);
       const date = this.day(p.day, baseOf(p.store_node_code));
@@ -2610,6 +2620,11 @@ class Loader {
         `select 1 from inv.production where tenant_id = $1 and idempotency_key = $2`,
         [this.tenant, key],
       );
+      if (!done.rowCount && loadedBefore.has(p.store_node_code)) {
+        left++;
+        this.count('production batches', false);
+        continue;
+      }
       if (!done.rowCount) {
         const made = await this.as(p.made_by, () =>
           this.c.query<{ id: string }>(
@@ -2633,6 +2648,12 @@ class Loader {
         }
       }
       this.count('production batches', !done.rowCount);
+    }
+    if (left > 0) {
+      this.report.warnings.push({
+        file: FILES.production.file,
+        message: `${left} batch${left === 1 ? ' is' : 'es are'} left out: a store's past week loads once, and these stores' batches were loaded before`,
+      });
     }
   }
 
