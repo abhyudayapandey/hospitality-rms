@@ -47,10 +47,7 @@ export function RoomsCard({ rooms }: { rooms: HomeRooms }) {
   return (
     <section aria-label="Rooms now" className={`${card} space-y-3`} data-testid="home-rooms">
       <h2 className={cardTitle}>Rooms now · {rooms.all.length}</h2>
-      <RoomLegend
-        rooms={rooms.all}
-        filter={{ current: null, base: href }}
-      />
+      <RoomLegend rooms={rooms.all} filter={{ current: null, base: href }} />
       <div className="flex flex-wrap gap-x-4">
         <Link href={href} className={more}>
           Open rooms <Icon name="chevron" className="size-4" />

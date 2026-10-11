@@ -84,3 +84,13 @@ export function floorName(floor: string): string {
   if (!floor) return 'Rooms';
   return /^\d+$/.test(floor) ? `Floor ${floor}` : floor;
 }
+
+// Meals (ADR 121)
+export type Mode = 'buffet' | 'in_room';
+export type Meal = 'breakfast' | 'lunch' | 'dinner';
+
+/** What each way of serving is called: breakfast is a buffet, lunch and dinner the restaurant. */
+export function modeLabel(meal: Meal, mode: Mode): string {
+  if (mode === 'in_room') return 'In-room';
+  return meal === 'breakfast' ? 'Buffet' : 'Restaurant';
+}

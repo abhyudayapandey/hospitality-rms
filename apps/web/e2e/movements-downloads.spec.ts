@@ -22,11 +22,14 @@ test('the GM: every order, receipt and transfer of the hotel, for any days', asy
   const to = new Date().toISOString().slice(0, 10);
   const from = new Date(Date.now() - 40 * 86_400_000).toISOString().slice(0, 10);
   await page.goto(`/reports/movements?node=${hotel}&period=custom&from=${from}&to=${to}`);
-  await expect(main(page).getByTestId('tab-ordered')).toContainText('(4)');
+  // file 33's four orders, and any a run before this one placed
+  const tab = await main(page).getByTestId('tab-ordered').textContent();
+  const ordered = Number(/\((\d+)\)/.exec(tab ?? '')?.[1]);
+  expect(ordered).toBeGreaterThanOrEqual(4);
   await main(page).getByTestId('total-ordered').click();
   await page.waitForURL(/tab=ordered/);
   const rows = main(page).getByTestId('movement');
-  await expect(rows).toHaveCount(4);
+  await expect(rows).toHaveCount(ordered);
   await rows.first().locator('summary').click();
   await expect(rows.first().getByTestId('item-pictures').first()).toBeVisible();
   const res = await page.request.get(
@@ -40,8 +43,9 @@ test('a list narrows to chosen days, goes back to all of them, and downloads', a
   const store = await placeId('TEST-HOTEL-1.0-KITCHEN-STORE');
   await signInAs(page, 'Test Executive Chef 1.0');
   await page.goto(`/stock/orders?node=${store}`);
+  // the list streams in after the screen's shape (loading.tsx)
+  await expect(main(page).getByTestId('po-item').first()).toBeVisible();
   const all = await main(page).getByTestId('po-item').count();
-  expect(all).toBeGreaterThan(0);
   // a day long before the test data: nothing
   await page.goto(`/stock/orders?node=${store}&from=2020-01-01&to=2020-01-31`);
   await expect(main(page).getByTestId('po-item')).toHaveCount(0);

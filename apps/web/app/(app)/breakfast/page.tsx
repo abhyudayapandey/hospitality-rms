@@ -9,7 +9,8 @@ import { addDays, formatDay, isIsoDate } from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import { isUuid, param, type SearchParams } from '@/lib/params';
 import { isMeal, mealDay, mealOutlets, mealRooms, type MealCode } from '@/lib/rooms';
-import { MealForm, modeLabel, type Mode } from './breakfast-forms';
+import { modeLabel, type Mode } from '@/lib/rooms-view';
+import { MealForm } from './breakfast-forms';
 
 // Meals (ADR 094, 110, 121): breakfast, lunch and dinner, each the next one first. Before a meal
 // is over (breakfast 12:00, lunch 16:00, dinner 23:30 unless the company says otherwise) that is

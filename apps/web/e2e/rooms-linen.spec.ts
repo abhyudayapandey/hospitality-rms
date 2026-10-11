@@ -78,7 +78,7 @@ test('a room is counted; breakfast is given by room and read', async ({ page }) 
     await page.waitForURL(/meal=lunch/);
     await expect(main(page).getByTestId('breakfast-buffet')).toContainText('Restaurant');
     await main(page).getByTestId('breakfast-other-day').click();
-    await expect(main(page).getByLabel('Day', { exact: true })).toHaveAttribute('max', /\d{4}-/);
+    await expect(main(page).getByRole('textbox', { name: 'Day' })).toHaveAttribute('max', /\d{4}-/);
 
     // the kitchen reads it and changes nothing; the front desk too
     for (const who of ['Test Executive Chef 1.0', 'Test Front Desk Executive 1.0']) {

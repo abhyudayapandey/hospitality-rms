@@ -4,24 +4,17 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { Icon } from '@/components/icon';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
-import { byFloor, floorName } from '@/lib/rooms-view';
+import { byFloor, floorName, modeLabel, type Meal, type Mode } from '@/lib/rooms-view';
 import { useHydrated } from '@/lib/use-hydrated';
 import { setMealRooms } from '../rooms/actions';
 
-export type Mode = 'buffet' | 'in_room';
-export type Meal = 'breakfast' | 'lunch' | 'dinner';
+export type { Meal, Mode } from '@/lib/rooms-view';
 
 interface Row {
   room_id: string;
   number: string;
   guests: number;
   note: string;
-}
-
-/** What each way of serving is called: breakfast is a buffet, lunch and dinner the restaurant. */
-export function modeLabel(meal: Meal, mode: Mode): string {
-  if (mode === 'in_room') return 'In-room';
-  return meal === 'breakfast' ? 'Buffet' : 'Restaurant';
 }
 
 /**

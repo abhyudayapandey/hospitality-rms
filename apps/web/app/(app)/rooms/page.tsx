@@ -105,7 +105,10 @@ export default async function RoomsPage({ searchParams }: { searchParams: Search
         <Contents rows={contents} outlet={place.outlet_id} />
       ) : (
         <>
-          <RoomLegend rooms={list} filter={{ current: only, base: `/rooms?outlet=${place.outlet_id}` }} />
+          <RoomLegend
+            rooms={list}
+            filter={{ current: only, base: `/rooms?outlet=${place.outlet_id}` }}
+          />
           {list.some((r) => r.mine) ? (
             <>
               <section className="space-y-3" data-testid="my-rooms">
