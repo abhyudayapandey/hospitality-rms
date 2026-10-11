@@ -338,7 +338,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   task's recipe. The technician's Daily rounds; meters twice a day at a hotel, else at the end
   of the shift (file 43 `read_at`), readings late or early in red (`ops.utility_readings`);
   `READS_METERS`; linen and breakage only for a department's own people (`HANDLES_LINEN`); a
-  department sees the licences and jobs its roles answer for (`ops.department_sees`). A repair
+  person sees the licences and jobs their role answers for, a department head those of the
+  department's roles (`ops.department_sees`). A repair
   says where as a picture (`MAINTENANCE_WHERE`, `ops.maintenance_wheres`). A stale app loads
   the next page in full. Every step of every task, and a task with no steps, takes a photo from
   the live camera only, never the gallery (`PHOTO_REQUIRED`; `PHOTO_DIR` keeps them on disk

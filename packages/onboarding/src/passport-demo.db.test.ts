@@ -88,25 +88,26 @@ describe('the Passport Hotel demo', () => {
         contents: n('room contents'),
         sops: n('SOPs'),
       }).toEqual({
-        // with Purchase (ADR 122)
-        org: [12, 1],
+        // with Purchase (ADR 122) and Security (ADR 124)
+        org: [13, 1],
         delivery: [5, 0],
         links: [4, 0],
-        roles: [36, 0],
-        users: [36, 0],
-        workers: [36, 1],
+        roles: [38, 0],
+        users: [39, 0],
+        workers: [39, 1],
         items: [80, 0],
         locations: [92, 0],
         menu: [34, 0],
         rooms: [27, 0],
         sets: [2, 0],
-        checks: [54, 0],
+        checks: [56, 0],
         sales: [7, 0],
         orders: [5, 0],
         attendance: [132, 0],
-        // 27 daily ones, the room ready check, the service audit, the taste panel and the
-        // technician's meter round (ADR 088, 091, 095)
-        checklists: [31, 0],
+        // 27 daily ones, the room ready check, the service audit, the taste panel, the
+        // technician's meter round (ADR 088, 091, 095), Engineering's room round and weekly
+        // checklist, and Security's six (ADR 124)
+        checklists: [39, 0],
         meters: [5, 0],
         contents: [17, 0],
         sops: [4, 0],
@@ -166,11 +167,13 @@ describe('the Passport Hotel demo', () => {
           `select count(*)::int n from core.app_user where tenant_id = $1 and demo_presenter`,
         ),
       ).toBe(1);
-      // one person per job role, the presenter and the owner both account owners
+      // one person per job role, the presenter and the owner both account owners, and a day
+      // and a night security guard (ADR 124)
       expect(
         await one(
           `select count(*)::int n from (select role_code from hr.worker where tenant_id = $1
-            group by role_code having count(*) > 1 and role_code <> 'ACCOUNT_OWNER') x`,
+            group by role_code having count(*) > 1
+               and role_code not in ('ACCOUNT_OWNER', 'SECURITY_GUARD')) x`,
         ),
       ).toBe(0);
       expect(
@@ -224,7 +227,8 @@ describe('the Passport Hotel demo', () => {
       const all = (e: string) =>
         r.counts[e]!.created + r.counts[e]!.updated + r.counts[e]!.unchanged;
       expect(all('sales days')).toBe(7);
-      expect(all('licences')).toBe(6);
+      // six licences and eight fire extinguishers (ADR 127)
+      expect(all('licences')).toBe(14);
       // the tepache is a prep task (ADR 084): the bartender opens it on its ingredients for
       // the litre, the method, and how many it makes
       const tepache = await c.query<{
@@ -281,6 +285,8 @@ describe('the Passport Hotel demo', () => {
         'HR_EXECUTIVE',
         'PURCHASE_MANAGER',
         'SALES_MANAGER',
+        // signs off the guards' checklists (ADR 124)
+        'SECURITY_SUPERVISOR',
       ]);
     });
   });

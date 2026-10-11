@@ -2812,3 +2812,48 @@ or housekeeping, who read it. No new settings are needed (`lunch_ends` 16:00 and
    - Any list (Stock → Orders, Transfers, Bills, Wastage; Registers; Logbook; Utilities; Linen;
      Team tasks; Attendance exceptions): **Pick dates** narrows it, **All dates** goes back,
      **Download** saves what it shows.
+
+## Releasing recipes for managers, the technician's day, live photos, custom shifts and plain words (ADR 123 to 129)
+
+Seven migrations: `20261220100000_procedure_ids_once` (recipe reads about 20 times faster),
+`20261220110000_maintenance_where`, `20261220120000_meter_readings_times`,
+`20261220130000_licence_location_type`, `20261220140000_compliance_by_department`,
+`20261220150000_custom_shift` and `20261220160000_photo_every_step`. An access change: menu
+prices and recipes move off STAFF, SUPERVISOR, DEPARTMENT_HEAD, STOCK_USER and STORE_KEEPER to
+the new duty READS_RECIPES; new duties READS_METERS and HANDLES_LINEN; both test customers'
+file 06 and 99 previews regenerated. Run "RLS equivalence (all users)" before merging. No
+stack change: photos still go to the bucket (`PHOTO_DIR` is for local development and e2e and
+is ignored where `PHOTO_BUCKET` is set). From this release every task step needs a photo from
+the live camera: tell the outlets before it goes out.
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual.
+4. Re-import (rebuild each zip first: `-FS` makes it match the folder):
+   - **Passport**: `cd docs/onboarding/demo/passport-hotel && zip -q -FS ../passport-hotel.zip *.csv`.
+     The dry run, over the last release's Passport: org places 1 (Security), job roles 2
+     (Security Supervisor, Security Guard), job role access 2, users 3 and workers 3 new with
+     37 workers changed (the demo's dates moved), licences 8 new (the fire extinguishers) and 6
+     changed, compliance jobs 5 changed, leave balances 9, pay rates 3, shift templates 2
+     (Security Day and Night), events 2, checklists 8 new and 2 changed (Daily rounds, the room
+     round, the weekly maintenance checklist, Security's checklists), minibar checks 52.
+     **Apply**, then a second dry run shows no changes. Then Logins → create the username
+     logins for `passport.security-supervisor`, `passport.security-day` and
+     `passport.security-night`.
+   - **The test customers** (test environment only): the step 7 zips. Job role access changes
+     for every kitchen, service and housekeeping role (READS_RECIPES, HANDLES_LINEN) and the
+     technicians (READS_METERS).
+5. Check, at 380 px:
+   - **A commis** (`passport.commis` or `test.commis.1.0`): Me has no Menu or Recipes; a prep
+     task still shows its recipe. A task step: **Take a photo** opens the back camera, never
+     the gallery; **Done** waits for the photo. Report a problem asks **Where** as pictures.
+   - **`passport.gm`**, the bar manager, the executive chef: Menu and recipes open.
+   - **`passport.technician`**: Me shows every tile, with Utilities and Compliance and no
+     Linen or Breakage. Utilities lists readings for one day or two dates; a late reading's
+     time is red. To do has **Daily rounds**.
+   - **`passport.chief-engineer`**: Compliance lists the eight fire extinguishers with where
+     they hang and their type; one is red (expired), one amber. Signs off the weekly checklist.
+   - **The GM**: Roster → By person → anyone (the chief engineer too) gets every shift type,
+     and **Custom**: a day, From and To.
+   - **`passport.security-supervisor`**: the Security department, its guards' checklists to
+     sign off.

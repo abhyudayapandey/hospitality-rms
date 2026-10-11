@@ -24,10 +24,11 @@ weekly one) were not tasks. There was no Security department.
 4. **Linen and breakage** are a department's own (`HANDLES_LINEN`, group `WARE_KEEPER`:
    `LINEN` and `BREAKAGE` modify at the home department). Kitchen, service and housekeeping
    roles hold it; the technician and the cashier do not.
-5. **A department's compliance**: whoever works in a department sees, read only, the licences
-   and regular jobs a role of that department renews, answers for or does at its outlet
-   (`ops.department_sees`). Compliance is then on their Me and Home. The GM and COMPLIANCE
-   holders still see all.
+5. **A department's compliance**: a person sees, read only, the licences and regular jobs
+   their own job role renews, answers for or does at their outlet; a department's head (who
+   manages its tasks) sees those of every role in the department (`ops.department_sees`).
+   Compliance is then on their Me and Home. Frontline people whose role is named on nothing
+   see none. The GM and COMPLIANCE holders still see all.
 6. **Passport's maintenance**: Daily rounds from the xlsx, a room-by-room round, and the weekly
    checklist signed off by the chief engineer.
 7. **Passport's Security** department: a supervisor and day and night guards on 12-hour shifts;

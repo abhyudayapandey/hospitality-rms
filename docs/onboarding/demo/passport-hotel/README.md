@@ -97,10 +97,10 @@ their minibars), then **Events & compliance** → **Compliance** → **On** (the
 calendar only show with it). Without Hotel the dry run says the minibar checks are not loaded.
 
 **4. Import**: **Import setup files** → `passport-hotel.zip` → **Upload and dry run**. It
-should report no problems and no warnings, with (new): org places 12 / 1 changed (the
-company root), delivery places 5, links 4, job roles 36, users 36, workers 36 / 1 changed (the owner's), items 80, item
-locations 92, menu items 34, rooms 27, minibar sets 2, minibar checks 54, sales days 7,
-purchase orders 5, attendance sessions 132, checklists 31, meters 5, room contents 17, SOPs 4.
+should report no problems and no warnings, with (new): org places 13 / 1 changed (the
+company root), delivery places 5, links 4, job roles 38, users 39, workers 39 / 1 changed (the owner's), items 80, item
+locations 92, menu items 34, rooms 27, minibar sets 2, minibar checks 56, sales days 7,
+purchase orders 5, attendance sessions 132, checklists 39, meters 5, room contents 17, SOPs 4.
 **Apply**, then a second dry run shows no
 changes.
 

@@ -289,8 +289,11 @@ describe('the calendar', () => {
         [lift],
       );
       expect(task.rows.map((t) => t.job_role_code)).toEqual(['CHIEF_ENGINEER']);
-      // the chief engineer doesn't keep the register, but the job is theirs
-      expect(await names(c, 'test.chief-engineer.1.0', 'ops.compliance_items')).toEqual([]);
+      // the chief engineer doesn't keep the register, but the job is theirs: they see it, read
+      // only, as their department's (ADR 124)
+      expect(await names(c, 'test.chief-engineer.1.0', 'ops.compliance_items')).toEqual([
+        'Lift rescue drill',
+      ]);
       const about = await attemptAs<{ name: string; can_act: boolean }>(
         c,
         ids.user('test.chief-engineer.1.0'),
