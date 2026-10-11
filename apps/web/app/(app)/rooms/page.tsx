@@ -20,7 +20,7 @@ import { RoomGrid, RoomLegend } from './status-picker';
 
 // Rooms (ADR 088, 094, 104): every room of the outlet as a tile coloured by its status, floor
 // by floor; front office and housekeeping tap one to change it (or on the room check's grid).
-// How many rooms have each status first, as the legend.
+// How many rooms have each status first, as the legend; tapping one shows only those (ADR 117).
 // The Contents tab: what each room should hold and what was last counted there.
 // Rooms given to me today come first (ADR 111), every other room folded under them, so an
 // attendant still sees and helps with the rest. Whoever gives out rooms has "Give rooms".
@@ -51,9 +51,22 @@ export default async function RoomsPage({ searchParams }: { searchParams: Search
     status: r.status,
     can_set: r.can_set,
     who: r.mine ? null : r.given_to_name,
+    details: {
+      at_time: r.at_time,
+      reason: r.reason,
+      until: r.until,
+      maintenance_id: r.maintenance_id,
+      maintenance_title: r.maintenance_title,
+    },
   });
-  const mine = list.filter((r) => r.mine);
-  const others = list.filter((r) => !r.mine);
+  // a status's chip shows only its rooms (ADR 117)
+  const askedStatus = param(sp, 'status');
+  const only = list.some((r) => r.status === askedStatus) ? askedStatus! : null;
+  const shown = (rs: RoomRow[]) => (only ? rs.filter((r) => r.status === only) : rs);
+  const filterHref = (st: string | null) =>
+    `/rooms?outlet=${place.outlet_id}${st ? `&status=${st}` : ''}`;
+  const mine = shown(list.filter((r) => r.mine));
+  const others = shown(list.filter((r) => !r.mine));
   const tabs = (
     <ViewTabs
       label="Rooms"
@@ -94,26 +107,26 @@ export default async function RoomsPage({ searchParams }: { searchParams: Search
         <Contents rows={contents} outlet={place.outlet_id} />
       ) : (
         <>
-          {mine.length > 0 ? (
+          <RoomLegend rooms={list} filter={{ current: only, href: filterHref }} />
+          {list.some((r) => r.mine) ? (
             <>
               <section className="space-y-3" data-testid="my-rooms">
                 <h2 className="font-semibold">Your rooms ({mine.length})</h2>
-                <RoomLegend rooms={mine} />
-                <RoomGrid rooms={mine.map(tile)} />
+                {mine.length > 0 ? (
+                  <RoomGrid rooms={mine.map(tile)} />
+                ) : (
+                  <Empty>None of your rooms.</Empty>
+                )}
               </section>
-              <details className="space-y-3" data-testid="other-rooms">
+              <details className="space-y-3" data-testid="other-rooms" open={only !== null}>
                 <summary className="flex min-h-11 cursor-pointer items-center font-semibold">
                   Other rooms ({others.length})
                 </summary>
-                <RoomLegend rooms={others} />
                 <RoomGrid rooms={others.map(tile)} />
               </details>
             </>
           ) : (
-            <>
-              <RoomLegend rooms={list} />
-              <RoomGrid rooms={list.map(tile)} />
-            </>
+            <RoomGrid rooms={others.map(tile)} />
           )}
           {gives && (
             <Link

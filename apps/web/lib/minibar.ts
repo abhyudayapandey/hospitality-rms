@@ -4,8 +4,8 @@ import { sql, type Tx } from './db';
 // The rooms' minibars (ADR 072): read through ops.* SECURITY DEFINER functions, which check
 // MINIBAR at the outlet (rule 2).
 
-export type MinibarTab = 'rooms' | 'charge' | 'usage';
-export const MINIBAR_TABS: readonly MinibarTab[] = ['rooms', 'charge', 'usage'];
+export type MinibarTab = 'rooms' | 'charge' | 'history' | 'usage';
+export const MINIBAR_TABS: readonly MinibarTab[] = ['rooms', 'charge', 'history', 'usage'];
 export const isMinibarTab = (s: string): s is MinibarTab =>
   (MINIBAR_TABS as readonly string[]).includes(s);
 
@@ -109,6 +109,24 @@ export async function minibarHistory(tx: Tx, room: string): Promise<MinibarCheck
 export async function minibarToCharge(tx: Tx, outlet: string): Promise<ToChargeRow[]> {
   return (await sql<ToChargeRow>`select * from ops.minibar_to_charge(${outlet}::uuid)`.execute(tx))
     .rows;
+}
+
+/** Checks added to guests' bills between two days, newest first (ADR 119). */
+export interface ChargedRow extends ToChargeRow {
+  charged_at: Date;
+  charged_by: string | null;
+}
+
+export async function minibarCharged(
+  tx: Tx,
+  outlet: string,
+  from: string,
+  to: string,
+): Promise<ChargedRow[]> {
+  return (
+    await sql<ChargedRow>`
+      select * from ops.minibar_charged(${outlet}::uuid, ${from}::date, ${to}::date)`.execute(tx)
+  ).rows;
 }
 
 export async function minibarUsage(

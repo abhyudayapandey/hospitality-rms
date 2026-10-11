@@ -107,6 +107,8 @@ export interface TaskDetail {
   made_qty: number;
   cancel_reason: string | null;
   completed_at: string | null;
+  /** the note it was finished with (ADR 118), shown as a card */
+  done_note: string | null;
   can_work: boolean;
   can_manage: boolean;
   /** may give it to someone else or take it back (ADR 073, 074) */

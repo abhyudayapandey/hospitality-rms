@@ -37,6 +37,11 @@ export interface LibraryChecklist {
   steps: readonly LibraryStep[];
   /** SOP sections it comes from. */
   from: string;
+  /**
+   * A shift handover (ADR 118): the next shift of its department reads its last round, every
+   * answer and the note, as a card on Home until they have seen it.
+   */
+  handover?: true;
 }
 
 const tick = (label: string): LibraryStep => ({ label, kind: 'tick' });
@@ -316,18 +321,25 @@ export const CHECKLISTS: readonly LibraryChecklist[] = [
   },
   {
     code: 'FRONT-OFFICE-HANDOVER',
-    version: 1,
+    version: 2,
     name: 'Front office handover',
-    does: 'What the next shift must know: arrivals, issues, cash.',
+    does: 'What the next shift must know: arrivals and VIPs, bills posted, leads, cash.',
     department: 'FRONT-OFFICE',
     roles: ['FRONT_DESK_EXECUTIVE', 'FRONT_OFFICE_MANAGER'],
     schedule: 'daily 07:00 15:00 23:00',
+    // ADR 118: restaurant, bar and in-room dining bills are posted outside the app until it
+    // talks to the POS and the hotel's room system; the step says they were
     steps: [
-      tick('Arrivals and departures read'),
-      { label: 'Open guest issues', kind: 'text' },
+      tick('Arrivals, departures and VIPs noted'),
+      tick('Minibar charges added to bills'),
+      tick('Restaurant bills added to bills'),
+      tick('Bar bills added to bills'),
+      tick('In-room dining bills added to bills'),
+      tick('Booking leads entered in the register'),
       tick('Float counted'),
     ],
     from: 'Hotel SOP front office',
+    handover: true,
   },
   // hotel amenities (the pool, spa and gym extras)
   {

@@ -6,14 +6,28 @@ import { requireUser } from '@/lib/auth/server';
 import { sql, withUser, type Tx } from '@/lib/db';
 import { requireModule } from '@/lib/modules-server';
 
-// A room's status (ADR 088): ops.set_room_status checks ROOMS modify at the room's outlet and
-// raises stable codes (rule 2).
-export async function setRoomStatus(room: string, status: string): Promise<ActionResult<null>> {
+/** What goes with a status (ADR 117): a time; a reason, a day it is back, a request. */
+export interface RoomStatusDetails {
+  time?: string;
+  reason?: string;
+  until?: string;
+  maintenance?: string;
+  raise?: boolean;
+}
+
+// A room's status (ADR 088, 117): ops.set_room_status checks ROOMS modify at the room's outlet
+// and raises stable codes (rule 2).
+export async function setRoomStatus(
+  room: string,
+  status: string,
+  details: RoomStatusDetails = {},
+): Promise<ActionResult<null>> {
   const user = await requireUser();
   try {
     await withUser(user.id, async (tx) => {
       await requireModule(tx, 'rooms');
-      await sql`select ops.set_room_status(${room}::uuid, ${status})`.execute(tx);
+      await sql`select ops.set_room_status(${room}::uuid, ${status},
+                                           ${JSON.stringify(details)}::jsonb)`.execute(tx);
     });
     revalidatePath('/rooms');
     revalidatePath('/tasks', 'layout');
@@ -21,6 +35,27 @@ export async function setRoomStatus(room: string, status: string): Promise<Actio
   } catch (err) {
     const f = failure(err);
     if (f.code === 'UNEXPECTED') console.error('set_room_status failed', err);
+    return f;
+  }
+}
+
+/** The open maintenance requests at a room's outlet, to tag it out of order with (ADR 117). */
+export async function roomMaintenanceOpen(
+  room: string,
+): Promise<ActionResult<{ id: string; title: string }[]>> {
+  const user = await requireUser();
+  try {
+    const rows = await withUser(user.id, async (tx) => {
+      await requireModule(tx, 'rooms');
+      return (
+        await sql<{ id: string; title: string }>`
+          select id::text, title from ops.room_maintenance_open(${room}::uuid)`.execute(tx)
+      ).rows;
+    });
+    return { ok: true, data: rows };
+  } catch (err) {
+    const f = failure(err);
+    if (f.code === 'UNEXPECTED') console.error('room_maintenance_open failed', err);
     return f;
   }
 }

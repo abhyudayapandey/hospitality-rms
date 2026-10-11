@@ -162,6 +162,20 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
           <p className="text-sm whitespace-pre-line text-slate-800">{task.description}</p>
         )}
         <SignOffLine task={task} open={open} />
+        {task.done_note && (
+          <section
+            aria-label="Note"
+            className="space-y-1 rounded-xl bg-amber-50 p-4 text-amber-900 ring-1 ring-amber-300"
+            data-testid="task-note"
+          >
+            <h2 className="inline-flex items-center gap-2 text-sm font-semibold">
+              <Icon name="clipboard" className="size-5" />
+              Note
+              {task.completed_by_name && ` from ${task.completed_by_name}`}
+            </h2>
+            <p className="text-base whitespace-pre-line">{task.done_note}</p>
+          </section>
+        )}
         {task.kind === 'prep' && task.item && task.target_qty !== null && (
           <p className="text-sm text-slate-800" data-testid="prep-progress">
             Made {formatQty(String(task.made_qty), task.item.unit)} of{' '}

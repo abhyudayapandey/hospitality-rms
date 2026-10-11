@@ -24,6 +24,13 @@ export interface RoomRow {
   given_to: string | null;
   given_to_name: string | null;
   mine: boolean;
+  /** the status's details (ADR 117): arriving or leaving at; out of order why, till, request */
+  at_time: string | null;
+  reason: string | null;
+  until: string | null;
+  maintenance_id: string | null;
+  maintenance_title: string | null;
+  maintenance_status: string | null;
 }
 
 export async function roomOutlets(tx: Tx): Promise<RoomOutlet[]> {
@@ -32,9 +39,10 @@ export async function roomOutlets(tx: Tx): Promise<RoomOutlet[]> {
 
 export async function rooms(tx: Tx, outlet: string): Promise<RoomRow[]> {
   return (
-    await sql<RoomRow>`select *, given_to::text as given_to from ops.rooms(${outlet}::uuid)`.execute(
-      tx,
-    )
+    await sql<RoomRow>`
+      select *, given_to::text as given_to, until::text as until,
+             maintenance_id::text as maintenance_id
+        from ops.rooms(${outlet}::uuid)`.execute(tx)
   ).rows;
 }
 

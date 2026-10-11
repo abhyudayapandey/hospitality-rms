@@ -100,6 +100,21 @@ export const REGISTERS = [
     ],
     close: { label: 'Returned' },
   },
+  // ADR 118: booking enquiries the front desk takes, with the rate it quoted, until they book
+  // or go elsewhere
+  {
+    code: 'leads',
+    name: 'Booking leads',
+    what: 'Who asked to book, their number, the dates and the rate quoted, and how it ended.',
+    fields: [
+      { key: 'name', label: 'Name', required: true },
+      { key: 'phone', label: 'Phone', required: true },
+      { key: 'dates', label: 'Dates' },
+      { key: 'rate', label: 'Rate quoted' },
+      { key: 'note', label: 'Note' },
+    ],
+    close: { label: 'Close it', outcomes: ['Booked', 'Lost'], noteLabel: 'Why, or the booking' },
+  },
   {
     code: 'fire_equipment',
     name: 'Fire equipment',

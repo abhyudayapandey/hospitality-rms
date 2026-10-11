@@ -1993,8 +1993,8 @@ type List = [
   assign: string,
   steps: Step[],
   fromLibrary?: string | undefined,
-  /** ADR 087, 088: who signs a round off, and a round per room or per area */
-  extra?: { signOff?: string; forEach?: string },
+  /** ADR 087, 088: who signs a round off, and a round per room or per area; ADR 118 a handover */
+  extra?: { signOff?: string; forEach?: string; handover?: boolean },
 ];
 /** A copy of the SOP library's checklist (ADR 075), for the role that does it here. */
 const fromLibrary = (code: string, dept: string, assign: string, schedule?: string): List => {
@@ -2090,11 +2090,19 @@ const LISTS: List[] = [
     'Front office handover',
     'daily 15:00',
     'role:FRONT_DESK_EXECUTIVE',
+    // ADR 118: restaurant, bar and in-room dining bills are posted outside the app for now;
+    // the next shift reads the round and its note on Home
     [
-      ['Arrivals and VIPs noted', 'tick'],
+      ['Arrivals, departures and VIPs noted', 'tick'],
       ['Minibar charges added to bills', 'tick'],
+      ['Restaurant bills added to bills', 'tick'],
+      ['Bar bills added to bills', 'tick'],
+      ['In-room dining bills added to bills', 'tick'],
+      ['Booking leads entered in the register', 'tick'],
       ['Cash float counted', 'number', 0, 20000, '₹'],
     ],
+    undefined,
+    { handover: true },
   ],
   [
     'JET-LAG-SETUP',
@@ -2203,6 +2211,7 @@ csv(
     'from_library',
     'sign_off',
     'for_each',
+    'handover',
   ],
   LISTS.flatMap(([code, place, name, schedule, assign, steps, lib, extra]) =>
     steps.map(([label, kind, min, max, unit, photo], i) => [
@@ -2221,6 +2230,7 @@ csv(
       lib ?? '',
       extra?.signOff ?? '',
       extra?.forEach ?? '',
+      extra?.handover ? 'yes' : '',
     ]),
   ),
 );
