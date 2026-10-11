@@ -39,13 +39,19 @@ async function tick(c: PoolClient, now: string) {
   await resetRole(c);
 }
 
-/** Test Company's round of a file 29 checklist due on 5 Oct 2026. */
+/** Test Company's round of a file 29 checklist due next Monday, a day file 25 rosters (the
+ *  loader counts from the 04:00 business day), so whoever is on shift may work it. */
 async function round(c: PoolClient, code: string) {
-  await tick(c, '2026-10-05T06:00:00+05:30');
+  const day = (
+    await c.query<{ d: string }>(
+      `select (hr.week_start(((now() at time zone 'Asia/Kolkata') - interval '4 hours')::date) + 7)::text d`,
+    )
+  ).rows[0]!.d;
+  await tick(c, `${day}T06:00:00+05:30`);
   const { rows } = await c.query<{ id: string }>(
     `select t.id from ops.task t join ops.checklist_template c on c.id = t.template_id
-      where c.code = $1 and t.due_at::date = '2026-10-05' order by t.due_at limit 1`,
-    [code],
+      where c.code = $1 and t.due_at::date = $2::date order by t.due_at limit 1`,
+    [code, day],
   );
   return rows[0]!.id;
 }
