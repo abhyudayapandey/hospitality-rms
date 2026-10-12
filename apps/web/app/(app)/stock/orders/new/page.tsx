@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { NoSupplyAccess } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
+import { isUuid, param } from '@/lib/params';
 import { sql, withUser } from '@/lib/db';
 import { supplyContext, type SearchParams } from '@/lib/inventory';
 import { NewOrderForm, type OrderLine } from './new-order-form';
@@ -11,6 +12,9 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Sea
     return <NoSupplyAccess />;
   }
   const user = await requireUser();
+  // opened from an item's page: that item first (ADR 134)
+  const asked = param(await searchParams, 'item');
+  const focus = isUuid(asked) ? asked : undefined;
   const data = await withUser(user.id, async (tx) => {
     const lines = await sql<OrderLine>`
       select s.item_id, i.name, i.base_uom, s.on_hand, s.par_level, s.suggested_qty, i.category
@@ -36,7 +40,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Sea
           : 'You order it here: pick the supplier and the delivery date once it is approved.'}{' '}
         For stock another store already has, use Ask for stock.
       </p>
-      <NewOrderForm node={ctx.node.id} lines={data.lines} />
+      <NewOrderForm node={ctx.node.id} lines={data.lines} focus={focus} />
     </div>
   );
 }

@@ -28,7 +28,16 @@ export interface OrderLine {
  * line says what the store has and its par, and "Fill all N short items up to par" fills what
  * would bring the short items back up to it (ADR 054).
  */
-export function NewOrderForm({ node, lines }: { node: string; lines: OrderLine[] }) {
+export function NewOrderForm({
+  node,
+  lines,
+  focus,
+}: {
+  node: string;
+  lines: OrderLine[];
+  /** opened from an item's page: that item first, on its own (ADR 134) */
+  focus?: string | undefined;
+}) {
   const router = useRouter();
   const [qty, setQty] = useState<Record<string, string>>({});
   const short = lines.filter((l) => Number(l.suggested_qty) > 0);
@@ -54,6 +63,41 @@ export function NewOrderForm({ node, lines }: { node: string; lines: OrderLine[]
       if (r.ok) router.push(`/stock/orders/${r.data.id}?node=${node}`);
       else setError(r.message);
     });
+
+  const lead = focus ? lines.find((l) => l.item_id === focus) : undefined;
+  const rest = lead ? lines.filter((l) => l !== lead) : lines;
+  const row = (l: OrderLine) => (
+    <li
+      key={l.item_id}
+      className="space-y-2 px-4 py-3"
+      data-testid="order-line"
+      data-filter-row
+      data-filter-text={`${l.name} ${l.category ?? ''}`}
+    >
+      <p className="flex items-center gap-3 text-sm">
+        <ItemThumb name={l.name} category={l.category} size="size-10" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium">{l.name}</span>
+          <span
+            className={`block text-xs tabular-nums ${Number(l.on_hand) < 0 ? 'text-rose-700' : 'text-slate-500'}`}
+            data-testid="have-keep"
+          >
+            In stock {formatQty(l.on_hand, l.base_uom)} · par {formatQty(l.par_level, l.base_uom)}
+            {Number(l.on_hand) < 0 ? ' (below zero: count it)' : ''}
+          </span>
+        </span>
+      </p>
+      <Stepper
+        label={`Quantity ${l.name}`}
+        value={qty[l.item_id] ?? ''}
+        onChange={(v) => setQty((q) => ({ ...q, [l.item_id]: v }))}
+        min={0}
+        step={qtyStep(l.base_uom)}
+        start={Number(l.suggested_qty) > 0 ? Number(inputQty(l.suggested_qty)) : undefined}
+        unit={l.base_uom}
+      />
+    </li>
+  );
 
   return (
     <form
@@ -85,7 +129,13 @@ export function NewOrderForm({ node, lines }: { node: string; lines: OrderLine[]
           }}
         />
         {/* below par first, then the rest by category (ADR 101) */}
-        {shortFirst(lines, (l) => Number(l.suggested_qty) > 0).map((g) => (
+        {lead && (
+          <section className="space-y-1" data-testid="order-this-item">
+            <h2 className="pt-2 text-sm font-semibold text-slate-500">This item</h2>
+            <ul className="rounded-xl bg-white ring-2 ring-brand-700">{row(lead)}</ul>
+          </section>
+        )}
+        {shortFirst(rest, (l) => Number(l.suggested_qty) > 0).map((g) => (
           <section
             key={g.key}
             className="space-y-1"
@@ -98,41 +148,7 @@ export function NewOrderForm({ node, lines }: { node: string; lines: OrderLine[]
               {g.label}
             </h2>
             <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-              {g.rows.map((l) => (
-                <li
-                  key={l.item_id}
-                  className="space-y-2 px-4 py-3"
-                  data-testid="order-line"
-                  data-filter-row
-                  data-filter-text={`${l.name} ${l.category ?? ''}`}
-                >
-                  <p className="flex items-center gap-3 text-sm">
-                    <ItemThumb name={l.name} category={l.category} size="size-10" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-medium">{l.name}</span>
-                      <span
-                        className={`block text-xs tabular-nums ${Number(l.on_hand) < 0 ? 'text-rose-700' : 'text-slate-500'}`}
-                        data-testid="have-keep"
-                      >
-                        In stock {formatQty(l.on_hand, l.base_uom)} · par{' '}
-                        {formatQty(l.par_level, l.base_uom)}
-                        {Number(l.on_hand) < 0 ? ' (below zero: count it)' : ''}
-                      </span>
-                    </span>
-                  </p>
-                  <Stepper
-                    label={`Quantity ${l.name}`}
-                    value={qty[l.item_id] ?? ''}
-                    onChange={(v) => setQty((q) => ({ ...q, [l.item_id]: v }))}
-                    min={0}
-                    step={qtyStep(l.base_uom)}
-                    start={
-                      Number(l.suggested_qty) > 0 ? Number(inputQty(l.suggested_qty)) : undefined
-                    }
-                    unit={l.base_uom}
-                  />
-                </li>
-              ))}
+              {g.rows.map(row)}
             </ul>
           </section>
         ))}
