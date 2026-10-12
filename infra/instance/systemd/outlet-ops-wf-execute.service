@@ -6,8 +6,10 @@ After=network-online.target docker.service
 Type=oneshot
 User=outletops-wf
 Group=outletops-wf
-# Only the wf_executor password.
+EnvironmentFile=/etc/outlet-ops/wf.env
+# Only the wf_executor password, and the Web Push signing key when there is one (ADR 137).
 LoadCredential=db_wf_executor:/etc/outlet-ops/creds/wf_executor
+LoadCredential=vapid_private:/etc/outlet-ops/creds/vapid_private
 ExecStart=/opt/outlet-ops/current/deploy/wf-execute.sh
 TimeoutStartSec=55
 MemoryMax=256M

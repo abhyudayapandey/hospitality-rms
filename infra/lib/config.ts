@@ -36,6 +36,8 @@ export const SECRET_PARAMS = {
   wfExecutor: `${PARAM_PREFIX}/db/wf_executor`,
   platformLoader: `${PARAM_PREFIX}/db/platform_loader`,
   sessionSecret: `${PARAM_PREFIX}/web/session_secret`,
+  /** Web Push signing key (ADR 137): only wf-execute loads it; the web gets the public half */
+  vapidPrivate: `${PARAM_PREFIX}/web/vapid_private`,
 } as const;
 
 export const CONFIG_PARAM_PATH = `${PARAM_PREFIX}/config`;

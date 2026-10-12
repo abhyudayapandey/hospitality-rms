@@ -7,7 +7,8 @@
 set -euo pipefail
 export AWS_REGION=ap-south-1
 PREFIX=/outlet-ops/prod
-NAMES=(db/migrator db/app_rw db/wf_executor db/platform_loader web/session_secret)
+# web/vapid_private: the Web Push signing key (ADR 137); any 32 random bytes are a P-256 key
+NAMES=(db/migrator db/app_rw db/wf_executor db/platform_loader web/session_secret web/vapid_private)
 ROTATE=
 [ "${1:-}" = "--rotate" ] && ROTATE=${2:?--rotate needs a name, e.g. db/app_rw}
 

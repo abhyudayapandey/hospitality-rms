@@ -8,6 +8,20 @@ import { clearCaches, LeavingScreen } from './leaving-screen';
  * while the server clears the session and refresh cookies (it revokes the Cognito token
  * after answering); then the page is replaced, so Back does not return to the app.
  */
+async function stopAlerts(): Promise<void> {
+  if (!('serviceWorker' in navigator)) return;
+  const reg = await navigator.serviceWorker.getRegistration('/');
+  const sub = await reg?.pushManager?.getSubscription();
+  await sub?.unsubscribe();
+  try {
+    // whoever signs in next is asked for themselves
+    localStorage.removeItem('oo.alerts.asked');
+    localStorage.removeItem('oo.alerts.synced');
+  } catch {
+    // storage off: nothing kept
+  }
+}
+
 export function SignOutButton() {
   const [busy, setBusy] = useState(false);
   async function signOut() {
@@ -17,6 +31,8 @@ export function SignOutButton() {
       const [res] = await Promise.all([
         fetch('/auth/logout', { method: 'POST' }),
         clearCaches().catch(() => undefined),
+        // this phone stops showing the signed-out person's alerts (ADR 137)
+        stopAlerts().catch(() => undefined),
       ]);
       redirect = ((await res.json()) as { redirect: string }).redirect;
     } finally {

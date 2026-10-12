@@ -89,3 +89,37 @@ self.addEventListener('fetch', (event) => {
     }),
   );
 });
+
+// Alerts on this phone (ADR 137): a push carries a notification's title, body, link and kind.
+// One alert per kind stays on the screen (a newer one replaces it); a tap opens its link in
+// the open app, or opens the app.
+self.addEventListener('push', (event) => {
+  let n = { title: 'Outlet Ops', body: '', link: '/', tag: 'outlet-ops' };
+  try {
+    n = { ...n, ...event.data.json() };
+  } catch {
+    // not ours, or empty: the plain alert above
+  }
+  event.waitUntil(
+    self.registration.showNotification(n.title, {
+      body: n.body,
+      tag: n.tag,
+      renotify: true,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { link: typeof n.link === 'string' && n.link.startsWith('/') ? n.link : '/' },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = new URL(event.notification.data?.link || '/', self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
+      const open = wins.find((w) => new URL(w.url).origin === self.location.origin);
+      if (open) return open.navigate(url).then((w) => (w || open).focus());
+      return self.clients.openWindow(url);
+    }),
+  );
+});

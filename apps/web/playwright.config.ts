@@ -59,6 +59,9 @@ export default defineConfig({
         APP_URL: `http://127.0.0.1:${prodPort}`,
         // no bucket here: every step's photo is kept on this machine (ADR 127)
         PHOTO_DIR: photoDir,
+        // alerts on this phone (ADR 137): a public key only; nothing is ever pushed here
+        VAPID_PUBLIC_KEY:
+          'BCe4Hze287AIh12i0en1a1cSp0kAM98U9FE8hOl4xb-RK7NYq40cgRYsPCaRa9V9HMsCMgs1LmXny_Rh_69-n20',
       },
     },
     {
