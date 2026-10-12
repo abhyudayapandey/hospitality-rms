@@ -58,8 +58,8 @@ test('a whole floor in one tap, and off again in one tap (ADR 132)', async ({ pa
       .getByRole('group', { name: 'Person' })
       .getByRole('button', { name: /Test Room Attendant 1\.0/ })
       .click();
-    const floor = main(page).getByTestId('give-floor').first();
-    const section = main(page).locator('section').filter({ has: floor });
+    const section = main(page).getByRole('region', { name: 'Floor 1' });
+    const floor = section.getByTestId('give-floor');
     const n = await section.getByTestId('give-room').count();
     expect(n).toBeGreaterThan(1);
     await floor.click();
