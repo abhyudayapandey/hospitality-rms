@@ -76,6 +76,7 @@ const COUNT_LABELS: Record<string, string> = {
   recipes: 'Recipes',
   checklists: 'Checklists',
   rooms: 'Rooms',
+  sections: 'Floor sections',
   'minibar items': 'Minibar items',
   'minibar sets': 'Minibar set-ups',
   licences: 'Licences',

@@ -24,7 +24,7 @@ export interface RoomRow {
   given_to: string | null;
   given_to_name: string | null;
   mine: boolean;
-  /** the status's details (ADR 117): arriving or leaving at; out of order why, till, request */
+  /** the status's details (ADR 117): arriving or departing at; out of order why, till, request */
   at_time: string | null;
   reason: string | null;
   until: string | null;

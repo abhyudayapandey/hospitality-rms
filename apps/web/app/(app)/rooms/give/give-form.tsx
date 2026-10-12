@@ -7,7 +7,8 @@ import { byFloor, floorName } from '@/lib/rooms-view';
 import { useHydrated } from '@/lib/use-hydrated';
 import { giveRooms } from '../actions';
 
-/** Pick a person, tap their rooms (others' rooms show whose they are), save (ADR 111). */
+/** Pick a person, tap their rooms or a whole floor (others' rooms show whose they are), save
+ *  (ADR 111, 132). */
 export function GiveRoomsForm({
   outlet,
   day,
@@ -40,6 +41,20 @@ export function GiveRoomsForm({
       const next = { ...o };
       if (next[room] === person) delete next[room];
       else next[room] = person;
+      return next;
+    });
+  };
+
+  // a whole floor at once (ADR 132): all to this person, or, if they have it all, off them
+  const tapFloor = (ids: string[]) => {
+    setSaved(null);
+    setOwner((o) => {
+      const next = { ...o };
+      const all = ids.every((id) => next[id] === person);
+      for (const id of ids) {
+        if (all) delete next[id];
+        else next[id] = person;
+      }
       return next;
     });
   };
@@ -87,11 +102,35 @@ export function GiveRoomsForm({
         })}
       </div>
       <p className="text-sm text-slate-600">
-        Tap {first(person)}&apos;s rooms. A room someone else has moves to {first(person)}.
+        Tap {first(person)}&apos;s rooms, or a floor for all of it. A room someone else has moves to{' '}
+        {first(person)}.
       </p>
       {byFloor(rooms).map((f) => (
         <section key={f.floor} className="space-y-2" aria-label={floorName(f.floor)}>
-          <h2 className="text-sm font-semibold text-slate-500">{floorName(f.floor)}</h2>
+          <h2 className="text-sm font-semibold text-slate-500">
+            {(() => {
+              const ids = f.rooms.map((r) => r.room_id);
+              const all = ids.every((id) => owner[id] === person);
+              return (
+                <button
+                  type="button"
+                  aria-pressed={all}
+                  onClick={() => tapFloor(ids)}
+                  data-testid="give-floor"
+                  className={`flex min-h-11 w-full items-center justify-between rounded-xl px-3 ring-1 ${
+                    all
+                      ? 'bg-brand-700 text-white ring-brand-700'
+                      : 'bg-white text-slate-700 ring-slate-300'
+                  }`}
+                >
+                  <span>{floorName(f.floor)}</span>
+                  <span className="text-xs">
+                    {all ? `All ${first(person)}'s` : `Give all ${ids.length}`}
+                  </span>
+                </button>
+              );
+            })()}
+          </h2>
           <div className="grid grid-cols-4 gap-2">
             {f.rooms.map((r) => {
               const o = owner[r.room_id];

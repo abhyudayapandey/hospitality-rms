@@ -18,9 +18,10 @@ export interface TemplateWindow {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-// Template shifts are added only for tomorrow to day 7, after the manager confirms; while
-// drafts exist in those days, "Discard drafts" takes the place of "Add template shifts"
-// (ADR 024). Publish still publishes the week on screen.
+// Template shifts are added only for tomorrow to day 7, after the manager confirms. While there
+// are drafts, in those days or in the week on screen, "Start again" takes the place of "Add
+// template shifts": it discards every draft not yet started, so the manager can begin afresh
+// (ADR 024, 132). Publish still publishes the week on screen.
 export function WeekActions({
   node,
   monday,
@@ -59,9 +60,13 @@ export function WeekActions({
   const discard = () =>
     start(async () => {
       setError(null);
-      const r = await discardDrafts(node);
+      const r = await discardDrafts(node, monday);
       if (!r.ok) return setError(r.message);
-      after(`Discarded ${plural(r.data, 'draft shift')}.`);
+      after(
+        r.data === 0
+          ? 'Nothing to discard: those drafts have already started.'
+          : `Discarded ${plural(r.data, 'draft shift')}.`,
+      );
     });
   const publish = () =>
     start(async () => {
@@ -76,7 +81,7 @@ export function WeekActions({
     setConfirm(what);
   };
   // an empty week: one big button that adds the usual shifts as drafts (nobody sees drafts
-  // until they are published, and Discard drafts takes them back)
+  // until they are published, and Start again takes them back)
   if (empty && w.drafts === 0 && w.toAdd > 0 && !done) {
     return (
       <div className="space-y-2">
@@ -100,12 +105,12 @@ export function WeekActions({
         <div
           className="space-y-3 rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200"
           role="group"
-          aria-label={confirm === 'add' ? 'Add template shifts' : 'Discard drafts'}
+          aria-label={confirm === 'add' ? 'Add template shifts' : 'Start again'}
         >
           <p className="text-sm" data-testid="confirm-text">
             {confirm === 'add'
               ? `Add ${plural(w.toAdd, 'draft shift')}, ${w.span}? Staff see them only after you publish.`
-              : `Discard ${plural(w.drafts, 'draft shift')}, ${w.span}? Anyone assigned to them is freed. Published shifts stay.`}
+              : 'Discard every draft shift not yet started, this week and the next 7 days? Anyone on them is freed. Published shifts stay.'}
           </p>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -128,14 +133,14 @@ export function WeekActions({
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2">
-          {w.drafts > 0 ? (
+          {w.drafts > 0 || drafts > 0 ? (
             <button
               type="button"
               disabled={pending}
               onClick={() => ask('discard')}
               className={secondaryButton}
             >
-              Discard drafts ({w.drafts})
+              Start again
             </button>
           ) : (
             <button

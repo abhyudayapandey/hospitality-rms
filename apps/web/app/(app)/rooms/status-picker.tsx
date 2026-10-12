@@ -20,7 +20,7 @@ import { roomMaintenanceOpen, setRoomStatus, type RoomStatusDetails } from './ac
 
 /**
  * A room's new status as big buttons, each its colour, picture and word (ADR 088, 104): never a
- * code. The current one is marked. Arriving and leaving ask for the time, out of order for why,
+ * code. The current one is marked. Arriving and departing ask for the time, out of order for why,
  * the day it is back and its maintenance request (ADR 117), before they are saved.
  */
 export function RoomStatusButtons({
@@ -101,7 +101,7 @@ export function RoomStatusButtons({
   );
 }
 
-/** Arriving or leaving at; out of order why, till when and its maintenance request. */
+/** Arriving or departing at; out of order why, till when and its maintenance request. */
 function StatusDetailsForm({
   room,
   number,
@@ -216,7 +216,7 @@ function StatusDetailsForm({
       ) : (
         <label className="block space-y-1">
           <span className="text-sm font-medium">
-            {code === 'ARR' ? 'Arriving at' : 'Leaving at'}
+            {code === 'ARR' ? 'Arriving at' : 'Departing at'}
           </span>
           <input
             type="time"

@@ -47,10 +47,13 @@ export async function addTemplateShifts(node: string): Promise<ActionResult<numb
   });
 }
 
-/** Cancels the unpublished drafts in the next seven days and frees anyone on them. */
-export async function discardDrafts(node: string): Promise<ActionResult<number>> {
+/** Start again (ADR 132): cancels the drafts not yet started, in the week on screen and the
+ *  next seven days, and frees anyone on them. Published shifts stay. */
+export async function discardDrafts(node: string, monday: string): Promise<ActionResult<number>> {
   return run('discard_drafts', async (tx) => {
-    const r = await sql<{ n: number }>`select hr.discard_drafts(${node}::uuid) as n`.execute(tx);
+    const r = await sql<{
+      n: number;
+    }>`select hr.discard_drafts(${node}::uuid, ${monday}::date) as n`.execute(tx);
     return r.rows[0]!.n;
   });
 }

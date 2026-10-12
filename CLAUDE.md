@@ -320,7 +320,7 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   for something, `inv.staff_ask`). An order's page names its approver and lets them approve
   (`inv.po_approval`). Passport has no Main Store. Compliance jobs also repeat weekly, every 2
   weeks or on the nth weekday (ADR 116, file 39 `repeat`).
-- Front desk and lists (ADR 117 to 122): a room's status carries its time (Arriving, Leaving)
+- Front desk and lists (ADR 117 to 122): a room's status carries its time (Arriving, Departing, ADR 131)
   or, out of order, a reason, an until day and its repair (`ops.set_room_status(room, status,
   details)`); no House use; Rooms' chips filter. A handover checklist (file 29 `handover`) is a
   card on the next shift's Home until Seen (`ops.last_handovers`); a task's note is
@@ -353,6 +353,13 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   READS_METERS (Engineering) and the outlet's managers. A test customer starts again from the
   console (`platform.reset_test_customer`: everything of theirs removed, then import their files
   and make logins again); never a real customer.
+- Me under headings, a floor in one tap, Start again (ADR 132): Me's tiles sit under My work, My
+  day, Team, Admin and More (`meGroups`); Give rooms gives a whole floor from its heading; the
+  roster's Start again (`hr.discard_drafts(node, monday)`) discards every draft not yet started.
+  A room checking out reads Departing, the front office's word (ADR 131).
+- Floor sections (ADR 133, file 47): a restaurant's or bar's sections, given per day to its
+  people by whoever manages tasks there (`ops.give_sections`), like rooms; Home says "Your section
+  today". Passport's restaurant has Section 1 to 3.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

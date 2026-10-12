@@ -31,7 +31,7 @@ export interface MinibarRoomRow {
   to_charge: string;
   /** the room's status code (never shown, ADR 104) */
   status: string;
-  /** a minibar, not checked today, a guest in, arriving or leaving */
+  /** a minibar, not checked today, a guest in, arriving or departing */
   due_today: boolean;
   /** given to me today (ADR 111) */
   mine: boolean;

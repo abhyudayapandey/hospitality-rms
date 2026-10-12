@@ -100,7 +100,7 @@ calendar only show with it). Without Hotel the dry run says the minibar checks a
 should report no problems and no warnings, with (new): org places 13 / 1 changed (the
 company root), delivery places 5, links 4, job roles 38, users 39, workers 39 / 1 changed (the owner's), items 80, item
 locations 92, menu items 34, rooms 27, minibar sets 2, minibar checks 56, sales days 7,
-purchase orders 5, attendance sessions 132, checklists 39, meters 5, room contents 17, SOPs 4.
+purchase orders 5, attendance sessions 132, checklists 39, meters 5, room contents 17, SOPs 4, floor sections 3.
 **Apply**, then a second dry run shows no
 changes.
 

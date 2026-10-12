@@ -493,3 +493,73 @@ describe('repeat this pattern', () => {
     });
   });
 });
+
+describe('start again (ADR 132)', () => {
+  it("discards the week's drafts not yet started; published and started shifts stay", async () => {
+    await inRolledBackTx(async (c) => {
+      const monday = await mondayAhead(c, 5);
+      const put = async (day: string) =>
+        (
+          await attemptAs<{ id: string }>(
+            c,
+            ids.user(MANAGER),
+            'select hr.set_day_shift($1, $2::date, $3) as id',
+            [
+              await worker(c, 'test.steward.1.0'),
+              day,
+              await template(c, RESTAURANT, 'Split', 'STEWARD'),
+            ],
+          )
+        ).rows![0]!.id;
+      const shiftOf = async (a: string) =>
+        (
+          await c.query<{ id: string }>(
+            'select shift_id as id from hr.shift_assignment where id = $1',
+            [a],
+          )
+        ).rows[0]!.id;
+      const draft = await shiftOf(await put(monday));
+      const published = await shiftOf(await put(addDays(monday, 1)));
+      const started = await shiftOf(await put(addDays(monday, 2)));
+      await c.query(`update hr.shift set status = 'published' where id = $1`, [published]);
+      // a draft already under way: the whole shift moved so it began an hour ago
+      await c.query(
+        `update hr.shift set start_at = start_at - d, end_at = end_at - d,
+                split_end_at = split_end_at - d, split_start_at = split_start_at - d
+           from (select start_at - (now() - interval '1 hour') as d from hr.shift where id = $1) x
+          where id = $1`,
+        [started],
+      );
+      const r = await attemptAs<{ n: number }>(
+        c,
+        ids.user(MANAGER),
+        'select hr.discard_drafts($1, $2::date) as n',
+        [ids.node(RESTAURANT), monday],
+      );
+      expect(r.error).toBeUndefined();
+      const status = async (id: string) =>
+        (await c.query<{ s: string }>('select status as s from hr.shift where id = $1', [id]))
+          .rows[0]!.s;
+      expect(await status(draft)).toBe('cancelled');
+      expect(await status(published)).toBe('published');
+      expect(await status(started)).toBe('draft');
+      // whoever was on the discarded draft is freed
+      expect(
+        (
+          await c.query(
+            `select 1 from hr.shift_assignment where shift_id = $1 and status = 'assigned'`,
+            [draft],
+          )
+        ).rowCount,
+      ).toBe(0);
+      // a commis may not start the roster again
+      const commis = await attemptAs(
+        c,
+        ids.user('test.commis.1.0'),
+        'select hr.discard_drafts($1, $2::date)',
+        [ids.node(RESTAURANT), monday],
+      );
+      expect(commis.error).toMatch(/NOT_AUTHORISED/);
+    });
+  });
+});
