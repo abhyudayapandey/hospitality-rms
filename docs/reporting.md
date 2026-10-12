@@ -1,7 +1,8 @@
 # Reporting: what each role sees, and how it is built
 
-Status: **approved** (decisions in section 8) · **R-1 done** (ADR 023) · **R-2 done** (ADR 028) ·
-2026-10-02
+Status: **built**: R-1 to R-4 done (ADR 023, 028, 030, 031), then drill-downs and the lists behind
+each figure (ADR 041, 042) and the reports audit (ADR 057, `docs/reports-audit.md`). Written
+2026-10-02; decisions in section 8.
 
 Outlet Ops already records the facts a hospitality business needs to run on numbers: every
 stock movement, what was bought and at what price, what was made and thrown away, what was
