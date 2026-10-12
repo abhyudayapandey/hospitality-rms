@@ -1357,6 +1357,18 @@ export const FILES = {
     }),
     optional: ['roles', 'needs_ack'],
   },
+  // Sections of a restaurant's or bar's floor (ADR 133), given to its serving staff per day:
+  // a department and its sections in order. A section no longer listed is archived.
+  sections: {
+    file: '47_sections.csv',
+    required: false,
+    schema: z.object({
+      department_code: code,
+      section: text,
+      position: z.coerce.number().int().min(0).optional(),
+    }),
+    optional: ['position'],
+  },
   // Registers (ADR 090): which are kept, and by which job roles (blank: anyone who keeps
   // registers where it is written). A register not listed keeps the default: lost and found
   // and incidents everywhere, the rest at hotels.

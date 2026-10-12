@@ -92,6 +92,7 @@ describe('the Passport Hotel demo', () => {
         meters: n('meters'),
         contents: n('room contents'),
         sops: n('SOPs'),
+        sections: n('sections'),
       }).toEqual({
         // with Purchase (ADR 122) and Security (ADR 124)
         org: [13, 1],
@@ -116,6 +117,8 @@ describe('the Passport Hotel demo', () => {
         meters: [5, 0],
         contents: [17, 0],
         sops: [4, 0],
+        // the restaurant's three floor sections (ADR 133)
+        sections: [3, 0],
       });
       expect((await loadCustomer(c, files, { nested: true })).ok).toBe(true);
       const again = await loadCustomer(c, files, { nested: true, dryRun: true });

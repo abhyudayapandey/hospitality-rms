@@ -2877,6 +2877,13 @@ csv(
     ['fire_equipment', 'yes', `CHIEF_ENGINEER; TECHNICIAN; ${SEC}`],
   ],
 );
+// the restaurant floor in three sections, given to the servers per day (ADR 133); the bar is
+// small and has none
+csv(
+  '47_sections.csv',
+  ['department_code', 'section', 'position'],
+  [1, 2, 3].map((n) => [D('RESTAURANT'), `Section ${n}`, String(n)]),
+);
 csv(
   '46_sops.csv',
   ['sop_code', 'place_code', 'title', 'roles', 'needs_ack', 'body'],

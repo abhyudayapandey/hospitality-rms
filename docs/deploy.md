@@ -2887,3 +2887,28 @@ and shift engineers gain READS_METERS. Test Company's file 06 and 99 preview are
    - **`passport.technician`** and **`passport.chief-engineer`**: Utilities opens. The chief
      engineer opens a fire extinguisher in Compliance → Licences.
    - **`passport.technician`**: To do has today's **Daily rounds** only, no "Daily plant round".
+
+## Releasing Departing, Me headings, a floor in one tap, Start again and floor sections (ADR 131 to 133)
+
+Three migrations: `20261222100000_departing`, `20261222110000_roster_start_again` and
+`20261222120000_service_sections` (two new tables under the TASKS domain, with RLS).
+No access group, duty or job role changes. A new optional onboarding file 47 (floor
+sections). No stack change.
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual.
+4. Re-import (rebuild each zip first: `-FS` makes it match the folder):
+   - **Passport**: `cd docs/onboarding/demo/passport-hotel && zip -q -FS ../passport-hotel.zip *.csv`.
+     Update from their files → Upload and check: no problems, **Floor sections 3 new**, nothing
+     else new or changed. Apply, then a second check shows no changes.
+   - **The test customers** (test environment only): Test Company's zip adds Floor sections 3
+     (Test Hotel 1.0's restaurant).
+5. Check, at 380 px:
+   - **`passport.restaurant-manager`**: Home has a Sections card with **Give sections**; give
+     Section 2 to Kevin. **`passport.server`** (Kevin): Home says "Your section today: Section 2".
+   - **`passport.executive-housekeeper`**: Give rooms → tap a floor's heading: all its rooms go to
+     the person picked; tap again: back.
+   - **Any manager**: Rooms show **Departing**. Me shows headings (My work, My day, Team, Admin).
+   - **`passport.security-supervisor`**: Roster → a week with drafts → **Start again** → Discard:
+     drafts not yet started go, published shifts stay.

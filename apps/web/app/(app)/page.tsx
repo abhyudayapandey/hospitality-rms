@@ -8,6 +8,9 @@ import { formatWhen } from '@/lib/format';
 import { compare, formatMeasure, MEASURES, trendHref, type MeasureRow } from '@/lib/reports';
 import { PART_WORDS } from '@/lib/briefing';
 import { homeTiles } from '@/lib/screens';
+import { mySections, sectionPlaces } from '@/lib/sections';
+import { requireUser } from '@/lib/auth/server';
+import { withUser } from '@/lib/db';
 import { vsTarget, type TargetKey } from '@/lib/settings';
 import { loadShell, screenInput } from '@/lib/shell';
 import {
@@ -58,6 +61,12 @@ export default async function Home() {
   const shell = await loadShell();
   const tz = shell.nodes.find((n) => n.id === shell.home?.id)?.timezone ?? 'Asia/Kolkata';
   const today = await loadToday(shell, tz);
+  // floor sections (ADR 133): mine today, and whether I give them out
+  const user = await requireUser();
+  const sections = await withUser(user.id, async (tx) => ({
+    mine: await mySections(tx),
+    gives: (await sectionPlaces(tx)).length > 0,
+  }));
   const now = new Date();
   // the next job, then the three after it (ADR 098)
   const tasks = todaysTasks(today.tasks, now, tz, 4);
@@ -126,6 +135,29 @@ export default async function Home() {
           <Link href="/roster/my" className="mt-2 block text-sm font-medium text-brand-700">
             See my shifts
           </Link>
+        </section>
+      )}
+
+      {(sections.mine.length > 0 || sections.gives) && (
+        <section aria-label="Sections" className={card} data-testid="home-sections">
+          <h2 className={cardTitle}>
+            {sections.mine.length > 0 ? 'Your section today' : 'Sections'}
+          </h2>
+          {sections.mine.map((m) => (
+            <p key={m.department_name} className="mt-2 text-lg font-semibold">
+              {m.sections}
+              <span className="block text-sm font-normal text-slate-600">{m.department_name}</span>
+            </p>
+          ))}
+          {sections.gives && (
+            <Link
+              href="/sections/give"
+              data-testid="home-give-sections"
+              className="mt-2 flex min-h-11 items-center gap-1 text-sm font-medium text-brand-700"
+            >
+              <Icon name="people" className="size-4" /> Give sections
+            </Link>
+          )}
         </section>
       )}
 

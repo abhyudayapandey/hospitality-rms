@@ -559,6 +559,27 @@ function validateTasks(
     }
   }
 
+  // file 47 (ADR 133): sections of a department, each name once there
+  const sectionNames = new Set<string>();
+  for (const x of b.sections) {
+    const node = k.org.get(x.department_code);
+    if (!node) {
+      add(
+        f('sections'),
+        x.line,
+        'department_code',
+        `${x.department_code} is not in ${f('orgNodes')}`,
+      );
+    } else if (node.kind !== 'department') {
+      add(f('sections'), x.line, 'department_code', `${x.department_code} is not a department`);
+    }
+    const key = `${x.department_code}|${x.section.toLowerCase()}`;
+    if (sectionNames.has(key)) {
+      add(f('sections'), x.line, 'section', `${x.section} is listed twice`);
+    }
+    sectionNames.add(key);
+  }
+
   // file 45 (ADR 090): each register once; its roles are job roles of file 06
   const registers = new Set<string>();
   for (const r of b.registers) {

@@ -228,6 +228,7 @@ class Loader {
     await this.registers();
     await this.meters();
     await this.sops();
+    await this.sections();
     if (this.isTest) {
       await this.shifts();
       await this.pastWeek();
@@ -3248,6 +3249,36 @@ class Loader {
         `update ops.sop set archived_at = now()
           where tenant_id = $1 and archived_at is null and not (code = any ($2))`,
         [this.tenant, this.b.sops.map((s) => s.sop_code)],
+      );
+    }
+  }
+
+  /** File 47 (ADR 133): sections of restaurant and bar floors; one no longer listed is archived. */
+  private async sections() {
+    for (const x of this.b.sections) {
+      this.step(FILES.sections.file, x.line);
+      await this.upsert(
+        'sections',
+        `insert into ops.service_section as t (tenant_id, org_node_id, name, position)
+         values ($1, $2, $3, $4)
+         on conflict (org_node_id, name) do update
+            set position = excluded.position, archived_at = null
+          where (t.position, t.archived_at) is distinct from (excluded.position, null)
+         returning id, xmax = 0 as inserted`,
+        [this.tenant, this.nodes.get(x.department_code), x.section, x.position ?? x.line],
+      );
+    }
+    if (this.b.sections.length) {
+      await this.c.query(
+        `update ops.service_section s set archived_at = now()
+          where s.tenant_id = $1 and s.archived_at is null
+            and not exists (select 1 from unnest($2::uuid[], $3::text[]) l(node, name)
+                             where l.node = s.org_node_id and l.name = s.name)`,
+        [
+          this.tenant,
+          this.b.sections.map((x) => this.nodes.get(x.department_code)),
+          this.b.sections.map((x) => x.section),
+        ],
       );
     }
   }
