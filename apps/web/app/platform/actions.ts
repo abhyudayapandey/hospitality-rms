@@ -43,6 +43,19 @@ export async function setCustomerStatus(
   });
 }
 
+/**
+ * Start again (ADR 130): empties a test customer, keeping only the customer itself, so its
+ * files can be imported as for a new one. Refused for a real customer, and unless its name is
+ * typed. Returns how many rows were removed.
+ */
+export async function startAgain(tenantId: string, confirm: string): Promise<ActionResult<number>> {
+  return run('reset_test_customer', async (tx) => {
+    const r = await sql<{ n: number }>`
+      select platform.reset_test_customer(${tenantId}::uuid, ${confirm}) as n`.execute(tx);
+    return r.rows[0]!.n;
+  });
+}
+
 export interface NewCustomerForm {
   code: string;
   name: string;

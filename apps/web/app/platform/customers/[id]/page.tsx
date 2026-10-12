@@ -4,6 +4,7 @@ import { sql, withPlatformAdmin } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { requirePlatformAdmin } from '@/lib/platform/server';
 import { customerStatus, jobLabel, jobStatus, type PlatformCustomer } from '../../parts';
+import { StartAgain } from '../../start-again';
 import { StatusControl } from '../../status-control';
 import { Bundles, type CustomerModule } from './bundles';
 import { AccountOwners, type Owner } from './owners';
@@ -101,6 +102,20 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
         </p>
         <StatusControl tenantId={id} status={customer.status} name={customer.name} />
       </details>
+      {customer.is_test && (
+        // test customers only (ADR 130): their data is made up for demos
+        <details className="rounded-xl bg-white p-3 text-sm ring-1 ring-slate-200">
+          <summary className="min-h-11 cursor-pointer content-center font-medium">
+            Start again
+          </summary>
+          <p className="py-2 text-slate-600">
+            Removes all of {customer.name}&apos;s people, places, stock, tasks and history. Their
+            plan and settings stay. Then import their files and make their logins again: everyone
+            keeps their password.
+          </p>
+          <StartAgain tenantId={id} name={customer.name} />
+        </details>
+      )}
     </>
   );
 }

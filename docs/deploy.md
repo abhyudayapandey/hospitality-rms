@@ -2857,3 +2857,33 @@ the live camera: tell the outlets before it goes out.
      and **Custom**: a day, From and To.
    - **`passport.security-supervisor`**: the Security department, its guards' checklists to
      sign off.
+
+## Releasing any shift type for anyone, Utilities for Engineering, and Start again (ADR 130)
+
+Three migrations: `20261221100000_roster_any_shift_type`, `20261221110000_compliance_pages_for_department`
+and `20261221120000_reset_test_customer`. An access change: Utilities moves off SUPERVISOR and
+DEPARTMENT_HEAD, so only meter readers (Engineering) and managers have it. The chief engineer
+and shift engineers gain READS_METERS. Test Company's file 06 and 99 preview are updated. Run
+"RLS equivalence (all users)" before merging. No stack change.
+
+1. Merge.
+2. No `cdk diff` or `cdk deploy`.
+3. **Deploy** as usual (it syncs product access into every tenant).
+4. **Passport, from clean**: the console → **[TEST] Passport Hotel** → **Start again** → type
+   its name exactly → **Remove everything and start again**. Its plan (Hotel, Compliance) stays.
+   Then **Update from their files** → `passport-hotel.zip` (rebuild it first:
+   `cd docs/onboarding/demo/passport-hotel && zip -q -FS ../passport-hotel.zip *.csv`) →
+   **Upload and check**. No problems, no warnings, and everything new, nothing changed: org
+   places 14, job roles 39, users 40, workers 40, checklists 39, licences 14, shifts 489,
+   tasks 2 (pinned by `passport-demo.db.test.ts`). **Apply**, then a second check shows no
+   changes. Then **Sign-ins for their people** → create the logins: everyone's existing
+   sign-in is linked again by username, and passwords stay.
+5. **The test customers** (test environment only): re-import the step 7 zips. Job role
+   access changes for the chief engineers (READS_METERS).
+6. Check, at 380 px:
+   - **`passport.gm`**: Roster → By person → yourself → tap any type (Security Night too).
+     That tile lights up. Tap it again: nothing changes. Tap another: the first is gone. **Off** clears it.
+   - **`passport.purchase-manager`**, the front office manager, a captain: no Utilities.
+   - **`passport.technician`** and **`passport.chief-engineer`**: Utilities opens. The chief
+     engineer opens a fire extinguisher in Compliance → Licences.
+   - **`passport.technician`**: To do has today's **Daily rounds** only, no "Daily plant round".

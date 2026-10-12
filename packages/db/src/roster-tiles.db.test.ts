@@ -292,17 +292,17 @@ describe('the tiles (hr.set_day_shift)', () => {
         }
       ).d.people.find((p) => p.worker_id === w)!;
       expect(me).toMatchObject({ template_id: null, start: '12:00', end: '16:00' });
-      // a tile of another job role's shift type can't be used for them
+      // another job role's shift type is theirs to be put on too (ADR 130)
       const other = await as('select hr.set_day_shift($1, $2::date, $3)', [
         await worker(c, 'test.steward-b.1.0'),
         addDays(monday, 1),
         await template(c, RESTAURANT, 'Dinner', 'CAPTAIN'),
       ]);
-      expect(other.error).toMatch(/ROLE_MISMATCH/);
+      expect(other.error).toBeUndefined();
     });
   });
 
-  it("another role's shift type gives them a shift of their own with its times; a custom shift (ADR 128)", async () => {
+  it("any shift type, another role's too: its tile is lit, a second tap adds nothing, moving leaves nothing behind (ADR 130)", async () => {
     await inRolledBackTx(async (c) => {
       const monday = await mondayAhead(c, 6);
       const w = await worker(c, 'test.steward-b.1.0');
@@ -314,9 +314,6 @@ describe('the tiles (hr.set_day_shift)', () => {
            from hr.shift_template where id = $1`,
         [dinner],
       );
-      expect(
-        (await as('select hr.set_day_shift_any($1, $2::date, $3)', [w, monday, dinner])).error,
-      ).toBeUndefined();
       const read = async (day: string) => {
         const r = await as(`select hr.roster_day($1, $2::date) as d`, [ids.node(RESTAURANT), day]);
         return (
@@ -332,11 +329,51 @@ describe('the tiles (hr.set_day_shift)', () => {
           }
         ).d.people.find((p) => p.worker_id === w)!;
       };
+      // the day's shifts that are not cancelled, and those with nobody on them
+      const counts = async (day: string) =>
+        (
+          await c.query<{ live: number; empty: number }>(
+            `select count(*)::int live,
+                    count(*) filter (where not exists (
+                      select 1 from hr.shift_assignment a
+                       where a.shift_id = s.id and a.status = 'assigned'))::int empty
+               from hr.shift s
+              where s.org_node_id = $1 and s.local_date = $2::date and s.status <> 'cancelled'`,
+            [ids.node(RESTAURANT), day],
+          )
+        ).rows[0]!;
+      const before = await counts(monday);
+      // tap the captains' Dinner for a steward: they are on Dinner, its tile the one lit
+      expect(
+        (await as('select hr.set_day_shift($1, $2::date, $3)', [w, monday, dinner])).error,
+      ).toBeUndefined();
       expect(await read(monday)).toMatchObject({
-        template_id: null,
+        template_id: dinner,
         start: t.rows[0]!.s,
         end: t.rows[0]!.e,
       });
+      const once = await counts(monday);
+      expect(once.live).toBe(before.live + 1);
+      expect(once.empty).toBe(before.empty);
+      // a second tap changes nothing
+      expect(
+        (await as('select hr.set_day_shift($1, $2::date, $3)', [w, monday, dinner])).error,
+      ).toBeUndefined();
+      expect(await counts(monday)).toEqual(once);
+      // their own role's type: the Dinner made for them goes; no empty draft is left
+      const split = await template(c, RESTAURANT, 'Split', 'STEWARD');
+      expect(
+        (await as('select hr.set_day_shift($1, $2::date, $3)', [w, monday, split])).error,
+      ).toBeUndefined();
+      expect(await read(monday)).toMatchObject({ template_id: split });
+      expect((await counts(monday)).empty).toBe(before.empty);
+      // Off, then Dinner again, then Off: still nothing left behind
+      await as('select hr.set_day_shift($1, $2::date, null)', [w, monday]);
+      await as('select hr.set_day_shift($1, $2::date, $3)', [w, monday, dinner]);
+      await as('select hr.set_day_shift($1, $2::date, null)', [w, monday]);
+      expect((await read(monday)).template_id).toBeNull();
+      expect((await counts(monday)).empty).toBe(before.empty);
+      await as('select hr.set_day_shift($1, $2::date, $3)', [w, monday, dinner]);
       // a custom shift replaces it, and the rules run on it as on any assignment
       expect(
         (await as(`select hr.set_custom_shift($1, $2::date, '10:30', '15:30')`, [w, monday])).error,
@@ -348,6 +385,7 @@ describe('the tiles (hr.set_day_shift)', () => {
         [w, monday],
       );
       expect(shifts.rows[0]!.n).toBe(1);
+      expect((await counts(monday)).empty).toBe(before.empty);
       // overnight, but never longer than 16 hours, and only by whoever builds the roster
       expect(
         (

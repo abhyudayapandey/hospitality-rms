@@ -594,7 +594,7 @@ const ROLE_LIST: readonly RoleDef[] = [
     code: 'CHIEF_ENGINEER',
     title: 'Chief Engineer',
     home: 'ENGINEERING',
-    duties: [D],
+    duties: [D, 'READS_METERS'],
     sops: ['H'],
   },
   {
@@ -602,7 +602,7 @@ const ROLE_LIST: readonly RoleDef[] = [
     title: 'Shift Engineer',
     alsoCalled: ['Assistant Engineer'],
     home: 'ENGINEERING',
-    duties: [L, W],
+    duties: [L, W, 'READS_METERS'],
     sops: ['H'],
   },
   {

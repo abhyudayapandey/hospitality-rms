@@ -196,7 +196,7 @@ export async function weekRoster(
                        left join hr.worker_directory d on d.worker_id = a.worker_id
                       where a.shift_id = s.id and a.status = 'assigned'), '[]') as people
       from hr.shift s
-      left join hr.shift_template t on t.id = s.template_id
+      left join hr.shift_template t on t.id = coalesce(s.template_id, s.copy_of)
      where s.org_node_id = any(${nodes}::uuid[]) and s.status <> 'cancelled'
        and s.local_date between ${monday}::date and ${monday}::date + 6
      order by s.start_at, s.role_code`.execute(tx);

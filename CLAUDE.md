@@ -344,9 +344,15 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   the next page in full. Every step of every task, and a task with no steps, takes a photo from
   the live camera only, never the gallery (`PHOTO_REQUIRED`; `PHOTO_DIR` keeps them on disk
   where there is no bucket, dev and e2e only). Fire extinguishers are licences with a location
-  and a type. The roster offers every shift type and a custom shift (`hr.set_custom_shift`).
+  and a type. The roster offers every shift type and a custom shift (`hr.set_custom_shift`, ADR 130).
   The app's words read at Flesch-Kincaid grade 6 or lower, no sentence over 20 words
   (`lib/plain-language.test.ts`).
+- Any shift type for anyone; Utilities is Engineering's; Start again (ADR 130): a roster tap puts
+  a person on any type of the department and lights it, another role's too (`hr.shift.copy_of`);
+  a shift made by a tap (`personal`) goes when nobody is left on it. UTILITIES comes only from
+  READS_METERS (Engineering) and the outlet's managers. A test customer starts again from the
+  console (`platform.reset_test_customer`: everything of theirs removed, then import their files
+  and make logins again); never a real customer.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in
