@@ -1,6 +1,7 @@
 # UX review: making the app simpler for outlet staff
 
-Status: **proposal, for approval** · 2026-10-02
+Status: **built** (UX-1 to UX-6: ADR 025, 026, 027, 034, 035; written 2026-10-02 as a proposal).
+Later UX work followed `docs/ux-audit-2.md`, `docs/ux-audit-3.md` and `docs/plans/ux-audit.md`.
 
 We built the app one module at a time, and it shows. Each module has its own tabs, its own
 words and its own idea of "where you are". This review walks every screen as eleven people

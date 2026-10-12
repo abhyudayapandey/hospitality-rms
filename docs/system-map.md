@@ -1,8 +1,9 @@
 # System map: people, places and who uses what
 
-Status: current as of 2026-10-05 (after ADR 049). This page describes what exists today.
-`docs/ux-review.md` and `docs/reporting.md` describe what is proposed. The test customers
-in `docs/onboarding/test-data` are the worked example.
+Status: current as of 2026-10-12 (after ADR 137). This page describes what exists today;
+`docs/prd.md` lists the requirements behind it and `docs/decisions/` why each was built that way.
+The test customers in `docs/onboarding/test-data` and the Passport Hotel demo in
+`docs/onboarding/demo/passport-hotel` are the worked examples.
 
 ## 1. Places
 
@@ -40,10 +41,11 @@ the Kitchen Store.
 
 ### What is not modelled
 
-**Tables** and **guests**, and rooms beyond their minibars: a hotel's rooms are listed (file 40)
-only so their minibars can be checked and charged (ADR 072). Housekeeping otherwise works
-through tasks and checklists at the Housekeeping department. Room status, folios and stays would
-need a PMS link (see `docs/reporting.md` gaps).
+**Tables**, **guests**, folios and stays. A hotel's rooms (file 40, with floors) carry what each
+should hold, a status and its minibar, and are given to attendants per day; meals are counted by
+room. But who stays in a room, their bill and their nights stay in the hotel's PMS: a room's status
+is set by people in the app, not read from the PMS (see `docs/reporting.md` gaps). A restaurant's
+floor is divided into sections (file 47), not tables.
 
 ## 2. People
 
@@ -177,7 +179,7 @@ list a catalogue role by code alone. Each customer's `99_access_preview_GENERATE
 | Compliance (ADR 069, if bought): licences and the calendar; first card on Home; renew or mark done from the To do item |                             |                     | the calendar jobs given to their role                                    |                                                     |                                      | **keeps** (add, renew, mark done)                   | area, owner: view                                                |
 | Transfers: request / dispatch / receive                                                                                | stock users request         |                     | ✔                                                                        | ✔                                                   | view                                 | ✔                                                   | hub manager dispatches                                           |
 | Request for material, RFM (ADR 044): a request into a department's store                                               | stock users request         |                     | approves if off the menu or more than usual                              | issues (sends)                                      | view                                 | approves too; told of orders                        | hub manager dispatch                                             |
-| Recipes (read)                                                                                                         | their store's (no cost)     | their store's       | with costs                                                               | no cost                                             | with costs                           | with costs                                          | area: costs                                                      |
+| Recipes (read, ADR 123)                                                                                                | their prep task's recipe    | sous chef: with costs | with costs (kitchen, bar, F&B, restaurant heads)                         |                                                     | with costs                           | with costs                                          | area, owner: costs                                               |
 | Menu costs, prices, sales entry                                                                                        |                             |                     |                                                                          |                                                     | **✔**                                | ✔                                                   | area: view                                                       |
 | POS import (ADR 039): upload the day's file; match POS codes                                                           | cashier: upload, match      |                     |                                                                          |                                                     | upload, match                        | upload, match                                       |                                                                  |
 | Expiry (ADR 040): morning alert; Push today on Home                                                                    | service teams: Push today   |                     | alert (their store's team)                                               |                                                     |                                      | alert if no dept head; Push today                   |                                                                  |
@@ -287,7 +289,8 @@ who presented, and nothing touches a login meanwhile.
 - _Checklists_: a finished round may need signing off (one level up, the department head or a
   named role; a To do item), schedules may be monthly or the nth weekday, steps may run on some
   weekdays only, readings ask what food and whether it was thrown, and a checklist may run per
-  room or per area as a grid; rooms carry a status (VC, OCC, VD, OOO, ...) (ADR 087, 088).
+  room or per area as a grid; rooms carry a status shown as a word, never a code: Clean, Dirty,
+  Guest in, Arriving, Departing, Out of order (ADR 087, 088, 104, 131).
 - _Logbook & handover_ (LOGBOOK): entries per place and a handover acknowledged by whoever it is
   for. _Registers_ (REGISTERS): lost and found, incidents, visitors, vehicles, staff in and out,
   keys, fire equipment, each kept by the roles file 45 names. _Utilities_ (UTILITIES): meters
@@ -306,10 +309,38 @@ who presented, and nothing touches a login meanwhile.
 - _Excise_ (EXCISE): a store's daily bar register and FLR from the ledger, and transport
   permits; _covers_ per meal on the outlet's day report, with the spend per cover (ADR 096).
 
+**The roster** (ADR 082, 128, 130, 132, 135). By person (a department head's default) or by shift.
+By person is a row each with a tile per shift type of the department (straight, split or panzer),
+a Custom tile and Off; a tap puts anyone on any type, another role's too, and every rule runs
+again. Changes wait: drafts, and people put on or taken off a published shift, are counted in
+**Publish (N)** and nobody is told until it is pressed; **Start again** undoes every change not yet
+published. "Repeat this pattern" copies a week forward.
+
+**Rooms, meals and sections** (ADR 110, 111, 117, 121, 131, 133, 136). Rooms are tiles coloured by
+their status word; tap one, tap the new status (Arriving and Departing carry a time; Out of order a
+reason, an until-day and its repair). Whoever runs housekeeping gives rooms to attendants per day,
+a whole floor in one tap; an attendant sees theirs first. The restaurant team sets breakfast,
+lunch and dinner by room (a tapped room starts at 2 guests, a floor in one tap), read by the
+kitchen, front office and housekeeping. A restaurant's floor manager gives sections (Section 1 to
+3 at Passport) to servers per day, a row per person, confirmed with Save changes; Home says "Your
+section today".
+
+**Me** (ADR 106, 125, 132). Clock, My shifts, Leave, SOPs and Report a problem first, then the
+person's own work under headings: My work, My day, Team, Admin, More. Nothing is folded.
+
+**An item's page** (ADR 134). Its photo and what is on hand, its five latest movements with Show
+all, its open requests and where each is, then **Ask for more**: from the store that keeps it, else
+a supply request, the form opening with the item first.
+
+**Alerts on the phone** (ADR 137). Everything that lands in the 🔔 also shows on the phone's lock
+screen within a minute, for the phones its owner turned alerts on for: Home asks once, Profile →
+Alerts on this phone turns them on or off. An iPhone needs the app on its Home Screen first.
+
 ### Approval processes (To do list)
 
-LEAVE, SHIFT_SWAP, PURCHASE_ORDER (only unusual ones, ADR 044: off the menu or more than
-usual; the department head or the GM; no value limit and no area manager step, ADR 049), STOCK_ADJUSTMENT
+LEAVE, SHIFT_SWAP, PURCHASE_ORDER (by the outlet's own rules, ADR 115: only unusual ones by
+default, ADR 044: off the menu or more than usual; the department head or the GM; no value limit
+and no area manager step, ADR 049), STOCK_ADJUSTMENT
 (old-count differences beyond tolerance, wastage over the limit, delivery excess; a stock
 check difference needs no approval, ADR 043), TRANSFER (a request for material that is off the
 menu or more than usual first goes to the department head or the GM), ROLE_CHANGE, DEACTIVATION (a leaver, approved by the
@@ -320,7 +351,8 @@ Owner (ADR 010). The person who started a request never approves it.
 
 ### Background jobs
 
-- **Executor** (every minute): carries out approved requests.
+- **Executor** (every minute): carries out approved requests, then sends each new notification to
+  its owner's phones (ADR 137).
 - **Nightly** (02:15): attendance exceptions, the location purge and the removal of
   selfies and devices past the retention rule (ADR 045), then the report tables for the
   last 35 days (ADR 023).
