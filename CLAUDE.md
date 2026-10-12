@@ -359,7 +359,14 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   A room checking out reads Departing, the front office's word (ADR 131).
 - Floor sections (ADR 133, file 47): a restaurant's or bar's sections, given per day to its
   people by whoever manages tasks there (`ops.give_sections`), like rooms; Home says "Your section
-  today". Passport's restaurant has Section 1 to 3.
+  today". Passport's restaurant has Section 1 to 3. Give sections is a row per person with
+  section tiles, saved by "Save changes (N)" with Undo; nothing saves on a tap.
+- An item's page (ADR 134): five latest movements and Show all, its open requests, then "Ask for
+  more" (the store that keeps it, else a supply request), the form opening with the item first.
+- Roster changes wait for Publish (ADR 135): off a published shift is `coming_off`, on one is
+  `pending` (staff screens read `assigned` only); `hr.week_changes` is Publish (N), Off included;
+  Start again undoes them. Meals by room start at 2 guests and a floor's heading takes all its
+  rooms (ADR 136).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

@@ -2912,3 +2912,17 @@ sections). No stack change.
    - **Any manager**: Rooms show **Departing**. Me shows headings (My work, My day, Team, Admin).
    - **`passport.security-supervisor`**: Roster → a week with drafts → **Start again** → Discard:
      drafts not yet started go, published shifts stay.
+
+## Releasing item pages that ask, sections saved on confirm, roster changes that wait, and meals by floor (ADR 133 to 136)
+
+One migration, `20261223100000_roster_changes_wait.sql` (hr.shift_assignment gains
+`coming_off` and the status `pending`; the roster functions follow). No infrastructure change,
+no new files to import.
+
+1. Merge, then run the Deploy workflow; the migration runs with it.
+2. Check:
+   - An item's page (Stock → an item): five movements and "Show all", Requests, "Ask for more".
+   - Give sections: taps mark tiles, "Save changes (N)" saves, Undo puts them back.
+   - Roster by person on a published week: Off lights, the row says "Not published",
+     Publish (1); Start again puts the shift back; Publish tells the person once.
+   - Meals: a room tapped starts at 2; a floor's heading takes all its rooms.

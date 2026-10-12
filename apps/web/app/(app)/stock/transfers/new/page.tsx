@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { NoSupplyAccess } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
+import { isUuid, param } from '@/lib/params';
 import { sql, withUser } from '@/lib/db';
 import { supplyContext, type SearchParams } from '@/lib/inventory';
 import { TransferRequestForm, type AskItem } from './transfer-request-form';
@@ -12,6 +13,9 @@ export default async function NewTransferPage({ searchParams }: { searchParams: 
   const ctx = await supplyContext(searchParams, 'transfers');
   if (!ctx.can('TRANSFERS', 'modify') || !ctx.node || ctx.node.derived) return <NoSupplyAccess />;
   const user = await requireUser();
+  // opened from an item's page: that item first (ADR 134)
+  const asked = param(await searchParams, 'item');
+  const focus = isUuid(asked) ? asked : undefined;
   const items = await withUser(
     user.id,
     async (tx) =>
@@ -28,7 +32,7 @@ export default async function NewTransferPage({ searchParams }: { searchParams: 
         ← Transfers
       </Link>
       <h1 className="text-xl font-semibold">Ask for stock for {ctx.node.name}</h1>
-      <TransferRequestForm to={ctx.node.id} items={items} />
+      <TransferRequestForm to={ctx.node.id} items={items} focus={focus} />
     </div>
   );
 }

@@ -15,7 +15,7 @@ import {
 } from '@/lib/dates';
 import { sql, withUser } from '@/lib/db';
 import { param, type SearchParams } from '@/lib/inventory';
-import { peopleContext, weekRoster, type RosterShift } from '@/lib/people';
+import { peopleContext, weekChanges, weekRoster, type RosterShift } from '@/lib/people';
 import { departmentSections } from '@/lib/department-groups';
 import type { PlaceDepartment } from '@/lib/today-view';
 import { dayStrip, groupByTime, pickDay } from '@/lib/roster-view';
@@ -47,7 +47,7 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
   // "All departments" (ADR 048): every department's shifts, in a section each; Home's open
   // shifts count opens it
   const all = param(sp, 'all') === '1' && ctx.nodes.length > 1;
-  const { shifts, places } = await withUser(user.id, async (tx) => {
+  const { shifts, places, changes } = await withUser(user.id, async (tx) => {
     const shifts = await weekRoster(tx, all ? ctx.nodes.map((n) => n.id) : node.id, monday);
     const nodes = [...new Set(shifts.map((s) => s.org_node_id))];
     const places =
@@ -58,7 +58,10 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
                 from core.department_of(${nodes}::uuid[])`.execute(tx)
           ).rows
         : [];
-    return { shifts, places };
+    // what Publish publishes: drafts and changes to published shifts (ADR 135)
+    const changes =
+      !all && ctx.can('ROSTER', 'modify') ? await weekChanges(tx, node.id, monday) : 0;
+    return { shifts, places, changes };
   });
   const canEdit = ctx.can('ROSTER', 'modify');
   const drafts = shifts.filter((s) => s.status === 'draft').length;
@@ -199,7 +202,7 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
         <WeekActions
           node={node.id}
           monday={monday}
-          drafts={drafts}
+          drafts={changes}
           window={window}
           empty={shifts.length === 0}
         />
@@ -426,6 +429,9 @@ function ShiftRow({
               className="flex items-center gap-1 rounded-full bg-slate-100 py-0.5 pr-0.5 pl-3 text-sm"
             >
               {p.name}
+              {p.pending && (
+                <span className="rounded-full bg-amber-50 px-2 text-xs text-amber-800">new</span>
+              )}
               {editable ? (
                 <RemoveButton assignment={p.assignment_id} name={p.name} />
               ) : (

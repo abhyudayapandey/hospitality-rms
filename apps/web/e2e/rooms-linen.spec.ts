@@ -51,13 +51,20 @@ test('a room is counted; breakfast is given by room and read', async ({ page }) 
     );
     await main(page).getByTestId('breakfast-add-buffet').click();
     const picker = main(page).getByTestId('breakfast-add');
+    // a whole floor in one tap, two guests a room (ADR 136); tapped again it comes off
+    const floor = picker.getByTestId('meal-floor').first();
+    await floor.click();
+    await expect(floor).toHaveAttribute('aria-pressed', 'true');
+    await expect(picker.getByTestId('room-guests').first()).toHaveText('2');
+    await floor.click();
+    await expect(picker.getByTestId('breakfast-room')).toHaveCount(0);
     await picker.getByRole('button', { name: 'Room 101' }).click();
     await picker.getByRole('button', { name: 'Room 201' }).click();
     await picker.getByRole('button', { name: 'One more in room 201' }).click();
     await picker.getByTestId('breakfast-picked').click();
     await expect(
       main(page).getByTestId('breakfast-buffet').getByTestId('breakfast-by-room'),
-    ).toHaveText('3 guests in 2 rooms');
+    ).toHaveText('5 guests in 2 rooms');
     await main(page).getByTestId('breakfast-add-in_room').click();
     await expect(picker.getByRole('button', { name: 'Room 101' })).toHaveCount(0);
     await picker.getByRole('button', { name: 'Room 102' }).click();
@@ -86,10 +93,10 @@ test('a room is counted; breakfast is given by room and read', async ({ page }) 
       await page.goto(`/breakfast?outlet=${outlet}`);
       await expect(
         main(page).getByTestId('breakfast-buffet').getByTestId('breakfast-total'),
-      ).toContainText('3 guests · 2 rooms');
+      ).toContainText('5 guests · 2 rooms');
       await expect(
         main(page).getByTestId('breakfast-in_room').getByTestId('breakfast-total'),
-      ).toContainText('1 guest · 1 room');
+      ).toContainText('2 guests · 1 room');
       await expect(main(page).getByRole('button', { name: /^Save / })).toHaveCount(0);
     }
   } finally {

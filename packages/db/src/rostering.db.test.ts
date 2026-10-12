@@ -645,18 +645,29 @@ describe('candidates, publish and notifications', () => {
       );
       expect(notes.rows).toEqual([{ kind: 'roster_published', link: '/roster/my' }]);
 
-      // edits after publish notify the affected worker
+      // an edit after publish waits for the next Publish (ADR 135), then tells the worker
       const asg = await c.query<{ id: string }>(
         `select id from hr.shift_assignment where shift_id = $1 and status = 'assigned'`,
         [b],
       );
       await attemptAs(c, OLIVIA(), 'select hr.unassign($1)', [asg.rows[0]!.id]);
-      const after = await attemptAs<{ kind: string }>(
+      const kinds = async () =>
+        (
+          await attemptAs<{ kind: string }>(
+            c,
+            ids.user('test.server.3.0'),
+            'select kind from ops.notification order by created_at, id',
+          )
+        ).rows!.map((r) => r.kind);
+      expect(await kinds()).toEqual(['roster_published']);
+      const again = await attemptAs<{ n: number }>(
         c,
-        ids.user('test.server.3.0'),
-        'select kind from ops.notification order by created_at, id',
+        OLIVIA(),
+        'select hr.publish_week($1, $2) as n',
+        [ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), monday],
       );
-      expect(after.rows!.map((r) => r.kind)).toEqual(['roster_published', 'roster_changed']);
+      expect(again.rows![0]!.n).toBe(1);
+      expect(await kinds()).toEqual(['roster_published', 'roster_changed']);
 
       // My shifts: Sam reads his own assignments through RLS
       const mine = await attemptAs<{ shift_id: string }>(

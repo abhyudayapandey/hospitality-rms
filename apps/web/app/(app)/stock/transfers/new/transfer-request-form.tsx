@@ -23,7 +23,16 @@ export interface AskItem extends ItemOption {
  * Ask for stock (ADR 115): items by the store they come from, short ones first; a quantity for
  * each wanted, nothing filled in (ADR 053). One tap asks every store at once.
  */
-export function TransferRequestForm({ to, items }: { to: string; items: AskItem[] }) {
+export function TransferRequestForm({
+  to,
+  items,
+  focus,
+}: {
+  to: string;
+  items: AskItem[];
+  /** opened from an item's page: its store first and it at the top (ADR 134) */
+  focus?: string | undefined;
+}) {
   const router = useRouter();
   const [qty, setQty] = useState<Record<string, string>>({});
   const [note, setNote] = useState('');
@@ -38,12 +47,22 @@ export function TransferRequestForm({ to, items }: { to: string; items: AskItem[
     .filter((l) => qty[l.item_id]?.trim() && l.qty > 0);
   const short = (i: AskItem) => Number(i.par_level ?? 0) > Number(i.on_hand);
   // by the store it comes from, short items first in each
-  const sources = [...new Set(askable.map((i) => i.source_name!))].map((name) => ({
-    name,
-    rows: askable
-      .filter((i) => i.source_name === name)
-      .sort((a, b) => Number(short(b)) - Number(short(a))),
-  }));
+  const sources = [...new Set(askable.map((i) => i.source_name!))]
+    .map((name) => ({
+      name,
+      rows: askable
+        .filter((i) => i.source_name === name)
+        .sort(
+          (a, b) =>
+            Number(b.item_id === focus) - Number(a.item_id === focus) ||
+            Number(short(b)) - Number(short(a)),
+        ),
+    }))
+    .sort(
+      (a, b) =>
+        Number(b.rows.some((i) => i.item_id === focus)) -
+        Number(a.rows.some((i) => i.item_id === focus)),
+    );
 
   const submit = () =>
     start(async () => {
@@ -76,7 +95,9 @@ export function TransferRequestForm({ to, items }: { to: string; items: AskItem[
               {g.rows.map((i) => (
                 <li
                   key={i.item_id}
-                  className="flex items-center justify-between gap-3 px-4 py-2"
+                  className={`flex items-center justify-between gap-3 px-4 py-2 ${
+                    i.item_id === focus ? 'rounded-xl ring-2 ring-brand-700' : ''
+                  }`}
                   data-filter-row
                   data-filter-text={i.name}
                 >
@@ -93,6 +114,7 @@ export function TransferRequestForm({ to, items }: { to: string; items: AskItem[
                   <input
                     id={`t-${i.item_id}`}
                     aria-label={`Ask for ${i.name}`}
+                    autoFocus={i.item_id === focus}
                     inputMode="decimal"
                     value={qty[i.item_id] ?? ''}
                     onChange={(e) => setQty((v) => ({ ...v, [i.item_id]: e.target.value }))}
