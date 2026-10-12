@@ -563,3 +563,117 @@ describe('start again (ADR 132)', () => {
     });
   });
 });
+
+describe('changes to a published week wait for Publish (ADR 135)', () => {
+  it('Off and a new type count in Publish, tell nobody until then, and Start again undoes them', async () => {
+    await inRolledBackTx(async (c) => {
+      const monday = await mondayAhead(c, 6);
+      const node = ids.node(RESTAURANT);
+      const as = <T extends object>(text: string, params: unknown[]) =>
+        attemptAs<T>(c, ids.user(MANAGER), text, params);
+      const steward = await worker(c, 'test.steward.1.0');
+      const other = await worker(c, 'test.steward-b.1.0');
+      const breakfast = await template(c, RESTAURANT, 'Breakfast', 'STEWARD');
+      const dinner = await template(c, RESTAURANT, 'Dinner', 'STEWARD');
+      const day = addDays(monday, 1);
+      await as('select hr.set_day_shift($1, $2::date, $3)', [steward, day, breakfast]);
+      expect(
+        (await as('select hr.publish_week($1, $2::date)', [node, monday])).error,
+      ).toBeUndefined();
+      const changes = async () =>
+        (await as<{ n: number }>('select hr.week_changes($1, $2::date) as n', [node, monday]))
+          .rows![0]!.n;
+      const notes = async (who: string) =>
+        (
+          await c.query<{ title: string }>(
+            `select title from ops.notification where owner_user_id = $1 and kind = 'roster_changed'
+              order by created_at, id`,
+            [ids.user(who)],
+          )
+        ).rows.map((r) => r.title);
+      const tiles = async () =>
+        (
+          await as<{
+            d: { people: { worker_id: string; template_id: string | null; changed: boolean }[] };
+          }>('select hr.roster_day($1, $2::date) as d', [node, day])
+        ).rows![0]!.d.people;
+      expect(await changes()).toBe(0);
+
+      // Off: the steward still has the shift (and sees it) until Publish; one change
+      expect(
+        (await as('select hr.set_day_shift($1, $2::date, null)', [steward, day])).error,
+      ).toBeUndefined();
+      expect(await changes()).toBe(1);
+      expect(await notes('test.steward.1.0')).toEqual([]);
+      const mine = await attemptAs<{ n: number }>(
+        c,
+        ids.user('test.steward.1.0'),
+        `select count(*)::int as n from hr.shift_assignment a join hr.shift s on s.id = a.shift_id
+          where a.owner_user_id = core.current_user_id() and a.status = 'assigned'
+            and s.status = 'published' and s.local_date = $1::date`,
+        [day],
+      );
+      expect(mine.rows![0]!.n).toBe(1);
+      const row = (await tiles()).find((p) => p.worker_id === steward)!;
+      expect(row).toMatchObject({ template_id: null, changed: true });
+
+      // the other steward put on the published Breakfast: pending, unseen, a second change
+      expect(
+        (await as('select hr.set_day_shift($1, $2::date, $3)', [other, day, breakfast])).error,
+      ).toBeUndefined();
+      expect(await changes()).toBe(2);
+      expect(await notes('test.steward-b.1.0')).toEqual([]);
+
+      // Start again takes both back: the steward on Breakfast, the other not
+      expect(
+        (await as<{ n: number }>('select hr.discard_drafts($1, $2::date) as n', [node, monday]))
+          .rows![0]!.n,
+      ).toBeGreaterThanOrEqual(2); // and the template window's drafts
+      expect(await changes()).toBe(0);
+      expect((await tiles()).find((p) => p.worker_id === steward)).toMatchObject({
+        template_id: breakfast,
+        changed: false,
+      });
+      expect((await tiles()).find((p) => p.worker_id === other)).toMatchObject({
+        template_id: null,
+      });
+
+      // moved to Dinner: Breakfast coming off, Dinner a new draft; back to Breakfast undoes it
+      await as('select hr.set_day_shift($1, $2::date, $3)', [steward, day, dinner]);
+      expect(await changes()).toBe(2);
+      await as('select hr.set_day_shift($1, $2::date, $3)', [steward, day, breakfast]);
+      expect(await changes()).toBe(0);
+
+      // Off and the other on, published: each told once, and the roster is as shown
+      await as('select hr.set_day_shift($1, $2::date, null)', [steward, day]);
+      await as('select hr.set_day_shift($1, $2::date, $3)', [other, day, breakfast]);
+      const seen = await attemptAs<{ n: number }>(
+        c,
+        ids.user('test.steward-b.1.0'),
+        `select count(*)::int as n from hr.shift_assignment
+          where owner_user_id = core.current_user_id() and status = 'assigned'`,
+        [],
+      );
+      const before = seen.rows![0]!.n;
+      expect(
+        (await as<{ n: number }>('select hr.publish_week($1, $2::date) as n', [node, monday]))
+          .rows![0]!.n,
+      ).toBe(2);
+      expect(await notes('test.steward.1.0')).toEqual(['Shift removed']);
+      expect(await notes('test.steward-b.1.0')).toEqual(['New shift added']);
+      const after = await attemptAs<{ n: number }>(
+        c,
+        ids.user('test.steward-b.1.0'),
+        `select count(*)::int as n from hr.shift_assignment
+          where owner_user_id = core.current_user_id() and status = 'assigned'`,
+        [],
+      );
+      expect(after.rows![0]!.n).toBe(before + 1);
+      expect(await changes()).toBe(0);
+      expect((await tiles()).find((p) => p.worker_id === steward)).toMatchObject({
+        template_id: null,
+        changed: false,
+      });
+    });
+  });
+});

@@ -20,7 +20,7 @@ interface Row {
 /**
  * One meal (ADR 121): for each way it is served, its rooms, each a tile with − / + for its
  * guests; the meal's guests are its rooms'. "Add rooms" opens every room as a tile: tap as many
- * as come (one guest each to start), type a number to find one. One Save for the meal. Keyed by
+ * as come (two guests each to start, ADR 136), or a whole floor at once, type a number to find one. One Save for the meal. Keyed by
  * the day and meal on the page, so another day starts from its own rooms.
  */
 export function MealForm({
@@ -63,6 +63,20 @@ export function MealForm({
         : has
           ? rows[m].map((r) => (r.room_id === room.room_id ? { ...r, guests } : r))
           : [...rows[m], { ...room, guests, note: '' }];
+    setRows({ ...rows, [m]: next });
+    setSaved(false);
+  };
+  // a whole floor at once (ADR 136): its rooms not yet taken, two guests each; or all off
+  const setFloor = (m: Mode, floor: { room_id: string; number: string }[], on: boolean) => {
+    const ids = new Set(floor.map((r) => r.room_id));
+    const next = on
+      ? [
+          ...rows[m],
+          ...floor
+            .filter((r) => !rows[m].some((x) => x.room_id === r.room_id))
+            .map((r) => ({ room_id: r.room_id, number: r.number, guests: GUESTS, note: '' })),
+        ]
+      : rows[m].filter((r) => !ids.has(r.room_id));
     setRows({ ...rows, [m]: next });
     setSaved(false);
   };
@@ -126,6 +140,7 @@ export function MealForm({
               rooms={rooms.filter((r) => !elsewhere(m).has(r.room_id))}
               chosen={rows[m]}
               onGuests={(room, n) => setGuests(m, room, n)}
+              onFloor={(floor, on) => setFloor(m, floor, on)}
               onDone={() => setAdding(null)}
             />
           ) : (
@@ -219,19 +234,25 @@ function RoomTile({
   );
 }
 
+/** A room tapped starts at two guests, the usual room (ADR 136). */
+const GUESTS = 2;
+
 /**
- * Every room as a tile, floor by floor (ADR 121): tap one to take it (one guest), the taken
- * ones with − / + in the tile. A number typed finds a room. Done goes back to the meal.
+ * Every room as a tile, floor by floor (ADR 121): tap one to take it (two guests, ADR 136), the
+ * taken ones with − / + in the tile; a floor's heading takes all its rooms, as Give rooms does
+ * (ADR 132). A number typed finds a room. Done goes back to the meal.
  */
 function RoomPicker({
   rooms,
   chosen,
   onGuests,
+  onFloor,
   onDone,
 }: {
   rooms: { room_id: string; number: string; floor: string | null }[];
   chosen: Row[];
   onGuests: (room: { room_id: string; number: string }, n: number) => void;
+  onFloor: (rooms: { room_id: string; number: string }[], on: boolean) => void;
   onDone: () => void;
 }) {
   const [find, setFind] = useState('');
@@ -249,9 +270,30 @@ function RoomPicker({
       />
       {floors.map((f) => (
         <div key={f.floor} className="space-y-1">
-          {floors.length > 1 && (
-            <h3 className="text-sm font-semibold text-slate-500">{floorName(f.floor)}</h3>
-          )}
+          {floors.length > 1 &&
+            (() => {
+              const all = f.rooms.every((r) => chosen.some((c) => c.room_id === r.room_id));
+              return (
+                <h3 className="text-sm font-semibold text-slate-500">
+                  <button
+                    type="button"
+                    aria-pressed={all}
+                    onClick={() => onFloor(f.rooms, !all)}
+                    data-testid="meal-floor"
+                    className={`flex min-h-11 w-full items-center justify-between rounded-xl px-3 ring-1 ${
+                      all
+                        ? 'bg-brand-700 text-white ring-brand-700'
+                        : 'bg-white text-slate-700 ring-slate-300'
+                    }`}
+                  >
+                    <span>{floorName(f.floor)}</span>
+                    <span className="text-xs">
+                      {all ? 'All taken · tap to clear' : `Take all ${f.rooms.length}`}
+                    </span>
+                  </button>
+                </h3>
+              );
+            })()}
           <ul className="grid grid-cols-3 gap-2" role="group" aria-label={floorName(f.floor)}>
             {f.rooms.map((r) => {
               const taken = chosen.find((c) => c.room_id === r.room_id);
@@ -268,7 +310,7 @@ function RoomPicker({
                     type="button"
                     aria-pressed={false}
                     aria-label={`Room ${r.number}`}
-                    onClick={() => onGuests(r, 1)}
+                    onClick={() => onGuests(r, GUESTS)}
                     className="flex min-h-[4.5rem] w-full items-center justify-center rounded-xl bg-white text-lg font-bold text-slate-800 tabular-nums ring-1 ring-slate-300"
                     data-testid="breakfast-pick"
                     data-room={r.number}

@@ -33,6 +33,8 @@ export interface TileRow {
   shift_name: string | null;
   start: string | null;
   end: string | null;
+  /** a change to their day not yet published (ADR 135) */
+  changed?: boolean;
 }
 
 const KIND: Record<TileType['shift_type'], string> = {
@@ -161,6 +163,14 @@ export function PeopleTiles({
               <p className="flex items-center gap-2">
                 <Initials name={p.name} className="size-8 text-xs" />
                 <span className="min-w-0 flex-1 font-medium">{p.name}</span>
+                {p.changed && (
+                  <span
+                    className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800"
+                    data-testid="not-published"
+                  >
+                    Not published
+                  </span>
+                )}
                 {p.job_role && <span className="text-xs text-slate-500">{p.job_role}</span>}
               </p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

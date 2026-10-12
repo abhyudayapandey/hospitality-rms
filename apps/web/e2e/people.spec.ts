@@ -78,9 +78,9 @@ test('template shifts: tomorrow to day 7 only, confirm or cancel, then discard (
     await discardButton.click();
     await page
       .getByRole('group', { name: 'Start again' })
-      .getByRole('button', { name: 'Discard' })
+      .getByRole('button', { name: 'Undo changes' })
       .click();
-    await expect(page.getByRole('status')).toContainText('Discarded');
+    await expect(page.getByRole('status')).toContainText('Undid');
   }
   await expect(addButton).toBeVisible();
 
@@ -109,15 +109,15 @@ test('template shifts: tomorrow to day 7 only, confirm or cancel, then discard (
   await discardButton.click();
   await page
     .getByRole('group', { name: 'Start again' })
-    .getByRole('button', { name: 'Keep drafts' })
+    .getByRole('button', { name: 'Keep changes' })
     .click();
   await expect(discardButton).toBeVisible();
   await discardButton.click();
   await page
     .getByRole('group', { name: 'Start again' })
-    .getByRole('button', { name: 'Discard' })
+    .getByRole('button', { name: 'Undo changes' })
     .click();
-  await expect(page.getByRole('status')).toContainText(/^Discarded \d+ draft shifts?\.$/);
+  await expect(page.getByRole('status')).toContainText(/^Undid \d+ changes?\. /);
   await expect(addButton).toBeVisible();
   await lateTemplate(false);
 });
@@ -128,7 +128,7 @@ test('manager builds and publishes; approved leave drops the shift after both ap
   await signInAs(page, 'Test Bar Manager 3.0');
   await assign(page, FRIDAY, 'host', 'Test Host 3.0');
   await page.getByRole('button', { name: /^Publish/ }).click();
-  await expect(page.getByRole('status')).toContainText('Staff have been notified');
+  await expect(page.getByRole('status')).toContainText('Staff have been told');
 
   // The host sees the roster notification and asks for unpaid leave that day
   await signInAs(page, 'Test Host 3.0');

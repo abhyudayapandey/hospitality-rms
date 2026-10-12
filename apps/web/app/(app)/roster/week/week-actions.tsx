@@ -19,9 +19,10 @@ export interface TemplateWindow {
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 // Template shifts are added only for tomorrow to day 7, after the manager confirms. While there
-// are drafts, in those days or in the week on screen, "Start again" takes the place of "Add
-// template shifts": it discards every draft not yet started, so the manager can begin afresh
-// (ADR 024, 132). Publish still publishes the week on screen.
+// are changes not yet published (drafts, or people put on or taken off a published shift), in
+// those days or in the week on screen, "Start again" takes the place of "Add template shifts":
+// it undoes them all, so the manager can begin afresh (ADR 024, 132, 135). Publish (N)
+// publishes the week on screen: N counts every change, Off included.
 export function WeekActions({
   node,
   monday,
@@ -31,8 +32,9 @@ export function WeekActions({
 }: {
   node: string;
   monday: string;
-  drafts: number;
   window: TemplateWindow;
+  /** changes in the week not yet published: draft shifts, people on or off (ADR 135) */
+  drafts: number;
   /** no shifts on screen: one big Fill button instead of the counts and the buttons (ADR 107) */
   empty?: boolean;
 }) {
@@ -64,8 +66,8 @@ export function WeekActions({
       if (!r.ok) return setError(r.message);
       after(
         r.data === 0
-          ? 'Nothing to discard: those drafts have already started.'
-          : `Discarded ${plural(r.data, 'draft shift')}.`,
+          ? 'Nothing to undo: those shifts have already started.'
+          : `Undid ${plural(r.data, 'change')}. The roster is back as published.`,
       );
     });
   const publish = () =>
@@ -73,7 +75,7 @@ export function WeekActions({
       setError(null);
       const r = await publishWeek(node, monday);
       if (!r.ok) return setError(r.message);
-      after(`Published ${r.data} shifts. Staff have been notified.`);
+      after(`Published ${plural(r.data, 'change')}. Staff have been told.`);
     });
   const ask = (what: 'add' | 'discard') => {
     setError(null);
@@ -110,7 +112,7 @@ export function WeekActions({
           <p className="text-sm" data-testid="confirm-text">
             {confirm === 'add'
               ? `Add ${plural(w.toAdd, 'draft shift')}, ${w.span}? Staff see them only after you publish.`
-              : 'Discard every draft shift not yet started, this week and the next 7 days? Anyone on them is freed. Published shifts stay.'}
+              : 'Undo every change not yet published, this week and the next 7 days? The roster goes back to what staff last saw.'}
           </p>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -119,7 +121,7 @@ export function WeekActions({
               onClick={() => setConfirm(null)}
               className={secondaryButton}
             >
-              {confirm === 'add' ? 'Cancel' : 'Keep drafts'}
+              {confirm === 'add' ? 'Cancel' : 'Keep changes'}
             </button>
             <button
               type="button"
@@ -127,7 +129,7 @@ export function WeekActions({
               onClick={confirm === 'add' ? add : discard}
               className={primaryButton}
             >
-              {confirm === 'add' ? 'Add' : 'Discard'}
+              {confirm === 'add' ? 'Add' : 'Undo changes'}
             </button>
           </div>
         </div>

@@ -31,6 +31,8 @@ export interface TilePerson {
   start: string | null;
   end: string | null;
   status: 'draft' | 'published' | null;
+  /** a change to their day not yet published (ADR 135) */
+  changed: boolean;
 }
 
 export interface RosterDay {

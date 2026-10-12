@@ -172,7 +172,8 @@ export interface RosterShift {
   /** a split shift (ADR 082): when its first block ends and its second starts */
   split_end_at?: Date | null;
   split_start_at?: Date | null;
-  people: { assignment_id: string; worker_id: string; name: string }[];
+  /** pending: put on a published shift, not yet published (ADR 135) */
+  people: { assignment_id: string; worker_id: string; name: string; pending: boolean }[];
 }
 
 /**
@@ -190,17 +191,27 @@ export async function weekRoster(
     select s.id, s.org_node_id::text as org_node_id, s.local_date::text as local_date, s.start_at, s.end_at, s.role_code, s.headcount,
            s.status, t.name as template_name, s.shift_type, s.split_end_at, s.split_start_at,
            coalesce((select json_agg(json_build_object('assignment_id', a.id, 'worker_id', a.worker_id,
-                                                       'name', coalesce(d.display_name, 'Worker'))
+                                                       'name', coalesce(d.display_name, 'Worker'),
+                                                       'pending', a.status = 'pending')
                                      order by d.display_name)
                        from hr.shift_assignment a
                        left join hr.worker_directory d on d.worker_id = a.worker_id
-                      where a.shift_id = s.id and a.status = 'assigned'), '[]') as people
+                      where a.shift_id = s.id and a.status in ('assigned', 'pending')
+                        and not a.coming_off), '[]') as people
       from hr.shift s
       left join hr.shift_template t on t.id = coalesce(s.template_id, s.copy_of)
      where s.org_node_id = any(${nodes}::uuid[]) and s.status <> 'cancelled'
        and s.local_date between ${monday}::date and ${monday}::date + 6
      order by s.start_at, s.role_code`.execute(tx);
   return r.rows;
+}
+
+/** Draft shifts and people coming on or off published shifts this week (ADR 135): what
+ * Publish publishes and Start again undoes. */
+export async function weekChanges(tx: Tx, node: string, monday: string): Promise<number> {
+  const r = await sql<{ n: number }>`
+    select hr.week_changes(${node}::uuid, ${monday}::date) as n`.execute(tx);
+  return r.rows[0]?.n ?? 0;
 }
 
 export interface Candidate {
