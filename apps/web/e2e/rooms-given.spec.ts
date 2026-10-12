@@ -48,3 +48,31 @@ test('the housekeeper gives rooms; the attendant sees theirs first and the rest 
     await asMigrator(`delete from ops.room_assignment where org_node_id = $1`, [outlet]);
   }
 });
+
+test('a whole floor in one tap, and off again in one tap (ADR 132)', async ({ page }) => {
+  const outlet = await placeId('TEST-HOTEL-1.0');
+  try {
+    await signInAs(page, 'Test Executive Housekeeper 1.0');
+    await page.goto(`/rooms/give?outlet=${outlet}`);
+    await main(page)
+      .getByRole('group', { name: 'Person' })
+      .getByRole('button', { name: /Test Room Attendant 1\.0/ })
+      .click();
+    const floor = main(page).getByTestId('give-floor').first();
+    const section = main(page).locator('section').filter({ has: floor });
+    const n = await section.getByTestId('give-room').count();
+    expect(n).toBeGreaterThan(1);
+    await floor.click();
+    await expect(floor).toHaveAttribute('aria-pressed', 'true');
+    await expect(section.locator('[data-testid="give-room"][aria-pressed="true"]')).toHaveCount(n);
+    await floor.click();
+    await expect(section.locator('[data-testid="give-room"][aria-pressed="true"]')).toHaveCount(0);
+    await floor.click();
+    await main(page)
+      .getByRole('button', { name: new RegExp(`^Give .* ${n} rooms$`) })
+      .click();
+    await expect(main(page).getByRole('status')).toContainText(`${n} rooms`);
+  } finally {
+    await asMigrator(`delete from ops.room_assignment where org_node_id = $1`, [outlet]);
+  }
+});

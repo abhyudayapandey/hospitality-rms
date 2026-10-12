@@ -2,20 +2,19 @@ import Link from 'next/link';
 import { Icon } from '@/components/icon';
 import { SignOutButton } from '@/components/sign-out-button';
 import { visibleNav } from '@/lib/nav';
-import { meTiles, type Screen } from '@/lib/screens';
+import { meGroups, type Screen } from '@/lib/screens';
 import { loadShell, screenInput } from '@/lib/shell';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 
-// Me (UX-6, ADR 034, 106, 125): every screen the person can open, nothing folded away: their own
-// work first, then their day (Shifts & leave, SOPs, Report a problem), then the rest. The
-// bottom nav keeps three to five tabs; nothing is lost, it is here. Each tile needs the same
-// access as the screen it opens.
+// Me (UX-6, ADR 034, 106, 125, 132): every screen the person can open, nothing folded away,
+// under headings: My work, My day, Team, Admin, then More. The bottom nav keeps three to five
+// tabs; nothing is lost, it is here. Each tile needs the same access as the screen it opens.
 export default async function MePage() {
   const shell = await loadShell();
   const input = screenInput(shell);
   const inNav = new Set(visibleNav(input).map((n) => n.href));
-  const { mine, more } = meTiles(input, inNav);
+  const groups = meGroups(input, inNav);
   // asking the store their team uses for something (ADR 115): where they have one
   const user = await requireUser();
   const asks = await withUser(user.id, async (tx) => {
@@ -45,9 +44,19 @@ export default async function MePage() {
   return (
     <div className="space-y-5">
       <h1 className="text-xl font-semibold">Me</h1>
-      <ul className="grid grid-cols-3 gap-2" data-testid="me-tiles">
-        {[...mine, ...more].map(tile)}
-      </ul>
+      <div className="space-y-4" data-testid="me-tiles">
+        {groups.map((g) => (
+          <section key={g.group} aria-label={g.title} className="space-y-2">
+            <h2
+              className="text-xs font-semibold tracking-wide text-slate-500 uppercase"
+              data-testid={`me-group-${g.group}`}
+            >
+              {g.title}
+            </h2>
+            <ul className="grid grid-cols-3 gap-2">{g.screens.map(tile)}</ul>
+          </section>
+        ))}
+      </div>
       {asks.stores && (
         <Link
           href="/stock/asks"

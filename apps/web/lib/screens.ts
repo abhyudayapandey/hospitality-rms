@@ -570,3 +570,56 @@ export function homeTiles(i: ScreenInput, max = 4): Screen[] {
   const room = Math.max(0, max - keep.length);
   return [...own.slice(0, room), ...keep, ...own.slice(room), ...day.slice(2)].slice(0, max);
 }
+
+/** Me's headings (ADR 132), in the order they show; a heading with no tiles is left out. */
+export const ME_GROUPS = ['work', 'day', 'team', 'admin', 'more'] as const;
+export type MeGroup = (typeof ME_GROUPS)[number];
+export const ME_GROUP_TITLES: Readonly<Record<MeGroup, string>> = {
+  work: 'My work',
+  day: 'My day',
+  team: 'Team',
+  admin: 'Admin',
+  more: 'More',
+};
+
+const DAY_KEYS: ReadonlySet<ScreenKey> = new Set([
+  ...DAY,
+  'swaps',
+  'training',
+  'requests',
+  'notifications',
+  'profile',
+  'myWeek',
+  'inbox',
+]);
+const TEAM_KEYS: ReadonlySet<ScreenKey> = new Set(['roster', 'reports']);
+const ADMIN_KEYS: ReadonlySet<ScreenKey> = new Set(['admin', 'compliance', 'audits', 'excise']);
+
+/**
+ * Me's tiles under headings (ADR 132): the person's own work, their day (shifts, SOPs,
+ * training, asking, notifications), the team (roster), admin, then any other screen they may
+ * open. The tiles and their order are meTiles' (ADR 106, 125); only the headings are added.
+ */
+export function meGroups(
+  i: ScreenInput,
+  hide: ReadonlySet<string> = new Set(),
+): { group: MeGroup; title: string; screens: Screen[] }[] {
+  const { mine, more } = meTiles(i, hide);
+  const own = new Set(mine);
+  const groupOf = (s: Screen): MeGroup =>
+    DAY_KEYS.has(s.key)
+      ? 'day'
+      : TEAM_KEYS.has(s.key)
+        ? 'team'
+        : ADMIN_KEYS.has(s.key)
+          ? 'admin'
+          : own.has(s)
+            ? 'work'
+            : 'more';
+  const all = [...mine, ...more];
+  return ME_GROUPS.map((group) => ({
+    group,
+    title: ME_GROUP_TITLES[group],
+    screens: all.filter((s) => groupOf(s) === group),
+  })).filter((g) => g.screens.length > 0);
+}

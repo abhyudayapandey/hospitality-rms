@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ACCESS_GROUPS, ROLES, expandDuty, levelOf, type Access } from '@outlet-ops/domain';
 import { navProfile, visibleNav } from './nav';
-import { meTiles, screensFor, type ScreenInput } from './screens';
+import { meGroups, meTiles, screensFor, type ScreenInput } from './screens';
 
 // Me shows each person's own tiles (ADR 106): worked out for every catalogue role, as a hotel
 // (the Passport demo) gives them, from the access their duties stand for.
@@ -148,5 +148,37 @@ describe('tile pictures (ADR 106)', () => {
     expect(new Set(icons).size, [...byKey].map(([k, v]) => `${k}:${v}`).join(' ')).toBe(
       icons.length,
     );
+  });
+});
+
+describe('Me under headings (ADR 132)', () => {
+  const groups = (code: string) => {
+    const r = ROLES.find((x) => x.code === code)!;
+    const i = inputFor(r.formatDuties?.hotel ?? r.duties, r.formatHome?.hotel ?? r.home);
+    return meGroups(i, new Set(visibleNav(i).map((n) => n.href)));
+  };
+
+  it('the GM: My work, My day, Team, Admin; every tile once, in the same order as before', () => {
+    const r = ROLES.find((x) => x.code === 'GENERAL_MANAGER')!;
+    const i = inputFor(r.formatDuties?.hotel ?? r.duties, r.formatHome?.hotel ?? r.home);
+    const hide = new Set(visibleNav(i).map((n) => n.href));
+    const g = meGroups(i, hide);
+    expect(g.map((x) => x.title).slice(0, 4)).toEqual(['My work', 'My day', 'Team', 'Admin']);
+    const keys = g.flatMap((x) => x.screens.map((s) => s.key));
+    const { mine, more } = meTiles(i, hide);
+    expect([...keys].sort()).toEqual([...mine, ...more].map((s) => s.key).sort());
+    expect(new Set(keys).size).toBe(keys.length);
+    const of = (title: string) => g.find((x) => x.title === title)!.screens.map((s) => s.key);
+    expect(of('My day')).toEqual(expect.arrayContaining(['shifts', 'sops', 'problem']));
+    expect(of('Team')).toContain('roster');
+    expect(of('Admin')).toEqual(expect.arrayContaining(['compliance', 'audits']));
+    expect(of('My work')).toEqual(expect.arrayContaining(['rooms', 'stock']));
+  });
+
+  it('a server: their work and their day first, no Team or Admin heading', () => {
+    const titles = groups('SERVER').map((x) => x.title);
+    expect(titles.slice(0, 2)).toEqual(['My work', 'My day']);
+    expect(titles).not.toContain('Team');
+    expect(titles).not.toContain('Admin');
   });
 });

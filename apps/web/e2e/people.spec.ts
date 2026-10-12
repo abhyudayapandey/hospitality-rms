@@ -72,12 +72,12 @@ test('template shifts: tomorrow to day 7 only, confirm or cancel, then discard (
   const window = page.getByTestId('template-window');
   await expect(window).toContainText(`${formatDay(tomorrow)} – ${formatDay(addDays(today, 7))}`);
   const addButton = page.getByRole('button', { name: 'Add template shifts' });
-  const discardButton = page.getByRole('button', { name: /^Discard drafts/ });
+  const discardButton = page.getByRole('button', { name: 'Start again' });
   // the test data has next week's drafts: clear them first
   if (await discardButton.isVisible()) {
     await discardButton.click();
     await page
-      .getByRole('group', { name: 'Discard drafts' })
+      .getByRole('group', { name: 'Start again' })
       .getByRole('button', { name: 'Discard' })
       .click();
     await expect(page.getByRole('status')).toContainText('Discarded');
@@ -92,7 +92,7 @@ test('template shifts: tomorrow to day 7 only, confirm or cancel, then discard (
   await expect(confirm).toBeHidden();
   await expect(addButton).toBeVisible();
 
-  // Add: the drafts start tomorrow, and Discard drafts takes Add's place
+  // Add: the drafts start tomorrow, and Start again takes Add's place
   await addButton.click();
   await confirm.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(page.getByRole('status')).toContainText(/^Added \d+ draft shifts?, /);
@@ -108,13 +108,13 @@ test('template shifts: tomorrow to day 7 only, confirm or cancel, then discard (
   await expect(discardButton).toBeVisible();
   await discardButton.click();
   await page
-    .getByRole('group', { name: 'Discard drafts' })
+    .getByRole('group', { name: 'Start again' })
     .getByRole('button', { name: 'Keep drafts' })
     .click();
   await expect(discardButton).toBeVisible();
   await discardButton.click();
   await page
-    .getByRole('group', { name: 'Discard drafts' })
+    .getByRole('group', { name: 'Start again' })
     .getByRole('button', { name: 'Discard' })
     .click();
   await expect(page.getByRole('status')).toContainText(/^Discarded \d+ draft shifts?\.$/);
