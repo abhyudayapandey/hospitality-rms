@@ -61,7 +61,7 @@ describe('a room status with its details (ADR 117)', () => {
         at_time: '14:30',
       });
       expect((await set(c, DESK, r, 'DEP', { time: '11:00' })).error).toBeUndefined();
-      expect(await read(c, '101')).toMatchObject({ status_name: 'Leaving', at_time: '11:00' });
+      expect(await read(c, '101')).toMatchObject({ status_name: 'Departing', at_time: '11:00' });
       expect((await set(c, DESK, r, 'VD')).error).toBeUndefined();
       expect(await read(c, '101')).toMatchObject({ status: 'VD', at_time: null });
     });

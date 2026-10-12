@@ -320,7 +320,7 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   for something, `inv.staff_ask`). An order's page names its approver and lets them approve
   (`inv.po_approval`). Passport has no Main Store. Compliance jobs also repeat weekly, every 2
   weeks or on the nth weekday (ADR 116, file 39 `repeat`).
-- Front desk and lists (ADR 117 to 122): a room's status carries its time (Arriving, Leaving)
+- Front desk and lists (ADR 117 to 122): a room's status carries its time (Arriving, Departing, ADR 131)
   or, out of order, a reason, an until day and its repair (`ops.set_room_status(room, status,
   details)`); no House use; Rooms' chips filter. A handover checklist (file 29 `handover`) is a
   card on the next shift's Home until Seen (`ops.last_handovers`); a task's note is

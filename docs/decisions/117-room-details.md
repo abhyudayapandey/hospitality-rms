@@ -15,7 +15,7 @@ was not used; and the status chips at the top of Rooms only explained the colour
    `ops.set_room_status(room, status, details jsonb)` checks them; `raise: true` reports it to
    maintenance there and then ("Room 204: AC not cooling").
 2. House use (HM) is gone: rooms in it went to Vacant clean, file 40 no longer takes it.
-   Departing reads **Leaving**.
+   Departing reads **Leaving**. (Reversed by ADR 131: it reads **Departing**.)
 3. The tile shows the time or "till 20 Oct"; the sheet shows the reason and the repair with
    its state. The list is the room's state, so it is there for the next person on shift.
 4. The chips at the top of Rooms (and Home's "Rooms now") filter the rooms (`?status=`), with

@@ -4,14 +4,14 @@ import type { IconName } from '@/components/icon';
 // same list (ops.room_status_name). People never see a code (ADR 104): each status is a word,
 // a colour and a picture on the room's tile.
 
-export type RoomTone = 'clean' | 'dirty' | 'guest' | 'arriving' | 'leaving' | 'closed';
+export type RoomTone = 'clean' | 'dirty' | 'guest' | 'arriving' | 'departing' | 'closed';
 
 export const ROOM_STATUSES = [
   { code: 'VC', name: 'Vacant clean', word: 'Clean', icon: 'check', tone: 'clean' },
   { code: 'VD', name: 'Vacant dirty', word: 'Dirty', icon: 'broom', tone: 'dirty' },
   { code: 'OCC', name: 'Occupied', word: 'Guest in', icon: 'user', tone: 'guest' },
   { code: 'ARR', name: 'Arriving', word: 'Arriving', icon: 'bell', tone: 'arriving' },
-  { code: 'DEP', name: 'Leaving', word: 'Leaving', icon: 'out', tone: 'leaving' },
+  { code: 'DEP', name: 'Departing', word: 'Departing', icon: 'out', tone: 'departing' },
   { code: 'OOO', name: 'Out of order', word: 'Out of order', icon: 'wrench', tone: 'closed' },
 ] as const satisfies readonly {
   code: string;
@@ -39,7 +39,7 @@ export const ROOM_TONE: Record<RoomTone, string> = {
   dirty: 'bg-amber-50 text-amber-800 ring-amber-300',
   guest: 'bg-sky-50 text-sky-800 ring-sky-300',
   arriving: 'bg-violet-50 text-violet-800 ring-violet-300',
-  leaving: 'bg-brand-50 text-brand-800 ring-brand-200',
+  departing: 'bg-brand-50 text-brand-800 ring-brand-200',
   closed: 'bg-rose-50 text-rose-800 ring-rose-300',
 };
 
@@ -52,7 +52,7 @@ export interface RoomDetails {
   maintenance_title?: string | null;
 }
 
-/** A status that carries a time (ADR 117): arriving and leaving rooms. */
+/** A status that carries a time (ADR 117): arriving and departing rooms. */
 export const TIMED: readonly string[] = ['ARR', 'DEP'];
 
 /** The line under a room's number on its tile: "14:00", "till 20 Oct" (ADR 117). */
