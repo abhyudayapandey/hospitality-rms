@@ -25,6 +25,23 @@ write_secret "$PARAM_PREFIX/db/wf_executor" "$OO_CREDS/wf_executor"
 write_secret "$PARAM_PREFIX/db/platform_loader" "$OO_CREDS/platform_loader"
 write_secret "$PARAM_PREFIX/web/session_secret" "$OO_CREDS/session_secret"
 
+# Web Push (ADR 137): the signing key for wf-execute only; the web gets its public half,
+# worked out here. Without the parameter (create-secrets.sh not run yet) nothing is pushed.
+vapid_public=
+if aws ssm get-parameter --name "$PARAM_PREFIX/web/vapid_private" > /dev/null 2>&1; then
+  write_secret "$PARAM_PREFIX/web/vapid_private" "$OO_CREDS/vapid_private"
+  # SEC1 ECPrivateKey (prime256v1) around the 32 bytes; openssl gives the 65-byte point
+  vapid_public=$(printf '%b' "$(printf '30310201010420%sa00a06082a8648ce3d030107' \
+    "$(cat "$OO_CREDS/vapid_private")" | sed 's/../\\x&/g')" |
+    openssl ec -inform DER -pubout -outform DER -conv_form uncompressed 2> /dev/null |
+    tail -c 65 | base64 -w0 | tr '+/' '-_' | tr -d '=')
+  [ ${#vapid_public} -eq 87 ] || { echo "could not work out the VAPID public key" >&2; exit 1; }
+else
+  # an empty file: systemd's LoadCredential needs one; wf-execute then pushes nothing
+  (umask 077 && : > "$OO_CREDS/vapid_private")
+  log "no web/vapid_private parameter: Web Push is off"
+fi
+
 # Non-secret config (String parameters from the CDK stack).
 declare -A cfg
 while IFS=$'\t' read -r name value; do
@@ -51,6 +68,13 @@ PLATFORM_COGNITO_CLIENT_ID=${cfg[platform_cognito_client_id]}
 PLATFORM_COGNITO_DOMAIN=${cfg[platform_cognito_domain]}
 PHOTO_BUCKET=${cfg[photo_bucket]}
 AWS_REGION=${AWS_REGION}
+VAPID_PUBLIC_KEY=${vapid_public}
+ENV
+# The minute job's config (ADR 137): who the push services may contact; no secrets (its
+# keys come by LoadCredential).
+cat > "$OO_ETC/wf.env" <<ENV
+APP_URL=${cfg[app_url]}
+VAPID_SUBJECT=mailto:${cfg[acme_email]}
 ENV
 # The platform worker's config: no secrets (its database password comes by LoadCredential).
 cat > "$OO_ETC/platform-worker.env" <<ENV

@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { grantPlace, summariseAccess, type Access } from '@outlet-ops/domain';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
+import { PhoneAlertsRow } from '@/components/phone-alerts';
+import { pushPublicKey } from '@/lib/push-key';
 import { PasswordForm, SignOutEverywhere } from './parts';
 
 // Your profile (ADR 018): your own details and access, read-only; change your password
@@ -45,6 +47,8 @@ export default async function ProfilePage() {
   }));
   const p = data.profile;
   if (!p) return null;
+  // alerts on this phone (ADR 137): only where push is set up
+  const pushKey = pushPublicKey();
   const rows: [string, string][] = [
     ['Name', p.display_name],
     ...(p.username ? [['Username', p.username] as [string, string]] : []),
@@ -131,6 +135,15 @@ export default async function ProfilePage() {
             Change password
           </h2>
           <PasswordForm />
+        </section>
+      )}
+
+      {pushKey && (
+        <section aria-labelledby="alerts" className="space-y-2">
+          <h2 id="alerts" className="font-semibold">
+            Alerts on this phone
+          </h2>
+          <PhoneAlertsRow publicKey={pushKey} who={user.id} />
         </section>
       )}
 

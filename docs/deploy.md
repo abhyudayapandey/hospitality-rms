@@ -1900,11 +1900,13 @@ returns nothing.
 ### Rotating passwords
 
 ```sh
-infra/scripts/create-secrets.sh --rotate db/app_rw     # or db/migrator, db/wf_executor, web/session_secret
+infra/scripts/create-secrets.sh --rotate db/app_rw     # or db/migrator, db/wf_executor, web/session_secret, web/vapid_private
 ```
 
 Then run **Actions → Deploy** again. It re-fetches parameters, runs `ALTER ROLE ...
 PASSWORD` and restarts the services. Rotating `web/session_secret` signs everyone out.
+Rotating `web/vapid_private` stops every phone's alerts: each person turns them on again
+(Profile → Alerts on this phone).
 
 ## Upgrading after the Free plan (RDS migration path)
 
@@ -2926,3 +2928,33 @@ no new files to import.
    - Roster by person on a published week: Off lights, the row says "Not published",
      Publish (1); Start again puts the shift back; Publish tells the person once.
    - Meals: a room tapped starts at 2; a floor's heading takes all its rooms.
+
+## Releasing alerts on the phone: Web Push (ADR 137)
+
+One migration, `20261224100000_web_push.sql` (`ops.push_subscription`, `ops.notification.pushed_at`).
+One new SecureString and one IAM change: the instance role may read `web/vapid_private`.
+Order matters: the secret and the stack first, then the app (without the secret the app
+deploys fine and simply offers no alerts).
+
+1. Create the signing key (existing secrets are left as they are; it prints
+   `written: /outlet-ops/prod/web/vapid_private`):
+
+   ```bash
+   aws login --profile outlet-ops
+   export AWS_PROFILE=outlet-ops AWS_REGION=ap-south-1
+   infra/scripts/create-secrets.sh
+   ```
+
+2. `cd infra && pnpm cdk diff`: only `InstanceRole`'s policy changes, its `ReadOwnParameters`
+   statement gaining `parameter/outlet-ops/prod/web/vapid_private`. Stop if anything says
+   replace. Then `pnpm cdk deploy` and `cd ..`.
+3. Merge, then run the Deploy workflow. `fetch-params.sh` writes the key for wf-execute only and
+   `VAPID_PUBLIC_KEY` into `web.env`.
+4. Check:
+   - `sudo grep VAPID_PUBLIC_KEY /etc/outlet-ops/web.env` shows an 87-character key.
+   - On an Android phone in Chrome: Home asks "Get alerts on this phone?"; Turn on, allow. On an
+     iPhone: add the app to the Home Screen first, open it from there, then Turn on.
+   - Have a manager publish a roster week or give that person a task: the alert shows within a
+     minute, with the phone locked. `journalctl -u outlet-ops-wf-execute --since -5min | grep push`
+     shows `push sent=1`.
+   - Profile → Alerts on this phone → Turn off alerts: no more alerts on that phone.

@@ -367,6 +367,10 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   `pending` (staff screens read `assigned` only); `hr.week_changes` is Publish (N), Off included;
   Start again undoes them. Meals by room start at 2 guests and a floor's heading takes all its
   rooms (ADR 136).
+- Alerts on the phone (ADR 137): every `ops.notification` is pushed within a minute (wf-execute,
+  `ops.push_due`, `web-push`), only to the browsers' push services and never when older than 15
+  minutes; Home asks once, Profile turns it on or off (`ops.push_subscription`, own rows only).
+  The signing key `web/vapid_private` reaches wf-execute alone; the web gets the public key.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { Fragment } from 'react';
 import { taskIcon } from '@outlet-ops/domain';
 import { ExpiryBanner } from '@/components/expiry-banner';
+import { PhoneAlertsCard } from '@/components/phone-alerts';
+import { pushPublicKey } from '@/lib/push-key';
 import { Icon, type IconName } from '@/components/icon';
 import { businessDate, formatDay, formatLongDay, formatTime } from '@/lib/dates';
 import { formatWhen } from '@/lib/format';
@@ -68,6 +70,7 @@ export default async function Home() {
     gives: (await sectionPlaces(tx)).length > 0,
   }));
   const now = new Date();
+  const pushKey = pushPublicKey();
   // the next job, then the three after it (ADR 098)
   const tasks = todaysTasks(today.tasks, now, tz, 4);
   const frontline = today.profile === 'frontline';
@@ -88,6 +91,9 @@ export default async function Home() {
       </h1>
 
       <ComplianceCard card={complianceCard(today.compliance)} />
+
+      {/* asks once whether this phone shows alerts (ADR 137) */}
+      {pushKey && <PhoneAlertsCard publicKey={pushKey} who={user.id} />}
 
       <Banners today={today} />
 

@@ -64,10 +64,26 @@ describe('per-service credential isolation', () => {
     ]);
   });
 
-  it('wf-execute gets only wf_executor', () => {
+  it('wf-execute gets only wf_executor and the Web Push signing key (ADR 137)', () => {
     expect(loadCredentials('outlet-ops-wf-execute.service')).toEqual([
       'db_wf_executor:/etc/outlet-ops/creds/wf_executor',
+      'vapid_private:/etc/outlet-ops/creds/vapid_private',
     ]);
+  });
+
+  it('the Web Push signing key reaches wf-execute only; the web gets the public key', () => {
+    for (const unit of readdirSync(join(dir, 'systemd')).filter(
+      (f) => f !== 'outlet-ops-wf-execute.service',
+    )) {
+      expect(read(join('systemd', unit)), unit).not.toContain('vapid_private');
+    }
+    const env = read('deploy/fetch-params.sh');
+    const web = env.slice(env.indexOf('cat > "$OO_ETC/web.env"'), env.indexOf('wf.env'));
+    expect(web).toContain('VAPID_PUBLIC_KEY=${vapid_public}');
+    expect(web).not.toContain('vapid_private');
+    expect(read('systemd/outlet-ops-wf-execute.service')).toMatch(
+      /^EnvironmentFile=\/etc\/outlet-ops\/wf\.env$/m,
+    );
   });
 
   it('the nightly attendance job gets only wf_executor', () => {
