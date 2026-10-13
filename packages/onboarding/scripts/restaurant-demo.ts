@@ -231,7 +231,13 @@ csv(
     ['SUP-MEAT', 'Altinho Meats (demo)', 1, 'meats@demo.example', '+91 98230 20003'],
     ['SUP-DAIRY', 'Porvorim Dairy & Eggs (demo)', 1, 'dairy@demo.example', '+91 98230 20004'],
     ['SUP-BAKERY', 'Fontainhas Poder (demo)', 1, 'bakery@demo.example', '+91 98230 20005'],
-    ['SUP-GROCERY', 'Panjim Wholesale Grocers (demo)', 2, 'grocery@demo.example', '+91 98230 20006'],
+    [
+      'SUP-GROCERY',
+      'Panjim Wholesale Grocers (demo)',
+      2,
+      'grocery@demo.example',
+      '+91 98230 20006',
+    ],
     ['SUP-BAR', 'Mandovi Wines & Spirits (demo)', 2, 'bar@demo.example', '+91 98230 20007'],
     ['SUP-SUNDRY', 'Goa Restaurant Supplies (demo)', 3, 'sundry@demo.example', '+91 98230 20008'],
   ],
@@ -734,157 +740,399 @@ const dish = (
 const P_ = 'prep' as const;
 const DISHES: Dish[] = [
   // small plates
-  dish('PRAWN-RAVA-FRY', 'Prawn rava fry', 'Food', 'Small plates', '1 plate', 520, [6, 12], [
-    ['PRAWNS', 150, 'g'],
-    ['SEMOLINA', 40, 'g'],
-    ['RECHEADO-MASALA', 30, 'g', P_],
-    ['OIL', 40, 'ml'],
-    ['LIMES', 0.5, 'each'],
-  ]),
-  dish('SQUID-BUTTER-GARLIC', 'Squid butter garlic', 'Food', 'Small plates', '1 plate', 480, [4, 9], [
-    ['SQUID', 150, 'g'],
-    ['BUTTER', 30, 'g'],
-    ['GARLIC', 20, 'g'],
-    ['PAO', 1, 'each'],
-  ]),
-  dish('CHOURICO-PAO', 'Chouriço pao', 'Food', 'Small plates', '2 pao', 360, [5, 10], [
-    ['CHOURICO', 100, 'g'],
-    ['ONIONS', 50, 'g'],
-    ['PAO', 2, 'each'],
-  ]),
-  dish('PANEER-CAFREAL', 'Paneer cafreal tikka', 'Food', 'Small plates', '6 pieces', 380, [4, 8], [
-    ['PANEER', 180, 'g'],
-    ['CAFREAL-MARINADE', 40, 'g', P_],
-    ['OIL', 15, 'ml'],
-  ]),
-  dish('MASALA-FRIES', 'Masala fries', 'Food', 'Small plates', '1 bowl', 220, [8, 15], [
-    ['FRIES', 200, 'g'],
-    ['OIL', 30, 'ml'],
-    ['KASHMIRI-CHILLI', 3, 'g'],
-    ['SALT', 3, 'g'],
-  ]),
+  dish(
+    'PRAWN-RAVA-FRY',
+    'Prawn rava fry',
+    'Food',
+    'Small plates',
+    '1 plate',
+    520,
+    [6, 12],
+    [
+      ['PRAWNS', 150, 'g'],
+      ['SEMOLINA', 40, 'g'],
+      ['RECHEADO-MASALA', 30, 'g', P_],
+      ['OIL', 40, 'ml'],
+      ['LIMES', 0.5, 'each'],
+    ],
+  ),
+  dish(
+    'SQUID-BUTTER-GARLIC',
+    'Squid butter garlic',
+    'Food',
+    'Small plates',
+    '1 plate',
+    480,
+    [4, 9],
+    [
+      ['SQUID', 150, 'g'],
+      ['BUTTER', 30, 'g'],
+      ['GARLIC', 20, 'g'],
+      ['PAO', 1, 'each'],
+    ],
+  ),
+  dish(
+    'CHOURICO-PAO',
+    'Chouriço pao',
+    'Food',
+    'Small plates',
+    '2 pao',
+    360,
+    [5, 10],
+    [
+      ['CHOURICO', 100, 'g'],
+      ['ONIONS', 50, 'g'],
+      ['PAO', 2, 'each'],
+    ],
+  ),
+  dish(
+    'PANEER-CAFREAL',
+    'Paneer cafreal tikka',
+    'Food',
+    'Small plates',
+    '6 pieces',
+    380,
+    [4, 8],
+    [
+      ['PANEER', 180, 'g'],
+      ['CAFREAL-MARINADE', 40, 'g', P_],
+      ['OIL', 15, 'ml'],
+    ],
+  ),
+  dish(
+    'MASALA-FRIES',
+    'Masala fries',
+    'Food',
+    'Small plates',
+    '1 bowl',
+    220,
+    [8, 15],
+    [
+      ['FRIES', 200, 'g'],
+      ['OIL', 30, 'ml'],
+      ['KASHMIRI-CHILLI', 3, 'g'],
+      ['SALT', 3, 'g'],
+    ],
+  ),
   // mains
-  dish('KINGFISH-RECHEADO', 'Kingfish recheado', 'Food', 'Mains', '1 portion', 680, [5, 10], [
-    ['KINGFISH', 200, 'g'],
-    ['RECHEADO-MASALA', 40, 'g', P_],
-    ['OIL', 30, 'ml'],
-    ['RICE', 150, 'g'],
-  ]),
-  dish('PRAWN-CURRY-RICE', 'Goan prawn curry & rice', 'Food', 'Mains', '1 portion', 560, [7, 14], [
-    ['PRAWNS', 150, 'g'],
-    ['COCONUT-MILK', 150, 'ml'],
-    ['ONIONS', 60, 'g'],
-    ['TAMARIND', 10, 'g'],
-    ['KASHMIRI-CHILLI', 6, 'g'],
-    ['RICE', 150, 'g'],
-  ]),
-  dish('CHICKEN-XACUTI', 'Chicken xacuti & poi', 'Food', 'Mains', '1 portion', 480, [6, 12], [
-    ['CHICKEN', 220, 'g'],
-    ['XACUTI-MASALA', 80, 'g', P_],
-    ['OIL', 20, 'ml'],
-    ['POI', 2, 'each'],
-  ]),
-  dish('CHICKEN-CAFREAL', 'Chicken cafreal & fries', 'Food', 'Mains', '1 portion', 460, [5, 10], [
-    ['CHICKEN', 220, 'g'],
-    ['CAFREAL-MARINADE', 50, 'g', P_],
-    ['FRIES', 120, 'g'],
-    ['OIL', 30, 'ml'],
-  ]),
-  dish('PORK-VINDALHO', 'Pork vindalho & poi', 'Food', 'Mains', '1 portion', 540, [4, 9], [
-    ['PORK', 220, 'g'],
-    ['RECHEADO-MASALA', 50, 'g', P_],
-    ['ONIONS', 80, 'g'],
-    ['POI', 2, 'each'],
-  ]),
-  dish('VEG-XACUTI', 'Vegetable xacuti & rice', 'Food', 'Mains', '1 portion', 380, [3, 7], [
-    ['POTATOES', 150, 'g'],
-    ['XACUTI-MASALA', 80, 'g', P_],
-    ['BASMATI', 150, 'g'],
-  ]),
-  dish('BUTTER-PAO', 'Butter pao basket', 'Food', 'Sides', '4 pao', 120, [6, 12], [
-    ['PAO', 4, 'each'],
-    ['BUTTER', 20, 'g'],
-  ]),
-  dish('STEAMED-RICE', 'Steamed basmati', 'Food', 'Sides', '1 bowl', 140, [8, 14], [
-    ['BASMATI', 150, 'g'],
-  ]),
-  dish('CASHEW-SALAD', 'Kachumber with cashews', 'Food', 'Sides', '1 bowl', 180, [3, 7], [
-    ['CUCUMBER', 100, 'g'],
-    ['TOMATOES', 80, 'g'],
-    ['ONIONS', 40, 'g'],
-    ['CASHEWS', 20, 'g'],
-    ['LIMES', 0.5, 'each'],
-  ]),
+  dish(
+    'KINGFISH-RECHEADO',
+    'Kingfish recheado',
+    'Food',
+    'Mains',
+    '1 portion',
+    680,
+    [5, 10],
+    [
+      ['KINGFISH', 200, 'g'],
+      ['RECHEADO-MASALA', 40, 'g', P_],
+      ['OIL', 30, 'ml'],
+      ['RICE', 150, 'g'],
+    ],
+  ),
+  dish(
+    'PRAWN-CURRY-RICE',
+    'Goan prawn curry & rice',
+    'Food',
+    'Mains',
+    '1 portion',
+    560,
+    [7, 14],
+    [
+      ['PRAWNS', 150, 'g'],
+      ['COCONUT-MILK', 150, 'ml'],
+      ['ONIONS', 60, 'g'],
+      ['TAMARIND', 10, 'g'],
+      ['KASHMIRI-CHILLI', 6, 'g'],
+      ['RICE', 150, 'g'],
+    ],
+  ),
+  dish(
+    'CHICKEN-XACUTI',
+    'Chicken xacuti & poi',
+    'Food',
+    'Mains',
+    '1 portion',
+    480,
+    [6, 12],
+    [
+      ['CHICKEN', 220, 'g'],
+      ['XACUTI-MASALA', 80, 'g', P_],
+      ['OIL', 20, 'ml'],
+      ['POI', 2, 'each'],
+    ],
+  ),
+  dish(
+    'CHICKEN-CAFREAL',
+    'Chicken cafreal & fries',
+    'Food',
+    'Mains',
+    '1 portion',
+    460,
+    [5, 10],
+    [
+      ['CHICKEN', 220, 'g'],
+      ['CAFREAL-MARINADE', 50, 'g', P_],
+      ['FRIES', 120, 'g'],
+      ['OIL', 30, 'ml'],
+    ],
+  ),
+  dish(
+    'PORK-VINDALHO',
+    'Pork vindalho & poi',
+    'Food',
+    'Mains',
+    '1 portion',
+    540,
+    [4, 9],
+    [
+      ['PORK', 220, 'g'],
+      ['RECHEADO-MASALA', 50, 'g', P_],
+      ['ONIONS', 80, 'g'],
+      ['POI', 2, 'each'],
+    ],
+  ),
+  dish(
+    'VEG-XACUTI',
+    'Vegetable xacuti & rice',
+    'Food',
+    'Mains',
+    '1 portion',
+    380,
+    [3, 7],
+    [
+      ['POTATOES', 150, 'g'],
+      ['XACUTI-MASALA', 80, 'g', P_],
+      ['BASMATI', 150, 'g'],
+    ],
+  ),
+  dish(
+    'BUTTER-PAO',
+    'Butter pao basket',
+    'Food',
+    'Sides',
+    '4 pao',
+    120,
+    [6, 12],
+    [
+      ['PAO', 4, 'each'],
+      ['BUTTER', 20, 'g'],
+    ],
+  ),
+  dish(
+    'STEAMED-RICE',
+    'Steamed basmati',
+    'Food',
+    'Sides',
+    '1 bowl',
+    140,
+    [8, 14],
+    [['BASMATI', 150, 'g']],
+  ),
+  dish(
+    'CASHEW-SALAD',
+    'Kachumber with cashews',
+    'Food',
+    'Sides',
+    '1 bowl',
+    180,
+    [3, 7],
+    [
+      ['CUCUMBER', 100, 'g'],
+      ['TOMATOES', 80, 'g'],
+      ['ONIONS', 40, 'g'],
+      ['CASHEWS', 20, 'g'],
+      ['LIMES', 0.5, 'each'],
+    ],
+  ),
   // the bar: cocktails, the classics, beer and wine
-  dish('FENI-SOUR', 'Feni sour', 'Bar', 'Cocktails', '1 glass', 420, [6, 12], [
-    ['FENI-750ML', 60, 'ml'],
-    ['LIME-CORDIAL', 30, 'ml', P_],
-    ['SUGAR-SYRUP', 10, 'ml', P_],
-    ['ICE', 150, 'g'],
-  ]),
-  dish('GOAN-GIMLET', 'Goan gimlet', 'Bar', 'Cocktails', '1 glass', 480, [4, 9], [
-    ['GIN-750ML', 60, 'ml'],
-    ['LIME-CORDIAL', 30, 'ml', P_],
-    ['ICE', 150, 'g'],
-  ]),
-  dish('NEGRONI', 'Negroni', 'Bar', 'Cocktails', '1 glass', 560, [3, 8], [
-    ['NEGRONI-BATCH', 90, 'ml', P_],
-    ['ICE', 120, 'g'],
-  ]),
-  dish('MOJITO', 'Mojito', 'Bar', 'Cocktails', '1 glass', 420, [6, 12], [
-    ['WHITE-RUM-750ML', 60, 'ml'],
-    ['MINT', 8, 'g'],
-    ['LIMES', 1, 'each'],
-    ['SUGAR-SYRUP', 20, 'ml', P_],
-    ['SODA-750ML', 60, 'ml'],
-    ['ICE', 150, 'g'],
-  ]),
-  dish('MARGARITA', 'Margarita', 'Bar', 'Cocktails', '1 glass', 520, [3, 7], [
-    ['TEQUILA-750ML', 50, 'ml'],
-    ['LIME-CORDIAL', 25, 'ml', P_],
-    ['SALT', 2, 'g'],
-    ['ICE', 150, 'g'],
-  ]),
-  dish('GIN-TONIC', 'Gin & tonic', 'Bar', 'Classics', '1 glass', 450, [6, 12], [
-    ['GIN-750ML', 60, 'ml'],
-    ['TONIC-200ML', 200, 'ml'],
-    ['CUCUMBER', 10, 'g'],
-    ['ICE', 150, 'g'],
-  ]),
-  dish('WHISKY-SODA', 'Whisky soda', 'Bar', 'Classics', '1 glass', 380, [8, 15], [
-    ['WHISKY-750ML', 60, 'ml'],
-    ['SODA-750ML', 120, 'ml'],
-    ['ICE', 100, 'g'],
-  ]),
-  dish('RUM-COLA', 'Rum & cola', 'Bar', 'Classics', '1 glass', 320, [5, 10], [
-    ['DARK-RUM-750ML', 60, 'ml'],
-    ['COLA-300ML', 1, 'each'],
-    ['ICE', 100, 'g'],
-  ]),
-  dish('VODKA-SODA', 'Vodka soda & lime', 'Bar', 'Classics', '1 glass', 340, [4, 8], [
-    ['VODKA-750ML', 60, 'ml'],
-    ['SODA-750ML', 120, 'ml'],
-    ['LIMES', 0.5, 'each'],
-    ['ICE', 100, 'g'],
-  ]),
-  dish('LAGER', 'Lager, bottle', 'Bar', 'Beer & wine', '330 ml', 220, [15, 30], [
-    ['LAGER-330ML', 1, 'each'],
-  ]),
-  dish('CRAFT-BEER', 'Goan craft beer', 'Bar', 'Beer & wine', '330 ml', 340, [6, 12], [
-    ['CRAFT-BEER-330ML', 1, 'each'],
-  ]),
-  dish('RED-WINE-GLASS', 'Red wine, glass', 'Bar', 'Beer & wine', '150 ml', 420, [4, 9], [
-    ['RED-WINE-750ML', 150, 'ml'],
-  ]),
-  dish('WHITE-WINE-GLASS', 'White wine, glass', 'Bar', 'Beer & wine', '150 ml', 420, [4, 9], [
-    ['WHITE-WINE-750ML', 150, 'ml'],
-  ]),
-  dish('FRESH-LIME-SODA', 'Fresh lime soda', 'Bar', 'Soft drinks', '1 glass', 160, [6, 12], [
-    ['LIMES', 1, 'each'],
-    ['SUGAR-SYRUP', 20, 'ml', P_],
-    ['SODA-750ML', 200, 'ml'],
-    ['ICE', 100, 'g'],
-  ]),
+  dish(
+    'FENI-SOUR',
+    'Feni sour',
+    'Bar',
+    'Cocktails',
+    '1 glass',
+    620,
+    [6, 12],
+    [
+      ['FENI-750ML', 60, 'ml'],
+      ['LIME-CORDIAL', 30, 'ml', P_],
+      ['SUGAR-SYRUP', 10, 'ml', P_],
+      ['ICE', 150, 'g'],
+    ],
+  ),
+  dish(
+    'GOAN-GIMLET',
+    'Goan gimlet',
+    'Bar',
+    'Cocktails',
+    '1 glass',
+    720,
+    [4, 9],
+    [
+      ['GIN-750ML', 60, 'ml'],
+      ['LIME-CORDIAL', 30, 'ml', P_],
+      ['ICE', 150, 'g'],
+    ],
+  ),
+  dish(
+    'NEGRONI',
+    'Negroni',
+    'Bar',
+    'Cocktails',
+    '1 glass',
+    840,
+    [3, 8],
+    [
+      ['NEGRONI-BATCH', 90, 'ml', P_],
+      ['ICE', 120, 'g'],
+    ],
+  ),
+  dish(
+    'MOJITO',
+    'Mojito',
+    'Bar',
+    'Cocktails',
+    '1 glass',
+    620,
+    [6, 12],
+    [
+      ['WHITE-RUM-750ML', 60, 'ml'],
+      ['MINT', 8, 'g'],
+      ['LIMES', 1, 'each'],
+      ['SUGAR-SYRUP', 20, 'ml', P_],
+      ['SODA-750ML', 60, 'ml'],
+      ['ICE', 150, 'g'],
+    ],
+  ),
+  dish(
+    'MARGARITA',
+    'Margarita',
+    'Bar',
+    'Cocktails',
+    '1 glass',
+    780,
+    [3, 7],
+    [
+      ['TEQUILA-750ML', 50, 'ml'],
+      ['LIME-CORDIAL', 25, 'ml', P_],
+      ['SALT', 2, 'g'],
+      ['ICE', 150, 'g'],
+    ],
+  ),
+  dish(
+    'GIN-TONIC',
+    'Gin & tonic',
+    'Bar',
+    'Classics',
+    '1 glass',
+    680,
+    [6, 12],
+    [
+      ['GIN-750ML', 60, 'ml'],
+      ['TONIC-200ML', 200, 'ml'],
+      ['CUCUMBER', 10, 'g'],
+      ['ICE', 150, 'g'],
+    ],
+  ),
+  dish(
+    'WHISKY-SODA',
+    'Whisky soda',
+    'Bar',
+    'Classics',
+    '1 glass',
+    560,
+    [8, 15],
+    [
+      ['WHISKY-750ML', 60, 'ml'],
+      ['SODA-750ML', 120, 'ml'],
+      ['ICE', 100, 'g'],
+    ],
+  ),
+  dish(
+    'RUM-COLA',
+    'Rum & cola',
+    'Bar',
+    'Classics',
+    '1 glass',
+    480,
+    [5, 10],
+    [
+      ['DARK-RUM-750ML', 60, 'ml'],
+      ['COLA-300ML', 1, 'each'],
+      ['ICE', 100, 'g'],
+    ],
+  ),
+  dish(
+    'VODKA-SODA',
+    'Vodka soda & lime',
+    'Bar',
+    'Classics',
+    '1 glass',
+    520,
+    [4, 8],
+    [
+      ['VODKA-750ML', 60, 'ml'],
+      ['SODA-750ML', 120, 'ml'],
+      ['LIMES', 0.5, 'each'],
+      ['ICE', 100, 'g'],
+    ],
+  ),
+  dish(
+    'LAGER',
+    'Lager, bottle',
+    'Bar',
+    'Beer & wine',
+    '330 ml',
+    320,
+    [15, 30],
+    [['LAGER-330ML', 1, 'each']],
+  ),
+  dish(
+    'CRAFT-BEER',
+    'Goan craft beer',
+    'Bar',
+    'Beer & wine',
+    '330 ml',
+    480,
+    [6, 12],
+    [['CRAFT-BEER-330ML', 1, 'each']],
+  ),
+  dish(
+    'RED-WINE-GLASS',
+    'Red wine, glass',
+    'Bar',
+    'Beer & wine',
+    '150 ml',
+    640,
+    [4, 9],
+    [['RED-WINE-750ML', 150, 'ml']],
+  ),
+  dish(
+    'WHITE-WINE-GLASS',
+    'White wine, glass',
+    'Bar',
+    'Beer & wine',
+    '150 ml',
+    640,
+    [4, 9],
+    [['WHITE-WINE-750ML', 150, 'ml']],
+  ),
+  dish(
+    'FRESH-LIME-SODA',
+    'Fresh lime soda',
+    'Bar',
+    'Soft drinks',
+    '1 glass',
+    180,
+    [6, 12],
+    [
+      ['LIMES', 1, 'each'],
+      ['SUGAR-SYRUP', 20, 'ml', P_],
+      ['SODA-750ML', 200, 'ml'],
+      ['ICE', 100, 'g'],
+    ],
+  ),
 ];
 csv(
   '22_menu_items.csv',
@@ -1017,13 +1265,7 @@ csv(
     const u = used.get(`${l.item} ${l.store}`) ?? 0;
     const whole = ['each', 'bottle', 'can', 'pack'].includes(it.unit);
     const qty = l.par * 0.7 + u * 1.05;
-    return [
-      l.item,
-      l.store,
-      whole ? Math.ceil(qty) : Math.round(qty * 10) / 10,
-      it.cost,
-      day(-8),
-    ];
+    return [l.item, l.store, whole ? Math.ceil(qty) : Math.round(qty * 10) / 10, it.cost, day(-8)];
   }),
 );
 
@@ -1145,25 +1387,28 @@ const headOf: Record<string, string> = {
   BAR: 'BAR_MANAGER',
   'STORES-TEAM': 'RESTAURANT_GENERAL_MANAGER',
 };
+const OFF = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+/** The days a person works: everyone has one day off, the i-th of the week. */
+const workDays = (i: number) => {
+  const off = i % 7;
+  const runs: string[] = [];
+  let from = -1;
+  for (let j = 0; j <= 7; j++) {
+    const on = j < 7 && j !== off;
+    if (on && from < 0) from = j;
+    if (!on && from >= 0) {
+      runs.push(from === j - 1 ? OFF[from]! : `${OFF[from]}-${OFF[j - 1]}`);
+      from = -1;
+    }
+  }
+  return runs.join(',');
+};
+// every day of the week: the restaurant opens daily, so a day off leaves a slot to fill
 const templates = new Map<string, Cell[]>();
 for (const [role, dept, shift, start, end] of SHIFTS) {
   const k = `${dept} ${shift} ${role}`;
   templates.set(k, [D(dept), shift, start, end, role, 1, 'Mon-Sun', '', '', '', '']);
 }
-// a split for the restaurant's lunch and dinner (ADR 082)
-templates.set('RESTAURANT Split', [
-  D('RESTAURANT'),
-  'Split',
-  '11:00',
-  '23:00',
-  'STEWARD',
-  1,
-  'Mon-Sun',
-  'split',
-  '15:00',
-  '18:00',
-  '',
-]);
 csv(
   '16_shift_templates.csv',
   [
@@ -1181,26 +1426,20 @@ csv(
   ],
   [...templates.values()],
 );
-const OFF = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 csv(
   '25_shifts_TEST_DATA_ONLY.csv',
   ['roster_node_code', 'shift_name', 'job_role_code', 'week', 'days', 'username', 'rostered_by'],
   // the past seven days as worked (file 35), today to Sunday, and next week (ADR 114)
   [-1, 0, 1].flatMap((week) =>
-    SHIFTS.map(([role, dept, shift], i) => {
-      const off = i % 7;
-      const runs: string[] = [];
-      let from = -1;
-      for (let j = 0; j <= 7; j++) {
-        const on = j < 7 && j !== off;
-        if (on && from < 0) from = j;
-        if (!on && from >= 0) {
-          runs.push(from === j - 1 ? OFF[from]! : `${OFF[from]}-${OFF[j - 1]}`);
-          from = -1;
-        }
-      }
-      return [D(dept), shift, role, week, runs.join(','), byRole(role), byRole(headOf[dept]!)];
-    }),
+    SHIFTS.map(([role, dept, shift], i) => [
+      D(dept),
+      shift,
+      role,
+      week,
+      workDays(i),
+      byRole(role),
+      byRole(headOf[dept]!),
+    ]),
   ),
 );
 // the past week's clock-ins, a few late, one missing
@@ -1276,7 +1515,7 @@ csv(
   lic.header,
   lic.rows.map((r, i) => {
     // the bar licence comes up for renewal in 20 days; the rest are current
-    const expires = r['kind'] === 'BAR_LICENCE' ? day(20) : day(120 + i * 45);
+    const expires = r['kind'] === 'EXCISE_BAR' ? day(20) : day(120 + i * 45);
     return lic.header.map((h) =>
       h === 'number'
         ? `${r['kind']!.slice(0, 3)}-${2026}-${String(4100 + i)}`

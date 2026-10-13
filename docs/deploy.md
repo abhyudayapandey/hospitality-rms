@@ -2958,3 +2958,19 @@ deploys fine and simply offers no alerts).
      minute, with the phone locked. `journalctl -u outlet-ops-wf-execute --since -5min | grep push`
      shows `push sent=1`.
    - Profile → Alerts on this phone → Turn off alerts: no more alerts on that phone.
+
+## Releasing Remove a test customer and [TEST] Restaurant (ADR 139)
+
+One migration, `20261226100000_remove_test_customer.sql` (`core.tenant.removed_at`,
+`platform.remove_test_customer`). No infrastructure change, no access change.
+
+1. Merge, then run the Deploy workflow; the migration runs with it.
+2. **[TEST] Restaurant**: follow `docs/onboarding/demo/test-restaurant/README.md` (refresh the
+   dates, build the zip, New customer with owner `test.leena-sequeira`, the plan, dry run,
+   Apply, a second dry run with no changes, the logins).
+3. **Remove the old test customers** (when you no longer want them on live): the console →
+   **Test Company** → **Remove this test customer** → type its name → **Remove … for
+   good**. The console goes back to the list without it. Do the same for **Test Solo Bar Co.**
+   A real customer has no such section.
+4. Check: the console lists [TEST] Passport Hotel and [TEST] Restaurant (and any real
+   customers); signing in as a removed customer's user fails.
