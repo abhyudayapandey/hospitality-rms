@@ -1,0 +1,18 @@
+job_role_code,job_title,outlet_format,usual_department,default_duties
+ACCOUNT_OWNER,Account Owner,any,(company),OWNS_COMPANY_ACCOUNT
+RESTAURANT_GENERAL_MANAGER,,any,,
+ASSISTANT_MANAGER,,any,,
+HEAD_COOK,,any,,
+SOUS_CHEF,,any,,
+COOK,,any,,
+COMMIS,,any,,
+KITCHEN_STEWARD,,any,,
+CAPTAIN,,any,,
+STEWARD,,any,,
+HOST,,any,,
+CASHIER,,any,,
+STORE_KEEPER,,any,,
+BAR_MANAGER,,any,,
+HEAD_BARTENDER,,any,,
+BARTENDER,,any,,
+BAR_BACK,,any,,

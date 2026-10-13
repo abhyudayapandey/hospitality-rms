@@ -1,0 +1,3 @@
+store_node_code,prep_item_code,day,due_time,quantity,assign_to,created_by
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-KITCHEN-STORE,XACUTI-MASALA,0,11:00,1000,person:restaurant.cook,restaurant.sous-chef
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR-STORE,LIME-CORDIAL,0,17:00,1000,person:restaurant.bartender,restaurant.bar-manager

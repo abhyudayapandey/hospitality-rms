@@ -1,0 +1,58 @@
+item_code,name,category,base_unit,is_perishable,standard_unit_cost_inr,preferred_supplier_code,item_type,receive_to,allergens,excise
+KINGFISH,Kingfish (surmai),Seafood,kg,yes,900,SUP-SEAFOOD,consumable,department,fish,
+PRAWNS,"Prawns, medium",Seafood,kg,yes,650,SUP-SEAFOOD,consumable,department,crustaceans,
+SQUID,Squid,Seafood,kg,yes,420,SUP-SEAFOOD,consumable,department,molluscs,
+CHICKEN,"Chicken, curry cut",Meat,kg,yes,260,SUP-MEAT,consumable,department,,
+PORK,Pork shoulder,Meat,kg,yes,450,SUP-MEAT,consumable,department,,
+CHOURICO,Goan chouriço,Meat,kg,yes,900,SUP-MEAT,consumable,department,,
+EGGS,Eggs,Dairy & eggs,each,yes,7,SUP-DAIRY,consumable,department,egg,
+BUTTER,Butter,Dairy & eggs,kg,yes,520,SUP-DAIRY,consumable,department,milk,
+CREAM,Fresh cream,Dairy & eggs,l,yes,240,SUP-DAIRY,consumable,department,milk,
+PANEER,Paneer,Dairy & eggs,kg,yes,380,SUP-DAIRY,consumable,department,milk,
+POI,Poi (Goan bread),Bakery,each,yes,8,SUP-BAKERY,consumable,department,gluten,
+PAO,Pao,Bakery,each,yes,6,SUP-BAKERY,consumable,department,gluten,
+ONIONS,Onions,Produce,kg,yes,35,SUP-PRODUCE,consumable,department,,
+TOMATOES,Tomatoes,Produce,kg,yes,40,SUP-PRODUCE,consumable,department,,
+POTATOES,Potatoes,Produce,kg,yes,30,SUP-PRODUCE,consumable,department,,
+GREEN-CHILLIES,Green chillies,Produce,kg,yes,80,SUP-PRODUCE,consumable,department,,
+GINGER,Ginger,Produce,kg,yes,120,SUP-PRODUCE,consumable,department,,
+GARLIC,Garlic,Produce,kg,yes,160,SUP-PRODUCE,consumable,department,,
+CORIANDER,Coriander leaves,Produce,kg,yes,120,SUP-PRODUCE,consumable,department,,
+MINT,Mint leaves,Produce,kg,yes,200,SUP-PRODUCE,consumable,department,,
+LIMES,Limes,Produce,each,yes,4,SUP-PRODUCE,consumable,department,,
+COCONUT,"Coconut, fresh",Produce,each,yes,35,SUP-PRODUCE,consumable,department,,
+CUCUMBER,Cucumber,Produce,kg,yes,40,SUP-PRODUCE,consumable,department,,
+RICE,Goan red rice (ukde),Grocery,kg,no,90,SUP-GROCERY,consumable,,,
+BASMATI,Basmati rice,Grocery,kg,no,120,SUP-GROCERY,consumable,,,
+SEMOLINA,Semolina (rava),Grocery,kg,no,50,SUP-GROCERY,consumable,,gluten,
+SUGAR,Sugar,Grocery,kg,no,45,SUP-GROCERY,consumable,,,
+COCONUT-MILK,Coconut milk,Grocery,l,no,180,SUP-GROCERY,consumable,,,
+OIL,Sunflower oil,Grocery,l,no,150,SUP-GROCERY,consumable,,,
+VINEGAR,Toddy vinegar,Grocery,l,no,120,SUP-GROCERY,consumable,,,
+TAMARIND,Tamarind,Grocery,kg,no,140,SUP-GROCERY,consumable,,,
+KASHMIRI-CHILLI,"Kashmiri chilli, dried",Spices,kg,no,650,SUP-GROCERY,consumable,,,
+CUMIN,Cumin,Spices,kg,no,450,SUP-GROCERY,consumable,,,
+TURMERIC,Turmeric,Spices,kg,no,260,SUP-GROCERY,consumable,,,
+BLACK-PEPPER,Black pepper,Spices,kg,no,900,SUP-GROCERY,consumable,,,
+SALT,Salt,Grocery,kg,no,20,SUP-GROCERY,consumable,,,
+CASHEWS,Cashew nuts,Grocery,kg,no,950,SUP-GROCERY,consumable,,tree nuts,
+FRIES,"French fries, frozen",Grocery,kg,yes,140,SUP-GROCERY,consumable,,,
+FENI-750ML,Cashew feni 750ml,Spirits,bottle,no,650,SUP-BAR,consumable,,,yes
+GIN-750ML,Indian craft gin 750ml,Spirits,bottle,no,1800,SUP-BAR,consumable,,,yes
+VODKA-750ML,Vodka 750ml,Spirits,bottle,no,1500,SUP-BAR,consumable,,,yes
+WHITE-RUM-750ML,White rum 750ml,Spirits,bottle,no,800,SUP-BAR,consumable,,,yes
+DARK-RUM-750ML,Dark rum 750ml,Spirits,bottle,no,700,SUP-BAR,consumable,,,yes
+WHISKY-750ML,Blended whisky 750ml,Spirits,bottle,no,1600,SUP-BAR,consumable,,,yes
+TEQUILA-750ML,Tequila blanco 750ml,Spirits,bottle,no,3200,SUP-BAR,consumable,,,yes
+VERMOUTH-750ML,Sweet vermouth 750ml,Spirits,bottle,no,1400,SUP-BAR,consumable,,sulphites,yes
+APERITIF-750ML,Bitter aperitif 750ml,Spirits,bottle,no,1800,SUP-BAR,consumable,,,yes
+LAGER-330ML,Lager 330ml,Beer,bottle,no,90,SUP-BAR,consumable,,gluten,yes
+CRAFT-BEER-330ML,Goan craft beer 330ml,Beer,can,no,160,SUP-BAR,consumable,,gluten,yes
+RED-WINE-750ML,Red wine 750ml,Wine,bottle,no,900,SUP-BAR,consumable,,sulphites,yes
+WHITE-WINE-750ML,White wine 750ml,Wine,bottle,no,900,SUP-BAR,consumable,,sulphites,yes
+TONIC-200ML,Tonic water 200ml,Mixers,can,no,45,SUP-BAR,consumable,,,
+SODA-750ML,Soda 750ml,Mixers,bottle,no,25,SUP-BAR,consumable,,,
+COLA-300ML,Cola 300ml,Mixers,can,no,35,SUP-BAR,consumable,,,
+ICE,Ice,Bar,kg,yes,15,SUP-SUNDRY,consumable,,,
+NAPKINS,Paper napkins (pack of 100),Packaging,pack,no,60,SUP-SUNDRY,consumable,,,
+TAKEAWAY-BOX,Takeaway box 500ml,Packaging,each,no,6,SUP-SUNDRY,consumable,,,

@@ -1,0 +1,9 @@
+supplier_code,name,lead_time_days,contact_email,contact_phone
+SUP-PRODUCE,Panjim Market Produce (demo),1,produce@demo.example,+91 98230 20001
+SUP-SEAFOOD,Mandovi Fresh Catch (demo),1,catch@demo.example,+91 98230 20002
+SUP-MEAT,Altinho Meats (demo),1,meats@demo.example,+91 98230 20003
+SUP-DAIRY,Porvorim Dairy & Eggs (demo),1,dairy@demo.example,+91 98230 20004
+SUP-BAKERY,Fontainhas Poder (demo),1,bakery@demo.example,+91 98230 20005
+SUP-GROCERY,Panjim Wholesale Grocers (demo),2,grocery@demo.example,+91 98230 20006
+SUP-BAR,Mandovi Wines & Spirits (demo),2,bar@demo.example,+91 98230 20007
+SUP-SUNDRY,Goa Restaurant Supplies (demo),3,sundry@demo.example,+91 98230 20008

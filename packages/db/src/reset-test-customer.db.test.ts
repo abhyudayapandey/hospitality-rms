@@ -122,3 +122,85 @@ describe('platform.reset_test_customer', () => {
     });
   });
 });
+
+// Remove a test customer (ADR 139): emptied as above, then off the console's list for good;
+// nobody can sign in to it, it is never started again or resumed, and a real customer is
+// refused.
+describe('platform.remove_test_customer', () => {
+  it('empties it, takes it off the list and keeps it removed', async () => {
+    await inRolledBackTx(async (c) => {
+      const admin = await newPlatformAdmin(c);
+      const tenant = (
+        await c.query<{ id: string; name: string }>(
+          `select id, name from core.tenant where code = $1`,
+          [SOLO],
+        )
+      ).rows[0]!;
+      expect(
+        (
+          await asPlatform(c, admin, `select platform.remove_test_customer($1, 'Solo')`, [
+            tenant.id,
+          ])
+        ).error,
+      ).toMatch(/CONFIRM_NAME/);
+      const done = await asPlatform<{ n: number }>(
+        c,
+        admin,
+        `select platform.remove_test_customer($1, $2) as n`,
+        [tenant.id, tenant.name],
+      );
+      expect(done.error).toBeUndefined();
+      expect(done.rows![0]!.n).toBeGreaterThan(100);
+      const listed = await asPlatform<{ code: string }>(
+        c,
+        admin,
+        `select code from platform.customers()`,
+      );
+      expect(listed.rows!.map((r) => r.code)).not.toContain(SOLO);
+      expect(listed.rows!.map((r) => r.code)).toContain('TEST-COMPANY');
+      const active = await c.query<{ ok: boolean }>(`select core.tenant_active($1) as ok`, [
+        tenant.id,
+      ]);
+      expect(active.rows[0]!.ok).toBe(false);
+      // removed for good: not started again, resumed or brought back
+      expect(
+        (
+          await asPlatform(c, admin, `select platform.reset_test_customer($1, $2)`, [
+            tenant.id,
+            tenant.name,
+          ])
+        ).error,
+      ).toMatch(/CUSTOMER_REMOVED/);
+      await c.query('savepoint s');
+      await expect(
+        c.query(`update core.tenant set status = 'suspended' where id = $1`, [tenant.id]),
+      ).rejects.toThrow(/CUSTOMER_REMOVED/);
+      await c.query('rollback to savepoint s');
+      await expect(
+        c.query(`update core.tenant set removed_at = null where id = $1`, [tenant.id]),
+      ).rejects.toThrow(/CUSTOMER_REMOVED/);
+    });
+  });
+
+  it('is refused for a real customer', async () => {
+    await inRolledBackTx(async (c) => {
+      const admin = await newPlatformAdmin(c);
+      const real = (
+        await c.query<{ id: string }>(
+          `insert into core.tenant (name, code, is_test) values ('Real Co', 'REAL-CO-REMOVE', false)
+           returning id`,
+        )
+      ).rows[0]!;
+      expect(
+        (
+          await asPlatform(c, admin, `select platform.remove_test_customer($1, 'Real Co')`, [
+            real.id,
+          ])
+        ).error,
+      ).toMatch(/REAL_CUSTOMER/);
+      expect(
+        (await c.query(`select removed_at from core.tenant where id = $1`, [real.id])).rows[0],
+      ).toEqual({ removed_at: null });
+    });
+  });
+});

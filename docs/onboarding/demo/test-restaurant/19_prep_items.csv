@@ -1,0 +1,7 @@
+prep_item_code,name,prep_type,unit,batch_yield,shelf_life_hours,food_type,allergens,batch_portions
+RECHEADO-MASALA,Recheado masala,kitchen_prep,g,1000,240,veg,,25
+XACUTI-MASALA,Xacuti masala,kitchen_prep,g,1000,168,veg,,20
+CAFREAL-MARINADE,Cafreal marinade,kitchen_prep,g,1000,72,veg,,20
+SUGAR-SYRUP,Sugar syrup,house_mixer,ml,1000,336,veg,,50
+LIME-CORDIAL,Lime cordial,house_mixer,ml,1000,168,veg,,40
+NEGRONI-BATCH,Negroni (pre-batched),batched_cocktail,ml,1500,720,veg,,20

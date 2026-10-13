@@ -4,13 +4,22 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, StatusBox } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
-import { startAgain } from './actions';
+import { removeTestCustomer, startAgain } from './actions';
 
 /**
  * Start again (ADR 130), test customers only: everything of theirs is removed except the
  * customer itself, its plan and settings. Then their files are imported as for a new customer.
+ * With `remove` (ADR 139) the customer goes too: off the list for good, back to the list.
  */
-export function StartAgain({ tenantId, name }: { tenantId: string; name: string }) {
+export function StartAgain({
+  tenantId,
+  name,
+  remove = false,
+}: {
+  tenantId: string;
+  name: string;
+  remove?: boolean;
+}) {
   const router = useRouter();
   const hydrated = useHydrated();
   const [pending, start] = useTransition();
@@ -19,16 +28,17 @@ export function StartAgain({ tenantId, name }: { tenantId: string; name: string 
   const [done, setDone] = useState<string | null>(null);
   return (
     <form
-      aria-label={`Start ${name} again`}
+      aria-label={remove ? `Remove ${name}` : `Start ${name} again`}
       className="space-y-2"
-      data-testid="start-again"
+      data-testid={remove ? 'remove-test-customer' : 'start-again'}
       onSubmit={(e) => {
         e.preventDefault();
         start(async () => {
           setError(null);
           setDone(null);
-          const r = await startAgain(tenantId, typed);
+          const r = await (remove ? removeTestCustomer : startAgain)(tenantId, typed);
           if (!r.ok) return setError(r.message);
+          if (remove) return router.push('/platform');
           setTyped('');
           setDone('Done. Now import their files, then make their logins again.');
           router.refresh();
@@ -51,7 +61,11 @@ export function StartAgain({ tenantId, name }: { tenantId: string; name: string 
         disabled={!hydrated || pending || typed !== name}
         className="min-h-11 w-full rounded-lg bg-rose-700 px-3 text-sm font-medium text-white disabled:opacity-50"
       >
-        {pending ? 'Removing…' : 'Remove everything and start again'}
+        {pending
+          ? 'Removing…'
+          : remove
+            ? `Remove ${name} for good`
+            : 'Remove everything and start again'}
       </button>
     </form>
   );

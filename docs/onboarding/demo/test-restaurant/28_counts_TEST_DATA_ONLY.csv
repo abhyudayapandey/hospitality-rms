@@ -1,0 +1,5 @@
+store_node_code,item_code,difference,counted_by,approved_by
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR-STORE,FENI-750ML,-0.2,restaurant.head-bartender,restaurant.manager
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR-STORE,GIN-750ML,-0.1,restaurant.head-bartender,restaurant.manager
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR-STORE,LAGER-330ML,-2,restaurant.head-bartender,restaurant.manager
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR-STORE,TONIC-200ML,0,restaurant.head-bartender,restaurant.manager
