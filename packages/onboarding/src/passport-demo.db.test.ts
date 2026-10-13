@@ -123,6 +123,19 @@ describe('the Passport Hotel demo', () => {
       expect((await loadCustomer(c, files, { nested: true })).ok).toBe(true);
       const again = await loadCustomer(c, files, { nested: true, dryRun: true });
       expect(Object.entries(again.counts).filter(([, x]) => x.created || x.updated)).toEqual([]);
+      // loaded again on a later day of the same week: this week's shifts load once a person, so
+      // the new day's weekdays never add to a week already rostered (WEEKLY_HOURS_CAP)
+      const { d } = (
+        await c.query<{ d: string }>(
+          `select (((now() at time zone 'Asia/Kolkata') - interval '4 hours')::date + 1)::text as d`,
+        )
+      ).rows[0]!;
+      // (not on a Sunday: tomorrow is another week)
+      if (new Date(`${d}T00:00:00Z`).getUTCDay() !== 1) {
+        const later = await loadCustomer(c, files, { nested: true, dryRun: true, today: d });
+        expect(later.issues).toEqual([]);
+        expect(later.counts['shift assignments']?.created ?? 0).toBe(0);
+      }
       await c.query('reset role');
       // the GM answers for pest control; the executive housekeeper does it (ADR 073). A
       // reminder made before (on the GM's list) moves to them when the files are loaded again
