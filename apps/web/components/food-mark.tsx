@@ -1,4 +1,11 @@
-import { ALLERGEN_WORDS, FOOD_TYPE_WORDS, type Allergen, type FoodType } from '@outlet-ops/domain';
+import {
+  ALLERGEN_WORDS,
+  FOOD_TYPE_WORDS,
+  sortAllergens,
+  type Allergen,
+  type FoodType,
+} from '@outlet-ops/domain';
+import { Icon } from './icon';
 
 // The FSSAI mark on a batch (ADR 076): a green square with a dot for veg, a brown one with
 // a triangle for non-veg (egg too, which is said in words beside it).
@@ -27,8 +34,24 @@ export function FoodMark({ type, size = 16 }: { type: FoodType | null; size?: nu
   );
 }
 
-/** "Contains milk, tree nuts", or nothing when there are none. */
+/** "Contains milk, tree nuts" in the list's order (ADR 138), or nothing when there are none. */
 export function allergenText(allergens: readonly Allergen[]): string | null {
   if (allergens.length === 0) return null;
-  return `Contains ${allergens.map((a) => ALLERGEN_WORDS[a].toLowerCase()).join(', ')}`;
+  return `Contains ${sortAllergens(allergens)
+    .map((a) => ALLERGEN_WORDS[a].toLowerCase())
+    .join(', ')}`;
+}
+
+/** What a dish, a prep item or a batch carries, from everything in it (ADR 138). */
+export function AllergenLine({ allergens }: { allergens: readonly Allergen[] }) {
+  const text = allergenText(allergens);
+  return (
+    <p
+      data-testid="allergens"
+      className={`flex items-center gap-2 text-sm ${text ? 'font-semibold text-amber-800' : 'text-slate-600'}`}
+    >
+      {text && <Icon name="alert" className="size-4 shrink-0" />}
+      {text ?? 'No allergens declared'}
+    </p>
+  );
 }

@@ -49,13 +49,13 @@ const num = z
 const optNum = z.union([z.literal('').transform(() => undefined), num]);
 const int = z.string().regex(/^\d+$/, 'must be a whole number').transform(Number);
 const optInt = z.union([z.literal('').transform(() => undefined), int]);
-/** "milk; tree nuts": the allergens FSSAI lists (files 10 and 19, ADR 076). */
+/** "milk; tree nuts": FSSAI's allergens and the EU's five more (files 10, 19 and 22; ADR 138). */
 const allergenList = z.string().transform((v, ctx) => {
   const r = parseAllergens(v);
   if ('ok' in r) return r.ok;
   ctx.addIssue({
     code: 'custom',
-    message: `"${r.bad}" is not an allergen FSSAI lists (${ALLERGENS.join('; ')})`,
+    message: `"${r.bad}" is not an allergen we list (${ALLERGENS.join('; ')})`,
   });
   return z.NEVER;
 });
@@ -795,7 +795,11 @@ export const FILES = {
       menu: z.enum(['Food', 'Bar'], 'must be Food or Bar'),
       category: text,
       serving: text,
+      // ADR 138: allergens the dish's recipe items don't bring (a garnish); its recipe's are
+      // added to these
+      allergens: allergenList,
     }),
+    optional: ['allergens'],
   },
   menuOutlets: {
     file: '23_menu_outlets.csv',

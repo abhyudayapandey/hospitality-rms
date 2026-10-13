@@ -1,4 +1,5 @@
 import 'server-only';
+import type { Allergen } from '@outlet-ops/domain';
 import { sql, type Tx } from './db';
 
 // Reads for the menu, recipe and procedure screens (ADR 014). Recipes come through
@@ -19,12 +20,14 @@ export interface RecipeRow {
   effective_from: string;
   /** portions one batch makes (file 19), for prep items that say */
   batch_portions: string | null;
+  /** what it carries, from everything in its recipe and its own tags (ADR 138) */
+  allergens: Allergen[];
 }
 
 export async function myRecipes(tx: Tx): Promise<RecipeRow[]> {
   const r = await sql<RecipeRow>`
     select recipe_id, kind, subject_id, code, name, grp, unit, batch_yield, shelf_life_hours,
-           version, effective_from::text, batch_portions
+           version, effective_from::text, batch_portions, allergens
       from inv.my_recipes()`.execute(tx);
   return r.rows;
 }

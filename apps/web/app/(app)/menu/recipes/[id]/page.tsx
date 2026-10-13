@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AllergenLine } from '@/components/food-mark';
 import { ItemThumb } from '@/components/item-thumb';
 import { Empty } from '@/components/messages';
 import { MethodSteps } from '@/components/method-steps';
@@ -139,6 +140,9 @@ export default async function RecipePage({
               · <strong>{shelfLifeText(recipe.shelf_life_hours)}</strong>
             </p>
           )}
+          <div className="mt-1">
+            <AllergenLine allergens={recipe.allergens} />
+          </div>
         </div>
       </div>
       {canPhoto && photosEnabled() && <DishPhoto dish={recipe.subject_id} has={!!photo} />}

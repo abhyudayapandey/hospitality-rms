@@ -528,6 +528,25 @@ const OPENED: Record<string, [number, string, string, string]> = {
   'RED-WINE-750ML': [72, 'dry', 'veg', 'sulphites'],
   'WHITE-WINE-750ML': [72, 'chilled', 'veg', 'sulphites'],
 };
+// what each item carries (ADR 138): tagged once here, carried by every prep item and dish made
+// with it; the opened packs above say theirs
+const ALLERGEN_TAGS: Record<string, string> = {
+  KINGFISH: 'fish',
+  PRAWNS: 'crustaceans',
+  CLAMS: 'molluscs',
+  SQUID: 'molluscs',
+  EGGS: 'egg',
+  POI: 'gluten',
+  PAO: 'gluten',
+  'SANDWICH-BREAD': 'gluten',
+  FLOUR: 'gluten',
+  SEMOLINA: 'gluten',
+  'VERMOUTH-750ML': 'sulphites',
+  'LAGER-330ML': 'gluten',
+  'CRAFT-BEER-330ML': 'gluten',
+  'CASHEWS-100G': 'tree nuts',
+  'CHOCOLATE-BAR': 'milk; soy',
+};
 // one pack, in the stock unit, and what it is called: a pack is opened whole (ADR 102)
 const PACKS: Record<string, [number, string]> = {
   MILK: [1, 'carton'],
@@ -572,7 +591,8 @@ csv(
     ['Seafood', 'Meat', 'Dairy & eggs', 'Produce', 'Bakery'].includes(i.cat) ? 'department' : '',
     // the craft gin is only thrown away once the GM approves (ADR 092)
     i.code === 'GIN-750ML' ? 'gm' : '',
-    ...(OPENED[i.code] ?? ['', '', '', '']),
+    ...(OPENED[i.code] ?? ['', '', '']).slice(0, 3),
+    OPENED[i.code]?.[3] ?? ALLERGEN_TAGS[i.code] ?? '',
     // liquor, wine and beer are in the bar register and the FLR (ADR 096)
     ['Spirits', 'Beer', 'Wine'].includes(i.cat) || i.code === 'FENI-NIP-180ML' ? 'yes' : '',
     ...(PACKS[i.code] ?? ['', '']),
@@ -726,7 +746,7 @@ interface Prep {
   unit: 'g' | 'ml';
   yield: number;
   life: number;
-  /** for the batch label (ADR 076): every one here is vegetarian, none has an allergen */
+  /** for the batch label (ADR 076): every one here is vegetarian; allergens come from what is in it (ADR 138) */
   portions: number;
   at: string[];
   par: number;

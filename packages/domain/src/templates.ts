@@ -11,6 +11,7 @@
 import { CHECKLIST_BY_CODE } from './checklists';
 import { DEPARTMENTS, ROLE_BY_CODE, type RoleDef } from './catalogue';
 import { OUTLET_FORMATS, type OutletFormat } from './formats';
+import type { Allergen } from './food-label';
 import type { ModuleCode } from './modules';
 
 /** The blocks every outlet template uses (ADR 085): an outlet keeps stock, buys, has recipes,
@@ -63,6 +64,8 @@ export interface StarterItem {
   view?: View;
   /** Kept, not used up: linen, equipment (ADR 076). */
   durable?: true;
+  /** What it carries (ADR 138), carried by whatever the customer makes with it. */
+  allergens?: readonly Allergen[];
 }
 
 export interface OutletTemplate {
@@ -92,13 +95,13 @@ const KITCHEN_ITEMS: readonly StarterItem[] = [
   item('TOMATOES', 'Tomatoes', 'Produce', 'kg', true, 'KITCHEN'),
   item('COOKING-OIL', 'Cooking oil', 'Dry Grocery', 'l', false, 'KITCHEN'),
   item('SALT', 'Salt', 'Dry Grocery', 'kg', false, 'KITCHEN'),
-  item('MILK', 'Milk', 'Dairy', 'l', true, 'KITCHEN'),
+  { ...item('MILK', 'Milk', 'Dairy', 'l', true, 'KITCHEN'), allergens: ['milk'] },
   item('CLING-FILM', 'Cling film', 'Packaging', 'each', false, 'KITCHEN'),
 ];
 const BAR_ITEMS: readonly StarterItem[] = [
   item('VODKA', 'Vodka', 'Liquor', 'bottle', false, 'BAR'),
   item('WHISKY', 'Whisky', 'Liquor', 'bottle', false, 'BAR'),
-  item('BEER', 'Beer', 'Beer', 'bottle', false, 'BAR'),
+  { ...item('BEER', 'Beer', 'Beer', 'bottle', false, 'BAR'), allergens: ['gluten'] },
   item('SODA', 'Soda', 'Mixers', 'can', false, 'BAR'),
   item('LIME', 'Lime', 'Produce', 'each', true, 'BAR'),
 ];
