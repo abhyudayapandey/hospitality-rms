@@ -30,6 +30,7 @@ test('a sous chef reads kitchen recipes and procedures, and no bar recipes; a co
   await page.locator('[data-code="GINGER-GARLIC-PASTE"] a').click();
   await expect(page.getByTestId('recipe-name')).toHaveText('Ginger Garlic Paste');
   await expect(page.getByTestId('batch')).toContainText('1,000 g');
+  await expect(page.getByTestId('allergens')).toHaveText('No allergens declared');
   // the method is the Recipe tab (ADR 078)
   await expect(page.getByTestId('step')).toHaveCount(0);
   await page.getByTestId('tab-recipe').click();
@@ -67,6 +68,8 @@ test('the general manager sees cost %, sets a price from tomorrow, and cannot ch
 
   await row.getByRole('link').click();
   await expect(page.getByTestId('recipe-name')).toHaveText('Butter Chicken');
+  // what the dish carries comes from its ingredients, the makhani gravy's too (ADR 138)
+  await expect(page.getByTestId('allergens')).toHaveText('Contains milk');
   await expect(page.getByTestId('line-cost').first()).toBeVisible();
   await expect(page.getByTestId('recipe-total')).toContainText('Cost per serve');
 

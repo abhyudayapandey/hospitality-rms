@@ -112,6 +112,8 @@ export interface PrepRecipe {
   batch_yield: number;
   /** the portions this task's quantity makes (ADR 084), when the item says per batch */
   portions: number | null;
+  /** what the batch carries, from its recipe's ingredients (ADR 138) */
+  allergens: Allergen[];
   ingredients: { name: string; category: string | null; qty: number; unit: string }[];
   method: { step: number; instruction: string; minutes: number | null }[];
   batches: { production_id: string; batch_no: string | null; qty: number }[];

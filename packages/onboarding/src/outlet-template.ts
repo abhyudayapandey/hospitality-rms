@@ -480,6 +480,7 @@ export function addOutlet(
       'standard_unit_cost_inr',
       'preferred_supplier_code',
       'item_type',
+      'allergens',
     ]);
     const placed = table('itemLocations', [
       'item_code',
@@ -504,6 +505,7 @@ export function addOutlet(
           standard_unit_cost_inr: '0',
           // linen and the like are kept, not used up (ADR 076)
           item_type: i.durable ? 'durable' : 'consumable',
+          allergens: (i.allergens ?? []).join('; '),
         });
       }
       placed.rows.push({

@@ -372,6 +372,11 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   `ops.push_due`, `web-push`), only to the browsers' push services and never when older than 15
   minutes; Home asks once, Profile turns it on or off (`ops.push_subscription`, own rows only).
   The signing key `web/vapid_private` reaches wf-execute alone; the web gets the public key.
+- Allergens follow the recipe (ADR 138): one list of 14 for every customer (FSSAI's nine, then
+  the EU's five; `ALLERGENS`, `inv.allergen_words()`). A raw item is tagged once (file 10); a
+  prep item and a dish carry what their recipe's items carry plus their own tags (files 19, 22),
+  worked out when read (`inv.recipe_allergens`), never copied. Names only hint
+  (`allergenHints`, dry-run warnings); nothing is tagged from a name.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

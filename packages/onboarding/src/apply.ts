@@ -21,7 +21,13 @@ import {
   type Issue,
 } from './files';
 import { checkDishPhotos, UploadError } from './upload';
-import { menuWarnings, packWarnings, pictureWarnings, validateBundle } from './validate';
+import {
+  allergenWarnings,
+  menuWarnings,
+  packWarnings,
+  pictureWarnings,
+  validateBundle,
+} from './validate';
 
 /** A file 39 job's rule as its columns (ADR 116): its `repeat`, else every N months. */
 function rule(j: {
@@ -1843,6 +1849,7 @@ class Loader {
       ...menuWarnings(this.b),
       ...pictureWarnings(this.b),
       ...packWarnings(this.b),
+      ...allergenWarnings(this.b),
     );
     for (const u of this.b.unitConversions) {
       this.step(FILES.unitConversions.file, u.line);
@@ -1934,17 +1941,17 @@ class Loader {
       this.step(FILES.menuItems.file, m.line);
       await this.upsert(
         'menu items',
-        `insert into menu.menu_item (tenant_id, code, name, menu, category, serving)
-         values ($1, $2, $3, $4, $5, $6)
+        `insert into menu.menu_item (tenant_id, code, name, menu, category, serving, allergens)
+         values ($1, $2, $3, $4, $5, $6, $7)
          on conflict (tenant_id, code) do update
             set name = excluded.name, menu = excluded.menu, category = excluded.category,
-                serving = excluded.serving, archived_at = null
+                serving = excluded.serving, allergens = excluded.allergens, archived_at = null
           where (menu.menu_item.name, menu.menu_item.menu, menu.menu_item.category,
-                 menu.menu_item.serving, menu.menu_item.archived_at)
+                 menu.menu_item.serving, menu.menu_item.allergens, menu.menu_item.archived_at)
                 is distinct from (excluded.name, excluded.menu, excluded.category,
-                                  excluded.serving, null)
+                                  excluded.serving, excluded.allergens, null)
          returning id, xmax = 0 as inserted`,
-        [this.tenant, m.menu_item_code, m.name, m.menu, m.category, m.serving],
+        [this.tenant, m.menu_item_code, m.name, m.menu, m.category, m.serving, m.allergens],
       );
       menuItems.set(
         m.menu_item_code,

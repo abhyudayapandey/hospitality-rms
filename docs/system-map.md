@@ -299,6 +299,9 @@ who presented, and nothing touches a login meanwhile.
   orders need approving (unusual, every, above an amount) (ADR 092).
 - _Shelf life & labels_ (SHELF_LIFE): an opened pack's use-by and its label with day dot;
   _Breakage_ (BREAKAGE): what broke, where and how, posted as consumption (ADR 093).
+- _Allergens_ (no block of their own): one list of 14, FSSAI's nine and the EU's five. A raw item
+  is tagged once; every prep item and dish made with it carries them, on its label, its prep
+  task and its recipe page (ADR 138).
 - _Rooms_ (ROOMS): what each room should hold, counted not stocked; each room's status with its
   time, or why it is out of order, until when and its repair (ADR 117); breakfast, lunch and
   dinner by room, set by the restaurant (service) team and read by the kitchen, front office and

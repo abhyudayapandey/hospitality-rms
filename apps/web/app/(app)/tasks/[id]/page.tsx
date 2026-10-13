@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { failure, taskIcon } from '@outlet-ops/domain';
 import { BackLink } from '@/components/back-link';
+import { AllergenLine } from '@/components/food-mark';
 import { Icon } from '@/components/icon';
 import { ItemThumb } from '@/components/item-thumb';
 import { MethodSteps } from '@/components/method-steps';
@@ -384,6 +385,7 @@ function MakeIt({ recipe, unit, open }: { recipe: PrepRecipe; unit: string; open
           Makes about <strong>{portionsText(recipe.portions)}</strong>
         </p>
       )}
+      <AllergenLine allergens={recipe.allergens} />
       {open && recipe.ingredients.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-500">Ingredients for this batch</h2>

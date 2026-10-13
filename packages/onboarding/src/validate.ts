@@ -1,9 +1,12 @@
 import {
   ACCESS_GROUPS,
+  ALLERGEN_WORDS,
+  allergenHints,
   CALENDAR_JOB_BY_CODE,
   DOMAINS,
   matchPicture,
   pictureOf,
+  type Allergen,
 } from '@outlet-ops/domain';
 import type { AssignTo, Bundle, Issue } from './files';
 import { FILES, jobRoleAccess } from './files';
@@ -1529,5 +1532,55 @@ export function pictureWarnings(b: Bundle): Issue[] {
   };
   for (const i of b.items) check(FILES.items.file, i.line, 'name', i.name, i.category);
   for (const i of b.prepItems) check(FILES.prepItems.file, i.line, 'name', i.name);
+  return out;
+}
+
+/**
+ * Not blockers (ADR 138): an item, prep item or dish whose name says it carries an allergen
+ * that neither its own tags nor its recipe's ingredients carry ("Prawns, medium" with no
+ * crustaceans). Whoever onboards tags the raw item in file 10 once (or adds it to file 19's or
+ * 22's own column); nothing is ever tagged from a name.
+ */
+export function allergenWarnings(b: Bundle): Issue[] {
+  const own = new Map<string, readonly Allergen[]>();
+  for (const i of b.items) own.set(`raw ${i.item_code}`, i.allergens);
+  for (const p of b.prepItems) own.set(`prep ${p.prep_item_code}`, p.allergens);
+  for (const m of b.menuItems) own.set(`menu ${m.menu_item_code}`, m.allergens);
+  const groups = recipeGroups(b);
+  const carried = new Map<string, Set<Allergen>>();
+  const carries = (key: string, seen: Set<string> = new Set()): Set<Allergen> => {
+    const known = carried.get(key);
+    if (known) return known;
+    const out = new Set<Allergen>(own.get(key) ?? []);
+    if (seen.has(key)) return out; // a cycle is a problem of its own (checked above)
+    seen.add(key);
+    for (const r of groups.get(key) ?? []) {
+      for (const a of carries(`${r.ingredient_kind} ${r.ingredient_code}`, seen)) out.add(a);
+    }
+    carried.set(key, out);
+    return out;
+  };
+  const out: Issue[] = [];
+  const check = (file: string, line: number, key: string, name: string, recipe: boolean) => {
+    const has = carries(key);
+    const missing = allergenHints(name).filter((a) => !has.has(a));
+    if (missing.length === 0) return;
+    const words = missing.map((a) => ALLERGEN_WORDS[a].toLowerCase()).join(', ');
+    out.push({
+      file,
+      row: line,
+      column: 'allergens',
+      message: recipe
+        ? `${name} may contain ${words}, but neither its allergens nor its recipe's items say so. Tag the item in ${FILES.items.file}, or add it to its allergens`
+        : `${name} may contain ${words}. Add it to its allergens if it does`,
+    });
+  };
+  for (const i of b.items) check(FILES.items.file, i.line, `raw ${i.item_code}`, i.name, false);
+  for (const p of b.prepItems) {
+    check(FILES.prepItems.file, p.line, `prep ${p.prep_item_code}`, p.name, true);
+  }
+  for (const m of b.menuItems) {
+    check(FILES.menuItems.file, m.line, `menu ${m.menu_item_code}`, m.name, true);
+  }
   return out;
 }

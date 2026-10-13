@@ -456,7 +456,10 @@ The central kitchen's batches (file 26: 6,400 g on day -2, 3,200 g on day -1) an
 - **File 10** has optional `discard_approval` (`gm`: thrown away only once the GM approves;
   Test Company's single malt, ADR 092), `open_shelf_life_hours`, `storage` (dry, chilled,
   frozen), `food_type` and `allergens` (the opened pack's label, ADR 093; milk, cream, ketchup,
-  wines and juice have one), and `excise` (yes for the 15 liquor, wine and beer items, ADR 096).
+  wines and juice have one). `allergens` is every item's, not only an opened pack's: whatever
+  is made from the item carries them (ADR 138). Test Company also tags its ghee, curd, lager
+  and vermouth, and the Solo Bar its dairy, eggs, wines and beers. `excise` is yes for the 15
+  liquor, wine and beer items (ADR 096).
   Optional `pack_size` (one pack, in the item's base unit) and `pack_name` (tin, carton,
   bottle, packet): a pack is opened whole (ADR 102). Every item with a shelf life once opened
   has one: milk a 1 l carton, cream a 200 ml carton, ketchup a 1 kg bottle, wines a bottle,
