@@ -1,0 +1,15 @@
+prep_item_code,recipe_for_kind,step,instruction,minutes
+RECHEADO-MASALA,prep,1,Soak the chillies in the vinegar for an hour.,60
+RECHEADO-MASALA,prep,2,Grind everything to a smooth paste; jar and label it.,15
+XACUTI-MASALA,prep,1,Roast the grated coconut and spices until brown.,20
+XACUTI-MASALA,prep,2,"Fry the onions, add the roast and grind with water.",20
+CAFREAL-MARINADE,prep,1,Grind everything to a bright green paste; keep it chilled.,15
+SUGAR-SYRUP,prep,1,Dissolve the sugar in 500 ml of hot water; cool and bottle.,15
+LIME-CORDIAL,prep,1,Zest and juice the limes; stir into warm syrup and bottle.,20
+NEGRONI-BATCH,prep,1,"Stir equal parts in a jug; bottle, label and chill.",10
+KINGFISH-RECHEADO,menu,1,Slit the kingfish and stuff it with the masala.,5
+KINGFISH-RECHEADO,menu,2,Shallow fry until crisp; serve with red rice.,12
+PRAWN-CURRY-RICE,menu,1,Fry the onions; add the chilli and tamarind.,8
+PRAWN-CURRY-RICE,menu,2,"Add coconut milk and prawns; simmer, do not boil.",8
+CHICKEN-XACUTI,menu,1,Brown the chicken in oil.,8
+CHICKEN-XACUTI,menu,2,Add the masala and water; simmer until tender.,25

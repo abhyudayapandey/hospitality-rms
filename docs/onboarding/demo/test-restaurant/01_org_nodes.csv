@@ -1,0 +1,7 @@
+node_code,name,kind,parent_code,timezone,outlet_format,department_type
+RESTAURANT-TEST,[TEST] Restaurant,company,,Asia/Kolkata,,
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM,"Restaurant & Bar, Panjim",outlet,RESTAURANT-TEST,Asia/Kolkata,restaurant,
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-KITCHEN,"Restaurant & Bar, Panjim – Kitchen",department,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM,Asia/Kolkata,,kitchen
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-RESTAURANT,"Restaurant & Bar, Panjim – Restaurant",department,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM,Asia/Kolkata,,service
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-STORES-TEAM,"Restaurant & Bar, Panjim – Stores",department,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM,Asia/Kolkata,,other
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,"Restaurant & Bar, Panjim – Bar",department,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM,Asia/Kolkata,,service

@@ -1,0 +1,19 @@
+username,display_name,job_role_code,home_node_code,login_type,email,employment_type,joined_on,password_mode,demo_presenter
+test.leena-sequeira,Leena Sequeira,ACCOUNT_OWNER,RESTAURANT-TEST,username,,full_time,2025-12-17,test_rule,no
+restaurant.presenter,Demo Presenter,ACCOUNT_OWNER,RESTAURANT-TEST,username,,full_time,2025-12-04,test_rule,yes
+restaurant.manager,Rhea Fernandes,RESTAURANT_GENERAL_MANAGER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM,username,,full_time,2025-11-21,test_rule,no
+restaurant.assistant-manager,Kunal Naik,ASSISTANT_MANAGER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM,username,,full_time,2025-11-08,test_rule,no
+restaurant.head-cook,Anthony Rebelo,HEAD_COOK,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-KITCHEN,username,,full_time,2025-10-26,test_rule,no
+restaurant.sous-chef,Shweta Kamat,SOUS_CHEF,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-KITCHEN,username,,full_time,2025-10-13,test_rule,no
+restaurant.cook,Pradeep Gaude,COOK,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-KITCHEN,username,,full_time,2025-09-30,test_rule,no
+restaurant.commis,Akash Parab,COMMIS,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-KITCHEN,username,,full_time,2025-09-17,test_rule,no
+restaurant.kitchen-steward,Ramesh Velip,KITCHEN_STEWARD,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-KITCHEN,username,,full_time,2025-09-04,test_rule,no
+restaurant.captain,Neil D'Costa,CAPTAIN,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-RESTAURANT,username,,full_time,2025-08-22,test_rule,no
+restaurant.steward,Jason Pinto,STEWARD,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-RESTAURANT,username,,full_time,2025-08-09,test_rule,no
+restaurant.host,Ria Desai,HOST,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-RESTAURANT,username,,full_time,2025-07-27,test_rule,no
+restaurant.cashier,Omkar Sawant,CASHIER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-RESTAURANT,username,,full_time,2025-07-14,test_rule,no
+restaurant.store-keeper,Dinesh Shetye,STORE_KEEPER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-STORES-TEAM,username,,full_time,2025-07-01,test_rule,no
+restaurant.bar-manager,Calvin Rodrigues,BAR_MANAGER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,username,,full_time,2025-06-18,test_rule,no
+restaurant.head-bartender,Mario Fernandes,HEAD_BARTENDER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,username,,full_time,2025-06-05,test_rule,no
+restaurant.bartender,Sana Shaikh,BARTENDER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,username,,full_time,2025-05-23,test_rule,no
+restaurant.bar-back,Vikas Gawas,BAR_BACK,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,username,,full_time,2025-05-10,test_rule,no

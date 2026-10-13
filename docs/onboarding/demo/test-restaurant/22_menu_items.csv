@@ -1,0 +1,29 @@
+menu_item_code,name,menu,category,serving
+PRAWN-RAVA-FRY,Prawn rava fry,Food,Small plates,1 plate
+SQUID-BUTTER-GARLIC,Squid butter garlic,Food,Small plates,1 plate
+CHOURICO-PAO,Chouriço pao,Food,Small plates,2 pao
+PANEER-CAFREAL,Paneer cafreal tikka,Food,Small plates,6 pieces
+MASALA-FRIES,Masala fries,Food,Small plates,1 bowl
+KINGFISH-RECHEADO,Kingfish recheado,Food,Mains,1 portion
+PRAWN-CURRY-RICE,Goan prawn curry & rice,Food,Mains,1 portion
+CHICKEN-XACUTI,Chicken xacuti & poi,Food,Mains,1 portion
+CHICKEN-CAFREAL,Chicken cafreal & fries,Food,Mains,1 portion
+PORK-VINDALHO,Pork vindalho & poi,Food,Mains,1 portion
+VEG-XACUTI,Vegetable xacuti & rice,Food,Mains,1 portion
+BUTTER-PAO,Butter pao basket,Food,Sides,4 pao
+STEAMED-RICE,Steamed basmati,Food,Sides,1 bowl
+CASHEW-SALAD,Kachumber with cashews,Food,Sides,1 bowl
+FENI-SOUR,Feni sour,Bar,Cocktails,1 glass
+GOAN-GIMLET,Goan gimlet,Bar,Cocktails,1 glass
+NEGRONI,Negroni,Bar,Cocktails,1 glass
+MOJITO,Mojito,Bar,Cocktails,1 glass
+MARGARITA,Margarita,Bar,Cocktails,1 glass
+GIN-TONIC,Gin & tonic,Bar,Classics,1 glass
+WHISKY-SODA,Whisky soda,Bar,Classics,1 glass
+RUM-COLA,Rum & cola,Bar,Classics,1 glass
+VODKA-SODA,Vodka soda & lime,Bar,Classics,1 glass
+LAGER,"Lager, bottle",Bar,Beer & wine,330 ml
+CRAFT-BEER,Goan craft beer,Bar,Beer & wine,330 ml
+RED-WINE-GLASS,"Red wine, glass",Bar,Beer & wine,150 ml
+WHITE-WINE-GLASS,"White wine, glass",Bar,Beer & wine,150 ml
+FRESH-LIME-SODA,Fresh lime soda,Bar,Soft drinks,1 glass

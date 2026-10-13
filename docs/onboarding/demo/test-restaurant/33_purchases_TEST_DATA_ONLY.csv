@@ -1,0 +1,9 @@
+order_ref,store_node_code,supplier_code,item_code,quantity,unit_cost_inr,ordered_day,ordered_by,approved_by,received_day,received_quantity,received_by
+PO-1,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-MAIN-STORE,SUP-GROCERY,RICE,20,90,-6,restaurant.store-keeper,restaurant.manager,-4,20,restaurant.store-keeper
+PO-1,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-MAIN-STORE,SUP-GROCERY,OIL,20,150,-6,restaurant.store-keeper,restaurant.manager,-4,20,restaurant.store-keeper
+PO-1,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-MAIN-STORE,SUP-GROCERY,COCONUT-MILK,12,180,-6,restaurant.store-keeper,restaurant.manager,-4,10,restaurant.store-keeper
+PO-2,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-MAIN-STORE,SUP-BAR,LAGER-330ML,96,90,-5,restaurant.store-keeper,restaurant.manager,-3,96,restaurant.store-keeper
+PO-2,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-MAIN-STORE,SUP-BAR,GIN-750ML,6,1800,-5,restaurant.store-keeper,restaurant.manager,-3,6,restaurant.store-keeper
+PO-2,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-MAIN-STORE,SUP-BAR,WHISKY-750ML,6,1600,-5,restaurant.store-keeper,restaurant.manager,-3,6,restaurant.store-keeper
+PO-3,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-MAIN-STORE,SUP-SUNDRY,NAPKINS,10,60,-2,restaurant.store-keeper,restaurant.manager,,,
+PO-3,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-MAIN-STORE,SUP-SUNDRY,TAKEAWAY-BOX,200,6,-2,restaurant.store-keeper,restaurant.manager,,,

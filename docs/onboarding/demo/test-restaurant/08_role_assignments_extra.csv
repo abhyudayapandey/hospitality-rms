@@ -1,0 +1,2 @@
+username,access_group,node_code,include_descendants,reason
+restaurant.manager,USER_ADMIN,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM,true,The manager adds people and resets their passwords
