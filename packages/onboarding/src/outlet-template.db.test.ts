@@ -74,6 +74,24 @@ async function check(c: PoolClient, ch: OutletChoice, base: AccessRow[]) {
     [ch.code],
   );
   expect(rounds[0]!.n, ch.tile).toBeGreaterThan(0);
+  // starter SOPs (ADR 140): one per library SOP, at its department
+  const { rows: sops } = await c.query<{ code: string; place: string }>(
+    `select s.code, n.code place from ops.sop s join core.hierarchy_node n on n.id = s.org_node_id
+      where s.code like $1 || '-%' and s.archived_at is null order by 1`,
+    [ch.code],
+  );
+  expect(
+    sops.map((x) => x.place),
+    ch.tile,
+  ).toEqual(
+    plan.sops
+      .map((x) => ({
+        code: `${ch.code}-${x.code.replace(/^SOP-/, '')}`,
+        place: `${ch.code}-${x.department}`,
+      }))
+      .sort((x, y) => x.code.localeCompare(y.code))
+      .map((x) => x.place),
+  );
   return plan;
 }
 

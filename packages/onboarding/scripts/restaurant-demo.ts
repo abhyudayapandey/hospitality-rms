@@ -77,6 +77,9 @@ const NAMES: Record<string, [string, string, number]> = {
   HEAD_BARTENDER: ['head-bartender', 'Mario Fernandes', 42000],
   BARTENDER: ['bartender', 'Sana Shaikh', 28000],
   BAR_BACK: ['bar-back', 'Vikas Gawas', 18000],
+  TECHNICIAN: ['technician', 'Santosh Naik', 26000],
+  COST_CONTROLLER: ['cost-controller', 'Priya Kamat', 45000],
+  ACCOUNTANT: ['accountant', 'Ashwin Prabhu', 40000],
 };
 const OWNER = { user: 'test.leena-sequeira', name: 'Leena Sequeira', pay: 200000 };
 const PRESENTER = { user: 'restaurant.presenter', name: 'Demo Presenter' };
@@ -653,7 +656,8 @@ const PREPS: Prep[] = [
     type: 'house_mixer',
     unit: 'ml',
     yield: 1000,
-    life: 168,
+    // fresh lime: two days, so yesterday's batch is pushed today (drinks on Push today too)
+    life: 48,
     food: 'veg',
     portions: 40,
     store: BS,
@@ -1380,12 +1384,18 @@ const SHIFTS: [string, string, string, string, string][] = [
   ['BARTENDER', 'BAR', 'Evening', '16:00', '00:00'],
   ['BAR_BACK', 'BAR', 'Evening', '16:00', '00:00'],
   ['STORE_KEEPER', 'STORES-TEAM', 'Day', '09:00', '17:00'],
+  ['TECHNICIAN', 'ENGINEERING', 'Day', '09:00', '17:00'],
+  ['COST_CONTROLLER', 'ADMIN-FINANCE', 'Day', '10:00', '18:00'],
+  ['ACCOUNTANT', 'ADMIN-FINANCE', 'Day', '10:00', '18:00'],
 ];
 const headOf: Record<string, string> = {
   KITCHEN: 'HEAD_COOK',
   RESTAURANT: 'RESTAURANT_GENERAL_MANAGER',
   BAR: 'BAR_MANAGER',
   'STORES-TEAM': 'RESTAURANT_GENERAL_MANAGER',
+  // nobody heads Engineering or Admin & Finance: the GM runs them (ADR 140)
+  ENGINEERING: 'RESTAURANT_GENERAL_MANAGER',
+  'ADMIN-FINANCE': 'RESTAURANT_GENERAL_MANAGER',
 };
 const OFF = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 /** The days a person works: everyone has one day off, the i-th of the week. */

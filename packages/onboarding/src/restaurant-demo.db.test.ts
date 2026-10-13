@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { closePools, inRolledBackTx } from '@outlet-ops/db/test-helpers';
+import { attemptAs, closePools, inRolledBackTx } from '@outlet-ops/db/test-helpers';
 import type { PoolClient } from 'pg';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { loadCustomer } from './apply';
@@ -90,13 +90,14 @@ describe('the restaurant demo', () => {
         await one(
           `select count(*)::int n from hr.worker where tenant_id = $1 and status = 'active'`,
         ),
-      ).toBe(18);
+      ).toBe(21);
       expect(
         await one(
           `select count(*)::int n from core.app_user where tenant_id = $1 and demo_presenter`,
         ),
       ).toBe(1);
-      // a kitchen, a restaurant floor, a bar and a stores team; a Main Store, kitchen and bar
+      // a kitchen, a restaurant floor, a bar, a stores team, Engineering and Admin & Finance
+      // (ADR 140); a Main Store, kitchen and bar
       expect(
         (
           await c.query<{ code: string }>(
@@ -105,7 +106,14 @@ describe('the restaurant demo', () => {
             [tenant],
           )
         ).rows.map((x) => x.code),
-      ).toEqual([`${H}-BAR`, `${H}-KITCHEN`, `${H}-RESTAURANT`, `${H}-STORES-TEAM`]);
+      ).toEqual([
+        `${H}-ADMIN-FINANCE`,
+        `${H}-BAR`,
+        `${H}-ENGINEERING`,
+        `${H}-KITCHEN`,
+        `${H}-RESTAURANT`,
+        `${H}-STORES-TEAM`,
+      ]);
       // a working restaurant: nothing below zero, every past clock-in on a shift, people on
       // today, a week of sales, the bar's count and an order still to arrive
       expect(
@@ -158,15 +166,52 @@ describe('the restaurant demo', () => {
           order by 1`,
         [tenant],
       );
-      // the managers have none of their own: they follow everyone else's (the template's rule)
+      // the managers follow everyone else's; the office has none (the template's rule). The
+      // sous chef has the line check, the assistant manager the reset and lock-up (ADR 140)
       expect(without.rows.map((x) => x.role_code)).toEqual([
+        'ACCOUNTANT',
         'ACCOUNT_OWNER',
-        'ASSISTANT_MANAGER',
         'BAR_MANAGER',
+        'COST_CONTROLLER',
         'HEAD_COOK',
         'RESTAURANT_GENERAL_MANAGER',
-        'SOUS_CHEF',
       ]);
+
+      // the starter SOPs, each at its department
+      expect(
+        await one(
+          `select count(*)::int n from ops.sop where tenant_id = $1 and archived_at is null`,
+        ),
+      ).toBe(14);
+
+      const user = async (u: string) =>
+        (await c.query<{ id: string }>(`select id from core.app_user where username = $1`, [u]))
+          .rows[0]!.id;
+      const gm = await user('restaurant.manager');
+      // the GM gives the repair to the technician, who works in Engineering (ADR 140)
+      const repair = (
+        await c.query<{ id: string }>(
+          `select id from ops.maintenance_request where tenant_id = $1 limit 1`,
+          [tenant],
+        )
+      ).rows[0]!.id;
+      const technician = await user('restaurant.technician');
+      expect(
+        await attemptAs(c, gm, 'select ops.assign_maintenance($1, $2)', [repair, technician]),
+      ).not.toHaveProperty('error');
+
+      // Push today lists drinks as well as food, to the bar and the floor alike
+      const push = async (u: string) =>
+        (
+          await attemptAs<{ menu: string }>(
+            c,
+            await user(u),
+            'select menu from menu.my_push_today()',
+          )
+        ).rows!.map((x) => x.menu);
+      for (const u of ['restaurant.bartender', 'restaurant.steward']) {
+        expect(new Set(await push(u)), u).toEqual(new Set(['Bar', 'Food']));
+      }
     });
   });
 });

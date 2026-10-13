@@ -12,6 +12,9 @@ restaurant.steward,monthly,20000
 restaurant.host,monthly,22000
 restaurant.cashier,monthly,24000
 restaurant.store-keeper,monthly,28000
+restaurant.technician,monthly,26000
+restaurant.cost-controller,monthly,45000
+restaurant.accountant,monthly,40000
 restaurant.bar-manager,monthly,70000
 restaurant.head-bartender,monthly,42000
 restaurant.bartender,monthly,28000
