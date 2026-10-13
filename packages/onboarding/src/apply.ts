@@ -87,6 +87,8 @@ export interface LoadOptions {
   photos?: Record<string, Uint8Array>;
   /** Stores one photo under its key; called only when the load is applied, before COMMIT. */
   putPhoto?: (key: string, bytes: Uint8Array, contentType: string) => Promise<void>;
+  /** Tests only: the business day the load counts test data's days from (yyyy-mm-dd). */
+  today?: string;
 }
 
 /** Validates the files without touching the database. */
@@ -130,6 +132,7 @@ export async function loadCustomer(
   try {
     const l = new Loader(client, bundle, report, at);
     l.photos = photos;
+    l.todayOverride = opts.today;
     // file 37 is authoritative only when it is uploaded: a re-import without it keeps covers
     l.coverFile = Object.keys(files).some((f) => f.split('/').pop()!.startsWith('37_'));
     await l.run();
@@ -169,6 +172,7 @@ class Loader {
   private isTest = false;
   /** The load date in the customer's time zone: test-only day offsets count from it. */
   private today = '';
+  todayOverride: string | undefined;
   private nodes = new Map<string, string>();
   private users = new Map<string, string>();
   private workers = new Map<string, string>();
@@ -349,12 +353,14 @@ class Loader {
     // The load day is the business day (04:00 to 04:00, ADR 046), not the calendar date:
     // between 00:00 and 04:00 it is still yesterday, as every report and the expiry
     // lists count it. (Inline: platform_loader has no access to rpt.business_date.)
-    this.today = (
-      await this.c.query<{ d: string }>(
-        `select ((now() at time zone $1) - interval '4 hours')::date::text as d`,
-        [cu.default_timezone],
-      )
-    ).rows[0]!.d;
+    this.today =
+      this.todayOverride ??
+      (
+        await this.c.query<{ d: string }>(
+          `select ((now() at time zone $1) - interval '4 hours')::date::text as d`,
+          [cu.default_timezone],
+        )
+      ).rows[0]!.d;
     if (cu.leave_hr_approval !== undefined) {
       await this.c.query(
         `update core.tenant set settings = settings || jsonb_build_object('leave_hr_approval', $2::boolean)
@@ -2520,7 +2526,9 @@ class Loader {
    * Monday. Week -1 is the past seven days on the days file 35 has the person clocking in, so a
    * demo's past is rostered as it was worked; week 0 is today to Sunday on the weekdays they
    * worked last week (ADR 114). For those two the row's days are not used. A shift that has
-   * started is assigned with hr.record_test_assignment (test customers only).
+   * started is assigned with hr.record_test_assignment (test customers only). Week 0 loads once
+   * a person, like week -1: someone already on a shift from today to Sunday keeps their week,
+   * since a later load day picks other weekdays and would pass their weekly cap.
    */
   private async shifts() {
     const today = new Date(`${this.today}T00:00:00Z`);
@@ -2543,6 +2551,19 @@ class Loader {
       }
       const node = this.nodes.get(s.roster_node_code)!;
       const worker = this.workers.get(s.username);
+      if (s.week === 0) {
+        const rostered = await this.c.query(
+          `select 1 from hr.shift_assignment a join hr.shift s on s.id = a.shift_id
+            where a.worker_id = $1 and a.status in ('assigned', 'pending')
+              and s.status <> 'cancelled' and s.local_date between $2::date and $3::date
+            limit 1`,
+          [worker, this.today, this.day(nextMonday - 1)],
+        );
+        if (rostered.rowCount) {
+          this.count('shift assignments', false);
+          continue;
+        }
+      }
       // the days to roster: [the Monday of their week, the day of that week (1 = Monday)]
       const days: [string, number][] =
         s.week === -1
