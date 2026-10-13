@@ -11,12 +11,13 @@ checks them.
 
 ## What is in it
 
-- **The outlet and its departments**, from the wizard: Kitchen, Restaurant (the floor), Bar
-  and the Stores team.
+- **The outlet and its departments**, from the wizard: Kitchen, Restaurant (the floor), Bar,
+  the Stores team, Engineering (one technician, run by the GM) and Admin & Finance (the cost
+  controller and the accountant; ADR 140).
 - **Stores**: a Main Store run by the store keeper, the Kitchen Store and the Bar Store
   (the stock check goes shelf by shelf: back bar, fridges, wine rack, ice machine). The kitchen and the bar ask the
   Main Store; the store keeper buys.
-- **One person per job role**: 16 people, an owner (Leena Sequeira, `test.leena-sequeira`)
+- **One person per job role**: 19 people, an owner (Leena Sequeira, `test.leena-sequeira`)
   and **Demo Presenter**, who may show the app as anyone (`demo_presenter` in file 07,
   ADR 071). Usernames are `restaurant.<role>`, for example `restaurant.manager`,
   `restaurant.bartender`.
@@ -28,8 +29,13 @@ checks them.
   purchase orders (one arriving today), the bar's closing count, rosters (last week, this
   week and next), clock-ins (a few late, one no-show), a prep task, a repair, seven licences
   (the excise bar licence expires in 20 days) and the compliance calendar.
-- **Daily checklists** from the template for everyone who works shifts, and **floor
-  sections**: Section 1 to 3 in the restaurant, the Bar counter and the Terrace.
+- **Daily checklists** from the template for everyone who works shifts (the sous chef's line
+  check, the assistant manager's mid-shift reset and lock-up, the technician's maintenance
+  round), **14 starter SOPs** in Me → SOPs (handwashing, allergies, labelling, receiving,
+  taking an order, the bill, complaints, serving alcohol, pouring with a measure and more), and
+  **floor sections**: Section 1 to 3 in the restaurant, the Bar counter and the Terrace.
+- **Push today** lists food and drinks: yesterday's lime cordial is used up in today's
+  cocktails, and the cafreal marinade in the kitchen's dishes.
 
 ## Before importing: refresh the dates
 
@@ -50,7 +56,7 @@ pnpm --filter @outlet-ops/onboarding restaurant-demo --today 2026-10-20
 (cd docs/onboarding/demo/test-restaurant && zip -q -FS ~/test-restaurant.zip [0-9][0-9]_*.csv)
 ```
 
-It holds 37 files.
+It holds 38 files.
 
 **2. Create the customer**: on `/platform`, the link **New customer: the company and its owner
 only** (`/platform/customers/new`), not **Set up a new customer** (the wizard always makes an
@@ -75,25 +81,27 @@ email owner). Enter:
 ticks for a restaurant with a bar), then **Events & compliance** → **Compliance** → **On**.
 
 **4. Import**: **Import setup files** → `test-restaurant.zip` → **Upload and dry run**. It
-should report no problems and no warnings, with (new): org places 5, delivery places 5,
-links 4, job roles 16, users 17, workers 17 / 1 changed (the owner's), licences 7, compliance
+should report no problems and no warnings, with (new): org places 7, delivery places 5,
+links 4, job roles 19, users 20, workers 20 / 1 changed (the owner's), licences 7, compliance
 jobs 8, suppliers 8, items 57, item locations 90, prep items 6, menu items 28, recipes 34,
-checklists 17, sections 5, shift templates 12, shifts 252, shift assignments 204,
+checklists 21, SOPs 14, sections 5, shift templates 15, shifts 315, shift assignments 255,
 production batches 42, sales days 7, stock counts 1, purchase orders 3, attendance
-sessions 71. **Apply**, then a second dry run shows no changes.
+sessions 89. **Apply**, then a second dry run shows no changes.
 
 **5. Logins (the printed sheet)**: the customer's page → **Logins** → tick **Set passwords
-by the Test<Role>!12 rule** → **Create 18 username logins** → **Print the login sheet**.
+by the Test<Role>!12 rule** → **Create 21 username logins** → **Print the login sheet**.
 Each password is `Test` + the job title without spaces + `!12`:
 
-| Who                                | Username                  | Password                   |
-| ---------------------------------- | ------------------------- | -------------------------- |
-| Demo Presenter                     | `restaurant.presenter`    | `TestAccountOwner!12`      |
-| Leena Sequeira, owner              | `test.leena-sequeira`     | `TestAccountOwner!12`      |
-| Rhea Fernandes, Restaurant Manager | `restaurant.manager`      | `TestRestaurantManager!12` |
-| Calvin Rodrigues, Bar Manager      | `restaurant.bar-manager`  | `TestBarManager!12`        |
-| Sana Shaikh, Bartender             | `restaurant.bartender`    | `TestBartender!12`         |
-| Dinesh Shetye, Store Keeper        | `restaurant.store-keeper` | `TestStoreKeeper!12`       |
+| Who                                | Username                     | Password                   |
+| ---------------------------------- | ---------------------------- | -------------------------- |
+| Demo Presenter                     | `restaurant.presenter`       | `TestAccountOwner!12`      |
+| Leena Sequeira, owner              | `test.leena-sequeira`        | `TestAccountOwner!12`      |
+| Rhea Fernandes, Restaurant Manager | `restaurant.manager`         | `TestRestaurantManager!12` |
+| Calvin Rodrigues, Bar Manager      | `restaurant.bar-manager`     | `TestBarManager!12`        |
+| Sana Shaikh, Bartender             | `restaurant.bartender`       | `TestBartender!12`         |
+| Dinesh Shetye, Store Keeper        | `restaurant.store-keeper`    | `TestStoreKeeper!12`       |
+| Santosh Naik, Technician           | `restaurant.technician`      | `TestTechnician!12`        |
+| Priya Kamat, Cost Controller       | `restaurant.cost-controller` | `TestCostController!12`    |
 
 **6. Check**: sign in as `restaurant.presenter`. Me shows **Show the app as someone**; pick
 Rhea Fernandes: Home shows Compliance (the bar licence expiring), the sections card, Push

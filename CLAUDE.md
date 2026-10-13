@@ -382,6 +382,11 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   restarted or brought back; never a real customer. [TEST] Restaurant
   (`docs/onboarding/demo/test-restaurant`, `pnpm --filter @outlet-ops/onboarding restaurant-demo`)
   is the wizard's Restaurant + Bar with one person per role, written by `filesFromDraft`.
+- A restaurant's and a bar's template (ADR 140): Engineering with one Technician, run by the GM
+  (Maintenance round), Admin & Finance with a Cost Controller, the sous chef's Line check and
+  the assistant manager's Mid-shift reset and Lock-up (a library checklist may name an
+  outlet-level role). Starter SOPs are product code (`sops.ts`), listed by templates and
+  written to file 46 by `addOutlet`. Push today lists every dish of the outlet, food and drinks.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

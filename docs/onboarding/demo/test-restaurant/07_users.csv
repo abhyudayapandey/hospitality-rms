@@ -13,7 +13,10 @@ restaurant.steward,Jason Pinto,STEWARD,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-RES
 restaurant.host,Ria Desai,HOST,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-RESTAURANT,username,,full_time,2025-07-27,test_rule,no
 restaurant.cashier,Omkar Sawant,CASHIER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-RESTAURANT,username,,full_time,2025-07-14,test_rule,no
 restaurant.store-keeper,Dinesh Shetye,STORE_KEEPER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-STORES-TEAM,username,,full_time,2025-07-01,test_rule,no
-restaurant.bar-manager,Calvin Rodrigues,BAR_MANAGER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,username,,full_time,2025-06-18,test_rule,no
-restaurant.head-bartender,Mario Fernandes,HEAD_BARTENDER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,username,,full_time,2025-06-05,test_rule,no
-restaurant.bartender,Sana Shaikh,BARTENDER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,username,,full_time,2025-05-23,test_rule,no
-restaurant.bar-back,Vikas Gawas,BAR_BACK,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,username,,full_time,2025-05-10,test_rule,no
+restaurant.technician,Santosh Naik,TECHNICIAN,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-ENGINEERING,username,,full_time,2025-06-18,test_rule,no
+restaurant.cost-controller,Priya Kamat,COST_CONTROLLER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-ADMIN-FINANCE,username,,full_time,2025-06-05,test_rule,no
+restaurant.accountant,Ashwin Prabhu,ACCOUNTANT,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-ADMIN-FINANCE,username,,full_time,2025-05-23,test_rule,no
+restaurant.bar-manager,Calvin Rodrigues,BAR_MANAGER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,username,,full_time,2025-05-10,test_rule,no
+restaurant.head-bartender,Mario Fernandes,HEAD_BARTENDER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,username,,full_time,2025-04-27,test_rule,no
+restaurant.bartender,Sana Shaikh,BARTENDER,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,username,,full_time,2025-04-14,test_rule,no
+restaurant.bar-back,Vikas Gawas,BAR_BACK,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,username,,full_time,2025-04-01,test_rule,no

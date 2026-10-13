@@ -11,6 +11,9 @@ RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,Evening,HEAD_BARTENDER,-1,"Mon,Wed-Sun
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,Evening,BARTENDER,-1,"Mon-Tue,Thu-Sun",restaurant.bartender,restaurant.bar-manager
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,Evening,BAR_BACK,-1,"Mon-Wed,Fri-Sun",restaurant.bar-back,restaurant.bar-manager
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-STORES-TEAM,Day,STORE_KEEPER,-1,"Mon-Thu,Sat-Sun",restaurant.store-keeper,restaurant.manager
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-ENGINEERING,Day,TECHNICIAN,-1,"Mon-Fri,Sun",restaurant.technician,restaurant.manager
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-ADMIN-FINANCE,Day,COST_CONTROLLER,-1,Mon-Sat,restaurant.cost-controller,restaurant.manager
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-ADMIN-FINANCE,Day,ACCOUNTANT,-1,Tue-Sun,restaurant.accountant,restaurant.manager
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-KITCHEN,Morning,SOUS_CHEF,0,Tue-Sun,restaurant.sous-chef,restaurant.head-cook
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-KITCHEN,Morning,COOK,0,"Mon,Wed-Sun",restaurant.cook,restaurant.head-cook
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-KITCHEN,Evening,COMMIS,0,"Mon-Tue,Thu-Sun",restaurant.commis,restaurant.head-cook
@@ -23,6 +26,9 @@ RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,Evening,HEAD_BARTENDER,0,"Mon,Wed-Sun"
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,Evening,BARTENDER,0,"Mon-Tue,Thu-Sun",restaurant.bartender,restaurant.bar-manager
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,Evening,BAR_BACK,0,"Mon-Wed,Fri-Sun",restaurant.bar-back,restaurant.bar-manager
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-STORES-TEAM,Day,STORE_KEEPER,0,"Mon-Thu,Sat-Sun",restaurant.store-keeper,restaurant.manager
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-ENGINEERING,Day,TECHNICIAN,0,"Mon-Fri,Sun",restaurant.technician,restaurant.manager
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-ADMIN-FINANCE,Day,COST_CONTROLLER,0,Mon-Sat,restaurant.cost-controller,restaurant.manager
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-ADMIN-FINANCE,Day,ACCOUNTANT,0,Tue-Sun,restaurant.accountant,restaurant.manager
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-KITCHEN,Morning,SOUS_CHEF,1,Tue-Sun,restaurant.sous-chef,restaurant.head-cook
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-KITCHEN,Morning,COOK,1,"Mon,Wed-Sun",restaurant.cook,restaurant.head-cook
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-KITCHEN,Evening,COMMIS,1,"Mon-Tue,Thu-Sun",restaurant.commis,restaurant.head-cook
@@ -35,3 +41,6 @@ RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,Evening,HEAD_BARTENDER,1,"Mon,Wed-Sun"
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,Evening,BARTENDER,1,"Mon-Tue,Thu-Sun",restaurant.bartender,restaurant.bar-manager
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR,Evening,BAR_BACK,1,"Mon-Wed,Fri-Sun",restaurant.bar-back,restaurant.bar-manager
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-STORES-TEAM,Day,STORE_KEEPER,1,"Mon-Thu,Sat-Sun",restaurant.store-keeper,restaurant.manager
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-ENGINEERING,Day,TECHNICIAN,1,"Mon-Fri,Sun",restaurant.technician,restaurant.manager
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-ADMIN-FINANCE,Day,COST_CONTROLLER,1,Mon-Sat,restaurant.cost-controller,restaurant.manager
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-ADMIN-FINANCE,Day,ACCOUNTANT,1,Tue-Sun,restaurant.accountant,restaurant.manager

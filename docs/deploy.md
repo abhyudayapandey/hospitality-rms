@@ -2974,3 +2974,16 @@ One migration, `20261226100000_remove_test_customer.sql` (`core.tenant.removed_a
    A real customer has no such section.
 4. Check: the console lists [TEST] Passport Hotel and [TEST] Restaurant (and any real
    customers); signing in as a removed customer's user fails.
+
+## Releasing a restaurant's technician, cost controller, checklists and starter SOPs (ADR 140)
+
+No migration, no infrastructure or access change. Templates only: a new outlet from the
+wizard or Add an outlet (Restaurant, Restaurant + Bar, Bar / Pub) gets Engineering with a
+technician, Admin & Finance with a cost controller, the new checklists and 14 starter SOPs.
+Outlets already loaded do not change.
+
+1. Merge, then run the Deploy workflow.
+2. **[TEST] Restaurant**: import it from the README (38 files; SOPs 14, checklists 21).
+3. Check: `restaurant.technician` has the Maintenance round on To do; `restaurant.sous-chef`
+   the Line check; Me → SOPs lists the kitchen's SOPs for a cook and the bar's for a
+   bartender; the GM gives a repair to Santosh Naik.

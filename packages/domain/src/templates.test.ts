@@ -7,6 +7,7 @@ import {
   type LibraryChecklist,
 } from './checklists';
 import { ROLE_BY_CODE } from './catalogue';
+import { SOPS } from './sops';
 import {
   EXTRA_BY_CODE,
   TEMPLATES,
@@ -57,7 +58,13 @@ describe('outlet templates', () => {
     const on = (view: 'cafe' | 'restaurant') =>
       t.departments.filter((d) => d.on !== false && inView(d, view)).map((d) => d.code);
     expect(on('cafe')).toEqual(['KITCHEN', 'COUNTER']);
-    expect(on('restaurant')).toEqual(['KITCHEN', 'RESTAURANT', 'STORES-TEAM']);
+    expect(on('restaurant')).toEqual([
+      'KITCHEN',
+      'RESTAURANT',
+      'STORES-TEAM',
+      'ENGINEERING',
+      'ADMIN-FINANCE',
+    ]);
     expect(t.checklists.filter((c) => inView(c, 'cafe')).map((c) => c.code)).toContain(
       'COUNTER-OPENING',
     );
@@ -101,5 +108,21 @@ describe('outlet templates', () => {
     expect(libraryStepsJson(photo)).toEqual([
       { label: 'Photo of the deck', kind: 'tick', photo_required: true },
     ]);
+  });
+});
+
+// The starter SOP library (ADR 140): unique codes, plain words, at a real department.
+describe('starter SOPs', () => {
+  it('have unique codes, a title and a body short enough to read on a phone', () => {
+    expect(new Set(SOPS.map((s) => s.code)).size).toBe(SOPS.length);
+    for (const s of SOPS) {
+      expect(s.code, s.code).toMatch(/^SOP-[A-Z0-9-]+$/);
+      expect(s.title.length, s.code).toBeLessThanOrEqual(60);
+      expect(s.body.length, s.code).toBeLessThanOrEqual(400);
+      // no sentence over 20 words (the app's plain-language rule)
+      for (const sentence of s.body.split(/(?<=[.!?])\s+/)) {
+        expect(sentence.split(/\s+/).length, `${s.code}: ${sentence}`).toBeLessThanOrEqual(20);
+      }
+    }
   });
 });

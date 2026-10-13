@@ -9,6 +9,7 @@ export * from './duties';
 export * from './formats';
 export * from './catalogue';
 export * from './checklists';
+export * from './sops';
 export * from './templates';
 export * from './cover';
 export * from './compliance';

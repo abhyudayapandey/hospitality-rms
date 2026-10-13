@@ -1,5 +1,6 @@
 import {
   CHECKLIST_BY_CODE,
+  SOP_BY_CODE,
   DEPARTMENTS,
   EXTRA_BY_CODE,
   ROLE_BY_CODE,
@@ -12,6 +13,7 @@ import {
   type StarterItem,
   type TemplateChecklist,
   type TemplateRole,
+  type TemplateSop,
   type View,
 } from '@outlet-ops/domain';
 import { parseCsv, writeCsv } from './csv';
@@ -57,6 +59,8 @@ export interface OutletPlan {
     version: number;
     assignTo: string;
   }[];
+  /** Starter SOPs (ADR 140): for the roles named that work here, else everyone there. */
+  sops: { code: string; title: string; department: string; roles: string[] }[];
   items: StarterItem[];
   modules: string[];
   centralKitchen: boolean;
@@ -141,8 +145,12 @@ export function planOutlet(choice: OutletChoice): OutletPlan {
     const lib = CHECKLIST_BY_CODE.get(c.code)!;
     const at = c.department ?? lib.department;
     if (!wanted(c, at) || !on.has(at) || checklists.has(c.code)) return;
-    // to the first of its SOP roles that works in that department here (ADR 075)
-    const doer = lib.roles.find((r) => roles.get(r)?.department === at);
+    // to the first of its SOP roles that works in that department here (ADR 075), or at the
+    // outlet itself (an assistant manager's lock-up, ADR 140)
+    const doer = lib.roles.find((r) => {
+      const d = roles.get(r)?.department;
+      return d === at || d === '(outlet)';
+    });
     checklists.set(c.code, {
       code: c.code,
       name: lib.name,
@@ -153,6 +161,20 @@ export function planOutlet(choice: OutletChoice): OutletPlan {
   };
   t.checklists.forEach(addChecklist);
   extras.forEach((e) => (e.checklists ?? []).forEach(addChecklist));
+  const sops = new Map<string, OutletPlan['sops'][number]>();
+  const addSop = (p: TemplateSop) => {
+    const lib = SOP_BY_CODE.get(p.code)!;
+    const at = p.department ?? lib.department;
+    if (!wanted(p, at) || !on.has(at) || sops.has(p.code)) return;
+    sops.set(p.code, {
+      code: p.code,
+      title: lib.title,
+      department: at,
+      roles: lib.roles.filter((r) => roles.has(r)),
+    });
+  };
+  t.sops.forEach(addSop);
+  extras.forEach((e) => (e.sops ?? []).forEach(addSop));
 
   const items =
     choice.items === false
@@ -178,6 +200,7 @@ export function planOutlet(choice: OutletChoice): OutletPlan {
       })),
     roles: [...roles.values()],
     checklists: [...checklists.values()],
+    sops: [...sops.values()],
     items,
     modules: [...new Set([...t.modules, ...extras.flatMap((e) => e.modules ?? [])])],
     centralKitchen: extras.some((e) => e.site),
@@ -466,6 +489,32 @@ export function addOutlet(
           from_library: `${lib.code}@${lib.version}`,
         }),
       );
+    }
+  }
+
+  // starter SOPs, copied from the library (ADR 140)
+  if (plan.sops.length) {
+    const sopRows = table('sops', [
+      'sop_code',
+      'place_code',
+      'title',
+      'roles',
+      'needs_ack',
+      'body',
+    ]);
+    const have = new Set(sopRows.rows.map((r) => r['sop_code']));
+    for (const p of plan.sops) {
+      const sopCode = `${code}-${p.code.replace(/^SOP-/, '')}`;
+      if (have.has(sopCode)) continue;
+      const lib = SOP_BY_CODE.get(p.code)!;
+      sopRows.rows.push({
+        sop_code: sopCode,
+        place_code: deptCode(code, p.department),
+        title: lib.title,
+        roles: p.roles.join(';'),
+        needs_ack: lib.needsAck ? 'yes' : 'no',
+        body: lib.body,
+      });
     }
   }
 

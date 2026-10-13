@@ -9,6 +9,7 @@
 // its department is (a role that works at the outlet is always on).
 
 import { CHECKLIST_BY_CODE } from './checklists';
+import { SOP_BY_CODE } from './sops';
 import { DEPARTMENTS, ROLE_BY_CODE, type RoleDef } from './catalogue';
 import { OUTLET_FORMATS, type OutletFormat } from './formats';
 import type { Allergen } from './food-label';
@@ -53,6 +54,14 @@ export interface TemplateChecklist {
   view?: View;
 }
 
+/** A library SOP (ADR 140) an outlet gets with its department. */
+export interface TemplateSop {
+  code: string;
+  /** The department it goes in, when not the library's. */
+  department?: string;
+  view?: View;
+}
+
 export interface StarterItem {
   code: string;
   name: string;
@@ -75,6 +84,7 @@ export interface OutletTemplate {
   departments: readonly TemplateDepartment[];
   roles: readonly TemplateRole[];
   checklists: readonly TemplateChecklist[];
+  sops: readonly TemplateSop[];
   items: readonly StarterItem[];
   /** Modules switched on for the company when this outlet is added (never switched off). */
   modules: readonly ModuleCode[];
@@ -106,6 +116,25 @@ const BAR_ITEMS: readonly StarterItem[] = [
   item('LIME', 'Lime', 'Produce', 'each', true, 'BAR'),
 ];
 
+const KITCHEN_SOPS: readonly TemplateSop[] = [
+  { code: 'SOP-HANDWASH' },
+  { code: 'SOP-ALLERGY-COOKING' },
+  { code: 'SOP-LABEL-STORE' },
+  { code: 'SOP-RECEIVING' },
+  { code: 'SOP-FRYER-WASTE' },
+  { code: 'SOP-FIRE-GAS' },
+];
+const SERVICE_SOPS = (department?: string, view?: View): TemplateSop[] =>
+  ['SOP-TAKING-ORDER', 'SOP-BILL', 'SOP-COMPLAINT', 'SOP-ALLERGIC-REACTION'].map((code) => ({
+    code,
+    ...(department && { department }),
+    ...(view && { view }),
+  }));
+const BAR_SOPS: readonly TemplateSop[] = [
+  { code: 'SOP-RESPONSIBLE-ALCOHOL' },
+  { code: 'SOP-MEASURED-POUR' },
+];
+
 export const TEMPLATES: readonly OutletTemplate[] = [
   {
     format: 'restaurant',
@@ -116,7 +145,9 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       { code: 'RESTAURANT', view: 'restaurant' },
       { code: 'COUNTER', view: 'cafe' },
       { code: 'STORES-TEAM', view: 'restaurant' },
-      { code: 'ADMIN-FINANCE', on: false },
+      // one technician, run by the GM (ADR 140); an import may list more
+      { code: 'ENGINEERING', view: 'restaurant', note: 'one technician, run by the GM' },
+      { code: 'ADMIN-FINANCE', view: 'restaurant' },
     ],
     roles: [
       { code: 'RESTAURANT_GENERAL_MANAGER' },
@@ -133,6 +164,8 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       { code: 'CASHIER', department: 'RESTAURANT', view: 'restaurant' },
       { code: 'CASHIER', department: 'COUNTER', view: 'cafe' },
       { code: 'STORE_KEEPER' },
+      { code: 'TECHNICIAN', view: 'restaurant' },
+      { code: 'COST_CONTROLLER', view: 'restaurant' },
       { code: 'ACCOUNTANT' },
     ],
     checklists: [
@@ -154,6 +187,17 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       { code: 'SECTION-SETUP', view: 'restaurant' },
       { code: 'CASHIER-CLOSE', view: 'restaurant' },
       { code: 'CASHIER-CLOSE', department: 'COUNTER', view: 'cafe' },
+      { code: 'LINE-CHECK', view: 'restaurant' },
+      { code: 'MID-SHIFT-RESET', view: 'restaurant' },
+      { code: 'LOCK-UP', view: 'restaurant' },
+      { code: 'MAINTENANCE-ROUND', view: 'restaurant' },
+    ],
+    sops: [
+      ...KITCHEN_SOPS,
+      ...SERVICE_SOPS(undefined, 'restaurant'),
+      ...SERVICE_SOPS('COUNTER', 'cafe'),
+      { code: 'SOP-ISSUES', view: 'restaurant' },
+      { code: 'SOP-FRIDGE-FAILS', view: 'restaurant' },
     ],
     items: [
       ...KITCHEN_ITEMS,
@@ -182,6 +226,8 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       { code: 'KITCHEN' },
       { code: 'SECURITY', on: false },
       { code: 'STORES-TEAM', on: false },
+      { code: 'ENGINEERING', note: 'one technician, run by the Bar Manager' },
+      { code: 'ADMIN-FINANCE' },
     ],
     roles: [
       { code: 'BAR_MANAGER' },
@@ -198,6 +244,8 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       { code: 'KITCHEN_STEWARD' },
       { code: 'SECURITY_GUARD' },
       { code: 'STORE_KEEPER' },
+      { code: 'TECHNICIAN' },
+      { code: 'COST_CONTROLLER' },
       { code: 'ACCOUNTANT' },
     ],
     checklists: [
@@ -213,6 +261,14 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       { code: 'SECTION-SETUP', department: 'FLOOR-SERVICE' },
       { code: 'CASHIER-CLOSE', department: 'FLOOR-SERVICE' },
       { code: 'SECURITY-PATROL' },
+      { code: 'MAINTENANCE-ROUND' },
+    ],
+    sops: [
+      ...BAR_SOPS,
+      ...KITCHEN_SOPS,
+      ...SERVICE_SOPS('FLOOR-SERVICE'),
+      { code: 'SOP-ISSUES' },
+      { code: 'SOP-FRIDGE-FAILS' },
     ],
     items: [...BAR_ITEMS, ...KITCHEN_ITEMS],
     modules: [
@@ -251,6 +307,7 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       { code: 'WASHROOM-ROUND', department: 'COUNTER' },
       { code: 'CREW-STATIONS' },
     ],
+    sops: [],
     items: KITCHEN_ITEMS,
     modules: [
       ...EVERY_OUTLET,
@@ -287,6 +344,7 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       { code: 'RECEIVING-CHECK' },
       { code: 'PLATFORMS-ONLINE' },
     ],
+    sops: [],
     items: [
       ...KITCHEN_ITEMS,
       item('DELIVERY-BOXES', 'Delivery boxes', 'Packaging', 'each', false, 'STORES-TEAM'),
@@ -384,6 +442,7 @@ export const TEMPLATES: readonly OutletTemplate[] = [
       { code: 'PLANT-ROUND' },
       { code: 'SECURITY-PATROL' },
     ],
+    sops: [],
     items: [
       ...KITCHEN_ITEMS,
       item('TOILET-ROLLS', 'Toilet rolls', 'Guest Amenities', 'each', false, 'HOUSEKEEPING'),
@@ -423,6 +482,7 @@ export interface Extra {
   departments?: readonly string[];
   roles?: readonly TemplateRole[];
   checklists?: readonly TemplateChecklist[];
+  sops?: readonly TemplateSop[];
   items?: readonly StarterItem[];
   modules?: readonly ModuleCode[];
   /** A central kitchen: a site of its own beside the outlet, with its own store. */
@@ -447,6 +507,7 @@ export const EXTRAS: readonly Extra[] = [
       { code: 'BEER-LINE-CLEAN' },
       { code: 'BAR-RESTOCK' },
     ],
+    sops: BAR_SOPS,
     items: BAR_ITEMS,
   },
   {
@@ -603,7 +664,9 @@ export function checkTemplates(): void {
   const formats = new Set<string>(OUTLET_FORMATS);
   const pieces = (
     where: string,
-    t: Pick<OutletTemplate, 'roles' | 'checklists' | 'items'> & { departments: readonly string[] },
+    t: Pick<OutletTemplate, 'roles' | 'checklists' | 'sops' | 'items'> & {
+      departments: readonly string[];
+    },
   ) => {
     for (const d of t.departments)
       if (!depts.has(d)) throw new Error(`${where}: ${d} is not a department`);
@@ -621,6 +684,15 @@ export function checkTemplates(): void {
       const at = c.department ?? lib.department;
       if (!depts.has(at)) throw new Error(`${where}: ${c.code} goes in ${at}, not a department`);
     }
+    for (const p of t.sops) {
+      const lib = SOP_BY_CODE.get(p.code);
+      if (!lib) throw new Error(`${where}: ${p.code} is not in the SOP library`);
+      for (const r of lib.roles) {
+        if (!ROLE_BY_CODE.has(r)) throw new Error(`${where}: ${p.code} names ${r}, not a role`);
+      }
+      const at = p.department ?? lib.department;
+      if (!depts.has(at)) throw new Error(`${where}: ${p.code} goes in ${at}, not a department`);
+    }
     for (const i of t.items) {
       if (!depts.has(i.department)) throw new Error(`${where}: ${i.code} kept in ${i.department}`);
       if (!/^[A-Z][A-Z0-9-]*$/.test(i.code)) throw new Error(`${where}: bad item code ${i.code}`);
@@ -634,6 +706,10 @@ export function checkTemplates(): void {
       const at = c.department ?? CHECKLIST_BY_CODE.get(c.code)!.department;
       if (!own.has(at)) throw new Error(`${t.format}: ${c.code} goes in ${at}, which it lacks`);
     }
+    for (const p of t.sops) {
+      const at = p.department ?? SOP_BY_CODE.get(p.code)!.department;
+      if (!own.has(at)) throw new Error(`${t.format}: ${p.code} goes in ${at}, which it lacks`);
+    }
   }
   if (new Set(TEMPLATES.map((t) => t.format)).size !== OUTLET_FORMATS.length) {
     throw new Error('every format needs exactly one template');
@@ -643,6 +719,7 @@ export function checkTemplates(): void {
       departments: e.departments ?? [],
       roles: e.roles ?? [],
       checklists: e.checklists ?? [],
+      sops: e.sops ?? [],
       items: e.items ?? [],
     });
   }

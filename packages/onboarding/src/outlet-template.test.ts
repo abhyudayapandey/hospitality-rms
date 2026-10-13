@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { CHECKLIST_BY_CODE, CHECKLISTS, levelOf, ROLE_BY_CODE, TILES } from '@outlet-ops/domain';
+import {
+  CHECKLIST_BY_CODE,
+  CHECKLISTS,
+  levelOf,
+  ROLE_BY_CODE,
+  TILES,
+  type ExtraCode,
+} from '@outlet-ops/domain';
 import { planOutlet, type OutletChoice } from './outlet-template';
 
 // The plan an outlet's choices give (ADR 062), before it becomes files.
@@ -19,9 +26,15 @@ describe('the plan for an outlet', () => {
     const p = planOutlet(choice('cafe'));
     expect(p.departments.map((d) => d.code)).toEqual(['KITCHEN', 'COUNTER']);
     expect(p.offered).toEqual([
-      { code: 'ADMIN-FINANCE', name: 'Admin & Finance' },
       { code: 'RESTAURANT', name: 'Restaurant', alsoIn: 'restaurant' },
       { code: 'STORES-TEAM', name: 'Stores', alsoIn: 'restaurant' },
+      {
+        code: 'ENGINEERING',
+        name: 'Engineering',
+        alsoIn: 'restaurant',
+        note: 'one technician, run by the GM',
+      },
+      { code: 'ADMIN-FINANCE', name: 'Admin & Finance', alsoIn: 'restaurant' },
     ]);
     expect(p.roles.map((r) => r.code)).toContain('BARISTA');
     expect(p.roles.map((r) => r.code)).not.toContain('CAPTAIN');
@@ -35,6 +48,60 @@ describe('the plan for an outlet', () => {
     const lists = p.checklists.map((c) => c.code);
     expect(lists).toEqual(expect.arrayContaining(['RESTAURANT-OPENING', 'COUNTER-OPENING']));
     expect(lists).not.toContain('HOT-HOLDING');
+  });
+
+  it('a restaurant has a technician run by the GM and a cost controller (ADR 140)', () => {
+    for (const p of [
+      planOutlet(choice('restaurant_bar', { extras: ['bar'] })),
+      planOutlet(choice('bar_pub')),
+    ]) {
+      const depts = p.departments.map((d) => d.code);
+      expect(depts).toEqual(expect.arrayContaining(['ENGINEERING', 'ADMIN-FINANCE']));
+      expect(p.roles.find((r) => r.code === 'TECHNICIAN')?.department).toBe('ENGINEERING');
+      expect(p.roles.find((r) => r.code === 'COST_CONTROLLER')?.department).toBe('ADMIN-FINANCE');
+      // nobody heads Engineering: the outlet's manager runs it
+      expect(p.roles.filter((r) => r.department === 'ENGINEERING').map((r) => r.code)).toEqual([
+        'TECHNICIAN',
+      ]);
+      expect(p.checklists.find((c) => c.code === 'MAINTENANCE-ROUND')?.assignTo).toBe(
+        'role:TECHNICIAN',
+      );
+    }
+    // a café has neither unless it ticks them
+    const cafe = planOutlet(choice('cafe')).roles.map((r) => r.code);
+    expect(cafe).not.toContain('TECHNICIAN');
+    expect(cafe).not.toContain('COST_CONTROLLER');
+  });
+
+  it('the sous chef and the assistant manager have checklists of their own (ADR 140)', () => {
+    const p = planOutlet(choice('restaurant_bar', { extras: ['bar'] }));
+    const to = (code: string) => p.checklists.find((c) => c.code === code)?.assignTo;
+    expect(to('LINE-CHECK')).toBe('role:SOUS_CHEF');
+    expect(to('MID-SHIFT-RESET')).toBe('role:ASSISTANT_MANAGER');
+    expect(to('LOCK-UP')).toBe('role:ASSISTANT_MANAGER');
+  });
+
+  it('starter SOPs come with their departments (ADR 140)', () => {
+    const where = (tile: string, extras: ExtraCode[] = []) =>
+      Object.fromEntries(
+        planOutlet(choice(tile, { extras })).sops.map((s) => [s.code, s.department]),
+      );
+    const rb = where('restaurant_bar', ['bar']);
+    expect(rb).toMatchObject({
+      'SOP-HANDWASH': 'KITCHEN',
+      'SOP-TAKING-ORDER': 'RESTAURANT',
+      'SOP-RESPONSIBLE-ALCOHOL': 'BAR',
+      'SOP-ISSUES': 'STORES-TEAM',
+      'SOP-FRIDGE-FAILS': 'ENGINEERING',
+    });
+    // without the bar, no bar SOPs
+    expect(where('restaurant')).not.toHaveProperty('SOP-RESPONSIBLE-ALCOHOL');
+    // a café's service SOPs are at its counter
+    expect(where('cafe')).toMatchObject({ 'SOP-TAKING-ORDER': 'COUNTER' });
+    expect(where('bar_pub')).toMatchObject({
+      'SOP-MEASURED-POUR': 'BAR',
+      'SOP-COMPLAINT': 'FLOOR-SERVICE',
+    });
   });
 
   it('restaurant + bar: the bar comes ticked, with its people, checklists and stock', () => {
