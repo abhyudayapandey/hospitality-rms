@@ -15,6 +15,8 @@ test('the restaurant manager gives Section 2; the steward sees it on Home', asyn
   try {
     await signInAs(page, 'Test Restaurant Manager 1.0');
     await page.goto('/');
+    // named by the place they are in
+    await expect(main(page).getByTestId('home-sections')).toContainText('Restaurant sections');
     await main(page).getByTestId('home-give-sections').click();
     await page.waitForURL(/\/sections\/give/);
     // a row per person, like the roster: a tap marks it, Save changes saves it
