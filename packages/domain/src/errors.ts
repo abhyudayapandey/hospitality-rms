@@ -3,7 +3,8 @@
 
 export const ERROR_MESSAGES = {
   NOT_AUTHORISED: "You don't have access to do that.",
-  REAL_CUSTOMER: 'Only a test customer can start again.',
+  REAL_CUSTOMER: 'Only a test customer can start again or be removed.',
+  CUSTOMER_REMOVED: 'That customer was removed.',
   CONFIRM_NAME: "Type the customer's name exactly to confirm.",
   RESET_STUCK: 'Starting again stopped part way. Nothing was removed. Tell the team.',
   SEGREGATION_OF_DUTIES: "You can't approve a request you raised yourself.",

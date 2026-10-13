@@ -116,6 +116,19 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
           <StartAgain tenantId={id} name={customer.name} />
         </details>
       )}
+      {customer.is_test && (
+        // test customers only (ADR 139): emptied and off the list for good
+        <details className="rounded-xl bg-white p-3 text-sm ring-1 ring-slate-200">
+          <summary className="min-h-11 cursor-pointer content-center font-medium">
+            Remove this test customer
+          </summary>
+          <p className="py-2 text-slate-600">
+            Removes all of {customer.name}&apos;s data, as Start again does, and takes them off this
+            list for good. Nobody can sign in there again. Their history in this console stays.
+          </p>
+          <StartAgain tenantId={id} name={customer.name} remove />
+        </details>
+      )}
     </>
   );
 }

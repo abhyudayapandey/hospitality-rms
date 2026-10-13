@@ -56,6 +56,18 @@ export async function startAgain(tenantId: string, confirm: string): Promise<Act
   });
 }
 
+/** Remove a test customer (ADR 139): emptied as Start again does, then off the list for good. */
+export async function removeTestCustomer(
+  tenantId: string,
+  confirm: string,
+): Promise<ActionResult<number>> {
+  return run('remove_test_customer', async (tx) => {
+    const r = await sql<{ n: number }>`
+      select platform.remove_test_customer(${tenantId}::uuid, ${confirm}) as n`.execute(tx);
+    return r.rows[0]!.n;
+  });
+}
+
 export interface NewCustomerForm {
   code: string;
   name: string;
