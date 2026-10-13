@@ -65,10 +65,28 @@ export default async function Home() {
   const today = await loadToday(shell, tz);
   // floor sections (ADR 133): mine today, and whether I give them out
   const user = await requireUser();
-  const sections = await withUser(user.id, async (tx) => ({
-    mine: await mySections(tx),
-    gives: (await sectionPlaces(tx)).length > 0,
-  }));
+  const sections = await withUser(user.id, async (tx) => {
+    // "Restaurant", without its outlet's name in front ("Hotel 1.0 – Restaurant")
+    const places = [
+      ...new Set(
+        (await sectionPlaces(tx)).map((p) => {
+          const lead = p.outlet_name ? `${p.outlet_name} – ` : null;
+          return lead && p.name.startsWith(lead) ? p.name.slice(lead.length) : p.name;
+        }),
+      ),
+    ];
+    return {
+      mine: await mySections(tx),
+      gives: places.length > 0,
+      // named by the place they are in: "Restaurant sections"
+      title:
+        places.length === 1
+          ? `${places[0]} sections`
+          : places.length === 2
+            ? `${places[0]} and ${places[1]!.toLowerCase()} sections`
+            : 'Floor sections',
+    };
+  });
   const now = new Date();
   const pushKey = pushPublicKey();
   // the next job, then the three after it (ADR 098)
@@ -145,9 +163,9 @@ export default async function Home() {
       )}
 
       {(sections.mine.length > 0 || sections.gives) && (
-        <section aria-label="Sections" className={card} data-testid="home-sections">
+        <section aria-label={sections.title} className={card} data-testid="home-sections">
           <h2 className={cardTitle}>
-            {sections.mine.length > 0 ? 'Your section today' : 'Sections'}
+            {sections.mine.length > 0 ? 'Your section today' : sections.title}
           </h2>
           {sections.mine.map((m) => (
             <p key={m.department_name} className="mt-2 text-lg font-semibold">
