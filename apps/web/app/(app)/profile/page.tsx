@@ -143,7 +143,11 @@ export default async function ProfilePage() {
           <h2 id="alerts" className="font-semibold">
             Alerts on this phone
           </h2>
-          <PhoneAlertsRow publicKey={pushKey} who={user.id} />
+          <PhoneAlertsRow
+            publicKey={pushKey}
+            who={user.id}
+            showingAs={user.presentedBy ? user.name : null}
+          />
         </section>
       )}
 

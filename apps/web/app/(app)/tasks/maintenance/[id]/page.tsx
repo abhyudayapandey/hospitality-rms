@@ -61,8 +61,8 @@ export default async function MaintenanceRequestPage({
           <summary className="flex min-h-11 cursor-pointer items-center px-4 font-medium text-slate-600">
             History
           </summary>
+          {/* newest first (ADR 142): where it is now, who has it, then when it was reported */}
           <div className="space-y-1 px-4 pb-3 text-slate-600">
-            <p>Reported {formatWhen(r.created_at)}</p>
             <p data-testid="repair-status">
               Handled by {r.handled_by} ·{' '}
               {r.status === 'open'
@@ -79,6 +79,7 @@ export default async function MaintenanceRequestPage({
                 {r.assigned_by_name && ` by ${r.assigned_by_name}`} {formatWhen(r.assigned_at)}
               </p>
             )}
+            <p>Reported {formatWhen(r.created_at)}</p>
           </div>
         </details>
       </header>

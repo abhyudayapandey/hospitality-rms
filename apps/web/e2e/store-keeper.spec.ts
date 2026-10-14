@@ -123,7 +123,7 @@ test('Send stock: it leaves the Main Store, the person who gets the task confirm
   const confirm = page.getByTestId('receive-sent');
   await expect(confirm.getByRole('textbox', { name: `Arrived ${item}` })).toHaveValue('');
   await confirm.getByRole('button', { name: 'Everything arrived' }).click();
-  await confirm.getByRole('button', { name: 'Confirm what arrived' }).click();
+  await confirm.getByRole('button', { name: /^Transfer to .+ done$/ }).click();
   await expect(page.getByTestId('task-status')).toContainText('Done');
   await expect(page.getByTestId('sent-lines')).toContainText('arrived 1');
 });

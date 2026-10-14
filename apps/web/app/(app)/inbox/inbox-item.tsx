@@ -50,6 +50,11 @@ export function InboxItem({ entry, compact = false }: { entry: InboxEntry; compa
           </p>
         </div>
       </div>
+      {entry.forAsk && (
+        <p className="mt-1 text-sm font-medium text-slate-800" data-testid="inbox-for-ask">
+          {entry.forAsk}
+        </p>
+      )}
       {entry.items && (
         <p className="mt-1 text-sm text-slate-700" data-testid="inbox-items">
           {entry.items}

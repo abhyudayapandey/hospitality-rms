@@ -6,7 +6,7 @@ import { isUuid } from '@/lib/inventory';
 import { AskForm, type AskStoreItem } from './ask-form';
 
 // Ask for something (ADR 115): a frontline person asks the store their team uses; it goes to
-// their department head, and they follow it under What I asked for.
+// their department head, and they follow it under Things I asked for.
 export default async function NewAskPage({
   searchParams,
 }: {
@@ -32,7 +32,7 @@ export default async function NewAskPage({
   });
   return (
     <div className="space-y-4">
-      <BackLink fallback="/stock/asks" />
+      <BackLink fallback="/requests" />
       <h1 className="text-xl font-semibold">Ask for something</h1>
       {!data.store ? (
         <Empty icon="box">Your team has no store to ask.</Empty>

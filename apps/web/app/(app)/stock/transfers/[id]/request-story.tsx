@@ -37,7 +37,8 @@ export function RequestStory({ story }: { story: { at: Date; words: string }[] }
         What happened
       </summary>
       <ol className="space-y-2 px-4 pb-3" data-testid="request-story">
-        {story.map((s, i) => (
+        {/* newest first (ADR 142) */}
+        {[...story].reverse().map((s, i) => (
           <li key={i} className="flex gap-3">
             <span className="mt-1.5 size-2 shrink-0 rounded-full bg-slate-400" aria-hidden />
             <span>
