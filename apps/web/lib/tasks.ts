@@ -21,7 +21,8 @@ export interface MyTask {
     | 'handover'
     | 'discard'
     | 'send'
-    | 'ask';
+    | 'ask'
+    | 'collect';
   title: string;
   org_node_id: string;
   place_name: string;

@@ -5,6 +5,7 @@ import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatQty } from '@/lib/qty';
 import { RequestNow, RequestStory } from '../../transfers/[id]/request-story';
+import { CollectButton } from './collect-button';
 import { HeadActions } from './head-actions';
 
 // One ask (ADR 115): where it is now first, what was asked, then for the department head what
@@ -42,7 +43,12 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
         await sql<{ at: Date; words: string }>`
           select at, words from inv.staff_ask_story(${id}::uuid)`.execute(tx)
       ).rows;
-      return { a, now, story };
+      // whoever asked and was given it: take it to the department, then say so (ADR 142)
+      const collect = (
+        await sql<{ department: string }>`
+          select department from inv.my_collect(${id}::uuid)`.execute(tx)
+      ).rows[0];
+      return { a, now, story, collect };
     });
   } catch (err) {
     return (
@@ -51,12 +57,12 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
       </p>
     );
   }
-  const { a, now, story } = data;
+  const { a, now, story, collect } = data;
   if (!a) return null;
   const short = a.lines.some((l) => l.at_store < l.qty);
   return (
     <div className="space-y-4">
-      <BackLink fallback="/stock/asks" />
+      <BackLink fallback="/requests" />
       <header>
         <p className="text-xs font-medium text-slate-500">
           {a.asked_by} asked the {a.store}
@@ -91,6 +97,7 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
       {a.may_act && (
         <HeadActions ask={id} status={a.status} short={short} arrived={now?.stage === 'arrived'} />
       )}
+      {collect && <CollectButton ask={id} department={collect.department} />}
       <RequestStory story={story} />
     </div>
   );

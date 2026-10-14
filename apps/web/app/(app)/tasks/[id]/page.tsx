@@ -53,8 +53,9 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   let minibar: MinibarTaskCheck | null;
   let send: SendLine[];
   let askPage: string | null;
+  let forAsk: string | null;
   try {
-    ({ task, people, sent, about, recipe, photos, minibar, send, askPage } = await withUser(
+    ({ task, people, sent, about, recipe, photos, minibar, send, askPage, forAsk } = await withUser(
       user.id,
       async (tx) => {
         const t = await taskDetail(tx, id);
@@ -62,7 +63,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         // and whoever asked follows it, rejected or given (ADR 141); found through ops.task_ask,
         // since the head's task row is hidden from whoever asked
         const askPage =
-          t.kind === 'ask'
+          t.kind === 'ask' || t.kind === 'collect'
             ? ((
                 await sql<{ ask: string | null }>`
                   select ops.task_ask(${id}::uuid)::text as ask`.execute(tx)
@@ -112,12 +113,22 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
                   from ops.send_task_lines(${id}::uuid)`.execute(tx)
               ).rows
             : [];
+        // stock sent for a frontline ask: who asked, and why (ADR 142)
+        const ask =
+          t.kind === 'send' || t.kind === 'receive'
+            ? (
+                await sql<{ asked_by: string; note: string | null }>`
+                select asked_by, note from inv.request_for_ask(
+                  (select transfer_id from ops.task where id = ${id}::uuid))`.execute(tx)
+              ).rows[0]
+            : undefined;
         return {
           task: t,
           people: p,
           sent: lines,
           send: toSend,
           askPage,
+          forAsk: ask ? `For ${ask.asked_by}${ask.note ? `: ${ask.note}` : ''}` : null,
           about: c,
           recipe: r,
           minibar: m,
@@ -159,6 +170,11 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         ) : (
           <p className="text-sm text-slate-600" data-testid="task-status">
             {statusLine(task)}
+          </p>
+        )}
+        {forAsk && (
+          <p className="text-sm font-medium text-slate-800" data-testid="for-ask">
+            {forAsk}
           </p>
         )}
         {task.description && (
@@ -273,7 +289,11 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         <SendTask task={task.id} lines={send} canWork={open && task.can_work} />
       ) : task.kind === 'receive' ? (
         open && task.can_work ? (
-          <ReceiveSent task={task.id} lines={sent} />
+          <ReceiveSent
+            task={task.id}
+            lines={sent}
+            department={task.place_name.replace(/^.*\s[–-]\s/, '')}
+          />
         ) : (
           <SentLines lines={sent} />
         )
@@ -493,7 +513,8 @@ function History({ task }: { task: TaskDetail }) {
   return (
     <section>
       <ol className="divide-y divide-slate-100" data-testid="handover-history">
-        {task.handovers.map((h, i) => (
+        {/* newest first (ADR 142) */}
+        {[...task.handovers].reverse().map((h, i) => (
           <li key={i} className="py-2">
             <span className="block">
               {h.took

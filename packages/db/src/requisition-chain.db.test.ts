@@ -823,7 +823,11 @@ describe('a frontline person asks their department head, and follows it', () => 
       // "Ready for you" says it; the head's task sends no "Done: ..." as well (ADR 141)
       expect(await told(c, ATTENDANT)).not.toContainEqual(expect.stringMatching(/^Done: /));
       const given = await askSeen(c, ATTENDANT, ask);
-      expect(given.stage).toBe('given');
+      // given: the attendant takes it to the department (ADR 142)
+      expect(given.stage).toBe('to_collect');
+      expect(given.words).toBe(
+        'Given by Test Executive Housekeeper 1.0. Take it to the Housekeeping.',
+      );
       expect(given.story.join(' | ')).toMatch(
         /Asked by Test Room Attendant 1\.0 .* \| Given by Test Executive Housekeeper 1\.0/,
       );
@@ -834,7 +838,7 @@ describe('a frontline person asks their department head, and follows it', () => 
         ATTENDANT,
         `select id::text, stage from inv.my_staff_asks()`,
       );
-      expect(mine).toContainEqual({ id: ask, stage: 'given' });
+      expect(mine).toContainEqual({ id: ask, stage: 'to_collect' });
     });
   });
 
@@ -871,10 +875,154 @@ describe('a frontline person asks their department head, and follows it', () => 
       expect((await askSeen(c, ASKER, ask)).stage).toBe('arrived');
       await one(c, ASKER, `select inv.give_staff_ask($1, null) as s`, [ask]);
       const done = await askSeen(c, ATTENDANT, ask);
-      expect(done.stage).toBe('given');
+      expect(done.stage).toBe('to_collect');
       expect(done.story.join(' | ')).toMatch(
         /Asked by .* \| .*asked the Main Store.* \| .*Received by Test Executive Housekeeper 1\.0.* \| Given by/,
       );
+    });
+  });
+
+  it('given: whoever asked takes it to the department, by the end of their shift (ADR 142)', async () => {
+    await inRolledBackTx(async (c) => {
+      const item = await lager(c);
+      await stockAt(c, item, HK, 10);
+      const ask = await raise(c, item, 6);
+      await one(c, ASKER, `select inv.give_staff_ask($1, null) as s`, [ask]);
+      // a Collect task, for whoever asked, from the head; due in 2 hours with no shift today
+      const collect = (
+        await c.query<{
+          id: string;
+          assignee: string;
+          assigned_by: string;
+          title: string;
+          description: string;
+          hours: number;
+          status: string;
+        }>(
+          `select id, assignee_user_id::text as assignee, assigned_by::text as assigned_by, title,
+                  description, round(extract(epoch from due_at - now()) / 3600)::int as hours,
+                  status
+             from ops.task where staff_ask_id = $1 and kind = 'collect'`,
+          [ask],
+        )
+      ).rows;
+      expect(collect).toHaveLength(1);
+      expect(collect[0]).toMatchObject({
+        assignee: ids.user(ATTENDANT),
+        assigned_by: ids.user(ASKER),
+        description: 'Take it to the Housekeeping, then tap Transfer to Housekeeping done.',
+        status: 'open',
+      });
+      expect(collect[0]!.title).toMatch(/^Collect from the Housekeeping Store: 6 × .*Lager/);
+      expect(collect[0]!.hours).toBeLessThanOrEqual(2);
+      // it leads to the ask's page, where its one button is
+      expect(
+        (
+          await one<{ ask: string | null }>(c, ATTENDANT, `select ops.task_ask($1)::text as ask`, [
+            collect[0]!.id,
+          ])
+        ).ask,
+      ).toBe(ask);
+      expect(
+        await rows<{ department: string }>(
+          c,
+          ATTENDANT,
+          `select department from inv.my_collect($1)`,
+          [ask],
+        ),
+      ).toEqual([{ department: 'Housekeeping' }]);
+      // only whoever asked says it went to the department; no stock moves
+      expect(await rows(c, ASKER, `select department from inv.my_collect($1)`, [ask])).toEqual([]);
+      expect(await fails(c, ASKER, `select inv.collect_staff_ask($1)`, [ask])).toMatch(
+        /NOT_AUTHORISED/,
+      );
+      const before = await onHand(c, item, HK);
+      await one(c, ATTENDANT, `select inv.collect_staff_ask($1) as s`, [ask]);
+      expect(await onHand(c, item, HK)).toBe(before);
+      const done = await askSeen(c, ATTENDANT, ask);
+      expect(done.stage).toBe('given');
+      expect(done.words).toBe('Taken to the Housekeeping by Test Room Attendant 1.0');
+      // newest first is the screen's job; the story itself runs in time order
+      expect(done.story.at(-1)).toBe('Taken to the Housekeeping by Test Room Attendant 1.0');
+      const after = await c.query<{ status: string }>(`select status from ops.task where id = $1`, [
+        collect[0]!.id,
+      ]);
+      expect(after.rows[0]?.status).toBe('done');
+      // once is enough
+      expect(await fails(c, ATTENDANT, `select inv.collect_staff_ask($1)`, [ask])).toMatch(
+        /NOT_AUTHORISED|ALREADY|NOT_OPEN/,
+      );
+    });
+  });
+
+  it('the overdue Collect task is the head’s to hear about', async () => {
+    await inRolledBackTx(async (c) => {
+      const item = await lager(c);
+      await stockAt(c, item, HK, 10);
+      const ask = await raise(c, item, 6);
+      await one(c, ASKER, `select inv.give_staff_ask($1, null) as s`, [ask]);
+      await resetRole(c);
+      await c.query(`select * from ops.tasks_tick(now() + interval '3 hours')`);
+      expect(await told(c, ASKER)).toContainEqual(expect.stringMatching(/^Overdue: Collect from/));
+    });
+  });
+
+  it('whoever asked never hands on the head’s ask', async () => {
+    await inRolledBackTx(async (c) => {
+      const item = await lager(c);
+      const ask = await raise(c, item, 6);
+      const task = await headTask(c, ask);
+      expect(
+        await fails(c, ATTENDANT, `select ops.reassign_task($1, $2)`, [
+          task!.id,
+          ids.user('test.room-attendant-b.1.0'),
+        ]),
+      ).toMatch(/NOT_AUTHORISED|NOT_FOUND/);
+      const mine = await rows<{ id: string }>(
+        c,
+        ATTENDANT,
+        `select id::text from ops.my_handed_on() where id = $1`,
+        [task!.id],
+      );
+      expect(mine).toEqual([{ id: task!.id }]);
+    });
+  });
+
+  it('the Main Store’s request carries the ask: who asked, why, first in its story (ADR 142)', async () => {
+    await inRolledBackTx(async (c) => {
+      const item = await lager(c);
+      await stockAt(c, item, HK, 0);
+      await stockAt(c, item, MAIN, 40);
+      const ask = await raise(c, item, 6);
+      const [t] = (
+        await one<{ ids: string[] }>(c, ASKER, `select inv.ask_for_staff($1) as ids`, [ask])
+      ).ids;
+      const forAsk = (who: string) =>
+        rows<{ ask_id: string; asked_by: string; note: string | null }>(
+          c,
+          who,
+          `select ask_id::text, asked_by, note from inv.request_for_ask($1)`,
+          [t],
+        );
+      const expected = [{ ask_id: ask, asked_by: 'Test Room Attendant 1.0', note: 'for room 104' }];
+      expect(await forAsk(KEEPER)).toEqual(expected);
+      expect(await forAsk(ASKER)).toEqual(expected);
+      expect(await forAsk(ATTENDANT)).toEqual(expected);
+      // nobody else: nothing, rather than a failure that would empty a whole list
+      expect(await forAsk(BARTENDER)).toEqual([]);
+      // whoever asked follows the request itself, and its story starts with the ask
+      const story = (await seen(c, ATTENDANT, t!)).story;
+      expect(story[0]).toMatch(/^Asked by Test Room Attendant 1\.0 for .*Lager.*: for room 104$/);
+      // and their alerts about it open the ask's page, never the request they cannot act on
+      await one(c, KEEPER, `select inv.send_request($1, null) as s`, [t]);
+      const links = (
+        await c.query<{ link: string }>(
+          `select link from ops.notification where owner_user_id = $1 and created_at >= now()`,
+          [ids.user(ATTENDANT)],
+        )
+      ).rows.map((r) => r.link);
+      expect(links.length).toBeGreaterThan(0);
+      expect(links.every((l) => l === `/stock/asks/${ask}`)).toBe(true);
     });
   });
 

@@ -83,11 +83,12 @@ test('a room attendant asks their head, who gives it; the attendant sees it give
 }) => {
   await signInAs(page, 'Test Room Attendant 1.0');
   await page.goto('/me');
-  await page.getByTestId('me-asks').click();
-  await page.getByRole('link', { name: 'Ask for something' }).click();
+  await page.getByTestId('me-requests').click();
+  await page.getByTestId('ask-something').click();
   const towel = page.getByRole('listitem').filter({ hasText: 'Test Hand Towel' });
+  // + on an empty box gives 1, never 0
   await towel.getByRole('button', { name: 'More' }).click();
-  await towel.getByRole('button', { name: 'More' }).click();
+  await expect(towel.getByRole('textbox')).toHaveValue('1');
   await page.getByRole('textbox', { name: /What it is for/ }).fill('Room 104');
   await page.getByRole('button', { name: 'Ask for 1 item' }).click();
   await page.waitForURL(/\/stock\/asks\/[0-9a-f-]{36}/);
@@ -100,15 +101,23 @@ test('a room attendant asks their head, who gives it; the attendant sees it give
   await page.goto(`/stock/asks/${ask}`);
   await expect(page.getByTestId('ask-lines')).toContainText('Test Hand Towel');
   await page.getByRole('button', { name: 'Give it', exact: true }).click();
-  await expect(page.getByTestId('request-now')).toHaveAttribute('data-stage', 'given');
+  await expect(page.getByTestId('request-now')).toHaveAttribute('data-stage', 'to_collect');
 
-  // the attendant follows it to the end
+  // the attendant follows it, then takes it to the department (ADR 142)
   await signInAs(page, 'Test Room Attendant 1.0');
-  await page.goto('/stock/asks');
-  await expect(page.getByTestId('my-asks')).toContainText('Test Hand Towel');
-  await page.goto(`/stock/asks/${ask}`);
+  await page.goto('/requests');
+  await expect(page.getByTestId('ask-item').first()).toContainText('Test Hand Towel');
+  await page.getByTestId('ask-item').first().getByRole('link').click();
+  await page.waitForURL(`**/stock/asks/${ask}`);
   await expect(page.getByTestId('request-story')).toContainText(
     'Given by Test Executive Housekeeper 1.0',
+  );
+  await page.getByRole('button', { name: 'Transfer to Housekeeping done' }).click();
+  await expect(page.getByTestId('request-now')).toHaveAttribute('data-stage', 'given');
+  await expect(page.getByTestId('collect')).toHaveCount(0);
+  // newest first: the handover heads the history
+  await expect(page.getByTestId('request-story').getByRole('listitem').first()).toContainText(
+    'Taken to the Housekeeping by Test Room Attendant 1.0',
   );
 });
 
@@ -119,8 +128,9 @@ test('the head rejects an ask; whoever asked sees it rejected, why, and by whom'
   await signInAs(page, 'Test Room Attendant 1.0');
   await page.goto('/stock/asks/new');
   const towel = page.getByRole('listitem').filter({ hasText: 'Test Hand Towel' });
+  // + on an empty box gives 1, never 0
   await towel.getByRole('button', { name: 'More' }).click();
-  await towel.getByRole('button', { name: 'More' }).click();
+  await expect(towel.getByRole('textbox')).toHaveValue('1');
   await page.getByRole('button', { name: 'Ask for 1 item' }).click();
   await page.waitForURL(/\/stock\/asks\/[0-9a-f-]{36}/);
   const ask = new URL(page.url()).pathname.split('/').pop()!;

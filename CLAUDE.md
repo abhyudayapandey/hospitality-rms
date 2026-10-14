@@ -393,6 +393,13 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   never "Done", and sends no "Done: ..."; "It arrived: give it" only once it has (`arrived`);
   a short store asks first. The Main Store's keeper buys what it doesn't keep for a store that
   asks it. Running low is under par: "14 of 20 kg (~1 day left)" (replaces ADR 034's rule).
+- An ask is handed over (ADR 142): once the head gives it, whoever asked gets a Collect task
+  (due at their shift's end, else in 2 hours) whose button reads "Transfer to <Dept> done"
+  (`inv.collect_staff_ask`; no stock moves), as does receiving from the Main Store. Whoever
+  asked follows the whole chain, their alerts opening the ask; "For <who>: <note>" rides on
+  the request (`inv.request_for_ask`). Things I asked for lists requests and asks, newest
+  first. Only counter alerts join by kind; every history is newest first; a failed screen says
+  "We couldn't open this".
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

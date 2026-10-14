@@ -1,12 +1,23 @@
 import Link from 'next/link';
+import { primaryButton } from '@/components/messages';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen, processLabel } from '@/lib/format';
 import { SUPPLY_PROGRESS } from '@/lib/inventory';
+import { RequestNow } from '../stock/transfers/[id]/request-story';
 
-// Things I asked for (ADR 052): every request opens; a supply request says where the order is
-// and what is in it, in the department's words, never an estimate in ₹.
+// Things I asked for (ADR 052, 142): every request and every ask to one's head, newest first,
+// in one list; each opens. A supply request says where the order is and what is in it, in the
+// department's words, never an estimate in ₹. Ask for something is the button under the list.
+
+/** Where a request waits, in plain words: never a step's code. */
+function waitingOn(step: string): string {
+  if (step.endsWith('approval')) return 'waiting for approval';
+  if (step === 'dispatch') return 'waiting to be sent';
+  if (step === 'receive') return 'waiting to be received';
+  return `waiting on ${step.replace(/_/g, ' ')}`;
+}
 
 const STATE_STYLE: Record<string, string> = {
   in_approval: 'bg-amber-100 text-amber-900',
@@ -43,7 +54,7 @@ function subjectHref(r: {
 export default async function RequestsPage() {
   const user = await requireUser();
   // RLS on wf.request decides what is visible; this page lists the user's own requests.
-  const rows = await withUser(user.id, async (tx) => {
+  const { rows, asks, canAsk } = await withUser(user.id, async (tx) => {
     const r = await sql<{
       id: string;
       process_type: string;
@@ -72,19 +83,51 @@ export default async function RequestsPage() {
                 on r.subject_type = 'inv.purchase_order' and po.id = r.subject_id
         where r.initiator_id = core.current_user_id()
         order by r.created_at desc limit 50`.execute(tx);
-    return r.rows;
+    // asks to one's head (ADR 115): where they are now
+    const a = await sql<{
+      id: string;
+      store: string;
+      items: string;
+      stage: string;
+      words: string;
+      created_at: Date;
+    }>`select id::text, store, items, stage, words, created_at
+         from inv.my_staff_asks(30)`.execute(tx);
+    const can = await sql<{ ok: boolean }>`
+      select exists (select 1 from inv.my_ask_stores()) as ok`.execute(tx);
+    return { rows: r.rows, asks: a.rows, canAsk: can.rows[0]?.ok ?? false };
   });
+  const card = 'block rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200';
+  const list = [
+    ...rows.map((r) => ({ at: new Date(r.created_at).getTime(), request: r, ask: null })),
+    ...asks.map((a) => ({ at: new Date(a.created_at).getTime(), request: null, ask: a })),
+  ].sort((x, y) => y.at - x.at);
   return (
     <div className="space-y-4">
       <PollRefresh />
       <h1 className="text-xl font-semibold">Things I asked for</h1>
-      {rows.length === 0 ? (
+      {list.length === 0 ? (
         <p className="rounded-xl bg-white p-6 text-center text-slate-600 ring-1 ring-slate-200">
-          No requests yet.
+          Nothing asked for yet.
         </p>
       ) : (
-        <ul className="space-y-3">
-          {rows.map((r) => {
+        <ul className="space-y-3" data-testid="my-asks">
+          {list.map((x) => {
+            if (x.ask) {
+              const a = x.ask;
+              return (
+                <li key={a.id} data-testid="ask-item">
+                  <Link href={`/stock/asks/${a.id}`} className={`${card} space-y-2`}>
+                    <span className="block font-medium">{a.items}</span>
+                    <span className="block text-sm text-slate-600">
+                      {a.store} · {formatWhen(a.created_at)}
+                    </span>
+                    <RequestNow stage={a.stage} words={a.words} />
+                  </Link>
+                </li>
+              );
+            }
+            const r = x.request;
             const href = subjectHref(r);
             const supply = r.progress !== null;
             const [state, style] = supply
@@ -112,14 +155,11 @@ export default async function RequestsPage() {
                   </span>
                 )}
                 <span className="block text-sm text-slate-600">
-                  {!supply && r.current_step
-                    ? `waiting on ${r.current_step.replace(/_/g, ' ')} · `
-                    : ''}
+                  {!supply && r.current_step ? `${waitingOn(r.current_step)} · ` : ''}
                   {formatWhen(r.created_at)}
                 </span>
               </>
             );
-            const card = 'block rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200';
             return (
               <li key={r.id} data-testid="request-item" data-request-id={r.id}>
                 {href ? (
@@ -133,6 +173,15 @@ export default async function RequestsPage() {
             );
           })}
         </ul>
+      )}
+      {canAsk && (
+        <Link
+          href="/stock/asks/new"
+          data-testid="ask-something"
+          className={`${primaryButton} flex items-center justify-center`}
+        >
+          Ask for something
+        </Link>
       )}
     </div>
   );

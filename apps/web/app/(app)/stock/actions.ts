@@ -406,6 +406,14 @@ export async function actOnStaffAsk(
   });
 }
 
+/** Whoever asked took what they were given to their department (ADR 142). */
+export async function collectStaffAsk(ask: string): Promise<ActionResult<null>> {
+  return run('staff_ask_collect', async (tx) => {
+    await sql`select inv.collect_staff_ask(${ask}::uuid)`.execute(tx);
+    return null;
+  });
+}
+
 /**
  * A presigned POST for one wastage photo at `node`. Access is decided in SQL:
  * core.can(STOCK_ADJUSTMENTS, modify) at the node (rule 2); the key embeds the tenant

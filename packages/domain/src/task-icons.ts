@@ -182,6 +182,7 @@ export function taskIcon(title: string, kind: string): TaskIcon {
       return 'shield';
     case 'receive':
     case 'send':
+    case 'collect':
       return 'truck';
     case 'ask':
       return 'box';
