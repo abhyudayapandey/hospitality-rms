@@ -52,23 +52,24 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   let photos: (TaskPhoto & { url: string | null })[];
   let minibar: MinibarTaskCheck | null;
   let send: SendLine[];
-  let askPage: string | null;
   let forAsk: string | null;
+  // what a frontline person asked for (ADR 115), or its Collect task (ADR 142): its own page,
+  // where the head acts on it and whoever asked follows it (ADR 141); found through
+  // ops.task_ask first, since the head's task row is hidden from whoever asked
+  const askPage = await withUser(
+    user.id,
+    async (tx) =>
+      (
+        await sql<{ ask: string | null }>`
+          select ops.task_ask(${id}::uuid)::text as ask`.execute(tx)
+      ).rows[0]?.ask ?? null,
+  ).catch(() => null);
+  if (askPage) redirect(`/stock/asks/${askPage}`);
   try {
-    ({ task, people, sent, about, recipe, photos, minibar, send, askPage, forAsk } = await withUser(
+    ({ task, people, sent, about, recipe, photos, minibar, send, forAsk } = await withUser(
       user.id,
       async (tx) => {
         const t = await taskDetail(tx, id);
-        // what a frontline person asked for (ADR 115): its own page, where the head acts on it
-        // and whoever asked follows it, rejected or given (ADR 141); found through ops.task_ask,
-        // since the head's task row is hidden from whoever asked
-        const askPage =
-          t.kind === 'ask' || t.kind === 'collect'
-            ? ((
-                await sql<{ ask: string | null }>`
-                  select ops.task_ask(${id}::uuid)::text as ask`.execute(tx)
-              ).rows[0]?.ask ?? null)
-            : null;
         // the task's own photos, kept 30 days (ADR 079)
         const ph = await taskPhotos(tx, id);
         const urls = await itemPhotoUrls(
@@ -127,7 +128,6 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
           people: p,
           sent: lines,
           send: toSend,
-          askPage,
           forAsk: ask ? `For ${ask.asked_by}${ask.note ? `: ${ask.note}` : ''}` : null,
           about: c,
           recipe: r,
@@ -143,7 +143,6 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       </p>
     );
   }
-  if (askPage) redirect(`/stock/asks/${askPage}`);
   const open = task.status === 'open' || task.status === 'in_progress';
   const mine = task.assignee_user_id === user.id;
   const late = open && new Date(task.due_at).getTime() < Date.now();

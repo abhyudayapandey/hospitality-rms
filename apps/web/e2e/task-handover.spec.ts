@@ -63,9 +63,12 @@ test('the housekeeper gives pest control to her supervisor, who gives it on; eve
     await page.goto('/tasks');
     const given = page.getByTestId('tasks-given');
     await expect(given).toContainText('Pest control service');
-    await expect(given.getByTestId('task-who')).toContainText(`${HS} · given today`);
+    const pestRow = given.getByRole('listitem').filter({ hasText: 'Pest control service' });
+    await expect(pestRow.getByTestId('task-who')).toContainText(`${HS} · given today`);
     await page.goto('/');
-    await expect(page.getByTestId('handed-on-who')).toContainText(`${HS} · given today`);
+    await expect(
+      page.getByTestId('handed-on-who').filter({ hasText: `${HS} · given today` }),
+    ).toHaveCount(1);
 
     // the supervisor: it is hers, one line with a red dot for late; who gave it and that it
     // was already overdue then are for those who follow it, not her (ADR 098)

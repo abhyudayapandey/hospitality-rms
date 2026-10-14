@@ -124,7 +124,7 @@ test('a room attendant asks their head, who gives it; the attendant sees it give
 test('the head rejects an ask; whoever asked sees it rejected, why, and by whom', async ({
   page,
 }) => {
-  const reason = 'Enough towels in the linen room for today';
+  const reason = `Enough towels in the linen room (${Date.now() % 100000})`;
   await signInAs(page, 'Test Room Attendant 1.0');
   await page.goto('/stock/asks/new');
   const towel = page.getByRole('listitem').filter({ hasText: 'Test Hand Towel' });
@@ -146,9 +146,12 @@ test('the head rejects an ask; whoever asked sees it rejected, why, and by whom'
   // whoever asked: Given to others says rejected; tapping it opens the ask, not a "Done" task
   await signInAs(page, 'Test Room Attendant 1.0');
   await page.goto('/tasks');
-  const row = page.getByTestId('tasks-given').getByRole('listitem').filter({
-    hasText: 'Rejected by Test Executive Housekeeper 1.0',
-  });
+  const row = page
+    .getByTestId('tasks-given')
+    .getByRole('listitem')
+    .filter({
+      hasText: `Rejected by Test Executive Housekeeper 1.0: ${reason}`,
+    });
   await expect(row).toContainText('rejected');
   await row.getByRole('link').click();
   await page.waitForURL(new RegExp(`/stock/asks/${ask}`));
