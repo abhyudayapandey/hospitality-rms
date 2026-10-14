@@ -7,7 +7,7 @@ import type { ToAssign } from '@/lib/tasks';
 import { InboxItem } from './inbox-item';
 
 /**
- * What waits for the person's yes or hand, at the top of their To do list (ADR 142): the
+ * What waits for the person's yes or hand, at the top of their To do list (ADR 144): the
  * order desk's orders, what to assign, then approvals. Their tasks follow it on the same list.
  */
 export function WaitingForYou({

@@ -282,11 +282,15 @@ begin
 end $function$;
 
 -- breakage's value: for those who read the cost of the store it broke at
-create or replace function inv.breakage_log(p_place uuid, p_month date)
- returns table(id uuid, broken_at timestamp with time zone, place text, store text, item_id uuid, item text, unit text, qty numeric, reason text, broken_by text, person text, note text, value numeric, recorded_by text)
- language plpgsql stable security definer
- set search_path to 'pg_catalog', 'core', 'inv', 'ops', 'rpt', 'extensions'
-as $function$
+-- with the breakage photo (20261228120000_breakage_photo)
+drop function inv.breakage_log(uuid, date);
+create function inv.breakage_log(p_place uuid, p_month date)
+returns table (id uuid, broken_at timestamptz, place text, store text, item_id uuid,
+               item text, unit text, qty numeric, reason text, broken_by text, person text,
+               note text, value numeric, recorded_by text, photo_key text)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, inv, ops, rpt, extensions
+as $$
 #variable_conflict use_column
 declare
   v_tz text := coalesce(ops.tz_of(p_place), 'UTC');
@@ -299,7 +303,8 @@ begin
     select b.id, b.broken_at, d.name, s.name, i.id, i.name, i.base_uom, b.qty, b.reason,
            b.broken_by, (select u.display_name from core.app_user u where u.id = b.person_id),
            b.note, case when rpt.store_cost_access(b.delivery_node_id) then b.value end,
-           (select u.display_name from core.app_user u where u.id = b.created_by)
+           (select u.display_name from core.app_user u where u.id = b.created_by),
+           b.photo_key
       from inv.breakage b
       join core.hierarchy_node d on d.id = b.org_node_id
       join core.hierarchy_node p on p.id = p_place
@@ -310,7 +315,9 @@ begin
        and rpt.business_date(b.broken_at, v_tz) >= v_from
        and rpt.business_date(b.broken_at, v_tz) < (v_from + interval '1 month')::date
      order by b.broken_at desc;
-end $function$;
+end $$;
+revoke execute on function inv.breakage_log(uuid, date) from public, platform_loader;
+grant execute on function inv.breakage_log(uuid, date) to app_rw;
 
 -- a month's value adds up the entries whose value the reader sees, as its log does; null
 -- when they see none
@@ -341,12 +348,14 @@ begin
 end $function$;
 
 -- migrate:down
-CREATE OR REPLACE FUNCTION inv.breakage_log(p_place uuid, p_month date)
- RETURNS TABLE(id uuid, broken_at timestamp with time zone, place text, store text, item_id uuid, item text, unit text, qty numeric, reason text, broken_by text, person text, note text, value numeric, recorded_by text)
- LANGUAGE plpgsql
- STABLE SECURITY DEFINER
- SET search_path TO 'pg_catalog', 'core', 'inv', 'ops', 'rpt', 'extensions'
-AS $function$
+drop function inv.breakage_log(uuid, date);
+create function inv.breakage_log(p_place uuid, p_month date)
+returns table (id uuid, broken_at timestamptz, place text, store text, item_id uuid,
+               item text, unit text, qty numeric, reason text, broken_by text, person text,
+               note text, value numeric, recorded_by text, photo_key text)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, inv, ops, rpt, extensions
+as $$
 #variable_conflict use_column
 declare
   v_tz text := coalesce(ops.tz_of(p_place), 'UTC');
@@ -359,7 +368,8 @@ begin
     select b.id, b.broken_at, d.name, s.name, i.id, i.name, i.base_uom, b.qty, b.reason,
            b.broken_by, (select u.display_name from core.app_user u where u.id = b.person_id),
            b.note, b.value,
-           (select u.display_name from core.app_user u where u.id = b.created_by)
+           (select u.display_name from core.app_user u where u.id = b.created_by),
+           b.photo_key
       from inv.breakage b
       join core.hierarchy_node d on d.id = b.org_node_id
       join core.hierarchy_node p on p.id = p_place
@@ -370,8 +380,9 @@ begin
        and rpt.business_date(b.broken_at, v_tz) >= v_from
        and rpt.business_date(b.broken_at, v_tz) < (v_from + interval '1 month')::date
      order by b.broken_at desc;
-end $function$
-;
+end $$;
+revoke execute on function inv.breakage_log(uuid, date) from public, platform_loader;
+grant execute on function inv.breakage_log(uuid, date) to app_rw;
 
 CREATE OR REPLACE FUNCTION inv.breakage_months(p_place uuid)
  RETURNS TABLE(month date, entries integer, value numeric)

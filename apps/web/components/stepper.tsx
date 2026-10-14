@@ -2,8 +2,9 @@
 
 /**
  * A number with − and + either side (ADR 098): people who type slowly tap instead, and can
- * still type an exact figure. Steps by `step` (1 by default), never below `min` when given;
- * an empty box steps from `start` (the min, else 0).
+ * still type an exact figure. Steps by `step` (1 by default), never below `min` when given.
+ * On an empty box, + gives `start`, else one step (or the min when that is more): nobody
+ * taps + to get 0. − on an empty box gives `start`, else the min, else 0.
  */
 export function Stepper({
   value,
@@ -26,7 +27,11 @@ export function Stepper({
   testId?: string;
 }) {
   const bump = (d: number) => {
-    const from = value.trim() === '' ? (start ?? min ?? 0) - (d > 0 ? step : -step) : Number(value);
+    if (value.trim() === '') {
+      onChange(String(d > 0 ? (start ?? Math.max(min ?? 0, step)) : (start ?? min ?? 0)));
+      return;
+    }
+    const from = Number(value);
     if (!Number.isFinite(from)) return;
     let next = Math.round((from + d * step) * 1000) / 1000;
     if (min !== undefined && next < min) next = min;

@@ -36,6 +36,7 @@ import { AddTaskPhoto } from './task-photos';
 import { MinibarTask, type MinibarTaskCheck } from './minibar-task';
 import { ReassignTask, ReceiveSent, SentLines, type SentLine } from './receive-sent';
 import { SendTask, type SendLine } from './send-task';
+import { RequestStory } from '../../stock/transfers/[id]/request-story';
 
 // One task (ADR 020): its steps for whoever works on it, and for task managers there who
 // it is with. A reported expired batch shows the lead whom to give the discard to. Who has
@@ -52,20 +53,40 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   let photos: (TaskPhoto & { url: string | null })[];
   let minibar: MinibarTaskCheck | null;
   let send: SendLine[];
-  let askPage: string | null;
+  let forAsk: string | null;
+  // what a frontline person asked for (ADR 115), or its Collect task (ADR 142): its own page,
+  // where the head acts on it and whoever asked follows it (ADR 141); found through
+  // ops.task_ask first, since the head's task row is hidden from whoever asked
+  const askPage = await withUser(
+    user.id,
+    async (tx) =>
+      (
+        await sql<{ ask: string | null }>`
+          select ops.task_ask(${id}::uuid)::text as ask`.execute(tx)
+      ).rows[0]?.ask ?? null,
+  ).catch(() => null);
+  if (askPage) redirect(`/stock/asks/${askPage}`);
+  // a send or receive task is one step of a request (ADR 143): its page tells the request's
+  // whole story, from whoever asked first, as the request's own page does; nothing for anyone
+  // who may not follow the request
+  const chain = await withUser(user.id, async (tx) => {
+    const t = (
+      await sql<{ transfer: string | null }>`
+        select transfer_id::text as transfer from ops.task
+         where id = ${id}::uuid and kind in ('send', 'receive')`.execute(tx)
+    ).rows[0]?.transfer;
+    if (!t) return null;
+    const story = (
+      await sql<{ at: Date; words: string }>`
+        select at, words from inv.request_story(${t}::uuid)`.execute(tx)
+    ).rows;
+    return { transfer: t, story };
+  }).catch(() => null);
   try {
-    ({ task, people, sent, about, recipe, photos, minibar, send, askPage } = await withUser(
+    ({ task, people, sent, about, recipe, photos, minibar, send, forAsk } = await withUser(
       user.id,
       async (tx) => {
         const t = await taskDetail(tx, id);
-        // what a frontline person asked for (ADR 115): its own page, where the head acts on it
-        const askPage =
-          t.kind === 'ask'
-            ? ((
-                await sql<{ ask: string | null }>`
-                  select staff_ask_id::text as ask from ops.task where id = ${id}::uuid`.execute(tx)
-              ).rows[0]?.ask ?? null)
-            : null;
         // the task's own photos, kept 30 days (ADR 079)
         const ph = await taskPhotos(tx, id);
         const urls = await itemPhotoUrls(
@@ -110,12 +131,21 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
                   from ops.send_task_lines(${id}::uuid)`.execute(tx)
               ).rows
             : [];
+        // stock sent for a frontline ask: who asked, and why (ADR 142)
+        const ask =
+          t.kind === 'send' || t.kind === 'receive'
+            ? (
+                await sql<{ asked_by: string; note: string | null }>`
+                select asked_by, note from inv.request_for_ask(
+                  (select transfer_id from ops.task where id = ${id}::uuid))`.execute(tx)
+              ).rows[0]
+            : undefined;
         return {
           task: t,
           people: p,
           sent: lines,
           send: toSend,
-          askPage,
+          forAsk: ask ? `For ${ask.asked_by}${ask.note ? `: ${ask.note}` : ''}` : null,
           about: c,
           recipe: r,
           minibar: m,
@@ -130,7 +160,6 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       </p>
     );
   }
-  if (askPage) redirect(`/stock/asks/${askPage}`);
   const open = task.status === 'open' || task.status === 'in_progress';
   const mine = task.assignee_user_id === user.id;
   const late = open && new Date(task.due_at).getTime() < Date.now();
@@ -157,6 +186,11 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         ) : (
           <p className="text-sm text-slate-600" data-testid="task-status">
             {statusLine(task)}
+          </p>
+        )}
+        {forAsk && (
+          <p className="text-sm font-medium text-slate-800" data-testid="for-ask">
+            {forAsk}
           </p>
         )}
         {task.description && (
@@ -271,7 +305,11 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         <SendTask task={task.id} lines={send} canWork={open && task.can_work} />
       ) : task.kind === 'receive' ? (
         open && task.can_work ? (
-          <ReceiveSent task={task.id} lines={sent} />
+          <ReceiveSent
+            task={task.id}
+            lines={sent}
+            department={task.place_name.replace(/^.*\s[–-]\s/, '')}
+          />
         ) : (
           <SentLines lines={sent} />
         )
@@ -288,38 +326,54 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       {open && task.can_hand_on && (
         <ReassignTask task={task.id} people={people} current={task.assignee_user_id} />
       )}
+      {chain && chain.story.length > 0 && (
+        <>
+          <RequestStory story={chain.story} />
+          <Link
+            href={`/stock/transfers/${chain.transfer}`}
+            className="flex min-h-11 items-center text-sm font-medium text-brand-700"
+            data-testid="task-request"
+          >
+            Open the request
+          </Link>
+        </>
+      )}
       {/* who has it and how it got there: open for those who follow it, folded for the person
           doing it, who needs only the job (ADR 098) */}
-      <details
-        className="rounded-xl bg-white text-sm ring-1 ring-slate-200"
-        open={!mine && (task.can_manage || task.can_hand_on)}
-        data-testid="task-more"
-      >
-        <summary className="flex min-h-11 cursor-pointer items-center px-4 font-medium text-slate-600">
-          History
-        </summary>
-        <div className="space-y-2 px-4 pb-3">
-          <p className="text-slate-600">
-            {task.place_name}
-            {task.store_name && ` · ${task.store_name}`}
-          </p>
-          {open && (
-            <p className="text-slate-600" data-testid="task-status">
-              {statusLine(task)}
-            </p>
-          )}
-          {open &&
-            !mine &&
-            task.assignee_name &&
-            overdueWhenGiven({ due_at: task.due_at, given: task.assigned_at }) && (
-              <p className="rounded-lg bg-amber-50 p-3 text-amber-900" data-testid="task-fair">
-                It was already overdue when it was given to {task.assignee_name}
-                {task.assigned_at && ` (${formatWhen(task.assigned_at)})`}.
+      {(!chain || open) && (
+        <details
+          className="rounded-xl bg-white text-sm ring-1 ring-slate-200"
+          open={!mine && (task.can_manage || task.can_hand_on)}
+          data-testid="task-more"
+        >
+          <summary className="flex min-h-11 cursor-pointer items-center px-4 font-medium text-slate-600">
+            History
+          </summary>
+          <div className="space-y-2 px-4 pb-3">
+            {!chain && (
+              <p className="text-slate-600">
+                {task.place_name}
+                {task.store_name && ` · ${task.store_name}`}
               </p>
             )}
-          {task.handovers.length > 0 && <History task={task} />}
-        </div>
-      </details>
+            {open && (
+              <p className="text-slate-600" data-testid="task-status">
+                {statusLine(task)}
+              </p>
+            )}
+            {open &&
+              !mine &&
+              task.assignee_name &&
+              overdueWhenGiven({ due_at: task.due_at, given: task.assigned_at }) && (
+                <p className="rounded-lg bg-amber-50 p-3 text-amber-900" data-testid="task-fair">
+                  It was already overdue when it was given to {task.assignee_name}
+                  {task.assigned_at && ` (${formatWhen(task.assigned_at)})`}.
+                </p>
+              )}
+            {task.handovers.length > 0 && !chain && <History task={task} />}
+          </div>
+        </details>
+      )}
       {open &&
         task.can_manage &&
         !about &&
@@ -495,7 +549,8 @@ function History({ task }: { task: TaskDetail }) {
   return (
     <section>
       <ol className="divide-y divide-slate-100" data-testid="handover-history">
-        {task.handovers.map((h, i) => (
+        {/* newest first (ADR 142) */}
+        {[...task.handovers].reverse().map((h, i) => (
           <li key={i} className="py-2">
             <span className="block">
               {h.took

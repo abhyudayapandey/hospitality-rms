@@ -219,8 +219,32 @@ export function PhoneAlertsCard({ publicKey, who }: { publicKey: string; who: st
   );
 }
 
-/** Profile: this phone's alerts, on or off. */
-export function PhoneAlertsRow({ publicKey, who }: { publicKey: string; who: string }) {
+/**
+ * Profile: this phone's alerts, on or off. While showing the app as someone (ADR 071) nothing
+ * touches their phones, so it says why instead (ADR 142).
+ */
+export function PhoneAlertsRow({
+  publicKey,
+  who,
+  showingAs,
+}: {
+  publicKey: string;
+  who: string;
+  /** the person whose app this is, while a presenter shows it */
+  showingAs?: string | null;
+}) {
+  if (showingAs) {
+    return (
+      <p className="text-sm text-slate-700" data-testid="alerts-row" data-state="presenting">
+        You are showing the app as {showingAs}. Alerts can only be turned on by {showingAs}, signed
+        in on their own phone.
+      </p>
+    );
+  }
+  return <AlertsSwitch publicKey={publicKey} who={who} />;
+}
+
+function AlertsSwitch({ publicKey, who }: { publicKey: string; who: string }) {
   const { state, error, busy, turnOn, turnOff } = usePhoneAlerts(publicKey, who);
   const text: Record<State, string> = {
     loading: '',

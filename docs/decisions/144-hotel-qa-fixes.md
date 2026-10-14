@@ -1,11 +1,12 @@
-# 142. The hotel QA walk's fixes: one To do list, whose yes, money for billers, quiet imports
+# 144. The hotel QA walk's fixes: one To do list, whose yes, money for billers, quiet imports
 
-Date: 2026-10-14. Status: accepted. Migrations `20261228000000_approval_preview`,
-`20261228000100_transfer_awaits_gm`, `20261228000200_send_people_on_shift`,
-`20261228100000_reading_words`, `20261228110000_people_on_shift_first`,
-`20261228120000_renewed_licence_task`, `20261228200000_running_low`,
-`20261228200100_register_defaults`, `20261228300000_who_hears_and_who_bills`,
-`20261228400000_money_for_billers_and_cost`.
+Date: 2026-10-14. Status: accepted. Migrations `20261229000000_approval_preview`,
+`20261229000100_transfer_awaits_gm`, `20261229000200_send_people_on_shift`,
+`20261229100000_reading_words`, `20261229110000_people_on_shift_first`,
+`20261229120000_renewed_licence_task`, `20261229200000_running_low`,
+`20261229200100_register_defaults`, `20261229300000_who_hears_and_who_bills`,
+`20261229400000_money_for_billers_and_cost`, `20261229500000_order_money_for_cost_readers`,
+`20261229600000_register_keepers`.
 
 ## Context
 
@@ -34,7 +35,10 @@ the platform, not only at the hotel.
 5. **No register is invisible** (KI-06). `ops.register_places` lists every register code
    (`ops.register_codes()`, equal to `REGISTER_CODES`), and a register whose file 45 row names no
    roles is kept by its default roles (`keptBy` in `registers.ts`): Booking leads by the front
-   office (front office manager, front desk, bell captain). Heads and the GM keep every register.
+   office (front office manager, front desk, bell captain). A register with keepers shows to them,
+   the heads of the departments they work in and the outlet's managers (OUTLET_MANAGER,
+   AREA_MANAGER, account owner at the outlet), no other head (the owner's call); one with
+   neither named nor default keepers stays with anyone holding REGISTERS where they work.
 6. **Readings** (KI-07). Quick picks follow the safe range: a round step (1, 2 or 5 times a power
    of ten) crossing it in at most 5 steps, one step either side, at most 8 picks (pH 7.2 to 7.8:
    7.0 to 8.0 by 0.2); − / + moves by 0.1 when the picks step under 1. An alert names the unit once
@@ -45,7 +49,11 @@ the platform, not only at the hotel.
 8. **Money only for billers and cost readers** (KI-09). Guest prices and charges are for whoever
    bills the minibar (ADR 104) or reads the store's cost; our cost (unit cost, breakage value) for
    `rpt.store_cost_access` only. The SQL returns null money to everyone else; a zero is not money
-   ("free"). Frontline see what to charge as items and counts ("Cola 300ml ×1").
+   ("free"). Frontline see what to charge as items and counts ("Cola 300ml ×1"). Order values,
+   line prices, received value and wastage worth (`inv.sees_store_money`, `inv.po_sees_money`) are
+   for cost readers, whoever reads the store's bills (the accountant, the purchase manager) and
+   the order desk; whoever only receives still types what was paid, and the wastage form says
+   "Over 2 kg: needs a photo …" instead of a rupee limit (the owner's call).
 9. **"With <name>"** (KI-10) on a repair, never "assigned with".
 10. **Person pickers** (KI-12): on shift today first, under "On shift today", then the rest;
     the first pick is someone on shift; handing on leaves out the giver and whoever has it now

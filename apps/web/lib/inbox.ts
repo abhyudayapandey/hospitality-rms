@@ -23,6 +23,8 @@ export interface InboxEntry {
   why?: string;
   /** what was asked for: "Test Onions 2 kg, Test Ghee 1 kg" (ADR 053) */
   items?: string;
+  /** a request made for a frontline ask: "For Sana Shaikh: Weekend party" (ADR 142) */
+  forAsk?: string;
   /** a request between stores: per line, what each store has (ADR 141) */
   levels?: string[];
   /** where it is, in plain words: "needs your approval", "to send" (ADR 053) */
@@ -72,7 +74,7 @@ function moduleLink(r: InboxRow): Pick<InboxEntry, 'link' | 'inline'> {
       };
     case 'TRANSFER': {
       // the department head's or GM's approval (TR-3, ADR 115): decided here, never "Open to
-      // receive" (ADR 142)
+      // receive" (ADR 144)
       if (r.step === 'approval' || r.step === 'gm_approval') {
         return {
           link: {
@@ -130,8 +132,16 @@ export async function inboxEntries(tx: Tx): Promise<InboxEntry[]> {
   );
   // a request between stores waiting for approval: what each store has, per line (ADR 141)
   const levels = new Map<string, string[]>();
+  // and, at every step, the frontline ask behind it: who asked, and why (ADR 142)
+  const forAsk = new Map<string, string>();
   for (const x of r.rows) {
-    if (x.process_type !== 'TRANSFER' || !x.step.endsWith('approval')) continue;
+    if (x.process_type !== 'TRANSFER') continue;
+    const ask = (
+      await sql<{ asked_by: string; note: string | null }>`
+        select asked_by, note from inv.request_for_ask(${x.subject_id}::uuid)`.execute(tx)
+    ).rows[0];
+    if (ask) forAsk.set(x.subject_id, `For ${ask.asked_by}${ask.note ? `: ${ask.note}` : ''}`);
+    if (!x.step.endsWith('approval')) continue;
     const rows = (
       await sql<RequestLevel>`
         select item_id::text, name, base_uom, asked::text, from_name, from_on_hand::text,
@@ -153,6 +163,7 @@ export async function inboxEntries(tx: Tx): Promise<InboxEntry[]> {
       ? { why: twoDecimals(x.payload.why) }
       : {}),
     ...(levels.has(x.subject_id) ? { levels: levels.get(x.subject_id)! } : {}),
+    ...(forAsk.has(x.subject_id) ? { forAsk: forAsk.get(x.subject_id)! } : {}),
     ...(items.has(x.subject_id) ? { items: items.get(x.subject_id)! } : {}),
     // a supply request's money is the last price paid: an estimate (ADR 053)
     amount:

@@ -57,7 +57,7 @@ test('the room attendant checks a minibar; the front desk adds it to the bill', 
     await page.getByRole('button', { name: 'Refilled' }).click();
     await expect(page.getByTestId('task-status')).toContainText(/done/i);
 
-    // the bill is a To do item for whoever is on the front desk's shift, else its head (ADR 142)
+    // the bill is a To do item for whoever is on the front desk's shift, else its head (ADR 144)
     const [biller] = await asMigrator<{ name: string }>(
       `select u.display_name as name from ops.task t join core.app_user u on u.id = t.assignee_user_id
         where t.kind = 'minibar_bill' and t.title like 'Bill room 103:%' and t.created_at >= $1

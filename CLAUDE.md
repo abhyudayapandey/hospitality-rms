@@ -317,8 +317,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   unusual / gm / none, `purchase_approval`, `purchase_approver` department_head / gm; read with
   `inv.stock_rule`). The store sends it, gives it to someone (a send task) or buys what is short
   for it; receiving is whoever asked's task; everyone in the chain is told and whoever asked sees
-  where it is (`inv.request_now`, `inv.request_story`). Frontline staff ask their head (Me → Ask
-  for something, `inv.staff_ask`). An order's page names its approver and lets them approve
+  where it is (`inv.request_now`, `inv.request_story`). Frontline staff ask their head (Me → RFMs
+  → Ask, `inv.staff_ask`). An order's page names its approver and lets them approve
   (`inv.po_approval`). Passport has no Main Store. Compliance jobs also repeat weekly, every 2
   weeks or on the nth weekday (ADR 116, file 39 `repeat`).
 - Front desk and lists (ADR 117 to 122): a room's status carries its time (Arriving, Departing, ADR 131)
@@ -389,16 +389,31 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   written to file 46 by `addOutlet`. Push today lists every dish of the outlet, food and drinks.
 - Requests show what each store has (ADR 141, `inv.request_levels`): the GM's approval card
   and a request's page give, per line, the giving store's stock and the asking store's against
-  its par. A head's "Can't give it" reads "Rejected by <head>: <reason>" (`not_given_reason`),
+  its par. A head's "Can't give it" reads "Rejected by <head>: <reason>" (`not_given_reason`; tapping it opens the ask, `ops.task_ask`),
   never "Done", and sends no "Done: ..."; "It arrived: give it" only once it has (`arrived`);
   a short store asks first. The Main Store's keeper buys what it doesn't keep for a store that
-  asks it. Running low is under par or 3 days or fewer left (ADR 142, `inv.running_low`).
-- The hotel QA walk's fixes (ADR 142): one To do list (`/tasks`: approvals, then tasks; `/inbox`
+  asks it. Running low is under par or 3 days or fewer left (ADR 144, `inv.running_low`).
+- An ask is handed over (ADR 142): once the head gives it, whoever asked gets a Collect task
+  (due at their shift's end, else in 2 hours) whose button reads "Transfer to <Dept> done"
+  (`inv.collect_staff_ask`; no stock moves), as does receiving from the Main Store. Whoever
+  asked follows the whole chain, their alerts opening the ask; "For <who>: <note>" rides on
+  the request (`inv.request_for_ask`). RFMs' History lists asks and stock and supply requests,
+  newest first. Only counter alerts join by kind; every history is newest first; a failed screen says
+  "We couldn't open this".
+- RFMs, Request for Materials (ADR 143, `/requests`): Me's tile with tabs Ask (the ask form),
+  Transfer (for whoever may see transfers; `/stock/transfers`, no longer a Stock tab) and History
+  (materials only: asks, stock and supply requests; leave stays under Shifts & leave); it opens on Ask for whoever has a store to ask. The ask's page says by when a Collect
+  task is due, in red once late. A send or receive task shows its request's whole story and
+  opens it; the request offers "Receive it" / "Send it" to whoever holds that task. Breakage
+  takes a live photo (`inv.breakage.photo_key`, under `wastage/`).
+- The hotel QA walk's fixes (ADR 144): one To do list (`/tasks`: approvals, then tasks; `/inbox`
   redirects); the ask and order forms name whose yes it waits for (`inv.approval_preview`);
   guest prices for billers and cost for `rpt.store_cost_access` only, null in SQL for everyone
   else; person pickers on shift first, never the giver; an import of history notifies nobody
-  (`ops.replaying`); bills go to whoever is on shift (`ops.on_shift_next`); a register with no
-  roles is kept by its default roles (`keptBy`).
+  (`ops.replaying`); bills go to whoever is on shift (`ops.on_shift_next`); a register is kept
+  by its file 45 roles, else its default roles (`keptBy`), their departments' heads and the
+  outlet's managers; order and wastage money only for cost readers, bill readers and the order
+  desk (`inv.sees_store_money`).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

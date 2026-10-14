@@ -578,7 +578,7 @@ function StepInputs({
       )}
       <ErrorBox message={error} />
       <StatusBox message={status} />
-      {/* say why the button waits, rather than leave it grey (ADR 142) */}
+      {/* say why the button waits, rather than leave it grey (ADR 144) */}
       {needsPhoto && !photoKey && (
         <p className="text-sm text-amber-900" data-testid="step-needs-photo">
           Take the photo first.

@@ -88,7 +88,7 @@ describe('Me tiles per person (ADR 106)', () => {
     // the department's work first (ADR 113), reading the sales folded away
     expect(t.mine.slice(0, 2)).toEqual(['rooms', 'minibar']);
     expect(t.mine).not.toContain('sales');
-    for (const k of ['count', 'wastage', 'orders', 'transfers', 'bills']) {
+    for (const k of ['count', 'wastage', 'orders', 'bills']) {
       expect(t.mine).not.toContain(k);
     }
   });

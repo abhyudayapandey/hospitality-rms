@@ -28,16 +28,20 @@ export function SupplyHeader({
   active,
   title,
   all,
+  rfm = false,
 }: {
   ctx: SupplyContext;
   active: (typeof TABS)[number]['href'];
   title: string;
+  /** a screen of RFMs (ADR 143): its own heading and tabs above, so no title or Stock tabs */
+  rfm?: boolean;
   /** an "All stores" option in the switcher, for lists across the stores (ADR 038) */
   all?: { label: string; on: boolean } | undefined;
 }) {
   const node = ctx.node!;
   const q = `?node=${node.id}`;
-  const tabs = TABS.filter((t) =>
+  // Transfers live under RFMs now, not in the Stock tabs (ADR 143)
+  const tabs = TABS.filter((t) => t.href !== '/stock/transfers').filter((t) =>
     t.domain === null
       ? ctx.shell.production
       : ctx.can(t.domain, t.access) && (t.domain !== 'SHELF_LIFE' || ctx.opensPacks),
@@ -67,8 +71,8 @@ export function SupplyHeader({
         current={node.id}
         all={all}
       />
-      <h1 className="text-xl font-semibold">{title}</h1>
-      {tabs.length > 1 && (
+      {!rfm && <h1 className="text-xl font-semibold">{title}</h1>}
+      {!rfm && tabs.length > 1 && (
         <nav aria-label="Stock tabs" className="px-0">
           <MoreTabs
             shown={shown.map((t) => (

@@ -25,7 +25,16 @@ const n = (v: string | null) => (v === null ? null : Number(v));
  * filled in; "Everything arrived" fills what was sent. Less than sent is a shortfall, and the
  * head and the sender are told.
  */
-export function ReceiveSent({ task, lines }: { task: string; lines: SentLine[] }) {
+export function ReceiveSent({
+  task,
+  lines,
+  department,
+}: {
+  task: string;
+  lines: SentLine[];
+  /** where it goes: the button says "Transfer to Bar done" (ADR 142) */
+  department: string;
+}) {
   const router = useRouter();
   const hydrated = useHydrated();
   const [qty, setQty] = useState<Record<string, string>>({});
@@ -88,7 +97,7 @@ export function ReceiveSent({ task, lines }: { task: string; lines: SentLine[] }
       </ul>
       <ErrorBox message={error} />
       <button type="submit" disabled={!hydrated || pending} className={primaryButton}>
-        Confirm what arrived
+        Transfer to {department} done
       </button>
     </form>
   );

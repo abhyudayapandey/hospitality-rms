@@ -1,4 +1,4 @@
-/** Whose yes it waits for, in the outlet's words (ADR 142). */
+/** Whose yes it waits for, in the outlet's words (ADR 144). */
 export function approverWords(approver: 'gm' | 'department_head' | null): string {
   return approver === 'gm' ? 'The GM' : 'Your department head';
 }

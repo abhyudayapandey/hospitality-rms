@@ -116,7 +116,7 @@ export default async function Home() {
       <ComplianceCard card={complianceCard(today.compliance)} />
 
       {/* asks once whether this phone shows alerts (ADR 137) */}
-      {pushKey && <PhoneAlertsCard publicKey={pushKey} who={user.id} />}
+      {pushKey && !user.presentedBy && <PhoneAlertsCard publicKey={pushKey} who={user.id} />}
 
       <Banners today={today} />
 

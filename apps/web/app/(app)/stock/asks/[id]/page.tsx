@@ -3,8 +3,10 @@ import { BackLink } from '@/components/back-link';
 import { ItemThumb } from '@/components/item-thumb';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
+import { formatWhen } from '@/lib/format';
 import { formatQty } from '@/lib/qty';
 import { RequestNow, RequestStory } from '../../transfers/[id]/request-story';
+import { CollectButton } from './collect-button';
 import { HeadActions } from './head-actions';
 
 // One ask (ADR 115): where it is now first, what was asked, then for the department head what
@@ -42,7 +44,21 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
         await sql<{ at: Date; words: string }>`
           select at, words from inv.staff_ask_story(${id}::uuid)`.execute(tx)
       ).rows;
-      return { a, now, story };
+      // whoever asked and was given it: take it to the department, then say so (ADR 142)
+      const collect = (
+        await sql<{ department: string }>`
+          select department from inv.my_collect(${id}::uuid)`.execute(tx)
+      ).rows[0];
+      // its Collect task while open, for whoever asked and the head who gave it: when it is
+      // due, and late once past it (ADR 143); RLS shows it to them alone
+      const pending = (
+        await sql<{ due_at: Date; late: boolean }>`
+          select t.due_at, t.due_at < now() as late
+            from ops.task t
+           where t.staff_ask_id = ${id}::uuid and t.kind = 'collect'
+             and t.status in ('open', 'in_progress')`.execute(tx)
+      ).rows[0];
+      return { a, now, story, collect, pending };
     });
   } catch (err) {
     return (
@@ -51,12 +67,12 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
       </p>
     );
   }
-  const { a, now, story } = data;
+  const { a, now, story, collect, pending } = data;
   if (!a) return null;
   const short = a.lines.some((l) => l.at_store < l.qty);
   return (
     <div className="space-y-4">
-      <BackLink fallback="/stock/asks" />
+      <BackLink fallback="/requests" />
       <header>
         <p className="text-xs font-medium text-slate-500">
           {a.asked_by} asked the {a.store}
@@ -64,6 +80,18 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
         <h1 className="text-lg font-semibold">{a.note ?? 'Asked for'}</h1>
       </header>
       {now && <RequestNow stage={now.stage} words={now.words} />}
+      {pending && (
+        <p
+          data-testid="collect-due"
+          className={`rounded-lg px-3 py-2 text-sm font-medium ${
+            pending.late ? 'bg-rose-50 text-rose-800' : 'bg-amber-50 text-amber-800'
+          }`}
+        >
+          {pending.late ? 'Late: ' : ''}
+          {collect ? 'Take it there' : `${a.asked_by} takes it there`} by{' '}
+          {formatWhen(pending.due_at)}
+        </p>
+      )}
       <ul
         className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
         data-testid="ask-lines"
@@ -91,6 +119,7 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
       {a.may_act && (
         <HeadActions ask={id} status={a.status} short={short} arrived={now?.stage === 'arrived'} />
       )}
+      {collect && <CollectButton ask={id} department={collect.department} />}
       <RequestStory story={story} />
     </div>
   );

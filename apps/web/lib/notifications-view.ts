@@ -40,14 +40,19 @@ const GROUPS: Readonly<Record<string, { title: (n: number) => string; link?: str
   maintenance_raised: { title: (n) => `${n} problems reported`, link: '/tasks/maintenance' },
 };
 
-/** Newest first; notifications of one kind on one day (local) become one line. */
+/**
+ * Newest first. Counters (new tasks, roster weeks...) of one kind on one day become one line;
+ * any other notification groups only with others about the same thing (the same link), so
+ * alerts about three different requests are never one line opening one of them (ADR 142).
+ */
 export function groupNotifications(
   rows: readonly NotificationRow[],
   tz: string,
 ): NotificationGroup[] {
   const by = new Map<string, NotificationRow[]>();
   for (const r of rows) {
-    const key = `${r.kind}:${localDate(r.created_at, tz)}`;
+    const about = GROUPS[r.kind] ? '' : `:${r.link ?? r.id}`;
+    const key = `${r.kind}${about}:${localDate(r.created_at, tz)}`;
     by.set(key, [...(by.get(key) ?? []), r]);
   }
   return [...by.entries()]
@@ -71,14 +76,17 @@ export function groupNotifications(
           ids: [first.id],
         };
       }
-      // known kinds drop their generic prefix ("New task: ", "Overdue: ")
-      const titles = sorted.map((r) => (g ? r.title.replace(/^[^:]+:\s*/, '') : r.title));
+      // known kinds drop their generic prefix ("New task: ", "Overdue: "); updates about one
+      // thing read as the newest, then what came before it (ADR 143)
+      const titles = g
+        ? sorted.map((r) => r.title.replace(/^[^:]+:\s*/, ''))
+        : sorted.slice(1).map((r) => r.title);
       const shown = [...new Set(titles)].slice(0, 3);
       const more = new Set(titles).size - shown.length;
       return {
         key,
         kind: first.kind,
-        title: g ? g.title(sorted.length) : `${sorted.length} × ${first.title}`,
+        title: g ? g.title(sorted.length) : first.title,
         body: `${shown.join(' · ')}${more > 0 ? ` · ${more} more` : ''}`,
         link: g?.link ?? first.link,
         unread,

@@ -58,13 +58,36 @@ describe('grouped notifications (U-21)', () => {
     expect(g.map((x) => x.title)).toEqual(['New task: B', 'New task: A']);
   });
 
-  it('an unknown kind still groups, and long lists say how many more', () => {
-    const rows = ['A', 'B', 'C', 'D', 'E'].map((t, i) =>
-      n(String(i), 'something_new', `Thing: ${t}`, `2026-10-03T0${i}:00:00Z`),
-    );
+  it('other kinds group only when about the same thing, and long lists say how many more', () => {
+    const rows = ['A', 'B', 'C', 'D', 'E'].map((t, i) => ({
+      ...n(String(i), 'something_new', `Thing: ${t}`, `2026-10-03T0${i}:00:00Z`),
+      link: '/x/1',
+    }));
     const [g] = groupNotifications(rows, 'Asia/Kolkata');
-    expect(g!.title).toBe('5 × Thing: E');
-    expect(g!.body).toBe('Thing: E · Thing: D · Thing: C · 2 more');
+    // the newest update is the line, the earlier ones under it (ADR 143)
+    expect(g!.title).toBe('Thing: E');
+    expect(g!.body).toBe('Thing: D · Thing: C · Thing: B · 1 more');
+  });
+
+  it('alerts about different requests stay apart, each opening its own (ADR 142)', () => {
+    const rows = [
+      {
+        ...n('1', 'stock_request', 'Asked the Main Store for it', '2026-10-03T07:40:00Z'),
+        link: '/stock/asks/a',
+      },
+      {
+        ...n('2', 'stock_request', 'Ready for you: 5 × Limes', '2026-10-03T07:30:00Z'),
+        link: '/stock/asks/b',
+      },
+      {
+        ...n('3', 'stock_request', 'Approved by Rhea', '2026-10-03T07:50:00Z'),
+        link: '/stock/asks/a',
+      },
+    ];
+    const g = groupNotifications(rows, 'Asia/Kolkata');
+    expect(g).toHaveLength(2);
+    expect(g.map((x) => x.link)).toEqual(['/stock/asks/a', '/stock/asks/b']);
+    expect(g[0]!.count).toBe(2);
   });
 
   it('the bell counts the unread lines shown, not the notifications behind them', () => {

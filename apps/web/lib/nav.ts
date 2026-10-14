@@ -45,7 +45,7 @@ export type NavKey =
 
 export const NAV_ITEMS: Readonly<Record<NavKey, NavItem>> = {
   home: { href: '/', label: 'Home', icon: 'home' },
-  // one To do list (ADR 142): approvals and other requests waiting for the person
+  // one To do list (ADR 144): approvals and other requests waiting for the person
   // (wf.my_inbox), then their tasks. `inbox` is the slot of those with no tasks of their own
   inbox: { href: '/tasks', label: 'To do list', icon: 'tasks' },
   tasks: { href: '/tasks', label: 'To do list', icon: 'tasks' },

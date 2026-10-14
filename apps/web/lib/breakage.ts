@@ -39,6 +39,8 @@ export interface BreakageEntry {
   /** ₹, only for whoever reads the store's cost (KI-09); else null */
   value: string | null;
   recorded_by: string | null;
+  /** the photo of what broke (ADR 143), under wastage/ */
+  photo_key: string | null;
 }
 
 export interface BreakageMonth {
@@ -65,7 +67,7 @@ export async function breakageItems(tx: Tx, store: string): Promise<BreakageItem
 export async function breakageLog(tx: Tx, place: string, month: string): Promise<BreakageEntry[]> {
   const r = await sql<BreakageEntry>`
     select id::text, broken_at::text, place, store, item_id::text, item, unit, qty::text, reason,
-           broken_by, person, note, value::text, recorded_by
+           broken_by, person, note, value::text, recorded_by, photo_key
       from inv.breakage_log(${place}::uuid, ${month}::date)`.execute(tx);
   return r.rows;
 }

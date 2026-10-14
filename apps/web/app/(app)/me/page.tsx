@@ -15,14 +15,13 @@ export default async function MePage() {
   const input = screenInput(shell);
   const inNav = new Set(visibleNav(input).map((n) => n.href));
   const groups = meGroups(input, inNav);
-  // asking the store their team uses for something (ADR 115): where they have one
+  // asks not yet with the person (ADR 115), on RFMs, whose Ask tab is where they ask
   const user = await requireUser();
-  const asks = await withUser(user.id, async (tx) => {
-    const r = await sql<{ stores: boolean; open: number }>`
-      select exists (select 1 from inv.my_ask_stores()) as stores,
-             (select count(*)::int from inv.my_staff_asks(30)
-               where stage not in ('given', 'closed')) as open`.execute(tx);
-    return r.rows[0] ?? { stores: false, open: 0 };
+  const openAsks = await withUser(user.id, async (tx) => {
+    const r = await sql<{ open: number }>`
+      select count(*)::int as open from inv.my_staff_asks(30)
+       where stage not in ('given', 'closed')`.execute(tx);
+    return r.rows[0]?.open ?? 0;
   });
   const tile = (x: Screen) => (
     <li key={x.href}>
@@ -33,6 +32,14 @@ export default async function MePage() {
       >
         <Icon name={x.icon} className="size-7 text-brand-700" />
         <span className="leading-tight">{x.label}</span>
+        {x.key === 'requests' && openAsks > 0 && (
+          <span
+            className="rounded-full bg-amber-50 px-2 text-xs font-bold text-amber-800"
+            data-testid="me-open-asks"
+          >
+            {openAsks}
+          </span>
+        )}
         {x.key === 'inbox' && shell.inboxCount > 0 && (
           <span className="rounded-full bg-rose-50 px-2 text-xs font-bold text-rose-700">
             {shell.inboxCount}
@@ -57,23 +64,6 @@ export default async function MePage() {
           </section>
         ))}
       </div>
-      {asks.stores && (
-        <Link
-          href="/stock/asks"
-          data-testid="me-asks"
-          className="flex min-h-14 items-center gap-3 rounded-xl bg-white p-3 text-sm font-medium shadow-sm ring-1 ring-slate-200"
-        >
-          <Icon name="box" className="size-7 text-brand-700" />
-          <span className="flex-1">
-            Ask for something
-            <span className="block text-xs font-normal text-slate-500">
-              {asks.open > 0
-                ? `${asks.open} asked, not yet with you`
-                : 'From the store your team uses'}
-            </span>
-          </span>
-        </Link>
-      )}
       {shell.user.canShowAs && (
         <section aria-label="Demo" className="space-y-2">
           <h2 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Demo</h2>

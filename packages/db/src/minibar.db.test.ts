@@ -467,9 +467,8 @@ describe('charging and the usage report', () => {
   });
 });
 
-
 /** The front desk executive on a published shift that started an hour ago, and clocked in, so
- * the bill is theirs whatever the time of day (ADR 142: a bill goes to whoever is on shift). */
+ * the bill is theirs whatever the time of day (ADR 144: a bill goes to whoever is on shift). */
 async function frontDeskOnShift(c: PoolClient) {
   const user = ids.user(FRONT_DESK);
   // their other shifts today step aside (the test rolls back), so no overlap rule refuses it

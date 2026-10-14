@@ -51,3 +51,13 @@ The functional QA walk of [TEST] Restaurant (the per-person checklist) found the
   so the urgent ones still stand out.
 - A Main Store's item list grows by what it buys for others, at par 0. Its keeper may set a
   par for it, or archive it.
+
+## Follow-up (migration `20261228100000_ask_rejected`)
+
+On live, whoever asked tapped a rejected ask under Given to others and got the head's task
+page, which said "Done", with a history that never said it was rejected. That page sends an
+ask's task to the ask's own page, but it looked the ask up on `ops.task`, whose row RLS hides
+from whoever asked. It now asks `ops.task_ask`, which gives the ask only to whoever may follow
+it (`inv.may_follow_ask`). On the ask's page, a rejected ask reads "Rejected: <reason>" in full,
+and its history "Rejected by <head>: <reason>". The alert to whoever asked is "Rejected: <items>".
+Home's Given to others keeps one short line; the full reason is one tap away.

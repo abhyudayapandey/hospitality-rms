@@ -120,7 +120,7 @@ export async function askDiscard(
 export interface UnusualCheck {
   /** it will wait for someone's yes */
   needs: boolean;
-  /** whose yes (ADR 142): the outlet's rules decide, as on submit */
+  /** whose yes (ADR 144): the outlet's rules decide, as on submit */
   approver: 'gm' | 'department_head' | null;
   /** the outlet approves every one ('every'), over a value ('above'), or only unusual ones */
   rule: 'every' | 'above' | 'unusual' | null;
@@ -395,6 +395,14 @@ export async function actOnStaffAsk(
     } else {
       await sql`select inv.close_staff_ask(${ask}::uuid, ${note})`.execute(tx);
     }
+    return null;
+  });
+}
+
+/** Whoever asked took what they were given to their department (ADR 142). */
+export async function collectStaffAsk(ask: string): Promise<ActionResult<null>> {
+  return run('staff_ask_collect', async (tx) => {
+    await sql`select inv.collect_staff_ask(${ask}::uuid)`.execute(tx);
     return null;
   });
 }

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { backHref } from '@/lib/back';
-import { Empty } from '@/components/messages';
+import { Empty, primaryButton } from '@/components/messages';
 import { NoSupplyAccess } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
@@ -47,7 +47,17 @@ export default async function TransferPage({
                  tl.received_qty
             from inv.transfer_line tl join inv.item i on i.id = tl.item_id
            where tl.transfer_id = ${id}::uuid order by i.name`.execute(tx);
-    if (!t.rows[0]) return { t: undefined, lines: [], now: null, story: [], act: null, people: [] };
+    if (!t.rows[0])
+      return {
+        t: undefined,
+        lines: [],
+        now: null,
+        story: [],
+        act: null,
+        people: [],
+        forAsk: null,
+        myTask: null,
+      };
     // where it is now and what happened (ADR 115), for whoever may follow it
     const now = (
       await sql<{ stage: string; words: string }>`
@@ -80,7 +90,21 @@ export default async function TransferPage({
                 from inv.request_levels(${id}::uuid)`.execute(tx)
         ).rows;
     const byItem = new Map(levels.map((l) => [l.item_id, levelsText(l)]));
+    // the frontline ask behind it: who asked, and why (ADR 142)
+    const forAsk = (
+      await sql<{ asked_by: string; note: string | null }>`
+        select asked_by, note from inv.request_for_ask(${id}::uuid)`.execute(tx)
+    ).rows[0];
+    // the viewer's own open task on it (receive it, send it): one tap to it (ADR 143)
+    const myTask = (
+      await sql<{ id: string; kind: string }>`
+        select id::text, kind from ops.task
+         where transfer_id = ${id}::uuid and assignee_user_id = core.current_user_id()
+           and kind in ('send', 'receive') and status in ('open', 'in_progress')
+         limit 1`.execute(tx)
+    ).rows[0];
     return {
+      myTask: myTask ?? null,
       t: t.rows[0],
       lines: lines.rows.map((l) => {
         const levels = byItem.get(l.item_id);
@@ -90,12 +114,13 @@ export default async function TransferPage({
       story,
       act: act ?? null,
       people,
+      forAsk: forAsk ?? null,
     };
   });
   // readable with TRANSFERS rights, or while a step of it waits for this user (ADR 009)
   if (!data.t)
     return ctx.can('TRANSFERS') ? <Empty>Transfer not found.</Empty> : <NoSupplyAccess />;
-  const { t, lines, now, story, act, people } = data;
+  const { t, lines, now, story, act, people, forAsk, myTask } = data;
   const [label, style] = TRANSFER_PROGRESS[t.progress] ?? [t.progress, ''];
   // Which side the user can act for is decided in SQL (the step they may act on), never here:
   // whoever runs the sending or the receiving location, through the approval chain.
@@ -141,6 +166,12 @@ export default async function TransferPage({
             {label}
           </span>
         </div>
+        {forAsk && (
+          <p className="mt-1 text-sm text-slate-800" data-testid="for-ask">
+            For {forAsk.asked_by}
+            {forAsk.note && `: ${forAsk.note}`}
+          </p>
+        )}
         <p className="text-sm text-slate-600">
           Requested {formatWhen(t.created_at)}
           {t.dispatched_at && ` · sent ${formatWhen(t.dispatched_at)}`}
@@ -148,6 +179,15 @@ export default async function TransferPage({
         </p>
       </div>
       {now && <RequestNow stage={now.stage} words={now.words} />}
+      {myTask && (
+        <Link
+          href={`/tasks/${myTask.id}`}
+          data-testid="my-transfer-task"
+          className={`${primaryButton} flex items-center justify-center`}
+        >
+          {myTask.kind === 'receive' ? 'Receive it' : 'Send it'}
+        </Link>
+      )}
       <TransferStepForm
         transfer={t.id}
         requestId={t.wf_request_id}

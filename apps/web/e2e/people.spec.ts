@@ -601,10 +601,16 @@ test('the sole owner: own leave approved at the top of the chain; the admin page
   await form.getByRole('button', { name: 'Request 1 day' }).click();
   await expect(form.getByRole('status')).toContainText('Leave requested');
 
-  await page.goto('/requests');
-  const mine = page.getByTestId('request-item').filter({ hasText: 'Leave' }).first();
-  await expect(mine.getByTestId('request-state')).toHaveText('approved');
-  await expect(mine.getByTestId('top-of-chain')).toHaveText(
+  // leave is followed under Shifts & leave, not RFMs (ADR 143): its page says why it is approved
+  await runExecutor();
+  await page.goto('/leave');
+  await page
+    .getByTestId('my-leave')
+    .getByRole('link', { name: /Unpaid Leave/ })
+    .first()
+    .click();
+  await expect(page.getByTestId('leave-status')).toHaveText('Approved');
+  await expect(page.getByTestId('top-of-chain')).toHaveText(
     'Approved at once: nobody above you approves this.',
   );
 
