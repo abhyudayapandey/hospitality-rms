@@ -26,7 +26,7 @@ test('store keeper orders, outlet manager approves, store keeper receives', asyn
   const item = page.getByTestId('inbox-item').filter({
     has: page.locator(`a[href^="/stock/orders/${po}"]`),
   });
-  await expect(item).toContainText('Supply request');
+  await expect(item).toContainText('Request to buy');
   // decided from what was asked for (ADR 053)
   await expect(item.getByTestId('inbox-items')).toContainText('Test Paper Napkins');
   await expect(item).toContainText('Test Head Cook 3.0');

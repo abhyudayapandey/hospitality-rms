@@ -68,7 +68,7 @@ test('the keeper sees To order on Home; the chef follows the order, on the way, 
   // RFMs → History: a supply request with its items and where it is
   await page.goto('/requests?tab=history');
   const mine = page.getByTestId('request-item').filter({ has: page.locator(`a[href*="${po}"]`) });
-  await expect(mine).toContainText('Supply request');
+  await expect(mine).toContainText('Request to buy');
   await expect(mine).toContainText('Test Onions');
   await expect(mine.getByTestId('request-state')).toHaveText('on the way');
   await expect(mine).not.toContainText('₹');
@@ -118,9 +118,9 @@ test('Stock: the list first; the Main Store sends, asking is a small link', asyn
   await page.goto(`/stock?node=${main}`);
   const jobs = page.getByRole('navigation', { name: 'Stock jobs' });
   await expect(jobs.getByRole('link').first()).toHaveText('Send stock');
-  await expect(jobs.getByRole('link', { name: 'Ask for supplies' })).toHaveCount(0);
+  await expect(jobs.getByRole('link', { name: 'Request to buy' })).toHaveCount(0);
   await expect(
-    page.getByTestId('stock-more').getByRole('link', { name: 'Ask for supplies' }),
+    page.getByTestId('stock-more').getByRole('link', { name: 'Request to buy' }),
   ).toBeVisible();
   // the jobs come after the list (ADR 051); while the list runs past the screen they are
   // pinned above the nav (ADR 101), and at the list's end they sit below its last row
@@ -139,7 +139,7 @@ test('Running low says what to do: ask for these, store by store', async ({ page
   const rows = page.getByTestId('stock-row');
   test.skip((await rows.count()) === 0, 'nothing is low in the kitchen today');
   const ask = page.getByTestId('order-low').getByRole('link').first();
-  await expect(ask).toHaveText('Ask for these');
+  await expect(ask).toHaveText('Request these');
   await ask.click();
   await page.waitForURL(/\/stock\/orders\/new\?node=/);
 });

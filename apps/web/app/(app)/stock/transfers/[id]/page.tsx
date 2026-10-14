@@ -147,11 +147,7 @@ export default async function TransferPage({
           {/* who asked first, then whom (ADR 083); a store's own send names the sender */}
           <div>
             <p className="text-xs font-medium text-slate-500" data-testid="transfer-kind">
-              {t.kind === 'rfm'
-                ? 'Request for material'
-                : t.kind === 'send'
-                  ? 'Sent'
-                  : 'Stock request'}
+              {t.kind === 'send' ? 'Sent' : 'Request'}
             </p>
             <h1 className="text-lg font-semibold">
               {t.kind === 'send'

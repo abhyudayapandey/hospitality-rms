@@ -294,7 +294,7 @@ export default async function StockPage({ searchParams }: { searchParams: Search
                   href={`/stock/orders/new?node=${st.id}`}
                   className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 px-3 text-center font-medium text-white"
                 >
-                  {st.main ? 'Order these' : 'Ask for these'}
+                  {st.main ? 'Order these' : 'Request these'}
                   {all || data.lowStores.length > 1 ? ` · ${storeNames.get(st.id) ?? ''}` : ''}
                 </Link>
               ))}

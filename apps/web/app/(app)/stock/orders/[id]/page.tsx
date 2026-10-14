@@ -203,7 +203,7 @@ export default async function OrderPage({
   });
   if (!data.po) return <Empty>Order not found.</Empty>;
   const { po, lines, sends, prices, canPlace, suppliers, bills, receivedValue, billMissing } = data;
-  const supplierName = po.supplier ?? 'Supply request';
+  const supplierName = po.supplier ?? 'Request to buy';
   // a department's order that its Main Store places and receives: the department follows it,
   // "on the way" with its date, and neither receives it nor sees what it cost (ADR 052)
   const follow = data.viaDesk && !canPlace;

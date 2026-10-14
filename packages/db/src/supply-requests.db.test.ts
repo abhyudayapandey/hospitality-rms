@@ -165,7 +165,7 @@ describe('placing the order', () => {
         [po],
       );
       expect(row.rows[0]).toMatchObject({ supplier_id: s, progress: 'released', total: '37.50' });
-      expect(await notes(c, CHEF)).toContain('Your supply request was ordered');
+      expect(await notes(c, CHEF)).toContain('Your request was ordered');
       // placing twice answers with what is placed
       const again = await call<{ ids: string[] }>(
         c,
@@ -194,7 +194,7 @@ describe('placing the order', () => {
       ).toEqual({
         progress: 'received',
       });
-      expect(await notes(c, CHEF)).toContain('Your supplies were received');
+      expect(await notes(c, CHEF)).toContain('Your request arrived');
       const left = await call<{ n: string }>(
         c,
         KEEPER,
@@ -238,7 +238,7 @@ describe('placing the order', () => {
         out.ids[0],
         JSON.stringify([{ item_id: its[0], qty: 1 }]),
       ]);
-      expect(await notes(c, CHEF)).toContain('Your supplies were received');
+      expect(await notes(c, CHEF)).toContain('Your request arrived');
     });
   });
 

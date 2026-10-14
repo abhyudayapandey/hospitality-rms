@@ -30,12 +30,12 @@ test('a request for material off the menu waits for the department head, with wh
   await signInAs(page, 'Test Cook 3.0');
   await page.goto(`/stock/transfers/new?node=${store}`);
   // the central kitchen keeps it (nothing at the outlet does): asked of it (ADR 115)
-  await page.getByRole('textbox', { name: 'Ask for Test Aluminium Foil Roll' }).fill('2');
+  await page.getByRole('textbox', { name: 'Request Test Aluminium Foil Roll' }).fill('2');
   await expect(page.getByTestId('unusual-needs')).toContainText('not on the menu');
-  await page.getByRole('button', { name: 'Ask for 1 item' }).click();
+  await page.getByRole('button', { name: 'Request 1 item' }).click();
   await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
-  await expect(page.getByTestId('transfer-kind')).toHaveText('Request for material');
+  await expect(page.getByTestId('transfer-kind')).toHaveText('Request');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'Test Bar 3.0 – Kitchen Store asked Test Central Kitchen – Store',
   );
@@ -52,7 +52,7 @@ test('a request for material off the menu waits for the department head, with wh
   const item = page.getByTestId('inbox-item').filter({
     has: page.locator(`a[href^="/stock/transfers/${id}"]`),
   });
-  await expect(item).toContainText('Request for material');
+  await expect(item).toContainText('Request');
   await expect(item.getByTestId('inbox-why')).toContainText('Test Aluminium Foil Roll');
   await item.getByRole('button', { name: 'Approve' }).click();
   await expect(item.getByRole('status')).toHaveText('Approved');
