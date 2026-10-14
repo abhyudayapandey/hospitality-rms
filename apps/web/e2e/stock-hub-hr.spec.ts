@@ -73,7 +73,7 @@ test('Team → People and Leave; deactivation goes to the security admin', async
 
   // the security admin sees who and why, and says no (the steward keeps working)
   await signInAs(page, 'Test Security Admin');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   const item = page
     .getByTestId('inbox-item')
     .filter({ hasText: 'Deactivate Test Steward 1.0: Left the company' });

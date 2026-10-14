@@ -15,7 +15,9 @@ test('a slow screen shows its skeleton and the top bar at once; a second tap is 
     await new Promise((r) => setTimeout(r, 2_000));
     await route.continue();
   });
-  const tasks = page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Tasks' });
+  const tasks = page
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: 'To do list' });
   await tasks.click();
   await expect(page.getByTestId('page-loading')).toBeVisible();
   await expect(page.locator('.nav-progress').first()).toBeVisible();

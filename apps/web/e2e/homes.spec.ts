@@ -61,13 +61,13 @@ test("a commis's tiles are their own work, then Shifts & leave", async ({ page }
   expect(names.join(' | ')).not.toMatch(/My tasks/);
 });
 
-test('a shift lead has the frontline Home: no department tiles, Tasks in the nav', async ({
+test('a shift lead has the frontline Home: no department tiles, To do list in the nav', async ({
   page,
 }) => {
   await signInAs(page, 'Test Bell Captain 1.0');
   await expect(main(page).getByTestId('attention-card')).toHaveCount(0);
   await expect(
-    page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Tasks' }),
+    page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'To do list' }),
   ).toBeVisible();
 });
 

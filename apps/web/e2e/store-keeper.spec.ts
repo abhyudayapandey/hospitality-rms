@@ -115,7 +115,18 @@ test('Send stock: it leaves the Main Store, the person who gets the task confirm
     const reassign = page.getByTestId('reassign');
     await reassign.getByRole('combobox').selectOption({ label: 'Test Commis 1.0 (Commis)' });
     await reassign.getByRole('button', { name: 'Assign' }).click();
-    await expect(page.getByTestId('task-status')).toContainText('With Test Commis 1.0');
+    await expect
+      .poll(
+        async () =>
+          (
+            await asMigrator<{ who: string }>(
+              `select u.display_name as who from ops.task t
+                 join core.app_user u on u.id = t.assignee_user_id where t.id = $1`,
+              [task!.id],
+            )
+          )[0]!.who,
+      )
+      .toBe('Test Commis 1.0');
     who = 'Test Commis 1.0';
   }
   await signInAs(page, who);
@@ -124,13 +135,11 @@ test('Send stock: it leaves the Main Store, the person who gets the task confirm
   await expect(confirm.getByRole('textbox', { name: `Arrived ${item}` })).toHaveValue('');
   await confirm.getByRole('button', { name: 'Everything arrived' }).click();
   await confirm.getByRole('button', { name: /^Transfer to .+ done$/ }).click();
-  await expect(page.getByTestId('task-status')).toContainText('Done');
-  await expect(page.getByTestId('sent-lines')).toContainText('arrived 1');
-  // the task tells the whole request's story, newest first, and opens the request (ADR 143)
+  // done on the request's one screen (ADR 147): its story, newest first, says so
   await expect(page.getByTestId('request-story').getByRole('listitem').first()).toContainText(
     'Received by',
   );
-  await expect(page.getByTestId('task-request')).toBeVisible();
+  await expect(page.getByTestId('receive-sent')).toHaveCount(0);
 });
 
 test('every store sees the Main Store’s materials, grouped: the bar gets ketchup, foil, cling film', async ({

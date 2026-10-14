@@ -433,7 +433,7 @@ export function doFirst(
       n: input.toAssign,
       text: plural(input.toAssign, 'expired item to assign', 'expired items to assign'),
       action: 'Assign',
-      href: '/inbox',
+      href: '/tasks',
     },
   ];
   return all
@@ -520,7 +520,7 @@ export function complianceCard(c: ComplianceInput | null): {
     tone: bad > 0 ? 'bad' : 'warn',
     title: `${n} ${n === 1 ? 'needs' : 'need'} action`,
     // Compliance opens on Needs action: these same rows (ADR 073)
-    href: c.keeps ? listHref('/compliance', { all: true }) : '/inbox',
+    href: c.keeps ? listHref('/compliance', { all: true }) : '/tasks',
     rows,
     more: n - rows.length,
   };

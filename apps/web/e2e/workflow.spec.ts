@@ -18,11 +18,11 @@ test('store keeper orders, outlet manager approves, store keeper receives', asyn
   await expect(page.getByTestId('po-progress')).toHaveText('waiting for approval');
 
   // The head cook cannot approve their own order: it is not in their inbox.
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await expect(page.locator(`a[href^="/stock/orders/${po}"]`)).toHaveCount(0);
 
   await signInAs(page, 'Test Bar Manager 3.0');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   const item = page.getByTestId('inbox-item').filter({
     has: page.locator(`a[href^="/stock/orders/${po}"]`),
   });
@@ -67,13 +67,13 @@ test('a stale screen gets a friendly message, not a SQL error', async ({ page, c
 
   await signInAs(page, 'Test Bar Manager 3.0');
   const stale = await context.newPage();
-  await stale.goto('/inbox');
+  await stale.goto('/tasks');
   const staleItem = stale.getByTestId('inbox-item').filter({
     has: stale.locator(`a[href^="/stock/orders/${po}"]`),
   });
   await expect(staleItem).toBeVisible();
 
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   const item = page.getByTestId('inbox-item').filter({
     has: page.locator(`a[href^="/stock/orders/${po}"]`),
   });

@@ -65,8 +65,11 @@ async function start(page: Page, who: string): Promise<Journey> {
   return new Journey();
 }
 
+// a link's name is its label, then what waits on it ("To do list, 2 waiting")
 const nav = (page: Page, name: string) =>
-  page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name, exact: true });
+  page
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: new RegExp(`^${name}(, \\d+ waiting)?$`) });
 
 test.afterAll(() => {
   const dir = join(import.meta.dirname, '..', 'test-results');
@@ -117,7 +120,7 @@ test('open my next task (commis)', async ({ page }) => {
 
 test('report a problem (commis)', async ({ page }) => {
   const j = await start(page, 'Test Commis 1.0');
-  await j.go(nav(page, 'Tasks'));
+  await j.go(nav(page, 'To do list'));
   await j.go(page.getByRole('link', { name: 'Report a problem' }));
   // a tap, not a sentence (ADR 113)
   await j.tap(

@@ -35,6 +35,6 @@ test('sign-out clears the session and refresh cookies and the service-worker cac
   expect(names).not.toContain('oo_session');
   expect(names).not.toContain('oo_refresh');
 
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await expect(page).toHaveURL(/\/login/);
 });

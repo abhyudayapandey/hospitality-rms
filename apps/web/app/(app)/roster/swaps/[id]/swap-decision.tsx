@@ -18,7 +18,7 @@ export function SwapDecision({
   return (
     <RequestDecision
       requestId={requestId}
-      back="/inbox"
+      back="/tasks"
       approve={() => approveSwap(swap, '', accept)}
       approveLabel={accept.length > 0 ? 'Approve anyway' : 'Approve'}
     />
@@ -51,7 +51,7 @@ export function ReassignButton({
             if (!r.ok) setError(r.message);
             else {
               setDone(true);
-              setTimeout(() => router.push('/inbox'), 1200);
+              setTimeout(() => router.push('/tasks'), 1200);
             }
           })
         }

@@ -69,8 +69,8 @@ test('housekeeping asks, the Main Store gives it to someone who takes it down, h
   await page.goto(`/stock/transfers/${id}`);
   await expect(page.getByTestId('request-now')).toContainText('On the way');
   await page.getByRole('button', { name: 'Everything arrived' }).click();
-  await page.getByRole('button', { name: 'Confirm receipt' }).click();
-  await expect(page.getByRole('status')).toHaveText('Received.');
+  await page.getByRole('button', { name: 'Transfer to Housekeeping done' }).click();
+  await expect(page.getByTestId('receive-sent')).toHaveCount(0);
   await page.reload();
   await expect(page.getByTestId('request-now')).toContainText('Received by');
   const story = page.getByTestId('request-story');
@@ -192,4 +192,63 @@ test('RFMs: Ask, Transfer for whoever moves stock, and History (ADR 143)', async
   await expect(page.getByTestId('tab-transfers')).toHaveAttribute('aria-current', 'page');
   await page.goto('/stock');
   await expect(page.getByRole('navigation', { name: 'Stock tabs' })).not.toContainText('Transfers');
+});
+
+test('one request, one screen: every link to it opens the ask, with the buttons there (ADR 147)', async ({
+  page,
+}) => {
+  await stockAtMain('Test Bath Towel', 400);
+  // the attendant asks for more than housekeeping has
+  await signInAs(page, 'Test Room Attendant 1.0');
+  await page.goto('/requests?tab=ask');
+  const towel = page.getByRole('listitem').filter({ hasText: 'Test Bath Towel' });
+  await towel.getByRole('textbox').fill('300');
+  await page.getByRole('button', { name: 'Request 1 item' }).click();
+  await page.waitForURL(/\/stock\/asks\/[0-9a-f-]{36}/);
+  const ask = new URL(page.url()).pathname.split('/').pop()!;
+
+  // the head is short and requests it from the Main Store
+  await signInAs(page, 'Test Executive Housekeeper 1.0');
+  await page.goto(`/stock/asks/${ask}`);
+  await page.getByRole('button', { name: 'Short: request it' }).click();
+  await expect(page.getByTestId('request-now')).toHaveAttribute('data-stage', 'asked_on');
+  const [t] = await asMigrator<{ id: string; progress: string }>(
+    `select t.id::text, s.progress from inv.transfer t
+       join inv.transfer_summary s on s.id = t.id where t.for_ask_id = $1`,
+    [ask],
+  );
+  expect(t).toBeTruthy();
+
+  // whoever approves or sends it opens the request and lands on the ask, its buttons there
+  if (t!.progress === 'awaiting_approval') {
+    await signInAs(page, 'Test General Manager 1.0');
+    await page.goto(`/stock/transfers/${t!.id}`);
+    await page.waitForURL(`**/stock/asks/${ask}`);
+    await expect(page.getByTestId('ask-lines')).toContainText('Test Bath Towel');
+    await page.getByRole('button', { name: 'Approve' }).click();
+    await runExecutor();
+  }
+  await signInAs(page, 'Test Store Keeper 1.0');
+  await page.goto(`/stock/transfers/${t!.id}`);
+  await page.waitForURL(`**/stock/asks/${ask}`);
+  await expect(page.getByTestId('sender-tools')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeVisible();
+  await page.getByRole('textbox', { name: 'Send Test Bath Towel' }).fill('300');
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  await runExecutor();
+
+  // the head opens it from RFMs → History: the same screen, receive and then give it there
+  await signInAs(page, 'Test Executive Housekeeper 1.0');
+  await page.goto('/requests?tab=history');
+  await page
+    .getByTestId('request-item')
+    .filter({ hasText: '300 × Test Bath Towel' })
+    .first()
+    .getByRole('link')
+    .first()
+    .click();
+  await page.waitForURL(`**/stock/asks/${ask}`);
+  await page.getByRole('button', { name: 'Everything arrived' }).click();
+  await page.getByRole('button', { name: 'Transfer to Housekeeping done' }).click();
+  await expect(page.getByRole('button', { name: 'It arrived: give it' })).toBeVisible();
 });

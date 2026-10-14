@@ -36,7 +36,7 @@ test('two-leg transfer: asked, sent by the central kitchen store keeper, receive
   await expect(page.getByTestId('transfer-kind')).toHaveText('Request');
 
   await signInAs(page, 'Test Central Kitchen Store Keeper');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
   await expect(page.getByRole('button', { name: 'Approve' })).toHaveCount(0); // module only
   await page.getByRole('button', { name: 'Send' }).click();
@@ -48,9 +48,10 @@ test('two-leg transfer: asked, sent by the central kitchen store keeper, receive
   await page.goto(`/stock/transfers/${id}?node=${store}`);
   await expect(page.getByTestId('request-now')).toContainText('On the way');
   await expect(page.getByRole('button', { name: 'Reject' })).toHaveCount(0); // in transit
-  await page.getByRole('textbox', { name: 'Received Test Potatoes' }).fill('3.5');
-  await page.getByRole('button', { name: 'Confirm receipt' }).click();
-  await expect(page.getByRole('status')).toHaveText('Received.');
+  // one request, one screen (ADR 147): their receive task is done right here
+  await page.getByRole('textbox', { name: 'Arrived Test Potatoes' }).fill('3.5');
+  await page.getByRole('button', { name: /^Transfer to .* done$/ }).click();
+  await expect(page.getByTestId('receive-sent')).toHaveCount(0);
 
   await runExecutor();
   await page.reload();
@@ -80,7 +81,7 @@ test('store to store in one outlet: the main store keeper sends, whoever asked r
   const id = new URL(page.url()).pathname.split('/').pop()!;
 
   await signInAs(page, 'Test Store Keeper 1.0');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
   await page.getByRole('button', { name: 'Send' }).click();
   await expect(page.getByTestId('transfer-progress')).toHaveText('in transit');
@@ -89,16 +90,17 @@ test('store to store in one outlet: the main store keeper sends, whoever asked r
   await signInAs(page, 'Test Sous Chef 1.0');
   await page.goto(`/stock/transfers/${id}?node=${kitchen}`);
   // nothing filled in (ADR 052): a shortfall is counted, not assumed away
-  const rice = page.getByRole('textbox', { name: 'Received Test Basmati Rice' });
+  const rice = page.getByRole('textbox', { name: 'Arrived Test Basmati Rice' });
   await expect(rice).toHaveValue('');
-  await page.getByRole('button', { name: 'Confirm receipt' }).click();
+  const done = page.getByRole('button', { name: /^Transfer to .* done$/ });
+  await done.click();
   await expect(
     page.getByRole('alert').filter({ hasText: 'Enter what arrived of Test Basmati Rice' }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Everything arrived' }).click();
   await expect(rice).toHaveValue('2');
-  await page.getByRole('button', { name: 'Confirm receipt' }).click();
-  await expect(page.getByRole('status')).toHaveText('Received.');
+  await done.click();
+  await expect(page.getByTestId('receive-sent')).toHaveCount(0);
   await runExecutor();
   expect(await onHand(page, 'BASMATI-RICE', kitchen)).toBeCloseTo(before + 2, 2);
 });
@@ -134,7 +136,8 @@ test('the area manager sees outlet stock read-only (derived view)', async ({ pag
   await expect(tabs.getByRole('link', { name: 'Count' })).toHaveCount(0);
   await expect(tabs.getByRole('link', { name: 'Wastage' })).toHaveCount(0);
   await page.goto(`/stock/orders?node=${store}`);
-  await expect(page.getByRole('link', { name: 'Request to buy' })).toHaveCount(0);
+  // the create button, not an order row still waiting for its supplier
+  await expect(page.getByRole('link', { name: 'Request to buy', exact: true })).toHaveCount(0);
 });
 
 test('a department store keeper sees their own store, not the kitchen next door', async ({

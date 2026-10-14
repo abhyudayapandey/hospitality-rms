@@ -30,7 +30,6 @@ export type ScreenKey =
   | 'inbox'
   | 'notifications'
   | 'profile'
-  | 'tasks'
   | 'problem'
   | 'make'
   | 'menu'
@@ -124,7 +123,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
   },
   {
     key: 'inbox',
-    href: '/inbox',
+    href: '/tasks',
     label: 'To do list',
     icon: 'inbox',
     show: () => true,
@@ -142,13 +141,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     label: 'Profile',
     icon: 'user',
     show: () => true,
-  },
-  {
-    key: 'tasks',
-    href: '/tasks',
-    label: 'My tasks',
-    icon: 'tasks',
-    show: (i) => canOpen('tasks', i),
   },
   {
     key: 'make',
@@ -457,7 +449,6 @@ const STOCK_TABS: ReadonlySet<ScreenKey> = new Set([
 
 /** The domains whose own access makes each work tile the person's (ADR 106). */
 const OWN_DOMAINS: Partial<Record<ScreenKey, readonly string[]>> = {
-  tasks: ['TASKS'],
   stock: ['STOCK_LEVELS'],
   count: ['STOCK_ADJUSTMENTS'],
   wastage: ['STOCK_ADJUSTMENTS'],

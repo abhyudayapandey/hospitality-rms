@@ -45,9 +45,10 @@ export type NavKey =
 
 export const NAV_ITEMS: Readonly<Record<NavKey, NavItem>> = {
   home: { href: '/', label: 'Home', icon: 'home' },
-  // approvals and other requests waiting for the person (wf.my_inbox)
-  inbox: { href: '/inbox', label: 'To do list', icon: 'inbox' },
-  tasks: { href: '/tasks', label: 'Tasks', icon: 'tasks' },
+  // one To do list (ADR 147): what waits for the person's yes, then their own tasks; the
+  // inbox slot is for those with no tasks domain, the tasks slot for the rest: one page
+  inbox: { href: '/tasks', label: 'To do list', icon: 'inbox' },
+  tasks: { href: '/tasks', label: 'To do list', icon: 'inbox' },
   // plain words (UX-6): "Make", not "Production"
   production: { href: '/stock/production', label: 'Make', icon: 'pot' },
   stock: { href: '/stock', label: 'Stock', icon: 'box' },
@@ -148,7 +149,12 @@ export function visibleNav(i: NavInput): NavItem[] {
     const options = typeof slot === 'string' ? [slot] : slot;
     // a report slot only for business reports: "My week" opens from Home
     const pick = options.find(
-      (k) => canOpen(k, i) && !keys.includes(k) && (k !== 'reports' || i.reports === 'business'),
+      (k) =>
+        canOpen(k, i) &&
+        !keys.includes(k) &&
+        // one item per screen: inbox and tasks are the same To do list
+        !keys.some((x) => NAV_ITEMS[x].href === NAV_ITEMS[k].href) &&
+        (k !== 'reports' || i.reports === 'business'),
     );
     if (pick) keys.push(pick);
   }

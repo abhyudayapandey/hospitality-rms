@@ -408,6 +408,12 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   takes a live photo (`inv.breakage.photo_key`, under `wastage/`).
   Where an ask is speaks to its reader (ADR 146, `inv.ask_giver_words`): "will give it to you"
   to whoever asked, "give it to <who>" to the head; an ask given before Collect still closes.
+- One request, one screen; one To do list (ADR 147): a request made for an ask opens on the ask
+  (`inv.request_ask`; its tasks, alerts and History rows too), and that page has every button the
+  viewer may use on any request in its chain (`inv.ask_requests`, `lib/request-actions.ts`,
+  `RequestActions`); a plain request's tasks open its own page. The To do list is `/tasks`:
+  what waits for the person, then their tasks; `/inbox` redirects; nav, tray and Home open it,
+  and its badge counts approvals and the tasks due today.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

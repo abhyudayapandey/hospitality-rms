@@ -44,7 +44,7 @@ test('sign out of all devices ends the other browser’s session too', async ({ 
   await page.waitForURL(/\/login\?reason=signed_out_everywhere/);
   await expect(page.getByText(/signed out on all your devices/)).toBeVisible();
 
-  await other.goto('/inbox');
+  await other.goto('/tasks');
   await expect(other).toHaveURL(/\/login/);
   await other.close();
   // signing in again afterwards works

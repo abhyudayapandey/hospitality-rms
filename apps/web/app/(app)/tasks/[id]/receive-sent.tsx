@@ -6,7 +6,7 @@ import { ErrorBox, inputClass, primaryButton, secondaryButton } from '@/componen
 import type { Person } from '@/lib/tasks';
 import { useHydrated } from '@/lib/use-hydrated';
 import { reassignTask, receiveSent } from '../actions';
-import { formatQty } from '@/lib/qty';
+import { formatQty, inputQty } from '@/lib/qty';
 import { ItemThumb } from '@/components/item-thumb';
 
 export interface SentLine {
@@ -70,7 +70,9 @@ export function ReceiveSent({
         <button
           type="button"
           className="min-h-11 text-sm font-medium text-brand-700 underline"
-          onClick={() => setQty(Object.fromEntries(lines.map((l) => [l.item_id, l.sent])))}
+          onClick={() =>
+            setQty(Object.fromEntries(lines.map((l) => [l.item_id, inputQty(l.sent)])))
+          }
         >
           Everything arrived
         </button>

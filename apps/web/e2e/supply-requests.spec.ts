@@ -28,7 +28,7 @@ test('the chef asks for supplies with no supplier or price; the Main Store keepe
   await page.reload();
   if ((await page.getByTestId('po-progress').textContent()) === 'waiting for approval') {
     await signInAs(page, 'Test General Manager 1.0');
-    await page.goto('/inbox');
+    await page.goto('/tasks');
     const item = page.getByTestId('inbox-item').filter({
       has: page.locator(`a[href^="/stock/orders/${po}"]`),
     });
@@ -39,7 +39,7 @@ test('the chef asks for supplies with no supplier or price; the Main Store keepe
 
   // the Main Store's keeper has it on the To do list, and orders it
   await signInAs(page, 'Test Store Keeper 1.0');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   const task = page
     .getByTestId('desk-to_order')
     .getByTestId('desk-order')
@@ -54,7 +54,7 @@ test('the chef asks for supplies with no supplier or price; the Main Store keepe
   await expect(page.getByTestId('po-progress')).toHaveText('ordered');
 
   // the task closed itself and the receive task took its place
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await expect(
     page.getByTestId('desk-to_order').locator(`a[href^="/stock/orders/${po}"]`),
   ).toHaveCount(0);
@@ -64,6 +64,6 @@ test('the chef asks for supplies with no supplier or price; the Main Store keepe
   await page.getByRole('textbox', { name: 'Amount Test Onions' }).fill('40');
   await page.getByRole('button', { name: 'Receive', exact: true }).click();
   await expect(page.getByTestId('po-progress')).toHaveText('received');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await expect(page.locator(`a[href^="/stock/orders/${po}"]`)).toHaveCount(0);
 });

@@ -154,7 +154,7 @@ test('manager builds and publishes; approved leave drops the shift after both ap
 
   // The department head (Floor Manager) reviews: the screen lists the shift approval will drop
   await signInAs(page, 'Test Floor Manager 3.0');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await page
     .getByTestId('inbox-item')
     .filter({ hasText: 'Test Host 3.0' })
@@ -169,7 +169,7 @@ test('manager builds and publishes; approved leave drops the shift after both ap
 
   // then the GM (ADR 076): the bar's outlet manager
   await signInAs(page, 'Test Bar Manager 3.0');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await page
     .getByTestId('inbox-item')
     .filter({ hasText: 'Test Host 3.0' })
@@ -238,7 +238,7 @@ test('shift swap: offered, accepted by the colleague, approved by the manager', 
   await expect(offer).toContainText('Waiting for manager approval');
 
   await signInAs(page, 'Test Floor Manager 3.0');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await page
     .getByTestId('inbox-item')
     .filter({ hasText: 'Shift Swap' })
@@ -326,7 +326,7 @@ test('swap past a rest warning: offered and accepted, the approver gives it to s
   await expect(offer).toContainText('Waiting for manager approval');
 
   await signInAs(page, 'Test Floor Manager 3.0');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await page
     .getByTestId('inbox-item')
     .filter({ hasText: 'Shift Swap' })

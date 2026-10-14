@@ -6,16 +6,16 @@ import { asMigrator, meTile, signInAs } from './helpers';
 // ADR 034); the pages themselves are enforced in the DB. These rows follow the mock-ups.
 const cases: [string, string[]][] = [
   // frontline: Home, Tasks, Me; their four tiles on Home do the rest
-  ['Test Commis 1.0', ['Home', 'Tasks', 'Me']],
-  ['Test Bartender 1.0', ['Home', 'Tasks', 'Me']],
-  ['Test Server 3.0', ['Home', 'Tasks', 'Me']],
-  ['Test Room Attendant 1.0', ['Home', 'Tasks', 'Me']],
-  ['Test Technician 1.0', ['Home', 'Tasks', 'Me']],
-  ['Test Store Keeper 1.0', ['Home', 'Stock', 'Tasks', 'Me']],
+  ['Test Commis 1.0', ['Home', 'To do list', 'Me']],
+  ['Test Bartender 1.0', ['Home', 'To do list', 'Me']],
+  ['Test Server 3.0', ['Home', 'To do list', 'Me']],
+  ['Test Room Attendant 1.0', ['Home', 'To do list', 'Me']],
+  ['Test Technician 1.0', ['Home', 'To do list', 'Me']],
+  ['Test Store Keeper 1.0', ['Home', 'Stock', 'To do list', 'Me']],
   // department heads: approvals on Home
   ['Test Head Cook 3.0', ['Home', 'Roster', 'Stock', 'Reports', 'Me']],
   ['Test Executive Chef 1.0', ['Home', 'Roster', 'Stock', 'Reports', 'Me']],
-  ['Test Chief Engineer 1.0', ['Home', 'Roster', 'Tasks', 'Reports', 'Me']],
+  ['Test Chief Engineer 1.0', ['Home', 'Roster', 'To do list', 'Reports', 'Me']],
   ['Test General Manager 1.0', ['Home', 'To do list', 'Reports', 'Me']],
   ['Test Bar Manager 3.0', ['Home', 'To do list', 'Reports', 'Me']],
   ['Test Area Manager', ['Home', 'To do list', 'Reports', 'Me']],

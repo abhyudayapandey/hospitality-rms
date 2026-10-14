@@ -1,15 +1,15 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { backHref } from '@/lib/back';
-import { Empty, primaryButton } from '@/components/messages';
+import { Empty } from '@/components/messages';
 import { NoSupplyAccess } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { param, supplyContext, TRANSFER_PROGRESS, type SearchParams } from '@/lib/inventory';
-import { levelsText, type RequestLevel } from '@/lib/request-levels';
-import { TransferStepForm, type TransferLine } from './transfer-step-form';
+import { requestActions } from '@/lib/request-actions';
+import { RequestActions } from './request-actions';
 import { RequestNow, RequestStory } from './request-story';
-import { SenderTools } from './sender-tools';
 
 export default async function TransferPage({
   params,
@@ -19,8 +19,18 @@ export default async function TransferPage({
   searchParams: SearchParams;
 }) {
   const { id } = await params;
-  const ctx = await supplyContext(searchParams, 'transfers');
   const user = await requireUser();
+  // one request, one screen (ADR 147): a request made for someone's ask opens on the ask
+  const ask = await withUser(
+    user.id,
+    async (tx) =>
+      (
+        await sql<{ ask: string | null }>`
+          select inv.request_ask(${id}::uuid)::text as ask`.execute(tx)
+      ).rows[0]?.ask ?? null,
+  ).catch(() => null);
+  if (ask) redirect(`/stock/asks/${ask}`);
+  const ctx = await supplyContext(searchParams, 'transfers');
   const data = await withUser(user.id, async (tx) => {
     const t = await sql<{
       id: string;
@@ -38,26 +48,7 @@ export default async function TransferPage({
     }>`select id, from_node_id, to_node_id, from_name, to_name, progress, kind, wf_request_id,
               created_at, dispatched_at, received_at, inv.my_transfer_step(id) as my_step
          from inv.transfer_summary where id = ${id}::uuid`.execute(tx);
-    // lines the user may act on come through the step (a fallback approver may hold no
-    // TRANSFERS rights there); otherwise as RLS allows
-    const lines = t.rows[0]?.my_step
-      ? await sql<TransferLine>`select * from inv.my_transfer_lines(${id}::uuid)`.execute(tx)
-      : await sql<TransferLine>`
-          select tl.item_id, i.name, i.base_uom, tl.requested_qty, tl.dispatched_qty,
-                 tl.received_qty
-            from inv.transfer_line tl join inv.item i on i.id = tl.item_id
-           where tl.transfer_id = ${id}::uuid order by i.name`.execute(tx);
-    if (!t.rows[0])
-      return {
-        t: undefined,
-        lines: [],
-        now: null,
-        story: [],
-        act: null,
-        people: [],
-        forAsk: null,
-        myTask: null,
-      };
+    if (!t.rows[0]) return { t: undefined, now: null, story: [], forAsk: null, actions: null };
     // where it is now and what happened (ADR 115), for whoever may follow it
     const now = (
       await sql<{ stage: string; words: string }>`
@@ -67,71 +58,26 @@ export default async function TransferPage({
       await sql<{ at: Date; words: string }>`
         select at, words from inv.request_story(${id}::uuid)`.execute(tx)
     ).rows;
-    const act = (
-      await sql<{
-        may_send: boolean;
-        may_receive: boolean;
-        given_to: string | null;
-      }>`select may_send, may_receive, given_to from inv.request_actions(${id}::uuid)`.execute(tx)
-    ).rows[0];
-    const people = act?.may_send
-      ? (
-          await sql<{ id: string; name: string }>`
-            select id::text, name from inv.send_people(${id}::uuid)`.execute(tx)
-        ).rows
-      : [];
-    // what each store has, for whoever decides or sends it (ADR 141), until it is sent
-    const levels = !['awaiting_approval', 'awaiting_dispatch'].includes(t.rows[0].progress)
-      ? []
-      : (
-          await sql<RequestLevel>`
-              select item_id::text, name, base_uom, asked::text, from_name,
-                     from_on_hand::text, to_name, to_on_hand::text, to_par::text
-                from inv.request_levels(${id}::uuid)`.execute(tx)
-        ).rows;
-    const byItem = new Map(levels.map((l) => [l.item_id, levelsText(l)]));
     // the frontline ask behind it: who asked, and why (ADR 142)
     const forAsk = (
       await sql<{ asked_by: string; note: string | null }>`
         select asked_by, note from inv.request_for_ask(${id}::uuid)`.execute(tx)
     ).rows[0];
-    // the viewer's own open task on it (receive it, send it): one tap to it (ADR 143)
-    const myTask = (
-      await sql<{ id: string; kind: string }>`
-        select id::text, kind from ops.task
-         where transfer_id = ${id}::uuid and assignee_user_id = core.current_user_id()
-           and kind in ('send', 'receive') and status in ('open', 'in_progress')
-         limit 1`.execute(tx)
-    ).rows[0];
+    // every button the viewer may use on it (ADR 147), the same as on the ask's page
+    const actions = await requestActions(tx, id);
     return {
-      myTask: myTask ?? null,
       t: t.rows[0],
-      lines: lines.rows.map((l) => {
-        const levels = byItem.get(l.item_id);
-        return levels ? { ...l, levels } : l;
-      }),
       now: now ?? null,
       story,
-      act: act ?? null,
-      people,
       forAsk: forAsk ?? null,
+      actions,
     };
   });
   // readable with TRANSFERS rights, or while a step of it waits for this user (ADR 009)
   if (!data.t)
     return ctx.can('TRANSFERS') ? <Empty>Transfer not found.</Empty> : <NoSupplyAccess />;
-  const { t, lines, now, story, act, people, forAsk, myTask } = data;
+  const { t, now, story, forAsk, actions } = data;
   const [label, style] = TRANSFER_PROGRESS[t.progress] ?? [t.progress, ''];
-  // Which side the user can act for is decided in SQL (the step they may act on), never here:
-  // whoever runs the sending or the receiving location, through the approval chain.
-  const mode =
-    t.my_step === 'dispatch'
-      ? 'dispatch'
-      : t.my_step === 'receipt' || act?.may_receive
-        ? 'receive'
-        : t.my_step === 'approval' || t.my_step === 'gm_approval'
-          ? 'approve'
-          : null;
   return (
     <div className="space-y-4">
       {ctx.node && (
@@ -175,25 +121,7 @@ export default async function TransferPage({
         </p>
       </div>
       {now && <RequestNow stage={now.stage} words={now.words} />}
-      {myTask && (
-        <Link
-          href={`/tasks/${myTask.id}`}
-          data-testid="my-transfer-task"
-          className={`${primaryButton} flex items-center justify-center`}
-        >
-          {myTask.kind === 'receive' ? 'Receive it' : 'Send it'}
-        </Link>
-      )}
-      <TransferStepForm
-        transfer={t.id}
-        requestId={t.wf_request_id}
-        mode={mode}
-        lines={lines}
-        gm={t.my_step === 'gm_approval'}
-      />
-      {mode === 'dispatch' && (
-        <SenderTools transfer={t.id} people={people} givenTo={act?.given_to ?? null} />
-      )}
+      {actions && <RequestActions data={actions} />}
       <RequestStory story={story} />
     </div>
   );

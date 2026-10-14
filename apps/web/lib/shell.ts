@@ -10,6 +10,7 @@ import { navFlagsKey } from './nav-flags';
 import { unreadLines, type NotificationRow } from './notifications-view';
 import type { ScreenInput } from './screens';
 import { companySettings } from './settings-data';
+import { DEFAULT_TZ } from './dates';
 
 export interface NodeRow {
   id: string;
@@ -116,6 +117,12 @@ export const loadShell = cache(async (): Promise<Shell> => {
     const inbox = await sql<{ n: number }>`
       select (select count(*) from wf.my_inbox())::int
            + (select count(*) from inv.desk_orders())::int
+           -- one To do list (ADR 147): my own open tasks, late or due today, as the list
+           -- groups them (groupTasks)
+           + (select count(*) from ops.my_tasks() t
+               where t.status <> 'done'
+                 and (t.overdue or (t.due_at at time zone ${DEFAULT_TZ})::date
+                                   <= (now() at time zone ${DEFAULT_TZ})::date))::int
            + (select count(*) from ops.my_to_assign() a
                where (select "on" from core.my_modules()
                        where code = case a.kind when 'expiry' then 'production'

@@ -43,12 +43,12 @@ test('a request for material off the menu waits for the department head, with wh
 
   // the store keeper has nothing to issue yet
   await signInAs(page, 'Test Central Kitchen Store Keeper');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await expect(page.locator(`a[href^="/stock/transfers/${id}"]`)).toHaveCount(0);
 
   // the head of Kitchen sees why, and approves from the Inbox
   await signInAs(page, 'Test Head Cook 3.0');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   const item = page.getByTestId('inbox-item').filter({
     has: page.locator(`a[href^="/stock/transfers/${id}"]`),
   });
@@ -59,7 +59,7 @@ test('a request for material off the menu waits for the department head, with wh
 
   // now it is the store keeper's to issue; reject it so the stock stays where it is
   await signInAs(page, 'Test Central Kitchen Store Keeper');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
   await expect(page.getByTestId('transfer-progress')).toHaveText('waiting to be sent');
   // rejecting asks why and is confirmed (ADR 053)

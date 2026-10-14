@@ -6,11 +6,15 @@ import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
-import { maintenanceList, myHandedOn, myTasks, taskTabs } from '@/lib/tasks';
+import { inboxEntries } from '@/lib/inbox';
+import { deskOrders } from '@/lib/inventory';
+import { maintenanceList, myHandedOn, myTasks, taskTabs, toAssign } from '@/lib/tasks';
 import { GROUP_TITLES, doneBy, doneLately, groupTasks, myTaskWho } from '@/lib/tasks-view';
+import { WaitingForYou } from '../inbox/waiting';
 import { TaskList } from './task-list';
 
-// My tasks (ADR 020): one-off tasks, checklist rounds, prep and expired batches that are
+// The To do list (ADR 147): first what waits for my yes or my hand (orders to place, what to
+// assign, approvals), then my tasks (ADR 020): one-off tasks, checklist rounds, prep and expired batches that are
 // mine or my job role's or my shift's, overdue first; and maintenance assigned to me. Each
 // says who has it and when it reached them; what I gave to someone else stays in view under
 // "Given to others" (ADR 074). What is done stays, under Done, saying who did it and when,
@@ -32,14 +36,20 @@ export default async function MyTasksPage() {
           )
           .sort((a, b) => Number(a.status === 'done') - Number(b.status === 'done'))
       : [];
-    return { tasks, given, tabs, fixes };
+    const waiting = {
+      rows: await inboxEntries(tx),
+      assign: await toAssign(tx),
+      desk: await deskOrders(tx),
+    };
+    return { tasks, given, tabs, fixes, waiting };
   });
   const groups = groupTasks(data.tasks);
 
   return (
     <div className="space-y-4">
       <PollRefresh />
-      <TasksHeader tabs={data.tabs} active="/tasks" title="Tasks" />
+      <TasksHeader tabs={data.tabs} active="/tasks" title="To do list" />
+      <WaitingForYou {...data.waiting} />
       {data.fixes.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-500">Repairs for you</h2>
@@ -83,9 +93,12 @@ export default async function MyTasksPage() {
           </ul>
         </section>
       )}
-      {data.tasks.length === 0 && data.given.length === 0 && (
-        <Empty>No tasks for you right now.</Empty>
-      )}
+      {data.tasks.length === 0 &&
+        data.given.length === 0 &&
+        data.fixes.length === 0 &&
+        data.waiting.rows.length === 0 &&
+        data.waiting.assign.length === 0 &&
+        data.waiting.desk.length === 0 && <Empty>Nothing is waiting for you.</Empty>}
       {(['overdue', 'today'] as const)
         .filter((g) => groups[g].length > 0)
         .map((g) => (

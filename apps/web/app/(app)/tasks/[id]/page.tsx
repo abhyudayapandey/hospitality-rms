@@ -66,6 +66,21 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       ).rows[0]?.ask ?? null,
   ).catch(() => null);
   if (askPage) redirect(`/stock/asks/${askPage}`);
+  // a send or receive task is a step of a request: it is done on the request's one screen
+  // (ADR 147), the ask's page when it was made for one, else the request's own
+  const requestPage = await withUser(user.id, async (tx) => {
+    const r = (
+      await sql<{ transfer: string; ask: string | null; readable: boolean }>`
+        select t.transfer_id::text as transfer, inv.request_ask(t.transfer_id)::text as ask,
+               exists (select 1 from inv.transfer_summary s where s.id = t.transfer_id) as readable
+          from ops.task t
+         where t.id = ${id}::uuid and t.kind in ('send', 'receive')
+           and t.transfer_id is not null`.execute(tx)
+    ).rows[0];
+    if (!r) return null;
+    return r.ask ? `/stock/asks/${r.ask}` : r.readable ? `/stock/transfers/${r.transfer}` : null;
+  }).catch(() => null);
+  if (requestPage) redirect(requestPage);
   // a send or receive task is one step of a request (ADR 143): its page tells the request's
   // whole story, from whoever asked first, as the request's own page does; nothing for anyone
   // who may not follow the request
