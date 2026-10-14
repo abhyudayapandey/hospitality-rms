@@ -13,7 +13,8 @@ export interface WastageRow {
   base_uom: string;
   qty: string;
   reason: string;
-  value: string;
+  /** null for whoever may not see what stock is worth here (KI-09) */
+  value: string | null;
   outcome: string;
   created_at: Date;
 }
@@ -25,7 +26,8 @@ export async function wastageList(
   limit: number,
 ): Promise<WastageRow[]> {
   const r = await sql<WastageRow>`
-    select wl.id, wl.item_id::text, i.name, i.base_uom, wl.qty, wl.reason, wl.value, wl.outcome,
+    select wl.id, wl.item_id::text, i.name, i.base_uom, wl.qty, wl.reason,
+           case when inv.sees_store_money(${node}::uuid) then wl.value end as value, wl.outcome,
            wl.created_at
       from inv.wastage_line wl join inv.item i on i.id = wl.item_id
      where wl.delivery_node_id = ${node}::uuid

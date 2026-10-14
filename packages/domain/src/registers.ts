@@ -3,9 +3,10 @@
 // (ops.register_required, kept equal by a test). A customer switches each register on or off
 // and may say which job roles keep it (file 45, core.tenant.settings.registers); by default
 // lost and found and incidents are on everywhere, the rest at hotels. A register the customer
-// names no roles for is kept by its `keptBy` roles (the leads: the front office), else by anyone
-// who holds REGISTERS where they work; those who run a department or more always keep it
-// (ops.register_default_roles, kept equal by a test).
+// names no roles for is kept by its `keptBy` roles (the leads: the front office; kept equal to
+// ops.register_default_roles by a test). A register with roles also shows to the heads of the
+// departments those roles work in and to the outlet's managers, never to other heads; one with
+// none is kept by anyone who holds REGISTERS where they work (ops.keeps_register).
 
 import { ROLES } from './catalogue';
 
