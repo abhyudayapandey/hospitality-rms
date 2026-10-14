@@ -883,10 +883,14 @@ describe('a frontline person asks their department head, and follows it', () => 
       const item = await lager(c);
       const ask = await raise(c, item, 6);
       await one(c, ASKER, `select inv.close_staff_ask($1, 'enough in the room') as s`, [ask]);
-      expect(await told(c, ATTENDANT)).toContainEqual(expect.stringMatching(/Not given/));
+      expect(await told(c, ATTENDANT)).toContainEqual(expect.stringMatching(/^Rejected: /));
       const seen = await askSeen(c, ATTENDANT, ask);
       expect(seen.stage).toBe('closed');
-      expect(seen.words).toMatch(/enough in the room/);
+      expect(seen.words).toBe('Rejected: enough in the room');
+      // its story says who rejected it, and why
+      expect(seen.story).toContain(
+        'Rejected by Test Executive Housekeeper 1.0: enough in the room',
+      );
       // the lists say it was rejected and why, never done (ADR 141); one alert, not "Done: ..."
       const task = await headTask(c, ask);
       const mine = await rows<{ id: string; not_given_reason: string | null }>(
@@ -904,6 +908,21 @@ describe('a frontline person asks their department head, and follows it', () => 
       );
       expect(given).toEqual([{ id: task!.id, not_given_reason: 'enough in the room' }]);
       expect(await told(c, ATTENDANT)).not.toContainEqual(expect.stringMatching(/^Done: /));
+      // opened from Given to others, the head's task leads whoever asked to the ask's page,
+      // though its row is hidden from them; nobody else is led there
+      const via = (who: string) =>
+        one<{ ask: string | null }>(c, who, `select ops.task_ask($1)::text as ask`, [task!.id]);
+      expect((await via(ATTENDANT)).ask).toBe(ask);
+      expect((await via(ASKER)).ask).toBe(ask);
+      expect((await via('test.room-attendant-b.1.0')).ask).toBeNull();
+      expect(
+        await rows<{ n: number }>(
+          c,
+          ATTENDANT,
+          `select count(*)::int as n from ops.task where id = $1`,
+          [task!.id],
+        ),
+      ).toEqual([{ n: 0 }]);
     });
   });
 

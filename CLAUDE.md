@@ -389,7 +389,7 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   written to file 46 by `addOutlet`. Push today lists every dish of the outlet, food and drinks.
 - Requests show what each store has (ADR 141, `inv.request_levels`): the GM's approval card
   and a request's page give, per line, the giving store's stock and the asking store's against
-  its par. A head's "Can't give it" reads "Rejected by <head>: <reason>" (`not_given_reason`),
+  its par. A head's "Can't give it" reads "Rejected by <head>: <reason>" (`not_given_reason`; tapping it opens the ask, `ops.task_ask`),
   never "Done", and sends no "Done: ..."; "It arrived: give it" only once it has (`arrived`);
   a short store asks first. The Main Store's keeper buys what it doesn't keep for a store that
   asks it. Running low is under par: "14 of 20 kg (~1 day left)" (replaces ADR 034's rule).

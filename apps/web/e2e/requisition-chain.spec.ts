@@ -111,3 +111,40 @@ test('a room attendant asks their head, who gives it; the attendant sees it give
     'Given by Test Executive Housekeeper 1.0',
   );
 });
+
+test('the head rejects an ask; whoever asked sees it rejected, why, and by whom', async ({
+  page,
+}) => {
+  const reason = 'Enough towels in the linen room for today';
+  await signInAs(page, 'Test Room Attendant 1.0');
+  await page.goto('/stock/asks/new');
+  const towel = page.getByRole('listitem').filter({ hasText: 'Test Hand Towel' });
+  await towel.getByRole('button', { name: 'More' }).click();
+  await towel.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('button', { name: 'Ask for 1 item' }).click();
+  await page.waitForURL(/\/stock\/asks\/[0-9a-f-]{36}/);
+  const ask = new URL(page.url()).pathname.split('/').pop()!;
+
+  // the head can't give it, and says why
+  await signInAs(page, 'Test Executive Housekeeper 1.0');
+  await page.goto(`/stock/asks/${ask}`);
+  await page.getByRole('button', { name: 'Can’t give it', exact: true }).click();
+  await page.getByPlaceholder('Enough in the room').fill(reason);
+  await page.getByTestId('ask-no').getByRole('button', { name: 'Can’t give it' }).click();
+  await expect(page.getByTestId('request-now')).toHaveText(`Rejected: ${reason}`);
+
+  // whoever asked: Given to others says rejected; tapping it opens the ask, not a "Done" task
+  await signInAs(page, 'Test Room Attendant 1.0');
+  await page.goto('/tasks');
+  const row = page.getByTestId('tasks-given').getByRole('listitem').filter({
+    hasText: 'Rejected by Test Executive Housekeeper 1.0',
+  });
+  await expect(row).toContainText('rejected');
+  await row.getByRole('link').click();
+  await page.waitForURL(new RegExp(`/stock/asks/${ask}`));
+  await expect(page.getByTestId('request-now')).toHaveAttribute('data-stage', 'closed');
+  await expect(page.getByTestId('request-now')).toHaveText(`Rejected: ${reason}`);
+  await expect(page.getByTestId('request-story')).toContainText(
+    `Rejected by Test Executive Housekeeper 1.0: ${reason}`,
+  );
+});

@@ -59,11 +59,13 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       async (tx) => {
         const t = await taskDetail(tx, id);
         // what a frontline person asked for (ADR 115): its own page, where the head acts on it
+        // and whoever asked follows it, rejected or given (ADR 141); found through ops.task_ask,
+        // since the head's task row is hidden from whoever asked
         const askPage =
           t.kind === 'ask'
             ? ((
                 await sql<{ ask: string | null }>`
-                  select staff_ask_id::text as ask from ops.task where id = ${id}::uuid`.execute(tx)
+                  select ops.task_ask(${id}::uuid)::text as ask`.execute(tx)
               ).rows[0]?.ask ?? null)
             : null;
         // the task's own photos, kept 30 days (ADR 079)
