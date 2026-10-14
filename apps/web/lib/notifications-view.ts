@@ -76,14 +76,17 @@ export function groupNotifications(
           ids: [first.id],
         };
       }
-      // known kinds drop their generic prefix ("New task: ", "Overdue: ")
-      const titles = sorted.map((r) => (g ? r.title.replace(/^[^:]+:\s*/, '') : r.title));
+      // known kinds drop their generic prefix ("New task: ", "Overdue: "); updates about one
+      // thing read as the newest, then what came before it (ADR 143)
+      const titles = g
+        ? sorted.map((r) => r.title.replace(/^[^:]+:\s*/, ''))
+        : sorted.slice(1).map((r) => r.title);
       const shown = [...new Set(titles)].slice(0, 3);
       const more = new Set(titles).size - shown.length;
       return {
         key,
         kind: first.kind,
-        title: g ? g.title(sorted.length) : `${sorted.length} × ${first.title}`,
+        title: g ? g.title(sorted.length) : first.title,
         body: `${shown.join(' · ')}${more > 0 ? ` · ${more} more` : ''}`,
         link: g?.link ?? first.link,
         unread,

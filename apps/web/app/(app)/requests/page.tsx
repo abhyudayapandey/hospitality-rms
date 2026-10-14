@@ -1,15 +1,19 @@
 import Link from 'next/link';
-import { primaryButton } from '@/components/messages';
+import { Empty } from '@/components/messages';
 import { PollRefresh } from '@/components/use-polling';
+import { RfmTabs } from '@/components/rfm-tabs';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen, processLabel } from '@/lib/format';
-import { SUPPLY_PROGRESS } from '@/lib/inventory';
+import { isUuid, SUPPLY_PROGRESS } from '@/lib/inventory';
+import { AskForm, type AskStoreItem } from '../stock/asks/new/ask-form';
 import { RequestNow } from '../stock/transfers/[id]/request-story';
 
-// Things I asked for (ADR 052, 142): every request and every ask to one's head, newest first,
-// in one list; each opens. A supply request says where the order is and what is in it, in the
-// department's words, never an estimate in ₹. Ask for something is the button under the list.
+// RFMs, Requests for Materials (ADR 052, 142, 143): Ask is the form that asks the store one's
+// team uses, through one's head; Previous asks is every request and every ask, newest first,
+// each opening its page; Transfers (its own route) for whoever may see them. It opens on Ask
+// for whoever has a store to ask.
+// A supply request says where the order is and what is in it, never an estimate in ₹.
 
 /** Where a request waits, in plain words: never a step's code. */
 function waitingOn(step: string): string {
@@ -51,10 +55,15 @@ function subjectHref(r: {
   }
 }
 
-export default async function RequestsPage() {
+export default async function RequestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
   const user = await requireUser();
   // RLS on wf.request decides what is visible; this page lists the user's own requests.
-  const { rows, asks, canAsk } = await withUser(user.id, async (tx) => {
+  const { rows, asks, stores, store, items, transfers } = await withUser(user.id, async (tx) => {
     const r = await sql<{
       id: string;
       process_type: string;
@@ -93,10 +102,29 @@ export default async function RequestsPage() {
       created_at: Date;
     }>`select id::text, store, items, stage, words, created_at
          from inv.my_staff_asks(30)`.execute(tx);
-    const can = await sql<{ ok: boolean }>`
-      select exists (select 1 from inv.my_ask_stores()) as ok`.execute(tx);
-    return { rows: r.rows, asks: a.rows, canAsk: can.rows[0]?.ok ?? false };
+    // the stores one's team uses, and what the chosen one keeps (ADR 115)
+    const stores = (
+      await sql<{ id: string; name: string }>`
+        select id::text, name from inv.my_ask_stores()`.execute(tx)
+    ).rows;
+    const picked = typeof sp['store'] === 'string' && isUuid(sp['store']) ? sp['store'] : null;
+    const store = stores.find((x) => x.id === picked) ?? stores[0] ?? null;
+    const items = store
+      ? (
+          await sql<AskStoreItem>`
+            select item_id::text, name, base_uom, on_hand::text
+              from inv.ask_store_items(${store.id}::uuid)`.execute(tx)
+        ).rows
+      : [];
+    // whoever may see the stores' transfers has them as a third tab (ADR 143)
+    const transfers =
+      (
+        await sql<{ ok: boolean }>`
+          select exists (select 1 from core.screen_places('transfers')) as ok`.execute(tx)
+      ).rows[0]?.ok ?? false;
+    return { rows: r.rows, asks: a.rows, stores, store, items, transfers };
   });
+  const tab = sp['tab'] === 'ask' || sp['tab'] === 'asked' ? sp['tab'] : store ? 'ask' : 'asked';
   const card = 'block rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200';
   const list = [
     ...rows.map((r) => ({ at: new Date(r.created_at).getTime(), request: r, ask: null })),
@@ -104,9 +132,16 @@ export default async function RequestsPage() {
   ].sort((x, y) => y.at - x.at);
   return (
     <div className="space-y-4">
-      <PollRefresh />
-      <h1 className="text-xl font-semibold">Things I asked for</h1>
-      {list.length === 0 ? (
+      <RfmTabs current={tab} transfers={transfers} />
+      {tab === 'ask' ? (
+        store ? (
+          <AskForm stores={stores} store={store} items={items} />
+        ) : (
+          <Empty icon="box">
+            Your team has no store to ask. Managers ask from Stock, then Ask for stock.
+          </Empty>
+        )
+      ) : list.length === 0 ? (
         <p className="rounded-xl bg-white p-6 text-center text-slate-600 ring-1 ring-slate-200">
           Nothing asked for yet.
         </p>
@@ -174,15 +209,7 @@ export default async function RequestsPage() {
           })}
         </ul>
       )}
-      {canAsk && (
-        <Link
-          href="/stock/asks/new"
-          data-testid="ask-something"
-          className={`${primaryButton} flex items-center justify-center`}
-        >
-          Ask for something
-        </Link>
-      )}
+      {tab === 'asked' && <PollRefresh />}
     </div>
   );
 }

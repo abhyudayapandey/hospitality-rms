@@ -10,11 +10,12 @@ import {
 } from '@outlet-ops/domain';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
 import { ItemThumb } from '@/components/item-thumb';
+import { PhotoField } from '@/components/photo-field';
 import { Stepper } from '@/components/stepper';
 import type { BreakageItem, BreakagePlace } from '@/lib/breakage';
 import { formatQty } from '@/lib/qty';
 import { useHydrated } from '@/lib/use-hydrated';
-import { itemsAt, recordBreakage } from './actions';
+import { getBreakageUploadUrl, itemsAt, recordBreakage } from './actions';
 
 /**
  * Record a breakage (ADR 093) at a department: from which store, what, how many, why and who
@@ -23,9 +24,12 @@ import { itemsAt, recordBreakage } from './actions';
 export function BreakageForm({
   place,
   initialItems,
+  photos,
 }: {
   place: BreakagePlace;
   initialItems: BreakageItem[];
+  /** photos can be taken here (a bucket or a photo folder) */
+  photos: boolean;
 }) {
   const router = useRouter();
   const hydrated = useHydrated();
@@ -38,6 +42,7 @@ export function BreakageForm({
   const [by, setBy] = useState('');
   const [person, setPerson] = useState('');
   const [note, setNote] = useState('');
+  const [photoKey, setPhotoKey] = useState<string | null>(null);
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -47,6 +52,8 @@ export function BreakageForm({
     start(async () => {
       setStore(id);
       setItemId('');
+      // a photo is stored at the store it came from: a new store needs a new one
+      setPhotoKey(null);
       const r = await itemsAt(id);
       if (r.ok) setItems(r.data);
       else setError(r.message);
@@ -70,6 +77,7 @@ export function BreakageForm({
         brokenBy: by,
         person: by === 'staff' && person ? person : null,
         note,
+        photoKey,
         idempotencyKey: key,
       });
       if (!r.ok) return setError(r.message);
@@ -80,6 +88,7 @@ export function BreakageForm({
       setBy('');
       setPerson('');
       setNote('');
+      setPhotoKey(null);
       setKey(crypto.randomUUID());
       router.refresh();
     });
@@ -173,6 +182,17 @@ export function BreakageForm({
         <span className="text-sm font-medium">Note (optional)</span>
         <input value={note} onChange={(e) => setNote(e.target.value)} className={inputClass} />
       </label>
+      {/* a photo above the button (ADR 098), from the live camera (ADR 127) */}
+      {photos && store && (
+        <PhotoField
+          key={`${store}-${key}`}
+          node={store}
+          photoKey={photoKey}
+          onChange={setPhotoKey}
+          getUploadUrl={getBreakageUploadUrl}
+          label="Photo of what broke"
+        />
+      )}
       <ErrorBox message={error} />
       <StatusBox message={done} />
       <button type="submit" disabled={!hydrated || pending || !store} className={primaryButton}>

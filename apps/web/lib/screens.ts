@@ -39,7 +39,6 @@ export type ScreenKey =
   | 'check'
   | 'wastage'
   | 'orders'
-  | 'transfers'
   | 'bills'
   | 'opened'
   | 'compliance'
@@ -119,7 +118,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
   {
     key: 'requests',
     href: '/requests',
-    label: 'Things I asked for',
+    label: 'RFMs',
     icon: 'hand',
     show: () => true,
   },
@@ -200,13 +199,6 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     label: 'Orders',
     icon: 'cart',
     show: (i) => can(i, 'PURCHASE_ORDERS'),
-  },
-  {
-    key: 'transfers',
-    href: '/stock/transfers',
-    label: 'Transfers',
-    icon: 'truck',
-    show: (i) => can(i, 'TRANSFERS'),
   },
   {
     // vendor bills (BIL-1 to BIL-3, ADR 050)
@@ -459,7 +451,6 @@ const STOCK_TABS: ReadonlySet<ScreenKey> = new Set([
   'count',
   'wastage',
   'orders',
-  'transfers',
   'bills',
   'check',
 ]);
@@ -472,7 +463,6 @@ const OWN_DOMAINS: Partial<Record<ScreenKey, readonly string[]>> = {
   wastage: ['STOCK_ADJUSTMENTS'],
   check: ['STOCK_CHECK'],
   orders: ['PURCHASE_ORDERS'],
-  transfers: ['TRANSFERS'],
   bills: ['BILLS'],
   sales: ['SALES', 'DERIVED_SALES'],
   posImport: ['POS_IMPORT'],

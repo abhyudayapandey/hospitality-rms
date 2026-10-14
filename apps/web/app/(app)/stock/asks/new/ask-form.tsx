@@ -60,7 +60,7 @@ export function AskForm({
           {stores.map((s) => (
             <Link
               key={s.id}
-              href={`/stock/asks/new?store=${s.id}`}
+              href={`/requests?tab=ask&store=${s.id}`}
               aria-current={s.id === store.id ? 'true' : undefined}
               className={`flex min-h-11 items-center rounded-full px-4 text-sm font-medium ring-1 ${
                 s.id === store.id

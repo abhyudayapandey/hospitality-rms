@@ -64,8 +64,9 @@ describe('grouped notifications (U-21)', () => {
       link: '/x/1',
     }));
     const [g] = groupNotifications(rows, 'Asia/Kolkata');
-    expect(g!.title).toBe('5 × Thing: E');
-    expect(g!.body).toBe('Thing: E · Thing: D · Thing: C · 2 more');
+    // the newest update is the line, the earlier ones under it (ADR 143)
+    expect(g!.title).toBe('Thing: E');
+    expect(g!.body).toBe('Thing: D · Thing: C · Thing: B · 1 more');
   });
 
   it('alerts about different requests stay apart, each opening its own (ADR 142)', () => {

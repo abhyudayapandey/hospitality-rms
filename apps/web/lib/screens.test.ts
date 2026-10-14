@@ -115,7 +115,7 @@ describe('screens', () => {
       ),
     );
     expect(keeper.map((s) => s.key)).toEqual(
-      expect.arrayContaining(['stock', 'count', 'wastage', 'orders', 'transfers', 'menu']),
+      expect.arrayContaining(['stock', 'count', 'wastage', 'orders', 'menu']),
     );
     expect(keeper.find((s) => s.key === 'menu')!.label).toBe('Recipes');
     const viewer = screensFor(input([['STOCK_ADJUSTMENTS', 'view']])).map((s) => s.key);

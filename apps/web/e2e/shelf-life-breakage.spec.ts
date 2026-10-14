@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { asMigrator, placeId, signInAs } from './helpers';
+import { asMigrator, placeId, signInAs, takePhoto } from './helpers';
 
 // Shelf life & labels and Breakage (ADR 093) at 380 px on Test Hotel 1.0. A chef opens a litre
 // of milk: its label has the use-by day's dot and the allergens, and it is used up. A room
@@ -64,8 +64,17 @@ test("a breakage leaves the store and is in the outlet's log", async ({ page }) 
     await main(page)
       .getByLabel(/^Who on the staff/)
       .selectOption({ label: 'Test Room Attendant B 1.0' });
+    // a photo of what broke, from the live camera, above the button (ADR 143)
+    await takePhoto(main(page));
     await main(page).getByRole('button', { name: 'Record the breakage' }).click();
     await expect(main(page).getByText('Recorded: Test Bath Towel, 1 each.')).toBeVisible();
+    await expect(
+      main(page)
+        .getByTestId('breakage-row')
+        .filter({ hasText: 'Test Bath Towel' })
+        .first()
+        .getByTestId('breakage-photo'),
+    ).toBeVisible();
     await expect(
       main(page).getByTestId('breakage-row').filter({ hasText: 'Test Bath Towel' }),
     ).toContainText('Test Room Attendant B 1.0');
