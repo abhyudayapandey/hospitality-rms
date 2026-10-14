@@ -1,5 +1,5 @@
 -- migrate:up
--- What the ask and order forms say before sending (ADR 144): whether it will wait for a yes and
+-- What the ask and order forms say before sending (ADR 145): whether it will wait for a yes and
 -- whose, worked out the way inv.request_transfer and inv.po_payload decide it. Before, the forms
 -- only knew the "unusual" rule and always named the department head, even where the outlet's
 -- rules have the GM approve every request or every order (ADR 115).

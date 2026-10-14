@@ -4,7 +4,7 @@ import { approvalHeadline } from './approval-words';
 describe('approvalHeadline', () => {
   it('names the GM where the outlet has the GM approve every request', () => {
     expect(approvalHeadline({ approver: 'gm', rule: 'every' }, 'transfer')).toBe(
-      'The GM approves every stock request here.',
+      'The GM approves every request here.',
     );
   });
   it('names the department head for an unusual request', () => {

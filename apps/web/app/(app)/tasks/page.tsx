@@ -13,7 +13,7 @@ import { GROUP_TITLES, doneBy, doneLately, groupTasks, myTaskWho } from '@/lib/t
 import { WaitingForYou } from '../inbox/waiting';
 import { TaskList } from './task-list';
 
-// The To do list (ADR 144): what waits for the person's yes (approvals, what to assign, the
+// The To do list (ADR 145): what waits for the person's yes (approvals, what to assign, the
 // order desk's orders), then their tasks; one list, one name.
 // My tasks (ADR 020): one-off tasks, checklist rounds, prep and expired batches that are
 // mine or my job role's or my shift's, overdue first; and maintenance assigned to me. Each

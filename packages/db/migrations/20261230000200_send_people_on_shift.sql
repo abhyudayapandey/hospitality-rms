@@ -1,5 +1,5 @@
 -- migrate:up
--- "Who brings it?" (ADR 144): whoever is on shift today first, as every person picker does
+-- "Who brings it?" (ADR 145): whoever is on shift today first, as every person picker does
 -- (ADR 110), and never the person giving it, who can send it themselves.
 drop function inv.send_people(uuid);
 create function inv.send_people(p_transfer uuid)

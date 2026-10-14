@@ -418,7 +418,7 @@ describe('with a Main Store, a department asks it (ADR 115)', () => {
           (r) => r.name,
         ),
       ).toContain('Test Purchase Manager 1.0');
-      // never the keeper giving it, who can send it themselves (ADR 144)
+      // never the keeper giving it, who can send it themselves (ADR 145)
       expect(
         (await rows<{ name: string }>(c, KEEPER, `select name from inv.send_people($1)`, [t])).map(
           (r) => r.name,
@@ -579,7 +579,7 @@ describe('with no Main Store, a department asks the store that keeps it (ADR 115
         /Waiting for Test General Manager 1\.0.* to approve/,
       );
       expect(await told(c, GM)).toContainEqual(expect.stringMatching(/To approve.*Bar Store/));
-      // its status says so too, not "waiting to be sent" (ADR 144)
+      // its status says so too, not "waiting to be sent" (ADR 145)
       const progress = async () =>
         (
           await one<{ p: string }>(
@@ -1186,7 +1186,7 @@ describe("an order's approval, on its page", () => {
   });
 });
 
-describe('the ask and order forms say whose yes it waits for (ADR 144)', () => {
+describe('the ask and order forms say whose yes it waits for (ADR 145)', () => {
   const preview = (c: PoolClient, node: string, item: string, qty: number, kind: string) =>
     rows<{ approver: string | null; rule: string | null; why: string[] }>(
       c,

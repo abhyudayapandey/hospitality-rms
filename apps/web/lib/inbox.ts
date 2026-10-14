@@ -73,7 +73,7 @@ function moduleLink(r: InboxRow): Pick<InboxEntry, 'link' | 'inline'> {
       };
     case 'TRANSFER': {
       // the department head's or GM's approval (TR-3, ADR 115): decided here, never "Open to
-      // receive" (ADR 144)
+      // receive" (ADR 145)
       if (r.step === 'approval' || r.step === 'gm_approval') {
         return {
           link: {

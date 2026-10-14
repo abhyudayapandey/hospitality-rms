@@ -93,6 +93,24 @@ describe('order values (KI-09)', () => {
     });
   });
 
+  it('department heads see their own stores’ money; their staff do not (ADR 145)', async () => {
+    await inRolledBackTx(async (c) => {
+      const bar = ids.node('TEST-HOTEL-1.0-BAR-STORE');
+      const hk = ids.node('TEST-HOTEL-1.0-HOUSEKEEPING-STORE');
+      const q = `select inv.sees_store_money($1) as bar, inv.sees_store_money($2) as hk`;
+      expect(await one(c, 'test.bar-manager.1.0', q, [bar, hk])).toEqual({ bar: true, hk: false });
+      expect(await one(c, 'test.executive-housekeeper.1.0', q, [bar, hk])).toEqual({
+        bar: false,
+        hk: true,
+      });
+      for (const who of ['test.housekeeping-supervisor.1.0', 'test.head-bartender.1.0']) {
+        expect(await one(c, who, q, [bar, hk]), who).toEqual({ bar: false, hk: false });
+      }
+      // the cost controller's job is the cost: every store
+      expect(await one(c, COST, q, [bar, hk])).toEqual({ bar: true, hk: true });
+    });
+  });
+
   it('wastage over the limit still needs a photo for a receiver, worked out on the server', async () => {
     await inRolledBackTx(async (c) => {
       // the threshold is the tenant's: read it as someone there

@@ -93,3 +93,68 @@ describe('running low', () => {
     });
   });
 });
+
+// "Fill all short items" fills every low item (ADR 145): under par up to par; at or over par
+// but 3 days or fewer left, a week's use (`inv.fill_qty`), on the order form and Send stock.
+describe('fill short items', () => {
+  const fill = async (
+    c: PoolClient,
+    on: number,
+    par: number,
+    used: number | null,
+    durable = false,
+  ) =>
+    Number(
+      (
+        await c.query<{ q: string }>('select inv.fill_qty($1, $2, $3, $4) as q', [
+          on,
+          par,
+          used,
+          durable,
+        ])
+      ).rows[0]!.q,
+    );
+
+  it('up to par when under it, else a week of use when it runs out in 3 days', async () => {
+    await inRolledBackTx(async (c) => {
+      expect(await fill(c, 14, 20, 196)).toBe(6); // under par: up to par
+      expect(await fill(c, 20, 20, 140)).toBe(50); // at par, 2 days left: a week (70) less 20
+      expect(await fill(c, 30, 0, 140)).toBe(40); // no par, 3 days left
+      expect(await fill(c, 31, 0, 140)).toBe(0); // not low
+      expect(await fill(c, 5, 0, 140, true)).toBe(0); // durable: par only
+      expect(await fill(c, 0, 0, 0)).toBe(0); // never used
+    });
+  });
+
+  it('the order form suggests what a low item with no par needs', async () => {
+    await inRolledBackTx(async (c) => {
+      const store = ids.node('TEST-BAR-3.0-BAR-STORE');
+      await c.query(
+        `update inv.item_node n set par_level = 0
+           from inv.item i
+          where i.id = n.item_id and n.delivery_node_id = $1 and i.name = 'Test Tonic Water 300ml'`,
+        [store],
+      );
+      const expected = (
+        await c.query<{ q: string }>(
+          `select inv.fill_qty(coalesce(s.on_hand, 0), 0, inv.recent_use(i.id, $1), i.durable) as q
+             from inv.item i
+             left join inv.stock_level s on s.item_id = i.id and s.delivery_node_id = $1
+            where i.name = 'Test Tonic Water 300ml' and i.tenant_id = (
+              select tenant_id from core.hierarchy_node where id = $1)`,
+          [store],
+        )
+      ).rows[0]!.q;
+      expect(Number(expected)).toBeGreaterThan(0);
+      await actAs(c, 'app_rw', ids.user('test.bar-manager.3.0'));
+      const r = await c.query<{ suggested_qty: string; open_po_qty: string }>(
+        `select s.suggested_qty, s.open_po_qty from inv.suggested_order($1) s
+           join inv.item i on i.id = s.item_id where i.name = 'Test Tonic Water 300ml'`,
+        [store],
+      );
+      expect(Number(r.rows[0]!.suggested_qty)).toBe(
+        Math.max(Number(expected) - Number(r.rows[0]!.open_po_qty), 0),
+      );
+    });
+  });
+});

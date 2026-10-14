@@ -113,7 +113,7 @@ describe('bottom nav', () => {
       reports: 'business' as const,
     });
     expect(approvalsInNav(input(['OUTLET_MANAGER']))).toBe(true);
-    // one To do list (ADR 144): staff with tasks have it as their tab
+    // one To do list (ADR 145): staff with tasks have it as their tab
     expect(approvalsInNav(input(['STAFF']))).toBe(true);
     expect(approvalsInNav(input(['DEPARTMENT_HEAD']))).toBe(true);
     // a head with stock has Stock in that slot: the To do list is in the header

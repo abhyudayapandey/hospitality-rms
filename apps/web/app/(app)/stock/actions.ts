@@ -120,7 +120,7 @@ export async function askDiscard(
 export interface UnusualCheck {
   /** it will wait for someone's yes */
   needs: boolean;
-  /** whose yes (ADR 144): the outlet's rules decide, as on submit */
+  /** whose yes (ADR 145): the outlet's rules decide, as on submit */
   approver: 'gm' | 'department_head' | null;
   /** the outlet approves every one ('every'), over a value ('above'), or only unusual ones */
   rule: 'every' | 'above' | 'unusual' | null;

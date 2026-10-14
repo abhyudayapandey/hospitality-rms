@@ -1,12 +1,13 @@
-# 144. The hotel QA walk's fixes: one To do list, whose yes, money for billers, quiet imports
+# 145. The hotel QA walk's fixes: one To do list, whose yes, money for billers, quiet imports
 
-Date: 2026-10-14. Status: accepted. Migrations `20261229000000_approval_preview`,
-`20261229000100_transfer_awaits_gm`, `20261229000200_send_people_on_shift`,
-`20261229100000_reading_words`, `20261229110000_people_on_shift_first`,
-`20261229120000_renewed_licence_task`, `20261229200000_running_low`,
-`20261229200100_register_defaults`, `20261229300000_who_hears_and_who_bills`,
-`20261229400000_money_for_billers_and_cost`, `20261229500000_order_money_for_cost_readers`,
-`20261229600000_register_keepers`.
+Date: 2026-10-14. Status: accepted. Migrations `20261230000000_approval_preview`,
+`20261230000100_transfer_awaits_gm`, `20261230000200_send_people_on_shift`,
+`20261230100000_reading_words`, `20261230110000_people_on_shift_first`,
+`20261230120000_renewed_licence_task`, `20261230200000_running_low`,
+`20261230200100_register_defaults`, `20261230300000_who_hears_and_who_bills`,
+`20261230400000_money_for_billers_and_cost`, `20261230500000_order_money_for_cost_readers`,
+`20261230600000_register_keepers`, `20261230700000_fill_running_low`,
+`20261230700100_heads_see_money`.
 
 ## Context
 
@@ -18,7 +19,7 @@ the platform, not only at the hotel.
 
 1. **Whose yes, said before sending** (KI-02). `inv.approval_preview(store, lines, kind)` works out
    what `inv.request_transfer` and `inv.po_payload` will decide: the GM, the department head or
-   nobody, and why. The ask and order forms say "The GM approves every stock request here" or
+   nobody, and why. The ask and order forms say "The GM approves every request here" or
    "Your department head will be asked to approve this:" (`lib/approval-words.ts`). A request
    waiting for the GM reads "waiting for approval", not "waiting to be sent"
    (`inv.transfer_awaits_approval` counts `gm_approval`).
@@ -69,6 +70,14 @@ the platform, not only at the hotel.
     (RECIPE_READER at the whole outlet), since a restaurant has no store of its own.
 14. **A renewed licence's task shows the licence in force** (KI-16), by `replaced_by`.
 15. A step whose button waits for a photo says "Take the photo first."
+16. **Fill all short items fills every low item** (the owner's call). Under par: up to par. At or
+    over par but 3 days or fewer left: a week's use (`inv.fill_qty`). The order form
+    (`inv.suggested_order`) and Send stock (`inv.send_items`) both use it. The button reads
+    "Fill all N short items".
+17. **Department heads see their department's money** (the owner's call, refining 8): order
+    values, line prices, received value, wastage worth and breakage value at the stores their
+    department uses (`inv.heads_store`, DEPARTMENT_HEAD there or above). Nobody below them,
+    except those who read stores' cost (the cost controller, `rpt.store_cost_access`).
 
 ## Consequences
 

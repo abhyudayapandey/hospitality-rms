@@ -1,4 +1,4 @@
-/** Whose yes it waits for, in the outlet's words (ADR 144). */
+/** Whose yes it waits for, in the outlet's words (ADR 145). */
 export function approverWords(approver: 'gm' | 'department_head' | null): string {
   return approver === 'gm' ? 'The GM' : 'Your department head';
 }
@@ -13,7 +13,7 @@ export function approvalHeadline(
 ): string {
   const who = approverWords(c.approver);
   if (c.rule === 'every') {
-    return `${who} approves every ${kind === 'order' ? 'order' : 'stock request'} here.`;
+    return `${who} approves every ${kind === 'order' ? 'order' : 'request'} here.`;
   }
   return `${who} will be asked to approve this:`;
 }
