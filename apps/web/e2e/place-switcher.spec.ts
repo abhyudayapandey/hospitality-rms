@@ -137,9 +137,9 @@ test('an area manager sees outlets on Menu', async ({ page }) => {
   expect(outlets).toContain('Test Hotel & Bar 1.0');
 });
 
-test('no switcher on single-outlet Menu, Inbox, Requests or Home', async ({ page }) => {
+test('no switcher on single-outlet Menu, To do list, Requests or Home', async ({ page }) => {
   await signInAs(page, 'Test General Manager 1.0');
-  for (const path of ['/menu', '/inbox', '/requests', '/']) {
+  for (const path of ['/menu', '/tasks', '/requests', '/']) {
     await page.goto(path);
     await expect(page.getByRole('main')).toBeVisible();
     await expect(page.getByTestId('place-switcher'), path).toHaveCount(0);

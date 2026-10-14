@@ -24,7 +24,7 @@ async function run<T>(label: string, fn: (tx: Tx) => Promise<T>): Promise<Action
   try {
     const data = await withUser(user.id, fn);
     for (const p of ['/roster', '/leave', '/events', '/notifications']) revalidatePath(p, 'layout');
-    revalidatePath('/inbox');
+    revalidatePath('/tasks');
     revalidatePath('/', 'layout');
     return { ok: true, data };
   } catch (err) {

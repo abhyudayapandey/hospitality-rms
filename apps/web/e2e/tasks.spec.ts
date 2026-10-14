@@ -34,7 +34,10 @@ test('the executive chef gives the commis a task; an out-of-range reading is fla
   await expect(page.getByTestId('task-status')).toContainText('With Test Commis 1.0');
 
   await signInAs(page, 'Test Commis 1.0');
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Tasks' }).click();
+  await page
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: 'To do list' })
+    .click();
   // the seeded deep clean was due yesterday (file 30)
   await expect(page.getByTestId('tasks-overdue')).toContainText('Deep clean the walk-in chiller');
   await main(page).getByRole('link', { name: title }).click();
@@ -126,7 +129,7 @@ test('an expired batch: reported, assigned by the chef, thrown away and remade, 
   await expect(expired.getByRole('status')).toHaveText('Reported');
 
   await signInAs(page, 'Test Executive Chef 1.0');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await page
     .getByTestId('to-assign')
     .getByRole('link', { name: /Discard expired Mint Chutney/ })

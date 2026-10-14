@@ -18,14 +18,21 @@ as $$
                                      where t.for_ask_id = p_ask and inv.may_follow(t.id))));
 $$;
 
--- the requests made for an ask, oldest first, for whoever follows it
+-- the requests made for an ask, and those made for them in turn (the chain), oldest first, for
+-- whoever follows it
 create function inv.ask_requests(p_ask uuid) returns setof uuid
 language sql stable security definer
 set search_path to 'pg_catalog', 'core', 'inv'
 as $$
-  select t.id from inv.transfer t
-   where t.for_ask_id = p_ask and t.tenant_id = core.my_tenant() and inv.may_follow_ask(p_ask)
-   order by t.created_at;
+  with recursive chain as (
+    select t.id, t.created_at, 0 as depth from inv.transfer t
+     where t.for_ask_id = p_ask and t.tenant_id = core.my_tenant() and inv.may_follow_ask(p_ask)
+    union all
+    select t.id, t.created_at, chain.depth + 1
+      from inv.transfer t join chain on t.for_transfer_id = chain.id
+     where chain.depth < 10
+  )
+  select id from chain order by created_at;
 $$;
 
 -- the ask a request belongs to (its own, or that of the request it was made for), when the

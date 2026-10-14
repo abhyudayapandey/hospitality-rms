@@ -36,7 +36,7 @@ test('two-leg transfer: asked, sent by the central kitchen store keeper, receive
   await expect(page.getByTestId('transfer-kind')).toHaveText('Request');
 
   await signInAs(page, 'Test Central Kitchen Store Keeper');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
   await expect(page.getByRole('button', { name: 'Approve' })).toHaveCount(0); // module only
   await page.getByRole('button', { name: 'Send' }).click();
@@ -80,7 +80,7 @@ test('store to store in one outlet: the main store keeper sends, whoever asked r
   const id = new URL(page.url()).pathname.split('/').pop()!;
 
   await signInAs(page, 'Test Store Keeper 1.0');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await page.locator(`a[href^="/stock/transfers/${id}"]`).click();
   await page.getByRole('button', { name: 'Send' }).click();
   await expect(page.getByTestId('transfer-progress')).toHaveText('in transit');

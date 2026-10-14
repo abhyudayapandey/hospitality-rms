@@ -26,7 +26,7 @@ export function BottomNav({ items, inboxCount }: { items: NavItem[]; inboxCount:
               >
                 <Icon name={item.icon} className="size-6" />
                 <span data-testid="nav-label">{item.label}</span>
-                {item.href === '/inbox' && inboxCount > 0 && (
+                {item.href === '/tasks' && inboxCount > 0 && (
                   <span
                     aria-label={`${inboxCount} waiting`}
                     className="absolute top-1.5 right-[calc(50%-1.4rem)] rounded-full bg-rose-600 px-1.5 text-[10px] font-bold text-white"

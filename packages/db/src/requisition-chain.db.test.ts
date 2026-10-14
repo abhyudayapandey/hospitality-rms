@@ -1122,6 +1122,37 @@ describe('a frontline person asks their department head, and follows it', () => 
     });
   });
 
+  it('one request, one screen: every step of it opens on the ask (ADR 147)', async () => {
+    await inRolledBackTx(async (c) => {
+      const item = await lager(c);
+      await stockAt(c, item, HK, 0);
+      await stockAt(c, item, MAIN, 40);
+      const ask = await raise(c, item, 6);
+      const [t] = (
+        await one<{ ids: string[] }>(c, ASKER, `select inv.ask_for_staff($1) as ids`, [ask])
+      ).ids;
+      // whoever asked, the head, the keeper who sends it (though not one of Housekeeping's):
+      // the request opens on the ask
+      for (const who of [ATTENDANT, ASKER, KEEPER]) {
+        expect(
+          (await one<{ a: string | null }>(c, who, `select inv.request_ask($1) as a`, [t])).a,
+          who,
+        ).toBe(ask);
+        expect(
+          (await rows<{ id: string }>(c, who, `select inv.ask_requests($1) as id`, [ask])).map(
+            (r) => r.id,
+          ),
+          who,
+        ).toEqual([t]);
+      }
+      // someone with no part in it sees neither
+      expect(
+        (await one<{ a: string | null }>(c, BARTENDER, `select inv.request_ask($1) as a`, [t])).a,
+      ).toBeNull();
+      expect(await rows(c, BARTENDER, `select inv.ask_requests($1) as id`, [ask])).toEqual([]);
+    });
+  });
+
   it('an ask given before the Collect step can still be taken to the department (ADR 146)', async () => {
     await inRolledBackTx(async (c) => {
       const item = await lager(c);

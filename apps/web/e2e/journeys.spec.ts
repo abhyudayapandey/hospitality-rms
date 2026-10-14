@@ -117,7 +117,7 @@ test('open my next task (commis)', async ({ page }) => {
 
 test('report a problem (commis)', async ({ page }) => {
   const j = await start(page, 'Test Commis 1.0');
-  await j.go(nav(page, 'Tasks'));
+  await j.go(nav(page, 'To do list'));
   await j.go(page.getByRole('link', { name: 'Report a problem' }));
   // a tap, not a sentence (ADR 113)
   await j.tap(

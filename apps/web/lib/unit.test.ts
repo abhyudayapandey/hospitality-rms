@@ -32,16 +32,16 @@ describe('bottom nav', () => {
     // frontline: three tabs; their tiles on Home do the rest
     expect(nav(['STAFF', 'PRODUCTION_TEAM'], ['PRODUCTION_TEAM'], { production: true })).toEqual([
       'Home',
-      'Tasks',
+      'To do list',
       'Me',
     ]);
-    expect(nav(['STAFF'], [])).toEqual(['Home', 'Tasks', 'Me']);
+    expect(nav(['STAFF'], [])).toEqual(['Home', 'To do list', 'Me']);
     // the cashier is frontline too: the import is a tile on Home (SAL-2)
-    expect(nav(['STAFF', 'CASHIER'], ['POS_IMPORT'])).toEqual(['Home', 'Tasks', 'Me']);
+    expect(nav(['STAFF', 'CASHIER'], ['POS_IMPORT'])).toEqual(['Home', 'To do list', 'Me']);
     expect(nav(['STAFF', 'STORE_KEEPER'], ['STOCK_LEVELS'])).toEqual([
       'Home',
       'Stock',
-      'Tasks',
+      'To do list',
       'Me',
     ]);
     // department heads: approvals on Home; Roster, their stock (or tasks), reports
@@ -54,7 +54,7 @@ describe('bottom nav', () => {
     expect(nav(['DEPARTMENT_HEAD'], [], { reports: 'business' })).toEqual([
       'Home',
       'Roster',
-      'Tasks',
+      'To do list',
       'Reports',
       'Me',
     ]);
@@ -92,7 +92,7 @@ describe('bottom nav', () => {
       'Admin',
       'Me',
     ]);
-    expect(nav(['STAFF'], [], { reports: 'business' })).toEqual(['Home', 'Tasks', 'Me']);
+    expect(nav(['STAFF'], [], { reports: 'business' })).toEqual(['Home', 'To do list', 'Me']);
   });
 
   it('a manager without reports gets Stock in that slot', () => {
@@ -104,17 +104,21 @@ describe('bottom nav', () => {
     ]);
   });
 
-  it('To do list is a tab for managers and in the header for everyone else', () => {
-    const input = (groups: string[]) => ({
+  it('To do list is a tab where there is room; else the header carries it', () => {
+    const input = (groups: string[], domains: string[] = []) => ({
       groups: new Set(['SELF', ...groups]),
-      domains: new Set(SELF),
+      domains: new Set([...SELF, ...domains]),
       menu: false,
       production: false,
       reports: 'business' as const,
     });
     expect(approvalsInNav(input(['OUTLET_MANAGER']))).toBe(true);
-    expect(approvalsInNav(input(['STAFF']))).toBe(false);
-    expect(approvalsInNav(input(['DEPARTMENT_HEAD']))).toBe(false);
+    // one To do list (ADR 147): frontline staff have it as a tab
+    expect(approvalsInNav(input(['STAFF']))).toBe(true);
+    // a department head with stock: approvals on Home, the list in the header
+    expect(approvalsInNav(input(['DEPARTMENT_HEAD', 'STORE_KEEPER'], ['STOCK_LEVELS']))).toBe(
+      false,
+    );
   });
 
   it('never shows more than five items, for any mix of groups', () => {

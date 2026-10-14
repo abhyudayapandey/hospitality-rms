@@ -403,7 +403,7 @@ describe('Compliance first on Home (ADR 069)', () => {
     })!;
     expect(c.rows[0]!.href).toBe('/tasks/t9');
     expect(c.rows[0]!.when).toBe('Due in 10 days');
-    expect(c.href).toBe('/inbox');
+    expect(c.href).toBe('/tasks');
   });
 
   it('five rows, then how many more', () => {

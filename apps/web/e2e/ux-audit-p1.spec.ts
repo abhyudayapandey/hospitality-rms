@@ -22,7 +22,7 @@ async function askForOnions(page: Page): Promise<string> {
   await page.reload();
   if ((await page.getByTestId('po-progress').textContent()) === 'waiting for approval') {
     await signInAs(page, 'Test General Manager 1.0');
-    await page.goto('/inbox');
+    await page.goto('/tasks');
     const item = page.getByTestId('inbox-item').filter({
       has: page.locator(`a[href^="/stock/orders/${po}"]`),
     });
@@ -108,7 +108,7 @@ test('whoever asked withdraws a request nobody has ordered yet', async ({ page }
 
   // it left the keeper's To order
   await signInAs(page, 'Test Store Keeper 1.0');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   await expect(page.locator(`a[href^="/stock/orders/${po}"]`)).toHaveCount(0);
 });
 

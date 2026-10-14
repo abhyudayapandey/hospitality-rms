@@ -97,7 +97,7 @@ test("Kitchen Lead approves the 1.1 kitchen's leave from Inbox, like its departm
     [],
   );
   await signInAs(page, 'Test Sous Chef 1.1');
-  await page.goto('/inbox');
+  await page.goto('/tasks');
   const item = page
     .getByTestId('inbox-item')
     .filter({ hasText: 'Test Commis 1.1' })

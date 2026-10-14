@@ -82,7 +82,7 @@ export default async function LeaveRequestPage({ params }: { params: Promise<{ i
   const tz = leave.tz ?? 'Asia/Kolkata';
   return (
     <div className="space-y-4">
-      <Link href={leave.mine ? '/leave' : '/inbox'} className="text-sm text-slate-600">
+      <Link href={leave.mine ? '/leave' : '/tasks'} className="text-sm text-slate-600">
         ← {leave.mine ? 'Leave' : 'To do list'}
       </Link>
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
@@ -139,7 +139,7 @@ export default async function LeaveRequestPage({ params }: { params: Promise<{ i
         </div>
       )}
       {leave.pending_for_me && leave.wf_request_id && (
-        <RequestDecision requestId={leave.wf_request_id} back="/inbox" />
+        <RequestDecision requestId={leave.wf_request_id} back="/tasks" />
       )}
     </div>
   );

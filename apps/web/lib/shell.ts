@@ -116,6 +116,11 @@ export const loadShell = cache(async (): Promise<Shell> => {
     const inbox = await sql<{ n: number }>`
       select (select count(*) from wf.my_inbox())::int
            + (select count(*) from inv.desk_orders())::int
+           -- one To do list (ADR 147): my own open tasks due today or late count too
+           + (select count(*) from ops.my_tasks() t
+               where t.status in ('open', 'in_progress')
+                 and rpt.business_date(t.due_at, coalesce(ops.tz_of(t.org_node_id), 'UTC'))
+                     <= rpt.business_date(now(), coalesce(ops.tz_of(t.org_node_id), 'UTC')))::int
            + (select count(*) from ops.my_to_assign() a
                where (select "on" from core.my_modules()
                        where code = case a.kind when 'expiry' then 'production'

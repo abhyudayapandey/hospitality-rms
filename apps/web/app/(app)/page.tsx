@@ -713,7 +713,7 @@ function Approvals({ today }: { today: Today }) {
         </ul>
       )}
       {total > HOME_APPROVALS && (
-        <Link href="/inbox" className="mt-2 block text-sm font-medium text-brand-700">
+        <Link href="/tasks" className="mt-2 block text-sm font-medium text-brand-700">
           See all {total}
         </Link>
       )}

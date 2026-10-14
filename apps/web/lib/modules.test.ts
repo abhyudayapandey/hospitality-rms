@@ -71,7 +71,7 @@ describe('what disappears from the screens', () => {
       reports: 'mine',
     };
     expect(canOpen('production', input)).toBe(false);
-    expect(visibleNav(input).map((n) => n.label)).toEqual(['Home', 'Tasks', 'Me']);
+    expect(visibleNav(input).map((n) => n.label)).toEqual(['Home', 'To do list', 'Me']);
     expect(
       screensFor({ ...input, access: new Map(), atWork: true }).map((s) => s.key),
     ).not.toContain('make');
