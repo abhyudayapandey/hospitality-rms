@@ -106,9 +106,9 @@ export async function requestActions(tx: Tx, transfer: string): Promise<RequestA
     }>`
       select t.id::text, t.kind, core.current_user_id()::text as me, ops.can_work(t, core.current_user_id()) as can_work,
              ops.may_hand_on(t) as can_hand_on,
-             regexp_replace(h.name, '^.*\\s[–-]\\s', '') as department
+             regexp_replace(core.node_name(coalesce(t.delivery_node_id, t.org_node_id)),
+                            '^.*\\s[–-]\\s', '') as department
         from ops.task t
-        join core.hierarchy_node h on h.id = coalesce(t.delivery_node_id, t.org_node_id)
        where t.transfer_id = ${transfer}::uuid and t.assignee_user_id = core.current_user_id()
          and t.kind in ('send', 'receive') and t.status in ('open', 'in_progress')
        limit 1`.execute(tx)
