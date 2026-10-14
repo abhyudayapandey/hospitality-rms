@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { asMigrator, placeId, signInAs } from './helpers';
 
 // An item's page (ADR 134) at 380 px: five latest movements and Show all, its requests, then
-// Ask for more, which opens Ask for stock with the item first.
+// Request more, which opens Request from a store with the item first.
 
 test.use({ viewport: { width: 380, height: 900 } });
 
@@ -29,9 +29,9 @@ test('the sous chef asks for more rice from its page', async ({ page }) => {
   // the hotel has a Main Store: more rice is asked of it, the rice first and ready to type
   await main(page).getByTestId('ask-for-more').click();
   await page.waitForURL(/\/stock\/transfers\/new\?.*item=/);
-  const box = page.getByRole('textbox', { name: 'Ask for Test Basmati Rice' });
+  const box = page.getByRole('textbox', { name: 'Request Test Basmati Rice' });
   await expect(box).toBeFocused();
   await expect(
     page.getByTestId('from-Main Store').getByRole('textbox').first(),
-  ).toHaveAccessibleName('Ask for Test Basmati Rice');
+  ).toHaveAccessibleName('Request Test Basmati Rice');
 });

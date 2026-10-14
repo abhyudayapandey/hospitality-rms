@@ -118,7 +118,6 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
                 >
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="font-medium">
-                      {r.kind === 'rfm' ? 'Request for material · ' : ''}
                       {r.kind === 'send' && outgoing ? 'Sent · ' : ''}
                       {outgoing ? `To ${short(r.to_name)}` : `From ${short(r.from_name)}`}
                     </span>
@@ -167,7 +166,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
             href={mainStore ? `/stock/transfers/send${q}` : `/stock/transfers/new${q}`}
             className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
           >
-            {mainStore ? 'Send stock' : 'Ask for stock'}
+            {mainStore ? 'Send stock' : 'Request from a store'}
           </Link>
         </PinnedActions>
       )}
@@ -176,7 +175,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
           href={`/stock/transfers/new${q}`}
           className="flex min-h-11 items-center justify-center text-sm font-medium text-brand-700 underline"
         >
-          Ask for stock
+          Request from a store
         </Link>
       )}
     </div>

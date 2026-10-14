@@ -122,8 +122,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 - Forms that ask for or send stock fill nothing in and say what the store has and its par, with
   a "Fill all N short items up to par" button (ADR 053, 054). The word is "par" everywhere.
   Quantities show at most 2 decimals (`formatQty` / `inputQty`, `lib/qty.ts`); the DB keeps 6. Back links return to the list as it was (`withBack`,
-  `backHref`, `lib/back.ts`). One name per thing: Supply request (buy), Stock request (from a
-  store), Stock check, Reject, "waiting for approval". A step or status is never shown as its
+  `backHref`, `lib/back.ts`). One name per thing: Request (ADR 144: "Request from a store",
+  "Request to buy"; the Main Store's buying is an Order), Stock check, Reject, "waiting for approval". A step or status is never shown as its
   code. The Stock tabs show 4, then a "More" text button that shows the rest in the same row
   and becomes "Less". To users it is "To do list" (never "Inbox") and "Stock" (never "Supply").
 - Every screen under `app/(app)` has a `loading.tsx` (the shared `page-skeleton`), so a tap
@@ -400,9 +400,9 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   the request (`inv.request_for_ask`). RFMs' History lists asks and stock and supply requests,
   newest first. Only counter alerts join by kind; every history is newest first; a failed screen says
   "We couldn't open this".
-- RFMs, Request for Materials (ADR 143, `/requests`): Me's tile with tabs Ask (the ask form),
+- RFMs, Request for Materials (ADR 143, 144, `/requests`): Me's tile with tabs Request (the ask form),
   Transfer (for whoever may see transfers; `/stock/transfers`, no longer a Stock tab) and History
-  (materials only: asks, stock and supply requests; leave stays under Shifts & leave); it opens on Ask for whoever has a store to ask. The ask's page says by when a Collect
+  (materials only: every request, newest first; leave stays under Shifts & leave); it opens on Request for whoever has a store to ask. The ask's page says by when a Collect
   task is due, in red once late. A send or receive task shows its request's whole story and
   opens it; the request offers "Receive it" / "Send it" to whoever holds that task. Breakage
   takes a live photo (`inv.breakage.photo_key`, under `wastage/`).

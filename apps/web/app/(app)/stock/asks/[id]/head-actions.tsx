@@ -76,7 +76,7 @@ export function HeadActions({
       onClick={() => act('ask')}
       className={canGive ? secondaryButton : primaryButton}
     >
-      {short ? 'Short: ask for it' : 'Ask for it'}
+      {short ? 'Short: request it' : 'Request it'}
     </button>
   );
   return (

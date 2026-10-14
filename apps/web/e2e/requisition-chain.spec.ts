@@ -26,16 +26,16 @@ test('housekeeping asks, the Main Store gives it to someone who takes it down, h
   await signInAs(page, 'Test Executive Housekeeper 1.0');
   await page.goto(`/stock/transfers/new?node=${hk}`);
   await expect(page.getByTestId('from-Main Store')).toContainText('Test Bath Towel');
-  await page.getByRole('textbox', { name: 'Ask for Test Bath Towel' }).fill('6');
+  await page.getByRole('textbox', { name: 'Request Test Bath Towel' }).fill('6');
   await page.getByRole('textbox', { name: /What it is for/ }).fill('Floor 2 linen room');
-  await page.getByRole('button', { name: 'Ask for 1 item' }).click();
+  await page.getByRole('button', { name: 'Request 1 item' }).click();
   await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
   await expect(page.getByTestId('request-now')).toContainText('With the Main Store');
   // RFMs → History: a stock request, what was asked and where it is, never "Transfer"
   await page.goto('/requests?tab=history');
   const row = page.getByTestId('request-item').filter({ hasText: '6 × Test Bath Towel' }).first();
-  await expect(row).toContainText('Stock request');
+  await expect(row).toContainText('Request');
   await expect(row.getByTestId('request-now')).toContainText('With the Main Store');
   await expect(row).not.toContainText('Transfer');
 
@@ -97,7 +97,7 @@ test('a room attendant asks their head, who gives it; the attendant sees it give
   await towel.getByRole('button', { name: 'More' }).click();
   await expect(towel.getByRole('textbox')).toHaveValue('1');
   await page.getByRole('textbox', { name: /What it is for/ }).fill('Room 104');
-  await page.getByRole('button', { name: 'Ask for 1 item' }).click();
+  await page.getByRole('button', { name: 'Request 1 item' }).click();
   await page.waitForURL(/\/stock\/asks\/[0-9a-f-]{36}/);
   const ask = new URL(page.url()).pathname.split('/').pop()!;
   await expect(page.getByTestId('request-now')).toContainText('Test Executive Housekeeper 1.0');
@@ -144,7 +144,7 @@ test('the head rejects an ask; whoever asked sees it rejected, why, and by whom'
   // + on an empty box gives 1, never 0
   await towel.getByRole('button', { name: 'More' }).click();
   await expect(towel.getByRole('textbox')).toHaveValue('1');
-  await page.getByRole('button', { name: 'Ask for 1 item' }).click();
+  await page.getByRole('button', { name: 'Request 1 item' }).click();
   await page.waitForURL(/\/stock\/asks\/[0-9a-f-]{36}/);
   const ask = new URL(page.url()).pathname.split('/').pop()!;
 

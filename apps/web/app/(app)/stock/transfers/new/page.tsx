@@ -6,7 +6,7 @@ import { sql, withUser } from '@/lib/db';
 import { supplyContext, type SearchParams } from '@/lib/inventory';
 import { TransferRequestForm, type AskItem } from './transfer-request-form';
 
-// Ask for stock (ADR 115): the department says what and how many; each item goes to the store
+// Request from a store (ADR 115, 144): the department says what and how many; each item goes to the store
 // it comes from by the outlet's rules (the Main Store, else the store that keeps it), so nobody
 // picks a store. What no other store keeps is bought instead.
 export default async function NewTransferPage({ searchParams }: { searchParams: SearchParams }) {
@@ -31,7 +31,7 @@ export default async function NewTransferPage({ searchParams }: { searchParams: 
       <Link href={`/stock/transfers?node=${ctx.node.id}`} className="text-sm text-slate-600">
         ← Transfers
       </Link>
-      <h1 className="text-xl font-semibold">Ask for stock for {ctx.node.name}</h1>
+      <h1 className="text-xl font-semibold">Request from a store for {ctx.node.name}</h1>
       <TransferRequestForm to={ctx.node.id} items={items} focus={focus} />
     </div>
   );

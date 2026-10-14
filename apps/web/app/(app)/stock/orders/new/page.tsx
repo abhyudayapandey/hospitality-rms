@@ -31,14 +31,14 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Sea
       <Link href={`/stock/orders?node=${ctx.node.id}`} className="text-sm text-slate-600">
         ← Orders
       </Link>
-      <h1 className="text-xl font-semibold">Ask for supplies for {ctx.node.name}</h1>
+      <h1 className="text-xl font-semibold">Request to buy for {ctx.node.name}</h1>
       {/* where it comes from, and who orders it (ADR 053) */}
       <p className="text-sm text-slate-600" data-testid="who-orders">
         For things bought from a supplier. Say what you need and how much.{' '}
         {data.desk
           ? `The ${data.desk.split(' – ').pop()} orders it, picks the supplier and tells you when it will arrive.`
           : 'You order it here: pick the supplier and the delivery date once it is approved.'}{' '}
-        For stock another store already has, use Ask for stock.
+        For stock another store already has, use Request from a store.
       </p>
       <NewOrderForm node={ctx.node.id} lines={data.lines} focus={focus} />
     </div>

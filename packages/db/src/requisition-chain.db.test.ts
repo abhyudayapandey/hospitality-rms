@@ -394,7 +394,9 @@ describe('with a Main Store, a department asks it (ADR 115)', () => {
       // straight to the keeper; the GM has nothing to approve
       expect(await todo(c, KEEPER)).toContain(t);
       expect(await todo(c, GM)).not.toContain(t);
-      expect(await told(c, KEEPER)).toContainEqual(expect.stringMatching(/asks for 12 .*Lager/));
+      expect(await told(c, KEEPER)).toContainEqual(
+        expect.stringMatching(/^Request from the .*: 12 .*Lager/),
+      );
       const asked = await seen(c, ASKER, t);
       expect(asked.stage).toBe('with_store');
       expect(asked.words).toMatch(/Main Store/);
@@ -576,7 +578,9 @@ describe('with no Main Store, a department asks the store that keeps it (ADR 115
         await requestOf(c, 'transfer', t),
       ]);
       expect(await todo(c, BAR_MANAGER)).toContain(t);
-      expect(await told(c, BAR_MANAGER)).toContainEqual(expect.stringMatching(/asks for 12/));
+      expect(await told(c, BAR_MANAGER)).toContainEqual(
+        expect.stringMatching(/^Request from the .*: 12 /),
+      );
       expect(await told(c, ASKER)).toContainEqual(
         expect.stringMatching(/Approved by Test General Manager 1\.0/),
       );
@@ -812,7 +816,7 @@ describe('a frontline person asks their department head, and follows it', () => 
       const task = await headTask(c, ask);
       expect(task?.assignee).toBe(ids.user(ASKER));
       expect(await told(c, ASKER)).toContainEqual(
-        expect.stringMatching(/Test Room Attendant 1\.0 asks for 6 × .*Lager/),
+        expect.stringMatching(/^Request from Test Room Attendant 1\.0: 6 × .*Lager/),
       );
       const asked = await askSeen(c, ATTENDANT, ask);
       expect(asked.stage).toBe('with_head');

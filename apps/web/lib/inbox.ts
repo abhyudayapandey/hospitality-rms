@@ -31,11 +31,10 @@ export interface InboxEntry {
   stepLabel: string;
 }
 
-/** One name for each kind of request (ADR 053). */
+/** One name for each kind of request: what people ask for is a Request (ADR 053, 144). */
 function kindLabel(processType: string, payload: Record<string, unknown>): string {
-  if (processType === 'PURCHASE_ORDER') return 'Supply request';
-  if (processType === 'TRANSFER')
-    return payload.rfm === true ? 'Request for material' : 'Stock request';
+  if (processType === 'PURCHASE_ORDER') return 'Request to buy';
+  if (processType === 'TRANSFER') return 'Request';
   if (processType === 'DEACTIVATION' && typeof payload.person === 'string') {
     return `Deactivate ${payload.person}${typeof payload.reason === 'string' ? `: ${payload.reason}` : ''}`;
   }

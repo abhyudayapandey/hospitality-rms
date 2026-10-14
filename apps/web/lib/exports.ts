@@ -140,7 +140,7 @@ export const EXPORTS: Record<string, Run> = {
       rows: rows.map((r) => [
         iso(r.created_at),
         r.store,
-        r.supplier ?? 'Supply request',
+        r.supplier ?? 'Request to buy',
         r.items,
         PO_PROGRESS[r.progress]?.[0] ?? r.progress,
         r.expected_on,

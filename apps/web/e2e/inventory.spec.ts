@@ -23,8 +23,8 @@ test('two-leg transfer: asked, sent by the central kitchen store keeper, receive
   await expect(page.getByTestId('from-Test Central Kitchen – Store')).toContainText(
     'Test Potatoes',
   );
-  await page.getByRole('textbox', { name: 'Ask for Test Potatoes' }).fill('4');
-  await page.getByRole('button', { name: 'Ask for 1 item' }).click();
+  await page.getByRole('textbox', { name: 'Request Test Potatoes' }).fill('4');
+  await page.getByRole('button', { name: 'Request 1 item' }).click();
   await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
   await expect(page.getByTestId('transfer-progress')).toHaveText('waiting to be sent');
@@ -33,7 +33,7 @@ test('two-leg transfer: asked, sent by the central kitchen store keeper, receive
     'Test Bar 3.0 – Kitchen Store asked Test Central Kitchen – Store',
   );
   // a department's store asking another place is a request for material (ADR 044)
-  await expect(page.getByTestId('transfer-kind')).toHaveText('Request for material');
+  await expect(page.getByTestId('transfer-kind')).toHaveText('Request');
 
   await signInAs(page, 'Test Central Kitchen Store Keeper');
   await page.goto('/inbox');
@@ -69,13 +69,13 @@ test('store to store in one outlet: the main store keeper sends, whoever asked r
 
   // a store asks for stock from its transfers screen (audit #5: it used to want an outlet)
   await page.goto(`/stock/transfers?node=${kitchen}`);
-  await page.getByRole('link', { name: 'Ask for stock' }).click();
+  await page.getByRole('link', { name: 'Request from a store' }).click();
   await page.waitForURL(/\/stock\/transfers\/new/);
   await expect(page.getByRole('button', { name: 'Add how many you need' })).toBeDisabled();
   // the hotel has a Main Store: everything it keeps is asked of it (ADR 115)
   await expect(page.getByTestId('from-Main Store')).toContainText('Test Basmati Rice');
-  await page.getByRole('textbox', { name: 'Ask for Test Basmati Rice' }).fill('2');
-  await page.getByRole('button', { name: 'Ask for 1 item' }).click();
+  await page.getByRole('textbox', { name: 'Request Test Basmati Rice' }).fill('2');
+  await page.getByRole('button', { name: 'Request 1 item' }).click();
   await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
 
@@ -134,7 +134,7 @@ test('the area manager sees outlet stock read-only (derived view)', async ({ pag
   await expect(tabs.getByRole('link', { name: 'Count' })).toHaveCount(0);
   await expect(tabs.getByRole('link', { name: 'Wastage' })).toHaveCount(0);
   await page.goto(`/stock/orders?node=${store}`);
-  await expect(page.getByRole('link', { name: 'Ask for supplies' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Request to buy' })).toHaveCount(0);
 });
 
 test('a department store keeper sees their own store, not the kitchen next door', async ({

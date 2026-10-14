@@ -113,7 +113,7 @@ export function TransferRequestForm({
                   </label>
                   <input
                     id={`t-${i.item_id}`}
-                    aria-label={`Ask for ${i.name}`}
+                    aria-label={`Request ${i.name}`}
                     autoFocus={i.item_id === focus}
                     inputMode="decimal"
                     value={qty[i.item_id] ?? ''}
@@ -155,7 +155,7 @@ export function TransferRequestForm({
       >
         {lines.length === 0
           ? 'Add how many you need'
-          : `Ask for ${lines.length} item${lines.length === 1 ? '' : 's'}`}
+          : `Request ${lines.length} item${lines.length === 1 ? '' : 's'}`}
       </button>
     </form>
   );
