@@ -406,6 +406,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   task is due, in red once late. A send or receive task shows its request's whole story and
   opens it; the request offers "Receive it" / "Send it" to whoever holds that task. Breakage
   takes a live photo (`inv.breakage.photo_key`, under `wastage/`).
+  Where an ask is speaks to its reader (ADR 146, `inv.ask_giver_words`): "will give it to you"
+  to whoever asked, "give it to <who>" to the head; an ask given before Collect still closes.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in
