@@ -407,15 +407,16 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   task is due, in red once late. A send or receive task shows its request's whole story and
   opens it; the request offers "Receive it" / "Send it" to whoever holds that task. Breakage
   takes a live photo (`inv.breakage.photo_key`, under `wastage/`).
+  Where an ask is speaks to its reader (ADR 146, `inv.ask_giver_words`): "will give it to you"
+  to whoever asked, "give it to <who>" to the head; an ask given before Collect still closes.
 - The hotel QA walk's fixes (ADR 145): one To do list (`/tasks`: approvals, then tasks; `/inbox`
   redirects); the ask and order forms name whose yes it waits for (`inv.approval_preview`);
   guest prices for billers and cost for `rpt.store_cost_access` only, null in SQL for everyone
   else; person pickers on shift first, never the giver; an import of history notifies nobody
   (`ops.replaying`); bills go to whoever is on shift (`ops.on_shift_next`); a register is kept
   by its file 45 roles, else its default roles (`keptBy`), their departments' heads and the
-  outlet's managers; order and wastage money only for department heads (their own stores, `inv.heads_store`), cost
-  readers, bill readers and the order
-  desk (`inv.sees_store_money`).
+  outlet's managers; order and wastage money only for department heads (their own stores,
+  `inv.heads_store`), cost readers, bill readers and the order desk (`inv.sees_store_money`).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

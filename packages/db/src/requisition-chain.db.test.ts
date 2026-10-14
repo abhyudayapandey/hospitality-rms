@@ -1125,6 +1125,48 @@ describe('a frontline person asks their department head, and follows it', () => 
       ).toEqual([{ n: 0 }]);
     });
   });
+
+  it('says who gives it in the reader’s own words (ADR 146)', async () => {
+    await inRolledBackTx(async (c) => {
+      const item = await lager(c);
+      const ask = await raise(c, item, 2);
+      const giver = (who: string) =>
+        one<{ w: string }>(c, who, `select inv.ask_giver_words($1) as w`, [ask]);
+      expect((await giver(ATTENDANT)).w).toBe('Test Executive Housekeeper 1.0 will give it to you');
+      expect((await giver(ASKER)).w).toBe('give it to Test Room Attendant 1.0');
+      expect((await giver('test.general-manager.1.0')).w).toBe(
+        'Test Executive Housekeeper 1.0 will give it to Test Room Attendant 1.0',
+      );
+    });
+  });
+
+  it('an ask given before the Collect step can still be taken to the department (ADR 146)', async () => {
+    await inRolledBackTx(async (c) => {
+      const item = await lager(c);
+      await stockAt(c, item, HK, 10);
+      const ask = await raise(c, item, 2);
+      await one(c, ASKER, `select inv.give_staff_ask($1, null) as s`, [ask]);
+      // as it was before ADR 142: given, and no Collect task
+      await c.query(`delete from ops.task where staff_ask_id = $1 and kind = 'collect'`, [ask]);
+      const mine = await rows<{ task_id: string | null; department: string }>(
+        c,
+        ATTENDANT,
+        `select task_id::text, department from inv.my_collect($1)`,
+        [ask],
+      );
+      expect(mine).toEqual([{ task_id: null, department: 'Housekeeping' }]);
+      // nobody else may say it arrived
+      expect(await fails(c, ASKER, `select inv.collect_staff_ask($1)`, [ask])).toMatch(
+        /NOT_AUTHORISED/,
+      );
+      await one(c, ATTENDANT, `select inv.collect_staff_ask($1) as s`, [ask]);
+      expect((await askSeen(c, ATTENDANT, ask)).words).toMatch(/^Taken to the Housekeeping by/);
+      expect(await rows(c, ATTENDANT, `select * from inv.my_collect($1)`, [ask])).toEqual([]);
+      expect(await fails(c, ATTENDANT, `select inv.collect_staff_ask($1)`, [ask])).toMatch(
+        /NOT_AUTHORISED/,
+      );
+    });
+  });
 });
 
 // The over-par order that "showed waiting for approval, with no way to approve it": its page
