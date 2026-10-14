@@ -104,11 +104,11 @@ export async function requestActions(tx: Tx, transfer: string): Promise<RequestA
       department: string;
       me: string;
     }>`
-      select t.id::text, t.kind, core.current_user_id()::text as me, ops.can_work(t, core.current_user_id()) as can_work,
-             ops.may_hand_on(t) as can_hand_on,
-             regexp_replace(core.node_name(coalesce(t.delivery_node_id, t.org_node_id)),
-                            '^.*\\s[–-]\\s', '') as department
-        from ops.task t
+      select t.id::text, t.kind, core.current_user_id()::text as me,
+             (d ->> 'can_work')::boolean as can_work,
+             (d ->> 'can_hand_on')::boolean as can_hand_on,
+             regexp_replace(d ->> 'place_name', '^.*\\s[–-]\\s', '') as department
+        from ops.task t, ops.task_detail(t.id) d
        where t.transfer_id = ${transfer}::uuid and t.assignee_user_id = core.current_user_id()
          and t.kind in ('send', 'receive') and t.status in ('open', 'in_progress')
        limit 1`.execute(tx)
