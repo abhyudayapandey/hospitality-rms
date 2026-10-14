@@ -12,7 +12,8 @@ import {
 import { stepIcon } from '@outlet-ops/domain';
 import { Icon } from '@/components/icon';
 import { PhotoField } from '@/components/photo-field';
-import { quickPicks, Stepper } from '@/components/stepper';
+import { firstPick, PersonOptions } from '@/components/person-options';
+import { quickPicks, readingSteps, Stepper } from '@/components/stepper';
 import { useHydrated } from '@/lib/use-hydrated';
 import type { Person, TaskDetail, TaskStep } from '@/lib/tasks';
 import { outOfRange } from '@/lib/tasks-view';
@@ -420,25 +421,26 @@ function StepInputs({
             onChange={setValue}
             label={step.grid_row ? `${step.grid_row}: ${step.label}` : step.label}
             unit={step.unit}
+            step={readingSteps(step.min, step.max)?.fine ?? 1}
             start={step.min ?? undefined}
           />
           {quickPicks(step.min, step.max).length > 0 && (
-            <div className="grid grid-cols-5 gap-1.5" data-testid="reading-picks">
+            <div className="grid grid-cols-4 gap-1.5" data-testid="reading-picks">
               {quickPicks(step.min, step.max).map((q) => (
                 <button
-                  key={q.value}
+                  key={q.label}
                   type="button"
-                  onClick={() => setValue(String(q.value))}
-                  aria-pressed={value === String(q.value)}
+                  onClick={() => setValue(q.label)}
+                  aria-pressed={value !== '' && Number(value) === q.value}
                   className={`min-h-11 rounded-lg text-sm font-semibold tabular-nums ${
                     q.tone === 'good'
                       ? 'bg-emerald-50 text-emerald-800'
                       : q.tone === 'near'
                         ? 'bg-amber-50 text-amber-800'
                         : 'bg-rose-50 text-rose-800'
-                  } ${value === String(q.value) ? 'ring-2 ring-slate-900' : ''}`}
+                  } ${value !== '' && Number(value) === q.value ? 'ring-2 ring-slate-900' : ''}`}
                 >
-                  {q.value}
+                  {q.label}
                 </button>
               ))}
             </div>
@@ -576,6 +578,12 @@ function StepInputs({
       )}
       <ErrorBox message={error} />
       <StatusBox message={status} />
+      {/* say why the button waits, rather than leave it grey (ADR 142) */}
+      {needsPhoto && !photoKey && (
+        <p className="text-sm text-amber-900" data-testid="step-needs-photo">
+          Take the photo first.
+        </p>
+      )}
       <button
         type="button"
         onClick={save}
@@ -601,7 +609,7 @@ export function AssignExpiry({ task, people }: { task: string; people: Person[] 
   const router = useRouter();
   const hydrated = useHydrated();
   const [pending, start] = useTransition();
-  const [user, setUser] = useState(people[0]?.user_id ?? '');
+  const [user, setUser] = useState(firstPick(people));
   const [hours, setHours] = useState('1');
   const [remake, setRemake] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -619,12 +627,7 @@ export function AssignExpiry({ task, people }: { task: string; people: Person[] 
       <label className="block space-y-1">
         <span className="text-sm font-medium">Who</span>
         <select value={user} onChange={(e) => setUser(e.target.value)} className={inputClass}>
-          {people.map((p) => (
-            <option key={p.user_id} value={p.user_id}>
-              {p.name}
-              {p.job_role ? ` (${p.job_role})` : ''}
-            </option>
-          ))}
+          <PersonOptions people={people} />
         </select>
       </label>
       <label className="block space-y-1">
@@ -794,12 +797,7 @@ export function ApproveDiscard({ task, people }: { task: string; people: Person[
         <span className="text-sm font-medium">Who throws it away</span>
         <select value={user} onChange={(e) => setUser(e.target.value)} className={inputClass}>
           <option value="">Whoever is on shift</option>
-          {people.map((p) => (
-            <option key={p.user_id} value={p.user_id}>
-              {p.name}
-              {p.job_role ? ` (${p.job_role})` : ''}
-            </option>
-          ))}
+          <PersonOptions people={people} />
         </select>
       </label>
       <ErrorBox message={error} />

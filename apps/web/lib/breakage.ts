@@ -36,14 +36,16 @@ export interface BreakageEntry {
   broken_by: string;
   person: string | null;
   note: string | null;
-  value: string;
+  /** ₹, only for whoever reads the store's cost (KI-09); else null */
+  value: string | null;
   recorded_by: string | null;
 }
 
 export interface BreakageMonth {
   month: string;
   entries: number;
-  value: string;
+  /** ₹ of the entries the reader may see the value of; null when none (KI-09) */
+  value: string | null;
 }
 
 export async function breakagePlaces(tx: Tx): Promise<BreakagePlace[]> {

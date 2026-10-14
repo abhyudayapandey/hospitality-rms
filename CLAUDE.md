@@ -392,7 +392,13 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   its par. A head's "Can't give it" reads "Rejected by <head>: <reason>" (`not_given_reason`),
   never "Done", and sends no "Done: ..."; "It arrived: give it" only once it has (`arrived`);
   a short store asks first. The Main Store's keeper buys what it doesn't keep for a store that
-  asks it. Running low is under par: "14 of 20 kg (~1 day left)" (replaces ADR 034's rule).
+  asks it. Running low is under par or 3 days or fewer left (ADR 142, `inv.running_low`).
+- The hotel QA walk's fixes (ADR 142): one To do list (`/tasks`: approvals, then tasks; `/inbox`
+  redirects); the ask and order forms name whose yes it waits for (`inv.approval_preview`);
+  guest prices for billers and cost for `rpt.store_cost_access` only, null in SQL for everyone
+  else; person pickers on shift first, never the giver; an import of history notifies nobody
+  (`ops.replaying`); bills go to whoever is on shift (`ops.on_shift_next`); a register with no
+  roles is kept by its default roles (`keptBy`).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

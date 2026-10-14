@@ -36,7 +36,6 @@ async function run<T>(label: string, fn: (tx: Tx) => Promise<T>): Promise<Action
   try {
     const data = await withUser(user.id, fn);
     revalidatePath('/tasks', 'layout');
-    revalidatePath('/inbox');
     return { ok: true, data };
   } catch (err) {
     const f = failure(err);

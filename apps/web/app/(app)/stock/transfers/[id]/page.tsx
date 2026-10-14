@@ -66,8 +66,8 @@ export default async function TransferPage({
     ).rows[0];
     const people = act?.may_send
       ? (
-          await sql<{ id: string; name: string }>`
-            select id::text, name from inv.send_people(${id}::uuid)`.execute(tx)
+          await sql<{ id: string; name: string; on_shift: boolean }>`
+            select id::text, name, on_shift from inv.send_people(${id}::uuid)`.execute(tx)
         ).rows
       : [];
     // what each store has, for whoever decides or sends it (ADR 141), until it is sent

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, primaryButton, secondaryButton } from '@/components/messages';
+import { firstPick, PersonOptions } from '@/components/person-options';
 import type { Person } from '@/lib/tasks';
 import { useHydrated } from '@/lib/use-hydrated';
 import { reassignTask, receiveSent } from '../actions';
@@ -139,7 +140,7 @@ export function ReassignTask({
   const hydrated = useHydrated();
   const [pending, start] = useTransition();
   const others = people.filter((p) => p.user_id !== current);
-  const [user, setUser] = useState(others[0]?.user_id ?? '');
+  const [user, setUser] = useState(firstPick(others));
   const [error, setError] = useState<string | null>(null);
   if (others.length === 0) return null;
   return (
@@ -159,12 +160,7 @@ export function ReassignTask({
       <label className="block space-y-1">
         <span className="text-sm font-medium">Give it to someone</span>
         <select value={user} onChange={(e) => setUser(e.target.value)} className={inputClass}>
-          {others.map((p) => (
-            <option key={p.user_id} value={p.user_id}>
-              {p.name}
-              {p.job_role ? ` (${p.job_role})` : ''}
-            </option>
-          ))}
+          <PersonOptions people={others} />
         </select>
       </label>
       <ErrorBox message={error} />

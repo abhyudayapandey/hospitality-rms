@@ -2881,8 +2881,10 @@ csv(
   ],
 );
 // the registers the Security SOP keeps (section 22, ADR 124): security writes the gate's,
-// the front desk the lost and found and the keys too, engineering the fire equipment
+// the front desk the lost and found and the keys too, engineering the fire equipment; booking
+// leads are the whole front office's (ADR 118, KI-06); the GM keeps every one
 const SEC = 'SECURITY_GUARD; SECURITY_SUPERVISOR';
+const FO = 'FRONT_OFFICE_MANAGER; FRONT_DESK_EXECUTIVE; BELL_CAPTAIN';
 csv(
   '45_registers.csv',
   ['register', 'on', 'roles'],
@@ -2893,7 +2895,7 @@ csv(
     ['vehicles', 'yes', SEC],
     ['staff_movement', 'yes', SEC],
     ['keys', 'yes', `FRONT_DESK_EXECUTIVE; ${SEC}`],
-    ['leads', 'yes', ''],
+    ['leads', 'yes', FO],
     ['fire_equipment', 'yes', `CHIEF_ENGINEER; TECHNICIAN; ${SEC}`],
   ],
 );

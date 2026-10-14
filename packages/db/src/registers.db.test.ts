@@ -162,6 +162,45 @@ describe('registers', () => {
     });
   });
 
+  it('booking leads with no roles named: the front office keeps them, and the GM (KI-06)', async () => {
+    await inRolledBackTx(async (c) => {
+      const sees = async (who: string) =>
+        (
+          await run<{ place: string; registers: string[] }>(
+            c,
+            who,
+            `select place, registers from ops.register_places()`,
+          )
+        ).some((p) => p.registers.includes('leads'));
+      const check = async () => {
+        expect(await sees('test.front-desk-executive.1.0')).toBe(true);
+        expect(await sees('test.bell-captain.1.0')).toBe(true);
+        expect(await sees('test.front-office-manager.1.0')).toBe(true);
+        expect(await sees('test.general-manager.1.0')).toBe(true);
+        // not the gate, nor a steward in the restaurant
+        expect(await sees('test.security-guard.1.0')).toBe(false);
+        expect(await sees('test.steward.1.0')).toBe(false);
+      };
+      // file 45 does not list it (Test Company): the default
+      await check();
+      // file 45 lists it with its roles blank: the same
+      await c.query(
+        `update core.tenant set settings = jsonb_set(settings, '{registers,leads}',
+           '{"on": true, "roles": []}') where id = $1`,
+        [ids.tenant()],
+      );
+      await check();
+      expect(
+        (
+          await add(c, 'test.front-desk-executive.1.0', FRONT, 'leads', {
+            name: 'Mr Rao',
+            phone: '9800000000',
+          })
+        ).error,
+      ).toBeUndefined();
+    });
+  });
+
   it('off at the solo bar except its two; another customer finds nothing; nothing while the block is off', async () => {
     await inRolledBackTx(async (c) => {
       const solo = await run<{ registers: string[] }>(

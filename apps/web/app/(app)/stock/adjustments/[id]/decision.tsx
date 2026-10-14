@@ -16,7 +16,7 @@ export function AdjustmentDecision({ requestId }: { requestId: string }) {
       const r = await actOnRequest(requestId, action, crypto.randomUUID());
       if (r.ok) {
         setDone(action === 'approve' ? 'Approved' : 'Rejected');
-        setTimeout(() => router.push('/inbox'), 1200);
+        setTimeout(() => router.push('/tasks'), 1200);
       } else setError(r.message);
     });
   return (

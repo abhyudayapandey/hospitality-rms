@@ -72,7 +72,7 @@ export default async function AdjustmentPage({ params }: { params: Promise<{ id:
   }
   return (
     <div className="space-y-4">
-      <Link href="/inbox" className="text-sm text-slate-600">
+      <Link href="/tasks" className="text-sm text-slate-600">
         ← To do list
       </Link>
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">

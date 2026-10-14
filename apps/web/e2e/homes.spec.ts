@@ -67,7 +67,7 @@ test('a shift lead has the frontline Home: no department tiles, Tasks in the nav
   await signInAs(page, 'Test Bell Captain 1.0');
   await expect(main(page).getByTestId('attention-card')).toHaveCount(0);
   await expect(
-    page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Tasks' }),
+    page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'To do list' }),
   ).toBeVisible();
 });
 

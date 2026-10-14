@@ -29,7 +29,7 @@ async function run<T>(label: string, fn: (tx: Tx) => Promise<T>): Promise<Action
   try {
     const data = await withUser(user.id, fn);
     revalidatePath('/stock', 'layout');
-    revalidatePath('/inbox');
+    revalidatePath('/tasks');
     return { ok: true, data };
   } catch (err) {
     const f = failure(err);
@@ -118,17 +118,17 @@ export async function askDiscard(
 }
 
 export interface UnusualCheck {
-  /** the department head (or the GM) will have to approve */
+  /** it will wait for someone's yes */
   needs: boolean;
+  /** whose yes (ADR 142): the outlet's rules decide, as on submit */
+  approver: 'gm' | 'department_head' | null;
+  /** the outlet approves every one ('every'), over a value ('above'), or only unusual ones */
+  rule: 'every' | 'above' | 'unusual' | null;
   /** in plain words: "Prawns: not on the menu", "Oil: 16 kg, usual 10 kg a week" */
   why: string[];
 }
 
-/**
- * Before sending an order or a request for material: will it need the department head's
- * approval (PO-5, TR-3, ADR 044)? Asks inv.unusual_lines, which applies the same rule the
- * workflow does. A transfer only needs approval when it goes to a department's store.
- */
+/** Says before sending whether it will wait for a yes, and whose (ADR 044, 115, 142). */
 export async function checkUnusual(
   node: string,
   lines: Line[],
@@ -137,34 +137,27 @@ export async function checkUnusual(
   const user = await requireUser();
   try {
     const data = await withUser(user.id, async (tx) => {
-      if (kind === 'transfer') {
-        const d = await sql<{ rfm: boolean }>`
-          select inv.is_rfm_store(${node}::uuid) as rfm`.execute(tx);
-        if (!d.rows[0]?.rfm) return { needs: false, why: [] };
-      }
       const r = await sql<{
-        name: string;
-        reason: string;
-        qty: string;
-        weekly_avg: string;
-        uom: string;
+        approver: 'gm' | 'department_head';
+        rule: 'every' | 'above' | 'unusual';
+        why: string[];
       }>`
-        select i.name, u.reason, u.qty, u.weekly_avg, i.base_uom as uom
-          from inv.unusual_lines(${node}::uuid, ${json(cleanLines(lines))}::jsonb) u
-          join inv.item i on i.id = u.item_id order by i.name`.execute(tx);
+        select approver, rule, why
+          from inv.approval_preview(${node}::uuid, ${json(cleanLines(lines))}::jsonb, ${kind})`.execute(
+        tx,
+      );
+      const row = r.rows[0];
       return {
-        needs: r.rows.length > 0,
-        why: r.rows.map((x) =>
-          x.reason === 'off_menu'
-            ? `${x.name}: not on the menu`
-            : `${x.name}: ${Number(x.qty)} ${x.uom}, usual ${Number(x.weekly_avg)} ${x.uom} a week`,
-        ),
+        needs: !!row,
+        approver: row?.approver ?? null,
+        rule: row?.rule ?? null,
+        why: row?.why ?? [],
       };
     });
     return { ok: true, data };
   } catch (err) {
     const f = failure(err);
-    if (f.code === 'UNEXPECTED') console.error('check_unusual failed', err);
+    if (f.code === 'UNEXPECTED') console.error('approval_preview failed', err);
     return f;
   }
 }

@@ -13,7 +13,7 @@ import { ViewTabs } from '@/components/view-tabs';
 import { ExpiryList } from '@/components/expiry-list';
 import { ItemThumb } from '@/components/item-thumb';
 import { splitExpiry } from '@/lib/expiry';
-import { isLow, lastsText } from '@/lib/low-stock';
+import { parLine } from '@/lib/low-stock';
 import { STOCK_TABS, stockHref, stockTab, type StockTab } from '@/lib/stock-view';
 import { itemPhotoUrls } from '@/lib/photos';
 import {
@@ -82,7 +82,7 @@ export default async function StockPage({ searchParams }: { searchParams: Search
         ? (
             await sql<{ id: string; main: boolean }>`
               select x.id::text, inv.is_main_store(x.id) as main
-                from unnest(${[...new Set(rows.filter((r) => isLow(r)).map((r) => storeOfRow(r, node.id)))]}::uuid[]) x(id)
+                from unnest(${[...new Set(rows.filter((r) => r.low).map((r) => storeOfRow(r, node.id)))]}::uuid[]) x(id)
                where core.can('PURCHASE_ORDERS', 'modify', null, x.id)`.execute(tx)
           ).rows
         : [];
@@ -113,7 +113,7 @@ export default async function StockPage({ searchParams }: { searchParams: Search
   const { rows, dated } = data;
   const due = adjust && !all ? countDue(data.last, data.settings.count_due_days) : null;
   const photos = await itemPhotoUrls(rows);
-  const low = rows.filter((r) => isLow(r));
+  const low = rows.filter((r) => r.low);
   const shown = tab === 'low' ? low : rows;
   const q = `node=${node.id}`;
   const link = (t: StockTab) => stockHref({ tab: t, all, node: node.id });
@@ -233,12 +233,10 @@ export default async function StockPage({ searchParams }: { searchParams: Search
                               {(r as Partial<StockRowAll>).store}
                             </span>
                           )}
-                          {/* one word for it everywhere: par (ADR 054); below it, what is
-                              left of it and how long that lasts (ADR 141) */}
+                          {/* one word for it everywhere: par (ADR 054); when it runs low, why:
+                              what is left of its par and how long that lasts (ADR 141, KI-05) */}
                           <span className="text-xs text-slate-500" data-testid="par-line">
-                            {isLow(r)
-                              ? `${formatQty(r.on_hand, '')} of ${formatQty(r.par_level, r.base_uom)}${lastsText(r) ? ` (${lastsText(r)})` : ''}`
-                              : `par ${formatQty(r.par_level, r.base_uom)}`}
+                            {parLine(r, r.base_uom)}
                           </span>
                         </span>
                         {Number(r.on_hand) < 0 && !data.figures.has(storeOf(r)) ? (
@@ -265,7 +263,7 @@ export default async function StockPage({ searchParams }: { searchParams: Search
                                 below zero: count it
                               </span>
                             )}
-                            {isLow(r) && Number(r.on_hand) >= 0 && (
+                            {r.low && Number(r.on_hand) >= 0 && (
                               <span
                                 data-testid="running-low"
                                 className="rounded-full bg-rose-50 px-2 text-xs font-semibold text-rose-800"

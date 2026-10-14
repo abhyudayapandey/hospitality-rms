@@ -6,6 +6,7 @@ import { ErrorBox, inputClass, primaryButton, secondaryButton } from '@/componen
 import { Icon, type IconName } from '@/components/icon';
 import { PhotoField } from '@/components/photo-field';
 import { byFloor } from '@/lib/rooms-view';
+import { firstPick, PersonOptions } from '@/components/person-options';
 import type { Person } from '@/lib/tasks';
 import { useHydrated } from '@/lib/use-hydrated';
 import {
@@ -229,7 +230,7 @@ export function AssignRepair({
   const router = useRouter();
   const hydrated = useHydrated();
   const [pending, start] = useTransition();
-  const [user, setUser] = useState(current ?? people[0]?.user_id ?? '');
+  const [user, setUser] = useState(current ?? firstPick(people));
   const [error, setError] = useState<string | null>(null);
   return (
     <section className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
@@ -240,12 +241,7 @@ export function AssignRepair({
         onChange={(e) => setUser(e.target.value)}
         className={inputClass}
       >
-        {people.map((p) => (
-          <option key={p.user_id} value={p.user_id}>
-            {p.name}
-            {p.job_role ? ` (${p.job_role})` : ''}
-          </option>
-        ))}
+        <PersonOptions people={people} />
       </select>
       <ErrorBox message={error} />
       <button

@@ -57,7 +57,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           {/* To do list is a tab for managers; for everyone else it is here (UX-6) */}
           {!approvalsInNav(input) && (
             <Link
-              href="/inbox"
+              href="/tasks"
               aria-label={`To do list${shell.inboxCount ? `, ${shell.inboxCount} waiting` : ''}`}
               className="relative flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-700"
             >

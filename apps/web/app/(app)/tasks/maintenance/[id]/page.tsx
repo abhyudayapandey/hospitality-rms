@@ -5,7 +5,7 @@ import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { photosEnabled } from '@/lib/photos';
-import { assignablePeople, maintenanceRequest } from '@/lib/tasks';
+import { maintenanceRequest, peopleOnShift } from '@/lib/tasks';
 import { AssignRepair, WorkRepair } from '../maintenance-forms';
 
 export default async function MaintenanceRequestPage({
@@ -26,7 +26,7 @@ export default async function MaintenanceRequestPage({
     return {
       r,
       canAssign,
-      people: canAssign && r.status !== 'done' ? await assignablePeople(tx, r.org_node_id) : [],
+      people: canAssign && r.status !== 'done' ? await peopleOnShift(tx, r.org_node_id) : [],
     };
   });
   const r = data.r;
@@ -63,15 +63,16 @@ export default async function MaintenanceRequestPage({
           </summary>
           <div className="space-y-1 px-4 pb-3 text-slate-600">
             <p>Reported {formatWhen(r.created_at)}</p>
+            <p>Handled by {r.handled_by}</p>
+            {/* where it is now, a sentence of its own: "With Vinay", never "assigned with" */}
             <p data-testid="repair-status">
-              Handled by {r.handled_by} ·{' '}
               {r.status === 'open'
-                ? 'not assigned yet'
+                ? 'Not assigned yet'
                 : r.status === 'done'
-                  ? `done${r.done_at ? ` ${formatWhen(r.done_at)}` : ''}`
+                  ? `Done${r.done_at ? ` ${formatWhen(r.done_at)}` : ''}`
                   : r.status === 'in_progress'
                     ? `${r.assigned_to_name} is on it`
-                    : `with ${r.assigned_to_name}`}
+                    : `With ${r.assigned_to_name}`}
             </p>
             {r.assigned_at && r.assigned_to_name && (
               <p data-testid="repair-given">

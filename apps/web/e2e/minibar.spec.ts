@@ -32,9 +32,14 @@ test('the room attendant checks a minibar; the front desk adds it to the bill', 
     await expect(form).toContainText('Count every item');
     await form.getByRole('button', { name: 'All there: nothing used' }).click();
     await form.getByLabel('Left: Test Cola 300ml').fill('1');
-    await expect(form.getByTestId('minibar-charge-preview')).toHaveText('To charge: ₹120.00');
+    // the attendant sees what to charge, never the rupees (KI-09)
+    await expect(form).not.toContainText('₹');
+    await expect(form.getByTestId('minibar-charge-preview')).toHaveText(
+      'To charge: Test Cola 300ml ×1',
+    );
     await form.getByRole('button', { name: 'Save' }).click();
-    await expect(form).toContainText("Saved. ₹120.00 to add to the guest's bill");
+    await expect(form).toContainText("Saved. Test Cola 300ml ×1 to add to the guest's bill");
+    await expect(page.getByTestId('minibar-history')).not.toContainText('₹');
     await expect(page.getByTestId('minibar-history')).toContainText('Test Cola 300ml ×1');
 
     // the refill is the attendant's To do item: refilled from the Bar Store
@@ -52,12 +57,20 @@ test('the room attendant checks a minibar; the front desk adds it to the bill', 
     await page.getByRole('button', { name: 'Refilled' }).click();
     await expect(page.getByTestId('task-status')).toContainText(/done/i);
 
-    await signInAs(page, 'Test Front Desk Executive 1.0');
-    // the bill is a To do item for the front desk too
+    // the bill is a To do item for whoever is on the front desk's shift, else its head (ADR 142)
+    const [biller] = await asMigrator<{ name: string }>(
+      `select u.display_name as name from ops.task t join core.app_user u on u.id = t.assignee_user_id
+        where t.kind = 'minibar_bill' and t.title like 'Bill room 103:%' and t.created_at >= $1
+        order by t.created_at desc limit 1`,
+      [started],
+    );
+    expect(biller).toBeDefined();
+    await signInAs(page, biller!.name);
     await page.goto('/tasks');
     await expect(
       page.getByRole('link', { name: /Bill room 103: 1 Test Cola 300ml/ }).first(),
     ).toBeVisible();
+    await signInAs(page, 'Test Front Desk Executive 1.0');
     // the front desk opens on To charge (ADR 113); the rooms are their own tab
     await page.goto('/minibar?tab=rooms');
     await expect(

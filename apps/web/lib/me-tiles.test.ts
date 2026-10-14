@@ -144,7 +144,7 @@ describe('tile pictures (ADR 106)', () => {
     ];
     const byKey = new Map(shown.map((s) => [s.key, s.icon]));
     const icons = [...byKey.values()];
-    expect(byKey.size).toBeGreaterThan(38);
+    expect(byKey.size).toBeGreaterThan(37);
     expect(new Set(icons).size, [...byKey].map(([k, v]) => `${k}:${v}`).join(' ')).toBe(
       icons.length,
     );

@@ -12,8 +12,9 @@ export interface MinibarTaskCheck {
   check_id: string;
   room: string;
   store: string;
-  used: { item: string; qty: string; price: string; unit: string }[];
-  charge: string;
+  /** price and charge only for whoever bills it or reads its cost (KI-09) */
+  used: { item: string; qty: string; price?: string; unit: string }[];
+  charge: string | null;
   charged_at: string | null;
   short: boolean;
 }
@@ -70,7 +71,7 @@ export function MinibarTask({
         )}
       </h2>
       <UsedLines used={check.used} prices={kind === 'minibar_bill'} testId="minibar-used" />
-      {kind === 'minibar_bill' && (
+      {kind === 'minibar_bill' && check.charge !== null && (
         <p className="flex justify-between text-base font-semibold">
           <span>Total</span>
           <span className="tabular-nums" data-testid="minibar-task-charge">

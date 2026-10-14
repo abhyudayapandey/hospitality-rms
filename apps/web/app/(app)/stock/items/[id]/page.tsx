@@ -17,6 +17,7 @@ import {
 } from '@/lib/inventory';
 import { packItems } from '@/lib/opened-packs';
 import { itemRequests } from '@/lib/item-requests';
+import { parLine } from '@/lib/low-stock';
 import { param } from '@/lib/params';
 import { itemPhotoUrls, photosEnabled } from '@/lib/photos';
 import { ItemPhoto } from './item-photo';
@@ -83,7 +84,14 @@ export default async function ItemLedgerPage({
         <p className="text-2xl font-semibold tabular-nums">
           {formatQty(item.on_hand, item.base_uom)}
         </p>
-        <p className="text-sm text-slate-600">par {formatQty(item.par_level, item.base_uom)}</p>
+        {/* par, or why it runs low (KI-05, `inv.running_low`) */}
+        <p
+          className={`text-sm ${item.low ? 'font-semibold text-rose-800' : 'text-slate-600'}`}
+          data-testid="item-par-line"
+        >
+          {item.low ? 'Running low: ' : ''}
+          {parLine(item, item.base_uom)}
+        </p>
         {canPhoto && photosEnabled() && <ItemPhoto item={item.item_id} has={!!item.photo_key} />}
         {pack && (
           <Link

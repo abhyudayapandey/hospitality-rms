@@ -34,7 +34,10 @@ test('the executive chef gives the commis a task; an out-of-range reading is fla
   await expect(page.getByTestId('task-status')).toContainText('With Test Commis 1.0');
 
   await signInAs(page, 'Test Commis 1.0');
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Tasks' }).click();
+  await page
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: 'To do list' })
+    .click();
   // the seeded deep clean was due yesterday (file 30)
   await expect(page.getByTestId('tasks-overdue')).toContainText('Deep clean the walk-in chiller');
   await main(page).getByRole('link', { name: title }).click();
@@ -79,9 +82,8 @@ test('a problem goes to Engineering, who assigns the technician', async ({ page 
     .getByRole('button', { name: 'Kitchen' })
     .click();
   await main(page).getByRole('button', { name: 'Send to maintenance' }).click();
-  await expect(page.getByTestId('repair-status')).toContainText(
-    'Handled by Test Hotel & Bar 1.0 – Engineering · not assigned yet',
-  );
+  await expect(page.getByText('Handled by Test Hotel & Bar 1.0 – Engineering')).toBeAttached();
+  await expect(page.getByTestId('repair-status')).toHaveText('Not assigned yet');
 
   await signInAs(page, 'Test Chief Engineer 1.0');
   // approvals are in the header for a department head (UX-6)
@@ -94,7 +96,7 @@ test('a problem goes to Engineering, who assigns the technician', async ({ page 
     .getByRole('combobox', { name: 'Technician' })
     .selectOption(await userId('test.technician.1.0'));
   await main(page).getByRole('button', { name: 'Assign' }).click();
-  await expect(page.getByTestId('repair-status')).toContainText('with Test Technician 1.0');
+  await expect(page.getByTestId('repair-status')).toHaveText('With Test Technician 1.0');
 
   await signInAs(page, 'Test Technician 1.0');
   // a technician's day is their repairs: on Home, counted on the Tasks tile (ADR 052)

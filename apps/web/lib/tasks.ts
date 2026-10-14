@@ -202,13 +202,15 @@ export async function myHandedOn(tx: Tx): Promise<HandedOn[]> {
   return (await sql<HandedOn>`select * from ops.my_handed_on()`.execute(tx)).rows;
 }
 
-/** Who a task can be given to: everyone who works at its place (ops.hand_on_people). */
+/**
+ * Who a task can be given to (ops.hand_on_people): everyone who works at its place but the giver
+ * and whoever has it; on shift today first, marked (ADR 110, 113).
+ */
 export async function handOnPeople(tx: Tx, task: string): Promise<Person[]> {
   return (
     await sql<Person>`
-      select user_id::text, name, job_role, place_name from ops.hand_on_people(${task}::uuid)`.execute(
-      tx,
-    )
+      select user_id::text, name, job_role, place_name, on_shift
+        from ops.hand_on_people(${task}::uuid)`.execute(tx)
   ).rows;
 }
 
@@ -265,27 +267,25 @@ export interface Person {
   on_shift?: boolean;
 }
 
+/** Everyone who works at a place, by name: for a checklist, whose rounds come on many days. */
 export async function assignablePeople(tx: Tx, node: string): Promise<Person[]> {
-  return (await sql<Person>`select * from ops.assignable_people(${node}::uuid)`.execute(tx)).rows;
+  return (
+    await sql<Person>`
+      select user_id::text, name, job_role, place_name
+        from ops.assignable_people(${node}::uuid) order by name`.execute(tx)
+  ).rows;
 }
 
 /**
- * The people a task made now can go to (ADR 113): those on shift there today first, marked, then
- * the rest. A task for today is given to someone who is in.
+ * The people a task, a discard or a repair given now can go to (ADR 113): those on shift there
+ * today first, marked, then the rest (ops.assignable_people). A job for today goes to someone in.
  */
 export async function peopleOnShift(tx: Tx, node: string): Promise<Person[]> {
-  const people = await assignablePeople(tx, node);
-  const on = new Set(
-    (
-      await sql<{
-        id: string;
-      }>`select x::text as id from ops.on_shift_today(${node}::uuid) x`.execute(tx)
-    ).rows.map((r) => r.id),
-  );
-  return [
-    ...people.filter((p) => on.has(p.user_id)).map((p) => ({ ...p, on_shift: true })),
-    ...people.filter((p) => !on.has(p.user_id)).map((p) => ({ ...p, on_shift: false })),
-  ];
+  return (
+    await sql<Person>`
+      select user_id::text, name, job_role, place_name, on_shift
+        from ops.assignable_people(${node}::uuid)`.execute(tx)
+  ).rows;
 }
 
 export interface JobRole {

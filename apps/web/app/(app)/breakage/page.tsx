@@ -50,7 +50,10 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
     months: await breakageMonths(tx, place.place_id),
     items: place.can_record && place.stores[0] ? await breakageItems(tx, place.stores[0].id) : [],
   }));
-  const total = log.reduce((s, e) => s + Number(e.value), 0);
+  // the ₹ only for whoever reads the store's cost (KI-09): the rest see counts
+  const total = log.some((e) => e.value !== null)
+    ? log.reduce((s, e) => s + Number(e.value ?? 0), 0)
+    : null;
   const href = (p: string, m = month) => `/breakage?place=${p}&month=${m}`;
   return (
     <div className="space-y-4">
@@ -83,7 +86,8 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
         <h2 className="font-semibold">
           {monthWords(month)}{' '}
           <span className="text-sm font-normal text-slate-600" data-testid="breakage-total">
-            {log.length} {log.length === 1 ? 'entry' : 'entries'} · {formatMoney(total)}
+            {log.length} {log.length === 1 ? 'entry' : 'entries'}
+            {total !== null && ` · ${formatMoney(total)}`}
           </span>
         </h2>
         {log.length > 0 && <ExportLink list="breakage" params={{ place: place.place_id, month }} />}
@@ -116,7 +120,9 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
                     {e.note && ` · ${e.note}`}
                   </span>
                 </span>
-                <span className="shrink-0 font-medium tabular-nums">{formatMoney(e.value)}</span>
+                {e.value !== null && (
+                  <span className="shrink-0 font-medium tabular-nums">{formatMoney(e.value)}</span>
+                )}
               </li>
             ))}
           </ul>
@@ -135,7 +141,8 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
                 >
                   <span>{monthWords(m.month)}</span>
                   <span className="tabular-nums">
-                    {m.entries} · {formatMoney(m.value)}
+                    {m.entries}
+                    {m.value !== null && ` · ${formatMoney(m.value)}`}
                   </span>
                 </Link>
               </li>

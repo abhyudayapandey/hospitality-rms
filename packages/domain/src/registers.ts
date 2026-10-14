@@ -2,7 +2,12 @@
 // entry's fields come from its register; the required ones the database checks too
 // (ops.register_required, kept equal by a test). A customer switches each register on or off
 // and may say which job roles keep it (file 45, core.tenant.settings.registers); by default
-// lost and found and incidents are on everywhere, the rest at hotels.
+// lost and found and incidents are on everywhere, the rest at hotels. A register the customer
+// names no roles for is kept by its `keptBy` roles (the leads: the front office), else by anyone
+// who holds REGISTERS where they work; those who run a department or more always keep it
+// (ops.register_default_roles, kept equal by a test).
+
+import { ROLES } from './catalogue';
 
 export interface RegisterField {
   key: string;
@@ -21,7 +26,14 @@ export interface RegisterDef {
   close?: { label: string; outcomes?: readonly string[]; noteLabel?: string };
   /** on by default at every outlet; otherwise only at hotels */
   everywhere?: true;
+  /** the job roles that keep it when the customer names none (file 45 roles blank) */
+  keptBy?: readonly string[];
 }
+
+/** The front office's roles in the catalogue (ADR 060): who takes booking enquiries. */
+export const FRONT_OFFICE_ROLES: readonly string[] = ROLES.filter(
+  (r) => r.home === 'FRONT-OFFICE',
+).map((r) => r.code);
 
 export const REGISTERS = [
   {
@@ -114,6 +126,7 @@ export const REGISTERS = [
       { key: 'note', label: 'Note' },
     ],
     close: { label: 'Close it', outcomes: ['Booked', 'Lost'], noteLabel: 'Why, or the booking' },
+    keptBy: FRONT_OFFICE_ROLES,
   },
   {
     code: 'fire_equipment',

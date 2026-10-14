@@ -155,6 +155,8 @@ describe('handing a compliance To do on', () => {
         [task],
       );
       expect(people.rows!.map((p) => p.user_id)).toContain(ids.user(TECH));
+      // never the giver, nor whoever has it already (the Chief Engineer, here the same)
+      expect(people.rows!.map((p) => p.user_id)).not.toContain(ids.user(CE));
       const can = await attemptAs<{ can_hand_on: boolean }>(
         c,
         ids.user(CE),
@@ -177,6 +179,48 @@ describe('handing a compliance To do on', () => {
       );
       expect(done.error).toBeUndefined();
       expect(await notes(c, GM, 'compliance_done')).toHaveLength(1);
+    });
+  });
+
+  it('whoever gives it sees the people there once each, on shift today first, never themselves', async () => {
+    await inRolledBackTx(async (c) => {
+      const lift = await drillForGm(c);
+      await c.query(`select * from ops.compliance_tick()`);
+      const task = (await openTask(c, lift))[0]!.id;
+      const people = await attemptAs<{ user_id: string; name: string; on_shift: boolean }>(
+        c,
+        ids.user(GM),
+        `select user_id, name, on_shift from ops.hand_on_people($1)`,
+        [task],
+      );
+      expect(people.error).toBeUndefined();
+      const rows = people.rows!;
+      const who = rows.map((p) => p.user_id);
+      expect(who).not.toContain(ids.user(GM));
+      expect(new Set(who).size).toBe(who.length);
+      // on shift first, each part by name
+      const firstOff = rows.findIndex((p) => !p.on_shift);
+      expect(rows.slice(firstOff < 0 ? rows.length : firstOff).every((p) => !p.on_shift)).toBe(
+        true,
+      );
+      // the same test as the roster's "on shift today" (ADR 113)
+      const on = await attemptAs<{ id: string }>(
+        c,
+        ids.user(GM),
+        `select x as id from ops.on_shift_today((select org_node_id from ops.task where id = $1)) x`,
+        [task],
+      );
+      expect(
+        rows
+          .filter((p) => p.on_shift)
+          .map((p) => p.user_id)
+          .sort(),
+      ).toEqual(
+        on
+          .rows!.map((r) => r.id)
+          .filter((id) => id !== ids.user(GM))
+          .sort(),
+      );
     });
   });
 

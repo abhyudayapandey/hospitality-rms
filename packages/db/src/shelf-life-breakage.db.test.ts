@@ -442,6 +442,36 @@ describe('breakage', () => {
     });
   });
 
+  it("its ₹ value is for those who read the store's cost, not for staff (KI-09)", async () => {
+    await inRolledBackTx(async (c) => {
+      await towel(c, 'test.room-attendant.1.0');
+      const month = await thisMonth(c);
+      const staff = await run<{ value: string | null }>(
+        c,
+        'test.room-attendant.1.0',
+        `select value::text from inv.breakage_log($1, $2)`,
+        [ids.node(HK), month],
+      );
+      expect(staff.length).toBeGreaterThan(0);
+      expect(staff.every((r) => r.value === null)).toBe(true);
+      const [m] = await run<{ entries: number; value: string | null }>(
+        c,
+        'test.room-attendant.1.0',
+        `select entries, value::text from inv.breakage_months($1) where month = $2`,
+        [ids.node(HK), month],
+      );
+      expect(m!.entries).toBeGreaterThan(0);
+      expect(m!.value).toBeNull();
+      const gm = await run<{ value: string | null }>(
+        c,
+        'test.general-manager.1.0',
+        `select value::text from inv.breakage_log($1, $2)`,
+        [ids.node(HK), month],
+      );
+      expect(gm.every((r) => r.value !== null)).toBe(true);
+    });
+  });
+
   it("the month's total is its log's", async () => {
     await inRolledBackTx(async (c) => {
       await towel(c, 'test.room-attendant.1.0');
