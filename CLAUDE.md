@@ -397,12 +397,12 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   (due at their shift's end, else in 2 hours) whose button reads "Transfer to <Dept> done"
   (`inv.collect_staff_ask`; no stock moves), as does receiving from the Main Store. Whoever
   asked follows the whole chain, their alerts opening the ask; "For <who>: <note>" rides on
-  the request (`inv.request_for_ask`). RFMs' Previous asks lists requests and asks, newest
-  first. Only counter alerts join by kind; every history is newest first; a failed screen says
+  the request (`inv.request_for_ask`). RFMs' History lists asks and stock and supply requests,
+  newest first. Only counter alerts join by kind; every history is newest first; a failed screen says
   "We couldn't open this".
 - RFMs, Request for Materials (ADR 143, `/requests`): Me's tile with tabs Ask (the ask form),
-  Previous asks and, for whoever may see them, Transfers (`/stock/transfers`, no longer a Stock
-  tab); it opens on Ask for whoever has a store to ask. The ask's page says by when a Collect
+  Transfer (for whoever may see transfers; `/stock/transfers`, no longer a Stock tab) and History
+  (materials only: asks, stock and supply requests; leave stays under Shifts & leave); it opens on Ask for whoever has a store to ask. The ask's page says by when a Collect
   task is due, in red once late. A send or receive task shows its request's whole story and
   opens it; the request offers "Receive it" / "Send it" to whoever holds that task. Breakage
   takes a live photo (`inv.breakage.photo_key`, under `wastage/`).
