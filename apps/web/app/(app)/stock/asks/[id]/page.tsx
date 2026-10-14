@@ -6,11 +6,14 @@ import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { formatQty } from '@/lib/qty';
 import { RequestNow, RequestStory } from '../../transfers/[id]/request-story';
+import { requestActions, type RequestActionData } from '@/lib/request-actions';
+import { RequestActions } from '../../transfers/[id]/request-actions';
 import { CollectButton } from './collect-button';
 import { HeadActions } from './head-actions';
 
-// One ask (ADR 115): where it is now first, what was asked, then for the department head what
-// to do with it (give it, ask for it, or say no), and its story.
+// One ask (ADR 115): where it is now first, what was asked, then every button the viewer may
+// use on it or on any request made for it (ADR 147: approve, send, receive, give, take it
+// there), and its whole story. Every way into it lands here.
 export default async function AskPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
@@ -58,7 +61,18 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
            where t.staff_ask_id = ${id}::uuid and t.kind = 'collect'
              and t.status in ('open', 'in_progress')`.execute(tx)
       ).rows[0];
-      return { a, now, story, collect, pending };
+      // the requests made for it: whoever has a step on one acts on it here (ADR 147)
+      const reqs = (
+        await sql<{
+          id: string;
+        }>`select x::text as id from inv.ask_requests(${id}::uuid) x`.execute(tx)
+      ).rows;
+      const actions: RequestActionData[] = [];
+      for (const r of reqs) {
+        const d = await requestActions(tx, r.id);
+        if (d && (d.mode !== null || d.task !== null)) actions.push(d);
+      }
+      return { a, now, story, collect, pending, actions };
     });
   } catch (err) {
     return (
@@ -67,7 +81,7 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
       </p>
     );
   }
-  const { a, now, story, collect, pending } = data;
+  const { a, now, story, collect, pending, actions } = data;
   if (!a) return null;
   const short = a.lines.some((l) => l.at_store < l.qty);
   return (
@@ -119,6 +133,9 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
       {a.may_act && (
         <HeadActions ask={id} status={a.status} short={short} arrived={now?.stage === 'arrived'} />
       )}
+      {actions.map((d) => (
+        <RequestActions key={d.transfer} data={d} />
+      ))}
       {collect && <CollectButton ask={id} department={collect.department} />}
       <RequestStory story={story} />
     </div>
