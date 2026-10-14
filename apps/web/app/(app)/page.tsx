@@ -23,7 +23,7 @@ import {
   type TodayNumbers,
 } from '@/lib/today';
 import type { MyTask } from '@/lib/tasks';
-import { doneBy } from '@/lib/tasks-view';
+import { doneBy, rejected } from '@/lib/tasks-view';
 import {
   clockable,
   complianceCard,
@@ -491,18 +491,22 @@ function HandedOnCard({ tasks }: { tasks: Today['handedOn'] }) {
               </span>
               <span
                 className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                  t.status === 'done'
-                    ? 'bg-emerald-50 text-emerald-800'
-                    : t.overdue
-                      ? 'bg-rose-50 text-rose-800'
-                      : 'bg-slate-100 text-slate-700'
+                  rejected(t)
+                    ? 'bg-rose-50 text-rose-800'
+                    : t.status === 'done'
+                      ? 'bg-emerald-50 text-emerald-800'
+                      : t.overdue
+                        ? 'bg-rose-50 text-rose-800'
+                        : 'bg-slate-100 text-slate-700'
                 }`}
               >
-                {t.status === 'done'
-                  ? 'Done'
-                  : t.overdue
-                    ? 'Overdue'
-                    : `Due ${formatWhen(t.due_at)}`}
+                {rejected(t)
+                  ? 'Rejected'
+                  : t.status === 'done'
+                    ? 'Done'
+                    : t.overdue
+                      ? 'Overdue'
+                      : `Due ${formatWhen(t.due_at)}`}
               </span>
             </Link>
           </li>

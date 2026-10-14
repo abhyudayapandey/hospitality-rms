@@ -28,6 +28,8 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
             base_uom: string;
             qty: number;
             at_store: number;
+            /** the store's par (ADR 141) */
+            par: number | null;
           }[];
         }>`select store, asked_by, note, status, may_act, lines
              from inv.staff_ask_detail(${id}::uuid)`.execute(tx)
@@ -79,13 +81,16 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
                   className={`block text-xs ${l.at_store < l.qty ? 'text-amber-800' : 'text-slate-500'}`}
                 >
                   store has {formatQty(String(l.at_store), l.base_uom)}
+                  {Number(l.par) > 0 && ` · par ${formatQty(String(l.par), l.base_uom)}`}
                 </span>
               )}
             </span>
           </li>
         ))}
       </ul>
-      {a.may_act && <HeadActions ask={id} status={a.status} short={short} />}
+      {a.may_act && (
+        <HeadActions ask={id} status={a.status} short={short} arrived={now?.stage === 'arrived'} />
+      )}
       <RequestStory story={story} />
     </div>
   );

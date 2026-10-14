@@ -46,16 +46,8 @@ import {
   type PlaceDepartment,
 } from './today-view';
 
-// What went out of a store over the last 14 days, and whether an item is low (lib/low-stock.ts):
-// none left, or below its level and lasting three days or fewer at that rate.
-const LOW_USE = sql`
-  select -sum(l.qty) as used from inv.stock_ledger l
-   where l.item_id = n.item_id and l.delivery_node_id = n.delivery_node_id
-     and l.qty < 0 and l.movement_type <> 'count_adjust'
-     and l.occurred_at > now() - interval '14 days'`;
-const IS_LOW = sql`(coalesce(s.on_hand, 0) <= 0
-  or (coalesce(s.on_hand, 0) < n.par_level and u.used > 0
-      and coalesce(s.on_hand, 0) * 14 / u.used <= 3))`;
+// Whether an item is low (lib/low-stock.ts): below its par (ADR 141).
+const IS_LOW = sql`coalesce(s.on_hand, 0) < n.par_level`;
 
 // What Home's "Today" cards show (UX-2), read in one transaction. Each read is an existing
 // function or table under RLS; the cards are chosen by what the person can see, never by
@@ -79,7 +71,7 @@ export interface StoreWork {
   receive: number;
   /** transfers waiting to be sent from their stores */
   issue: number;
-  /** items that run out within three days (lib/low-stock.ts) */
+  /** items below their par (lib/low-stock.ts) */
   low: number;
   /** the store they keep that was counted longest ago: whether a count is due (ADR 035, 053) */
   count: CountDue | null;
@@ -233,7 +225,6 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
           join inv.item i on i.id = n.item_id and i.archived_at is null
           left join inv.stock_level s on s.item_id = n.item_id
                                      and s.delivery_node_id = n.delivery_node_id
-          left join lateral (${LOW_USE}) u on true
          where n.archived_at is null and n.par_level > 0 and ${IS_LOW}
          group by n.delivery_node_id
         union all
@@ -331,7 +322,6 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
                   join inv.item i on i.id = n.item_id and i.archived_at is null
                   left join inv.stock_level s on s.item_id = n.item_id
                                              and s.delivery_node_id = n.delivery_node_id
-                  left join lateral (${LOW_USE}) u on true
                  where n.archived_at is null and n.par_level > 0 and ${IS_LOW})::int as low`.execute(
         tx,
       );

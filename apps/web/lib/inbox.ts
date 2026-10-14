@@ -1,6 +1,7 @@
 import 'server-only';
 import { sql, type Tx } from './db';
 import { formatMoney, formatWhen, processLabel } from './format';
+import { levelsText, twoDecimals, type RequestLevel } from './request-levels';
 import { stepLabel } from './request-words';
 
 // What waits for the person (wf.my_inbox): the Approvals screen lists all of it, and Home
@@ -22,6 +23,8 @@ export interface InboxEntry {
   why?: string;
   /** what was asked for: "Test Onions 2 kg, Test Ghee 1 kg" (ADR 053) */
   items?: string;
+  /** a request between stores: per line, what each store has (ADR 141) */
+  levels?: string[];
   /** where it is, in plain words: "needs your approval", "to send" (ADR 053) */
   stepLabel: string;
 }
@@ -119,6 +122,21 @@ export async function inboxEntries(tx: Tx): Promise<InboxEntry[]> {
              group by pl.po_id`.execute(tx)
         ).rows.map((x) => [x.po, x.items]),
   );
+  // a request between stores waiting for approval: what each store has, per line (ADR 141)
+  const levels = new Map<string, string[]>();
+  for (const x of r.rows) {
+    if (x.process_type !== 'TRANSFER' || !x.step.endsWith('approval')) continue;
+    const rows = (
+      await sql<RequestLevel>`
+        select item_id::text, name, base_uom, asked::text, from_name, from_on_hand::text,
+               to_name, to_on_hand::text, to_par::text
+          from inv.request_levels(${x.subject_id}::uuid)`.execute(tx)
+    ).rows;
+    levels.set(
+      x.subject_id,
+      rows.map((l) => `${l.name}: ${levelsText(l)}`),
+    );
+  }
   return r.rows.map((x) => ({
     requestId: x.request_id,
     processType: x.process_type,
@@ -126,8 +144,9 @@ export async function inboxEntries(tx: Tx): Promise<InboxEntry[]> {
     step: x.step,
     stepLabel: stepLabel(x.step),
     ...(typeof x.payload.why === 'string' && x.payload.why !== '' && x.step.endsWith('approval')
-      ? { why: x.payload.why }
+      ? { why: twoDecimals(x.payload.why) }
       : {}),
+    ...(levels.has(x.subject_id) ? { levels: levels.get(x.subject_id)! } : {}),
     ...(items.has(x.subject_id) ? { items: items.get(x.subject_id)! } : {}),
     // a supply request's money is the last price paid: an estimate (ADR 053)
     amount:

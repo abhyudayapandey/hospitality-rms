@@ -1,13 +1,10 @@
-// "Low stock" (UX-6, ADR 034): an item runs out within three days at the rate the store used
-// it over the last two weeks, or has none left. Below its level but hardly used is not low:
-// when 14 of 16 items were flagged "below par", nothing stood out. Pure, so it can be unit
-// tested; the same rule counts low items on Home (lib/today.ts).
+// "Running low" (ADR 141, was ADR 034): below its par. Each line says both what is left of the
+// par and how long that lasts at the rate the store used it over the last two weeks:
+// "14 of 20 kg (~1 day left)". Pure, so it can be unit tested; the same rule counts low items
+// on Home (lib/today.ts).
 
 /** Days of use the rate is taken over. */
 export const USE_DAYS = 14;
-/** Low when it lasts this many days or fewer. */
-export const LOW_DAYS = 3;
-
 export interface StockFigures {
   on_hand: string | number;
   par_level: string | number;
@@ -23,19 +20,15 @@ export function daysLeft(f: StockFigures): number | null {
 }
 
 export function isLow(f: StockFigures): boolean {
-  if (!(Number(f.par_level) > 0)) return false;
-  if (Number(f.on_hand) <= 0) return true;
-  if (Number(f.on_hand) >= Number(f.par_level)) return false;
-  const d = daysLeft(f);
-  return d !== null && d <= LOW_DAYS;
+  return Number(f.par_level) > 0 && Number(f.on_hand) < Number(f.par_level);
 }
 
-/** "Lasts 2 days", "Lasts under a day", "None left". */
+/** "~2 days left", "under a day left", "none left"; '' when it isn't used. */
 export function lastsText(f: StockFigures): string {
-  if (Number(f.on_hand) <= 0) return 'None left';
+  if (Number(f.on_hand) <= 0) return 'none left';
   const d = daysLeft(f);
   if (d === null) return '';
-  if (d < 1) return 'Lasts under a day';
+  if (d < 1) return 'under a day left';
   const n = Math.floor(d);
-  return `Lasts ${n} ${n === 1 ? 'day' : 'days'}`;
+  return `~${n} ${n === 1 ? 'day' : 'days'} left`;
 }

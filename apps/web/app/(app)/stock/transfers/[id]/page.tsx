@@ -6,6 +6,7 @@ import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { param, supplyContext, TRANSFER_PROGRESS, type SearchParams } from '@/lib/inventory';
+import { levelsText, type RequestLevel } from '@/lib/request-levels';
 import { TransferStepForm, type TransferLine } from './transfer-step-form';
 import { RequestNow, RequestStory } from './request-story';
 import { SenderTools } from './sender-tools';
@@ -69,7 +70,27 @@ export default async function TransferPage({
             select id::text, name from inv.send_people(${id}::uuid)`.execute(tx)
         ).rows
       : [];
-    return { t: t.rows[0], lines: lines.rows, now: now ?? null, story, act: act ?? null, people };
+    // what each store has, for whoever decides or sends it (ADR 141), until it is sent
+    const levels = !['awaiting_approval', 'awaiting_dispatch'].includes(t.rows[0].progress)
+      ? []
+      : (
+          await sql<RequestLevel>`
+              select item_id::text, name, base_uom, asked::text, from_name,
+                     from_on_hand::text, to_name, to_on_hand::text, to_par::text
+                from inv.request_levels(${id}::uuid)`.execute(tx)
+        ).rows;
+    const byItem = new Map(levels.map((l) => [l.item_id, levelsText(l)]));
+    return {
+      t: t.rows[0],
+      lines: lines.rows.map((l) => {
+        const levels = byItem.get(l.item_id);
+        return levels ? { ...l, levels } : l;
+      }),
+      now: now ?? null,
+      story,
+      act: act ?? null,
+      people,
+    };
   });
   // readable with TRANSFERS rights, or while a step of it waits for this user (ADR 009)
   if (!data.t)

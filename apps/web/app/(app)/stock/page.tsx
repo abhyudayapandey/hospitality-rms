@@ -233,10 +233,12 @@ export default async function StockPage({ searchParams }: { searchParams: Search
                               {(r as Partial<StockRowAll>).store}
                             </span>
                           )}
-                          {/* one word for it everywhere: par (ADR 054) */}
-                          <span className="text-xs text-slate-500">
-                            par {formatQty(r.par_level, r.base_uom)}
-                            {isLow(r) && lastsText(r) ? ` · ${lastsText(r)}` : ''}
+                          {/* one word for it everywhere: par (ADR 054); below it, what is
+                              left of it and how long that lasts (ADR 141) */}
+                          <span className="text-xs text-slate-500" data-testid="par-line">
+                            {isLow(r)
+                              ? `${formatQty(r.on_hand, '')} of ${formatQty(r.par_level, r.base_uom)}${lastsText(r) ? ` (${lastsText(r)})` : ''}`
+                              : `par ${formatQty(r.par_level, r.base_uom)}`}
                           </span>
                         </span>
                         {Number(r.on_hand) < 0 && !data.figures.has(storeOf(r)) ? (

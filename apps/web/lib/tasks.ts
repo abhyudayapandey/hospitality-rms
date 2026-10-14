@@ -41,6 +41,8 @@ export interface MyTask {
   /** when it was done, and who did it when it was someone else (ADR 075) */
   completed_at: Date | null;
   done_by_name: string | null;
+  /** a head's ask they couldn't give: why (ADR 141) */
+  not_given_reason: string | null;
 }
 
 export async function myTasks(tx: Tx): Promise<MyTask[]> {
@@ -192,6 +194,8 @@ export interface HandedOn {
   overdue: boolean;
   completed_at: Date | null;
   done_by_name: string | null;
+  /** a head's ask they couldn't give: why (ADR 141) */
+  not_given_reason: string | null;
 }
 
 export async function myHandedOn(tx: Tx): Promise<HandedOn[]> {
