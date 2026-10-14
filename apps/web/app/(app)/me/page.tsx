@@ -15,7 +15,7 @@ export default async function MePage() {
   const input = screenInput(shell);
   const inNav = new Set(visibleNav(input).map((n) => n.href));
   const groups = meGroups(input, inNav);
-  // asks not yet with the person (ADR 115), on Things I asked for, where Ask for something is
+  // asks not yet with the person (ADR 115), on RFMs, whose Ask tab is where they ask
   const user = await requireUser();
   const openAsks = await withUser(user.id, async (tx) => {
     const r = await sql<{ open: number }>`

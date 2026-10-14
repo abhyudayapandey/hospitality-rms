@@ -4,6 +4,7 @@ import { PinnedActions } from '@/components/pinned-actions';
 import { withBack } from '@/lib/back';
 import { Empty } from '@/components/messages';
 import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
+import { RfmTabs } from '@/components/rfm-tabs';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
@@ -64,10 +65,12 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
   return (
     <div className="space-y-4">
       <PollRefresh />
+      <RfmTabs current="transfers" transfers />
       <SupplyHeader
         ctx={ctx}
         active="/stock/transfers"
         title="Transfers"
+        rfm
         all={ctx.nodes.length > 1 ? { label: 'All stores', on: all } : undefined}
       />
       <ViewTabs

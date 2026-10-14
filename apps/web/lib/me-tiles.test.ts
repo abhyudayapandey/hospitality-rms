@@ -88,7 +88,7 @@ describe('Me tiles per person (ADR 106)', () => {
     // the department's work first (ADR 113), reading the sales folded away
     expect(t.mine.slice(0, 2)).toEqual(['rooms', 'minibar']);
     expect(t.mine).not.toContain('sales');
-    for (const k of ['count', 'wastage', 'orders', 'transfers', 'bills']) {
+    for (const k of ['count', 'wastage', 'orders', 'bills']) {
       expect(t.mine).not.toContain(k);
     }
   });
@@ -144,7 +144,7 @@ describe('tile pictures (ADR 106)', () => {
     ];
     const byKey = new Map(shown.map((s) => [s.key, s.icon]));
     const icons = [...byKey.values()];
-    expect(byKey.size).toBeGreaterThan(38);
+    expect(byKey.size).toBeGreaterThan(37);
     expect(new Set(icons).size, [...byKey].map(([k, v]) => `${k}:${v}`).join(' ')).toBe(
       icons.length,
     );

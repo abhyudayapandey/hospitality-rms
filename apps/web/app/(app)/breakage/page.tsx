@@ -16,6 +16,7 @@ import { withUser } from '@/lib/db';
 import { formatMoney, formatWhen } from '@/lib/format';
 import { isUuid, param, type SearchParams } from '@/lib/params';
 import { formatQty } from '@/lib/qty';
+import { photosEnabled, presignPhotoView } from '@/lib/photos';
 import { BreakageForm } from './breakage-form';
 
 // Breakage (ADR 093): a department records what broke; the month's log for the place, its
@@ -50,6 +51,14 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
     months: await breakageMonths(tx, place.place_id),
     items: place.can_record && place.stores[0] ? await breakageItems(tx, place.stores[0].id) : [],
   }));
+  // each photo of what broke, for a 5-minute look (ADR 143)
+  const photoUrls = new Map(
+    await Promise.all(
+      log
+        .filter((e) => e.photo_key)
+        .map(async (e) => [e.id, await presignPhotoView(e.photo_key!).catch(() => null)] as const),
+    ),
+  );
   const total = log.reduce((s, e) => s + Number(e.value), 0);
   const href = (p: string, m = month) => `/breakage?place=${p}&month=${m}`;
   return (
@@ -116,6 +125,23 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
                     {e.note && ` · ${e.note}`}
                   </span>
                 </span>
+                {photoUrls.get(e.id) && (
+                  <a
+                    href={photoUrls.get(e.id)!}
+                    target="_blank"
+                    rel="noreferrer"
+                    data-testid="breakage-photo"
+                    className="shrink-0"
+                  >
+                    {/* a presigned URL that changes on every page: next/image would cache it */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photoUrls.get(e.id)!}
+                      alt={`Photo of ${e.item}`}
+                      className="size-10 rounded-md object-cover ring-1 ring-slate-200"
+                    />
+                  </a>
+                )}
                 <span className="shrink-0 font-medium tabular-nums">{formatMoney(e.value)}</span>
               </li>
             ))}
@@ -143,7 +169,9 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
           </ul>
         </section>
       )}
-      {place.can_record && <BreakageForm place={place} initialItems={items} />}
+      {place.can_record && (
+        <BreakageForm place={place} initialItems={items} photos={photosEnabled()} />
+      )}
     </div>
   );
 }

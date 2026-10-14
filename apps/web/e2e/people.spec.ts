@@ -601,7 +601,7 @@ test('the sole owner: own leave approved at the top of the chain; the admin page
   await form.getByRole('button', { name: 'Request 1 day' }).click();
   await expect(form.getByRole('status')).toContainText('Leave requested');
 
-  await page.goto('/requests');
+  await page.goto('/requests?tab=asked');
   const mine = page.getByTestId('request-item').filter({ hasText: 'Leave' }).first();
   await expect(mine.getByTestId('request-state')).toHaveText('approved');
   await expect(mine.getByTestId('top-of-chain')).toHaveText(

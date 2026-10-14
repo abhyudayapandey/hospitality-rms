@@ -393,6 +393,38 @@ describe('breakage', () => {
     });
   });
 
+  it('takes a photo taken at its store, kept and shown in the log (ADR 143)', async () => {
+    await inRolledBackTx(async (c) => {
+      const t = await item(c, 'BATH-TOWEL');
+      const tenant = (
+        await c.query<{ t: string }>(
+          `select tenant_id::text as t from core.hierarchy_node where id = $1`,
+          [ids.node(HK_STORE)],
+        )
+      ).rows[0]!.t;
+      const record = (key: string) =>
+        attemptAs<{ id: string }>(
+          c,
+          ids.user('test.room-attendant.1.0'),
+          `select inv.record_breakage($1, $2, $3, 1, 'dropped', 'unknown', null, '', null, $4) as id`,
+          [ids.node(HK), ids.node(HK_STORE), t, key],
+        );
+      const mine = `wastage/${tenant}/${ids.node(HK_STORE)}/0190e5a4-0000-7000-8000-000000000001.jpg`;
+      const r = await record(mine);
+      expect(r.error).toBeUndefined();
+      const log = await run<{ photo_key: string | null }>(
+        c,
+        'test.executive-housekeeper.1.0',
+        `select photo_key from inv.breakage_log($1, $2) where id = $3`,
+        [ids.node(HK), await thisMonth(c), r.rows![0]!.id],
+      );
+      expect(log).toEqual([{ photo_key: mine }]);
+      // a photo taken anywhere else (another store, another customer) is refused
+      const elsewhere = await record(`wastage/${tenant}/${ids.node(KITCHEN_STORE)}/x.jpg`);
+      expect(elsewhere.error).toMatch(/INVALID_PHOTO/);
+    });
+  });
+
   it("written at one's own department, from a store of its outlet", async () => {
     await inRolledBackTx(async (c) => {
       const steward = await towel(c, 'test.steward.1.0');

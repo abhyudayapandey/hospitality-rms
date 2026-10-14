@@ -66,7 +66,7 @@ test('the keeper sees To order on Home; the chef follows the order, on the way, 
   await expect(page.locator('main')).not.toContainText('₹');
 
   // Things I asked for: a supply request with its items and where it is
-  await page.goto('/requests');
+  await page.goto('/requests?tab=asked');
   const mine = page.getByTestId('request-item').filter({ has: page.locator(`a[href*="${po}"]`) });
   await expect(mine).toContainText('Supply request');
   await expect(mine).toContainText('Test Onions');

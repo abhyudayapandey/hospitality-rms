@@ -126,6 +126,11 @@ test('Send stock: it leaves the Main Store, the person who gets the task confirm
   await confirm.getByRole('button', { name: /^Transfer to .+ done$/ }).click();
   await expect(page.getByTestId('task-status')).toContainText('Done');
   await expect(page.getByTestId('sent-lines')).toContainText('arrived 1');
+  // the task tells the whole request's story, newest first, and opens the request (ADR 143)
+  await expect(page.getByTestId('request-story').getByRole('listitem').first()).toContainText(
+    'Received by',
+  );
+  await expect(page.getByTestId('task-request')).toBeVisible();
 });
 
 test('every store sees the Main Store’s materials, grouped: the bar gets ketchup, foil, cling film', async ({

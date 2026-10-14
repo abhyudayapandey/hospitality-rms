@@ -83,8 +83,9 @@ test('a room attendant asks their head, who gives it; the attendant sees it give
 }) => {
   await signInAs(page, 'Test Room Attendant 1.0');
   await page.goto('/me');
+  // RFMs open on Ask for whoever has a store to ask (ADR 143)
   await page.getByTestId('me-requests').click();
-  await page.getByTestId('ask-something').click();
+  await expect(page.getByTestId('tab-ask')).toHaveAttribute('aria-current', 'page');
   const towel = page.getByRole('listitem').filter({ hasText: 'Test Hand Towel' });
   // + on an empty box gives 1, never 0
   await towel.getByRole('button', { name: 'More' }).click();
@@ -102,17 +103,23 @@ test('a room attendant asks their head, who gives it; the attendant sees it give
   await expect(page.getByTestId('ask-lines')).toContainText('Test Hand Towel');
   await page.getByRole('button', { name: 'Give it', exact: true }).click();
   await expect(page.getByTestId('request-now')).toHaveAttribute('data-stage', 'to_collect');
+  // the head sees by when it should reach the department (ADR 143)
+  await expect(page.getByTestId('collect-due')).toContainText(
+    'Test Room Attendant 1.0 takes it there by',
+  );
 
   // the attendant follows it, then takes it to the department (ADR 142)
   await signInAs(page, 'Test Room Attendant 1.0');
-  await page.goto('/requests');
+  await page.goto('/requests?tab=asked');
   await expect(page.getByTestId('ask-item').first()).toContainText('Test Hand Towel');
   await page.getByTestId('ask-item').first().getByRole('link').click();
   await page.waitForURL(`**/stock/asks/${ask}`);
   await expect(page.getByTestId('request-story')).toContainText(
     'Given by Test Executive Housekeeper 1.0',
   );
+  await expect(page.getByTestId('collect-due')).toContainText('Take it there by');
   await page.getByRole('button', { name: 'Transfer to Housekeeping done' }).click();
+  await expect(page.getByTestId('collect-due')).toHaveCount(0);
   await expect(page.getByTestId('request-now')).toHaveAttribute('data-stage', 'given');
   await expect(page.getByTestId('collect')).toHaveCount(0);
   // newest first: the handover heads the history
@@ -126,7 +133,7 @@ test('the head rejects an ask; whoever asked sees it rejected, why, and by whom'
 }) => {
   const reason = `Enough towels in the linen room (${Date.now() % 100000})`;
   await signInAs(page, 'Test Room Attendant 1.0');
-  await page.goto('/stock/asks/new');
+  await page.goto('/requests?tab=ask');
   const towel = page.getByRole('listitem').filter({ hasText: 'Test Hand Towel' });
   // + on an empty box gives 1, never 0
   await towel.getByRole('button', { name: 'More' }).click();
@@ -160,4 +167,22 @@ test('the head rejects an ask; whoever asked sees it rejected, why, and by whom'
   await expect(page.getByTestId('request-story')).toContainText(
     `Rejected by Test Executive Housekeeper 1.0: ${reason}`,
   );
+});
+
+test('RFMs: Ask, Previous asks and, for whoever moves stock, Transfers (ADR 143)', async ({
+  page,
+}) => {
+  // a room attendant: no Transfers tab
+  await signInAs(page, 'Test Room Attendant 1.0');
+  await page.goto('/requests');
+  await expect(page.getByTestId('tab-ask')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('tab-transfers')).toHaveCount(0);
+  // the store keeper: Transfers is a tab of RFMs, and no longer one of Stock's
+  await signInAs(page, 'Test Store Keeper 1.0');
+  await page.goto('/requests');
+  await page.getByTestId('tab-transfers').click();
+  await page.waitForURL('**/stock/transfers**');
+  await expect(page.getByTestId('tab-transfers')).toHaveAttribute('aria-current', 'page');
+  await page.goto('/stock');
+  await expect(page.getByRole('navigation', { name: 'Stock tabs' })).not.toContainText('Transfers');
 });

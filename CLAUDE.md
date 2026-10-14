@@ -317,8 +317,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   unusual / gm / none, `purchase_approval`, `purchase_approver` department_head / gm; read with
   `inv.stock_rule`). The store sends it, gives it to someone (a send task) or buys what is short
   for it; receiving is whoever asked's task; everyone in the chain is told and whoever asked sees
-  where it is (`inv.request_now`, `inv.request_story`). Frontline staff ask their head (Me → Ask
-  for something, `inv.staff_ask`). An order's page names its approver and lets them approve
+  where it is (`inv.request_now`, `inv.request_story`). Frontline staff ask their head (Me → RFMs
+  → Ask, `inv.staff_ask`). An order's page names its approver and lets them approve
   (`inv.po_approval`). Passport has no Main Store. Compliance jobs also repeat weekly, every 2
   weeks or on the nth weekday (ADR 116, file 39 `repeat`).
 - Front desk and lists (ADR 117 to 122): a room's status carries its time (Arriving, Departing, ADR 131)
@@ -397,9 +397,15 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   (due at their shift's end, else in 2 hours) whose button reads "Transfer to <Dept> done"
   (`inv.collect_staff_ask`; no stock moves), as does receiving from the Main Store. Whoever
   asked follows the whole chain, their alerts opening the ask; "For <who>: <note>" rides on
-  the request (`inv.request_for_ask`). Things I asked for lists requests and asks, newest
+  the request (`inv.request_for_ask`). RFMs' Previous asks lists requests and asks, newest
   first. Only counter alerts join by kind; every history is newest first; a failed screen says
   "We couldn't open this".
+- RFMs, Request for Materials (ADR 143, `/requests`): Me's tile with tabs Ask (the ask form),
+  Previous asks and, for whoever may see them, Transfers (`/stock/transfers`, no longer a Stock
+  tab); it opens on Ask for whoever has a store to ask. The ask's page says by when a Collect
+  task is due, in red once late. A send or receive task shows its request's whole story and
+  opens it; the request offers "Receive it" / "Send it" to whoever holds that task. Breakage
+  takes a live photo (`inv.breakage.photo_key`, under `wastage/`).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in
