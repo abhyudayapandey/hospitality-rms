@@ -9,7 +9,7 @@ import { isUuid, SUPPLY_PROGRESS } from '@/lib/inventory';
 import { AskForm, type AskStoreItem } from '../stock/asks/new/ask-form';
 import { RequestNow } from '../stock/transfers/[id]/request-story';
 
-// RFMs, Request for Materials (ADR 143): Ask is the form that asks the store one's team uses,
+// RFMs, Request for Materials (ADR 143, 144): Request is the form that asks the store one's team uses,
 // through one's head; Transfer (its own route) is the stores' transfers, for whoever may see
 // them; History is what the person asked for: their asks, and the stock and supply requests
 // they made, newest first, each opening its page. Leave and other requests are not materials: they are
@@ -153,7 +153,7 @@ export default async function RequestsPage({
           <AskForm stores={stores} store={store} items={items} />
         ) : (
           <Empty icon="box">
-            Your team has no store to ask. Managers ask from Stock, then Ask for stock.
+            Your team has no store to ask. Managers use Stock, then Request from a store.
           </Empty>
         )
       ) : history.length === 0 ? (
@@ -164,10 +164,9 @@ export default async function RequestsPage({
             a ? (
               <li key={a.id} data-testid="ask-item">
                 <Link href={`/stock/asks/${a.id}`} className={card}>
-                  <span className="block font-medium">{a.items}</span>
-                  <span className="block text-sm text-slate-600">
-                    Asked the {a.store} · {formatWhen(a.created_at)}
-                  </span>
+                  <span className="block font-medium">Request to the {a.store}</span>
+                  <span className="block text-sm text-slate-700">{a.items}</span>
+                  <span className="block text-sm text-slate-600">{formatWhen(a.created_at)}</span>
                   <RequestNow stage={a.stage} words={a.words} />
                 </Link>
               </li>
@@ -178,17 +177,14 @@ export default async function RequestsPage({
                   className={card}
                 >
                   <span className="block font-medium">
-                    {r.for_ask ? `For ${r.for_ask}` : 'Stock request'}
+                    {r.for_ask ? `Request for ${r.for_ask}` : 'Request'}
                   </span>
                   {r.items && (
                     <span className="block text-sm text-slate-700" data-testid="request-items">
                       {r.items}
                     </span>
                   )}
-                  <span className="block text-sm text-slate-600">
-                    {r.for_ask ? 'Stock request · ' : ''}
-                    {formatWhen(r.created_at)}
-                  </span>
+                  <span className="block text-sm text-slate-600">{formatWhen(r.created_at)}</span>
                   <RequestNow stage={r.stage} words={r.words} />
                 </Link>
               </li>
@@ -199,7 +195,7 @@ export default async function RequestsPage({
                   className={card}
                 >
                   <span className="flex items-baseline justify-between gap-2">
-                    <span className="font-medium">Supply request</span>
+                    <span className="font-medium">Request to buy</span>
                     <span
                       data-testid="request-state"
                       className={`rounded-full px-2 py-0.5 text-xs font-semibold ${SUPPLY_PROGRESS[p.progress]?.[1] ?? ''}`}

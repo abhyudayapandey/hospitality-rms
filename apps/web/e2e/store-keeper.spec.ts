@@ -25,10 +25,10 @@ test('Orders: To receive counts what it lists, the departments’ requests inclu
   await expect(rows.getByTestId('order-store').first()).toContainText('for ');
   await expect(page.getByTestId('tab-received')).toBeVisible();
   // the Main Store is asked for supplies: its own asking is a small link, after the list
-  const ask = page.getByRole('link', { name: 'Ask for supplies for the Main Store' });
+  const ask = page.getByRole('link', { name: 'Request to buy for the Main Store' });
   await expect(ask).toBeVisible();
   expect(
-    await top(page, page.getByRole('link', { name: 'Ask for supplies for the Main Store' })),
+    await top(page, page.getByRole('link', { name: 'Request to buy for the Main Store' })),
   ).toBeGreaterThan(await top(page, rows.last()));
 });
 
@@ -83,9 +83,9 @@ test('Send stock: it leaves the Main Store, the person who gets the task confirm
   const main = await placeId('TEST-HOTEL-1.0-MAIN-STORE');
   await signInAs(page, 'Test Store Keeper 1.0');
   await page.goto(`/stock/transfers?node=${main}`);
-  // the Main Store gives stock out: Send stock leads, Ask for stock is a small link
+  // the Main Store gives stock out: Send stock leads, Request from a store is a small link
   await expect(page.getByRole('link', { name: 'Send stock' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Ask for stock' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Request from a store' })).toBeVisible();
   await page.getByRole('link', { name: 'Send stock' }).click();
   await page.getByTestId('send-to').getByRole('link', { name: 'Kitchen Store' }).click();
   await page.waitForURL(/to=/);
@@ -149,5 +149,5 @@ test('every store sees the Main Store’s materials, grouped: the bar gets ketch
   }
   await signInAs(page, 'Test Bar Manager 1.0');
   await page.goto(`/stock/transfers/new?node=${bar}`);
-  await expect(page.getByRole('textbox', { name: 'Ask for Test Tomato Ketchup' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Request Test Tomato Ketchup' })).toBeVisible();
 });

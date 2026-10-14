@@ -22,7 +22,7 @@ import { itemPhotoUrls, photosEnabled } from '@/lib/photos';
 import { ItemPhoto } from './item-photo';
 
 // One item (ADR 034, 134): its photo and what is on hand, its five latest movements with Show
-// all (the ledger, newest first), its open requests, then Ask for more (from the store that
+// all (the ledger, newest first), its open requests, then Request more (from the store that
 // keeps it, else to buy it): the information first, its action after (ADR 051).
 export default async function ItemLedgerPage({
   params,
@@ -171,7 +171,7 @@ export default async function ItemLedgerPage({
           data-testid="ask-for-more"
           className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-semibold text-white"
         >
-          Ask for more
+          Request more
         </Link>
       )}
     </div>

@@ -73,14 +73,14 @@ export function hubActions(a: HubAccess, q: string): { main: HubAction[]; more: 
   } as const;
   const order = {
     key: 'order',
-    label: 'Ask for supplies',
+    label: 'Request to buy',
     href: `/stock/orders/new?${q}`,
     icon: 'cart',
     ok: a.order,
   } as const;
   const request = {
     key: 'request',
-    label: 'Ask for stock',
+    label: 'Request from a store',
     href: `/stock/transfers/new?${q}`,
     icon: 'box',
     ok: a.request,

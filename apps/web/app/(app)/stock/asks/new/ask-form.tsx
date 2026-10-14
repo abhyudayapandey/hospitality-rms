@@ -116,7 +116,7 @@ export function AskForm({
       >
         {lines.length === 0
           ? 'Tap + on what you need'
-          : `Ask for ${lines.length} item${lines.length === 1 ? '' : 's'}`}
+          : `Request ${lines.length} item${lines.length === 1 ? '' : 's'}`}
       </button>
     </form>
   );

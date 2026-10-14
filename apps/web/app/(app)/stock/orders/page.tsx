@@ -146,7 +146,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
                 >
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="min-w-0 font-medium">
-                      {r.supplier ?? 'Supply request'}
+                      {r.supplier ?? 'Request to buy'}
                       {(all || r.desk) && (
                         <span
                           className="block text-xs font-normal text-slate-500"
@@ -213,7 +213,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
             href={ask}
             className="flex min-h-11 items-center justify-center text-sm font-medium text-brand-700 underline"
           >
-            Ask for supplies for the Main Store
+            Request to buy for the Main Store
           </Link>
         ) : (
           // kept in reach while the list runs past the screen (ADR 101)
@@ -222,7 +222,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
               href={ask}
               className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
             >
-              Ask for supplies
+              Request to buy
             </Link>
           </PinnedActions>
         ))}

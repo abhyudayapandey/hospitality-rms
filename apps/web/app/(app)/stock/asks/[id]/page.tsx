@@ -75,9 +75,9 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
       <BackLink fallback="/requests" />
       <header>
         <p className="text-xs font-medium text-slate-500">
-          {a.asked_by} asked the {a.store}
+          Request from {a.asked_by} to the {a.store}
         </p>
-        <h1 className="text-lg font-semibold">{a.note ?? 'Asked for'}</h1>
+        <h1 className="text-lg font-semibold">{a.note ?? 'Request'}</h1>
       </header>
       {now && <RequestNow stage={now.stage} words={now.words} />}
       {pending && (
