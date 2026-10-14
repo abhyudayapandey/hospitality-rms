@@ -20,6 +20,11 @@ export function BottomNav({ items, inboxCount }: { items: NavItem[]; inboxCount:
               <Link
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
+                aria-label={
+                  item.href === '/tasks' && inboxCount > 0
+                    ? `${item.label}, ${inboxCount} waiting`
+                    : undefined
+                }
                 className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs ${
                   active ? 'font-semibold text-brand-700' : 'text-slate-500'
                 }`}
@@ -28,7 +33,7 @@ export function BottomNav({ items, inboxCount }: { items: NavItem[]; inboxCount:
                 <span data-testid="nav-label">{item.label}</span>
                 {item.href === '/tasks' && inboxCount > 0 && (
                   <span
-                    aria-label={`${inboxCount} waiting`}
+                    aria-hidden
                     className="absolute top-1.5 right-[calc(50%-1.4rem)] rounded-full bg-rose-600 px-1.5 text-[10px] font-bold text-white"
                   >
                     {inboxCount}
