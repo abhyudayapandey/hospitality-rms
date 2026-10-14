@@ -1,0 +1,14 @@
+{
+  "name": "@outlet-ops/site",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The website, heysenior.app (ADR 141): static files in public/, served by Caddy; nothing is built.",
+  "scripts": {
+    "build": "tsx build.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@outlet-ops/domain": "workspace:*"
+  }
+}

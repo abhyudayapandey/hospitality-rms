@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title>Senior · Operations app for restaurants, hotels and QSRs</title>
+    <meta name="description" content="Stock, recipes, rosters, selfie attendance, checklists and licence reminders for hotels, bars, restaurants, QSRs, cloud kitchens and franchises." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://heysenior.app/" />
+    <meta name="theme-color" content="#1f5f57" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Senior" />
+    <meta property="og:locale" content="en_IN" />
+    <meta property="og:url" content="https://heysenior.app/" />
+    <meta property="og:title" content="Senior · Operations app for restaurants, hotels and QSRs" />
+    <meta property="og:description" content="Stock, recipes, rosters, selfie attendance, checklists and licence reminders for hotels, bars, restaurants, QSRs, cloud kitchens and franchises." />
+    <meta property="og:image" content="https://heysenior.app/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preload" href="/fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/hind-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/site.css" />
+    <script src="/site.js" defer></script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://heysenior.app/#org","name":"Senior","alternateName":["Hey Senior","heysenior.app"],"url":"https://heysenior.app/","logo":"https://heysenior.app/apple-touch-icon.png","description":"Senior is an app for hotels, bars, restaurants, QSRs, cloud kitchens and franchise businesses. It runs stock, recipes, rosters, attendance, checklists and licences from every staff phone.","areaServed":{"@type":"Country","name":"India"}},{"@type":"WebSite","@id":"https://heysenior.app/#website","url":"https://heysenior.app/","name":"Senior","alternateName":"Hey Senior","publisher":{"@id":"https://heysenior.app/#org"},"inLanguage":"en-IN"},{"@type":"WebPage","@id":"https://heysenior.app/","url":"https://heysenior.app/","name":"Senior · Operations app for restaurants, hotels and QSRs","description":"Stock, recipes, rosters, selfie attendance, checklists and licence reminders for hotels, bars, restaurants, QSRs, cloud kitchens and franchises.","isPartOf":{"@id":"https://heysenior.app/#website"},"about":{"@id":"https://heysenior.app/#org"},"inLanguage":"en-IN"},{"@type":"SoftwareApplication","@id":"https://heysenior.app/#app","name":"Senior","alternateName":"Hey Senior","url":"https://heysenior.app/","applicationCategory":"BusinessApplication","operatingSystem":"Web, Android, iOS (installs from the browser)","description":"Senior is an app for hotels, bars, restaurants, QSRs, cloud kitchens and franchise businesses. It runs stock, recipes, rosters, attendance, checklists and licences from every staff phone.","audience":{"@type":"BusinessAudience","audienceType":"Hotels, bars and pubs, restaurants, QSRs, cloud kitchens, central kitchens and franchise businesses"},"areaServed":{"@type":"Country","name":"India"},"publisher":{"@id":"https://heysenior.app/#org"},"inLanguage":"en-IN"},{"@type":"FAQPage","@id":"https://heysenior.app/#faq","mainEntity":[{"@type":"Question","name":"Which businesses is Senior for?","acceptedAnswer":{"@type":"Answer","text":"Senior is for hotels, bars and pubs, restaurants, QSRs, cloud kitchens, central kitchens and franchise businesses. It runs stock, recipes, rosters, attendance, checklists and licences from every staff phone, for one outlet or many."}},{"@type":"Question","name":"Is Senior a person?","acceptedAnswer":{"@type":"Answer","text":"No. Senior is the app on your team's phones. It is called Senior because it does what your best senior does: it remembers, it reminds, and it asks before it acts."}}]}]}</script>
+  </head>
+  <body>
+    <svg class="defs" width="0" height="0" aria-hidden="true">
+  <defs>
+    <symbol id="sr-mark" viewBox="0 0 120 120">
+      <rect width="120" height="120" rx="30" fill="var(--teal-mark)" />
+      <circle cx="40" cy="50" r="15" fill="none" stroke="#ffffff" stroke-width="6" />
+      <circle cx="80" cy="50" r="15" fill="none" stroke="#ffffff" stroke-width="6" />
+      <path
+        d="M55 50 Q60 45 65 50"
+        fill="none"
+        stroke="#ffffff"
+        stroke-width="6"
+        stroke-linecap="round"
+      />
+      <path
+        d="M33 53 Q40 45 47 53 M73 53 Q80 45 87 53"
+        fill="none"
+        stroke="#ffffff"
+        stroke-width="4.5"
+        stroke-linecap="round"
+      />
+      <path
+        d="M60 75 C53 70 42 71 35 80 C43 80 51 83 60 79 C69 83 77 80 85 80 C78 71 67 70 60 75 Z"
+        fill="var(--pen)"
+      />
+      <path
+        d="M49 89 Q60 97 71 89"
+        fill="none"
+        stroke="#ffffff"
+        stroke-width="4.5"
+        stroke-linecap="round"
+      />
+    </symbol>
+    <symbol id="sr-figure" viewBox="0 0 240 300">
+      <path d="M38 300 C38 238 68 206 120 206 C172 206 202 238 202 300 Z" fill="var(--shirt)" />
+      <path
+        d="M38 300 C38 242 62 213 100 207 L120 262 L140 207 C178 213 202 242 202 300 Z"
+        fill="var(--vest)"
+      />
+      <rect x="99" y="170" width="42" height="42" rx="12" fill="var(--skin)" />
+      <ellipse cx="120" cy="184" rx="22" ry="6" fill="var(--skin-dark)" opacity=".35" />
+      <path
+        d="M100 206 L120 234 L108 246 L94 212 Z M140 206 L120 234 L132 246 L146 212 Z"
+        fill="var(--shirt)"
+      />
+      <circle cx="120" cy="268" r="3.5" fill="var(--vest-dark)" />
+      <circle cx="120" cy="286" r="3.5" fill="var(--vest-dark)" />
+      <rect x="66" y="232" width="26" height="24" rx="3" fill="var(--paper)" />
+      <path
+        d="M70 240 H88 M70 246 H84"
+        stroke="var(--paper-ink-2)"
+        stroke-width="2"
+        stroke-linecap="round"
+      />
+      <rect x="60" y="244" width="38" height="26" rx="4" fill="var(--vest-dark)" />
+      <circle cx="63" cy="130" r="13" fill="var(--skin)" />
+      <ellipse cx="120" cy="124" rx="58" ry="64" fill="var(--skin)" />
+      <path
+        d="M63 116 C58 66 90 52 121 52 C154 52 184 68 177 116 C171 96 152 86 130 86 C112 86 96 90 85 98 C76 104 68 108 63 116 Z"
+        fill="var(--hair)"
+      />
+      <path d="M174 92 L194 150" stroke="var(--pen)" stroke-width="9" stroke-linecap="round" />
+      <path d="M174 92 L177 101" stroke="#f3cf73" stroke-width="9" stroke-linecap="round" />
+      <path d="M191 142 L194 150" stroke="var(--frame)" stroke-width="9" stroke-linecap="round" />
+      <circle cx="177" cy="130" r="13" fill="var(--skin)" />
+      <path
+        d="M84 104 Q96 98 108 103 M132 103 Q144 98 156 104"
+        stroke="var(--hair-dark)"
+        stroke-width="5"
+        stroke-linecap="round"
+        fill="none"
+      />
+      <circle cx="90" cy="152" r="9" fill="var(--blush)" />
+      <circle cx="150" cy="152" r="9" fill="var(--blush)" />
+      <circle
+        cx="98"
+        cy="128"
+        r="18"
+        fill="#ffffff"
+        fill-opacity=".18"
+        stroke="var(--frame)"
+        stroke-width="5"
+      />
+      <circle
+        cx="142"
+        cy="128"
+        r="18"
+        fill="#ffffff"
+        fill-opacity=".18"
+        stroke="var(--frame)"
+        stroke-width="5"
+      />
+      <path
+        d="M116 127 Q120 123 124 127 M80 126 L68 122 M160 126 L172 122"
+        stroke="var(--frame)"
+        stroke-width="5"
+        stroke-linecap="round"
+        fill="none"
+      />
+      <path
+        d="M90 131 Q98 122 106 131 M134 131 Q142 122 150 131"
+        stroke="var(--frame)"
+        stroke-width="4.5"
+        stroke-linecap="round"
+        fill="none"
+      />
+      <path
+        d="M120 138 Q114 150 120 153"
+        stroke="var(--skin-dark)"
+        stroke-width="3.5"
+        stroke-linecap="round"
+        fill="none"
+      />
+      <path
+        d="M120 159 C112 153 99 155 92 165 C101 165 110 168 120 163 C130 168 139 165 148 165 C141 155 128 153 120 159 Z"
+        fill="var(--hair)"
+      />
+      <path
+        d="M106 173 Q120 184 134 173"
+        stroke="var(--skin-dark)"
+        stroke-width="4"
+        stroke-linecap="round"
+        fill="none"
+      />
+    </symbol>
+  </defs>
+</svg>
+ <header class="site">
+  <div class="inner bar">
+    <a class="logo" href="/" aria-label="Senior home">
+      <svg class="mark" aria-hidden="true"><use href="#sr-mark" /></svg>
+      Senior
+    </a>
+    <button class="burger" id="burger" aria-expanded="false" aria-controls="menu" aria-label="Menu">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+        <path
+          d="M3 6h14M3 10h14M3 14h14"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+      </svg>
+    </button>
+    <nav class="menu" id="menu" aria-label="Main">
+      <a href="/what-senior-keeps">What Senior keeps</a>
+      <a href="/plans">Plans</a>
+      <a href="/faq">Questions</a>
+      <a href="/trust">Trust</a>
+      <a href="https://my.heysenior.app/login">Sign in</a>
+      <a class="btn sm" href="/demo">Get a Senior</a>
+    </nav>
+  </div>
+</header>
+
+    <main><section>
+  <div class="inner hero">
+    <div class="copy">
+      <span class="eyebrow"
+        >For hotels, bars, restaurants, QSRs, cloud kitchens and franchises</span
+      >
+      <h1 lang="hi-Latn">Log aate jaate rahenge. <span class="stay">Senior yahin rahega.</span></h1>
+      <p class="en">People come and go. Senior stays.</p>
+      <p class="what">Senior is an app for hotels, bars, restaurants, QSRs, cloud kitchens and franchise businesses. It runs stock, recipes, rosters, attendance, checklists and licences from every staff phone.</p>
+      <p class="lede">
+        The recipes, the pars, the licence dates and last night's handover stay with your outlet.
+        They're on every phone, for every new person, from their first shift.
+      </p>
+      <div class="ctas">
+        <a class="btn" href="/demo">Get a Senior for your outlet</a
+        ><a class="btn ghost" href="/what-senior-keeps">What Senior keeps</a>
+      </div>
+      <p class="small">Installs from the browser. Staff sign in with their phone number.</p>
+    </div>
+    <div class="stage">
+      <div class="bubble b1">
+        <span class="who"
+          ><svg aria-hidden="true"><use href="#sr-mark" /></svg>Senior · 07:10</span
+        >
+        <p>Paneer kam hai. 5 kg order bhej doon?</p>
+        <span class="acts"><span class="yes">Haan</span><span>Abhi nahi</span></span>
+      </div>
+      <div class="bubble b2">
+        <span class="who"
+          ><svg aria-hidden="true"><use href="#sr-mark" /></svg>Senior · 11:00</span
+        >
+        <p>FSSAI licence: 90 days left. GM ko bata diya.</p>
+      </div>
+      <div class="bubble b3">
+        <span class="who"
+          ><svg aria-hidden="true"><use href="#sr-mark" /></svg>Senior · 18:05</span
+        >
+        <p>Naya commis aaya hai. Uski list ready hai.</p>
+      </div>
+      <svg
+        class="senior"
+        viewBox="0 0 240 300"
+        role="img"
+        aria-label="Senior: a smiling man in his fifties with grey hair and moustache, round glasses and a pencil behind his ear"
+      >
+        <use href="#sr-figure" />
+      </svg>
+    </div>
+  </div>
+
+  <div class="band">
+    <div class="inner railwrap">
+      <div class="sec-head">
+        <span class="eyebrow">What every owner already knows</span>
+        <h2>Three tickets on every outlet's rail.</h2>
+      </div>
+      <div class="rail">
+        <article class="slip">
+          <div class="hd"><span>KOT 01</span><span>People</span></div>
+          <div class="big">60%</div>
+          <p class="line">of restaurant staff left in 2023, a record.</p>
+          <p class="note">
+            When your best cook leaves, his recipe, his pars and how you like your dal leave with
+            him.
+          </p>
+          <div class="ft">
+            NRAI India Food Services Report, via
+            <a
+              href="https://www.restaurantindia.in/article/why-restaurant-industry-is-bleeding-with-entry-level-workforce.11216?page=47"
+              target="_blank"
+              rel="noopener"
+              >Restaurant India</a
+            >
+          </div>
+        </article>
+        <article class="slip">
+          <div class="hd"><span>KOT 02</span><span>Stock</span></div>
+          <div class="big">8–12%</div>
+          <p class="line">of what you buy is lost to waste, big portions and theft.</p>
+          <p class="note">
+            A well-run kitchen loses 3 to 5%. On a ₹3 lakh monthly food bill, the gap is up to
+            ₹27,000 a month.
+          </p>
+          <div class="ft">
+            Industry estimates,
+            <a
+              href="https://feedo.in/blog/why-your-restaurant-is-losing-money-7-food-cost-mistakes-every-cafe-owner-in-india-makes-and-how-to-fix-them"
+              target="_blank"
+              rel="noopener"
+              >Feedo</a
+            >
+            and
+            <a
+              href="https://retailpos.co.in/restaurant-food-cost-rising-problem-india-solution/"
+              target="_blank"
+              rel="noopener"
+              >Retail POS</a
+            >
+          </div>
+        </article>
+        <article class="slip">
+          <div class="hd"><span>KOT 03</span><span>Owner</span></div>
+          <div class="big">1</div>
+          <p class="line">person knows everything about your outlet.</p>
+          <p class="note">
+            You. That's why you sit at the counter, answer the phone at midnight and haven't had a
+            real holiday in years.
+          </p>
+          <div class="ft">What owners tell us</div>
+        </article>
+      </div>
+      <p class="answer">
+        Every outlet needs someone who has seen it all and never leaves.
+        <em>Senior hai na.</em>
+      </p>
+    </div>
+  </div>
+
+  <div class="inner sec">
+    <div class="split">
+      <div class="fcopy">
+        <span class="eyebrow">How Senior works</span>
+        <h2>Senior salah deta hai. Faisla aapka.</h2>
+        <p class="hi">Senior advises. You decide.</p>
+        <ul class="outcomes">
+          <li>
+            <span><b>Senior notices</b> what runs low, what is due and who hasn't come in.</span>
+          </li>
+          <li>
+            <span
+              ><b>Senior asks the right person,</b> by role and by place. Never the whole
+              group.</span
+            >
+          </li>
+          <li>
+            <span
+              ><b>Nothing happens until a person says yes.</b> Every order, roster change and
+              approval is someone's tap, with their name on it.</span
+            >
+          </li>
+        </ul>
+      </div>
+      <div class="pslot"><div class="phone" data-phone="home"></div></div>
+    </div>
+  </div>
+
+  <div class="band">
+    <div class="inner sec">
+      <div class="split flip">
+        <div class="fcopy">
+          <span class="eyebrow">For the people on the floor</span>
+          <h2>Har naye ko, pehle din se ek Senior.</h2>
+          <p class="hi">Every new person gets a Senior from day one.</p>
+          <ul class="outcomes">
+            <li>
+              <span><b>Their own list,</b> with a picture on every step and every item.</span>
+            </li>
+            <li>
+              <span
+                ><b>The house recipe,</b> scaled to today's batch, with the method step by
+                step.</span
+              >
+            </li>
+            <li>
+              <span><b>No shouting across the kitchen</b> to ask where the paneer is kept.</span>
+            </li>
+          </ul>
+          <p class="small">Senior helps your people. It doesn't replace any of them.</p>
+        </div>
+        <div class="pslot"><div class="phone" data-phone="prep"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="inner sec">
+    <div class="sec-head">
+      <span class="eyebrow">One business day, 04:00 to 04:00</span>
+      <h2>From the 06:30 delivery to the 02:00 close, Senior is there for every shift.</h2>
+    </div>
+    <div class="day" tabindex="0" aria-label="A day at an outlet">
+      <div class="slot">
+        <time>06:30</time>
+        <div class="what">
+          <span class="who">Store keeper</span>
+          <h4>Receives the vegetables</h4>
+          <p>Counts what arrived and adds the bill photo.</p>
+          <span class="says">"Tomato 2 kg short. Supplier ko likh diya."</span>
+        </div>
+      </div>
+      <div class="slot">
+        <time>09:00</time>
+        <div class="what">
+          <span class="who">Commis chef</span>
+          <h4>Makes today's prep</h4>
+          <p>Opens the prep task, makes it, prints the FSSAI label.</p>
+          <span class="says">"Makhani gravy, 4 litre. Recipe yeh rahi."</span>
+        </div>
+      </div>
+      <div class="slot">
+        <time>11:30</time>
+        <div class="what">
+          <span class="who">General manager</span>
+          <h4>Writes the briefing</h4>
+          <p>VIP arrivals and dishes off today. Everyone reads it.</p>
+          <span class="says">"Sabne padh liya. 2 log baaki."</span>
+        </div>
+      </div>
+      <div class="slot">
+        <time>15:00</time>
+        <div class="what">
+          <span class="who">Head bartender</span>
+          <h4>Counts the bar</h4>
+          <p>A stock check in shelf order, verified by the cost controller.</p>
+          <span class="says">"Teen bottle ka hisaab nahi mil raha."</span>
+        </div>
+      </div>
+      <div class="slot">
+        <time>17:55</time>
+        <div class="what">
+          <span class="who">Steward</span>
+          <h4>Clocks in</h4>
+          <p>A live selfie at the outlet, on a known phone.</p>
+          <span class="says">"Ravi 10 minute late. Manager ko bataya."</span>
+        </div>
+      </div>
+      <div class="slot">
+        <time>23:30</time>
+        <div class="what">
+          <span class="who">Bar manager</span>
+          <h4>Approves a supply request</h4>
+          <p>Two cases of soda, above par. One tap.</p>
+          <span class="says">"Approve karoon? Aapka faisla."</span>
+        </div>
+      </div>
+      <div class="slot">
+        <time>02:00</time>
+        <div class="what">
+          <span class="who">Night shift</span>
+          <h4>Closes the day</h4>
+          <p>The closing checklist with photos, and a handover note.</p>
+          <span class="says">"Subah wale ko note mil jayega."</span>
+        </div>
+      </div>
+    </div>
+    <p class="day-note">Scroll the day →</p>
+  </div>
+
+  <div class="band">
+    <div class="inner sec">
+      <div class="sec-head">
+        <span class="eyebrow">What Senior keeps</span>
+        <h2>Start with what hurts most. Senior picks up the rest when you're ready.</h2>
+      </div>
+      <div class="keeps">
+        <a class="kp" href="/stock"
+          ><span class="pain">"Stock kahan gaya?"</span>
+          <h3>Stock that adds up</h3>
+          <p>
+            Every store's count against par, supply requests, supplier orders, bills, breakage and
+            shelf life.
+          </p>
+          <span class="more">See how →</span></a
+        >
+        <a class="kp" href="/recipes"
+          ><span class="pain">"Chef chala gaya."</span>
+          <h3>Recipes that stay</h3>
+          <p>Recipes and their cost, prep, the menu, POS sales and the excise register.</p>
+          <span class="more">See how →</span></a
+        >
+        <a class="kp" href="/roster"
+          ><span class="pain">"Aaj kaun nahi aaya?"</span>
+          <h3>The roster without the spreadsheet</h3>
+          <p>Rosters, clock-in with a selfie, leave, swaps, labour cost, training and SOPs.</p>
+          <span class="more">See how →</span></a
+        >
+        <a class="kp" href="/daily-work"
+          ><span class="pain">"Kisne kiya tha?"</span>
+          <h3>Every role's day, done</h3>
+          <p>
+            Checklists with photos, repairs, briefings, the logbook, registers, meters and audits.
+          </p>
+          <span class="more">See how →</span></a
+        >
+        <a class="kp" href="/hotel-rooms"
+          ><span class="pain">"Minibar ka bill?"</span>
+          <h3>Minibars that bill themselves</h3>
+          <p>Room minibars, room status and contents, linen and uniforms.</p>
+          <span class="more">See how →</span></a
+        >
+        <a class="kp" href="/licences"
+          ><span class="pain">"Licence kab expire hoga?"</span>
+          <h3>No licence expires quietly</h3>
+          <p>Events, and every licence and inspection with a reminder well before it's due.</p>
+          <span class="more">See how →</span></a
+        >
+      </div>
+    </div>
+  </div>
+
+  <div class="inner sec">
+    <div class="india">
+      <div class="sec-head">
+        <span class="eyebrow">Made for India</span>
+        <h2>Senior knows how Indian outlets run.</h2>
+        <div class="facts">
+          <div class="fact">
+            <b>FSSAI</b
+            ><span
+              ><strong>Batch labels</strong> with the veg mark, allergens, made and use-by
+              times.</span
+            >
+          </div>
+          <div class="fact">
+            <b>Excise</b
+            ><span
+              ><strong>The bar register and FLR</strong> come from stock movements. Nobody types
+              them.</span
+            >
+          </div>
+          <div class="fact">
+            <b>Licences</b
+            ><span
+              ><strong>A reminder 90 days</strong> before a licence expires, to the person who
+              renews it.</span
+            >
+          </div>
+          <div class="fact">
+            <b>3G</b
+            ><span
+              ><strong>Works on a weak network,</strong> with big buttons and light screens.</span
+            >
+          </div>
+          <div class="fact">
+            <b>Mumbai</b><span><strong>Your data stays in India,</strong> on AWS in Mumbai.</span>
+          </div>
+        </div>
+      </div>
+      <div class="fssai" aria-label="Example FSSAI batch label">
+        <h4><span class="veg" aria-hidden="true"></span>Makhani gravy</h4>
+        <div class="row"><span>Batch</span><span>KIT-0412</span></div>
+        <div class="row"><span>Made</span><span>12 Oct 09:40</span></div>
+        <div class="row"><span>Use by</span><span>14 Oct 09:40</span></div>
+        <div class="row"><span>Portions</span><span>32</span></div>
+        <div class="row"><span>Allergens</span><span>Milk, cashew</span></div>
+        <div class="row"><span>Made by</span><span>Commis, Kitchen</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="band">
+    <div class="inner sec">
+      <div class="sec-head">
+        <span class="eyebrow">Getting started</span>
+        <h2>Your Senior joins in days, and learns from your own files.</h2>
+      </div>
+      <div class="formats" aria-label="Outlet types">
+        <span>Hotel</span><span>Bar &amp; pub</span><span>Restaurant</span><span>QSR</span
+        ><span>Cloud kitchen</span><span>Central kitchen</span><span>Franchise</span>
+      </div>
+      <ol class="how">
+        <li>
+          <h3>Tell us your outlets</h3>
+          <p>
+            Pick the kind of outlet. Senior starts with its usual departments, stores, roles and
+            daily checklists.
+          </p>
+        </li>
+        <li>
+          <h3>Send your lists</h3>
+          <p>
+            Your people, items, suppliers and recipes, in the spreadsheets you already keep. We
+            check them all before anything goes live.
+          </p>
+        </li>
+        <li>
+          <h3>Your team signs in</h3>
+          <p>Everyone gets their own login. Staff without email get a printed sheet.</p>
+        </li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="inner sec tight">
+    <div class="sec-head">
+      <span class="eyebrow">Questions</span>
+      <h2>What is Senior?</h2>
+    </div>
+    <div class="faq">
+<details><summary>Which businesses is Senior for?</summary><p>Senior is for hotels, bars and pubs, restaurants, QSRs, cloud kitchens, central kitchens and franchise businesses. It runs stock, recipes, rosters, attendance, checklists and licences from every staff phone, for one outlet or many.</p></details>
+<details><summary>Is Senior a person?</summary><p>No. Senior is the app on your team's phones. It is called Senior because it does what your best senior does: it remembers, it reminds, and it asks before it acts.</p></details>
+</div>
+    <p class="small"><a href="/faq">More questions owners ask →</a></p>
+  </div>
+  <div class="inner sec">
+    <div class="closer">
+      <svg aria-hidden="true"><use href="#sr-mark" /></svg>
+      <div class="ct">
+        <h2>Senior hai na.</h2>
+        <p>See him at work in an outlet like yours.</p>
+      </div>
+      <a class="btn" href="/demo">Get a Senior</a>
+    </div>
+  </div>
+</section>
+</main>
+    <footer class="site">
+  <div class="inner">
+    <div class="fgrid">
+      <div class="fcol about">
+        <b>Senior</b><span class="sign" lang="hi-Latn">Senior hai na.</span>
+        <span>Senior is an app for hotels, bars, restaurants, QSRs, cloud kitchens and franchise businesses. It runs stock, recipes, rosters, attendance, checklists and licences from every staff phone.</span>
+      </div>
+      <div class="fcol">
+        <b>What Senior keeps</b><a href="/stock">Stock</a><a href="/recipes">Recipes</a
+        ><a href="/roster">Roster &amp; attendance</a><a href="/daily-work">Daily work</a
+        ><a href="/hotel-rooms">Hotel rooms</a><a href="/licences">Licences</a>
+      </div>
+      <div class="fcol">
+        <b>Company</b><a href="/demo">Get a Senior</a><a href="/plans">Plans</a
+        ><a href="/faq">Questions</a><a href="/trust">Trust</a><a href="/privacy">Privacy</a
+        ><a href="/terms">Terms</a>
+      </div>
+    </div>
+    <p class="credit">
+      Item photos: Wikimedia Commons, freely licensed; credits in the app. Fonts: SIL Open Font
+      License (<a href="/fonts/OFL.txt">licence</a>). © 2026 Senior · heysenior.app
+    </p>
+  </div>
+</footer>
+
+  </body>
+</html>

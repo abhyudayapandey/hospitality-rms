@@ -28,14 +28,17 @@ wherever they conflict.**
 - Infra: AWS CDK (TypeScript) in `/infra`, region ap-south-1
 - Hosting (Free plan, ADR 005): one EC2 t4g.small runs Next.js standalone behind Caddy,
   the wf-execute timer and Postgres; no NAT/LB/RDS/Amplify/Lambda until the account
-  upgrades. Secrets in SSM Parameter Store SecureString. Deploy guide: `docs/deploy.md`
+  upgrades. Secrets in SSM Parameter Store SecureString. Deploy guide: `docs/deploy.md`.
+  The same Caddy serves the website (heysenior.app, static) and the app (my.heysenior.app),
+  and redirects the old hostnames (ADR 141)
 - AI: Anthropic Claude API from Lambda
 - Tests: Vitest; DB tests run against real Postgres (never mock the database)
 
 ## Repo layout
 
 ```
-apps/web              Next.js PWA
+apps/web              Next.js PWA (my.heysenior.app)
+apps/site             the website (heysenior.app): src/ -> build.ts -> public/ (committed; ADR 141)
 packages/db           migrations/, seed/dev/, sql tests, Kysely types
 packages/domain       shared TS types + zod schemas per module
 packages/workflow     process definitions + execution handlers
@@ -387,6 +390,14 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   the assistant manager's Mid-shift reset and Lock-up (a library checklist may name an
   outlet-level role). Starter SOPs are product code (`sops.ts`), listed by templates and
   written to file 46 by `addOutlet`. Push today lists every dish of the outlet, food and drinks.
+- The product is **Senior** (ADR 141): "Senior hai na." Users see Senior everywhere (the app's
+  name, icons from `lib/senior-mark.ts`, "Ask the Senior team"); internal names (`@outlet-ops/*`,
+  units, stack ids, `/outlet-ops/prod`) stay. The website sells the problem, not the software:
+  no "platform", "SaaS" or "AI-powered" (`apps/site/site.test.ts`). It is for hotels, bars,
+  restaurants, QSRs, cloud kitchens and franchises; each page is real, with its own title,
+  description and JSON-LD, and its FAQ comes from `src/faq.json` (search and AI answers). Its demo form is the one
+  write with no session (`/api/demo-request`: the site's origin only, a rate limit, a trap
+  field, `platform.add_demo_request`); the team calls back from the console's Demo requests.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

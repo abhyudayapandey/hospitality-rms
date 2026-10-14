@@ -192,11 +192,15 @@ your account gets it, EC2 shows $0 until then. Check in Billing → Bills.
       the shell first:
       `eval "$(aws configure export-credentials --profile outlet-ops --format env)"`.
    8. **Other tools:** Node 22, pnpm (`corepack enable`), and `pnpm i` in this repo.
-5. **Choose a hostname.** Use either of these:
-   - **DuckDNS (free):** sign in at <https://www.duckdns.org> and create a subdomain,
-     for example `myoutlet.duckdns.org`.
-   - **Your own domain with Cloudflare DNS:** add the domain to Cloudflare (the free
-     plan is fine) and plan a name like `ops.example.com`.
+5. **Choose the hostnames (ADR 141).** Production is **heysenior.app** (the website) and
+   **my.heysenior.app** (the app). The website also answers on `www.heysenior.app`, which
+   redirects to the apex. For a test account, either of these works:
+   - **Your own domain with Cloudflare DNS:** add the domain to Cloudflare (the free plan
+     is fine) and plan names like `example.com` and `my.example.com`.
+   - **DuckDNS (free):** sign in at <https://www.duckdns.org> and create two subdomains,
+     for example `myoutlet.duckdns.org` (the app) and `myoutlet-site.duckdns.org` (the
+     website). DuckDNS has no `www`, so Caddy's `www.` certificate will fail there; that
+     is harmless.
 
 ## First deploy
 
@@ -231,7 +235,9 @@ flags, and CI's `cdk synth` uses the same values:
 
 | Context key                        | What it is                                                                 |
 | ---------------------------------- | -------------------------------------------------------------------------- |
-| `domainName`                       | The public hostname, for example `outletops-ap.duckdns.org`                |
+| `domainName`                       | The app's hostname, `my.heysenior.app`                                     |
+| `siteDomain`                       | The website's hostname, `heysenior.app` (ADR 141)                          |
+| `legacyDomains` (optional)         | Old app hostnames that redirect to `domainName`, e.g. the DuckDNS one      |
 | `alertEmail`                       | Budget alerts and the Let's Encrypt account                                |
 | `cognitoDomainPrefix`              | `<prefix>.auth.ap-south-1.amazoncognito.com`; must be unique in the region |
 | `githubRepo`                       | `owner/repo` allowed to deploy                                             |
@@ -371,7 +377,10 @@ state can't be updated, so delete it and deploy again.
 
 ### 3. Point DNS at the Elastic IP
 
-The Elastic IP keeps the address stable across instance stops and replacements.
+The Elastic IP keeps the address stable across instance stops and replacements. Every name
+points at it: `heysenior.app`, `www.heysenior.app` and `my.heysenior.app`, plus any
+`legacyDomains` (keep their records, or the redirect is never reached). Caddy gets a
+certificate for each name.
 
 - **DuckDNS.** On duckdns.org, set the subdomain's IPv4 to `PublicIp` and click
   _update ip_. Leave the DuckDNS updater script off, because the IP never changes.
@@ -471,7 +480,8 @@ The workflow does the following:
 
 The instance never builds anything. It keeps the last 3 releases.
 
-Open `https://<domainName>/login`. The first certificate can take up to a minute.
+Open `https://<domainName>/login` (the app) and `https://<siteDomain>/` (the website). The
+first certificates can take up to a minute.
 
 #### Releasing user administration (ADR 011)
 
@@ -2987,3 +2997,45 @@ Outlets already loaded do not change.
 3. Check: `restaurant.technician` has the Maintenance round on To do; `restaurant.sous-chef`
    the Line check; Me → SOPs lists the kitchen's SOPs for a cook and the bar's for a
    bartender; the GM gives a repair to Santosh Naik.
+
+## Releasing Senior: heysenior.app, my.heysenior.app and demo requests (ADR 141)
+
+One migration, `20261227100000_demo_requests.sql`. A **stack change** (the Cognito URLs move
+to `my.heysenior.app`; new `site_url`, `site_domain` and `legacy_domains` parameters), so the
+stack goes out before the app. No access change.
+
+1. **Buy `heysenior.app`** (the domain only: no website plan; the site is ours, served by
+   Caddy) and add three **A records** → the stack's `PublicIp`:
+   `heysenior.app`, `www.heysenior.app` and `my.heysenior.app`. Keep the DuckDNS record for
+   `outletops-ap.duckdns.org`: it now only redirects. Wait until `dig +short my.heysenior.app`
+   prints `PublicIp`.
+2. `cd infra && pnpm cdk diff`. It should show, and nothing else:
+   - both Cognito clients' callback and logout URLs → `https://my.heysenior.app/...`
+   - the customer pool's invitation e-mail (subject "Your Senior account", link to the new
+     host)
+   - the photo bucket's CORS origin → `https://my.heysenior.app`
+   - parameters `app_url` and `app_domain` changed; `site_url`, `site_domain` and
+     `legacy_domains` added
+     Stop if anything says replace.
+3. `pnpm cdk deploy`, then the Deploy workflow. Until the app is deployed, sign-in on the
+   old host fails (Cognito already expects the new one), so run them back to back.
+4. Check:
+   - `https://heysenior.app` shows the website; `https://www.heysenior.app` lands there.
+   - `https://my.heysenior.app` goes to `/login` ("Senior"); `/platform` goes to the team
+     console's sign-in.
+   - `https://outletops-ap.duckdns.org/requests` lands on `https://my.heysenior.app/requests`.
+   - Send the website's demo form with your own number: the console home shows "Demo
+     requests to call back (1)"; open it, tap the number, then **Called back**.
+   - `https://heysenior.app/nope` shows "That page isn't here" (a real 404), and
+     `https://heysenior.app/plans.html` lands on `/plans`.
+   - An installed app: reopen it; it follows the redirect to the new host. To install it
+     again under the new name, remove it and add `my.heysenior.app` to the Home Screen.
+5. **Search and AI answers**, once the site is live:
+   - Google Search Console: add the **Domain** property `heysenior.app`, prove it with the DNS
+     TXT record it gives you, then Sitemaps → submit `https://heysenior.app/sitemap.xml`.
+   - Bing Webmaster Tools: import the site from Search Console (one click) or add it the same
+     way. Bing's index also feeds several AI assistants.
+   - Check the structured data: <https://search.google.com/test/rich-results> with
+     `https://heysenior.app/` and `https://heysenior.app/faq`: no errors.
+   - List Senior on Google Business Profile, LinkedIn and Capterra/G2 with the same name and
+     the one definition from the home page.

@@ -73,10 +73,10 @@ function costTag(scope: Construct, profile: 'always-free' | 'credits', note: str
 /** The customer pool's invitation email (ADR 013): how to sign in with a code, no password. */
 export function invitationMessage(appUrl: string): cognito.UserInvitationConfig {
   return {
-    emailSubject: 'Your Outlet Ops account',
+    emailSubject: 'Your Senior account',
     emailBody: [
       'Hello,',
-      'An Outlet Ops account has been set up for you. Your username is <b>{username}</b>.',
+      'A Senior account has been set up for you. Your username is <b>{username}</b>.',
       `To sign in, open <a href="${appUrl}">${appUrl}</a>, tap <b>Sign in</b> and enter this ` +
         'email address. Choose to get a sign-in code by email, then type in the code we send ' +
         'you. There is no password to remember.',
@@ -548,6 +548,10 @@ export class OutletOpsStack extends Stack {
     const cfg: Record<string, string> = {
       app_url: `https://${config.domainName}`,
       app_domain: config.domainName,
+      site_url: `https://${config.siteDomain}`,
+      site_domain: config.siteDomain,
+      // an SSM String can't be empty: a single "-" means no legacy hostnames
+      legacy_domains: config.legacyDomains.join(' ') || '-',
       acme_email: config.alertEmail,
       cognito_user_pool_id: userPool.userPoolId,
       cognito_client_id: client.userPoolClientId,

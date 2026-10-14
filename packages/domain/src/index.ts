@@ -21,3 +21,4 @@ export * from './pictures';
 export * from './registers';
 export * from './shelf-life';
 export * from './maintenance-where';
+export * from './demo-request';

@@ -48,7 +48,7 @@ while IFS=$'\t' read -r name value; do
   cfg[${name##*/}]=$value
 done < <(aws ssm get-parameters-by-path --path "$PARAM_PREFIX/config" \
   --query 'Parameters[].[Name,Value]' --output text)
-for key in app_url app_domain acme_email cognito_user_pool_id cognito_client_id cognito_domain \
+for key in app_url app_domain site_url site_domain legacy_domains acme_email cognito_user_pool_id cognito_client_id cognito_domain \
   platform_cognito_user_pool_id platform_cognito_client_id platform_cognito_domain \
   backup_bucket photo_bucket; do
   [ -n "${cfg[$key]:-}" ] || { echo "missing config parameter $key" >&2; exit 1; }
@@ -60,6 +60,7 @@ NODE_ENV=production
 PORT=3000
 HOSTNAME=127.0.0.1
 APP_URL=${cfg[app_url]}
+SITE_URL=${cfg[site_url]}
 COGNITO_USER_POOL_ID=${cfg[cognito_user_pool_id]}
 COGNITO_CLIENT_ID=${cfg[cognito_client_id]}
 COGNITO_DOMAIN=${cfg[cognito_domain]}
@@ -85,8 +86,24 @@ AWS_REGION=${AWS_REGION}
 ENV
 cat > "$OO_ETC/caddy.env" <<ENV
 APP_DOMAIN=${cfg[app_domain]}
+SITE_DOMAIN=${cfg[site_domain]}
 ACME_EMAIL=${cfg[acme_email]}
 ENV
+# The app's old hostnames (ADR 141): "-" means none. Each answers with a permanent redirect
+# to the same path on the app's hostname, so installed apps and bookmarks keep working.
+legacy_domains=${cfg[legacy_domains]}
+app_domain=${cfg[app_domain]}
+{
+  echo "# written by fetch-params.sh from $PARAM_PREFIX/config/legacy_domains"
+  if [ "$legacy_domains" != "-" ]; then
+    for host in $legacy_domains; do
+      [[ "$host" =~ ^[a-z0-9-]+(\.[a-z0-9-]+)+$ ]] || { echo "bad legacy domain $host" >&2; exit 1; }
+      printf '%s {\n\timport request_log\n\tredir https://%s{uri} permanent\n}\n' \
+        "$host" "$app_domain"
+    done
+  fi
+} > "$OO_ETC/caddy-legacy.caddy.tmp"
+mv -f "$OO_ETC/caddy-legacy.caddy.tmp" "$OO_ETC/caddy-legacy.caddy"
 cat > "$OO_ETC/backup.env" <<ENV
 BACKUP_BUCKET=${cfg[backup_bucket]}
 ENV

@@ -9,7 +9,9 @@ import { OutletOpsStack, tag, TAG_PATTERN } from './outlet-ops-stack';
 
 const AMI = 'ami-0123456789abcdef0';
 const CONFIG = {
-  domainName: 'outletops.duckdns.org',
+  domainName: 'my.heysenior.app',
+  siteDomain: 'heysenior.app',
+  legacyDomains: ['old.duckdns.org'],
   alertEmail: 'ops@example.com',
   cognitoDomainPrefix: 'outlet-ops-test',
   platformCognitoDomainPrefix: 'outlet-ops-test-platform',
@@ -350,8 +352,8 @@ describe('Cognito', () => {
       UserPoolId: { Ref: id },
       GenerateSecret: false,
       AllowedOAuthFlows: ['code'],
-      CallbackURLs: ['https://outletops.duckdns.org/platform/auth/callback'],
-      LogoutURLs: ['https://outletops.duckdns.org/platform/signed-out'],
+      CallbackURLs: ['https://my.heysenior.app/platform/auth/callback'],
+      LogoutURLs: ['https://my.heysenior.app/platform/signed-out'],
     });
   });
 
@@ -365,8 +367,8 @@ describe('Cognito', () => {
     t.hasResourceProperties('AWS::Cognito::UserPoolClient', {
       GenerateSecret: false,
       AllowedOAuthFlows: ['code'],
-      CallbackURLs: ['https://outletops.duckdns.org/auth/callback'],
-      LogoutURLs: ['https://outletops.duckdns.org/login'],
+      CallbackURLs: ['https://my.heysenior.app/auth/callback'],
+      LogoutURLs: ['https://my.heysenior.app/login'],
       EnableTokenRevocation: true,
     });
   });
@@ -494,7 +496,7 @@ describe('wastage photos (ADR 006)', () => {
         {
           AllowedHeaders: ['*'],
           AllowedMethods: ['POST'],
-          AllowedOrigins: ['https://outletops.duckdns.org'],
+          AllowedOrigins: ['https://my.heysenior.app'],
           MaxAge: 3000,
         },
       ],
@@ -596,9 +598,9 @@ describe('the customer pool invitation (ADR 013)', () => {
       string,
       string
     >;
-    expect(invite.EmailSubject).toBe('Your Outlet Ops account');
+    expect(invite.EmailSubject).toBe('Your Senior account');
     expect(invite.EmailMessage).toContain('{username}');
-    expect(invite.EmailMessage).toContain('https://outletops.duckdns.org');
+    expect(invite.EmailMessage).toContain('https://my.heysenior.app');
     expect(invite.EmailMessage).toContain('sign-in code by email');
     expect(invite.EmailMessage).not.toContain('{####}');
     expect(invite.EmailMessage).not.toMatch(/password is/i);
@@ -608,5 +610,28 @@ describe('the customer pool invitation (ADR 013)', () => {
 
   it('leaves the platform pool as it is', () => {
     expect(pool('PlatformUsers').AdminCreateUserConfig).toEqual({ AllowAdminCreateUserOnly: true });
+  });
+});
+
+describe('the website and the app hosts (ADR 141)', () => {
+  const param = (name: string) =>
+    Object.values(t.findResources('AWS::SSM::Parameter')).find(
+      (p) => (p.Properties as { Name: string }).Name === `/outlet-ops/prod/config/${name}`,
+    )?.Properties as { Value: unknown } | undefined;
+
+  it('tells the instance the app, website and legacy hostnames', () => {
+    expect(param('app_url')!.Value).toBe('https://my.heysenior.app');
+    expect(param('app_domain')!.Value).toBe('my.heysenior.app');
+    expect(param('site_url')!.Value).toBe('https://heysenior.app');
+    expect(param('site_domain')!.Value).toBe('heysenior.app');
+    expect(param('legacy_domains')!.Value).toBe('old.duckdns.org');
+  });
+
+  it('writes "-" when there are no legacy hostnames (an SSM String cannot be empty)', () => {
+    const none = synth({ ...CONFIG, legacyDomains: [] });
+    none.hasResourceProperties('AWS::SSM::Parameter', {
+      Name: '/outlet-ops/prod/config/legacy_domains',
+      Value: '-',
+    });
   });
 });

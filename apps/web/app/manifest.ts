@@ -3,9 +3,9 @@ import type { MetadataRoute } from 'next';
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: '/',
-    name: 'Outlet Ops',
-    short_name: 'Outlet Ops',
-    description: 'Stock, orders, people and operations for every outlet.',
+    name: 'Senior',
+    short_name: 'Senior',
+    description: 'Senior hai na. Stock, orders, people and the day’s work for every outlet.',
     start_url: '/',
     scope: '/',
     display: 'standalone',

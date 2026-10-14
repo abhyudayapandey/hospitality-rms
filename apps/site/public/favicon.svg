@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+<!-- Senior's mark (ADR 141): glasses with smiling eyes, a moustache, a smile. The one source for the app and website icons (apps/web/scripts/icons.mjs). -->
+  <rect width="120" height="120" rx="30" fill="#1f5f57"/>
+  <circle cx="40" cy="50" r="15" fill="none" stroke="#ffffff" stroke-width="6"/>
+  <circle cx="80" cy="50" r="15" fill="none" stroke="#ffffff" stroke-width="6"/>
+  <path d="M55 50 Q60 45 65 50" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+  <path d="M33 53 Q40 45 47 53 M73 53 Q80 45 87 53" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M60 75 C53 70 42 71 35 80 C43 80 51 83 60 79 C69 83 77 80 85 80 C78 71 67 70 60 75 Z" fill="#e0a21b"/>
+  <path d="M49 89 Q60 97 71 89" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
+</svg>

@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -184,6 +185,94 @@ describe('web environment', () => {
     expect(env).toContain('AWS_REGION=');
     expect(env).not.toMatch(/AWS_ACCESS_KEY|AWS_SECRET|PASSWORD|SECRET/);
     expect(script).toMatch(/for key in [^;]*photo_bucket/);
+  });
+});
+
+describe('the website and the app hosts (ADR 141)', () => {
+  const caddy = read('caddy/Caddyfile');
+  const params = read('deploy/fetch-params.sh');
+
+  it('Caddy serves the app, the website, www and the legacy hostnames', () => {
+    expect(caddy).toMatch(/^\{\$APP_DOMAIN\} \{[\s\S]*?reverse_proxy 127\.0\.0\.1:3000/m);
+    expect(caddy).toMatch(/^\{\$SITE_DOMAIN\} \{/m);
+    expect(caddy).toContain('root * /opt/outlet-ops/current/site');
+    expect(caddy).toMatch(
+      /^www\.\{\$SITE_DOMAIN\} \{\n[\s\S]*?redir https:\/\/\{\$SITE_DOMAIN\}\{uri\} permanent/m,
+    );
+    expect(caddy).toMatch(/^import \/etc\/outlet-ops\/caddy-legacy\.caddy$/m);
+  });
+
+  it('the website reaches the app on one path only, the demo form', () => {
+    const site = caddy.slice(
+      caddy.indexOf('{$SITE_DOMAIN} {'),
+      caddy.indexOf('www.{$SITE_DOMAIN}'),
+    );
+    expect(site.match(/reverse_proxy/g)).toHaveLength(1);
+    expect(site).toMatch(/handle \/api\/demo-request \{\n\t\treverse_proxy 127\.0\.0\.1:3000/);
+    expect(site).toMatch(/Content-Security-Policy "default-src 'self'; script-src 'self';/);
+  });
+
+  it('the website has clean URLs, a real 404 page and fonts from itself only', () => {
+    const site = caddy.slice(
+      caddy.indexOf('{$SITE_DOMAIN} {'),
+      caddy.indexOf('www.{$SITE_DOMAIN}'),
+    );
+    expect(site).toMatch(/try_files \{path\} \{path\}\.html\n/); // no fallback to index.html
+    expect(site).toMatch(/handle_errors \{[\s\S]*?rewrite \* \/404\.html[\s\S]*?file_server/);
+    expect(site).toMatch(
+      /@html path_regexp html \^\/\(\.\*\?\)\(index\)\?\\\.html\$\n\tredir @html \/\{re\.html\.1\} permanent/,
+    );
+    expect(site).toContain("font-src 'self'");
+    expect(site).not.toMatch(/googleapis|gstatic/);
+  });
+
+  it('the redirect block reads the legacy and app hostnames from the config', () => {
+    expect(params).toContain(
+      'legacy_domains=${cfg[legacy_domains]}\napp_domain=${cfg[app_domain]}\n{',
+    );
+  });
+
+  it('Caddy and the web app get the website hostname; the web its origin for the demo form', () => {
+    const caddyEnv = params.slice(params.indexOf('caddy.env'));
+    expect(caddyEnv).toContain('SITE_DOMAIN=${cfg[site_domain]}');
+    const web = params.slice(params.indexOf('web.env'), params.indexOf('wf.env'));
+    expect(web).toContain('SITE_URL=${cfg[site_url]}');
+    expect(params).toMatch(/for key in [^;]*site_url site_domain legacy_domains/);
+  });
+
+  // Runs the part of fetch-params.sh that writes the legacy redirects, with a given value.
+  const legacyFile = (legacy: string): string => {
+    const start = params.indexOf('{\n  echo "# written by fetch-params.sh');
+    const end = params.indexOf('cat > "$OO_ETC/backup.env"');
+    const etc = mkdtempSync(join(tmpdir(), 'oo-etc-'));
+    execFileSync('bash', [
+      '-c',
+      `set -euo pipefail; app_domain=my.heysenior.app; legacy_domains="$1";` +
+        `OO_ETC="$2"; PARAM_PREFIX=/outlet-ops/prod;\n${params.slice(start, end)}`,
+      '_',
+      legacy,
+      etc,
+    ]);
+    return readFileSync(join(etc, 'caddy-legacy.caddy'), 'utf8');
+  };
+
+  it('writes one redirect per legacy hostname, and none for "-"', () => {
+    const two = legacyFile('old.duckdns.org older.example.com');
+    expect(two).toContain(
+      'old.duckdns.org {\n\timport request_log\n\tredir https://my.heysenior.app{uri} permanent\n}',
+    );
+    expect(two.match(/redir https:\/\/my\.heysenior\.app\{uri\} permanent/g)).toHaveLength(2);
+    expect(legacyFile('-')).not.toContain('redir');
+  });
+
+  it('refuses a legacy value that is not a hostname', () => {
+    expect(() => legacyFile('evil.com { respond 200 }')).toThrow();
+  });
+
+  it('the release bundles the website files', () => {
+    expect(read('../scripts/build-release.sh')).toContain(
+      '(cd apps/site/public && cp -a . "$OUT/site/")',
+    );
   });
 });
 

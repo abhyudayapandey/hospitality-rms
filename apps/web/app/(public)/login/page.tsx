@@ -5,7 +5,7 @@ import { isDevAuthEnabled } from '@/lib/dev-auth';
 
 const REASONS: Record<string, string> = {
   expired: messageFor('SESSION_EXPIRED'),
-  unknown_user: "That account isn't set up for Outlet Ops yet. Ask your manager.",
+  unknown_user: "That account isn't set up for Senior yet. Ask your manager.",
   rate_limited: 'Too many sign-in attempts from here. Wait a few minutes and try again.',
   cognito: 'Sign-in failed. Please try again.',
   signed_out_everywhere: 'You are signed out on all your devices. Sign in again to carry on here.',
@@ -32,12 +32,12 @@ export default async function LoginPage({
             alt=""
             width={64}
             height={64}
-            className="size-16 rounded-2xl shadow-sm ring-1 ring-slate-200"
+            className="size-16 rounded-2xl shadow-sm"
           />
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold tracking-tight">Outlet Ops</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">Senior</h1>
             <p className="mx-auto max-w-xs text-slate-600">
-              Stock, orders, rosters and the day&apos;s jobs for every outlet, in one place.
+              Senior hai na. Stock, orders, rosters and the day&apos;s jobs, in one place.
             </p>
           </div>
         </div>

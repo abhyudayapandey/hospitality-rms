@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title>Restaurant stock control and inventory app · Senior</title>
+    <meta name="description" content="Stock checks against par, supply requests, supplier orders, bills and wastage for restaurants, hotels, QSRs and cloud kitchens, on every phone." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://heysenior.app/stock" />
+    <meta name="theme-color" content="#1f5f57" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Senior" />
+    <meta property="og:locale" content="en_IN" />
+    <meta property="og:url" content="https://heysenior.app/stock" />
+    <meta property="og:title" content="Restaurant stock control and inventory app · Senior" />
+    <meta property="og:description" content="Stock checks against par, supply requests, supplier orders, bills and wastage for restaurants, hotels, QSRs and cloud kitchens, on every phone." />
+    <meta property="og:image" content="https://heysenior.app/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preload" href="/fonts/baloo2-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/hind-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/site.css" />
+    <script src="/site.js" defer></script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://heysenior.app/#org","name":"Senior","alternateName":["Hey Senior","heysenior.app"],"url":"https://heysenior.app/","logo":"https://heysenior.app/apple-touch-icon.png","description":"Senior is an app for hotels, bars, restaurants, QSRs, cloud kitchens and franchise businesses. It runs stock, recipes, rosters, attendance, checklists and licences from every staff phone.","areaServed":{"@type":"Country","name":"India"}},{"@type":"WebSite","@id":"https://heysenior.app/#website","url":"https://heysenior.app/","name":"Senior","alternateName":"Hey Senior","publisher":{"@id":"https://heysenior.app/#org"},"inLanguage":"en-IN"},{"@type":"WebPage","@id":"https://heysenior.app/stock","url":"https://heysenior.app/stock","name":"Restaurant stock control and inventory app · Senior","description":"Stock checks against par, supply requests, supplier orders, bills and wastage for restaurants, hotels, QSRs and cloud kitchens, on every phone.","isPartOf":{"@id":"https://heysenior.app/#website"},"about":{"@id":"https://heysenior.app/#org"},"inLanguage":"en-IN"},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Senior","item":"https://heysenior.app/"},{"@type":"ListItem","position":2,"name":"Stock","item":"https://heysenior.app/stock"}]},{"@type":"FAQPage","@id":"https://heysenior.app/stock#faq","mainEntity":[{"@type":"Question","name":"How do I stop stock going missing in my restaurant?","acceptedAnswer":{"@type":"Answer","text":"Count often, record every movement, and compare what you used with what you sold. In Senior every delivery, transfer, wastage and sale moves stock through one record that nobody can edit afterwards. A stock check shows the gap for each item, and your cost controller or GM checks it. Sales from your POS are set against the stock used, so a gap shows the next morning."}},{"@type":"Question","name":"Does Senior replace my POS?","acceptedAnswer":{"@type":"Answer","text":"No. Senior works next to your POS. Your cashier imports each day's item sales, so the stock used and the sales line up."}}]}]}</script>
+  </head>
+  <body>
+    <svg class="defs" width="0" height="0" aria-hidden="true">
+  <defs>
+    <symbol id="sr-mark" viewBox="0 0 120 120">
+      <rect width="120" height="120" rx="30" fill="var(--teal-mark)" />
+      <circle cx="40" cy="50" r="15" fill="none" stroke="#ffffff" stroke-width="6" />
+      <circle cx="80" cy="50" r="15" fill="none" stroke="#ffffff" stroke-width="6" />
+      <path
+        d="M55 50 Q60 45 65 50"
+        fill="none"
+        stroke="#ffffff"
+        stroke-width="6"
+        stroke-linecap="round"
+      />
+      <path
+        d="M33 53 Q40 45 47 53 M73 53 Q80 45 87 53"
+        fill="none"
+        stroke="#ffffff"
+        stroke-width="4.5"
+        stroke-linecap="round"
+      />
+      <path
+        d="M60 75 C53 70 42 71 35 80 C43 80 51 83 60 79 C69 83 77 80 85 80 C78 71 67 70 60 75 Z"
+        fill="var(--pen)"
+      />
+      <path
+        d="M49 89 Q60 97 71 89"
+        fill="none"
+        stroke="#ffffff"
+        stroke-width="4.5"
+        stroke-linecap="round"
+      />
+    </symbol>
+    <symbol id="sr-figure" viewBox="0 0 240 300">
+      <path d="M38 300 C38 238 68 206 120 206 C172 206 202 238 202 300 Z" fill="var(--shirt)" />
+      <path
+        d="M38 300 C38 242 62 213 100 207 L120 262 L140 207 C178 213 202 242 202 300 Z"
+        fill="var(--vest)"
+      />
+      <rect x="99" y="170" width="42" height="42" rx="12" fill="var(--skin)" />
+      <ellipse cx="120" cy="184" rx="22" ry="6" fill="var(--skin-dark)" opacity=".35" />
+      <path
+        d="M100 206 L120 234 L108 246 L94 212 Z M140 206 L120 234 L132 246 L146 212 Z"
+        fill="var(--shirt)"
+      />
+      <circle cx="120" cy="268" r="3.5" fill="var(--vest-dark)" />
+      <circle cx="120" cy="286" r="3.5" fill="var(--vest-dark)" />
+      <rect x="66" y="232" width="26" height="24" rx="3" fill="var(--paper)" />
+      <path
+        d="M70 240 H88 M70 246 H84"
+        stroke="var(--paper-ink-2)"
+        stroke-width="2"
+        stroke-linecap="round"
+      />
+      <rect x="60" y="244" width="38" height="26" rx="4" fill="var(--vest-dark)" />
+      <circle cx="63" cy="130" r="13" fill="var(--skin)" />
+      <ellipse cx="120" cy="124" rx="58" ry="64" fill="var(--skin)" />
+      <path
+        d="M63 116 C58 66 90 52 121 52 C154 52 184 68 177 116 C171 96 152 86 130 86 C112 86 96 90 85 98 C76 104 68 108 63 116 Z"
+        fill="var(--hair)"
+      />
+      <path d="M174 92 L194 150" stroke="var(--pen)" stroke-width="9" stroke-linecap="round" />
+      <path d="M174 92 L177 101" stroke="#f3cf73" stroke-width="9" stroke-linecap="round" />
+      <path d="M191 142 L194 150" stroke="var(--frame)" stroke-width="9" stroke-linecap="round" />
+      <circle cx="177" cy="130" r="13" fill="var(--skin)" />
+      <path
+        d="M84 104 Q96 98 108 103 M132 103 Q144 98 156 104"
+        stroke="var(--hair-dark)"
+        stroke-width="5"
+        stroke-linecap="round"
+        fill="none"
+      />
+      <circle cx="90" cy="152" r="9" fill="var(--blush)" />
+      <circle cx="150" cy="152" r="9" fill="var(--blush)" />
+      <circle
+        cx="98"
+        cy="128"
+        r="18"
+        fill="#ffffff"
+        fill-opacity=".18"
+        stroke="var(--frame)"
+        stroke-width="5"
+      />
+      <circle
+        cx="142"
+        cy="128"
+        r="18"
+        fill="#ffffff"
+        fill-opacity=".18"
+        stroke="var(--frame)"
+        stroke-width="5"
+      />
+      <path
+        d="M116 127 Q120 123 124 127 M80 126 L68 122 M160 126 L172 122"
+        stroke="var(--frame)"
+        stroke-width="5"
+        stroke-linecap="round"
+        fill="none"
+      />
+      <path
+        d="M90 131 Q98 122 106 131 M134 131 Q142 122 150 131"
+        stroke="var(--frame)"
+        stroke-width="4.5"
+        stroke-linecap="round"
+        fill="none"
+      />
+      <path
+        d="M120 138 Q114 150 120 153"
+        stroke="var(--skin-dark)"
+        stroke-width="3.5"
+        stroke-linecap="round"
+        fill="none"
+      />
+      <path
+        d="M120 159 C112 153 99 155 92 165 C101 165 110 168 120 163 C130 168 139 165 148 165 C141 155 128 153 120 159 Z"
+        fill="var(--hair)"
+      />
+      <path
+        d="M106 173 Q120 184 134 173"
+        stroke="var(--skin-dark)"
+        stroke-width="4"
+        stroke-linecap="round"
+        fill="none"
+      />
+    </symbol>
+  </defs>
+</svg>
+ <header class="site">
+  <div class="inner bar">
+    <a class="logo" href="/" aria-label="Senior home">
+      <svg class="mark" aria-hidden="true"><use href="#sr-mark" /></svg>
+      Senior
+    </a>
+    <button class="burger" id="burger" aria-expanded="false" aria-controls="menu" aria-label="Menu">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+        <path
+          d="M3 6h14M3 10h14M3 14h14"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+      </svg>
+    </button>
+    <nav class="menu" id="menu" aria-label="Main">
+      <a href="/what-senior-keeps">What Senior keeps</a>
+      <a href="/plans">Plans</a>
+      <a href="/faq">Questions</a>
+      <a href="/trust">Trust</a>
+      <a href="https://my.heysenior.app/login">Sign in</a>
+      <a class="btn sm" href="/demo">Get a Senior</a>
+    </nav>
+  </div>
+</header>
+
+    <main><section>
+  <div class="inner">
+    <article class="feature split">
+      <div class="fcopy">
+        <span class="eyebrow" lang="hi-Latn">"Stock kahan gaya?"</span>
+        <h1>Stock that adds up.</h1>
+        <ul class="outcomes">
+          <li>
+            <span
+              ><b>Stock checks against par.</b> One button fills every short item up to par.</span
+            >
+          </li>
+          <li>
+            <span
+              ><b>Supply requests</b> go to the Main Store. The keeper orders, and the department
+              sees it on the way.</span
+            >
+          </li>
+          <li>
+            <span
+              ><b>No missing bills.</b> Receiving records what was paid per item. An order with no
+              bill says "Bill missing".</span
+            >
+          </li>
+          <li>
+            <span><b>Wastage and breakage</b> show the day they happen.</span>
+          </li>
+        </ul>
+        <p class="mods">
+          Stores &amp; stock · Supply requests &amp; orders · Breakage · Shelf life &amp; labels
+        </p>
+      </div>
+      <div class="pslot"><div class="phone" data-phone="stock"></div></div>
+    </article>
+  </div>
+  <div class="inner sec tight">
+    <div class="sec-head">
+      <span class="eyebrow">Questions</span>
+      <h2>What owners ask</h2>
+    </div>
+    <div class="faq">
+<details><summary>How do I stop stock going missing in my restaurant?</summary><p>Count often, record every movement, and compare what you used with what you sold. In Senior every delivery, transfer, wastage and sale moves stock through one record that nobody can edit afterwards. A stock check shows the gap for each item, and your cost controller or GM checks it. Sales from your POS are set against the stock used, so a gap shows the next morning.</p></details>
+<details><summary>Does Senior replace my POS?</summary><p>No. Senior works next to your POS. Your cashier imports each day's item sales, so the stock used and the sales line up.</p></details>
+</div>
+    <div class="closer">
+      <svg aria-hidden="true"><use href="#sr-mark" /></svg>
+      <div class="ct">
+        <h2 lang="hi-Latn">Senior hai na.</h2>
+        <p>See him at work in an outlet like yours.</p>
+      </div>
+      <a class="btn" href="/demo">Get a Senior</a>
+    </div>
+  </div>
+</section>
+</main>
+    <footer class="site">
+  <div class="inner">
+    <div class="fgrid">
+      <div class="fcol about">
+        <b>Senior</b><span class="sign" lang="hi-Latn">Senior hai na.</span>
+        <span>Senior is an app for hotels, bars, restaurants, QSRs, cloud kitchens and franchise businesses. It runs stock, recipes, rosters, attendance, checklists and licences from every staff phone.</span>
+      </div>
+      <div class="fcol">
+        <b>What Senior keeps</b><a href="/stock">Stock</a><a href="/recipes">Recipes</a
+        ><a href="/roster">Roster &amp; attendance</a><a href="/daily-work">Daily work</a
+        ><a href="/hotel-rooms">Hotel rooms</a><a href="/licences">Licences</a>
+      </div>
+      <div class="fcol">
+        <b>Company</b><a href="/demo">Get a Senior</a><a href="/plans">Plans</a
+        ><a href="/faq">Questions</a><a href="/trust">Trust</a><a href="/privacy">Privacy</a
+        ><a href="/terms">Terms</a>
+      </div>
+    </div>
+    <p class="credit">
+      Item photos: Wikimedia Commons, freely licensed; credits in the app. Fonts: SIL Open Font
+      License (<a href="/fonts/OFL.txt">licence</a>). © 2026 Senior · heysenior.app
+    </p>
+  </div>
+</footer>
+
+  </body>
+</html>

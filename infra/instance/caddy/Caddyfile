@@ -1,4 +1,5 @@
-# TLS termination with automatic Let's Encrypt certificates for the app domain.
+# TLS termination with automatic Let's Encrypt certificates for the app, the website (ADR 141)
+# and the app's old hostnames.
 {
 	email {$ACME_EMAIL}
 	# HTTP/1.1 and HTTP/2 only (ADR 063): the security group opens TCP 443, not UDP 443, so
@@ -9,11 +10,9 @@
 	}
 }
 
-{$APP_DOMAIN} {
-	encode zstd gzip
-	header Strict-Transport-Security "max-age=31536000"
-	# One line per request in the journal (journalctl -u outlet-ops-caddy): method, path,
-	# status and time taken. Headers (cookies included) are left out.
+# One line per request in the journal (journalctl -u outlet-ops-caddy): method, path,
+# status and time taken. Headers (cookies included) are left out.
+(request_log) {
 	log {
 		output stderr
 		format filter {
@@ -21,5 +20,55 @@
 			resp_headers delete
 		}
 	}
+}
+
+# The app (the PWA): my.heysenior.app. /login for staff, /platform for the Senior team.
+{$APP_DOMAIN} {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000"
+	import request_log
 	reverse_proxy 127.0.0.1:3000
 }
+
+# The website: heysenior.app, static files from the release (apps/site). Its demo form posts
+# to its own origin; only that one path reaches the app.
+{$SITE_DOMAIN} {
+	encode zstd gzip
+	import request_log
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'"
+	}
+	handle /api/demo-request {
+		reverse_proxy 127.0.0.1:3000
+	}
+	# Clean URLs: /plans is plans.html. Anything else is a real 404 with the 404 page, never
+	# the home page (search engines count that as a broken "soft 404").
+	# one address per page: /plans.html and /index.html go to /plans and /
+	@html path_regexp html ^/(.*?)(index)?\.html$
+	redir @html /{re.html.1} permanent
+	handle {
+		root * /opt/outlet-ops/current/site
+		@assets path *.css *.js *.webp *.png *.svg *.woff2
+		header @assets Cache-Control "public, max-age=3600"
+		try_files {path} {path}.html
+		file_server
+	}
+	handle_errors {
+		root * /opt/outlet-ops/current/site
+		rewrite * /404.html
+		file_server
+	}
+}
+
+www.{$SITE_DOMAIN} {
+	import request_log
+	redir https://{$SITE_DOMAIN}{uri} permanent
+}
+
+# The app's old hostnames, written by fetch-params.sh from legacy_domains: each sends every
+# request to the same path on the app's hostname. An empty file when there are none.
+import /etc/outlet-ops/caddy-legacy.caddy

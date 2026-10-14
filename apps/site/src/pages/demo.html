@@ -1,0 +1,89 @@
+<!--page {
+  "path": "/demo",
+  "title": "Book a demo · Senior",
+  "description": "See Senior at work in a hotel, bar, restaurant, QSR or cloud kitchen like yours. A 30-minute call; we call you within one working day.",
+  "crumb": "Get a Senior"
+}-->
+<section>
+  <div class="inner demo">
+    <div class="next">
+      <span class="eyebrow">Get a Senior</span>
+      <h1>See Senior at work in an outlet like yours.</h1>
+      <p class="lede">
+        A 30-minute call. We show Senior as your store keeper, your chef and your GM would see him.
+      </p>
+      <ol>
+        <li><b>We call you within one working day</b> to find a time.</li>
+        <li><b>We show Senior</b> in a demo hotel, bar or restaurant close to yours.</li>
+        <li><b>If you go ahead,</b> we set him up from your files and your team signs in.</li>
+      </ol>
+    </div>
+    <div>
+      <form class="card" id="demoForm" novalidate>
+        <div class="two">
+          <div class="fld">
+            <label for="f-name">Your name</label
+            ><input id="f-name" name="name" autocomplete="name" required />
+          </div>
+          <div class="fld">
+            <label for="f-phone">Phone (WhatsApp)</label
+            ><input
+              id="f-phone"
+              name="phone"
+              type="tel"
+              inputmode="tel"
+              autocomplete="tel"
+              placeholder="+91"
+              required
+            />
+          </div>
+        </div>
+        <div class="fld">
+          <label for="f-email">Email (optional)</label
+          ><input id="f-email" name="email" type="email" autocomplete="email" />
+        </div>
+        <div class="fld">
+          <label for="f-biz">Business name</label
+          ><input id="f-biz" name="business" autocomplete="organization" required />
+        </div>
+        <div class="two">
+          <div class="fld">
+            <label for="f-type">Kind of outlet</label
+            ><select id="f-type" name="type">
+              <option>Hotel</option>
+              <option>Bar &amp; pub</option>
+              <option>Restaurant</option>
+              <option>QSR</option>
+              <option>Cloud kitchen</option>
+              <option>Franchise (many outlets)</option>
+              <option>Several kinds</option>
+            </select>
+          </div>
+          <div class="fld">
+            <label for="f-n">Outlets</label
+            ><select id="f-n" name="outlets">
+              <option>1</option>
+              <option>2 to 5</option>
+              <option>6 to 20</option>
+              <option>More than 20</option>
+            </select>
+          </div>
+        </div>
+        <p class="fld"><span class="err" id="formErr" role="alert" hidden></span></p>
+        <div class="hp" aria-hidden="true">
+          <label for="f-website">Website</label
+          ><input id="f-website" name="website" tabindex="-1" autocomplete="off" />
+        </div>
+        <button class="btn" type="submit" id="f-send">Book my demo</button>
+        <p class="small">
+          We use these details only to arrange your demo. <a href="/privacy">Privacy</a>
+        </p>
+      </form>
+      <div class="thanks" id="thanks" hidden>
+        <span class="eyebrow">Booked</span>
+        <h2>Thanks, <span id="tName"></span>.</h2>
+        <p>We'll call you on <b id="tPhone"></b> within one working day.</p>
+      </div>
+    </div>
+  </div>
+</section>

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // host. Every redirect the auth routes and the proxy build must still point at APP_URL
 // (the B1 bug: a platform sign-in landed on https://localhost:3000/platform).
 
-const APP = 'https://outletops-ap.duckdns.org';
+const APP = 'https://my.heysenior.app';
 const INTERNAL = 'http://localhost:3000';
 
 const jar = new Map<string, string>();
@@ -204,6 +204,10 @@ describe('customer auth redirects use APP_URL, not the request host', () => {
   it('proxy: no session goes to /login', async () => {
     expectApp(await proxy(new NextRequest(`${INTERNAL}/requests`)), '/login?reason=signin');
   });
+
+  it('proxy: the app itself, my.heysenior.app/, with no session goes to /login (ADR 141)', async () => {
+    expectApp(await proxy(new NextRequest(`${INTERNAL}/`)), '/login?reason=signin');
+  });
 });
 
 describe('platform continue page', () => {
@@ -223,5 +227,16 @@ describe('appUrl', () => {
     expect(appUrl('/platform', { APP_URL: `${APP}/` }).toString()).toBe(`${APP}/platform`);
     expect(appUrl('/login?reason=x', { APP_URL: APP }).toString()).toBe(`${APP}/login?reason=x`);
     expect(() => appUrl('/', {})).toThrow('APP_URL is not set');
+  });
+});
+
+describe('the website demo form (ADR 141)', () => {
+  it('is the one API route the proxy leaves alone; every other path needs a session', async () => {
+    const { config } = await import('../proxy');
+    const matcher = new RegExp(`^${config.matcher[0]!}$`);
+    expect(matcher.test('/api/demo-request')).toBe(false);
+    for (const path of ['/', '/api/version', '/api/photo-local', '/platform', '/requests']) {
+      expect(matcher.test(path), path).toBe(true);
+    }
   });
 });

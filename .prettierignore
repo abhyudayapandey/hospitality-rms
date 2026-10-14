@@ -7,3 +7,6 @@ dist/
 docs/LLD.md
 docs/goal.md
 CLAUDE.md
+
+# the website's generated pages (apps/site/build.ts); site.test.ts checks them
+apps/site/public/*.html

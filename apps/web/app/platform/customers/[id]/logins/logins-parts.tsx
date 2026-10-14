@@ -36,7 +36,7 @@ export function printLoginSheet(created: readonly CreatedLogin[], company: strin
   w.document.write(`<!doctype html><meta charset="utf-8"><title>Logins: ${html(company)}</title>
 <style>body{font:14px system-ui,sans-serif;margin:24px}table{border-collapse:collapse;width:100%}
 td,th{border:1px solid #999;padding:8px;text-align:left}code{font-size:15px}</style>
-<h1>Outlet Ops logins: ${html(company)}</h1>
+<h1>Senior logins: ${html(company)}</h1>
 <p>Sign in at <b>${html(window.location.origin)}/login</b> with your login ID and this one-time
 password. You will set your own password at once. Cut along the lines and hand each person theirs;
 keep this sheet private and throw it away afterwards.</p>

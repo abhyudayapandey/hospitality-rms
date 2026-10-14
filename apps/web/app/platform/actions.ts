@@ -306,3 +306,11 @@ export async function setModule(
     return r.rows[0]!.changed;
   });
 }
+
+/** Someone on the team has called a demo request back (ADR 141): off the New list. */
+export async function markDemoRequestHandled(id: string): Promise<ActionResult<null>> {
+  return run('demo_request_handled', async (tx) => {
+    await sql`select platform.mark_demo_request_handled(${id}::uuid)`.execute(tx);
+    return null;
+  });
+}

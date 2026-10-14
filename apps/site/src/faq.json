@@ -1,0 +1,67 @@
+[
+  {
+    "id": "who-for",
+    "q": "Which businesses is Senior for?",
+    "a": "Senior is for hotels, bars and pubs, restaurants, QSRs, cloud kitchens, central kitchens and franchise businesses. It runs stock, recipes, rosters, attendance, checklists and licences from every staff phone, for one outlet or many."
+  },
+  {
+    "id": "stock-missing",
+    "q": "How do I stop stock going missing in my restaurant?",
+    "a": "Count often, record every movement, and compare what you used with what you sold. In Senior every delivery, transfer, wastage and sale moves stock through one record that nobody can edit afterwards. A stock check shows the gap for each item, and your cost controller or GM checks it. Sales from your POS are set against the stock used, so a gap shows the next morning."
+  },
+  {
+    "id": "licences",
+    "q": "Which licences does a restaurant in India need, and how do I keep track of them?",
+    "a": "Most restaurants need an FSSAI licence, a trade or shop licence and a fire safety certificate, plus an excise licence to serve alcohol. The exact list depends on your state and city. Senior keeps every licence with its renewal date and document. It reminds the person who renews it 90 days before it expires, and regular jobs like pest control 14 days before they are due."
+  },
+  {
+    "id": "selfie",
+    "q": "How do staff clock in with a selfie?",
+    "a": "Staff open Senior on their phone at the outlet and take a live selfie. Senior records the time and place, on a phone the outlet has approved. Anyone late or missing shows on the manager's Home at once. Selfies and locations are deleted on a fixed schedule."
+  },
+  {
+    "id": "recipes-chef",
+    "q": "What happens to my recipes when my chef leaves?",
+    "a": "They stay with your outlet. Each recipe in Senior has its ingredients, quantities, method and photos. A prep task shows it scaled to the batch, so the next cook makes it the same way. Only the people you choose can see full recipes and their costs."
+  },
+  {
+    "id": "checklists",
+    "q": "How do I know my team's checklists are done?",
+    "a": "Every task in Senior shows who did it and when, with photos on the steps that need them. A department head signs off the checklists that need it. A task not done on time goes to the person above, and the next shift sees the handover note on their Home."
+  },
+  {
+    "id": "minibars",
+    "q": "How does Senior handle hotel room minibars?",
+    "a": "A housekeeper checks the minibar and Senior charges the guest for what is missing. The refill goes to housekeeping and the bill to the front desk on shift. The stock leaves the store when the refill is done."
+  },
+  {
+    "id": "franchise",
+    "q": "Can I run many outlets or a franchise on Senior?",
+    "a": "Yes. One company can have many outlets, each with its own stores, people and checklists. An area manager sees every outlet they look after. Outlets share the same recipes, checklists and SOPs, and a central kitchen can send stock to them."
+  },
+  {
+    "id": "pos",
+    "q": "Does Senior replace my POS?",
+    "a": "No. Senior works next to your POS. Your cashier imports each day's item sales, so the stock used and the sales line up."
+  },
+  {
+    "id": "email",
+    "q": "Do my staff need email?",
+    "a": "No. Staff sign in with their phone number, or with a login ID printed on a sheet. Everyone sets their own password at first sign-in."
+  },
+  {
+    "id": "data",
+    "q": "Where is my data kept?",
+    "a": "In India, on AWS in Mumbai. Each customer's data is kept apart inside the database itself, and your data is yours."
+  },
+  {
+    "id": "person",
+    "q": "Is Senior a person?",
+    "a": "No. Senior is the app on your team's phones. It is called Senior because it does what your best senior does: it remembers, it reminds, and it asks before it acts."
+  },
+  {
+    "id": "setup",
+    "q": "How long does set-up take?",
+    "a": "It depends on how many outlets you have. We load your outlets, people, items, suppliers and recipes from the spreadsheets you already keep, check them, and show you a dry run before anything goes live."
+  }
+]

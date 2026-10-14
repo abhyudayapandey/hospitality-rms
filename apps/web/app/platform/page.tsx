@@ -25,12 +25,15 @@ interface Job {
   created_at: Date;
 }
 
-// ADM-4: set up a customer first; then every customer with its state, people and last sign-in
+// ADM-4: set up a customer first; demo requests from the website (ADR 141), amber while some
+// wait for a call; then every customer with its state, people and last sign-in
 // (pausing one is on its own page, ADR 077); recent activity; the other tools last.
 // Customer metadata only: a platform request cannot read customer data (ADR 012).
 export default async function PlatformHome() {
   const admin = await requirePlatformAdmin();
-  const { customers, jobs, drafts } = await withPlatformAdmin(admin, async (tx) => ({
+  const { customers, jobs, drafts, demos } = await withPlatformAdmin(admin, async (tx) => ({
+    demos: (await sql<{ n: number }>`select platform.new_demo_requests() as n`.execute(tx)).rows[0]!
+      .n,
     customers: (await sql<Customer>`select * from platform.customers()`.execute(tx)).rows,
     drafts: (await sql<Draft>`select * from platform.setup_drafts() where not live`.execute(tx))
       .rows,
@@ -64,6 +67,14 @@ export default async function PlatformHome() {
           Walks you through their outlets, people and stock, then creates their sign-ins.
         </p>
       </form>
+      <Link
+        href="/platform/demo-requests"
+        data-testid="demo-requests"
+        className={`${more} ${demos > 0 ? 'rounded-xl bg-amber-50 ring-1 ring-amber-300' : card}`}
+      >
+        <span>{demos > 0 ? `Demo requests to call back (${demos})` : 'Demo requests'}</span>
+        <span aria-hidden="true">›</span>
+      </Link>
       {drafts.length > 0 && (
         <section className="space-y-2">
           <h2 className="font-semibold">Set-ups in progress</h2>

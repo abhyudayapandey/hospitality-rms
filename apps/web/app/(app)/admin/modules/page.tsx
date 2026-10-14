@@ -5,7 +5,7 @@ import { sql, withUser } from '@/lib/db';
 import { loadShell } from '@/lib/shell';
 
 // The company's plan (ADR 026, 067, 085): its bundles and the blocks in each, read-only. Only
-// Outlet Ops (platform admins) puts bundles in or out and switches blocks; nobody in the
+// The Senior team (platform admins) puts bundles in or out and switches blocks; nobody in the
 // company changes them. Administrators see what they have.
 export default async function ModulesPage() {
   const shell = await loadShell();
@@ -33,7 +33,7 @@ export default async function ModulesPage() {
       <h1 className="text-xl font-semibold">Your plan</h1>
       <p className="text-sm text-slate-600">
         What your company has, in bundles. A part that is off isn&apos;t shown to anyone and nothing
-        of it is deleted. To add or change anything, ask Outlet Ops.
+        of it is deleted. To add or change anything, ask the Senior team.
       </p>
       <p className="text-sm text-slate-600">{ALWAYS_ON}</p>
       <div className="space-y-4" data-testid="modules">

@@ -1,8 +1,15 @@
 // Deploy-time settings, passed as CDK context (-c key=value). See docs/deploy.md.
 
 export interface OutletOpsConfig {
-  /** Public hostname of the app, e.g. outletops.duckdns.org or ops.example.com */
+  /** Public hostname of the app (the PWA), e.g. my.heysenior.app */
   domainName: string;
+  /** Public hostname of the website (ADR 141), e.g. heysenior.app; www.<it> redirects to it */
+  siteDomain: string;
+  /**
+   * Hostnames the app used to live at (ADR 141). Caddy keeps answering on them and sends
+   * every request to the same path on domainName, so installed apps and bookmarks still work.
+   */
+  legacyDomains: string[];
   /** Budget alerts and the Let's Encrypt account e-mail */
   alertEmail: string;
   /** Cognito managed-login domain prefix: <prefix>.auth.ap-south-1.amazoncognito.com */
@@ -25,6 +32,8 @@ export interface OutletOpsConfig {
   /** ARN of an existing GitHub OIDC provider in the account; one is created if unset */
   githubOidcProviderArn?: string | undefined;
 }
+
+const HOSTNAME = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
 
 export const REGION = 'ap-south-1';
 export const PARAM_PREFIX = '/outlet-ops/prod';
@@ -66,9 +75,30 @@ export function configFromContext(get: (key: string) => unknown): OutletOpsConfi
   if (!/^ami-[0-9a-f]{8,17}$/.test(amiId)) {
     throw new Error(`CDK context "amiId" must look like ami-0123456789abcdef0, got "${amiId}".`);
   }
+  const hostname = (key: string, v: string): string => {
+    if (!HOSTNAME.test(v)) throw new Error(`CDK context "${key}" must be a hostname, got "${v}".`);
+    return v;
+  };
+  const domainName = hostname('domainName', required('domainName'));
+  const siteDomain = hostname('siteDomain', required('siteDomain'));
+  if (siteDomain === domainName) {
+    throw new Error('CDK context "siteDomain" must differ from "domainName" (ADR 141).');
+  }
+  const legacy: unknown = get('legacyDomains') ?? [];
+  if (!Array.isArray(legacy) || !legacy.every((d): d is string => typeof d === 'string')) {
+    throw new Error('CDK context "legacyDomains" must be a list of hostnames.');
+  }
+  const legacyDomains = legacy.map((d) => hostname('legacyDomains', d.trim()));
+  if (
+    legacyDomains.some((d) => d === domainName || d === siteDomain || d === `www.${siteDomain}`)
+  ) {
+    throw new Error('CDK context "legacyDomains" must not list the app or website hostname.');
+  }
   const oidc = get('githubOidcProviderArn');
   return {
-    domainName: required('domainName'),
+    domainName,
+    siteDomain,
+    legacyDomains,
     alertEmail: required('alertEmail'),
     cognitoDomainPrefix: required('cognitoDomainPrefix'),
     platformCognitoDomainPrefix: required('platformCognitoDomainPrefix'),

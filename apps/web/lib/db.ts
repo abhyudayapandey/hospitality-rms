@@ -84,6 +84,27 @@ export async function rateLimitHit(key: string, limit: number, windowS: number):
     });
 }
 
+/**
+ * A demo request from the website (ADR 141): the one write with no session. Runs as app_rw
+ * with no app.user_id; platform.add_demo_request checks every field and refuses a flood.
+ */
+export async function addDemoRequest(r: {
+  name: string;
+  phone: string;
+  email: string;
+  business: string;
+  outletKind: string;
+  outlets: string;
+}): Promise<string> {
+  return db()
+    .transaction()
+    .execute(async (tx) => {
+      const res = await sql<{ id: string }>`select platform.add_demo_request(${r.name}, ${r.phone},
+        ${r.email}, ${r.business}, ${r.outletKind}, ${r.outlets}) as id`.execute(tx);
+      return res.rows[0]!.id;
+    });
+}
+
 /** Dev login only (ADR 004): resolves a test user by customer code and username. */
 export async function userIdForUsername(
   customer: string,

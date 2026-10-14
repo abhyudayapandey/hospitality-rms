@@ -96,6 +96,7 @@ export const ERROR_MESSAGES = {
   USERNAME_TAKEN: 'That username is already in use.',
   EMAIL_TAKEN: 'That email is already used by another login.',
   RATE_LIMITED: 'Too many attempts. Wait a few minutes and try again.',
+  INVALID_DEMO_REQUEST: 'Please check your name, phone number and business name.',
   CROSS_ORIGIN: 'That request came from another site and was refused.',
   IS_TEST_IMMUTABLE: 'Whether a customer is a test customer is set when it is created.',
   PLATFORM_AUDIT_APPEND_ONLY: 'The platform audit cannot be changed.',

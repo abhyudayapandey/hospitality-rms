@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "e2e": "env -u DEV_AUTH_STUB next build && playwright test",
     "check:prod-dev-auth": "bash scripts/check-prod-dev-auth.sh",
-    "photos": "tsx scripts/photos/build.ts"
+    "photos": "tsx scripts/photos/build.ts",
+    "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1143.0",

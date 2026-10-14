@@ -5,9 +5,9 @@ import { DEFAULT_THEME, THEME_SCRIPT } from '@/lib/theme';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Outlet Ops',
-  description: 'Stock, orders, people and operations for every outlet.',
-  appleWebApp: { capable: true, title: 'Outlet Ops', statusBarStyle: 'default' },
+  title: 'Senior',
+  description: 'Senior hai na. Stock, orders, people and the day’s work for every outlet.',
+  appleWebApp: { capable: true, title: 'Senior', statusBarStyle: 'default' },
   icons: { icon: '/icons/icon-192.png', apple: '/icons/icon-192.png' },
 };
 

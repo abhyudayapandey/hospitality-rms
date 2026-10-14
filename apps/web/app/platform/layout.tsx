@@ -6,9 +6,9 @@ export default function PlatformLayout({ children }: { children: ReactNode }) {
     <div className="mx-auto max-w-3xl space-y-4 p-4">
       <header className="flex items-baseline justify-between gap-2 border-b border-slate-200 pb-2">
         <p className="font-semibold">
-          Outlet Ops · Team console
+          Senior · Team console
           <span className="block text-xs font-normal text-slate-500">
-            For Outlet Ops staff: customers never see this
+            For the Senior team: customers never see this
           </span>
         </p>
       </header>

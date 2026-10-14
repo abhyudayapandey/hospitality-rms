@@ -1,0 +1,51 @@
+<!--page {
+  "path": "/plans",
+  "title": "Plans and pricing per outlet · Senior",
+  "description": "Pay per outlet for what Senior looks after: stock, recipes, roster, daily work, hotel rooms and licences. Pick your kind of outlet to see the usual plan.",
+  "crumb": "Plans",
+  "faq": [
+    "setup",
+    "franchise"
+  ]
+}-->
+<section>
+  <div class="inner ptop">
+    <span class="eyebrow">Plans</span>
+    <h1>Pay for what Senior looks after, per outlet.</h1>
+    <p class="lede">
+      Every plan comes with the basics and set-up from your files. Pick your kind of outlet to see
+      the usual choice, then add or remove.
+    </p>
+  </div>
+  <div class="inner">
+    <div class="planner">
+      <div class="planleft">
+        <div class="fmt" role="group" aria-label="Kind of outlet">
+          <button type="button" data-fmt="hotel" aria-pressed="false">Hotel</button>
+          <button type="button" data-fmt="bar" aria-pressed="true">Bar &amp; pub</button>
+          <button type="button" data-fmt="restaurant" aria-pressed="false">Restaurant</button>
+          <button type="button" data-fmt="qsr" aria-pressed="false">QSR</button>
+          <button type="button" data-fmt="cloud" aria-pressed="false">Cloud kitchen</button>
+        </div>
+        <div class="bcards" id="bcards"></div>
+      </div>
+      <aside class="summary" aria-live="polite">
+        <span class="eyebrow">Your Senior looks after</span>
+        <div>
+          <span class="count" id="sumCount">0</span>
+          <span class="small">jobs, plus the basics</span>
+        </div>
+        <ul id="sumList"></ul>
+        <p class="small">Prices are set per outlet once we've seen your set-up.</p>
+        <a class="btn" href="/demo">Talk to us about this plan</a>
+      </aside>
+    </div>
+  </div>
+  <div class="inner sec tight">
+    <div class="sec-head">
+      <span class="eyebrow">Questions</span>
+      <h2>Before you start</h2>
+    </div>
+    {{faq}}
+  </div>
+</section>

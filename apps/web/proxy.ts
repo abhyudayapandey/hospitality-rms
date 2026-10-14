@@ -140,8 +140,9 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  // Everything except public pages, auth routes, the PWA files and static assets.
+  // Everything except public pages, auth routes, the PWA files, static assets and the
+  // website's demo form (ADR 141), which has no session by design.
   matcher: [
-    '/((?!login|dev-login|offline|auth/|manifest.webmanifest|sw.js|icons/|icon|apple-icon|favicon|_next/).*)',
+    '/((?!login|dev-login|offline|auth/|api/demo-request|manifest.webmanifest|sw.js|icons/|icon|apple-icon|favicon|_next/).*)',
   ],
 };

@@ -11,6 +11,7 @@ export const LIMITS = {
   signIn: { limit: 30, windowS: 300 }, // per client address
   passwordReset: { limit: 10, windowS: 3600 }, // per admin
   passwordChange: { limit: 5, windowS: 3600 }, // per person, their own (ADR 018)
+  demoRequest: { limit: 5, windowS: 3600 }, // per client address, the website's form (ADR 141)
 } as const;
 
 /** The client address as Caddy forwards it (first X-Forwarded-For entry). */

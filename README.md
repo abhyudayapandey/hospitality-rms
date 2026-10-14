@@ -1,7 +1,9 @@
-# Outlet Ops
+# Senior
 
-A mobile-first outlet operations platform for hospitality. See `CLAUDE.md` for the stack
-and rules, and `docs/LLD.md` for the design.
+Senior hai na. Stock, people and every role's day for hotels, bars and restaurants, on every
+phone in the outlet. The app is at my.heysenior.app and the website at heysenior.app
+(`apps/site`, ADR 141). See `CLAUDE.md` for the stack and rules, and `docs/LLD.md` for the
+design. (The code's internal name is still outlet-ops.)
 
 ```sh
 cp .env.example .env

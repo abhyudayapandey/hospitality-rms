@@ -54,6 +54,23 @@ export default tseslint.config(
     },
   },
   {
+    // the website's one script (ADR 141), run by browsers
+    files: ['apps/site/public/site.js'],
+    languageOptions: {
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        location: 'readonly',
+        fetch: 'readonly',
+      },
+    },
+  },
+  {
+    // build-time scripts, run by Node
+    files: ['apps/web/scripts/*.mjs'],
+    languageOptions: { globals: { Buffer: 'readonly', console: 'readonly', process: 'readonly' } },
+  },
+  {
     files: ['apps/web/**/*.{ts,tsx}'],
     plugins: { '@next/next': nextPlugin },
     settings: { next: { rootDir: 'apps/web' } },

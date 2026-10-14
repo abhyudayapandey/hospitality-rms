@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { configFromContext, githubDeploySubject } from './config';
 
 const base: Record<string, unknown> = {
-  domainName: 'outletops.duckdns.org',
+  domainName: 'my.heysenior.app',
+  siteDomain: 'heysenior.app',
   alertEmail: 'ops@example.com',
   cognitoDomainPrefix: 'outlet-ops-test',
   platformCognitoDomainPrefix: 'outlet-ops-test-platform',
@@ -39,8 +40,26 @@ describe('configFromContext', () => {
     ['githubRepo', 'abhyudayapandey/*', /owner\/repo/],
     ['amiId', undefined, /Missing CDK context "amiId"/],
     ['amiId', 'latest', /must look like ami-/],
+    ['siteDomain', undefined, /Missing CDK context "siteDomain"/],
+    ['siteDomain', 'https://heysenior.app', /must be a hostname/],
+    ['siteDomain', 'my.heysenior.app', /must differ/],
+    ['legacyDomains', 'old.example.com', /list of hostnames/],
+    ['legacyDomains', ['heysenior.app'], /must not list/],
+    ['legacyDomains', ['bad host'], /must be a hostname/],
   ])('rejects %s=%j', (key, value, error) => {
     expect(() => configFromContext(ctx({ [key]: value }))).toThrow(error);
+  });
+});
+
+describe('hosts (ADR 141)', () => {
+  it('reads the website and the legacy hostnames; no legacy list means none', () => {
+    expect(configFromContext(ctx()).legacyDomains).toEqual([]);
+    const c = configFromContext(ctx({ legacyDomains: ['old.duckdns.org'] }));
+    expect([c.domainName, c.siteDomain, c.legacyDomains]).toEqual([
+      'my.heysenior.app',
+      'heysenior.app',
+      ['old.duckdns.org'],
+    ]);
   });
 });
 
@@ -58,7 +77,9 @@ describe('infra/cdk.json', () => {
       context: Record<string, unknown>;
     };
     const c = configFromContext((k) => cdk.context[k]);
-    expect(c.domainName).toMatch(/^[a-z0-9-]+(\.[a-z0-9-]+)+$/); // a full hostname
+    expect(c.domainName).toBe('my.heysenior.app');
+    expect(c.siteDomain).toBe('heysenior.app');
+    expect(c.legacyDomains).toEqual(['outletops-ap.duckdns.org']);
     expect(c.alertEmail).toMatch(/^[^@\s]+@[^@\s]+\.[a-z]+$/);
     expect(githubDeploySubject(c)).toBe(
       'repo:abhyudayapandey@33194509/hospitality-rms@1394585977:environment:production',

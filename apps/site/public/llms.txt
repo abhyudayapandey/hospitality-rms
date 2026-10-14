@@ -1,0 +1,81 @@
+# Senior
+
+> Senior is an app for hotels, bars, restaurants, QSRs, cloud kitchens and franchise businesses. It runs stock, recipes, rosters, attendance, checklists and licences from every staff phone.
+
+Senior is called Senior because it does what an outlet's most experienced person does: it remembers the recipes, pars, licence dates and handovers, reminds the right person, and asks before it acts. A person approves every order and change it suggests. Its line is "Log aate jaate rahenge. Senior yahin rahega." (People come and go. Senior stays.)
+
+- Website: https://heysenior.app/
+- The app (for signed-in staff): https://my.heysenior.app
+- Who it is for: Hotels, bars and pubs, restaurants, QSRs, cloud kitchens, central kitchens and franchise businesses
+- Where: India; data kept on AWS in Mumbai
+
+## Pages
+
+- [Daily work](https://heysenior.app/daily-work): Checklists for every role with photos, sign-offs, repairs, the logbook, meters and audits, so every shift knows what to do and who did it.
+- [Get a Senior](https://heysenior.app/demo): See Senior at work in a hotel, bar, restaurant, QSR or cloud kitchen like yours. A 30-minute call; we call you within one working day.
+- [Questions](https://heysenior.app/faq): Answers for owners: stopping stock loss, licences a restaurant in India needs, selfie attendance, recipes when a chef leaves, franchises and set-up.
+- [Hotel rooms](https://heysenior.app/hotel-rooms): Minibar checks that charge what is missing, refills for housekeeping, bills for the front desk, room status, linen and uniforms.
+- [Home](https://heysenior.app/): Stock, recipes, rosters, selfie attendance, checklists and licence reminders for hotels, bars, restaurants, QSRs, cloud kitchens and franchises.
+- [Licences](https://heysenior.app/licences): Every licence with its renewal date and documents, reminders 90 days before expiry, and pest control, fire drills and inspections on a calendar.
+- [Plans](https://heysenior.app/plans): Pay per outlet for what Senior looks after: stock, recipes, roster, daily work, hotel rooms and licences. Pick your kind of outlet to see the usual plan.
+- [Privacy](https://heysenior.app/privacy): What Senior collects from this website and from the app, how long it is kept, where it is kept in India, and your rights under the DPDP Act 2023.
+- [Recipes](https://heysenior.app/recipes): Keep every recipe, its cost and method when cooks leave. Prep tasks scaled to the batch, POS sales against stock used, and the excise register.
+- [Roster & attendance](https://heysenior.app/roster): Rosters by tile, clock-in with a live selfie on a known phone, leave and shift swaps, and labour cost next to sales, for every outlet.
+- [Stock](https://heysenior.app/stock): Stock checks against par, supply requests, supplier orders, bills and wastage for restaurants, hotels, QSRs and cloud kitchens, on every phone.
+- [Terms](https://heysenior.app/terms): The terms of service for Senior, the operations app for hotels, restaurants, QSRs and cloud kitchens, to be written with a lawyer before launch.
+- [Trust](https://heysenior.app/trust): Each person sees only their place and their work. Data kept in India on AWS Mumbai, every change recorded, and nobody approves their own request.
+- [What Senior keeps](https://heysenior.app/what-senior-keeps): Stock, recipes, rosters and attendance, daily checklists, hotel rooms and licences: what Senior keeps for hotels, restaurants, QSRs and franchises.
+
+## Questions
+
+### Which businesses is Senior for?
+
+Senior is for hotels, bars and pubs, restaurants, QSRs, cloud kitchens, central kitchens and franchise businesses. It runs stock, recipes, rosters, attendance, checklists and licences from every staff phone, for one outlet or many.
+
+### How do I stop stock going missing in my restaurant?
+
+Count often, record every movement, and compare what you used with what you sold. In Senior every delivery, transfer, wastage and sale moves stock through one record that nobody can edit afterwards. A stock check shows the gap for each item, and your cost controller or GM checks it. Sales from your POS are set against the stock used, so a gap shows the next morning.
+
+### Which licences does a restaurant in India need, and how do I keep track of them?
+
+Most restaurants need an FSSAI licence, a trade or shop licence and a fire safety certificate, plus an excise licence to serve alcohol. The exact list depends on your state and city. Senior keeps every licence with its renewal date and document. It reminds the person who renews it 90 days before it expires, and regular jobs like pest control 14 days before they are due.
+
+### How do staff clock in with a selfie?
+
+Staff open Senior on their phone at the outlet and take a live selfie. Senior records the time and place, on a phone the outlet has approved. Anyone late or missing shows on the manager's Home at once. Selfies and locations are deleted on a fixed schedule.
+
+### What happens to my recipes when my chef leaves?
+
+They stay with your outlet. Each recipe in Senior has its ingredients, quantities, method and photos. A prep task shows it scaled to the batch, so the next cook makes it the same way. Only the people you choose can see full recipes and their costs.
+
+### How do I know my team's checklists are done?
+
+Every task in Senior shows who did it and when, with photos on the steps that need them. A department head signs off the checklists that need it. A task not done on time goes to the person above, and the next shift sees the handover note on their Home.
+
+### How does Senior handle hotel room minibars?
+
+A housekeeper checks the minibar and Senior charges the guest for what is missing. The refill goes to housekeeping and the bill to the front desk on shift. The stock leaves the store when the refill is done.
+
+### Can I run many outlets or a franchise on Senior?
+
+Yes. One company can have many outlets, each with its own stores, people and checklists. An area manager sees every outlet they look after. Outlets share the same recipes, checklists and SOPs, and a central kitchen can send stock to them.
+
+### Does Senior replace my POS?
+
+No. Senior works next to your POS. Your cashier imports each day's item sales, so the stock used and the sales line up.
+
+### Do my staff need email?
+
+No. Staff sign in with their phone number, or with a login ID printed on a sheet. Everyone sets their own password at first sign-in.
+
+### Where is my data kept?
+
+In India, on AWS in Mumbai. Each customer's data is kept apart inside the database itself, and your data is yours.
+
+### Is Senior a person?
+
+No. Senior is the app on your team's phones. It is called Senior because it does what your best senior does: it remembers, it reminds, and it asks before it acts.
+
+### How long does set-up take?
+
+It depends on how many outlets you have. We load your outlets, people, items, suppliers and recipes from the spreadsheets you already keep, check them, and show you a dry run before anything goes live.

@@ -1,0 +1,76 @@
+<!--page {
+  "path": "/trust",
+  "title": "Data security and access by role · Senior",
+  "description": "Each person sees only their place and their work. Data kept in India on AWS Mumbai, every change recorded, and nobody approves their own request.",
+  "crumb": "Trust",
+  "faq": [
+    "data"
+  ]
+}-->
+<section>
+  <div class="inner ptop">
+    <span class="eyebrow">Trust</span>
+    <h1>Each person sees only their place and their work.</h1>
+    <p class="lede">
+      Access is given to a job role at a place, and covers that place and everything under it. The
+      database checks it on every request, so a mistake in a screen can't show the wrong data.
+    </p>
+  </div>
+  <div class="inner sec tight">
+    <div class="tree" aria-label="Example: access follows the places a role covers">
+      Company └─ West region <b>Area manager sees both hotels</b> ├─ Seaside Hotel
+      <b>GM sees the whole hotel</b> │ ├─ Kitchen <b>Executive chef: kitchen and its store</b> │ ├─
+      Bar <b>Bar manager: bar, bar store, bar team</b> │ └─ Housekeeping └─ City Hotel
+    </div>
+    <div class="sgrid">
+      <div class="scard">
+        <h3>Senior only advises</h3>
+        <p>Senior can read and suggest. A person approves every change, and their name is on it.</p>
+      </div>
+      <div class="scard">
+        <h3>Your data stays yours</h3>
+        <p>
+          Every customer's data is kept apart inside the database, and every table is checked by an
+          automatic test on every release.
+        </p>
+      </div>
+      <div class="scard">
+        <h3>Nothing changed quietly</h3>
+        <p>
+          Every stock movement and approval is recorded with who, when and why. Stock is never
+          edited, only added to or taken from.
+        </p>
+      </div>
+      <div class="scard">
+        <h3>Nobody approves their own request</h3>
+        <p>
+          Requests go to the right person by place and role. Whoever asks can never be the one who
+          approves.
+        </p>
+      </div>
+      <div class="scard">
+        <h3>Kept in India</h3>
+        <p>
+          On AWS in Mumbai. Bills are kept for 7 years. Clock-in selfies and locations are deleted
+          on a fixed schedule.
+        </p>
+      </div>
+      <div class="scard">
+        <h3>Sign-in that suits a kitchen</h3>
+        <p>
+          Staff sign in with their phone number. Clock-in takes a live selfie, on phones you've
+          approved.
+        </p>
+      </div>
+    </div>
+    {{faq}}
+    <div class="closer">
+      <svg aria-hidden="true"><use href="#sr-mark" /></svg>
+      <div class="ct">
+        <h2>Have a security questionnaire?</h2>
+        <p>Send it over. We answer every question.</p>
+      </div>
+      <a class="btn" href="/demo">Send it to us</a>
+    </div>
+  </div>
+</section>

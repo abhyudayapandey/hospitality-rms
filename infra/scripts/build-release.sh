@@ -66,6 +66,9 @@ install -m 0755 dist/cache/package/bin/dbmate "$OUT/bin/dbmate"
 echo "== Migrations and instance files"
 cp -a packages/db/migrations "$OUT/migrations"
 cp -a infra/instance/deploy infra/instance/systemd infra/instance/postgres infra/instance/caddy "$OUT/"
+# The website (ADR 141): Caddy serves these files on the site domain; nothing is built.
+mkdir -p "$OUT/site"
+(cd apps/site/public && cp -a . "$OUT/site/")
 chmod 0755 "$OUT"/deploy/*.sh
 chmod 0644 "$OUT/deploy/lib.sh"
 

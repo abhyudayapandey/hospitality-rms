@@ -1,5 +1,5 @@
 // Shapes and words shared by the platform console's pages (ADR 012, 013). The console is for
-// Outlet Ops staff, and it speaks plainly too (ADR 077): no codes, no job kinds, no table
+// the Senior team, and it speaks plainly too (ADR 077): no codes, no job kinds, no table
 // names, no raw states.
 
 export interface PlatformCustomer {
@@ -86,4 +86,39 @@ const COUNT_LABELS: Record<string, string> = {
 /** One row of an import report, named as people say it. */
 export function countLabel(key: string): string {
   return COUNT_LABELS[key] ?? key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+/** A demo request from the website (ADR 141), as platform.demo_requests() returns it. */
+export interface DemoRequestRow {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  business: string;
+  outlet_kind: string;
+  outlets: string;
+  created_at: Date;
+  handled_at: Date | null;
+  handled_by_email: string | null;
+}
+
+const OUTLET_KIND_WORDS: Record<string, string> = {
+  hotel: 'Hotel',
+  bar: 'Bar & pub',
+  restaurant: 'Restaurant',
+  qsr: 'QSR',
+  cloud_kitchen: 'Cloud kitchen',
+  franchise: 'Franchise',
+  several: 'Several kinds',
+};
+
+/** "Restaurant · 2 to 5 outlets", in the words the form used. */
+export function demoOutlets(kind: string, outlets: string): string {
+  const n = {
+    '1': '1 outlet',
+    '2-5': '2 to 5 outlets',
+    '6-20': '6 to 20 outlets',
+    '20+': 'More than 20 outlets',
+  }[outlets];
+  return `${OUTLET_KIND_WORDS[kind] ?? 'Outlets'} · ${n ?? outlets}`;
 }

@@ -25,7 +25,7 @@ test('sign-out clears the session and refresh cookies and the service-worker cac
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page.getByTestId('leaving')).toContainText('Signing you out');
   await page.waitForURL(/\/login/);
-  await expect(page.getByRole('heading', { name: 'Outlet Ops', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Senior', level: 1 })).toBeVisible();
   // the app's screen was replaced: Back does not return to it
   await page.goBack().catch(() => undefined);
   await expect(page).not.toHaveURL(/\/me$/);
