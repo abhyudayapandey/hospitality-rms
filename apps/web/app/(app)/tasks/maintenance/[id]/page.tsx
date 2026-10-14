@@ -69,7 +69,9 @@ export default async function MaintenanceRequestPage({
                 ? 'not assigned yet'
                 : r.status === 'done'
                   ? `done${r.done_at ? ` ${formatWhen(r.done_at)}` : ''}`
-                  : `${r.status === 'in_progress' ? 'in progress' : 'assigned'} with ${r.assigned_to_name}`}
+                  : r.status === 'in_progress'
+                    ? `${r.assigned_to_name} is on it`
+                    : `with ${r.assigned_to_name}`}
             </p>
             {r.assigned_at && r.assigned_to_name && (
               <p data-testid="repair-given">

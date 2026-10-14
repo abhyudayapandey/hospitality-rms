@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { taskIcon } from '@outlet-ops/domain';
 import { Icon } from '@/components/icon';
 import { formatWhen } from '@/lib/format';
-import { overdueWhenGiven, progress } from '@/lib/tasks-view';
+import { overdueWhenGiven, progress, rejected } from '@/lib/tasks-view';
 
 export interface ListedTask {
   id: string;
@@ -23,6 +23,8 @@ export interface ListedTask {
   /** the job role whose work it is, when it came to me by cover (ADR 061) */
   covering?: string | null;
   flagged?: number;
+  /** a head's ask they couldn't give: why; it reads "rejected" (ADR 141) */
+  not_given_reason?: string | null;
 }
 
 const STATUS: Record<string, string> = {
@@ -93,7 +95,9 @@ export function TaskList({
               {mine ? (
                 // the reader's own: when, and a red dot when late or urgent; done is green
                 <span className="flex shrink-0 items-center gap-2 text-sm tabular-nums">
-                  {t.status === 'done' ? (
+                  {rejected(t) ? (
+                    <Icon name="x" className="size-5 text-rose-700" label="Rejected" />
+                  ) : t.status === 'done' ? (
                     <Icon name="check" className="size-5 text-emerald-700" label="Done" />
                   ) : (
                     <>
@@ -118,18 +122,20 @@ export function TaskList({
                 <span className="shrink-0 text-right text-xs tabular-nums">
                   <span
                     className={
-                      t.overdue
+                      t.overdue || rejected(t)
                         ? 'font-semibold text-rose-700'
                         : t.status === 'done'
                           ? 'text-emerald-700'
                           : 'text-slate-600'
                     }
                   >
-                    {t.overdue
-                      ? overdueWhenGiven(t)
-                        ? 'overdue when given'
-                        : 'overdue'
-                      : (STATUS[t.status] ?? t.status)}
+                    {rejected(t)
+                      ? 'rejected'
+                      : t.overdue
+                        ? overdueWhenGiven(t)
+                          ? 'overdue when given'
+                          : 'overdue'
+                        : (STATUS[t.status] ?? t.status)}
                   </span>
                   {t.steps_total > 1 && <span className="block text-slate-500">{p.text}</span>}
                   {(t.flagged ?? 0) > 0 && (

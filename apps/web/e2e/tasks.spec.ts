@@ -94,9 +94,7 @@ test('a problem goes to Engineering, who assigns the technician', async ({ page 
     .getByRole('combobox', { name: 'Technician' })
     .selectOption(await userId('test.technician.1.0'));
   await main(page).getByRole('button', { name: 'Assign' }).click();
-  await expect(page.getByTestId('repair-status')).toContainText(
-    'assigned with Test Technician 1.0',
-  );
+  await expect(page.getByTestId('repair-status')).toContainText('with Test Technician 1.0');
 
   await signInAs(page, 'Test Technician 1.0');
   // a technician's day is their repairs: on Home, counted on the Tasks tile (ADR 052)
@@ -109,7 +107,7 @@ test('a problem goes to Engineering, who assigns the technician', async ({ page 
     .getByRole('link', { name: new RegExp(title) })
     .click();
   await main(page).getByRole('button', { name: 'Start the repair' }).click();
-  await expect(page.getByTestId('repair-status')).toContainText('in progress with');
+  await expect(page.getByTestId('repair-status')).toContainText('is on it');
   // closing needs a photo of the fix
   await expect(main(page).getByRole('button', { name: 'Mark fixed' })).toBeDisabled();
 });

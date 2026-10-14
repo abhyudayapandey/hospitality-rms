@@ -387,6 +387,12 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   the assistant manager's Mid-shift reset and Lock-up (a library checklist may name an
   outlet-level role). Starter SOPs are product code (`sops.ts`), listed by templates and
   written to file 46 by `addOutlet`. Push today lists every dish of the outlet, food and drinks.
+- Requests show what each store has (ADR 141, `inv.request_levels`): the GM's approval card
+  and a request's page give, per line, the giving store's stock and the asking store's against
+  its par. A head's "Can't give it" reads "Rejected by <head>: <reason>" (`not_given_reason`),
+  never "Done", and sends no "Done: ..."; "It arrived: give it" only once it has (`arrived`);
+  a short store asks first. The Main Store's keeper buys what it doesn't keep for a store that
+  asks it. Running low is under par: "14 of 20 kg (~1 day left)" (replaces ADR 034's rule).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

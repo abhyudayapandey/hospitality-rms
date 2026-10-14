@@ -21,6 +21,8 @@ export interface TransferLine {
   requested_qty: string;
   dispatched_qty: string | null;
   received_qty: string | null;
+  /** what the giving store has and the asking store has of its par (ADR 141) */
+  levels?: string;
 }
 
 const n = (v: string | null) => (v === null ? null : Number(v));
@@ -145,6 +147,11 @@ export function TransferStepForm({
                 {l.dispatched_qty !== null && ` · sent ${n(l.dispatched_qty)}`}
                 {l.received_qty !== null && ` · received ${n(l.received_qty)}`} {l.base_uom}
               </span>
+              {l.levels && (
+                <span className="block text-xs text-slate-500" data-testid="line-levels">
+                  {l.levels}
+                </span>
+              )}
             </label>
             {(mode === 'dispatch' || mode === 'receive') && (
               <input

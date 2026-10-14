@@ -7,6 +7,7 @@ import { formatWhen } from '@/lib/format';
 const STAGE: Record<string, { icon: IconName; style: string }> = {
   received: { icon: 'check', style: 'bg-emerald-50 text-emerald-900 ring-emerald-200' },
   given: { icon: 'check', style: 'bg-emerald-50 text-emerald-900 ring-emerald-200' },
+  arrived: { icon: 'check', style: 'bg-emerald-50 text-emerald-900 ring-emerald-200' },
   on_the_way: { icon: 'truck', style: 'bg-sky-50 text-sky-900 ring-sky-200' },
   waiting_approval: { icon: 'clock', style: 'bg-violet-50 text-violet-900 ring-violet-200' },
   closed: { icon: 'x', style: 'bg-rose-50 text-rose-900 ring-rose-200' },

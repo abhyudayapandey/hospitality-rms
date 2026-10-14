@@ -60,6 +60,13 @@ export function InboxItem({ entry, compact = false }: { entry: InboxEntry; compa
           Needs your approval: {entry.why}.
         </p>
       )}
+      {entry.levels && entry.levels.length > 0 && (
+        <ul className="mt-1 space-y-0.5 text-sm text-slate-700" data-testid="inbox-levels">
+          {entry.levels.map((l) => (
+            <li key={l}>{l}</li>
+          ))}
+        </ul>
+      )}
       {entry.link && (
         <Link
           href={entry.link.href}

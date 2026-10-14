@@ -55,14 +55,26 @@ export function myTaskWho(t: {
 
 /**
  * Who did a done task, and when (ADR 075): "Done by you, today, 10:42 am", or the name of
- * whoever in the job role did it. Null for a task still to do.
+ * whoever in the job role did it. A head's ask they couldn't give says so, and why (ADR 141):
+ * "Rejected by Calvin Rodrigues: Enough mint for tonight". Null for a task still to do.
  */
 export function doneBy(
-  t: { status: string; completed_at: Date | string | null; done_by_name: string | null },
+  t: {
+    status: string;
+    completed_at: Date | string | null;
+    done_by_name: string | null;
+    not_given_reason?: string | null;
+  },
   now: Date = new Date(),
 ): string | null {
   if (t.status !== 'done' || !t.completed_at) return null;
+  if (t.not_given_reason) return `Rejected by ${t.done_by_name ?? 'you'}: ${t.not_given_reason}`;
   return `Done by ${t.done_by_name ?? 'you'}, ${formatWhen(t.completed_at, now)}`;
+}
+
+/** A head's ask that was not given reads "rejected", never "done" (ADR 141). */
+export function rejected(t: { status: string; not_given_reason?: string | null }): boolean {
+  return t.status === 'done' && !!t.not_given_reason;
 }
 
 /**

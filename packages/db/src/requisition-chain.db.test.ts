@@ -278,6 +278,65 @@ async function transferOf(c: PoolClient, id: string) {
 }
 
 describe('with a Main Store, a department asks it (ADR 115)', () => {
+  it('whoever decides or sends it sees what each store has, and the par (ADR 141)', async () => {
+    await inRolledBackTx(async (c) => {
+      const item = await lager(c);
+      await stockAt(c, item, MAIN, 40);
+      await stockAt(c, item, HK, 5);
+      const t = await ask(c, item, 24);
+      for (const who of [KEEPER, ASKER]) {
+        const levels = await rows<{
+          from_on_hand: number;
+          to_on_hand: number;
+          to_par: number;
+          from_name: string;
+          to_name: string;
+        }>(
+          c,
+          who,
+          `select from_on_hand::int, to_on_hand::int, to_par::int, from_name, to_name
+             from inv.request_levels($1)`,
+          [t],
+        );
+        expect(levels).toEqual([
+          {
+            from_on_hand: 40,
+            to_on_hand: 5,
+            to_par: 48,
+            from_name: 'Main Store',
+            to_name: 'Housekeeping Store',
+          },
+        ]);
+      }
+      expect(
+        await fails(c, 'test.room-attendant-b.1.0', `select * from inv.request_levels($1)`, [t]),
+      ).toMatch(/NOT_AUTHORISED/);
+    });
+  });
+
+  it('the Main Store doesn’t keep it: its keeper buys it for the store, and keeps it from then on', async () => {
+    await inRolledBackTx(async (c) => {
+      const item = await lager(c);
+      await stockAt(c, item, HK, 0);
+      await c.query(
+        `update inv.item_node set archived_at = now() where item_id = $1 and delivery_node_id = $2`,
+        [item, ids.node(MAIN)],
+      );
+      const t = await ask(c, item, 24);
+      expect((await transferOf(c, t)).from_code).toBe(MAIN);
+      const po = (
+        await one<{ id: string }>(c, KEEPER, `select inv.order_for_request($1, null) as id`, [t])
+      ).id;
+      expect(po).toBeTruthy();
+      const kept = await c.query<{ archived: boolean }>(
+        `select archived_at is not null as archived from inv.item_node
+          where item_id = $1 and delivery_node_id = $2`,
+        [item, ids.node(MAIN)],
+      );
+      expect(kept.rows).toEqual([{ archived: false }]);
+    });
+  });
+
   it('asks the Main Store for everything, though the Bar keeps lager: one request', async () => {
     await inRolledBackTx(async (c) => {
       const item = await lager(c);
@@ -747,7 +806,7 @@ describe('a frontline person asks their department head, and follows it', () => 
       expect(await detail(ATTENDANT)).toMatchObject({
         may_act: false,
         asked_by: 'Test Room Attendant 1.0',
-        lines: [expect.objectContaining({ qty: 6, at_store: 10 })],
+        lines: [expect.objectContaining({ qty: 6, at_store: 10, par: 48 })],
       });
       expect((await detail(ASKER)).may_act).toBe(true);
       const task = await headTask(c, ask);
@@ -761,6 +820,8 @@ describe('a frontline person asks their department head, and follows it', () => 
 
       await one(c, ASKER, `select inv.give_staff_ask($1, null) as s`, [ask]);
       expect(await told(c, ATTENDANT)).toContainEqual(expect.stringMatching(/Ready for you/));
+      // "Ready for you" says it; the head's task sends no "Done: ..." as well (ADR 141)
+      expect(await told(c, ATTENDANT)).not.toContainEqual(expect.stringMatching(/^Done: /));
       const given = await askSeen(c, ATTENDANT, ask);
       expect(given.stage).toBe('given');
       expect(given.story.join(' | ')).toMatch(
@@ -791,6 +852,7 @@ describe('a frontline person asks their department head, and follows it', () => 
       const asked = await askSeen(c, ATTENDANT, ask);
       expect(asked.stage).toBe('asked_on');
       expect(asked.words).toMatch(/Main Store/);
+      // nothing has arrived: the head may not give it yet (ADR 141)
       expect(await told(c, ATTENDANT)).toContainEqual(expect.stringMatching(/Main Store/));
 
       await one(c, KEEPER, `select inv.send_request($1, null) as s`, [t]);
@@ -806,6 +868,7 @@ describe('a frontline person asks their department head, and follows it', () => 
         expect.stringMatching(/Arrived at the Housekeeping Store/),
       );
       expect((await headTask(c, ask))?.status).toMatch(/open|in_progress/);
+      expect((await askSeen(c, ASKER, ask)).stage).toBe('arrived');
       await one(c, ASKER, `select inv.give_staff_ask($1, null) as s`, [ask]);
       const done = await askSeen(c, ATTENDANT, ask);
       expect(done.stage).toBe('given');
@@ -824,6 +887,23 @@ describe('a frontline person asks their department head, and follows it', () => 
       const seen = await askSeen(c, ATTENDANT, ask);
       expect(seen.stage).toBe('closed');
       expect(seen.words).toMatch(/enough in the room/);
+      // the lists say it was rejected and why, never done (ADR 141); one alert, not "Done: ..."
+      const task = await headTask(c, ask);
+      const mine = await rows<{ id: string; not_given_reason: string | null }>(
+        c,
+        ASKER,
+        `select id::text, not_given_reason from ops.my_tasks() where id = $1`,
+        [task!.id],
+      );
+      expect(mine).toEqual([{ id: task!.id, not_given_reason: 'enough in the room' }]);
+      const given = await rows<{ id: string; not_given_reason: string | null }>(
+        c,
+        ATTENDANT,
+        `select id::text, not_given_reason from ops.my_handed_on() where id = $1`,
+        [task!.id],
+      );
+      expect(given).toEqual([{ id: task!.id, not_given_reason: 'enough in the room' }]);
+      expect(await told(c, ATTENDANT)).not.toContainEqual(expect.stringMatching(/^Done: /));
     });
   });
 
