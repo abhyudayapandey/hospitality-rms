@@ -41,3 +41,13 @@ head to see a late Collect task where they already look.
 
 - A store keeper reaches Transfers from Me → RFMs or Home's counts, one tap more than a Stock
   tab. Home's "To send" count still opens it directly.
+
+## Follow-up: Ask, Transfer, History
+
+After the first deploy the owner simplified RFMs to three tabs: **Ask**, **Transfer** (for
+whoever may see transfers) and **History**. History holds materials only: one's asks, and the
+stock and supply requests one made, newest first. A stock request reads "Stock request", or
+"For Sana Shaikh: Weekend Party" when it came from an ask, with what was asked ("30 × Soda
+750ml") and where it is now, in the words its own page uses. It never reads "Transfer" with a
+raw state. Leave and other requests are not materials and stay under Shifts & leave; a leave
+approved at the top of the chain says so on its own page.

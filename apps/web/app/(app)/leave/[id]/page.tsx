@@ -64,10 +64,21 @@ export default async function LeaveRequestPage({ params }: { params: Promise<{ i
                 from hr.leave_conflicts(${id}::uuid)`.execute(tx)
           ).rows
         : [];
-    return { leave, bal, drops };
+    // one's own leave approved at the top of the chain (the workflow's own step, before the
+    // executor has marked the leave): say why nobody approved it
+    const topOfChain =
+      leave.mine && leave.wf_request_id
+        ? ((
+            await sql<{ top: boolean }>`
+              select exists (select 1 from wf.step_instance s
+                              where s.request_id = ${leave.wf_request_id}::uuid
+                                and s.top_of_chain and s.state = 'approved') as top`.execute(tx)
+          ).rows[0]?.top ?? false)
+        : false;
+    return { leave, bal, drops, topOfChain };
   });
   if (!data) return <Empty>Leave request not found.</Empty>;
-  const { leave, bal, drops } = data;
+  const { leave, bal, drops, topOfChain } = data;
   const tz = leave.tz ?? 'Asia/Kolkata';
   return (
     <div className="space-y-4">
@@ -89,9 +100,14 @@ export default async function LeaveRequestPage({ params }: { params: Promise<{ i
           {Number(leave.days)} calendar day{Number(leave.days) === 1 ? '' : 's'}
         </p>
         {leave.reason && <p className="mt-1 text-sm">“{leave.reason}”</p>}
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-slate-600" data-testid="leave-status">
           {LEAVE_STATUS[leave.status] ?? 'Waiting for approval'}
         </p>
+        {topOfChain && (
+          <p className="mt-1 text-sm text-slate-600" data-testid="top-of-chain">
+            Approved at once: nobody above you approves this.
+          </p>
+        )}
       </div>
       {bal && bal.available_days !== null && (
         <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200" data-testid="leave-balance">

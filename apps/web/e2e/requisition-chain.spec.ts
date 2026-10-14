@@ -32,6 +32,12 @@ test('housekeeping asks, the Main Store gives it to someone who takes it down, h
   await page.waitForURL(/\/stock\/transfers\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
   await expect(page.getByTestId('request-now')).toContainText('With the Main Store');
+  // RFMs → History: a stock request, what was asked and where it is, never "Transfer"
+  await page.goto('/requests?tab=history');
+  const row = page.getByTestId('request-item').filter({ hasText: '6 × Test Bath Towel' }).first();
+  await expect(row).toContainText('Stock request');
+  await expect(row.getByTestId('request-now')).toContainText('With the Main Store');
+  await expect(row).not.toContainText('Transfer');
 
   // the keeper gives it to the purchase manager
   await signInAs(page, 'Test Store Keeper 1.0');
@@ -110,7 +116,7 @@ test('a room attendant asks their head, who gives it; the attendant sees it give
 
   // the attendant follows it, then takes it to the department (ADR 142)
   await signInAs(page, 'Test Room Attendant 1.0');
-  await page.goto('/requests?tab=asked');
+  await page.goto('/requests?tab=history');
   await expect(page.getByTestId('ask-item').first()).toContainText('Test Hand Towel');
   await page.getByTestId('ask-item').first().getByRole('link').click();
   await page.waitForURL(`**/stock/asks/${ask}`);
@@ -169,14 +175,15 @@ test('the head rejects an ask; whoever asked sees it rejected, why, and by whom'
   );
 });
 
-test('RFMs: Ask, Previous asks and, for whoever moves stock, Transfers (ADR 143)', async ({
-  page,
-}) => {
+test('RFMs: Ask, Transfer for whoever moves stock, and History (ADR 143)', async ({ page }) => {
   // a room attendant: no Transfers tab
   await signInAs(page, 'Test Room Attendant 1.0');
   await page.goto('/requests');
   await expect(page.getByTestId('tab-ask')).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('tab-transfers')).toHaveCount(0);
+  // History holds materials only: asks and requests for stock, never leave
+  await page.getByTestId('tab-history').click();
+  await expect(page.locator('main')).not.toContainText('Leave');
   // the store keeper: Transfers is a tab of RFMs, and no longer one of Stock's
   await signInAs(page, 'Test Store Keeper 1.0');
   await page.goto('/requests');
