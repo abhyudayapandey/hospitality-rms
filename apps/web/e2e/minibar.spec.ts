@@ -36,9 +36,14 @@ test('the room attendant checks a minibar; the front desk adds it to the bill', 
     await expect(form).toContainText('Count every item');
     await form.getByRole('button', { name: 'All there: nothing used' }).click();
     await form.getByLabel('Left: Test Cola 300ml').fill('1');
-    await expect(form.getByTestId('minibar-charge-preview')).toHaveText('To charge: ₹120.00');
+    // the attendant sees what to charge, never the rupees (ADR 145)
+    await expect(form).not.toContainText('₹');
+    await expect(form.getByTestId('minibar-charge-preview')).toHaveText(
+      'To charge: Test Cola 300ml ×1',
+    );
     await form.getByRole('button', { name: 'Save' }).click();
-    await expect(form).toContainText("Saved. ₹120.00 to add to the guest's bill");
+    await expect(form).toContainText("Saved. Test Cola 300ml ×1 to add to the guest's bill");
+    await expect(page.getByTestId('minibar-history')).not.toContainText('₹');
     await expect(page.getByTestId('minibar-history')).toContainText('Test Cola 300ml ×1');
 
     // the refill is the attendant's To do item: refilled from the Bar Store
