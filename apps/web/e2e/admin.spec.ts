@@ -68,14 +68,14 @@ test('deactivating signs the person out; reactivating lets them back in', async 
     .click();
   await page.getByRole('button', { name: 'Deactivate' }).click();
   await expect(page.getByRole('status')).toContainText('Deactivated');
-  await expect(page.getByTestId('person-status')).toHaveText('inactive');
+  await expect(page.getByTestId('person-status')).toHaveText('Not active');
 
   // their session ends on the next request
   await other.goto('/');
   await expect(other).toHaveURL(/\/login\?reason=expired/);
 
   await page.getByRole('button', { name: 'Reactivate' }).click();
-  await expect(page.getByTestId('person-status')).toHaveText('active');
+  await expect(page.getByTestId('person-status')).toHaveText('Active');
   await signInAs(other, 'Test Bell Captain 1.0');
   await other.close();
 });
@@ -110,5 +110,5 @@ test('an admin action from another origin is refused', async ({ page }) => {
   });
   expect(await res.text()).not.toContain('"ok":true');
   await page.reload();
-  await expect(page.getByTestId('person-status')).toHaveText('active');
+  await expect(page.getByTestId('person-status')).toHaveText('Active');
 });

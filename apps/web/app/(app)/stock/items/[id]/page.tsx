@@ -37,8 +37,19 @@ export default async function ItemLedgerPage({
   const user = await requireUser();
   const canOpenPacks = ctx.can('SHELF_LIFE', 'modify') && ctx.opensPacks;
   const all = param(await searchParams, 'all') === '1';
-  const canAsk = ctx.can('TRANSFERS', 'modify') && !ctx.node.derived;
-  const canBuy = ctx.can('PURCHASE_ORDERS', 'modify') && !ctx.node.derived;
+  // what the person may do is checked at this store, never from a grant elsewhere (ADR 149):
+  // a store where they may only look opens with no "Request more"
+  const grants = ctx.node.derived
+    ? { ask: false, buy: false }
+    : await withUser(user.id, async (tx) => {
+        const r = await sql<{ ask: boolean; buy: boolean }>`
+          select coalesce(core.can('TRANSFERS', 'modify', null, ${ctx.node!.id}::uuid), false) as ask,
+                 coalesce(core.can('PURCHASE_ORDERS', 'modify', null, ${ctx.node!.id}::uuid), false)
+                   as buy`.execute(tx);
+        return r.rows[0] ?? { ask: false, buy: false };
+      });
+  const canAsk = ctx.can('TRANSFERS', 'modify') && grants.ask;
+  const canBuy = ctx.can('PURCHASE_ORDERS', 'modify') && grants.buy;
   const { item, rows, canPhoto, pack, requests, source } = await withUser(user.id, async (tx) => ({
     requests: await itemRequests(tx, ctx.node!.id, id),
     // where more comes from: the store that keeps it (ADR 115), else it is bought
@@ -75,10 +86,7 @@ export default async function ItemLedgerPage({
       <div className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <div className="flex items-center gap-3">
           <ItemThumb name={item.name} category={item.category} src={photo} size="size-20" />
-          <div className="min-w-0">
-            <h1 className="text-lg font-semibold">{item.name}</h1>
-            <p className="text-sm text-slate-600">{item.sku}</p>
-          </div>
+          <h1 className="min-w-0 text-lg font-semibold">{item.name}</h1>
         </div>
         <p className="text-2xl font-semibold tabular-nums">
           {formatQty(item.on_hand, item.base_uom)}

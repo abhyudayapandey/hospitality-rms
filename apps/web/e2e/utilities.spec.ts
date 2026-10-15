@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { asMigrator, signInAs, takePhoto } from './helpers';
+import { asMigrator, dueWhenWorking, signInAs, takePhoto } from './helpers';
 
 // Utilities (ADR 091, 097) at 380 px on Test Hotel 1.0. The technician's meter round is on his To
 // do list; he reads the four meters, and the chief engineer sees today's readings. Who may is
@@ -15,11 +15,11 @@ test('the technician reads the meters; the chief engineer sees the readings', as
     `insert into ops.task (tenant_id, org_node_id, kind, title, due_at, assign_mode,
                            job_role_code, template_id)
      select c.tenant_id, c.org_node_id, 'checklist', c.name,
-            date_trunc('second', now()) + interval '1 hour' + random() * interval '1000 seconds',
+            $2::timestamptz + random() * interval '1000 seconds',
             'job_role', 'TECHNICIAN', c.id
        from ops.checklist_template c where c.code = $1
      returning id`,
-    [CODE],
+    [CODE, await dueWhenWorking('Test Technician 1.0')],
   );
   const task = t!.id;
   await asMigrator(

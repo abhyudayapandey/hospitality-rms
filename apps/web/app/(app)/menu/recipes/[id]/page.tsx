@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { AllergenLine } from '@/components/food-mark';
 import { ItemThumb } from '@/components/item-thumb';
 import { Empty } from '@/components/messages';
+import { PhotoOrPicture } from '@/components/photo-or-picture';
 import { MethodSteps } from '@/components/method-steps';
 import { ViewTabs } from '@/components/view-tabs';
 import { requireUser } from '@/lib/auth/server';
@@ -102,14 +103,20 @@ export default async function RecipePage({
         ← Back
       </Link>
       {photoUrl && (
-        // a presigned S3 URL that changes on every page: next/image would cache it for nothing
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        // a photo that doesn't load shows the dish's library picture instead (ADR 149)
+        <PhotoOrPicture
           src={photoUrl}
           alt={recipe.name}
-          data-testid="dish-photo"
+          testId="dish-photo"
           className="aspect-[4/3] w-full rounded-xl object-cover ring-1 ring-slate-200"
-        />
+        >
+          <ItemThumb
+            name={recipe.name}
+            category={recipe.grp}
+            fallback={recipe.kind === 'menu' ? 'dish' : 'gravy'}
+            size="size-16"
+          />
+        </PhotoOrPicture>
       )}
       <div className="flex items-start gap-3">
         {!photoUrl && (

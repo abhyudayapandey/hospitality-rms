@@ -18,6 +18,8 @@ export interface ScreenInput extends NavInput {
   breakfast?: boolean;
   /** their department's licences and jobs are on the register (Shell.compliance, ADR 124) */
   compliance?: boolean;
+  /** screens that would open empty for them: no tile, no link (Shell.nothing, ADR 149) */
+  nothing?: ReadonlySet<ScreenKey>;
 }
 
 export type ScreenKey =
@@ -379,7 +381,7 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
 
 /** The screens the person can open, in the order the Me page lists them. */
 export function screensFor(i: ScreenInput): Screen[] {
-  return SCREENS.filter((s) => s.show(i)).map(({ show: _, ...s }) => ({
+  return SCREENS.filter((s) => s.show(i) && !i.nothing?.has(s.key)).map(({ show: _, ...s }) => ({
     ...s,
     label: s.key === 'menu' && !i.access.has('MENU') ? 'Recipes' : s.label,
   }));

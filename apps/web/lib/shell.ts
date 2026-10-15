@@ -8,7 +8,7 @@ import { modulesOn, withModules } from './modules';
 import { navProfile, type NavInput } from './nav';
 import { navFlagsKey } from './nav-flags';
 import { unreadLines, type NotificationRow } from './notifications-view';
-import type { ScreenInput } from './screens';
+import type { ScreenInput, ScreenKey } from './screens';
 import { companySettings } from './settings-data';
 import { DEFAULT_TZ } from './dates';
 
@@ -58,6 +58,8 @@ export interface Shell {
   breakfast: boolean;
   /** their department has licences or regular jobs on the Compliance register (ADR 124) */
   compliance: boolean;
+  /** screens they may open that have nothing for them (ADR 149): their tiles are left out */
+  nothing: ReadonlySet<ScreenKey>;
 }
 
 const MENU_DOMAINS = ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM'];
@@ -69,7 +71,24 @@ const MENU_DOMAINS = ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM'];
  * reads it; every screen still checks access in the database.
  */
 const NAV_TTL_MS = 5 * 60_000;
-type NavFlags = Pick<Shell, 'menu' | 'production' | 'reports' | 'breakfast' | 'compliance'>;
+type NavFlags = Pick<
+  Shell,
+  'menu' | 'production' | 'reports' | 'breakfast' | 'compliance' | 'nothing'
+>;
+
+/**
+ * A tile opens a screen with something on it (ADR 149): each screen's own list, asked only of
+ * those whose access offers the tile. A screen listed here would say "You don't ..." at once.
+ */
+const EMPTY_CHECKS: readonly { key: ScreenKey; domains: readonly string[]; list: string }[] = [
+  { key: 'excise', domains: ['EXCISE'], list: 'inv.excise_stores()' },
+  { key: 'audits', domains: ['AUDITS'], list: 'ops.audit_places()' },
+  { key: 'utilities', domains: ['UTILITIES'], list: 'ops.utility_places()' },
+  { key: 'sops', domains: ['TRAINING'], list: 'ops.my_sops()' },
+  { key: 'opened', domains: ['SHELF_LIFE'], list: "core.screen_places('opened')" },
+  { key: 'roster', domains: ['ROSTER'], list: "core.screen_places('roster')" },
+  { key: 'sales', domains: ['SALES', 'DERIVED_SALES'], list: "core.screen_places('sales')" },
+];
 const navFlags = new Map<string, { at: number; v: NavFlags }>();
 
 async function cachedNavFlags(key: string, load: () => Promise<NavFlags>): Promise<NavFlags> {
@@ -175,7 +194,17 @@ export const loadShell = cache(async (): Promise<Shell> => {
           : home.rows.length > 0
             ? 'mine'
             : 'none';
+        const checks = EMPTY_CHECKS.filter((c) => c.domains.some(has));
+        const empty = checks.length
+          ? (
+              await sql<{ key: ScreenKey }>`
+                select x.key from (values ${sql.join(
+                  checks.map((c) => sql`(${c.key}, exists (select 1 from ${sql.raw(c.list)}))`),
+                )}) as x(key, has) where not x.has`.execute(tx)
+            ).rows.map((r) => r.key)
+          : [];
         return {
+          nothing: new Set(empty),
           menu: menu?.rows[0]?.v ?? false,
           production: production?.rows[0]?.v ?? false,
           reports,
@@ -220,5 +249,6 @@ export function screenInput(shell: Shell): ScreenInput {
     swapsManagersOnly: shell.swapsManagersOnly,
     breakfast: shell.breakfast,
     compliance: shell.compliance,
+    nothing: shell.nothing,
   };
 }

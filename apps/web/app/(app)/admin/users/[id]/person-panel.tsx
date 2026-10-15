@@ -1,6 +1,6 @@
 'use client';
 
-import { groupLabel } from '@/lib/labels';
+import { accessSource, groupLabel, sinceText } from '@/lib/labels';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, StatusBox } from '@/components/messages';
@@ -168,10 +168,9 @@ export function AccessList({ access }: { access: AccessRow[] }) {
               <span>
                 <span className="font-medium">{groupLabel(a.access_group)}</span> at {a.node_name}
                 <span className="block text-xs text-slate-500">
-                  {a.include_descendants ? 'and everything below' : 'this place only'} · from{' '}
-                  {day(a.effective_from)}
-                  {a.effective_to ? ` to ${day(a.effective_to)}` : ''} · {a.source}
-                  {a.note ? ` · ${a.note}` : ''}
+                  {a.include_descendants ? 'and everything below' : 'this place only'} ·{' '}
+                  {sinceText(day(a.effective_from)!, day(a.effective_to))} ·{' '}
+                  {accessSource(a.source, a.note)}
                 </span>
               </span>
               {a.state === 'waiting for approval' ? (

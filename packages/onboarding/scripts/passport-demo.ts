@@ -136,21 +136,10 @@ csv(
   ],
   [
     [NET, 'Passport Hotel – Supply Network', 'network', '', '', 'no', 'no', '', '', ''],
-    [SUPPLY, 'Passport Hotel – Supply Point', 'outlet', NET, TZ, 'no', 'no', 'gm', 'every', 'gm'],
+    [SUPPLY, 'Passport Hotel stores', 'outlet', NET, TZ, 'no', 'no', 'gm', 'every', 'gm'],
     [KS, 'Kitchen Store', 'store', SUPPLY, TZ, 'yes', 'no', '', '', ''],
     [BAR_STORE, 'Bar', 'store', SUPPLY, TZ, 'yes', 'no', '', '', ''],
-    [
-      HK,
-      'Housekeeping Store (with the in-room minibars)',
-      'store',
-      SUPPLY,
-      TZ,
-      'yes',
-      'no',
-      '',
-      '',
-      '',
-    ],
+    [HK, 'Housekeeping Store', 'store', SUPPLY, TZ, 'yes', 'no', '', '', ''],
   ],
 );
 csv(

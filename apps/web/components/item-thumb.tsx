@@ -1,6 +1,7 @@
 import { pictureFor, pictureOf, type PictureGroup } from '@outlet-ops/domain';
 import { PICTURE_PHOTOS } from '@/lib/picture-photos';
 import { Icon, type IconName } from './icon';
+import { PhotoOrPicture } from './photo-or-picture';
 
 // A picture on every item line (UX-6, ADR 034, ADR 084): the item's own photo when it has
 // one, else a real photo of the thing itself from the library, matched from its name (garlic
@@ -41,13 +42,18 @@ export function ItemThumb({
 }) {
   if (src) {
     return (
-      // a presigned S3 URL that changes on every page: next/image would cache it for nothing
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <PhotoOrPicture
         src={src}
-        alt=""
         className={`${size} shrink-0 rounded-lg object-cover ring-1 ring-slate-200`}
-      />
+      >
+        <ItemThumb
+          name={name}
+          category={category}
+          size={size}
+          fallback={fallback}
+          picture={picture}
+        />
+      </PhotoOrPicture>
     );
   }
   let key = picture && pictureOf(picture) ? picture : pictureFor(name ?? '', category);

@@ -6,6 +6,7 @@ import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { isUuid, SUPPLY_PROGRESS } from '@/lib/inventory';
+import { rfmRequestHref } from '@/lib/rfm';
 import { AskForm, type AskStoreItem } from '../stock/asks/new/ask-form';
 import { RequestNow } from '../stock/transfers/[id]/request-story';
 
@@ -112,12 +113,21 @@ export default async function RequestsPage({
            and r.subject_type = 'inv.purchase_order'
          order by r.created_at desc limit 30`.execute(tx)
     ).rows;
-    return { stores, store, items, transfers, asks, requests, supplies };
+    return {
+      stores,
+      store,
+      items,
+      transfers,
+      asks,
+      requests,
+      supplies,
+      request: await rfmRequestHref(tx),
+    };
   });
-  const { stores, store, items, transfers, asks, requests, supplies } = data;
+  const { stores, store, items, transfers, asks, requests, supplies, request } = data;
   const asked = sp['tab'];
   const tab =
-    asked === 'ask' || asked === 'history'
+    (asked === 'ask' && store) || asked === 'history'
       ? asked
       : asked === 'asked'
         ? 'history'
@@ -147,15 +157,9 @@ export default async function RequestsPage({
   ].sort((x, y) => y.at - x.at);
   return (
     <div className="space-y-4">
-      <RfmTabs current={tab} transfers={transfers} />
-      {tab === 'ask' ? (
-        store ? (
-          <AskForm stores={stores} store={store} items={items} />
-        ) : (
-          <Empty icon="box">
-            Your team has no store to ask. Managers use Stock, then Request from a store.
-          </Empty>
-        )
+      <RfmTabs current={tab} transfers={transfers} request={request} />
+      {tab === 'ask' && store ? (
+        <AskForm stores={stores} store={store} items={items} />
       ) : history.length === 0 ? (
         <Empty icon="box">Nothing asked for yet.</Empty>
       ) : (

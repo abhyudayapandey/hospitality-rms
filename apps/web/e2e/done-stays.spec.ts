@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addTaskPhoto, asMigrator, signInAs } from './helpers';
+import { addTaskPhoto, asMigrator, dueWhenWorking, signInAs } from './helpers';
 
 // Done stays in view (ADR 075) at 380 px, on Test Hotel 1.0. A task for the room
 // attendants' job role: one does it and it stays on her To do list under Done, "Done by you";
@@ -18,10 +18,10 @@ const main = (page: Page) => page.locator('main');
 async function roleTask(title: string): Promise<string> {
   const [t] = await asMigrator<{ id: string }>(
     `insert into ops.task (tenant_id, org_node_id, kind, title, due_at, assign_mode, job_role_code)
-     select tenant_id, id, 'one_off', $1, now() + interval '2 hours', 'job_role', 'ROOM_ATTENDANT'
+     select tenant_id, id, 'one_off', $1, $2::timestamptz, 'job_role', 'ROOM_ATTENDANT'
        from core.hierarchy_node where code = 'TEST-HOTEL-1.0-HOUSEKEEPING'
      returning id`,
-    [title],
+    [title, await dueWhenWorking(RA, RA_B)],
   );
   return t!.id;
 }

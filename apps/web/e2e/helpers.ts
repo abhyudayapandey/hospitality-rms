@@ -39,6 +39,26 @@ async function userId(name: string): Promise<string> {
   return ids.get(key)!;
 }
 
+/**
+ * A job-role round goes only to the role's people at work at its due time (ADR 148), so a test
+ * round is due when its people work: the first half hour in the next day that all of them are on
+ * shift or clocked in for 20 minutes (someone off the roster works any time). Keeps a test from
+ * depending on the hour CI runs at.
+ */
+export async function dueWhenWorking(...names: string[]): Promise<string> {
+  const users = await Promise.all(names.map(userId));
+  const [row] = await asMigrator<{ at: string }>(
+    `select min(t)::text as at
+       from generate_series(date_trunc('minute', now()) + interval '30 minutes',
+                            now() + interval '24 hours', interval '30 minutes') t
+      where (select bool_and(ops.working_at(u, t) and ops.working_at(u, t + interval '20 minutes'))
+               from unnest($1::uuid[]) u)`,
+    [users],
+  );
+  if (!row?.at) throw new Error(`${names.join(', ')} don't work together in the next day`);
+  return row.at;
+}
+
 /** The id of a test place by code, e.g. TEST-BAR-3.0-KITCHEN-STORE. */
 export async function placeId(code: string): Promise<string> {
   const key = `place:${code}`;
@@ -342,10 +362,10 @@ export async function storeKeeperCover(on: boolean, task = on): Promise<void> {
       await client.query(
         `insert into ops.task (tenant_id, org_node_id, kind, title, due_at, assign_mode,
                                job_role_code)
-         select tenant_id, id, 'one_off', 'E2E covered count', now() + interval '3 hours',
+         select tenant_id, id, 'one_off', 'E2E covered count', $2::timestamptz,
                 'job_role', 'STORE_KEEPER'
            from core.hierarchy_node where id = $1`,
-        [outlet],
+        [outlet, await dueWhenWorking('Test Front Desk Executive 2.0')],
       );
     }
     await client.query('select core.apply_cover_access($1)', [outlet]);

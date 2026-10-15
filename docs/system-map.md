@@ -26,7 +26,7 @@ Every customer has **two trees** of places (ADR 009).
 | ------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | Network      | Test Supply Network                                                                           | no                                                            |
 | Hub          | Test Central Kitchen – Store                                                                  | yes: raw materials, and the prep it makes and sends out       |
-| Supply point | Test Hotel & Bar 1.0 – Supply Point                                                           | usually no (a small outlet's supply point holds stock itself) |
+| Supply point | Test Hotel & Bar 1.0 stores                                                                   | usually no (a small outlet's supply point holds stock itself) |
 | Store        | Main Store (raw materials, receives deliveries), Kitchen Store, Bar Store, Housekeeping Store | yes                                                           |
 
 ### How the two trees connect

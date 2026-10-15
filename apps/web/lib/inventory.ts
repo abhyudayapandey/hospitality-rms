@@ -12,6 +12,7 @@ import { loadShell, type Shell } from './shell';
 
 export { isUuid, param, type SearchParams } from './params';
 export { formatQty, inputQty } from './qty';
+export { movementLabel } from './movements';
 
 export interface SupplyContext {
   shell: Shell;
@@ -204,19 +205,6 @@ export const WASTAGE_REASONS = [
   ['damaged', 'Damaged'],
   ['other', 'Other'],
 ] as const;
-
-export function movementLabel(type: string, reason: string | null): string {
-  const base: Record<string, string> = {
-    receipt: 'Received',
-    consumption: 'Used',
-    wastage: 'Wastage',
-    transfer_out: 'Sent',
-    transfer_in: 'Transfer in',
-    count_adjust: 'Count adjustment',
-  };
-  const r = reason && reason !== 'opening balance' ? ` · ${reason.replace(/_/g, ' ')}` : '';
-  return `${base[type] ?? type}${r}`;
-}
 
 /** Purchase order progress (inv.purchase_order_summary.progress): label and badge style. */
 export const PO_PROGRESS: Record<string, [string, string]> = {

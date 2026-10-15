@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
+import { statusLabel } from '@/lib/labels';
 import type { AdminUserRow } from '../page';
 import { AccessList, AddAccess, EditPerson, LoginActions, type AccessRow } from './person-panel';
 import { jobTitles } from '@/lib/job-titles';
@@ -50,7 +51,7 @@ export default async function UserPage({ params }: { params: Promise<{ id: strin
               p.status === 'active' ? 'bg-emerald-100 text-emerald-900' : 'bg-slate-200'
             }`}
           >
-            {p.status}
+            {statusLabel(p.status)}
           </span>
         </div>
         <p className="text-sm text-slate-600">

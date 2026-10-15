@@ -421,6 +421,13 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   desk's keepers' To do list only (`inv.desk_keepers`). A department tile is never "All done"
   with a round late. "Today" is the 04:00 business day everywhere (`businessToday`, Home's
   heading too; a running shift reads "Now"); times are 24-hour (`formatWhen`, `dueText`).
+- No dead ends, no codes (ADR 149): what a page offers is checked with `core.can` at its place; a
+  tile shows only when its screen has something for the person (`Shell.nothing`, `EMPTY_CHECKS`
+  in `lib/shell.ts`; a new screen whose list can be empty joins it); RFMs's Request tab goes
+  where one can ask (`rfmRequestHref`), and a department with no store asks its outlet's stores
+  (`inv.my_ask_stores`); a photo that doesn't load shows its library picture (`PhotoOrPicture`).
+  Movements, access rows, statuses and audit events are words (`movementLabel`, `lib/labels.ts`);
+  an outlet's stock place is "<outlet> stores", never "Supply Point".
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in
