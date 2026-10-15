@@ -364,7 +364,7 @@ describe('the Passport Hotel demo', () => {
         users: [40, 0],
         workers: [40, 0],
         checklists: [39, 0],
-        shifts: [489, 0],
+        shifts: [503, 0],
         tasks: [2, 0],
         licences: [14, 0],
       });

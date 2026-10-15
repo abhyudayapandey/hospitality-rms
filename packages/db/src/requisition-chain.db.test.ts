@@ -888,6 +888,10 @@ describe('a frontline person asks their department head, and follows it', () => 
 
   it('given: whoever asked takes it to the department, by the end of their shift (ADR 142)', async () => {
     await inRolledBackTx(async (c) => {
+      // no shift today: due in 2 hours (with a shift, at its end)
+      await c.query(`delete from hr.shift_assignment where owner_user_id = $1`, [
+        ids.user(ATTENDANT),
+      ]);
       const item = await lager(c);
       await stockAt(c, item, HK, 10);
       const ask = await raise(c, item, 6);
@@ -961,6 +965,10 @@ describe('a frontline person asks their department head, and follows it', () => 
 
   it('the overdue Collect task is the head’s to hear about', async () => {
     await inRolledBackTx(async (c) => {
+      // no shift today: due in 2 hours (with a shift, at its end)
+      await c.query(`delete from hr.shift_assignment where owner_user_id = $1`, [
+        ids.user(ATTENDANT),
+      ]);
       const item = await lager(c);
       await stockAt(c, item, HK, 10);
       const ask = await raise(c, item, 6);

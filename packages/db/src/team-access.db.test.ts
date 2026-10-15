@@ -152,6 +152,12 @@ describe('PRODUCTION_TEAM: production at the department store, nothing else', ()
 
   it('the production screen reads work for them: what is made, the plan, the batches', async () => {
     await inRolledBackTx(async (c) => {
+      // off the roster, so the round reaches them whatever their shifts (ADR 148)
+      await c.query(
+        `delete from hr.shift_assignment a using hr.worker w
+          where w.id = a.worker_id and w.org_node_id = $1`,
+        [ids.node('TEST-HOTEL-1.0-KITCHEN')],
+      );
       const store = ids.node('TEST-HOTEL-1.0-KITCHEN-STORE');
       const commis = ids.user('test.commis.1.0');
       const made = await attemptAs<{ sku: string }>(

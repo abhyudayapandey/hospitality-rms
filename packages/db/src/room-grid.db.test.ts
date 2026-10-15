@@ -249,6 +249,12 @@ describe('room status (the Rooms block)', () => {
 
   it("the grid shows each room's status, and who may set it from there", async () => {
     await inRolledBackTx(async (c) => {
+      // off the roster, so the round reaches them whatever their shifts (ADR 148)
+      await c.query(
+        `delete from hr.shift_assignment a using hr.worker w
+          where w.id = a.worker_id and w.org_node_id = $1`,
+        [ids.node('TEST-HOTEL-1.0-HOUSEKEEPING')],
+      );
       const task = await round(c, 'HOTEL-1.0-HK-ROOM-CHECK');
       const [first] = await steps(c, task);
       const rooms = await outletRooms(c, 'test.general-manager.1.0');
