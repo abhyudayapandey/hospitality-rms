@@ -271,9 +271,9 @@ describe('doFirst: the ranked list (UX-8)', () => {
 
   it('adds up over the departments, red first, one line per kind', () => {
     const d = doFirst({ attention, overdueTasks: 3, toAssign: 2 });
-    expect(d.map((x) => x.key)).toEqual(['lowStock', 'overdue', 'openSlots', 'flags', 'repairs']);
-    expect(d[0]).toMatchObject({ n: 9, text: 'items running low', tone: 'bad' });
-    expect(d[1]!.text).toBe('tasks are late');
+    expect(d.map((x) => x.key)).toEqual(['overdue', 'openSlots', 'flags', 'repairs', 'toAssign']);
+    expect(d[0]!.text).toBe('tasks are late');
+    expect(d[1]).toMatchObject({ n: 2, tone: 'warn' });
   });
 
   it('never more than five, and says "1 repair", not "1 repairs"', () => {
@@ -286,14 +286,9 @@ describe('doFirst: the ranked list (UX-8)', () => {
     expect(one).toEqual([expect.objectContaining({ key: 'repairs', text: 'open repair' })]);
   });
 
-  it('running low: Order for whoever may ask for supplies, See for view-only roles (ADR 052)', () => {
+  it("running low is said once, on the departments' tiles, never here (ADR 153)", () => {
     const low = [group('x', [['lowStock', 2]])];
-    expect(
-      doFirst({ attention: low, overdueTasks: 0, toAssign: 0, canOrder: true })[0]!.action,
-    ).toBe('Order');
-    expect(
-      doFirst({ attention: low, overdueTasks: 0, toAssign: 0, canOrder: false })[0]!.action,
-    ).toBe('See');
+    expect(doFirst({ attention: low, overdueTasks: 0, toAssign: 0 })).toEqual([]);
   });
 
   it('nothing to do: an empty list', () => {
@@ -328,15 +323,15 @@ describe('every count that spans places opens its screen with All chosen (ADR 04
     lines: kinds.map(line),
   });
 
-  it('Home links: low stock, attendance, repairs, open shifts', () => {
+  it('Home links: attendance, repairs, open shifts', () => {
     const items = doFirst({
       attention: [group(['lowStock', 'flags', 'repairs', 'openSlots'])],
       overdueTasks: 0,
       toAssign: 0,
     });
     const href = Object.fromEntries(items.map((x) => [x.key, x.href]));
+    expect(href).not.toHaveProperty('lowStock');
     expect(href).toMatchObject({
-      lowStock: '/stock?all=1&tab=low',
       flags: '/roster/exceptions?all=1',
       repairs: '/tasks/maintenance?all=1&tab=assign',
       openSlots: '/roster/week?all=1',

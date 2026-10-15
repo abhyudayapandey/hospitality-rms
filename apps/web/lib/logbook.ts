@@ -56,9 +56,15 @@ export async function logbook(
   ).rows;
 }
 
-export async function logbookTargets(tx: Tx, place: string): Promise<LogbookTargets> {
+/** Who a note may be for: never the writer themself (ADR 151). */
+export async function logbookTargets(
+  tx: Tx,
+  place: string,
+  writer: string,
+): Promise<LogbookTargets> {
   const r = await sql<{
     t: LogbookTargets;
   }>`select ops.logbook_targets(${place}::uuid) as t`.execute(tx);
-  return r.rows[0]!.t;
+  const t = r.rows[0]!.t;
+  return { ...t, people: t.people.filter((p) => p.id !== writer) };
 }

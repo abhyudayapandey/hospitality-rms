@@ -7,7 +7,7 @@ import { PhotoField } from '@/components/photo-field';
 import { useHydrated } from '@/lib/use-hydrated';
 import { addTaskPhoto, getTaskUploadUrl } from '../actions';
 
-/** Add a photo of the task (ADR 079): three at most; kept 30 days. ops.add_task_photo checks who. */
+/** A photo of the task (ADR 079; "Take a photo" like a step's, ADR 153): three at most; kept 30 days. ops.add_task_photo checks who. */
 export function AddTaskPhoto({ task, node }: { task: string; node: string }) {
   const router = useRouter();
   const hydrated = useHydrated();
@@ -32,8 +32,9 @@ export function AddTaskPhoto({ task, node }: { task: string; node: string }) {
         className={secondaryButton}
         disabled={!hydrated}
         onClick={() => setOpen(true)}
+        data-testid="task-photo-add"
       >
-        Add a photo
+        Take a photo
       </button>
     );
   }

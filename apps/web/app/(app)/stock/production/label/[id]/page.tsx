@@ -45,7 +45,7 @@ export default async function BatchLabelPage({ params }: { params: Promise<{ id:
   return (
     <div className="space-y-4">
       <Link href="/stock/production" className="text-sm text-slate-600 underline print:hidden">
-        Back to Make
+        ← Back
       </Link>
       <article
         className="mx-auto max-w-sm space-y-2 rounded-xl bg-white p-4 text-slate-900 ring-2 ring-slate-900"

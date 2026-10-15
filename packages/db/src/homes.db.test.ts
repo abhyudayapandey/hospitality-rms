@@ -204,4 +204,24 @@ describe('who is on shift here today (ADR 113)', () => {
       expect(commis.error).toMatch(/NOT_AUTHORISED/);
     });
   });
+
+  it('whoever gives rooms at an outlet asks who is on shift there (ADR 153); an attendant does not', async () => {
+    await inRolledBackTx(async (c) => {
+      const outlet = ids.node('TEST-HOTEL-1.0');
+      const hk = await attemptAs(
+        c,
+        ids.user('test.executive-housekeeper.1.0'),
+        'select * from ops.on_shift_today($1)',
+        [outlet],
+      );
+      expect(hk.error).toBeUndefined();
+      const attendant = await attemptAs(
+        c,
+        ids.user('test.room-attendant.1.0'),
+        'select * from ops.on_shift_today($1)',
+        [outlet],
+      );
+      expect(attendant.error).toMatch(/NOT_AUTHORISED/);
+    });
+  });
 });

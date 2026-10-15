@@ -9,7 +9,7 @@ import { AdjustmentDecision } from './decision';
 import { ItemThumb } from '@/components/item-thumb';
 
 const REASON: Record<string, string> = {
-  count_variance: 'Stock count difference',
+  count_variance: 'Stock check difference',
   wastage: 'Wastage above the approval value',
   supplier_excess: 'Delivery above the order (+5%)',
 };
@@ -73,7 +73,7 @@ export default async function AdjustmentPage({ params }: { params: Promise<{ id:
   return (
     <div className="space-y-4">
       <Link href="/tasks" className="text-sm text-slate-600">
-        ← To do list
+        ← Back
       </Link>
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <h1 className="text-lg font-semibold">{REASON[a.reason] ?? a.reason}</h1>

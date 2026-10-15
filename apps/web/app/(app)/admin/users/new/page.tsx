@@ -15,7 +15,8 @@ export default async function NewUserPage() {
       ).rows,
       places: (
         await sql<{ id: string; name: string; type: string }>`
-          select id, name, type from core.admin_places() where type = 'org'`.execute(tx)
+          select id, name, type from core.admin_places()
+           where type = 'org' and kind <> 'company'`.execute(tx)
       ).rows,
     }));
   } catch {

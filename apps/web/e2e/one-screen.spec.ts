@@ -5,20 +5,21 @@ import { signInAs, viewing } from './helpers';
 // opens its screen on the matching tab with "All ..." chosen, and the list is as long as
 // the count. The person then narrows to one place from the Place picker.
 
-test('the GM: Stock is one screen with four tabs; running low opens All stores', async ({
+test('the GM: Stock is one screen with four tabs; running low across All stores', async ({
   page,
 }) => {
   await signInAs(page, 'Test General Manager 1.0', { expanded: false });
-  const low = page.getByTestId('dofirst-card').getByRole('link', { name: /running low/ });
-  const n = Number((await low.locator('.font-bold').innerText()).trim());
-  await low.click();
-  await page.waitForURL(/\/stock\?.*tab=low/);
+  // running low is said once on Home, on the departments' tiles (ADR 153); the whole outlet's
+  // list is Stock's Running low tab with All stores chosen
+  await expect(page.getByTestId('dofirst-card')).not.toContainText('running low');
+  await page.goto('/stock?all=1&tab=low');
   await expect.poll(() => viewing(page)).toBe('All stores');
   for (const t of ['all', 'low', 'expiring', 'expired']) {
     await expect(page.getByTestId(`tab-${t}`)).toBeVisible();
   }
   await expect(page.getByTestId('tab-low')).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByTestId('stock-row')).toHaveCount(n);
+  const n = await page.getByTestId('stock-row').count();
+  expect(n).toBeGreaterThan(0);
   // another tab keeps All stores; the whole list is one tap away
   await page.getByTestId('tab-all').click();
   await expect.poll(() => viewing(page)).toBe('All stores');

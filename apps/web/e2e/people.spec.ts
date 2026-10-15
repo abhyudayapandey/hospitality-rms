@@ -14,7 +14,8 @@ import {
 // build (ADR 008), in Test Bar 3.0's Floor Service: the Bar Manager rosters the server and
 // the host on the evening templates from file 16. The flows use a week four weeks out,
 // cleared first, so the spec can re-run on a local database; a second server (a fixture)
-// is the colleague for the swap, since the test data has one person per role there.
+// is the colleague for the swap, since the test data has one person per role there, and a
+// server who heads Floor Service (another fixture) offers it: swaps are for managers (ADR 152).
 
 const W = weekStart(addDays(localToday('Asia/Kolkata'), 28));
 const MONDAY = W;
@@ -204,15 +205,16 @@ test('manager builds and publishes; approved leave drops the shift after both ap
   await expect(shift).toContainText('0/1');
 });
 
+// swaps are for managers only (ADR 152): the lead server offers; a frontline colleague accepts
 test('shift swap: offered, accepted by the colleague, approved by the manager', async ({
   page,
 }) => {
   await signInAs(page, 'Test Bar Manager 3.0');
-  await assign(page, MONDAY, 'server', 'Test Server 3.0');
+  await assign(page, MONDAY, 'server', 'E2E Lead Server 3.0');
   const publish = page.getByRole('button', { name: /^Publish/ });
   if (await publish.isEnabled()) await publish.click();
 
-  await signInAs(page, 'Test Server 3.0');
+  await signInAs(page, 'E2E Lead Server 3.0');
   await page.goto('/roster/my');
   await page
     .getByTestId('my-shifts')
@@ -232,7 +234,7 @@ test('shift swap: offered, accepted by the colleague, approved by the manager', 
   const offer = page
     .getByTestId('swaps')
     .locator('li')
-    .filter({ hasText: 'Test Server 3.0 offers you' })
+    .filter({ hasText: 'E2E Lead Server 3.0 offers you' })
     .first();
   await offer.getByRole('button', { name: 'Accept' }).click();
   await expect(offer).toContainText('Waiting for manager approval');
@@ -246,7 +248,7 @@ test('shift swap: offered, accepted by the colleague, approved by the manager', 
     .getByRole('link', { name: 'Review' })
     .first()
     .click();
-  await expect(page.getByTestId('swap-parties')).toHaveText('Test Server 3.0 → E2E Server 3.0');
+  await expect(page.getByTestId('swap-parties')).toHaveText('E2E Lead Server 3.0 → E2E Server 3.0');
   await page.getByRole('button', { name: 'Approve' }).click();
   await expect(page.getByRole('status')).toHaveText('Approved');
   await runExecutor(); // hr.shift_swap.apply
@@ -254,7 +256,7 @@ test('shift swap: offered, accepted by the colleague, approved by the manager', 
   await openWeek(page);
   const shift = evening(page, MONDAY, 'server');
   await expect(shift).toContainText('E2E Server 3.0');
-  await expect(shift).not.toContainText('Test Server 3.0');
+  await expect(shift).not.toContainText('E2E Lead Server 3.0');
 });
 
 test('swap past a rest warning: offered and accepted, the approver gives it to someone else', async ({
@@ -297,12 +299,12 @@ test('swap past a rest warning: offered and accepted, the approver gives it to s
   );
 
   await signInAs(page, 'Test Bar Manager 3.0');
-  await assign(page, WED, 'server', 'Test Server 3.0');
+  await assign(page, WED, 'server', 'E2E Lead Server 3.0');
   const publish = page.getByRole('button', { name: /^Publish/ });
   if (await publish.isEnabled()) await publish.click();
 
   // the offer and the acceptance go through: the rest rule is the approver's to weigh
-  await signInAs(page, 'Test Server 3.0');
+  await signInAs(page, 'E2E Lead Server 3.0');
   await page.goto('/roster/my');
   await page
     .getByTestId('my-shifts')
@@ -319,7 +321,7 @@ test('swap past a rest warning: offered and accepted, the approver gives it to s
   const offer = page
     .getByTestId('swaps')
     .locator('li')
-    .filter({ hasText: 'Test Server 3.0 offers you' })
+    .filter({ hasText: 'E2E Lead Server 3.0 offers you' })
     .filter({ hasText: formatDay(WED) })
     .first();
   await offer.getByRole('button', { name: 'Accept' }).click();
@@ -345,9 +347,9 @@ test('swap past a rest warning: offered and accepted, the approver gives it to s
   await openWeek(page, WED);
   const shift = evening(page, WED, 'server');
   await expect(shift).toContainText('E2E Server B 3.0');
-  await expect(shift).not.toContainText('Test Server 3.0');
+  await expect(shift).not.toContainText('E2E Lead Server 3.0');
 
-  await signInAs(page, 'Test Server 3.0');
+  await signInAs(page, 'E2E Lead Server 3.0');
   await page.goto('/roster/swaps');
   await expect(
     page
@@ -484,7 +486,8 @@ test('Roster is Me and Team: staff see only Me; the manager switches; HR has Tea
   await page.goto('/roster');
   await page.waitForURL('**/roster/my');
   await expect(sides(page)).toHaveCount(0);
-  await expect(tabs(page, 'Me')).toHaveText(['Shifts', 'Clock', 'Leave', 'Swaps']);
+  // no Swaps: swaps are for managers only (ADR 152)
+  await expect(tabs(page, 'Me')).toHaveText(['Shifts', 'Clock', 'Leave']);
 
   // the bar manager: Roster opens on Team; the switch goes to Me and back
   await signInAs(page, 'Test Bar Manager 3.0');

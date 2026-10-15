@@ -1,5 +1,6 @@
 'use client';
 
+import { groupFitsPlace } from '@outlet-ops/domain';
 import { accessSource, groupLabel, sinceText } from '@/lib/labels';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
@@ -211,14 +212,17 @@ export function AddAccess({
 }: {
   userId: string;
   groups: { code: string; name: string }[];
-  places: { id: string; name: string }[];
+  places: { id: string; name: string; type: string; kind: string }[];
   disabled: boolean;
 }) {
   const hydrated = useHydrated();
   const { pending, error, status, act } = useAction();
+  // only the places the chosen access fits (ADR 151): a Hub Manager at a hub, a Store Keeper at
+  // a store, a Department Head at a department
+  const fitting = (group: string) => places.filter((p) => groupFitsPlace(group, p));
   const [g, setG] = useState({
     group: groups[0]?.code ?? '',
-    node: places[0]?.id ?? '',
+    node: fitting(groups[0]?.code ?? '')[0]?.id ?? '',
     from: '',
     to: '',
     reason: '',
@@ -253,7 +257,13 @@ export function AddAccess({
         Access
         <select
           value={g.group}
-          onChange={(e) => change({ group: e.target.value })}
+          onChange={(e) => {
+            const here = fitting(e.target.value);
+            change({
+              group: e.target.value,
+              node: here.some((p) => p.id === g.node) ? g.node : (here[0]?.id ?? ''),
+            });
+          }}
           className={inputClass}
         >
           {groups.map((x) => (
@@ -270,7 +280,7 @@ export function AddAccess({
           onChange={(e) => change({ node: e.target.value })}
           className={inputClass}
         >
-          {places.map((x) => (
+          {fitting(g.group).map((x) => (
             <option key={x.id} value={x.id}>
               {x.name}
             </option>

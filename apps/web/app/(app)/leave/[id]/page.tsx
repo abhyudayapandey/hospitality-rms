@@ -83,7 +83,7 @@ export default async function LeaveRequestPage({ params }: { params: Promise<{ i
   return (
     <div className="space-y-4">
       <Link href={leave.mine ? '/leave' : '/tasks'} className="text-sm text-slate-600">
-        ← {leave.mine ? 'Leave' : 'To do list'}
+        ← Back
       </Link>
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <h1 className="flex items-center gap-2 text-lg font-semibold">

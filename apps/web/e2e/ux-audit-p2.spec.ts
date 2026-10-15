@@ -55,9 +55,10 @@ test('Send stock shows what the department has and keeps; the Main Store opens o
   await expect(page.getByTestId('tabs-more')).toHaveCount(0); // not on this form
   await page.goto(`/stock?node=${main}`);
   const tabs = page.getByRole('navigation', { name: 'Stock tabs' });
-  await expect(tabs.getByRole('link', { name: 'Wastage' })).toHaveCount(0);
+  await expect(tabs.getByRole('link')).toHaveCount(4);
+  await expect(tabs.getByRole('link', { name: 'Bills' })).toHaveCount(0);
   await page.getByTestId('tabs-more').click();
-  await expect(tabs.getByRole('link', { name: 'Wastage' })).toBeVisible();
+  await expect(tabs.getByRole('link', { name: 'Bills' })).toBeVisible();
   await expect(page.getByTestId('tabs-more')).toHaveText(/^Less/);
   // on a tab from the rest, the row opens already showing them
   await tabs.getByRole('link', { name: 'Bills' }).click();
@@ -72,7 +73,7 @@ test('back goes to the list as it was, its tab kept', async ({ page }) => {
   await page.goto(`/stock/orders?node=${main}&tab=received`);
   await page.getByTestId('po-item').first().getByRole('link').click();
   await page.waitForURL(/\/stock\/orders\/[0-9a-f-]{36}/);
-  await page.getByRole('link', { name: '← Orders' }).click();
+  await page.getByRole('link', { name: '← Back' }).click();
   await page.waitForURL(/tab=received/);
   await expect(page.getByTestId('tab-received')).toHaveAttribute('aria-current', 'page');
 });
@@ -89,7 +90,7 @@ test('no access to stock has a way back', async ({ page }) => {
   await signInAs(page, 'Test Server 3.0');
   await page.goto('/stock/bills');
   await expect(page.getByText("You don't have access to stock.")).toBeVisible();
-  await page.getByRole('link', { name: '← Home' }).click();
+  await page.getByRole('link', { name: '← Back' }).click();
   await page.waitForURL((u) => u.pathname === '/');
 });
 

@@ -27,10 +27,20 @@ export default async function GiveRoomsPage({ searchParams }: { searchParams: Se
     ).rows[0]!.d;
     const askedDay = param(sp, 'day');
     const day = askedDay === addDays(today, 1) ? askedDay : today;
+    // who is on shift today comes first (ADR 113); nobody is chosen for the person (ADR 153)
+    const on = new Set(
+      (
+        await sql<{ id: string }>`
+          select x::text as id from ops.on_shift_today(${place.outlet_id}::uuid) x`.execute(tx)
+      ).rows.map((r) => r.id),
+    );
+    const people = (await roomPeople(tx, place.outlet_id))
+      .map((p) => ({ ...p, on_shift: on.has(p.user_id) }))
+      .sort((a, b) => Number(b.on_shift) - Number(a.on_shift) || a.name.localeCompare(b.name));
     return {
       today,
       day,
-      people: await roomPeople(tx, place.outlet_id),
+      people,
       list: await rooms(tx, place.outlet_id),
       given: await roomAssignments(tx, place.outlet_id, day),
     };

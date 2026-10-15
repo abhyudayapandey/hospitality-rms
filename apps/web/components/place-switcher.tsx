@@ -17,7 +17,8 @@ const ALL = 'all';
  * the place with a Change button first, for screens where most people stay where they
  * are (reporting a problem, U-8). `all` adds an "All stores"-style first option for lists
  * that can span the places (ADR 038): choosing it sets `all=1` and keeps the place, so
- * choosing a place again drops it.
+ * choosing a place again drops it. With one place there is no "all" (ADR 153): it would be
+ * the same list under a second name.
  */
 export function PlaceSwitcher({
   screen,
@@ -25,7 +26,7 @@ export function PlaceSwitcher({
   current,
   quiet = false,
   collapsed = false,
-  all,
+  all: allOption,
 }: {
   screen: Screen;
   places: SwitcherPlace[];
@@ -41,6 +42,7 @@ export function PlaceSwitcher({
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(!collapsed);
   const here = places.find((p) => p.id === current);
+  const all = places.length > 1 ? allOption : undefined;
   if (!here || (quiet && places.length < 2 && !all)) return null;
   const picker = places.length > 1 || all !== undefined;
   return (

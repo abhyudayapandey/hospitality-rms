@@ -29,7 +29,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Sea
   return (
     <div className="space-y-4">
       <Link href={`/stock/orders?node=${ctx.node.id}`} className="text-sm text-slate-600">
-        ← Orders
+        ← Back
       </Link>
       <h1 className="text-xl font-semibold">Request to buy for {ctx.node.name}</h1>
       {/* where it comes from, and who orders it (ADR 053) */}

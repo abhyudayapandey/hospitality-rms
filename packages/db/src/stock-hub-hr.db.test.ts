@@ -11,10 +11,9 @@ import {
 } from '../test/helpers';
 
 // UX-4, UX-5 and SW-4 (ADR 035), security first.
-// - Swaps for management only (SW-4): a company setting, on by default (Test Company's file
-//   00 turns it off so its staff swap with each other). When on, only someone who changes
-//   the roster at the shift's place may offer a swap.
-// - Company settings: swaps_managers_only and count_due_days, only by the Account Owner.
+// - Swaps for managers only (ADR 152, was SW-4's setting): only someone who changes the roster
+//   at the shift's place may offer a swap, at every company.
+// - Company settings: count_due_days, only by the Account Owner.
 // - Deactivation through approval (UX-5): anyone holding WORKERS modify where the person
 //   works (HR, and now the outlet manager) asks; the security admin approves; the person
 //   becomes inactive. Never oneself, never another company, never with WORKERS view only.
@@ -75,55 +74,31 @@ async function assignedShift(c: PoolClient, who: string, role: string): Promise<
   return a.rows[0]!.id;
 }
 
-const setSwapsManagersOnly = (c: PoolClient, on: boolean | null) =>
-  c.query(
-    on === null
-      ? `update core.tenant set settings = settings - 'swaps_managers_only' where id = $1`
-      : `update core.tenant set settings = settings || jsonb_build_object('swaps_managers_only', $2::boolean) where id = $1`,
-    on === null ? [ids.tenant()] : [ids.tenant(), on],
-  );
-
-describe('swaps for management only (SW-4)', () => {
-  it('is on by default; Test Company turns it off in file 00', async () => {
+describe('swaps for managers only (ADR 152)', () => {
+  it('no company setting says otherwise: it is not among the settings', async () => {
     await inRolledBackTx(async (c) => {
-      const read = async () =>
-        (
-          await rows<{ on: boolean }>(
-            c,
-            'test.server.3.0',
-            `select (core.company_settings() ->> 'swaps_managers_only')::boolean as on`,
-          )
-        )[0]!.on;
-      expect(await read()).toBe(false);
-      await setSwapsManagersOnly(c, null);
-      expect(await read()).toBe(true);
+      const r = await rows<{ has: boolean }>(
+        c,
+        'test.server.3.0',
+        `select core.company_settings() ? 'swaps_managers_only' as has`,
+      );
+      expect(r[0]!.has).toBe(false);
     });
   });
 
-  it('when on, a server cannot offer a swap; when off, they can', async () => {
+  it('a server cannot offer a swap, even with a colleague of the same role', async () => {
     await inRolledBackTx(async (c) => {
       const a = await assignedShift(c, 'test.server.3.0', 'SERVER');
       const colleague = await workerOf(c, 'test.server-b.3.0');
-      await setSwapsManagersOnly(c, true);
       expect(
         await err(c, 'test.server.3.0', 'select hr.request_swap($1, $2)', [a, colleague]),
       ).toBe('SWAPS_MANAGERS_ONLY');
-      // the default (no setting) is the same
-      await setSwapsManagersOnly(c, null);
-      expect(
-        await err(c, 'test.server.3.0', 'select hr.request_swap($1, $2)', [a, colleague]),
-      ).toBe('SWAPS_MANAGERS_ONLY');
-      await setSwapsManagersOnly(c, false);
-      expect(
-        await err(c, 'test.server.3.0', 'select hr.request_swap($1, $2)', [a, colleague]),
-      ).toBeUndefined();
     });
   });
 
-  it('when on, someone who changes the roster there may still offer one', async () => {
+  it('someone who changes the roster there may offer one', async () => {
     await inRolledBackTx(async (c) => {
       const a = await assignedShift(c, 'test.floor-manager.3.0', 'FLOOR_MANAGER');
-      await setSwapsManagersOnly(c, true);
       const e = await err(c, 'test.floor-manager.3.0', 'select hr.request_swap($1, $2)', [
         a,
         await workerOf(c, 'test.server.3.0'),
@@ -139,24 +114,22 @@ describe('company settings (UX-4, SW-4)', () => {
     await inRolledBackTx(async (c) => {
       const set = (user: string, v: unknown) =>
         err(c, user, 'select core.set_company_settings($1::jsonb)', [JSON.stringify(v)]);
-      expect(
-        await set('test.account-owner', { swaps_managers_only: true, count_due_days: 10 }),
-      ).toBeUndefined();
+      expect(await set('test.account-owner', { count_due_days: 10 })).toBeUndefined();
       const s = (
-        await rows<{ s: { swaps_managers_only: boolean; count_due_days: number } }>(
+        await rows<{ s: { count_due_days: number } }>(
           c,
           'test.server.3.0',
           'select core.company_settings() as s',
         )
       )[0]!.s;
-      expect(s.swaps_managers_only).toBe(true);
       expect(s.count_due_days).toBe(10);
       for (const bad of [
         { count_due_days: 0 },
         { count_due_days: 61 },
         { count_due_days: 2.5 },
         { count_due_days: '7' },
-        { swaps_managers_only: 'yes' },
+        // no longer a setting (ADR 152)
+        { swaps_managers_only: false },
       ]) {
         expect(await set('test.account-owner', bad), JSON.stringify(bad)).toBe('INVALID_SETTING');
       }

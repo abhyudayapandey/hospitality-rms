@@ -514,3 +514,46 @@ export const RETIRED_GROUPS: Readonly<Record<string, string>> = { CHEF: 'STOCK_U
 export function groupDef(code: string): GroupDef | undefined {
   return ACCESS_GROUPS.find((g) => g.code === code);
 }
+
+/**
+ * Where a product group can sensibly be given (ADR 151): the kinds of place its holders sit at,
+ * so Admin → Add access offers a Hub Manager only at a hub and a Department Head only at a
+ * department or outlet. A company's own groups (ADR 027) fit anywhere. Presentation only: the
+ * database decides what a grant means wherever it is made.
+ */
+const GROUP_PLACES: Readonly<Record<string, readonly string[]>> = {
+  ACCOUNT_OWNER: ['org:company'],
+  HR_ADMIN: ['org:company'],
+  SECURITY_ADMIN: ['org:company'],
+  AUDITOR: ['org:company'],
+  AI_AGENT: ['org:company', 'delivery:network'],
+  AREA_MANAGER: ['org:area', 'org:region'],
+  HUB_MANAGER: ['delivery:hub'],
+  OUTLET_MANAGER: ['org:outlet', 'org:site', 'delivery:outlet'],
+  OUTLET_HR: ['org:outlet', 'org:site'],
+  EVENT_PLANNER: ['org:outlet'],
+  MINIBAR_KEEPER: ['org:outlet'],
+  USER_ADMIN: ['org:outlet', 'org:site'],
+  COMPLIANCE_KEEPER: ['org:outlet', 'org:site', 'org:department'],
+  STAFF: ['org:department', 'org:outlet', 'org:site'],
+  SUPERVISOR: ['org:department', 'org:outlet'],
+  DEPARTMENT_HEAD: ['org:department'],
+  BRIEFING_WRITER: ['org:department', 'org:outlet'],
+  RECIPE_READER: ['org:department', 'org:outlet'],
+  METER_READER: ['org:department', 'org:outlet'],
+  WARE_KEEPER: ['org:department', 'org:outlet'],
+  PRODUCTION_TEAM: ['org:department', 'org:outlet', 'org:site'],
+  STOCK_USER: ['delivery:store', 'delivery:outlet', 'delivery:hub'],
+  STORE_KEEPER: ['delivery:store', 'delivery:outlet', 'delivery:hub'],
+  PACK_OPENER: ['delivery:store'],
+  STOCK_VERIFIER: ['delivery:outlet', 'delivery:store'],
+  CASHIER: ['delivery:outlet', 'delivery:store'],
+  COST_CONTROLLER: ['delivery:outlet', 'delivery:hub'],
+  ACCOUNTS: ['delivery:outlet', 'delivery:hub'],
+  SUPPLY_VIEWER: ['delivery:outlet', 'delivery:hub'],
+};
+
+export function groupFitsPlace(group: string, place: { type: string; kind: string }): boolean {
+  const fits = GROUP_PLACES[group];
+  return !fits || fits.includes(`${place.type}:${place.kind}`);
+}

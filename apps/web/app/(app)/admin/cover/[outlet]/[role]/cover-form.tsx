@@ -225,7 +225,7 @@ export function CoverForm({
       <StatusBox message={saved} />
       {saved ? (
         <a href={back} className="block text-center text-sm font-medium text-brand-700 underline">
-          Back to who does what
+          ← Back
         </a>
       ) : (
         <button

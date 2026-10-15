@@ -81,8 +81,9 @@ describe('screens', () => {
     expect(away).not.toContain('swaps');
     expect(away).toContain('roster');
     const here = screensFor(input([['SHIFT_SWAPS', 'modify']])).map((s) => s.key);
-    expect(here).toEqual(expect.arrayContaining(['shifts', 'swaps']));
-    // the Team side of Roster only for roster builders
+    expect(here).toContain('shifts');
+    // no Swaps for staff (ADR 152), and the Team side of Roster only for roster builders
+    expect(here).not.toContain('swaps');
     expect(here).not.toContain('roster');
   });
 
@@ -98,17 +99,14 @@ describe('screens', () => {
     expect(some).toContain('audits');
   });
 
-  it('swaps for management only (SW-4): no Swaps for staff, Swaps for roster builders', () => {
-    const staff = screensFor(input([['SHIFT_SWAPS', 'modify']], { swapsManagersOnly: true }));
+  it('swaps are for managers only (ADR 152): no Swaps for staff, Swaps for roster builders', () => {
+    const staff = screensFor(input([['SHIFT_SWAPS', 'modify']]));
     expect(staff.map((s) => s.key)).not.toContain('swaps');
     const lead = screensFor(
-      input(
-        [
-          ['SHIFT_SWAPS', 'modify'],
-          ['ROSTER', 'modify'],
-        ],
-        { swapsManagersOnly: true },
-      ),
+      input([
+        ['SHIFT_SWAPS', 'modify'],
+        ['ROSTER', 'modify'],
+      ]),
     );
     expect(lead.map((s) => s.key)).toContain('swaps');
   });

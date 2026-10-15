@@ -59,7 +59,7 @@ export function hubActions(a: HubAccess, q: string): { main: HubAction[]; more: 
   } as const;
   const count = {
     key: 'count',
-    label: 'Count',
+    label: 'Stock check',
     href: `/stock/count?${q}`,
     icon: 'clipboard',
     ok: a.adjust,

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { EXTINGUISHER_TYPES, FIRE_EXTINGUISHER, LICENCE_KINDS } from '@outlet-ops/domain';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
+import { answering } from '@/lib/answering';
 import { useHydrated } from '@/lib/use-hydrated';
 import { saveLicence, type LicenceInput } from './actions';
 import { DocumentFiles, type DocumentFile } from './document-files';
@@ -34,7 +35,7 @@ export function LicenceForm({
 }: {
   places: Choice[];
   /** the job roles at the place, by place */
-  roles: Record<string, { code: string; name: string }[]>;
+  roles: Record<string, { code: string; name: string; answers?: boolean }[]>;
   existing?: LicenceInput;
   photos: boolean;
 }) {
@@ -53,7 +54,8 @@ export function LicenceForm({
     (existing?.files ?? []).map((key, i) => ({ key, name: `Document ${i + 1}` })),
   );
   const [key] = useState(() => crypto.randomUUID());
-  const here = roles[node] ?? [];
+  // who renews it: the roles that run something here (ADR 151)
+  const here = answering(roles[node] ?? []);
 
   return (
     <form

@@ -24,7 +24,7 @@ export interface PeopleContext {
   node: Place | null;
   tz: string;
   /** People tabs beyond domain checks (audit #10, #13; swaps SW-4). */
-  tabs: { personal: boolean; exceptions: boolean; swapsManagersOnly: boolean };
+  tabs: { personal: boolean; exceptions: boolean };
   can(domain: string, access?: 'view' | 'modify'): boolean;
 }
 
@@ -61,7 +61,6 @@ export async function peopleContext(
     tabs: {
       personal: shell.home?.at_workplace ?? false,
       exceptions,
-      swapsManagersOnly: shell.swapsManagersOnly,
     },
     can(domain, access = 'view') {
       const a = shell.domains.get(domain);
@@ -96,6 +95,8 @@ export interface MyShift {
   open_swap: string | null;
   /** straight, split or panzer (ADR 082), for its picture (ADR 108) */
   shift_type: string;
+  /** someone else with the shift's role works at its place: a swap has someone to go to */
+  colleagues: boolean;
 }
 
 /** The current user's published shifts from `from` (local date) for `days` days. */
@@ -104,6 +105,9 @@ export async function myShifts(tx: Tx, from: string, days: number): Promise<MySh
     select a.id as assignment_id, s.id as shift_id, s.local_date::text as local_date,
            s.start_at, s.end_at, s.role_code, core.node_name(s.org_node_id) as node_name,
            s.shift_type,
+           exists (select 1 from hr.worker_directory d
+                    where d.org_node_id = s.org_node_id and d.role_code = s.role_code
+                      and d.worker_id <> a.worker_id) as colleagues,
            (select sw.status from hr.shift_swap sw
              where sw.assignment_id = a.id and sw.status in ('proposed', 'submitted')) as open_swap
       from hr.shift_assignment a

@@ -20,7 +20,7 @@ export default async function NewBillPage({ searchParams }: { searchParams: Sear
   return (
     <div className="space-y-4">
       <Link href={back} className="text-sm text-slate-600">
-        ← Bills
+        ← Back
       </Link>
       <h1 className="text-xl font-semibold">A bill for a service at {ctx.node.name}</h1>
       <p className="text-sm text-slate-600">

@@ -211,14 +211,11 @@ csv(
   ['org_node_code', 'latitude', 'longitude', 'geofence_radius_m'],
   [[H, 15.4989, 73.8278, 150]],
 );
-// the company file: swaps for the managers only (the default), the demo look worked
+// the company file
 csv(
   '00_customer.csv',
-  [...table('00_customer.csv').header, 'swaps_managers_only'],
-  table('00_customer.csv').rows.map((r) => [
-    ...table('00_customer.csv').header.map((h) => r[h]),
-    'yes',
-  ]),
+  table('00_customer.csv').header,
+  table('00_customer.csv').rows.map((r) => table('00_customer.csv').header.map((h) => r[h])),
 );
 
 // ---------------------------------------------------------------------------------------

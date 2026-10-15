@@ -25,7 +25,7 @@ export default async function GroupsPage() {
   return (
     <div className="space-y-6">
       <Link href="/admin" className="text-sm text-slate-600">
-        ← Administration
+        ← Back
       </Link>
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Access groups</h1>

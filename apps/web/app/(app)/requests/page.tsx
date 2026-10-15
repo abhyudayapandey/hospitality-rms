@@ -63,10 +63,14 @@ export default async function RequestsPage({
     const items = store
       ? (
           await sql<AskStoreItem>`
-            select item_id::text, name, base_uom, on_hand::text
+            select item_id::text, name, base_uom, on_hand::text, category, par::text
               from inv.ask_store_items(${store.id}::uuid)`.execute(tx)
         ).rows
       : [];
+    // the note's example follows the outlet: a room at a hotel, a table elsewhere (ADR 153)
+    const hotel =
+      (await sql<{ f: string | null }>`select core.my_outlet_format() as f`.execute(tx)).rows[0]
+        ?.f === 'hotel';
     // whoever may see the stores' transfers has them as a tab (ADR 143)
     const transfers =
       (
@@ -117,6 +121,7 @@ export default async function RequestsPage({
       stores,
       store,
       items,
+      hotel,
       transfers,
       asks,
       requests,
@@ -124,7 +129,7 @@ export default async function RequestsPage({
       request: await rfmRequestHref(tx),
     };
   });
-  const { stores, store, items, transfers, asks, requests, supplies, request } = data;
+  const { stores, store, items, hotel, transfers, asks, requests, supplies, request } = data;
   const asked = sp['tab'];
   const tab =
     (asked === 'ask' && store) || asked === 'history'
@@ -159,7 +164,7 @@ export default async function RequestsPage({
     <div className="space-y-4">
       <RfmTabs current={tab} transfers={transfers} request={request} />
       {tab === 'ask' && store ? (
-        <AskForm stores={stores} store={store} items={items} />
+        <AskForm stores={stores} store={store} items={items} hotel={hotel} />
       ) : history.length === 0 ? (
         <Empty icon="box">Nothing asked for yet.</Empty>
       ) : (

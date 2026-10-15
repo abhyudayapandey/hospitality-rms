@@ -13,7 +13,6 @@ export interface ScreenInput extends NavInput {
   /** works at an outlet: has shifts, a clock and swaps of their own (audit #13) */
   atWork: boolean;
   /** the company keeps swaps for those who change the roster (SW-4, ADR 035, 074) */
-  swapsManagersOnly?: boolean;
   /** keeps or reads a hotel's breakfast (Shell.breakfast, ADR 097) */
   breakfast?: boolean;
   /** their department's licences and jobs are on the register (Shell.compliance, ADR 124) */
@@ -107,9 +106,8 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/roster/swaps',
     label: 'Swaps',
     icon: 'swap',
-    // with swaps for management only, staff never see Swaps (the database refuses them too)
-    show: (i) =>
-      i.atWork && can(i, 'SHIFT_SWAPS') && (!i.swapsManagersOnly || can(i, 'ROSTER', 'modify')),
+    // swaps are for managers only (ADR 152): staff never see Swaps (the database refuses too)
+    show: (i) => i.atWork && can(i, 'SHIFT_SWAPS') && can(i, 'ROSTER', 'modify'),
   },
   {
     key: 'myWeek',
@@ -171,14 +169,14 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
   {
     key: 'count',
     href: '/stock/count',
-    label: 'Count',
+    label: 'Stock check',
     icon: 'clipboard',
     show: (i) => can(i, 'STOCK_ADJUSTMENTS', 'modify'),
   },
   {
     key: 'check',
     href: '/stock/check',
-    label: 'Stock check',
+    label: 'Verify stock',
     icon: 'clipboardCheck',
     show: (i) => can(i, 'STOCK_CHECK'),
   },

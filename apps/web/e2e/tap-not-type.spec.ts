@@ -47,7 +47,7 @@ test('a reading: the safe range first, a number tapped, and the task done', asyn
     await expect(main(page).getByRole('textbox', { name: 'Walk-in chiller' })).toHaveValue('4');
     // a photo of every step (ADR 127)
     await takePhoto(main(page));
-    await main(page).getByRole('button', { name: 'Save' }).click();
+    await main(page).getByRole('button', { name: 'Done' }).click();
     await expect(main(page).getByText('Acceptable: 0 to 5 °C')).toBeVisible();
   } finally {
     await asMigrator(`delete from ops.task_step where task_id = $1`, [task]);
@@ -71,16 +71,23 @@ test('the To do list: one line a task, done ones folded into one row', async ({ 
   await expect(main(page).getByRole('link', { name: 'Report a problem' })).toBeVisible();
 });
 
-test('leave: tap the type and your shifts; it never starts on today', async ({ page }) => {
+test('leave: nothing is chosen until tapped; it never starts on today (ADR 153)', async ({
+  page,
+}) => {
   await signInAs(page, 'Test Commis 1.0');
   await page.goto('/leave');
   const form = page.getByRole('form', { name: 'Request leave' });
-  await expect(form.getByRole('group', { name: 'Type' }).getByRole('button').first()).toBeVisible();
-  const today = localToday('Asia/Kolkata');
-  await expect(form.getByLabel('From', { exact: true })).not.toHaveValue(today);
+  const type = form.getByRole('group', { name: 'Type' }).getByRole('button');
+  await expect(type.first()).toHaveAttribute('aria-pressed', 'false');
+  await expect(form.getByRole('button', { name: 'Pick the type of leave' })).toBeDisabled();
+  await type.first().click();
+  await expect(form.getByRole('button', { name: 'Pick the days off' })).toBeDisabled();
   const fold = form.getByTestId('leave-dates');
   if ((await fold.getAttribute('open')) === null) await fold.locator('summary').click();
-  const from = await form.getByLabel('From', { exact: true }).inputValue();
-  await form.getByLabel('To', { exact: true }).fill(addDays(from, 1));
+  const today = localToday('Asia/Kolkata');
+  await expect(form.getByLabel('From', { exact: true })).toHaveValue('');
+  await expect(form.getByLabel('From', { exact: true })).toHaveAttribute('min', addDays(today, 1));
+  await form.getByLabel('From', { exact: true }).fill(addDays(today, 3));
+  await form.getByLabel('To', { exact: true }).fill(addDays(today, 4));
   await expect(main(page).getByRole('button', { name: /Request 2 days/ })).toBeVisible();
 });

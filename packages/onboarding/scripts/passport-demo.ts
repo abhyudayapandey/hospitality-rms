@@ -70,16 +70,8 @@ const D = (s: string) => `${H}-${s}`;
 
 csv(
   '00_customer.csv',
-  [
-    'customer_code',
-    'company_name',
-    'country',
-    'currency',
-    'default_timezone',
-    'is_test',
-    'swaps_managers_only',
-  ],
-  [[CO, '[TEST] Passport Hotel', 'India', 'INR', TZ, 'yes', 'yes']],
+  ['customer_code', 'company_name', 'country', 'currency', 'default_timezone', 'is_test'],
+  [[CO, '[TEST] Passport Hotel', 'India', 'INR', TZ, 'yes']],
 );
 
 const DEPTS: [code: string, name: string, type: string][] = [

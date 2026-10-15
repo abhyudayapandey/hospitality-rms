@@ -123,7 +123,7 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   a "Fill all N short items up to par" button (ADR 053, 054). The word is "par" everywhere.
   Quantities show at most 2 decimals (`formatQty` / `inputQty`, `lib/qty.ts`); the DB keeps 6. Back links return to the list as it was (`withBack`,
   `backHref`, `lib/back.ts`). One name per thing: Request (ADR 144: "Request from a store",
-  "Request to buy"; the Main Store's buying is an Order), Stock check, Reject, "waiting for approval". A step or status is never shown as its
+  "Request to buy"; the Main Store's buying is an Order), Stock check (the verifier's is Verify stock), Reject, "waiting for approval". A step or status is never shown as its
   code. The Stock tabs show 4, then a "More" text button that shows the rest in the same row
   and becomes "Less". To users it is "To do list" (never "Inbox") and "Stock" (never "Supply").
 - Every screen under `app/(app)` has a `loading.tsx` (the shared `page-skeleton`), so a tap
@@ -187,7 +187,7 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   (`ops.task_handover`, by a trigger) with `ops.task.assigned_at`. A list of others' tasks says
   who has it, since when, and when it is due; "overdue when given" when it reached them late (to
   those who follow it; one's own list is one line a task, ADR 099); "Given to others" on To do and Home (done ones too, ADR 075). `ops.can_work`
-  is never null. With swaps for management only, staff see no Swaps tab at all.
+  is never null. Swaps are for managers only (ADR 152): staff see no Swaps tab at all.
 - Every role's day (ADR 075): a library checklist names the SOP roles that do it (`roles`);
   an outlet's copy goes to the first that works in its department there, else to whoever is
   on shift, and every shift role in every template has a daily one (`outlet-template.test.ts`).
@@ -433,6 +433,20 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   for those who run them; the nav offers Roster only where Me does (`inNavToo`; HR, reading many
   places' rosters, has it); Push today is for food and drink (kitchen and service departments,
   the outlet's managers).
+- Pickers, Homes and words for the job (ADR 151): a picker lists who can do the job (room rounds'
+  roles, the floor not its managers, a licence's role and department, an event's outlet roles,
+  groups that fit the place, never the writer); office Homes show "Your desk" (`lib/desk.ts`:
+  bills missing, clock-ins to check, access changes); whoever keeps a Main Store gets the order
+  desk's tiles (`inv.keeps_main_store`); managers read words for them and open on the outlet.
+- Swaps are for managers only (ADR 152): only someone who changes the roster at the shift's place
+  offers one (`hr.request_swap`); no company setting; Swap shows only where a colleague of the
+  role works there.
+- Said once, one name (ADR 153): leave, Give rooms and Breakage pick nothing until tapped; Ask
+  your head lists short items first, then by category; a submitted count lists what was counted,
+  then "Not counted: N"; a place picker with one place has no "All …"; every step's button is
+  "Done", the next step reads "Then: <step>", and every in-app back link reads "← Back". The
+  keeper's count is "Stock check"; the verifier's is "Verify stock". The auditor (AUDIT at the root) reads
+  the company's access audit (`core.access_audit`), never managing people.
 - The re-audit's fixes (ADR 160): one use-by rule (`inv.past_use_by`, the business day); count
   units are plural (`unitWord`, `formatCount`); a started shift has no open slots; Deactivate is
   on the person's page; a part day's report has no last week or cost shares (`partDayRows`);
@@ -552,9 +566,8 @@ Company settings (targets, menu engineering threshold, overtime multiplier, pric
 orders) live in `core.tenant.settings` beside the modules (ADR 031); file 09 has an
 optional supplier `contact_phone` for sending orders (ADR 032); file 01 has an optional
 `department_type` (kitchen, service, housekeeping, other) that orders Home's Needs
-attention (ADR 033). File 00 has an optional `swaps_managers_only` (on by default; Test
-Company sets it to no so its swap flows work) and the settings hold `count_due_days`
-(ADR 035). File 23 has an optional `pos_code`, each dish's code on the outlet's
+attention (ADR 033). Swaps are for managers only at every company (ADR 152; file 00's old
+`swaps_managers_only` column is ignored) and the settings hold `count_due_days` (ADR 035). File 23 has an optional `pos_code`, each dish's code on the outlet's
 POS, for the POS import (ADR 039; Test Bar 3.0's dishes are 3001 to 3031), and the Cashier job
 role holds CASHIER at the outlet's stores (import only, no sales or reports).
 File 11 has optional `shelf` and `shelf_order` (shelf-ordered stock check sheets, ADR 043; Test

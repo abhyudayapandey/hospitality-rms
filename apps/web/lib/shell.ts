@@ -9,7 +9,6 @@ import { navProfile, type NavInput } from './nav';
 import { navFlagsKey } from './nav-flags';
 import { unreadLines, type NotificationRow } from './notifications-view';
 import type { ScreenInput, ScreenKey } from './screens';
-import { companySettings } from './settings-data';
 import { DEFAULT_TZ } from './dates';
 
 export interface NodeRow {
@@ -45,7 +44,6 @@ export interface Shell {
   /** their job title, beside their name in the header */
   jobTitle: string | null;
   /** the company keeps shift swaps for those who change the roster (SW-4, ADR 035) */
-  swapsManagersOnly: boolean;
   inboxCount: number;
   unreadCount: number;
   /** they can read a recipe or see menu costs somewhere (the Menu tab) */
@@ -137,7 +135,6 @@ export const loadShell = cache(async (): Promise<Shell> => {
       tx,
     );
     const home = await sql<HomePlace>`select * from core.my_home()`.execute(tx);
-    const settings = await companySettings(tx);
     const title = await sql<{ name: string }>`
       select jr.name from hr.worker w
         join hr.job_role jr on jr.tenant_id = w.tenant_id and jr.code = w.role_code
@@ -240,7 +237,6 @@ export const loadShell = cache(async (): Promise<Shell> => {
       nodes: nodes.rows,
       home: home.rows[0] ?? null,
       jobTitle: title.rows[0]?.name ?? null,
-      swapsManagersOnly: settings.swaps_managers_only,
       inboxCount: inbox.rows[0]?.n ?? 0,
       unreadCount: unreadLines(recent.rows, tz),
       ...flags,
@@ -265,7 +261,6 @@ export function screenInput(shell: Shell): ScreenInput {
     ...navInput(shell),
     access: shell.domains,
     atWork: shell.home?.at_workplace ?? false,
-    swapsManagersOnly: shell.swapsManagersOnly,
     breakfast: shell.breakfast,
     compliance: shell.compliance,
     nothing: shell.nothing,

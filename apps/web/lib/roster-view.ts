@@ -35,7 +35,6 @@ export interface TabAccess {
   /** resolves attendance exceptions somewhere */
   exceptions: boolean;
   /** the company keeps swaps for those who change the roster (SW-4, ADR 035, 074) */
-  swapsManagersOnly?: boolean;
 }
 
 /**
@@ -53,10 +52,8 @@ export function peopleTabs(a: TabAccess): Record<Side, PeopleTabDef[]> {
       case '/roster/clock':
         return a.personal && a.can('ATTENDANCE', 'modify');
       case '/roster/swaps':
-        // with swaps for management only, staff have no Swaps tab (SW-4)
-        return (
-          a.personal && a.can('SHIFT_SWAPS') && (!a.swapsManagersOnly || a.can('ROSTER', 'modify'))
-        );
+        // swaps are for managers only (ADR 152): staff have no Swaps tab
+        return a.personal && a.can('SHIFT_SWAPS') && a.can('ROSTER', 'modify');
       default:
         return a.can('LEAVE');
     }
@@ -171,10 +168,10 @@ export function groupByTime<S extends StripShift>(
 }
 
 /**
- * Whether My shifts offers a Swap button (SW-4, ADR 035): swap access, and when the company
- * keeps swaps for management, the right to change the roster. hr.request_swap checks the
- * same at the shift's place.
+ * Whether My shifts offers a Swap button (ADR 152): swaps are for managers only, so swap
+ * access and the right to change the roster. hr.request_swap checks the same at the shift's
+ * place; each shift's button also needs a colleague with its role to take it.
  */
-export function canOfferSwap(a: TabAccess, managersOnly: boolean): boolean {
-  return a.can('SHIFT_SWAPS', 'modify') && (!managersOnly || a.can('ROSTER', 'modify'));
+export function canOfferSwap(a: TabAccess): boolean {
+  return a.can('SHIFT_SWAPS', 'modify') && a.can('ROSTER', 'modify');
 }

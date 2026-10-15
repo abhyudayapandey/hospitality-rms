@@ -98,7 +98,7 @@ export function CountForm({
         disabled={!hydrated || pending || counted === 0 || done !== null}
         className={primaryButton}
       >
-        Submit count ({counted} of {lines.length} counted)
+        Submit stock check ({counted} of {lines.length} counted)
       </button>
     </form>
   );

@@ -136,7 +136,7 @@ export default async function CostOfSales({ searchParams }: { searchParams: Sear
             period, so their loss isn&apos;t known.{' '}
             {canCount && (
               <Link className="underline" href="/stock/count">
-                Start a count
+                Start a stock check
               </Link>
             )}
           </p>

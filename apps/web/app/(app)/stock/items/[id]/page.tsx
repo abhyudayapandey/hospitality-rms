@@ -82,7 +82,7 @@ export default async function ItemLedgerPage({
   return (
     <div className="space-y-4">
       <Link href={`/stock?node=${ctx.node.id}`} className="text-sm text-slate-600">
-        ← Stock at {ctx.node.name}
+        ← Back
       </Link>
       <div className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <div className="flex items-center gap-3">

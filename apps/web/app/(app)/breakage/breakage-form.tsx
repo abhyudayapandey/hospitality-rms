@@ -9,17 +9,19 @@ import {
   BROKEN_BY_WORDS,
 } from '@outlet-ops/domain';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
-import { ItemThumb } from '@/components/item-thumb';
+import { ItemPicker } from '@/components/item-picker';
 import { PhotoField } from '@/components/photo-field';
 import { Stepper } from '@/components/stepper';
 import type { BreakageItem, BreakagePlace } from '@/lib/breakage';
+import { breakable } from '@/lib/breakable';
 import { formatQty } from '@/lib/qty';
 import { useHydrated } from '@/lib/use-hydrated';
 import { getBreakageUploadUrl, itemsAt, recordBreakage } from './actions';
 
 /**
  * Record a breakage (ADR 093) at a department: from which store, what, how many, why and who
- * broke it. Nothing is filled in but the department's own store.
+ * broke it. Nothing is filled in but the department's own store. What broke is a tile of the
+ * things that can break (ADR 153), never a list of everything.
  */
 export function BreakageForm({
   place,
@@ -46,7 +48,8 @@ export function BreakageForm({
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
-  const item = items.find((i) => i.item_id === itemId);
+  const choices = breakable(items);
+  const item = choices.find((i) => i.item_id === itemId);
 
   const changeStore = (id: string) =>
     start(async () => {
@@ -118,20 +121,15 @@ export function BreakageForm({
           </select>
         </label>
       )}
-      <label className="block space-y-1">
+      <div className="space-y-1">
         <span className="text-sm font-medium">What broke</span>
-        <span className="flex items-center gap-3">
-          {item && <ItemThumb name={item.name} />}
-          <select value={itemId} onChange={(e) => setItemId(e.target.value)} className={inputClass}>
-            <option value="">Choose…</option>
-            {items.map((i) => (
-              <option key={i.item_id} value={i.item_id}>
-                {i.name} ({i.unit})
-              </option>
-            ))}
-          </select>
-        </span>
-      </label>
+        <ItemPicker
+          items={choices}
+          value={itemId || null}
+          onChange={(id) => setItemId(id ?? '')}
+          label="What broke"
+        />
+      </div>
       <div className="space-y-3">
         <div className="space-y-1">
           <span className="text-sm font-medium">How many{item ? ` (${item.unit})` : ''}</span>

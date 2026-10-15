@@ -48,8 +48,9 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
           className="space-y-2 rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200"
           data-testid="expired"
         >
+          {/* whoever may discard them does it here; anyone else tells their lead (ADR 151) */}
           <h2 className="font-semibold text-amber-900">
-            Past their expiry: report them to your lead
+            {canWaste ? 'Past their expiry' : 'Past their expiry: report them to your lead'}
           </h2>
           <ul className="space-y-2 text-sm">
             {expired.map((b) => (
@@ -64,7 +65,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
                       className="block text-xs underline"
                       href={`/stock/wastage?node=${node}&item=${b.item_id}&qty=${inputQty(b.remaining)}&reason=expired`}
                     >
-                      or record the wastage yourself
+                      Record the wastage
                     </Link>
                   )}
                 </span>

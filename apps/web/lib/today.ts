@@ -1,4 +1,5 @@
 import 'server-only';
+import { loadDesk, type DeskRow } from './desk';
 import { addDays, businessToday, weekStart } from './dates';
 import { sql, withUser, type Tx } from './db';
 import { myBriefing, type MyBriefing } from './briefing';
@@ -124,6 +125,8 @@ export interface Today {
   numbers: TodayNumbers | null;
   league: TodayLeague | null;
   store: StoreWork | null;
+  /** the office's own work: bills, clock-ins to check, access changes (ADR 151) */
+  desk: DeskRow[];
   expiry: ExpiryCounts | null;
   pos: PosToday | null;
   /** dishes to sell first today at their outlet (INV-12, ADR 040) */
@@ -234,9 +237,10 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       if (sees || rows.length > 0) compliance = { keeps, recorded, rows };
     }
 
-    // the store keeper's tiles (UX-6): the stores they see, under RLS
+    // the store keeper's tiles (UX-6): the stores they see, under RLS; also whoever else
+    // keeps a Main Store (ADR 151)
     let store: StoreWork | null = null;
-    if (profile === 'store' && shell.domains.has('STOCK_LEVELS')) {
+    if (await keepsDesk(tx, shell, profile)) {
       const r = await sql<{ to_order: number; receive: number; low: number }>`
         select (select count(*) from inv.desk_orders() where stage = 'to_order')::int as to_order,
                (select count(*) from (
@@ -324,6 +328,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       minibar,
       breakfast,
       tomorrow,
+      desk: await loadDesk(tx, shell),
       targets: (await companySettings(tx)).targets,
     };
   });
@@ -331,6 +336,14 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
   const [main, , , { attention, openSlotsHref }, { numbers, league }, push, events, expiry] =
     await Promise.all([mainP, tasksP, inboxP, attentionP, numbersP, pushP, eventsP, expiryP]);
   return { ...main, attention, openSlotsHref, numbers, league, push, events, expiry };
+}
+
+/** The order desk's tiles are the store keeper's, and whoever else keeps a Main Store (ADR 151). */
+async function keepsDesk(tx: Tx, shell: Shell, profile: NavProfile): Promise<boolean> {
+  if (!shell.domains.has('STOCK_LEVELS')) return false;
+  if (profile === 'store') return true;
+  if (!shell.groups.has('STORE_KEEPER')) return false;
+  return (await sql<{ k: boolean }>`select inv.keeps_main_store() as k`.execute(tx)).rows[0]!.k;
 }
 
 /**
@@ -343,6 +356,7 @@ async function homeAttention(
   profile: NavProfile,
   today: string,
 ): Promise<{ attention: AttentionGroup[]; openSlotsHref: string | null }> {
+  const desk = await keepsDesk(tx, shell, profile);
   let openSlotsHref: string | null = null;
   // each count at its place, under RLS; then the places' departments and order (DB-2)
   const counts = await sql<AttentionCount>`
@@ -393,8 +407,9 @@ async function homeAttention(
     });
   }
   const all: AttentionCount[] = [
-    // the store keeper's Running low tile says it once (ADR 053), not three times
-    ...counts.rows.filter((c) => profile !== 'store' || c.kind !== 'lowStock'),
+    // the desk's Running low tile says it once (ADR 053), not three times; running low is
+    // for whoever orders or asks for stock, never an office's first line (ADR 151)
+    ...counts.rows.filter((c) => c.kind !== 'lowStock' || (!desk && profile !== 'office')),
     ...(slots?.rows ?? []).map((s) => ({
       kind: 'openSlots' as const,
       node: s.node,

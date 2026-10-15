@@ -351,8 +351,8 @@ export const FILES = {
       default_timezone: timezone,
       // optional: the leave HR approval step (ADR 009); blank or absent keeps it on
       leave_hr_approval: z.union([z.literal('').transform(() => undefined), yesNo]),
-      // optional: swaps for management only (SW-4, ADR 035); blank or absent leaves it as it
-      // is (on for a new customer); the Account Owner can also change it in Admin → Settings
+      // no longer read: swaps are for managers only for every company (ADR 152); kept so a
+      // file written before still loads
       swaps_managers_only: keepYesNo,
       // ADR 092: which orders need approving: unusual (blank: the default), every, above:<amount>
       purchase_approval: z

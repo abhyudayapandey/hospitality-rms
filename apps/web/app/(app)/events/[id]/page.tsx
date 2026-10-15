@@ -28,7 +28,7 @@ export default async function EventPage({
     const [e] = await events(tx, '', '', id);
     if (!e) return null;
     const editable = ctx.can('EVENTS', 'modify') && e.status !== 'cancelled';
-    return { e, options: editable ? await eventFormOptions(tx) : null };
+    return { e, options: editable ? await eventFormOptions(tx, e.org_node_id) : null };
   });
   if (!data) return <Empty>Event not found.</Empty>;
   const { e, options } = data;
@@ -36,7 +36,7 @@ export default async function EventPage({
   return (
     <div className="space-y-4">
       <Link href={`/events?node=${e.org_node_id}`} className="text-sm text-slate-600">
-        ← Events
+        ← Back
       </Link>
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <h1 className="text-lg font-semibold">{e.name}</h1>

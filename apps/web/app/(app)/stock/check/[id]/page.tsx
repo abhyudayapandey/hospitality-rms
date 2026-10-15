@@ -31,22 +31,22 @@ export default async function StockCheckSheetPage({
       : { rows: [] as SheetLine[] };
     return { check: c.rows[0], lines: l.rows };
   });
-  if (!check) return <Empty>Stock check not found.</Empty>;
+  if (!check) return <Empty>Not found.</Empty>;
   const back = `/stock/check?node=${check.delivery_node_id}`;
   return (
     <div className="space-y-4">
       <Link href={back} className="text-sm text-slate-600">
-        ← Stock check
+        ← Back
       </Link>
       <h1 className="text-xl font-semibold">
-        {check.mode === 'bar' ? 'Bar check' : 'Stock check'} at {ctx.node.name}
+        {check.mode === 'bar' ? 'Verify bar stock' : 'Verify stock'} at {ctx.node.name}
       </h1>
       {check.status === 'finished' ? (
         <p
           role="status"
           className="rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800"
         >
-          This stock check is finished.
+          Verifying is finished.
         </p>
       ) : (
         <CheckSheet

@@ -9,11 +9,11 @@ const TABS = [
   { href: '/stock', label: 'Stock', domain: 'STOCK_LEVELS', access: 'view' },
   { href: '/stock/orders', label: 'Orders', domain: 'PURCHASE_ORDERS', access: 'view' },
   { href: '/stock/transfers', label: 'Transfers', domain: 'TRANSFERS', access: 'view' },
-  { href: '/stock/count', label: 'Count', domain: 'STOCK_ADJUSTMENTS', access: 'modify' },
+  { href: '/stock/count', label: 'Stock check', domain: 'STOCK_ADJUSTMENTS', access: 'modify' },
   { href: '/stock/wastage', label: 'Wastage', domain: 'STOCK_ADJUSTMENTS', access: 'modify' },
   { href: '/stock/opened', label: 'Opened', domain: 'SHELF_LIFE', access: 'view' },
   { href: '/stock/production', label: 'Make', domain: null, access: 'modify' },
-  { href: '/stock/check', label: 'Stock check', domain: 'STOCK_CHECK', access: 'view' },
+  { href: '/stock/check', label: 'Verify stock', domain: 'STOCK_CHECK', access: 'view' },
   { href: '/stock/bills', label: 'Bills', domain: 'BILLS', access: 'view' },
 ] as const;
 
@@ -95,7 +95,7 @@ export function NoSupplyAccess() {
     <div className="space-y-3">
       <p className="text-slate-600">You don&apos;t have access to stock.</p>
       <Link href="/" className="flex min-h-11 items-center text-sm font-medium text-brand-700">
-        ← Home
+        ← Back
       </Link>
     </div>
   );

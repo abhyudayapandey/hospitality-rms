@@ -38,7 +38,7 @@ export default async function LogbookPage({ searchParams }: { searchParams: Sear
     const { range, today } = await listDays(tx, sp, place.place_id);
     return {
       entries: await logbook(tx, place.place_id, range),
-      targets: place.can_write ? await logbookTargets(tx, place.place_id) : null,
+      targets: place.can_write ? await logbookTargets(tx, place.place_id, user.id) : null,
       range,
       today,
     };

@@ -16,7 +16,7 @@ export default async function GroupPage({ params }: { params: Promise<{ code: st
   return (
     <div className="space-y-4">
       <Link href="/admin/groups" className="text-sm text-slate-600">
-        ← Access groups
+        ← Back
       </Link>
       <h1 className="text-xl font-semibold">{g?.name ?? 'Access group'}</h1>
       {g ? (

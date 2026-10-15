@@ -22,7 +22,7 @@ export function StartCheckButtons({ node, resume }: { node: string; resume: stri
         className={primaryButton}
         onClick={() => router.push(`/stock/check/${resume}?node=${node}`)}
       >
-        Continue the stock check
+        Continue verifying
       </button>
     );
   }
@@ -34,7 +34,7 @@ export function StartCheckButtons({ node, resume }: { node: string; resume: stri
         className={primaryButton}
         onClick={() => go('standard')}
       >
-        Start a stock check
+        Start verifying
       </button>
       <button
         type="button"

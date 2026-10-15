@@ -113,12 +113,12 @@ test('a count within tolerance posts straight away', async ({ page }) => {
   await page.goto(`/stock/count?node=${store}`);
   const resume = page.getByRole('link', { name: /^Continue the count/ });
   if (await resume.count()) await resume.click();
-  else await page.getByRole('button', { name: 'Start a count' }).click();
+  else await page.getByRole('button', { name: 'Start a stock check' }).click();
   await page.waitForURL(/\/stock\/count\/[0-9a-f-]{36}/);
   // 2% more than expected: within the 5% tolerance file 11 sets for dry goods
   const counted = Math.round(before * 1.02 * 1000) / 1000;
   await page.getByRole('textbox', { name: 'Counted Test Salt' }).fill(String(counted));
-  await page.getByRole('button', { name: /^Submit count/ }).click();
+  await page.getByRole('button', { name: /^Submit stock check/ }).click();
   await expect(page.getByRole('status')).toContainText('1 posted, 0 sent for approval');
 
   // the screen shows 2 decimals (ADR 054)
@@ -133,7 +133,7 @@ test('the area manager sees outlet stock read-only (derived view)', async ({ pag
   await expect(page.getByTestId('stock-row').first()).toBeVisible();
   const tabs = page.getByRole('navigation', { name: 'Stock tabs' });
   await expect(tabs.getByRole('link', { name: 'Stock', exact: true })).toBeVisible();
-  await expect(tabs.getByRole('link', { name: 'Count' })).toHaveCount(0);
+  await expect(tabs.getByRole('link', { name: 'Stock check', exact: true })).toHaveCount(0);
   await expect(tabs.getByRole('link', { name: 'Wastage' })).toHaveCount(0);
   await page.goto(`/stock/orders?node=${store}`);
   // the create button, not an order row still waiting for its supplier

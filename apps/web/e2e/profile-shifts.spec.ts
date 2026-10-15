@@ -16,7 +16,11 @@ test('the header name opens your profile: details, access in words, and the pass
   await expect(page.getByTestId('profile-sign-in')).toHaveText('Username and password');
   const self = page.locator('[data-testid="access-grant"][data-group="SELF"]');
   await expect(self).toContainText('Yourself, wherever you work');
-  await expect(self).toContainText('Change: attendance, leave, shift swaps');
+  const change = self.getByTestId('access-change');
+  await expect(change).toContainText('You can change');
+  for (const w of ['attendance', 'leave', 'shift swaps']) {
+    await expect(change.getByRole('listitem').filter({ hasText: w }).first()).toBeVisible();
+  }
   // a commis sets no locations
   await expect(page.getByRole('link', { name: /Outlet location/ })).toHaveCount(0);
 

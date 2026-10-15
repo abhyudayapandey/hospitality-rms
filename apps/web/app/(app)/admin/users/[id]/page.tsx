@@ -25,8 +25,8 @@ export default async function UserPage({ params }: { params: Promise<{ id: strin
           select * from core.admin_groups()`.execute(tx)
       ).rows,
       places: (
-        await sql<{ id: string; name: string; type: string }>`
-          select id, name, type from core.admin_places()`.execute(tx)
+        await sql<{ id: string; name: string; type: string; kind: string }>`
+          select id, name, type, kind from core.admin_places()`.execute(tx)
       ).rows,
       jobRoles: (
         await sql<{ code: string; name: string }>`select * from core.admin_job_roles()`.execute(tx)
@@ -40,7 +40,7 @@ export default async function UserPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="space-y-5">
       <Link href="/admin/users" className="text-sm text-slate-600">
-        ← People
+        ← Back
       </Link>
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <div className="flex items-baseline justify-between gap-2">

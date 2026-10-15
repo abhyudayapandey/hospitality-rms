@@ -22,7 +22,7 @@ test('the front desk covering the store keeper gets the store keeper’s task an
   );
   await page.goto(`/stock?node=${store}`);
   const jobs = page.getByRole('navigation', { name: 'Stock jobs' }).getByRole('link');
-  await expect(jobs.first()).toHaveText('Count');
+  await expect(jobs.first()).toHaveText('Stock check');
 
   await storeKeeperCover(false);
   await signInAs(page, 'Test Front Desk Executive 2.0');

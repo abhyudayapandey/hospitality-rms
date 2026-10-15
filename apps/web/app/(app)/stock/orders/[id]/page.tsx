@@ -248,7 +248,7 @@ export default async function OrderPage({
         )}
         className="text-sm text-slate-600"
       >
-        ← Orders
+        ← Back
       </Link>
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <div className="flex items-baseline justify-between gap-2">

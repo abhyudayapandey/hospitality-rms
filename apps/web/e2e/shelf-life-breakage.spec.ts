@@ -53,7 +53,10 @@ test("a breakage leaves the store and is in the outlet's log", async ({ page }) 
   try {
     await signInAs(page, 'Test Room Attendant 1.0');
     await page.goto(`/breakage?place=${housekeeping}`);
-    await main(page).getByLabel('What broke').selectOption({ label: 'Test Bath Towel (each)' });
+    // what broke is a tile of the things that can break (ADR 153)
+    const what = main(page).getByRole('group', { name: 'What broke' });
+    await what.getByRole('textbox', { name: 'Find an item' }).fill('Bath Towel');
+    await what.getByRole('button', { name: 'Test Bath Towel' }).click();
     await main(page)
       .getByLabel(/^How many/)
       .fill('1');
@@ -68,6 +71,8 @@ test("a breakage leaves the store and is in the outlet's log", async ({ page }) 
     await takePhoto(main(page));
     await main(page).getByRole('button', { name: 'Record the breakage' }).click();
     await expect(main(page).getByText('Recorded: Test Bath Towel, 1 each.')).toBeVisible();
+    // what it cost is for managers (ADR 153)
+    await expect(main(page).getByTestId('breakage-total')).not.toContainText('₹');
     await expect(
       main(page)
         .getByTestId('breakage-row')

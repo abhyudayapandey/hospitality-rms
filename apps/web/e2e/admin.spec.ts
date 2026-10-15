@@ -46,8 +46,9 @@ test('a sensitive grant says it needs approval before saving', async ({ page }) 
     .getByRole('link', { name: /Test Bellboy 1.0/ })
     .click();
   const add = page.getByRole('form', { name: 'Add access' });
-  await add.getByLabel('Place').selectOption(await placeId('TEST-HOTEL-1.0'));
+  // the access first: the places listed are the ones it fits (ADR 151)
   await add.getByLabel('Access').selectOption({ label: 'Outlet Manager' });
+  await add.getByLabel('Place').selectOption(await placeId('TEST-HOTEL-1.0'));
   await expect(add.getByTestId('applies')).toHaveText('Waiting for approval');
   await add.getByLabel('Access').selectOption({ label: 'Stock User' });
   await expect(add.getByTestId('applies')).toHaveText('Applies now');

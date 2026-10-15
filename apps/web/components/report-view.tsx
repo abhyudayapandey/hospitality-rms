@@ -39,7 +39,7 @@ export function ReportHeader({
         <BackLink fallback="/me" />
       ) : (
         <Link href="/reports" className="text-sm text-slate-600 underline">
-          ← Reports
+          ← Back
         </Link>
       )}
       <h1 className="text-xl font-semibold">{REPORTS[report].title}</h1>

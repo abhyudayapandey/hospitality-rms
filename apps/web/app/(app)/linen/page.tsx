@@ -23,6 +23,8 @@ export default async function LinenPage({ searchParams }: { searchParams: Search
   const asked = param(sp, 'place');
   const place =
     places.find((p) => isUuid(asked) && p.place_id === asked) ??
+    // a manager of the outlet opens on the outlet, never their own office (ADR 151)
+    places.find((p) => p.kind === 'outlet') ??
     places.find((p) => p.kind === 'department') ??
     places[0];
   if (!place) {

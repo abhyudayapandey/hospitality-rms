@@ -23,7 +23,7 @@ export function StartCountButton({ node }: { node: string }) {
           })
         }
       >
-        Start a count
+        Start a stock check
       </button>
       <ErrorBox message={error} />
     </div>

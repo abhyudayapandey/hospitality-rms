@@ -33,7 +33,7 @@ async function NewJob({ searchParams }: { searchParams: SearchParams }) {
   return (
     <div className="space-y-4">
       <Link href="/compliance" className="text-sm text-slate-600 underline">
-        Back to Compliance
+        ← Back
       </Link>
       <h1 className="text-xl font-semibold">Add a calendar job</h1>
       {kept.length === 0 ? (

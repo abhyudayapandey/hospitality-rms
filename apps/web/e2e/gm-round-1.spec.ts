@@ -58,7 +58,7 @@ test("the count sheet shows each row's pack, so a bottle is never a nip", async 
   try {
     await signInAs(page, 'Test Accountant');
     await page.goto(`/stock/check?node=${store}`);
-    await page.getByRole('button', { name: 'Start a stock check' }).click();
+    await page.getByRole('button', { name: 'Start verifying' }).click();
     await page.waitForURL(/\/stock\/check\/[0-9a-f-]{36}/);
     const vodka = page.locator('li').filter({ hasText: 'Test Vodka 750ml' }).first();
     await expect(vodka.getByTestId('pack')).toHaveText('750 ml bottle');
