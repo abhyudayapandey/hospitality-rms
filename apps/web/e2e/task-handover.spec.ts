@@ -106,25 +106,16 @@ test('the housekeeper gives pest control to her supervisor, who gives it on; eve
   }
 });
 
-test('swaps for management only: a server has no Swaps; the bar manager does', async ({ page }) => {
-  // Test Company lets staff swap (file 00); for this test it keeps swaps for managers
-  const setting = (on: boolean) =>
-    asMigrator(
-      `update core.tenant set settings = settings || jsonb_build_object('swaps_managers_only', $1::boolean)
-        where code = 'TEST-COMPANY'`,
-      [on],
-    );
-  await setting(true);
-  try {
-    await signInAs(page, 'Test Server 3.0');
-    await page.goto('/roster/my');
-    await expect(page.getByRole('link', { name: 'Swaps', exact: true })).toHaveCount(0);
-    await page.goto('/me');
-    await expect(page.getByRole('link', { name: 'Swaps', exact: true })).toHaveCount(0);
-    await signInAs(page, 'Test Bar Manager 3.0');
-    await page.goto('/roster/my');
-    await expect(page.getByRole('link', { name: 'Swaps', exact: true })).toHaveCount(1);
-  } finally {
-    await setting(false);
-  }
+test('swaps for managers only (ADR 152): a server has no Swaps; the bar manager does', async ({
+  page,
+}) => {
+  await signInAs(page, 'Test Server 3.0');
+  await page.goto('/roster/my');
+  await expect(page.getByRole('link', { name: 'Swaps', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Swap', exact: true })).toHaveCount(0);
+  await page.goto('/me');
+  await expect(page.getByRole('link', { name: 'Swaps', exact: true })).toHaveCount(0);
+  await signInAs(page, 'Test Bar Manager 3.0');
+  await page.goto('/roster/my');
+  await expect(page.getByRole('link', { name: 'Swaps', exact: true })).toHaveCount(1);
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canOfferSwap,
   dayStrip,
   groupByTime,
   peopleTabs,
@@ -47,7 +48,8 @@ const EVENT_PLANNER = access({ ROSTER: 'view', EVENTS: 'modify', LEAVE: 'view' }
 describe('peopleTabs (Me / Team)', () => {
   it('frontline staff have only Me: no roster, exceptions or events tab', () => {
     const t = peopleTabs(SERVER);
-    expect(hrefs(t.me)).toEqual(['/roster/my', '/roster/clock', '/leave', '/roster/swaps']);
+    // no Swaps: swaps are for managers only (ADR 152)
+    expect(hrefs(t.me)).toEqual(['/roster/my', '/roster/clock', '/leave']);
     expect(t.team).toEqual([]);
     expect(peopleTabs(SOUS_CHEF).team).toEqual([]);
   });
@@ -158,12 +160,11 @@ describe('groupByTime', () => {
   });
 });
 
-describe('swaps for management only (SW-4, ADR 074)', () => {
-  it('a server has no Swaps tab when the company keeps swaps for managers; a manager does', () => {
-    const only = (a: TabAccess): TabAccess => ({ ...a, swapsManagersOnly: true });
-    expect(hrefs(peopleTabs(only(SERVER)).me)).not.toContain('/roster/swaps');
-    expect(hrefs(peopleTabs(only(MANAGER)).me)).toContain('/roster/swaps');
-    // with the setting off, staff swap among themselves
-    expect(hrefs(peopleTabs(SERVER).me)).toContain('/roster/swaps');
+describe('swaps for managers only (ADR 152)', () => {
+  it('a server has no Swaps tab and no Swap button; a manager has both', () => {
+    expect(hrefs(peopleTabs(SERVER).me)).not.toContain('/roster/swaps');
+    expect(hrefs(peopleTabs(MANAGER).me)).toContain('/roster/swaps');
+    expect(canOfferSwap(SERVER)).toBe(false);
+    expect(canOfferSwap(MANAGER)).toBe(true);
   });
 });

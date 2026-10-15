@@ -26,8 +26,8 @@ test('a company without Events and Swaps: they are gone from Roster and Home, an
   await page.goto('/');
   expect(await page.getByRole('main').getByRole('link').allInnerTexts()).not.toContain('Events');
 
-  // Test Company keeps both
-  await signInAs(page, 'Test Server 3.0');
+  // Test Company keeps both: its managers swap (ADR 152)
+  await signInAs(page, 'Test Bar Manager 3.0');
   await page.goto('/roster/my');
   await expect(page.getByRole('navigation', { name: 'Me', exact: true })).toContainText('Swaps');
 });

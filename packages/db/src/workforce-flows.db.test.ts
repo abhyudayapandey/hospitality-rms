@@ -439,6 +439,22 @@ describe('LEAVE', () => {
 
 // ---------------------------------------------------------------------------
 describe('SHIFT_SWAP', () => {
+  // swaps are for managers only (ADR 152): whoever offers a shift changes the roster where it
+  // is, so the server who offers here also heads Floor Service (the swap's checks and approvals
+  // are the same for anyone who offers one)
+  async function swapFixture(c: PoolClient): Promise<Fx> {
+    const f = await fixture(c);
+    for (const user of [SAM()]) {
+      await c.query(
+        `insert into core.role_assignment (tenant_id, user_id, group_id, node_id, effective_from)
+         select $1, $2, id, $3, date '2026-01-01' from core.security_group
+          where tenant_id = $1 and code = 'DEPARTMENT_HEAD'`,
+        [f.tenant, user, ids.node('TEST-BAR-3.0-FLOOR-SERVICE')],
+      );
+    }
+    return f;
+  }
+
   async function offered(
     c: PoolClient,
     f: Fx,
@@ -460,7 +476,7 @@ describe('SHIFT_SWAP', () => {
 
   it('offer -> accept -> module approval -> apply moves the shift', async () => {
     await inRolledBackTx(async (c) => {
-      const f = await fixture(c);
+      const f = await swapFixture(c);
       const { shiftId, assignmentId, swapId } = await offered(c, f, f.sam, SAM(), f.pat.workerId);
       const incoming = await as<{ swap_id: string; direction: string }>(
         c,
@@ -525,6 +541,7 @@ describe('SHIFT_SWAP', () => {
 
   it('neither party approves: a department head swapping goes to the outlet manager', async () => {
     await inRolledBackTx(async (c) => {
+      // the floor manager changes the roster already; nobody else heads Floor Service here
       const f = await fixture(c);
       // the floor manager and Mia (both rostered as managers in Floor Service) swap
       const floor = await workerFor(
@@ -576,7 +593,7 @@ describe('SHIFT_SWAP', () => {
 
   it('rest and weekly hours do not stop the offer or the acceptance', async () => {
     await inRolledBackTx(async (c) => {
-      const f = await fixture(c);
+      const f = await swapFixture(c);
       // Pat works until midnight the evening before: 9 h rest before the 09:00 shift
       await assign(c, await shift(c, f, 0, '20:00', 4), f.pat.workerId);
       const { swapId } = await offered(c, f, f.sam, SAM(), f.pat.workerId);
@@ -592,7 +609,7 @@ describe('SHIFT_SWAP', () => {
 
   it('the approver sees the warnings, and approves only past the ones they saw', async () => {
     await inRolledBackTx(async (c) => {
-      const f = await fixture(c);
+      const f = await swapFixture(c);
       const { shiftId, swapId } = await offered(c, f, f.sam, SAM(), f.pat.workerId);
       await as(c, f.pat.userId, 'select hr.respond_swap($1, true)', [swapId]);
       expect(await checks(c, FLOOR(), swapId)).toEqual([]);
@@ -662,7 +679,7 @@ describe('SHIFT_SWAP', () => {
 
   it('hard rules still block the offer, the acceptance and the approval', async () => {
     await inRolledBackTx(async (c) => {
-      const f = await fixture(c);
+      const f = await swapFixture(c);
       // Pat is already on a shift at the same time: no offer
       const busy = await assign(c, await shift(c, f, 1, '12:00', 4), f.pat.workerId);
       const s = await shift(c, f, 1, '09:00', 8);
@@ -701,7 +718,7 @@ describe('SHIFT_SWAP', () => {
 
   it('only a pending approver reads the checks', async () => {
     await inRolledBackTx(async (c) => {
-      const f = await fixture(c);
+      const f = await swapFixture(c);
       const { swapId } = await offered(c, f, f.sam, SAM(), f.pat.workerId);
       // not submitted yet
       expect(await err(c, FLOOR(), 'select * from hr.swap_checks($1)', [swapId])).toBe(
@@ -724,7 +741,7 @@ describe('SHIFT_SWAP', () => {
 
   it('the approver assigns the shift to someone else: no approval, the swap closes', async () => {
     await inRolledBackTx(async (c) => {
-      const f = await fixture(c);
+      const f = await swapFixture(c);
       const quinn = await newWorker(c, ids, 'Quinn Server', 'TEST-BAR-3.0-FLOOR-SERVICE', 'SERVER');
       const { shiftId, assignmentId, swapId } = await offered(c, f, f.sam, SAM(), f.pat.workerId);
       await as(c, f.pat.userId, 'select hr.respond_swap($1, true)', [swapId]);
@@ -786,7 +803,7 @@ describe('SHIFT_SWAP', () => {
 
   it('reassigning: approvers with roster rights only, never to a party or to yourself', async () => {
     await inRolledBackTx(async (c) => {
-      const f = await fixture(c);
+      const f = await swapFixture(c);
       const quinn = await newWorker(c, ids, 'Quinn Server', 'TEST-BAR-3.0-FLOOR-SERVICE', 'SERVER');
       const { swapId } = await offered(c, f, f.sam, SAM(), f.pat.workerId);
       await as(c, f.pat.userId, 'select hr.respond_swap($1, true)', [swapId]);
@@ -829,7 +846,7 @@ describe('SHIFT_SWAP', () => {
 
   it('the executor re-checks as a safety net and fails with the rule code', async () => {
     await inRolledBackTx(async (c) => {
-      const f = await fixture(c);
+      const f = await swapFixture(c);
       const { swapId } = await offered(c, f, f.sam, SAM(), f.pat.workerId);
       await as(c, f.pat.userId, 'select hr.respond_swap($1, true)', [swapId]);
       await as(c, FLOOR(), 'select hr.approve_swap($1)', [swapId]);
@@ -872,7 +889,7 @@ describe('SHIFT_SWAP', () => {
 
   it('offer checks, decline and withdraw', async () => {
     await inRolledBackTx(async (c) => {
-      const f = await fixture(c);
+      const f = await swapFixture(c);
       const s = await shift(c, f, 1);
       const a = await assign(c, s, f.sam);
       // wrong role partner, and only your own shift
@@ -907,7 +924,7 @@ describe('SHIFT_SWAP', () => {
 
   it('self-service RLS: the owner and managers read the swap; others use hr.my_swaps', async () => {
     await inRolledBackTx(async (c) => {
-      const f = await fixture(c);
+      const f = await swapFixture(c);
       const { swapId } = await offered(c, f, f.sam, SAM(), f.pat.workerId);
       const sees = async (user: string) =>
         (

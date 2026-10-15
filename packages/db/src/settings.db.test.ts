@@ -19,16 +19,14 @@ const DEFAULTS = {
   menu_popular_pct: 70,
   overtime_multiplier: 1,
   po_send_prices: false,
-  // SW-4 and the count due (ADR 035)
-  swaps_managers_only: true,
+  // the count due (ADR 035)
   count_due_days: 7,
   // PO-5 and TR-3 (ADR 044): the factor over the weekly use above which the department head approves
   usual_qty_factor: 1.5,
 };
 
-// Test Company's file 00 lets its staff swap shifts (swaps_managers_only no), and the dev seed
-// puts the Hotel bundle in its plan (ADR 085)
-const TEST_COMPANY = { ...DEFAULTS, swaps_managers_only: false, bundles: { hotel: true } };
+// the dev seed puts the Hotel bundle in Test Company's plan (ADR 085)
+const TEST_COMPANY = { ...DEFAULTS, bundles: { hotel: true } };
 
 async function settings(c: PoolClient, who: string): Promise<typeof DEFAULTS> {
   const r = await attemptAs<{ s: typeof DEFAULTS }>(

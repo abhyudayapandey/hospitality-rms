@@ -214,6 +214,24 @@ export async function setupPeopleWeek(monday: string): Promise<void> {
                            where ra.user_id = u.id and ra.group_id = g.id)`,
       [floor],
     );
+    // swaps are for managers only (ADR 152): a server who also heads Floor Service offers them
+    await client.query(
+      `with t as (select id from core.tenant where code = 'TEST-COMPANY'),
+       u as (insert into core.app_user (tenant_id, kind, display_name, username)
+             select id, 'human', 'E2E Lead Server 3.0', 'e2e.lead-server.3.0' from t
+             on conflict (tenant_id, username) where username is not null
+             do update set status = 'active' returning id, tenant_id),
+       w as (insert into hr.worker (tenant_id, owner_user_id, org_node_id, role_code)
+             select tenant_id, id, $1, 'SERVER' from u
+             on conflict (tenant_id, owner_user_id) do nothing returning 1)
+       insert into core.role_assignment (tenant_id, user_id, group_id, node_id)
+       select u.tenant_id, u.id, g.id, $1 from u
+         join core.security_group g on g.tenant_id = u.tenant_id
+                                   and g.code in ('STAFF', 'DEPARTMENT_HEAD')
+        where not exists (select 1 from core.role_assignment ra
+                           where ra.user_id = u.id and ra.group_id = g.id)`,
+      [floor],
+    );
     await client.query(
       `with s as (select id from hr.shift
                    where org_node_id = $1 and local_date between $2::date and $2::date + 6)

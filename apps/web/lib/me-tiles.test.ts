@@ -36,7 +36,6 @@ function inputFor(duties: readonly string[], home: string): ScreenInput {
     menu: ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM'].some((d) => access.has(d)),
     reports: navProfile(groups) === 'frontline' ? 'mine' : 'business',
     atWork: !['(company)', '(area)'].includes(home),
-    swapsManagersOnly: true,
     breakfast: false,
   };
 }
