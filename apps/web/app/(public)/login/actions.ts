@@ -1,7 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { redirect, unstable_rethrow } from 'next/navigation';
 import { cognitoConfig, CognitoUnavailable } from '@/lib/auth/cognito';
 import { signInWords, type SignInState } from '@/lib/auth/sign-in-words';
 import {
@@ -109,6 +109,9 @@ export async function signIn(prev: SignInState, form: FormData): Promise<SignInS
         return { step: 'password', login };
     }
   } catch (err) {
+    // signing in ends with redirect('/'), which throws: let it through (and any other Next.js
+    // control flow), or a good sign-in reads "Sign-in failed"
+    unstable_rethrow(err);
     if (err instanceof CognitoUnavailable) return withError(prev, login, signInWords.noAnswer);
     console.warn(
       JSON.stringify({
