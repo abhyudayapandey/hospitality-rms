@@ -25,14 +25,18 @@ describe('core.access_audit for the auditor', () => {
     });
   });
 
-  it('it reads no more than the account owner, who reads the whole company', async () => {
+  it('it reads all the account owner reads, and the supply side too', async () => {
     await inRolledBackTx(async (c) => {
-      const q = 'select count(*)::int as n from core.access_audit(500)';
-      const auditor = await attemptAs<{ n: number }>(c, ids.user('test.auditor'), q);
-      const owner = await attemptAs<{ n: number }>(c, ids.user('test.account-owner'), q);
+      const q =
+        'select occurred_at, action, person, access_group, place from core.access_audit(500)';
+      const auditor = await attemptAs<Record<string, unknown>>(c, ids.user('test.auditor'), q);
+      const owner = await attemptAs<Record<string, unknown>>(c, ids.user('test.account-owner'), q);
       expect(auditor.error).toBeUndefined();
       expect(owner.error).toBeUndefined();
-      expect(auditor.rows![0]!.n).toBe(owner.rows![0]!.n);
+      const seen = new Set(auditor.rows!.map((r) => JSON.stringify(r)));
+      for (const r of owner.rows!) expect(seen.has(JSON.stringify(r))).toBe(true);
+      // the whole company: grants on the supply side, outside any people admin's scope
+      expect(auditor.rows!.some((r) => r.place === 'Test Supply Network')).toBe(true);
     });
   });
 
