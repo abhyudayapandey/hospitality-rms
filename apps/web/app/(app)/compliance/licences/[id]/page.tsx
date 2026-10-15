@@ -46,7 +46,7 @@ async function Licence({ params }: { params: Promise<{ id: string }> }) {
     l: LicenceRow | null;
     history: LicenceHistoryRow[];
     canKeep: boolean;
-    roles: Record<string, { code: string; name: string }[]>;
+    roles: Record<string, { code: string; name: string; answers?: boolean }[]>;
   };
   try {
     data = await withUser(user.id, async (tx) => {

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { answering } from '@/lib/answering';
 import {
   CALENDAR_JOBS,
   EVERY_MONTHS,
@@ -50,9 +51,9 @@ export function JobForm({
   existing,
 }: {
   places: Choice[];
-  roles: Record<string, { code: string; name: string }[]>;
+  roles: Record<string, { code: string; name: string; answers?: boolean }[]>;
   /** the outlet's roles, for a job at a department (else the place's) */
-  ownerRoles?: { code: string; name: string }[];
+  ownerRoles?: { code: string; name: string; answers?: boolean }[];
   existing?: JobInput;
 }) {
   const router = useRouter();
@@ -77,7 +78,8 @@ export function JobForm({
   const [proof, setProof] = useState(existing?.needs_proof ?? true);
   const [key] = useState(() => crypto.randomUUID());
   const here = roles[node] ?? [];
-  const owners = ownerRoles ?? here;
+  // who answers for it: the roles that run something (ADR 151); anyone may do it
+  const owners = answering(ownerRoles ?? here);
   return (
     <form
       aria-label={existing ? 'Change the job' : 'Add a regular job'}
