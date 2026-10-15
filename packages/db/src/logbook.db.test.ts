@@ -138,7 +138,13 @@ describe('handovers', () => {
         p!.task_id,
       ]);
 
-      // from the restaurant to the kitchen's chef de partie
+      // from the restaurant to the kitchen's chef de partie; rounds follow the roster (ADR 148), so
+      // the kitchen is taken off it and he has it whatever the time the test runs
+      await c.query(
+        `delete from hr.shift_assignment a using hr.worker w
+          where w.id = a.worker_id and w.org_node_id = $1`,
+        [ids.node('TEST-HOTEL-1.0-KITCHEN')],
+      );
       const role = await write(
         c,
         'test.restaurant-manager.1.0',

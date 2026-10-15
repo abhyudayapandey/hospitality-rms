@@ -459,6 +459,11 @@ describe('prep lists', () => {
       await c.query(
         `update ops.task set status = 'cancelled' where kind = 'prep' and status = 'open'`,
       );
+      // rounds follow the roster (ADR 148): due in three hours may be past the commis's shift, so
+      // he is taken off the roster here and keeps his role's rounds whatever the time
+      await c.query(`delete from hr.shift_assignment where owner_user_id = $1`, [
+        ids.user('test.commis.1.0'),
+      ]);
       const store = ids.node(KITCHEN_STORE);
       const { rows: items } = await c.query<{ id: string }>(
         `select i.id from inv.item i join core.tenant t on t.id = i.tenant_id
