@@ -428,6 +428,11 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   (`inv.my_ask_stores`); a photo that doesn't load shows its library picture (`PhotoOrPicture`).
   Movements, access rows, statuses and audit events are words (`movementLabel`, `lib/labels.ts`);
   an outlet's stock place is "<outlet> stores", never "Supply Point".
+- Each person sees their own work (ADR 150): a block's tile shows where its places hold something
+  (rooms, minibar sets, linen, events at an outlet); Orders is the keepers' and managers', Audits
+  for those who run them; the nav offers Roster only where Me does (`inNavToo`; HR, reading many
+  places' rosters, has it); Push today is for food and drink (kitchen and service departments,
+  the outlet's managers).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in
