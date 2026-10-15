@@ -55,9 +55,10 @@ test('Send stock shows what the department has and keeps; the Main Store opens o
   await expect(page.getByTestId('tabs-more')).toHaveCount(0); // not on this form
   await page.goto(`/stock?node=${main}`);
   const tabs = page.getByRole('navigation', { name: 'Stock tabs' });
-  await expect(tabs.getByRole('link', { name: 'Wastage' })).toHaveCount(0);
+  await expect(tabs.getByRole('link')).toHaveCount(4);
+  await expect(tabs.getByRole('link', { name: 'Bills' })).toHaveCount(0);
   await page.getByTestId('tabs-more').click();
-  await expect(tabs.getByRole('link', { name: 'Wastage' })).toBeVisible();
+  await expect(tabs.getByRole('link', { name: 'Bills' })).toBeVisible();
   await expect(page.getByTestId('tabs-more')).toHaveText(/^Less/);
   // on a tab from the rest, the row opens already showing them
   await tabs.getByRole('link', { name: 'Bills' }).click();

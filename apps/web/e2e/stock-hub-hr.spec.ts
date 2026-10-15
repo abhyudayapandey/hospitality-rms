@@ -11,7 +11,7 @@ test('Stock is a hub: on its way here, count due, then the store jobs', async ({
   // file 36's transfer is still in transit
   await expect(page.getByTestId('attention-transit')).toContainText('On its way here');
   const jobs = page.getByRole('navigation', { name: 'Stock jobs' }).getByRole('link');
-  await expect(jobs.first()).toHaveText('Count');
+  await expect(jobs.first()).toHaveText('Stock check');
   await jobs.filter({ hasText: 'Record wastage' }).click();
   await page.waitForURL(/\/stock\/wastage/);
 });

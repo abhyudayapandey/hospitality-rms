@@ -52,12 +52,28 @@ test('the room attendant checks a minibar; the front desk adds it to the bill', 
     await page.getByRole('button', { name: 'Refilled' }).click();
     await expect(page.getByTestId('task-status')).toContainText(/done/i);
 
-    await signInAs(page, 'Test Front Desk Executive 1.0');
-    // the bill is a To do item for the front desk too
+    // the bill is a To do item for whoever it reaches: the front desk at work, else (at night)
+    // their department head (ADR 148), so the test does not depend on the hour
+    const [reach] = await asMigrator<{ name: string }>(
+      `select u.display_name as name
+         from ops.task t
+         cross join lateral unnest(case when t.assignee_user_id is not null
+                                        then array[t.assignee_user_id]
+                                        else ops.job_role_pool(t) end) x(id)
+         join core.app_user u on u.id = x.id
+        where t.kind = 'minibar_bill' and t.title like 'Bill room 103:%' and t.created_at >= $1
+        order by u.display_name limit 1`,
+      [started],
+    );
+    expect(reach).toBeDefined();
+    await signInAs(page, reach!.name);
     await page.goto('/tasks');
     await expect(
       page.getByRole('link', { name: /Bill room 103: 1 Test Cola 300ml/ }).first(),
     ).toBeVisible();
+
+    // the front desk bills it
+    await signInAs(page, 'Test Front Desk Executive 1.0');
     // the front desk opens on To charge (ADR 113); the rooms are their own tab
     await page.goto('/minibar?tab=rooms');
     await expect(
