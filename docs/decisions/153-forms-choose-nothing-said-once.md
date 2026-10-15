@@ -1,6 +1,7 @@
 # 153. Forms choose nothing; said once, named one way
 
-Date: 2026-10-15. Status: accepted. Migration `20261231170000_ask_items_by_category`. Builds on
+Date: 2026-10-15. Status: accepted. Migrations `20261231170000_ask_items_by_category`,
+`20261231180000_auditor_reads_access_audit`. Builds on
 ADR 110 to 114 (forms choose nothing), 048 (one screen per function) and 097 ("← Back").
 
 ## Context
@@ -22,6 +23,14 @@ Forms (section 6):
    (`inv.ask_store_items` gains category and par); the "for" placeholder is "Room 104" at a hotel,
    else "Table 4" (`core.my_outlet_format()`).
 
+The auditor:
+
+9. **The auditor reads the access audit.** The Auditor holds AUDIT at the company's root (duty
+   AUDITS_COMPANY) and could already read the audit log, but `core.access_audit` asked for
+   USER_ACCESS, which manages people. AUDIT at the root now opens it, for the whole company and
+   read-only (migration `20261231180000_auditor_reads_access_audit`), so the auditor's desk shows
+   "Access changes this week" and Admin shows the access audit. They still cannot manage people.
+
 Said once, one name (section 7):
 
 5. A submitted count lists only what was counted, then "Not counted: N".
@@ -35,6 +44,7 @@ Said once, one name (section 7):
 
 ## Consequences
 
-- Count and Stock check stay two screens with two names for now: the keeper counts, the
-  verifier checks. Making them one name is left to the product owner.
+- The keeper's count is now "Stock check" (tab, Home tile, heading, "Start a stock check") and
+  the verifier's check is "Verify stock" ("Start verifying", "Finish verifying"; a bar's is
+  "Verify bar stock"), as the product owner chose. The verb "count" stays inside the check.
 - e2e specs that pressed "Save" on a step, or named a back link, now use "Done" and "← Back".

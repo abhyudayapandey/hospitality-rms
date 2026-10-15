@@ -9,7 +9,7 @@ import { AdjustmentDecision } from './decision';
 import { ItemThumb } from '@/components/item-thumb';
 
 const REASON: Record<string, string> = {
-  count_variance: 'Stock count difference',
+  count_variance: 'Stock check difference',
   wastage: 'Wastage above the approval value',
   supplier_excess: 'Delivery above the order (+5%)',
 };

@@ -93,9 +93,9 @@ export async function loadDesk(tx: Tx, i: DeskInput): Promise<DeskRow[]> {
       },
     );
   }
-  // the auditor: changes to who may do what, this week, where they may read them (USER_ACCESS;
-  // core.access_audit refuses otherwise)
-  if (i.groups.has('AUDITOR') && i.domains.has('USER_ACCESS')) {
+  // the auditor: changes to who may do what, this week, across the company (AUDIT at the root
+  // opens core.access_audit, ADR 153)
+  if (i.groups.has('AUDITOR') && i.domains.has('AUDIT')) {
     const r = (
       await sql<{ n: number }>`
         select count(*)::int as n from core.access_audit(300)

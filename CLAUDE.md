@@ -123,7 +123,7 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   a "Fill all N short items up to par" button (ADR 053, 054). The word is "par" everywhere.
   Quantities show at most 2 decimals (`formatQty` / `inputQty`, `lib/qty.ts`); the DB keeps 6. Back links return to the list as it was (`withBack`,
   `backHref`, `lib/back.ts`). One name per thing: Request (ADR 144: "Request from a store",
-  "Request to buy"; the Main Store's buying is an Order), Stock check, Reject, "waiting for approval". A step or status is never shown as its
+  "Request to buy"; the Main Store's buying is an Order), Stock check (the verifier's is Verify stock), Reject, "waiting for approval". A step or status is never shown as its
   code. The Stock tabs show 4, then a "More" text button that shows the rest in the same row
   and becomes "Less". To users it is "To do list" (never "Inbox") and "Stock" (never "Supply").
 - Every screen under `app/(app)` has a `loading.tsx` (the shared `page-skeleton`), so a tap
@@ -444,7 +444,9 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 - Said once, one name (ADR 153): leave, Give rooms and Breakage pick nothing until tapped; Ask
   your head lists short items first, then by category; a submitted count lists what was counted,
   then "Not counted: N"; a place picker with one place has no "All …"; every step's button is
-  "Done", the next step reads "Then: <step>", and every in-app back link reads "← Back".
+  "Done", the next step reads "Then: <step>", and every in-app back link reads "← Back". The
+  keeper's count is "Stock check"; the verifier's is "Verify stock". The auditor (AUDIT at the root) reads
+  the company's access audit (`core.access_audit`), never managing people.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

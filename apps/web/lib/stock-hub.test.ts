@@ -20,7 +20,7 @@ describe('hubActions', () => {
   it('a department store counts, records wastage and asks', () => {
     const { main, more } = hubActions({ ...every, mainStore: false }, 'node=n1');
     expect(main.map((a) => a.label)).toEqual([
-      'Count',
+      'Stock check',
       'Record wastage',
       'Request to buy',
       'Request from a store',
@@ -30,7 +30,7 @@ describe('hubActions', () => {
   });
   it('the Main Store sends; asking is a small link there (ADR 051, 052)', () => {
     const { main, more } = hubActions({ ...every, mainStore: true }, 'node=m');
-    expect(main.map((a) => a.label)).toEqual(['Send stock', 'Count', 'Record wastage']);
+    expect(main.map((a) => a.label)).toEqual(['Send stock', 'Stock check', 'Record wastage']);
     expect(main[0]!.href).toBe('/stock/transfers/send?node=m');
     expect(more.map((a) => a.label)).toEqual(['Request to buy', 'Request from a store']);
   });

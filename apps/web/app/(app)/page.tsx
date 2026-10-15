@@ -274,7 +274,7 @@ export default async function Home() {
           <Tile
             href="/stock/count"
             icon="clipboard"
-            label="Count"
+            label="Stock check"
             note={today.store.count ? countDueText(today.store.count) : undefined}
             testId="tile-count"
             badge={today.store.count?.due ? { n: 1, tone: 'warn', text: 'due' } : null}

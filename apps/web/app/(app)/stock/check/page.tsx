@@ -42,12 +42,12 @@ export default async function StockCheckPage({ searchParams }: { searchParams: S
   const verified = data.rows.filter((r) => r.verified_at).length;
   return (
     <div className="space-y-4">
-      <SupplyHeader ctx={ctx} active="/stock/check" title="Stock check" />
+      <SupplyHeader ctx={ctx} active="/stock/check" title="Verify stock" />
       {/* a check under way is what to do now; otherwise the list comes first (ADR 051, 053) */}
       {canCount && !node.derived && data.open ? (
         <StartCheckButtons node={node.id} resume={data.open} />
       ) : null}
-      <InfoTip label="How a stock check works">
+      <InfoTip label="How verifying stock works">
         The checker counts what is on the shelves without seeing what should be there. Then they see
         the differences, add a photo of each, and finish. A difference changes stock at once and
         tells the department head and the GM.

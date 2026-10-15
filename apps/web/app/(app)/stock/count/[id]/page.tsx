@@ -28,7 +28,7 @@ export default async function CountSheetPage({
        order by i.category, i.name`.execute(tx);
     return { count: c.rows[0], lines: l.rows };
   });
-  if (!count) return <Empty>Count not found.</Empty>;
+  if (!count) return <Empty>Stock check not found.</Empty>;
   const back = `/stock/count?node=${count.delivery_node_id}`;
   if (count.status === 'submitted') {
     const label = { posted: 'posted', approval: 'sent for approval', no_change: 'no change' };
@@ -37,7 +37,7 @@ export default async function CountSheetPage({
         <Link href={back} className="text-sm text-slate-600">
           ← Back
         </Link>
-        <h1 className="text-xl font-semibold">Submitted count</h1>
+        <h1 className="text-xl font-semibold">Submitted stock check</h1>
         {(() => {
           // what was counted, then how many were not (ADR 153): "not counted" never reads like
           // "counted, no change"
@@ -90,7 +90,7 @@ export default async function CountSheetPage({
       <Link href={back} className="text-sm text-slate-600">
         ← Back
       </Link>
-      <h1 className="text-xl font-semibold">Count at {ctx.node.name}</h1>
+      <h1 className="text-xl font-semibold">Stock check at {ctx.node.name}</h1>
       <CountForm
         countId={id}
         node={count.delivery_node_id}

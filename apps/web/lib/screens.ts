@@ -169,14 +169,14 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
   {
     key: 'count',
     href: '/stock/count',
-    label: 'Count',
+    label: 'Stock check',
     icon: 'clipboard',
     show: (i) => can(i, 'STOCK_ADJUSTMENTS', 'modify'),
   },
   {
     key: 'check',
     href: '/stock/check',
-    label: 'Stock check',
+    label: 'Verify stock',
     icon: 'clipboardCheck',
     show: (i) => can(i, 'STOCK_CHECK'),
   },

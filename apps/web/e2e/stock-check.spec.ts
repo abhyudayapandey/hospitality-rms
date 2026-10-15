@@ -45,7 +45,7 @@ test('the Cost Controller counts blind and finishes; the GM then sees Verified, 
   await page.goto(`/stock/check?node=${store}`);
   // the count is blind: what is on record is not shown to the verifier
   await expect(page.getByText('on record')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Start a stock check' }).click();
+  await page.getByRole('button', { name: 'Start verifying' }).click();
   await page.waitForURL(/\/stock\/check\/[0-9a-f-]{36}/);
   await expect(page.getByText('on record')).toHaveCount(0);
 
@@ -55,8 +55,8 @@ test('the Cost Controller counts blind and finishes; the GM then sees Verified, 
   await expect(page.locator('li').filter({ hasText: item.name })).toContainText('saved');
   await page.getByRole('button', { name: /^Show the differences/ }).click();
   await expect(page.getByText('Everything counted matches.')).toBeVisible();
-  await page.getByRole('button', { name: 'Finish stock check' }).click();
-  // "Finished: …" from the sheet, then the page refreshes to "This stock check is finished.":
+  await page.getByRole('button', { name: 'Finish verifying' }).click();
+  // "Finished: …" from the sheet, then the page refreshes to "Verifying is finished.":
   // either is the finished state, and which one the check sees depends on timing
   await expect(page.getByRole('status').last()).toContainText(/finished/i);
 
@@ -85,7 +85,7 @@ test('a different count shows the difference and cannot be finished without a ph
 
   await signInAs(page, 'Test Cost Controller 1.0');
   await page.goto(`/stock/check?node=${store}`);
-  await page.getByRole('button', { name: 'Start a stock check' }).click();
+  await page.getByRole('button', { name: 'Start verifying' }).click();
   await page.waitForURL(/\/stock\/check\/[0-9a-f-]{36}/);
   const count = page.getByRole('textbox', { name: `Counted ${item.name}` });
   await count.fill(String(item.onHand + 1));
@@ -97,7 +97,7 @@ test('a different count shows the difference and cannot be finished without a ph
   await expect(diff).toContainText(item.name);
   await expect(diff).toContainText('expected');
   // counts are locked now, and with no photo bucket here the check cannot be finished
-  await expect(page.getByRole('button', { name: 'Finish stock check' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Finish verifying' })).toBeDisabled();
   await clearOpenChecks(HOTEL_KITCHEN);
 });
 
@@ -110,7 +110,7 @@ test('a bar check counts bottles and tenths (the Accountant of the solo bar)', a
   await page.goto(`/stock/check?node=${store}`);
   await page.getByRole('button', { name: /^Start a bar check/ }).click();
   await page.waitForURL(/\/stock\/check\/[0-9a-f-]{36}/);
-  await expect(page.getByRole('heading', { name: /^Bar check at/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^Verify bar stock at/ })).toBeVisible();
   const full = page.getByRole('textbox', { name: `Full ${item.name}` });
   await full.fill(String(item.onHand));
   await full.blur();
@@ -121,8 +121,8 @@ test('a bar check counts bottles and tenths (the Accountant of the solo bar)', a
   await expect(page.locator('li').filter({ hasText: item.name })).toContainText('saved');
   await page.getByRole('button', { name: /^Show the differences/ }).click();
   await expect(page.getByText('Everything counted matches.')).toBeVisible();
-  await page.getByRole('button', { name: 'Finish stock check' }).click();
-  // "Finished: …" from the sheet, then the page refreshes to "This stock check is finished.":
+  await page.getByRole('button', { name: 'Finish verifying' }).click();
+  // "Finished: …" from the sheet, then the page refreshes to "Verifying is finished.":
   // either is the finished state, and which one the check sees depends on timing
   await expect(page.getByRole('status').last()).toContainText(/finished/i);
 });
@@ -137,7 +137,7 @@ test('offline: a count is saved on the phone and sent, with its time, when the s
 
   await signInAs(page, 'Test Cost Controller 1.0');
   await page.goto(`/stock/check?node=${store}`);
-  await page.getByRole('button', { name: 'Start a stock check' }).click();
+  await page.getByRole('button', { name: 'Start verifying' }).click();
   await page.waitForURL(/\/stock\/check\/[0-9a-f-]{36}/);
   const id = new URL(page.url()).pathname.split('/').pop()!;
   // the sheet must be in and live before the signal goes (ADR 055)

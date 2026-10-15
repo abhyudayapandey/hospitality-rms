@@ -29,7 +29,7 @@ export default async function CountPage({ searchParams }: { searchParams: Search
   const q = `?node=${ctx.node.id}`;
   return (
     <div className="space-y-4">
-      <SupplyHeader ctx={ctx} active="/stock/count" title="Stock count" />
+      <SupplyHeader ctx={ctx} active="/stock/count" title="Stock check" />
       {/* the rule behind a "?" (ADR 099, 113) */}
       <InfoTip label="What happens to a difference">
         Count what is on the shelf. Differences within each item&apos;s tolerance are posted

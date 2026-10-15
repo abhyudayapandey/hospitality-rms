@@ -287,7 +287,7 @@ export function CheckSheet({
             })
           }
         >
-          Finish stock check
+          Finish verifying
         </button>
         <StatusBox message={notice} />
       </div>

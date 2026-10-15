@@ -41,5 +41,5 @@ Linen on their own office department.
 
 - Pickers narrow; nobody gains access. The RLS all-users run still goes before merging, since the
   pickers read access.
-- The auditor's access changes need USER_ACCESS, which the Auditor group does not hold; the
-  auditor's Home shows no desk until that is decided.
+- The auditor's access changes needed USER_ACCESS, which the Auditor group does not hold; ADR
+  153 lets AUDIT at the root open the access audit, so the auditor's desk shows them.

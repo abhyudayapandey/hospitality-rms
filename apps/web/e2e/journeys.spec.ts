@@ -157,10 +157,12 @@ test('count a store (store keeper)', async ({ page }) => {
   const j = await start(page, 'Test Store Keeper 1.0');
   await j.go(nav(page, 'Stock'));
   await j.go(
-    page.getByRole('navigation', { name: 'Stock tabs' }).getByRole('link', { name: 'Count' }),
+    page
+      .getByRole('navigation', { name: 'Stock tabs' })
+      .getByRole('link', { name: 'Stock check', exact: true }),
   );
-  await j.last(page.getByRole('button', { name: 'Start a count' }));
-  j.done('Start a count', 'Store keeper', { there: 2, form: 1 });
+  await j.last(page.getByRole('button', { name: 'Start a stock check' }));
+  j.done('Start a stock check', 'Store keeper', { there: 2, form: 1 });
 });
 
 test('approve leave (floor manager)', async ({ page }) => {
