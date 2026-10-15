@@ -78,6 +78,8 @@ the platform, not only at the hotel.
     values, line prices, received value, wastage worth and breakage value at the stores their
     department uses (`inv.heads_store`, DEPARTMENT_HEAD there or above). Nobody below them,
     except those who read stores' cost (the cost controller, `rpt.store_cost_access`).
+18. **The laundry attendant asks housekeeping's store** for detergent and the like: the
+    catalogue gives the role `USES_DEPARTMENT_STORE`, as the test data does.
 
 ## Consequences
 

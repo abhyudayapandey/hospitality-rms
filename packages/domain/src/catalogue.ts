@@ -559,7 +559,8 @@ const ROLE_LIST: readonly RoleDef[] = [
     code: 'LAUNDRY_ATTENDANT',
     title: 'Laundry Attendant',
     home: 'HOUSEKEEPING',
-    duties: [W],
+    // asks housekeeping's store for detergent and the like (ADR 145)
+    duties: ['USES_DEPARTMENT_STORE', W],
     sops: ['H'],
   },
 
