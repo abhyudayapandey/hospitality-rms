@@ -16,6 +16,22 @@ export interface CognitoConfig {
   logoutPath?: string;
   /** OAuth scopes; default 'openid phone email'. */
   scope?: string;
+  /**
+   * Tests only: a stand-in for Cognito's user API on this machine (COGNITO_IDP_ENDPOINT,
+   * http://127.0.0.1 or localhost only; the sign-in e2e tests, ADR 161). Unset everywhere
+   * else, so the app always talks to Cognito itself.
+   */
+  idpEndpoint?: string;
+}
+
+/** COGNITO_IDP_ENDPOINT, accepted only when it points at this machine. */
+export function localIdpEndpoint(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const url = new URL(value);
+  if (url.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(url.hostname)) {
+    throw new Error('COGNITO_IDP_ENDPOINT must be http://127.0.0.1 or http://localhost');
+  }
+  return url.origin;
 }
 
 export function cognitoConfig(
@@ -23,11 +39,13 @@ export function cognitoConfig(
 ): CognitoConfig | null {
   const { COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, COGNITO_DOMAIN, APP_URL } = env;
   if (!COGNITO_USER_POOL_ID || !COGNITO_CLIENT_ID || !COGNITO_DOMAIN || !APP_URL) return null;
+  const idpEndpoint = localIdpEndpoint(env.COGNITO_IDP_ENDPOINT);
   return {
     userPoolId: COGNITO_USER_POOL_ID,
     clientId: COGNITO_CLIENT_ID,
     domain: COGNITO_DOMAIN.replace(/^https?:\/\//, '').replace(/\/$/, ''),
     appUrl: APP_URL.replace(/\/$/, ''),
+    ...(idpEndpoint ? { idpEndpoint } : {}),
   };
 }
 
@@ -85,6 +103,11 @@ export async function verifyIdTokenClaims(
   let v = verifiers.get(cfg.userPoolId + cfg.clientId);
   if (!v) {
     v = createIdTokenVerifier(cfg);
+    // tests only: the stand-in's signing keys, in place of Cognito's published ones
+    if (cfg.idpEndpoint) {
+      const res = await fetch(`${cfg.idpEndpoint}/.well-known/jwks.json`);
+      v.cacheJwks((await res.json()) as Parameters<typeof v.cacheJwks>[0]);
+    }
     verifiers.set(cfg.userPoolId + cfg.clientId, v);
   }
   const payload = await v.verify(idToken);
@@ -193,7 +216,7 @@ export class CognitoRefused extends Error {
  * CognitoUnavailable when Cognito does not answer in time or fails on its side (ADR 063).
  */
 export async function cognitoCall<T>(
-  cfg: Pick<CognitoConfig, 'userPoolId'>,
+  cfg: Pick<CognitoConfig, 'userPoolId' | 'idpEndpoint'>,
   action: string,
   body: Record<string, unknown>,
   fetchImpl: typeof fetch = fetch,
@@ -202,15 +225,18 @@ export async function cognitoCall<T>(
   let res: Response;
   try {
     res = await withinTime(
-      fetchImpl(`https://cognito-idp.${region}.amazonaws.com/`, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/x-amz-json-1.1',
-          'x-amz-target': `AWSCognitoIdentityProviderService.${action}`,
+      fetchImpl(
+        cfg.idpEndpoint ? `${cfg.idpEndpoint}/` : `https://cognito-idp.${region}.amazonaws.com/`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/x-amz-json-1.1',
+            'x-amz-target': `AWSCognitoIdentityProviderService.${action}`,
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(COGNITO_TIMEOUT_MS),
         },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(COGNITO_TIMEOUT_MS),
-      }),
+      ),
     );
   } catch (err) {
     throw err instanceof CognitoUnavailable

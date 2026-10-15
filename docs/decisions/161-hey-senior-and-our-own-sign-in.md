@@ -54,3 +54,16 @@ which the Web client does not allow (it allows USER_AUTH, USER_SRP_AUTH and refr
 - People who have never seen the new screen type the same login and password; nothing about
   their accounts changes.
 - The team console still uses Cognito's page in its default look; branding it is left for later.
+
+## Addendum: the sign-in screen is tested in a browser
+
+The first live sign-ins read "Sign-in failed" on a right password: the action caught Next.js's
+redirect to Home. Unit tests stubbed Cognito one call at a time, and e2e had no Cognito, so
+nothing ran a good sign-in end to end. Now the e2e `signin` project does. Its own standalone
+server talks to `e2e/signin/fake-cognito.mjs`, a stand-in for Cognito's user API on this
+machine. It answers the same calls and signs ID tokens with its own key. The app is pointed at
+it by `COGNITO_IDP_ENDPOINT`, which is accepted only as `http://127.0.0.1` or
+`http://localhost` (`localIdpEndpoint`), and is never set anywhere else. The tests type into
+the real form: a right password, a wrong one, an emailed code, a first sign-in's own
+password, and Forgot password. Each sign-in must land on Home. With the redirect fix taken
+out, four of the five fail.
