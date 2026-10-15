@@ -1,6 +1,6 @@
 # 152. Swaps for managers only
 
-Date: 2026-10-15. Status: accepted. Migration `20261231150000_swaps_managers_only`. Replaces the
+Date: 2026-10-15. Status: accepted. Migration `20270111020000_swaps_managers_only`. Replaces the
 company setting of SW-4 (ADR 035).
 
 ## Context

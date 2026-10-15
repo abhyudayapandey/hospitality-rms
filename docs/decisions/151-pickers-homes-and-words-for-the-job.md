@@ -1,7 +1,7 @@
 # 151. Pickers, Homes and words for the job
 
-Date: 2026-10-15. Status: accepted. Migrations `20261231130000_pickers_who_can_do_it`,
-`20261231140000_keeps_main_store`.
+Date: 2026-10-15. Status: accepted. Migrations `20270111000000_pickers_who_can_do_it`,
+`20270111010000_keeps_main_store`.
 
 ## Context
 

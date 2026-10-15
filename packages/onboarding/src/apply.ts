@@ -2828,7 +2828,8 @@ class Loader {
                   unit_cost: l.unit_cost_inr,
                 })),
               ),
-              `Test data ${ref}`,
+              // no note: the order is known by its number, never "Test data PO-1" (ADR 160)
+              null,
               `test-data po ${ref}`,
             ])
           ).rows[0]!.id,

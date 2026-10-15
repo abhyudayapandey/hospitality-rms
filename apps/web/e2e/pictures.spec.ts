@@ -119,6 +119,8 @@ test('an item shows a real photo from our library, and Profile credits it (ADR 0
   await page.goto(`/stock?node=${store}`);
   const garlic = page.locator('[data-testid="item-picture"][data-picture="garlic"] img').first();
   await expect(garlic).toHaveAttribute('src', '/pictures/garlic.webp');
+  // pictures load as they come into view (ADR 160)
+  await garlic.scrollIntoViewIfNeeded();
   await expect
     .poll(() => garlic.evaluate((img) => (img as HTMLImageElement).naturalWidth))
     .toBeGreaterThan(0);

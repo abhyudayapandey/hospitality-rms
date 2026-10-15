@@ -4,15 +4,19 @@ import type { LabourRow } from '@/lib/report-data';
 /**
  * People cost by department (R-3, ADR 030). A department with fewer than 3 paid people is
  * part of "Other departments" on that day, so no one's pay can be worked out; a department
- * shown on some days only says how many.
+ * shown on some days only says how many. When every department is under it (a small bar), the
+ * list would only repeat the total, so it shows the total alone and says why (ADR 160).
  */
 export function LabourByDepartment({ rows }: { rows: LabourRow[] }) {
   const whole = rows.find((r) => r.part === 'outlet');
   if (!whole) return null;
-  const parts = rows.filter((r) => r.part !== 'outlet');
+  const lumped = !rows.some((r) => r.part === 'department');
+  const parts = lumped ? [] : rows.filter((r) => r.part !== 'outlet');
   return (
     <section aria-label="People cost" className="space-y-2">
-      <h2 className="text-sm font-semibold text-slate-700">People cost by department</h2>
+      <h2 className="text-sm font-semibold text-slate-700">
+        {lumped ? 'People cost' : 'People cost by department'}
+      </h2>
       <ul
         className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
         data-testid="labour-by-department"
@@ -56,9 +60,10 @@ export function LabourByDepartment({ rows }: { rows: LabourRow[] }) {
           <span className="tabular-nums">{formatMeasure('money', whole.cost)}</span>
         </li>
       </ul>
-      <p className="text-xs text-slate-500">
-        A department with fewer than 3 paid people that day goes under Other departments. That way
-        no one&apos;s pay can be worked out.
+      <p className="text-xs text-slate-500" data-testid="labour-note">
+        {lumped
+          ? "Each department has fewer than 3 paid people, so only the total is shown. That way no one's pay can be worked out."
+          : "A department with fewer than 3 paid people that day goes under Other departments. That way no one's pay can be worked out."}
       </p>
     </section>
   );

@@ -16,14 +16,16 @@ const line = (over: Partial<RequestLevel> = {}): RequestLevel => ({
 
 describe('request levels (ADR 141)', () => {
   it('says what the giving store has and what the asking store has of its par', () => {
-    expect(levelsText(line())).toBe('Main Store has 34 bottle · Bar Store has 19.57 of 24 bottle');
+    expect(levelsText(line())).toBe(
+      'Main Store has 34 bottles · Bar Store has 19.57 of 24 bottles',
+    );
   });
   it('leaves out a par the asking store has not set', () => {
     expect(levelsText(line({ to_par: null }))).toBe(
-      'Main Store has 34 bottle · Bar Store has 19.57 bottle',
+      'Main Store has 34 bottles · Bar Store has 19.57 bottles',
     );
     expect(levelsText(line({ to_par: '0' }))).toBe(
-      'Main Store has 34 bottle · Bar Store has 19.57 bottle',
+      'Main Store has 34 bottles · Bar Store has 19.57 bottles',
     );
   });
 });

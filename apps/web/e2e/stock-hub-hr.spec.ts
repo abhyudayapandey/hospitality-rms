@@ -59,9 +59,16 @@ test('Team → People and Leave; deactivation goes to the security admin', async
   await page.goto('/team/people');
   const steward = page.getByTestId('person').filter({ hasText: 'Test Steward 1.0' });
   await expect(steward).toBeVisible();
-  await steward.getByText('Deactivate', { exact: true }).click();
-  await steward.getByLabel('Why deactivate Test Steward 1.0').fill('Left the company');
-  await steward.getByRole('button', { name: 'Ask to deactivate Test Steward 1.0' }).click();
+  // Deactivate is on the person's page, not on the list's rows (ADR 160)
+  await expect(steward.getByText('Deactivate', { exact: true })).toHaveCount(0);
+  await steward.click();
+  const person = page.getByTestId('team-person');
+  await expect(person.getByRole('heading', { name: 'Test Steward 1.0' })).toBeVisible();
+  await person.getByText('Deactivate', { exact: true }).click();
+  await person.getByLabel('Why deactivate Test Steward 1.0').fill('Left the company');
+  await person.getByRole('button', { name: 'Ask to deactivate Test Steward 1.0' }).click();
+  await expect(page.getByTestId('team-person-status')).toHaveText('Deactivation waiting');
+  await page.getByRole('link', { name: '← Back' }).click();
   await expect(steward).toContainText('Deactivation waiting');
 
   await page

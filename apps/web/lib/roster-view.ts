@@ -107,16 +107,24 @@ export interface StripDay {
   drafts: number;
 }
 
-const openSlots = (s: StripShift) => Math.max(0, s.headcount - s.people.length);
+/** A shift's places still to fill: none once it has started, since a past slot can't be filled. */
+export function openSlots(s: StripShift, now: Date = new Date()): number {
+  if (new Date(s.start_at).getTime() <= now.getTime()) return 0;
+  return Math.max(0, s.headcount - s.people.length);
+}
 
-/** One chip per day: how many shifts, open slots and drafts. */
-export function dayStrip(shifts: readonly StripShift[], days: readonly string[]): StripDay[] {
+/** One chip per day: how many shifts, open slots (still to come) and drafts. */
+export function dayStrip(
+  shifts: readonly StripShift[],
+  days: readonly string[],
+  now: Date = new Date(),
+): StripDay[] {
   return days.map((day) => {
     const list = shifts.filter((s) => s.local_date === day);
     return {
       day,
       shifts: list.length,
-      open: list.reduce((n, s) => n + openSlots(s), 0),
+      open: list.reduce((n, s) => n + openSlots(s, now), 0),
       drafts: list.filter((s) => s.status === 'draft').length,
     };
   });
@@ -137,7 +145,10 @@ export interface TimeGroup<S> {
 }
 
 /** A day's shifts grouped by start and end time, earliest first, keeping each group's order. */
-export function groupByTime<S extends StripShift>(shifts: readonly S[]): TimeGroup<S>[] {
+export function groupByTime<S extends StripShift>(
+  shifts: readonly S[],
+  now: Date = new Date(),
+): TimeGroup<S>[] {
   const groups = new Map<string, TimeGroup<S>>();
   const ms = (d: Date | string) => new Date(d).getTime();
   for (const s of [...shifts].sort((a, b) => ms(a.start_at) - ms(b.start_at))) {
@@ -150,7 +161,7 @@ export function groupByTime<S extends StripShift>(shifts: readonly S[]): TimeGro
       open: 0,
     };
     g.shifts.push(s);
-    g.open += openSlots(s);
+    g.open += openSlots(s, now);
     groups.set(key, g);
   }
   return [...groups.values()];

@@ -18,7 +18,7 @@ import { param, type SearchParams } from '@/lib/inventory';
 import { peopleContext, weekChanges, weekRoster, type RosterShift } from '@/lib/people';
 import { departmentSections } from '@/lib/department-groups';
 import type { PlaceDepartment } from '@/lib/today-view';
-import { dayStrip, groupByTime, pickDay } from '@/lib/roster-view';
+import { dayStrip, groupByTime, openSlots, pickDay } from '@/lib/roster-view';
 import { RemoveButton, WeekActions, type TemplateWindow } from './week-actions';
 import { PeopleTiles, RepeatPattern } from './people-tiles';
 import { rosterDay, type RosterDay } from '@/lib/roster-tiles';
@@ -65,7 +65,9 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
   });
   const canEdit = ctx.can('ROSTER', 'modify');
   const drafts = shifts.filter((s) => s.status === 'draft').length;
-  const open = shifts.reduce((n, s) => n + Math.max(0, s.headcount - s.people.length), 0);
+  // a slot is open only until its shift starts: a past day has nothing left to fill
+  const now = new Date();
+  const open = shifts.reduce((n, s) => n + openSlots(s, now), 0);
   const window = canEdit && !all ? await templateWindow(user.id, node.id, monday) : null;
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const view = param(sp, 'view');
@@ -86,11 +88,10 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
   const base = `/roster/week?node=${node.id}${all ? '&all=1' : ''}`;
   const viewQ = list ? '&view=list' : byPerson ? '&view=people' : '&view=shift';
   const link = (week: string) => `${base}&week=${week}${viewQ}`;
-  const now = new Date();
   const editable = (s: RosterShift) => canEdit && new Date(s.start_at) > now;
 
   const timeGroups = (rows: RosterShift[]) =>
-    groupByTime(rows).map((g) => {
+    groupByTime(rows, now).map((g) => {
       // a split shift reads as its two blocks (ADR 082)
       const split = g.shifts.every((x) => x.split_end_at && x.split_start_at) ? g.shifts[0] : null;
       const span = split
@@ -285,7 +286,7 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
       ) : (
         <>
           <nav aria-label="Days" className="grid grid-cols-7 gap-1">
-            {dayStrip(shifts, days).map((c, i) => (
+            {dayStrip(shifts, days, now).map((c, i) => (
               <Link
                 key={c.day}
                 href={`${base}&week=${monday}&day=${c.day}&view=shift`}
@@ -332,14 +333,9 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
                   shifts.filter((s) => s.local_date === day),
                   places,
                 ).map((sec, i, list) => {
-                  const open = sec.rows.reduce(
-                    (n, s) => n + Math.max(0, s.headcount - s.people.length),
-                    0,
-                  );
+                  const open = sec.rows.reduce((n, s) => n + openSlots(s, now), 0);
                   // the department with open slots is open; if none has, the first is
-                  const first = list.findIndex((x) =>
-                    x.rows.some((s) => s.headcount > s.people.length),
-                  );
+                  const first = list.findIndex((x) => x.rows.some((s) => openSlots(s, now) > 0));
                   const isOpen = open > 0 || (first === -1 && i === 0);
                   return (
                     <details
@@ -441,7 +437,7 @@ function ShiftRow({
           ))}
         </ul>
       )}
-      {editable && s.people.length < s.headcount && <AssignLink s={s} node={node} />}
+      {editable && openSlots(s) > 0 && <AssignLink s={s} node={node} />}
     </li>
   );
 }
@@ -472,7 +468,7 @@ function ShiftCard({
           </li>
         ))}
       </ul>
-      {editable && s.people.length < s.headcount && <AssignLink s={s} node={node} />}
+      {editable && openSlots(s) > 0 && <AssignLink s={s} node={node} />}
     </li>
   );
 }

@@ -174,16 +174,36 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
   const profile = navProfile(shell.groups);
   const lead = profile !== 'frontline';
   const atWork = shell.home?.at_workplace ?? false;
-  return withUser(shell.user.id, async (tx) => {
-    const now = new Date();
-    const today = businessToday(tz, now);
+  const now = new Date();
+  const today = businessToday(tz, now);
+  // the independent parts load side by side, each in its own transaction (ADR 160)
+  const side = <T>(fn: (tx: Tx) => Promise<T>) => withUser(shell.user.id, fn);
+  const tasksP = side(async (tx) =>
+    shell.domains.has('TASKS') ? (await myTasks(tx)).filter((t) => t.status !== 'done') : [],
+  );
+  const inboxP = side(inboxEntries);
+  const attentionP = lead
+    ? side((tx) => homeAttention(tx, shell, profile, today))
+    : Promise.resolve({ attention: null, openSlotsHref: null });
+  const numbersP = side((tx) => homeNumbers(tx, shell, now));
+  // Push today: the function decides who sees it (service teams and the outlet's managers)
+  const pushP = atWork ? side(myPushToday) : Promise.resolve([] as PushDish[]);
+  const eventsP = side((tx) => homeEvents(tx, shell));
+  const expiryP: Promise<ExpiryCounts | null> =
+    lead && shell.domains.has('STOCK_LEVELS')
+      ? side(async (tx) => {
+          // expired and expiring batches (INV-12) for leads who see stock
+          const rows = await expiryList(tx);
+          const n = (expired: boolean) => rows.filter((x) => x.expired === expired).length;
+          return { expiring: { n: n(false) }, expired: { n: n(true) } };
+        })
+      : Promise.resolve(null);
+  const mainP = withUser(shell.user.id, async (tx) => {
     const shifts =
       atWork && shell.domains.has('ROSTER') ? await myShifts(tx, addDays(today, -1), 9) : [];
     const punch = atWork ? await openPunch(tx) : null;
     // what is still to do (a done task stays on the To do list, not on Home, ADR 075)
-    const tasks = shell.domains.has('TASKS')
-      ? (await myTasks(tx)).filter((t) => t.status !== 'done')
-      : [];
+    const tasks = await tasksP;
     const handedOn = await myHandedOn(tx);
     // repairs given to them (the technician's work): with the module on
     const repairs = (
@@ -193,7 +213,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
            and (select "on" from core.my_modules() where code = 'maintenance')
          order by created_at`.execute(tx)
     ).rows;
-    const inbox = await inboxEntries(tx);
+    const inbox = await inboxP;
     // expired items waiting to be given to someone; repairs waiting are the repairs count
     const assign = lead ? (await toAssign(tx)).filter((x) => x.kind === 'expiry').length : 0;
     // Compliance first (ADR 069): the rows behind the Expiring tab and the calendar jobs due
@@ -217,116 +237,10 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       if (sees || rows.length > 0) compliance = { keeps, recorded, rows };
     }
 
-    // the order desk's tiles: the store keeper, and whoever else keeps a Main Store (ADR 151)
-    const keepsDesk =
-      shell.domains.has('STOCK_LEVELS') &&
-      (profile === 'store' ||
-        (shell.groups.has('STORE_KEEPER') &&
-          (await sql<{ k: boolean }>`select inv.keeps_main_store() as k`.execute(tx)).rows[0]!.k));
-    let attention: AttentionGroup[] | null = null;
-    let openSlotsHref: string | null = null;
-    if (lead) {
-      // each count at its place, under RLS; then the places' departments and order (DB-2)
-      const counts = await sql<AttentionCount>`
-        select 'lowStock' as kind, n.delivery_node_id::text as node, count(*)::int as n,
-               null as href
-          from inv.item_node n
-          join inv.item i on i.id = n.item_id and i.archived_at is null
-          left join inv.stock_level s on s.item_id = n.item_id
-                                     and s.delivery_node_id = n.delivery_node_id
-         where n.archived_at is null and n.par_level > 0 and ${IS_LOW}
-         group by n.delivery_node_id
-        union all
-        select 'flags', x.org_node_id::text, count(*)::int, null
-          from hr.attendance_exception x
-         where x.status = 'open'
-           and x.org_node_id in (select id from core.screen_places('exceptions'))
-         group by x.org_node_id
-        union all
-        select 'repairs', m.place_node_id::text, count(*)::int, null
-          from ops.maintenance_requests() m
-         where m.status = 'open'
-           and (select "on" from core.my_modules() where code = 'maintenance')
-           and core.can('MAINTENANCE', 'modify', m.org_node_id, null)
-         group by m.place_node_id`.execute(tx);
-      // open slots in shifts that haven't started, the next seven days, where they build the
-      // roster (ROSTER modify there, checked by core.can; RLS shows the shifts)
-      const slots =
-        shell.domains.get('ROSTER') === 'modify'
-          ? await sql<{ node: string; n: number; day: string }>`
-            with open as (
-              select s.org_node_id, s.local_date,
-                     s.headcount - (select count(*) from hr.shift_assignment x
-                                     where x.shift_id = s.id and x.status = 'assigned') as gap
-                from hr.shift s
-               where s.status <> 'cancelled' and s.start_at > now()
-                 and s.start_at < now() + interval '7 days'
-                 and core.can('ROSTER', 'modify', s.org_node_id, null))
-            select org_node_id::text as node, sum(gap)::int as n, min(local_date)::text as day
-              from open where gap > 0
-             group by org_node_id`.execute(tx)
-          : null;
-      const earliest = (slots?.rows ?? []).map((x) => x.day).sort()[0];
-      if (earliest) {
-        openSlotsHref = listHref('/roster/week', {
-          all: true,
-          week: weekStart(earliest),
-          day: earliest,
-        });
-      }
-      const all: AttentionCount[] = [
-        // the desk's Running low tile says it once (ADR 053), not three times
-        // running low is for whoever orders or asks for stock: never an office's first line
-        ...counts.rows.filter((c) => c.kind !== 'lowStock' || (!keepsDesk && profile !== 'office')),
-        ...(slots?.rows ?? []).map((s) => ({
-          kind: 'openSlots' as const,
-          node: s.node,
-          n: s.n,
-          // open slots are filled by shift, whoever opens the roster by person (ADR 097)
-          href: `/roster/week?node=${s.node}&week=${weekStart(s.day)}&day=${s.day}&view=shift`,
-        })),
-      ];
-      // the departments they run (TASKS modify there, core.can): each is a tile on Home, green
-      // when nothing waits there (ADR 105)
-      const depts = shell.nodes
-        .filter((n) => n.type === 'org' && n.kind === 'department')
-        .map((n) => n.id);
-      const run =
-        depts.length > 0
-          ? (
-              await sql<{ id: string }>`
-                select d::text as id from unnest(${depts}::uuid[]) d
-                 where core.can('TASKS', 'modify', d, null)`.execute(tx)
-            ).rows.map((r) => r.id)
-          : [];
-      // rounds late in a department they run: never "All done" while one is overdue. The late
-      // rows of the list Team tasks shows there (its last seven days), counted by ops.late_count
-      if (run.length > 0) {
-        const late = await sql<AttentionCount>`
-          select 'late' as kind, d::text as node, null as href,
-                 ops.late_count(d, ${addDays(today, -7)}::date, ${today}::date) as n
-            from unnest(${run}::uuid[]) d`.execute(tx);
-        all.push(...late.rows);
-      }
-      const nodes = [...new Set([...all.map((c) => c.node), ...run])];
-      const places =
-        nodes.length > 0
-          ? (
-              await sql<PlaceDepartment>`
-                select node_id::text, department_id::text, department, department_type, rank,
-                       outlet_id::text, outlet
-                  from core.department_of(${nodes}::uuid[])`.execute(tx)
-            ).rows
-          : [];
-      const quiet = places.filter((p) => run.includes(p.node_id));
-      // across outlets only what needs them: one tile per department of every outlet is a wall
-      const oneOutlet = new Set(places.map((p) => p.outlet_id)).size <= 1;
-      attention = attentionGroups(all, places, oneOutlet ? quiet : []);
-    }
-
-    // the store keeper's tiles (UX-6): the stores they see, under RLS
+    // the store keeper's tiles (UX-6): the stores they see, under RLS; also whoever else
+    // keeps a Main Store (ADR 151)
     let store: StoreWork | null = null;
-    if (keepsDesk) {
+    if (await keepsDesk(tx, shell, profile)) {
       const r = await sql<{ to_order: number; receive: number; low: number }>`
         select (select count(*) from inv.desk_orders() where stage = 'to_order')::int as to_order,
                (select count(*) from (
@@ -363,16 +277,6 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       };
     }
 
-    const desk = await loadDesk(tx, shell);
-
-    // expired and expiring batches (INV-12) for leads who see stock
-    let expiry: ExpiryCounts | null = null;
-    if (lead && shell.domains.has('STOCK_LEVELS')) {
-      const rows = await expiryList(tx);
-      const n = (expired: boolean) => rows.filter((x) => x.expired === expired).length;
-      expiry = { expiring: { n: n(false) }, expired: { n: n(true) } };
-    }
-
     // the cashier's import (frontline people who import; managers import from Sales)
     let pos: PosToday | null = null;
     if (!lead && shell.domains.get('POS_IMPORT') === 'modify') {
@@ -389,8 +293,6 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
         };
       }
     }
-    // Push today: the function decides who sees it (service teams and the outlet's managers)
-    const push = atWork ? await myPushToday(tx) : [];
     // today's briefing: everyone who works at the outlet reads it (ADR 070)
     const briefing = atWork && shell.modules.has('briefing') ? await myBriefing(tx) : null;
     // the shift before mine: its handover, until I have read it (ADR 118)
@@ -400,52 +302,11 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
     const rooms = await homeRooms(tx, shell);
     const minibar = await homeMinibar(tx, shell);
     const breakfast = await homeBreakfast(tx, shell);
-    const events = await homeEvents(tx, shell);
     const tomorrow =
       plan?.evening && shell.domains.get('ROSTER') === 'modify'
         ? await homeTomorrow(tx, plan.day)
         : null;
 
-    let numbers: TodayNumbers | null = null;
-    let leagueTable: TodayLeague | null = null;
-    if (shell.reports === 'business') {
-      // outlets side by side for those over two or more (R-4): the area manager, the owner
-      const lp = (await reportPlaces(tx, 'league'))[0];
-      if (lp) {
-        const to = await reportToday(tx, lp.id);
-        const from = addDays(to, -6);
-        const rows = await league(tx, lp.id, from, to);
-        if (rows.length > 1) leagueTable = { place: lp, from, to, rows };
-      }
-    }
-    if (shell.reports === 'business' && !leagueTable) {
-      const outlets = await reportPlaces(tx, 'outlet_flash');
-      const o = outlets[0];
-      if (o) {
-        const day = await reportToday(tx, o.id);
-        const rows = await outletFlash(tx, o.id, day);
-        const sold = Number(rows.find((r) => r.measure === 'sales')?.value ?? 0) > 0;
-        const before = addDays(day, -1);
-        numbers = {
-          report: 'outlet_flash',
-          place: o,
-          rows,
-          yesterday: sold ? null : { day: before, rows: await outletFlash(tx, o.id, before) },
-        };
-      } else {
-        const d = (await reportPlaces(tx, 'department'))[0];
-        if (d) {
-          const day = await reportToday(tx, d.id);
-          const people = await departmentPeople(tx, d.id);
-          numbers = {
-            report: 'department',
-            place: d,
-            rows: await departmentDay(tx, d.id, day),
-            notIn: people.filter((p) => !p.clocked_in_at && new Date(p.start_at) <= now).length,
-          };
-        }
-      }
-    }
     // a compliance reminder is a row of the Compliance card, never a task as well (ADR 113)
     const onCard = new Set((compliance?.rows ?? []).flatMap((r) => (r.task_id ? [r.task_id] : [])));
     return {
@@ -458,24 +319,189 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       repairs,
       approvals: { shown: inbox.slice(0, HOME_APPROVALS), total: inbox.length, toAssign: assign },
       compliance,
-      attention,
-      openSlotsHref,
-      numbers,
-      league: leagueTable,
       store,
-      desk,
-      expiry,
       pos,
-      push,
       briefing,
       handovers,
       plan,
       rooms,
       minibar,
       breakfast,
-      events,
       tomorrow,
+      desk: await loadDesk(tx, shell),
       targets: (await companySettings(tx)).targets,
     };
   });
+  // all together, so a part that fails fails the screen ("We couldn't open this")
+  const [main, , , { attention, openSlotsHref }, { numbers, league }, push, events, expiry] =
+    await Promise.all([mainP, tasksP, inboxP, attentionP, numbersP, pushP, eventsP, expiryP]);
+  return { ...main, attention, openSlotsHref, numbers, league, push, events, expiry };
+}
+
+/** The order desk's tiles are the store keeper's, and whoever else keeps a Main Store (ADR 151). */
+async function keepsDesk(tx: Tx, shell: Shell, profile: NavProfile): Promise<boolean> {
+  if (!shell.domains.has('STOCK_LEVELS')) return false;
+  if (profile === 'store') return true;
+  if (!shell.groups.has('STORE_KEEPER')) return false;
+  return (await sql<{ k: boolean }>`select inv.keeps_main_store() as k`.execute(tx)).rows[0]!.k;
+}
+
+/**
+ * What waits in the places a lead runs (ADR 105): counts at each place, open slots, late
+ * rounds, by department.
+ */
+async function homeAttention(
+  tx: Tx,
+  shell: Shell,
+  profile: NavProfile,
+  today: string,
+): Promise<{ attention: AttentionGroup[]; openSlotsHref: string | null }> {
+  const desk = await keepsDesk(tx, shell, profile);
+  let openSlotsHref: string | null = null;
+  // each count at its place, under RLS; then the places' departments and order (DB-2)
+  const counts = await sql<AttentionCount>`
+    select 'lowStock' as kind, n.delivery_node_id::text as node, count(*)::int as n,
+           null as href
+      from inv.item_node n
+      join inv.item i on i.id = n.item_id and i.archived_at is null
+      left join inv.stock_level s on s.item_id = n.item_id
+                                 and s.delivery_node_id = n.delivery_node_id
+     where n.archived_at is null and n.par_level > 0 and ${IS_LOW}
+     group by n.delivery_node_id
+    union all
+    select 'flags', x.org_node_id::text, count(*)::int, null
+      from hr.attendance_exception x
+     where x.status = 'open'
+       and x.org_node_id in (select id from core.screen_places('exceptions'))
+     group by x.org_node_id
+    union all
+    select 'repairs', m.place_node_id::text, count(*)::int, null
+      from ops.maintenance_requests() m
+     where m.status = 'open'
+       and (select "on" from core.my_modules() where code = 'maintenance')
+       and core.can('MAINTENANCE', 'modify', m.org_node_id, null)
+     group by m.place_node_id`.execute(tx);
+  // open slots in shifts that haven't started, the next seven days, where they build the
+  // roster (ROSTER modify there, checked by core.can; RLS shows the shifts)
+  const slots =
+    shell.domains.get('ROSTER') === 'modify'
+      ? await sql<{ node: string; n: number; day: string }>`
+        with open as (
+          select s.org_node_id, s.local_date,
+                 s.headcount - (select count(*) from hr.shift_assignment x
+                                 where x.shift_id = s.id and x.status = 'assigned') as gap
+            from hr.shift s
+           where s.status <> 'cancelled' and s.start_at > now()
+             and s.start_at < now() + interval '7 days'
+             and core.can('ROSTER', 'modify', s.org_node_id, null))
+        select org_node_id::text as node, sum(gap)::int as n, min(local_date)::text as day
+          from open where gap > 0
+         group by org_node_id`.execute(tx)
+      : null;
+  const earliest = (slots?.rows ?? []).map((x) => x.day).sort()[0];
+  if (earliest) {
+    openSlotsHref = listHref('/roster/week', {
+      all: true,
+      week: weekStart(earliest),
+      day: earliest,
+    });
+  }
+  const all: AttentionCount[] = [
+    // the desk's Running low tile says it once (ADR 053), not three times; running low is
+    // for whoever orders or asks for stock, never an office's first line (ADR 151)
+    ...counts.rows.filter((c) => c.kind !== 'lowStock' || (!desk && profile !== 'office')),
+    ...(slots?.rows ?? []).map((s) => ({
+      kind: 'openSlots' as const,
+      node: s.node,
+      n: s.n,
+      // open slots are filled by shift, whoever opens the roster by person (ADR 097)
+      href: `/roster/week?node=${s.node}&week=${weekStart(s.day)}&day=${s.day}&view=shift`,
+    })),
+  ];
+  // the departments they run (TASKS modify there, core.can): each is a tile on Home, green
+  // when nothing waits there (ADR 105)
+  const depts = shell.nodes
+    .filter((n) => n.type === 'org' && n.kind === 'department')
+    .map((n) => n.id);
+  const run =
+    depts.length > 0
+      ? (
+          await sql<{ id: string }>`
+            select d::text as id from unnest(${depts}::uuid[]) d
+             where core.can('TASKS', 'modify', d, null)`.execute(tx)
+        ).rows.map((r) => r.id)
+      : [];
+  // rounds late in a department they run: never "All done" while one is overdue. The late
+  // rows of the list Team tasks shows there (its last seven days), counted by ops.late_counts
+  if (run.length > 0) {
+    const late = await sql<AttentionCount>`
+      select 'late' as kind, node_id::text as node, null as href, n
+        from ops.late_counts(${run}::uuid[], ${addDays(today, -7)}::date, ${today}::date)`.execute(
+      tx,
+    );
+    all.push(...late.rows);
+  }
+  const nodes = [...new Set([...all.map((c) => c.node), ...run])];
+  const places =
+    nodes.length > 0
+      ? (
+          await sql<PlaceDepartment>`
+            select node_id::text, department_id::text, department, department_type, rank,
+                   outlet_id::text, outlet
+              from core.department_of(${nodes}::uuid[])`.execute(tx)
+        ).rows
+      : [];
+  const quiet = places.filter((p) => run.includes(p.node_id));
+  // across outlets only what needs them: one tile per department of every outlet is a wall
+  const oneOutlet = new Set(places.map((p) => p.outlet_id)).size <= 1;
+  return { attention: attentionGroups(all, places, oneOutlet ? quiet : []), openSlotsHref };
+}
+
+/** The business's numbers on Home: the outlets side by side, else one outlet's or department's day. */
+async function homeNumbers(
+  tx: Tx,
+  shell: Shell,
+  now: Date,
+): Promise<{ numbers: TodayNumbers | null; league: TodayLeague | null }> {
+  let numbers: TodayNumbers | null = null;
+  let leagueTable: TodayLeague | null = null;
+  if (shell.reports === 'business') {
+    // outlets side by side for those over two or more (R-4): the area manager, the owner
+    const lp = (await reportPlaces(tx, 'league'))[0];
+    if (lp) {
+      const to = await reportToday(tx, lp.id);
+      const from = addDays(to, -6);
+      const rows = await league(tx, lp.id, from, to);
+      if (rows.length > 1) leagueTable = { place: lp, from, to, rows };
+    }
+  }
+  if (shell.reports === 'business' && !leagueTable) {
+    const outlets = await reportPlaces(tx, 'outlet_flash');
+    const o = outlets[0];
+    if (o) {
+      const day = await reportToday(tx, o.id);
+      const rows = await outletFlash(tx, o.id, day);
+      const sold = Number(rows.find((r) => r.measure === 'sales')?.value ?? 0) > 0;
+      const before = addDays(day, -1);
+      numbers = {
+        report: 'outlet_flash',
+        place: o,
+        rows,
+        yesterday: sold ? null : { day: before, rows: await outletFlash(tx, o.id, before) },
+      };
+    } else {
+      const d = (await reportPlaces(tx, 'department'))[0];
+      if (d) {
+        const day = await reportToday(tx, d.id);
+        const people = await departmentPeople(tx, d.id);
+        numbers = {
+          report: 'department',
+          place: d,
+          rows: await departmentDay(tx, d.id, day),
+          notIn: people.filter((p) => !p.clocked_in_at && new Date(p.start_at) <= now).length,
+        };
+      }
+    }
+  }
+  return { numbers, league: leagueTable };
 }

@@ -1,7 +1,7 @@
 # 153. Forms choose nothing; said once, named one way
 
-Date: 2026-10-15. Status: accepted. Migrations `20261231170000_ask_items_by_category`,
-`20261231180000_auditor_reads_access_audit`. Builds on
+Date: 2026-10-15. Status: accepted. Migrations `20270111040000_ask_items_by_category`,
+`20270111050000_auditor_reads_access_audit`. Builds on
 ADR 110 to 114 (forms choose nothing), 048 (one screen per function) and 097 ("← Back").
 
 ## Context
@@ -28,7 +28,7 @@ The auditor:
 9. **The auditor reads the access audit.** The Auditor holds AUDIT at the company's root (duty
    AUDITS_COMPANY) and could already read the audit log, but `core.access_audit` asked for
    USER_ACCESS, which manages people. AUDIT at the root now opens it, for the whole company and
-   read-only (migration `20261231180000_auditor_reads_access_audit`), so the auditor's desk shows
+   read-only (migration `20270111050000_auditor_reads_access_audit`), so the auditor's desk shows
    "Access changes this week" and Admin shows the access audit. They still cannot manage people.
 
 Said once, one name (section 7):
