@@ -393,14 +393,15 @@ export interface TaskTabs {
  */
 export async function taskTabs(tx: Tx): Promise<TaskTabs> {
   const r = await sql<TaskTabs>`
-    with m as (select code, "on" from core.my_modules())
+    with m as materialized (select code, "on" from core.my_modules()),
+         -- each place list once, and a screen's only where its module is on
+         n as materialized (select exists (select 1 from core.screen_places('tasks_new')) as ok)
     select exists (select 1 from core.screen_places('tasks')) as team,
-           exists (select 1 from core.screen_places('tasks_new')) as create,
-           exists (select 1 from core.screen_places('checklists'))
-             and (select "on" from m where code = 'checklists') as checklists,
-           exists (select 1 from core.screen_places('tasks_new'))
-             and exists (select 1 from core.screen_places('production'))
-             and (select "on" from m where code = 'prep_lists') as prep,
+           (select ok from n) as create,
+           case when (select "on" from m where code = 'checklists')
+                then exists (select 1 from core.screen_places('checklists')) else false end as checklists,
+           case when (select "on" from m where code = 'prep_lists') and (select ok from n)
+                then exists (select 1 from core.screen_places('production')) else false end as prep,
            (select "on" from m where code = 'maintenance') as maintenance`.execute(tx);
   return r.rows[0]!;
 }

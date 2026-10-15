@@ -56,11 +56,12 @@ export default async function ItemLedgerPage({
     source: canAsk
       ? ((
           await sql<{ source_id: string | null }>`
-            select source_id::text from inv.ask_items(${ctx.node!.id}::uuid)
-             where item_id = ${id}::uuid`.execute(tx)
+            select inv.ask_source(${ctx.node!.id}::uuid, ${id}::uuid)::text as source_id`.execute(
+            tx,
+          )
         ).rows[0]?.source_id ?? null)
       : null,
-    item: (await stockList(tx, ctx.node!.id)).find((r) => r.item_id === id),
+    item: (await stockList(tx, ctx.node!.id, id))[0],
     rows: await ledger(tx, ctx.node!.id, id),
     canPhoto: (
       await sql<{ ok: boolean }>`select inv.can_set_item_photo(${id}::uuid) as ok`.execute(tx)

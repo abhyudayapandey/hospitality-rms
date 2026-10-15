@@ -23,21 +23,21 @@ export default async function TeamTasksPage({ searchParams }: { searchParams: Se
   const today = localToday(tz);
   const thisWeek = weekStart(today);
   const sp = await searchParams;
-  const data = await withUser(user.id, async (tx) => {
-    // days chosen (ADR 120): every task due on them, done or not
-    const days = place ? await listDays(tx, sp, place.id) : null;
-    const range = days?.range ?? null;
-    return {
-      range,
-      listToday: days?.today ?? today,
-      tabs: await taskTabs(tx),
-      tasks: place
-        ? await teamTasks(tx, place.id, range?.from ?? addDays(today, -7), range?.to ?? today)
-        : [],
-      now: place ? await completion(tx, place.id, thisWeek) : [],
-      last: place ? await completion(tx, place.id, addDays(thisWeek, -7)) : [],
-    };
-  });
+  // days chosen (ADR 120): every task due on them, done or not
+  const days = place ? await withUser(user.id, (tx) => listDays(tx, sp, place.id)) : null;
+  const range = days?.range ?? null;
+  // the parts load side by side, each in its own transaction (ADR 160)
+  const [tabs, tasks, now, last] = await Promise.all([
+    withUser(user.id, taskTabs),
+    place
+      ? withUser(user.id, (tx) =>
+          teamTasks(tx, place.id, range?.from ?? addDays(today, -7), range?.to ?? today),
+        )
+      : [],
+    place ? withUser(user.id, (tx) => completion(tx, place.id, thisWeek)) : [],
+    place ? withUser(user.id, (tx) => completion(tx, place.id, addDays(thisWeek, -7))) : [],
+  ]);
+  const data = { range, listToday: days?.today ?? today, tabs, tasks, now, last };
   const todays = data.tasks.filter((t) => !t.overdue && localDate(t.due_at, tz) === today);
   const overdue = data.tasks.filter((t) => t.overdue);
   const listed = (ts: typeof data.tasks) =>

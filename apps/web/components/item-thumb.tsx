@@ -74,6 +74,9 @@ export function ItemThumb({
         <img
           src={`/pictures/${photo}`}
           alt=""
+          // a long list loads only the pictures in view (Picture credits has 300, ADR 160)
+          loading="lazy"
+          decoding="async"
           className="size-full object-contain"
           draggable={false}
         />
