@@ -236,7 +236,8 @@ export default async function RecipePage({
       )}
 
       {tab === 'recipe' && steps.length === 0 && (
-        <Empty>No method yet. Ask your chef or manager to add it.</Empty>
+        // whoever may add it is told where; a reader is not sent to ask someone (ADR 151)
+        <Empty>{editable ? 'No method yet. Tap Change recipe to add it.' : 'No method yet.'}</Empty>
       )}
       {tab === 'recipe' && steps.length > 0 && (
         <section className="space-y-2">

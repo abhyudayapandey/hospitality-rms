@@ -298,14 +298,52 @@ export default async function Home() {
 
       <Approvals today={today} />
 
+      {today.desk.length > 0 && <Desk rows={today.desk} />}
+
       {today.league ? (
         <League league={today.league} targets={today.targets} />
       ) : (
-        today.numbers && <Numbers numbers={today.numbers} targets={today.targets} />
+        // an office's own department sells nothing: its desk says its day (ADR 151)
+        today.numbers &&
+        !(today.desk.length > 0 && today.numbers.report === 'department') && (
+          <Numbers numbers={today.numbers} targets={today.targets} />
+        )
       )}
 
       <Attention today={today} />
     </div>
+  );
+}
+
+// The office's own work (ADR 151): one row a job, its number or that nothing waits
+function Desk({ rows }: { rows: Today['desk'] }) {
+  return (
+    <section aria-label="Your desk" className={card} data-testid="desk">
+      <h2 className={cardTitle}>Your desk</h2>
+      <ul className="mt-2 divide-y divide-slate-100">
+        {rows.map((r) => (
+          <li key={r.key}>
+            <Link
+              href={r.href}
+              data-testid={`desk-${r.key}`}
+              className="flex min-h-12 items-center gap-3 py-2"
+            >
+              <Icon name={r.icon} className="size-5 text-slate-500" />
+              <span className="flex-1 font-medium">{r.label}</span>
+              {r.n > 0 ? (
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-sm font-bold tabular-nums ${BADGE.warn}`}
+                >
+                  {r.n}
+                </span>
+              ) : (
+                <span className="text-sm text-slate-500">{r.none}</span>
+              )}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

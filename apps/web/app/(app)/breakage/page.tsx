@@ -31,6 +31,8 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
   const asked = param(sp, 'place');
   const place =
     places.find((p) => isUuid(asked) && p.place_id === asked) ??
+    // a manager of the outlet opens on the outlet, never their own office (ADR 151)
+    places.find((p) => p.can_record && p.kind === 'outlet') ??
     places.find((p) => p.can_record) ??
     places[0];
   if (!place) {

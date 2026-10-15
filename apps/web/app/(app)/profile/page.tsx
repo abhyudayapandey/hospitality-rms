@@ -102,17 +102,25 @@ export default async function ProfilePage() {
                   {g.group_name}
                   {g.effective_to ? ` · until ${g.effective_to}` : ''}
                 </p>
-                {s.change.length > 0 && (
-                  <p className="mt-2">
-                    <span className="font-medium">Change: </span>
-                    {s.change.join(', ')}
-                  </p>
-                )}
-                {s.see.length > 0 && (
-                  <p className="mt-1">
-                    <span className="font-medium">See: </span>
-                    {s.see.join(', ')}
-                  </p>
+                {/* one word a thing, never a long sentence of them (ADR 151) */}
+                {(
+                  [
+                    ['change', 'You can change', s.change],
+                    ['see', 'You can see', s.see],
+                  ] as const
+                ).map(([key, title, words]) =>
+                  words.length > 0 ? (
+                    <div key={key} className="mt-2" data-testid={`access-${key}`}>
+                      <p className="font-medium">{title}</p>
+                      <ul className="mt-1 flex flex-wrap gap-1.5">
+                        {words.map((w) => (
+                          <li key={w} className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs">
+                            {w}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null,
                 )}
               </li>
             );

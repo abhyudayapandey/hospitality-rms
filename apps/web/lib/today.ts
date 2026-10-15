@@ -1,4 +1,5 @@
 import 'server-only';
+import { loadDesk, type DeskRow } from './desk';
 import { addDays, businessToday, weekStart } from './dates';
 import { sql, withUser, type Tx } from './db';
 import { myBriefing, type MyBriefing } from './briefing';
@@ -124,6 +125,8 @@ export interface Today {
   numbers: TodayNumbers | null;
   league: TodayLeague | null;
   store: StoreWork | null;
+  /** the office's own work: bills, clock-ins to check, access changes (ADR 151) */
+  desk: DeskRow[];
   expiry: ExpiryCounts | null;
   pos: PosToday | null;
   /** dishes to sell first today at their outlet (INV-12, ADR 040) */
@@ -214,6 +217,12 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       if (sees || rows.length > 0) compliance = { keeps, recorded, rows };
     }
 
+    // the order desk's tiles: the store keeper, and whoever else keeps a Main Store (ADR 151)
+    const keepsDesk =
+      shell.domains.has('STOCK_LEVELS') &&
+      (profile === 'store' ||
+        (shell.groups.has('STORE_KEEPER') &&
+          (await sql<{ k: boolean }>`select inv.keeps_main_store() as k`.execute(tx)).rows[0]!.k));
     let attention: AttentionGroup[] | null = null;
     let openSlotsHref: string | null = null;
     if (lead) {
@@ -266,8 +275,9 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
         });
       }
       const all: AttentionCount[] = [
-        // the store keeper's Running low tile says it once (ADR 053), not three times
-        ...counts.rows.filter((c) => profile !== 'store' || c.kind !== 'lowStock'),
+        // the desk's Running low tile says it once (ADR 053), not three times
+        // running low is for whoever orders or asks for stock: never an office's first line
+        ...counts.rows.filter((c) => c.kind !== 'lowStock' || (!keepsDesk && profile !== 'office')),
         ...(slots?.rows ?? []).map((s) => ({
           kind: 'openSlots' as const,
           node: s.node,
@@ -316,7 +326,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
 
     // the store keeper's tiles (UX-6): the stores they see, under RLS
     let store: StoreWork | null = null;
-    if (profile === 'store' && shell.domains.has('STOCK_LEVELS')) {
+    if (keepsDesk) {
       const r = await sql<{ to_order: number; receive: number; low: number }>`
         select (select count(*) from inv.desk_orders() where stage = 'to_order')::int as to_order,
                (select count(*) from (
@@ -352,6 +362,8 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
         issue: inbox.filter((e) => e.processType === 'TRANSFER' && e.step === 'dispatch').length,
       };
     }
+
+    const desk = await loadDesk(tx, shell);
 
     // expired and expiring batches (INV-12) for leads who see stock
     let expiry: ExpiryCounts | null = null;
@@ -451,6 +463,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       numbers,
       league: leagueTable,
       store,
+      desk,
       expiry,
       pos,
       push,
