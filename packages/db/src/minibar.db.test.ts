@@ -467,13 +467,14 @@ describe('the refill and the bill are tasks (ADR 081)', () => {
           who,
         ).toMatch(/NOT_AUTHORISED/);
       }
-      const seen = await ok<{ room: string; charge: string }>(
+      const seen = await ok<{ room: string; charge: string | null }>(
         c,
         ATTENDANT,
         'select room, charge from ops.minibar_task_check($1)',
         [refill!.id],
       );
-      expect(seen).toEqual([{ room: '101', charge: '250.00' }]);
+      // the attendant refills; the rupees are for whoever bills it (ADR 145)
+      expect(seen).toEqual([{ room: '101', charge: null }]);
     });
   });
 });

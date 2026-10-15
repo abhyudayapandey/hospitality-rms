@@ -58,7 +58,9 @@ describe('who can do the job', () => {
       );
       expect(r.error).toBeUndefined();
       const names = r.rows!.map((x) => x.name);
-      expect(names).toContain('Test General Manager 1.0');
+      expect(names.length).toBeGreaterThan(0);
+      // never the giver (ADR 145)
+      expect(names).not.toContain('Test General Manager 1.0');
       // not everyone at the hotel
       expect(names).not.toContain('Test Bartender 1.0');
       expect(names).not.toContain('Test Room Attendant 1.0');
