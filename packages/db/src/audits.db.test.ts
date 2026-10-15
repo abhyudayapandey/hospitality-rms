@@ -133,11 +133,13 @@ describe('audits', () => {
            coalesce(settings -> 'modules', '{}') || '{"audits": false}') where id = $1`,
         [ids.tenant()],
       );
-      await c.query(
-        `delete from ops.task where template_id in (
-           select id from ops.checklist_template where tenant_id = $1 and module = 'audits')`,
-        [ids.tenant()],
-      );
+      // the seed's tasks job may already have made an audit round with its steps (on the days
+      // one falls within 24 hours of the load): clear its steps and photos first
+      const rounds = `select t.id from ops.task t join ops.checklist_template c on c.id = t.template_id
+                       where c.tenant_id = $1 and c.module = 'audits'`;
+      await c.query(`delete from ops.task_photo where task_id in (${rounds})`, [ids.tenant()]);
+      await c.query(`delete from ops.task_step where task_id in (${rounds})`, [ids.tenant()]);
+      await c.query(`delete from ops.task where id in (${rounds})`, [ids.tenant()]);
       await actAs(c, 'wf_executor', null);
       await c.query(`select * from ops.tasks_tick(now() + interval '20 days')`);
       await resetRole(c);
