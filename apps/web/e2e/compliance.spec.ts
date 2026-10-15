@@ -78,6 +78,8 @@ test('the GM hands the pest control To do to the assistant GM (ADR 073)', async 
     await signInAs(page, GM);
     await page.goto(`/tasks/${t!.id}`);
     const give = page.getByTestId('reassign');
+    // pick once the form is live: a pick before then is lost to the first name listed
+    await expect(give.getByRole('button', { name: 'Assign' })).toBeEnabled();
     await give.getByLabel('Give it to someone').selectOption(agm!.id);
     await give.getByRole('button', { name: 'Assign' }).click();
     await expect(page.getByTestId('task-status')).toContainText(

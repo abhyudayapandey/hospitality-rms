@@ -113,6 +113,7 @@ test('Send stock: it leaves the Main Store, the person who gets the task confirm
     await signInAs(page, who);
     await page.goto(`/tasks/${task!.id}`);
     const reassign = page.getByTestId('reassign');
+    await expect(reassign.getByRole('button', { name: 'Assign' })).toBeEnabled();
     await reassign.getByRole('combobox').selectOption({ label: 'Test Commis 1.0 (Commis)' });
     await reassign.getByRole('button', { name: 'Assign' }).click();
     await expect
