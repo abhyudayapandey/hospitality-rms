@@ -118,7 +118,7 @@ test('a count within tolerance posts straight away', async ({ page }) => {
   // 2% more than expected: within the 5% tolerance file 11 sets for dry goods
   const counted = Math.round(before * 1.02 * 1000) / 1000;
   await page.getByRole('textbox', { name: 'Counted Test Salt' }).fill(String(counted));
-  await page.getByRole('button', { name: /^Submit count/ }).click();
+  await page.getByRole('button', { name: /^Submit stock check/ }).click();
   await expect(page.getByRole('status')).toContainText('1 posted, 0 sent for approval');
 
   // the screen shows 2 decimals (ADR 054)
