@@ -8,7 +8,7 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { giveRooms } from '../actions';
 
 /** Pick a person, tap their rooms or a whole floor (others' rooms show whose they are), save
- *  (ADR 111, 132). */
+ *  (ADR 111, 132). Nobody is picked until tapped; who is on shift today comes first (ADR 153). */
 export function GiveRoomsForm({
   outlet,
   day,
@@ -18,14 +18,14 @@ export function GiveRoomsForm({
 }: {
   outlet: string;
   day: string;
-  people: { user_id: string; name: string; role_name: string }[];
+  people: { user_id: string; name: string; role_name: string; on_shift: boolean }[];
   rooms: { room_id: string; number: string; floor: string | null }[];
   given: { room_id: string; user_id: string; name: string }[];
 }) {
   const router = useRouter();
   const hydrated = useHydrated();
   const [pending, start] = useTransition();
-  const [person, setPerson] = useState<string>(people[0]!.user_id);
+  const [person, setPerson] = useState<string>('');
   const [owner, setOwner] = useState<Record<string, string>>(
     Object.fromEntries(given.map((g) => [g.room_id, g.user_id])),
   );
@@ -36,6 +36,7 @@ export function GiveRoomsForm({
   const theirs = rooms.filter((r) => owner[r.room_id] === person);
 
   const tap = (room: string) => {
+    if (!person) return;
     setSaved(null);
     setOwner((o) => {
       const next = { ...o };
@@ -47,6 +48,7 @@ export function GiveRoomsForm({
 
   // a whole floor at once (ADR 132): all to this person, or, if they have it all, off them
   const tapFloor = (ids: string[]) => {
+    if (!person) return;
     setSaved(null);
     setOwner((o) => {
       const next = { ...o };
@@ -95,6 +97,7 @@ export function GiveRoomsForm({
             >
               <span className="block font-semibold">{p.name}</span>
               <span className="block text-xs opacity-80">
+                {p.on_shift ? 'On shift · ' : ''}
                 {p.role_name} · {n} {n === 1 ? 'room' : 'rooms'}
               </span>
             </button>
@@ -102,8 +105,14 @@ export function GiveRoomsForm({
         })}
       </div>
       <p className="text-sm text-slate-600">
-        Tap {first(person)}&apos;s rooms, or a floor for all of it. A room someone else has moves to{' '}
-        {first(person)}.
+        {person ? (
+          <>
+            Tap {first(person)}&apos;s rooms, or a floor for all of it. A room someone else has
+            moves to {first(person)}.
+          </>
+        ) : (
+          'Tap a person first.'
+        )}
       </p>
       {byFloor(rooms).map((f) => (
         <section key={f.floor} className="space-y-2" aria-label={floorName(f.floor)}>
@@ -168,10 +177,12 @@ export function GiveRoomsForm({
       <button
         type="button"
         onClick={save}
-        disabled={!hydrated || pending}
+        disabled={!hydrated || pending || !person}
         className={primaryButton}
       >
-        Give {first(person)} {theirs.length} {theirs.length === 1 ? 'room' : 'rooms'}
+        {person
+          ? `Give ${first(person)} ${theirs.length} ${theirs.length === 1 ? 'room' : 'rooms'}`
+          : 'Pick a person'}
       </button>
     </div>
   );

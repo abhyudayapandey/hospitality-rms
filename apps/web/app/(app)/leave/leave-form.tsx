@@ -18,8 +18,8 @@ export interface LeaveTypeOption {
 
 /**
  * Asking for leave (ADR 112): tap the type, then the shifts you want off; the dates follow.
- * It starts on your next working day, never on a day you are off. Other dates are there to
- * change when the shift you want off isn't rostered yet.
+ * Nothing is chosen for the person (ADR 111, 153): no type and no day until they tap one, and the
+ * button says what is still missing. Other dates are there for a shift not rostered yet.
  */
 export function LeaveForm({
   types,
@@ -34,11 +34,10 @@ export function LeaveForm({
   const router = useRouter();
   const [pending, start] = useTransition();
   const hydrated = useHydrated();
-  const first = shiftDays[0] ?? addDays(today, 1);
-  const [type, setType] = useState(types[0]?.id ?? '');
-  const [picked, setPicked] = useState<string[]>([first]);
-  const [from, setFrom] = useState(first);
-  const [to, setTo] = useState(first);
+  const [type, setType] = useState('');
+  const [picked, setPicked] = useState<string[]>([]);
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -52,10 +51,8 @@ export function LeaveForm({
     const next = picked.includes(d) ? picked.filter((x) => x !== d) : [...picked, d];
     const sorted = next.sort();
     setPicked(sorted);
-    if (sorted.length > 0) {
-      setFrom(sorted[0]!);
-      setTo(sorted[sorted.length - 1]!);
-    }
+    setFrom(sorted[0] ?? '');
+    setTo(sorted[sorted.length - 1] ?? '');
   };
 
   const submit = () =>
@@ -130,10 +127,11 @@ export function LeaveForm({
             <input
               type="date"
               value={from}
+              min={addDays(today, 1)}
               onChange={(e) => {
                 setPicked([]);
                 setFrom(e.target.value);
-                if (e.target.value > to) setTo(e.target.value);
+                if (!to || e.target.value > to) setTo(e.target.value);
               }}
               className={inputClass}
               required
@@ -155,13 +153,15 @@ export function LeaveForm({
           </label>
         </div>
       </details>
-      <p
-        className={`text-sm ${over ? 'text-rose-700' : 'text-slate-600'}`}
-        data-testid="leave-days"
-      >
-        {days} calendar day{days === 1 ? '' : 's'}
-        {days > 0 && ` · ${formatDay(from)}${to !== from ? ` – ${formatDay(to)}` : ''}`}
-      </p>
+      {days > 0 && (
+        <p
+          className={`text-sm ${over ? 'text-rose-700' : 'text-slate-600'}`}
+          data-testid="leave-days"
+        >
+          {days} calendar day{days === 1 ? '' : 's'} · {formatDay(from)}
+          {to !== from ? ` – ${formatDay(to)}` : ''}
+        </p>
+      )}
       <label className="block text-sm">
         Reason (optional)
         <input
@@ -176,7 +176,11 @@ export function LeaveForm({
         disabled={!hydrated || pending || days === 0 || over || !type}
         className={primaryButton}
       >
-        Request {days || ''} day{days === 1 ? '' : 's'}
+        {!type
+          ? 'Pick the type of leave'
+          : days === 0
+            ? 'Pick the days off'
+            : `Request ${days} day${days === 1 ? '' : 's'}`}
       </button>
       <ErrorBox message={error} />
       <StatusBox message={done} />

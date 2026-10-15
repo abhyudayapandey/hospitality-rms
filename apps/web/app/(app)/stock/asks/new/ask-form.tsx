@@ -7,6 +7,7 @@ import { ItemThumb } from '@/components/item-thumb';
 import { ListSearch } from '@/components/list-search';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { Stepper } from '@/components/stepper';
+import { shortFirst } from '@/lib/short-first';
 import { useHydrated } from '@/lib/use-hydrated';
 import { raiseStaffAsk } from '../../actions';
 
@@ -15,20 +16,26 @@ export interface AskStoreItem {
   name: string;
   base_uom: string;
   on_hand: string;
+  category: string | null;
+  par: string;
 }
 
 /**
- * Tap − / + for how many of each; nothing filled in (ADR 098). One button sends it to the head
- * of the department.
+ * Tap − / + for how many of each; nothing filled in (ADR 098). What the store runs short of comes
+ * first, then the rest by category, as on Ask for supplies (ADR 101, 153). One button sends it to
+ * the head of the department.
  */
 export function AskForm({
   stores,
   store,
   items,
+  hotel = false,
 }: {
   stores: { id: string; name: string }[];
   store: { id: string; name: string };
   items: AskStoreItem[];
+  /** a hotel's note gives a room as its example, elsewhere a table */
+  hotel?: boolean;
 }) {
   const router = useRouter();
   const hydrated = useHydrated();
@@ -75,28 +82,39 @@ export function AskForm({
       )}
       <div id="ask-lines" className="space-y-2">
         <ListSearch scope="ask-lines" count={items.length} noun="items" />
-        <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-          {items.map((i) => (
-            <li
-              key={i.item_id}
-              className="space-y-2 px-4 py-3"
-              data-filter-row
-              data-filter-text={i.name}
-            >
-              <span className="flex items-center gap-3">
-                <ItemThumb name={i.name} />
-                <span className="font-medium">{i.name}</span>
-              </span>
-              <Stepper
-                value={qty[i.item_id] ?? ''}
-                onChange={(v) => setQty((q) => ({ ...q, [i.item_id]: v }))}
-                label={`How many ${i.name}`}
-                min={0}
-                unit={i.base_uom}
-              />
-            </li>
-          ))}
-        </ul>
+        {shortFirst(items, (i) => Number(i.par) > 0 && Number(i.on_hand) < Number(i.par)).map(
+          (s) => (
+            <section key={s.key} className="space-y-1" data-testid="ask-section">
+              <h3
+                className={`text-sm font-semibold ${s.short ? 'text-rose-700' : 'text-slate-500'}`}
+              >
+                {s.label}
+              </h3>
+              <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
+                {s.rows.map((i) => (
+                  <li
+                    key={i.item_id}
+                    className="space-y-2 px-4 py-3"
+                    data-filter-row
+                    data-filter-text={i.name}
+                  >
+                    <span className="flex items-center gap-3">
+                      <ItemThumb name={i.name} />
+                      <span className="font-medium">{i.name}</span>
+                    </span>
+                    <Stepper
+                      value={qty[i.item_id] ?? ''}
+                      onChange={(v) => setQty((q) => ({ ...q, [i.item_id]: v }))}
+                      label={`How many ${i.name}`}
+                      min={0}
+                      unit={i.base_uom}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ),
+        )}
       </div>
       <label className="block space-y-1">
         <span className="text-sm font-medium">What it is for (optional)</span>
@@ -104,7 +122,7 @@ export function AskForm({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           maxLength={500}
-          placeholder="Room 104"
+          placeholder={hotel ? 'Room 104' : 'Table 4'}
           className={inputClass}
         />
       </label>

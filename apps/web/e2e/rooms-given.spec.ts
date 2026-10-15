@@ -54,6 +54,8 @@ test('a whole floor in one tap, and off again in one tap (ADR 132)', async ({ pa
   try {
     await signInAs(page, 'Test Executive Housekeeper 1.0');
     await page.goto(`/rooms/give?outlet=${outlet}`);
+    // nobody is chosen for her (ADR 153)
+    await expect(main(page).getByRole('button', { name: 'Pick a person' })).toBeDisabled();
     await main(page)
       .getByRole('group', { name: 'Person' })
       .getByRole('button', { name: /Test Room Attendant 1\.0/ })
