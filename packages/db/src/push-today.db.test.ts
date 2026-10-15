@@ -100,7 +100,7 @@ describe('Push today', () => {
 });
 
 describe("Home's Push today card", () => {
-  it('at their own outlet, for its service teams and managers, not its kitchen', async () => {
+  it('at their own outlet, for everyone in food and drink and its managers (ADR 150)', async () => {
     await inRolledBackTx(async (c) => {
       await batch(c, 20);
       const mine = (who: string) =>
@@ -114,6 +114,7 @@ describe("Home's Push today card", () => {
         'test.cashier.3.0',
         'test.bartender.3.0',
         'test.bar-manager.3.0',
+        'test.cook.3.0',
       ]) {
         const r = await mine(who);
         expect(r.error, who).toBeUndefined();
@@ -124,7 +125,14 @@ describe("Home's Push today card", () => {
           who,
         ).toBe(true);
       }
-      expect((await mine('test.cook.3.0')).rows).toEqual([]);
+      // not food and drink: a bar's security guard, a hotel's front desk and HR
+      for (const who of [
+        'test.security-guard.3.0',
+        'test.front-desk-executive.1.0',
+        'test.hr-executive.1.0',
+      ]) {
+        expect((await mine(who)).rows, who).toEqual([]);
+      }
       expect((await mine('test.steward.1.0')).rows!.some((x) => x.dish === 'Paneer Tikka')).toBe(
         false,
       );

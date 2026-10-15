@@ -241,7 +241,7 @@ csv(
   ['job_role_code', 'job_title', 'outlet_format', 'usual_department', 'default_duties'],
   roleCodes.map((r) =>
     r === 'POOL_ATTENDANT'
-      ? [r, 'Pool Attendant', 'any', 'HOUSEKEEPING', 'WORKS_SHIFTS; USES_DEPARTMENT_STORE']
+      ? [r, 'Pool Attendant', 'any', 'HOUSEKEEPING', 'WORKS_SHIFTS']
       : r === 'PURCHASE_MANAGER'
         ? // no Main Store to keep (ADR 115): what was bought, received and moved (ADR 122)
           [r, '', 'any', 'STORES-TEAM', 'RUNS_DEPARTMENT; SEES_OUTLET_STOCK; READS_BILLS']

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Icon } from '@/components/icon';
 import { SignOutButton } from '@/components/sign-out-button';
 import { visibleNav } from '@/lib/nav';
-import { meGroups, type Screen } from '@/lib/screens';
+import { inNavToo, meGroups, type Screen } from '@/lib/screens';
 import { loadShell, screenInput } from '@/lib/shell';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
@@ -13,7 +13,7 @@ import { sql, withUser } from '@/lib/db';
 export default async function MePage() {
   const shell = await loadShell();
   const input = screenInput(shell);
-  const inNav = new Set(visibleNav(input).map((n) => n.href));
+  const inNav = new Set(visibleNav(input, inNavToo(input)).map((n) => n.href));
   const groups = meGroups(input, inNav);
   // asks not yet with the person (ADR 115), on RFMs, whose Ask tab is where they ask
   const user = await requireUser();

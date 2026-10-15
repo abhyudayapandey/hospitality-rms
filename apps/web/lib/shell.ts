@@ -60,6 +60,8 @@ export interface Shell {
   compliance: boolean;
   /** screens they may open that have nothing for them (ADR 149): their tiles are left out */
   nothing: ReadonlySet<ScreenKey>;
+  /** they read the roster of more than one place (HR, ADR 150): Roster is theirs to open */
+  rosterWide: boolean;
 }
 
 const MENU_DOMAINS = ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM'];
@@ -73,7 +75,7 @@ const MENU_DOMAINS = ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM'];
 const NAV_TTL_MS = 5 * 60_000;
 type NavFlags = Pick<
   Shell,
-  'menu' | 'production' | 'reports' | 'breakfast' | 'compliance' | 'nothing'
+  'menu' | 'production' | 'reports' | 'breakfast' | 'compliance' | 'nothing' | 'rosterWide'
 >;
 
 /**
@@ -88,6 +90,16 @@ const EMPTY_CHECKS: readonly { key: ScreenKey; domains: readonly string[]; list:
   { key: 'opened', domains: ['SHELF_LIFE'], list: "core.screen_places('opened')" },
   { key: 'roster', domains: ['ROSTER'], list: "core.screen_places('roster')" },
   { key: 'sales', domains: ['SALES', 'DERIVED_SALES'], list: "core.screen_places('sales')" },
+  // a block's screen where its places hold something (ADR 150): rooms and minibars only where
+  // there are rooms, linen where linen is kept, events at an outlet (not a central kitchen)
+  { key: 'rooms', domains: ['ROOMS'], list: 'ops.room_outlets()' },
+  { key: 'minibar', domains: ['MINIBAR'], list: 'ops.minibar_places()' },
+  {
+    key: 'linen',
+    domains: ['LINEN'],
+    list: 'ops.linen_places() p cross join lateral ops.linen_items(p.place_id) i',
+  },
+  { key: 'events', domains: ['EVENTS'], list: "core.screen_places('events') where kind <> 'site'" },
 ];
 const navFlags = new Map<string, { at: number; v: NavFlags }>();
 
@@ -194,6 +206,12 @@ export const loadShell = cache(async (): Promise<Shell> => {
           : home.rows.length > 0
             ? 'mine'
             : 'none';
+        // reading the roster of several places (HR) makes Roster a screen of theirs (ADR 150)
+        const rosterWide =
+          domainMap.get('ROSTER') === 'view'
+            ? await sql<{ v: boolean }>`
+                select (select count(*) from core.screen_places('roster')) > 1 as v`.execute(tx)
+            : null;
         const checks = EMPTY_CHECKS.filter((c) => c.domains.some(has));
         const empty = checks.length
           ? (
@@ -210,6 +228,7 @@ export const loadShell = cache(async (): Promise<Shell> => {
           reports,
           breakfast: breakfast?.rows[0]?.v ?? false,
           compliance: compliance?.rows[0]?.v ?? false,
+          rosterWide: rosterWide?.rows[0]?.v ?? false,
         };
       },
     );
@@ -250,5 +269,6 @@ export function screenInput(shell: Shell): ScreenInput {
     breakfast: shell.breakfast,
     compliance: shell.compliance,
     nothing: shell.nothing,
+    rosterWide: shell.rosterWide,
   };
 }

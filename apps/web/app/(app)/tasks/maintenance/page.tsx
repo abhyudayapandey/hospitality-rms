@@ -32,7 +32,9 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
   const shell = await loadShell();
   const user = await requireUser();
   const wanted = param(sp, 'node');
-  const tab = param(sp, 'tab') === 'assign' ? 'assign' : 'all';
+  // only those who may give a repair to someone see what waits to be given (ADR 150)
+  const assigns = shell.domains.get('MAINTENANCE') === 'modify';
+  const tab = assigns && param(sp, 'tab') === 'assign' ? 'assign' : 'all';
   const data = await withUser(user.id, async (tx) => {
     const places = await screenPlaces(tx, 'maintenance', shell);
     const list = await maintenanceList(tx);
@@ -84,14 +86,16 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
             : undefined
         }
       />
-      <ViewTabs
-        label="Maintenance view"
-        current={tab}
-        tabs={[
-          { key: 'all', label: 'All repairs', href: link('all') },
-          { key: 'assign', label: 'To assign', count: toAssign.length, href: link('assign') },
-        ]}
-      />
+      {assigns && (
+        <ViewTabs
+          label="Maintenance view"
+          current={tab}
+          tabs={[
+            { key: 'all', label: 'All repairs', href: link('all') },
+            { key: 'assign', label: 'To assign', count: toAssign.length, href: link('assign') },
+          ]}
+        />
+      )}
       {shown.length === 0 ? (
         <Empty>
           {tab === 'assign' ? 'Nothing is waiting to be assigned.' : 'No maintenance requests.'}
