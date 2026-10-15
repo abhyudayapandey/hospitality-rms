@@ -289,13 +289,12 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
                  where core.can('TASKS', 'modify', d, null)`.execute(tx)
             ).rows.map((r) => r.id)
           : [];
-      // rounds late in a department they run: never "All done" while one is overdue. The same
-      // list Team tasks shows there (its last seven days), so the count is that list's.
+      // rounds late in a department they run: never "All done" while one is overdue. The late
+      // rows of the list Team tasks shows there (its last seven days), counted by ops.late_count
       if (run.length > 0) {
         const late = await sql<AttentionCount>`
           select 'late' as kind, d::text as node, null as href,
-                 (select count(*) from ops.team_tasks(d, ${addDays(today, -7)}::date, ${today}::date) t
-                   where t.overdue)::int as n
+                 ops.late_count(d, ${addDays(today, -7)}::date, ${today}::date) as n
             from unnest(${run}::uuid[]) d`.execute(tx);
         all.push(...late.rows);
       }

@@ -1,7 +1,7 @@
 # 148. Rounds follow the roster; one person told to receive; one "today"
 
 Date: 2026-10-15. Status: accepted. Migrations `20261230100000_rounds_follow_roster`,
-`20261230110000_receive_on_keepers_todo`.
+`20261230110000_receive_on_keepers_todo`, `20261230120000_in_pool_fast`.
 
 ## Context
 
@@ -59,6 +59,10 @@ It found the daily-use problems in tasks and dates:
   lands with the department head, which is where a manager would look for it anyway.
 - A customer that does not roster at all sees no change.
 - Working out a round's pool once per task keeps the lists quick: who is told of every open
-  round at Test Company takes under a second.
+  round at Test Company takes under a second. "Is this person in the pool?" is asked from the
+  person's side (`ops.of_task_role`, then `ops.working_at`; the whole pool only for those who
+  hold a head's group), so the To do badge on every page stays under 0.2 s. Team tasks works a
+  round's pool out only at the viewer's outlet, and a department tile's late count is
+  `ops.late_count` (the late rows of that list, pinned equal to it by a test).
 - The rest of the re-audit (dead tiles, codes on screen, who sees what, forms, words) follows in
   later PRs.

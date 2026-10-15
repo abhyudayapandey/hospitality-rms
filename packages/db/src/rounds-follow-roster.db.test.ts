@@ -154,4 +154,47 @@ describe('rounds follow the roster', () => {
       expect(await mine(B)).toBe(false);
     });
   });
+
+  it('asking for one person gives the same answer as the whole pool', async () => {
+    await inRolledBackTx(async (c) => {
+      await shift(c, A, await at(c, 40, '09:00'), await at(c, 40, '17:00'));
+      await task(c, BAR, 'BARTENDER', await at(c, 40, '10:00'));
+      await task(c, BAR, 'BARTENDER', await at(c, 41, '10:00'));
+      // every open round at Hotel 1.0, against everyone who works there
+      const { rows } = await c.query<{ task: string; who: string; one: boolean; all: boolean }>(
+        `with r as materialized (
+           select t, ops.job_role_pool(t) pool from ops.task t
+             join core.hierarchy_node n on n.id = t.org_node_id
+             join core.hierarchy_node o on o.code = 'TEST-HOTEL-1.0'
+            where t.assign_mode = 'job_role' and t.status <> 'done'
+              and n.path operator(extensions.<@) o.path)
+         select (r.t).id task, w.owner_user_id who, ops.in_pool(r.t, w.owner_user_id) one,
+                w.owner_user_id = any (r.pool) "all"
+           from r
+           join hr.worker w on w.tenant_id = (r.t).tenant_id and w.status = 'active'
+           join core.hierarchy_node h on h.id = w.org_node_id
+           join core.hierarchy_node o on o.code = 'TEST-HOTEL-1.0'
+          where h.path operator(extensions.<@) o.path`,
+      );
+      expect(rows.length).toBeGreaterThan(100);
+      expect(rows.filter((r) => r.one !== r.all)).toEqual([]);
+    });
+  });
+
+  it('a department tile’s late count is the late rows of its Team tasks list', async () => {
+    await inRolledBackTx(async (c) => {
+      await actAs(c, 'app_rw', ids.user('test.general-manager.1.0'));
+      const { rows } = await c.query<{ node: string; count: number; list: number }>(
+        `select n.id node,
+                ops.late_count(n.id, current_date - 7, current_date) count,
+                (select count(*)::int from ops.team_tasks(n.id, current_date - 7, current_date) t
+                  where t.overdue) list
+           from core.nodes() n where n.kind = 'department'`,
+      );
+      await c.query('reset role');
+      expect(rows.length).toBeGreaterThan(5);
+      expect(rows.reduce((a, r) => a + r.list, 0)).toBeGreaterThan(0);
+      expect(rows.filter((r) => r.count !== r.list)).toEqual([]);
+    });
+  });
 });
