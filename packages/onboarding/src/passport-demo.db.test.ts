@@ -239,6 +239,21 @@ describe('the Passport Hotel demo', () => {
           `select count(*)::int n from ops.minibar_check where tenant_id = $1 and charged_at is null`,
         ),
       ).toBeGreaterThan(0);
+      // the past tells nobody now: no alerts for orders already approved or minibars already
+      // billed; and a check loaded now keeps file 42's times (made in this transaction: now())
+      expect(
+        await one(
+          `select count(*)::int n from ops.notification where tenant_id = $1 and created_at = now()
+              and (kind = 'minibar_billed' or title like 'To approve:%asks to buy%')`,
+        ),
+      ).toBe(0);
+      expect(
+        await one(
+          `select count(*)::int n from ops.minibar_check where tenant_id = $1
+              and created_at = now() and charged_at is not null
+              and charged_at not between checked_at and checked_at + interval '1 hour'`,
+        ),
+      ).toBe(0);
       // the bar is one department with one store for the roof and the lobby (ADR 083)
       const bar = r.access.filter((a) => a.username === 'passport.bar-manager');
       expect(

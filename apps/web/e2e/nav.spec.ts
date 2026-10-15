@@ -5,7 +5,7 @@ import { asMigrator, meTile, signInAs } from './helpers';
 // Bottom navigation: three to five tabs, chosen by the kind of work a person does (UX-6,
 // ADR 034); the pages themselves are enforced in the DB. These rows follow the mock-ups.
 const cases: [string, string[]][] = [
-  // frontline: Home, Tasks, Me; their four tiles on Home do the rest
+  // frontline: Home, To do list, Me; their four tiles on Home do the rest
   ['Test Commis 1.0', ['Home', 'To do list', 'Me']],
   ['Test Bartender 1.0', ['Home', 'To do list', 'Me']],
   ['Test Server 3.0', ['Home', 'To do list', 'Me']],
@@ -46,7 +46,7 @@ test('Me has every screen the tabs leave out', async ({ page }) => {
   await expect(page.getByTestId('me-roster')).toBeVisible();
   // a tab is not repeated on Me
   await expect(page.getByTestId('me-reports')).toHaveCount(0);
-  // approvals are in the header for people without the tab
+  // the To do list is in the header for people whose nav has no room for it
   await signInAs(page, 'Test Commis 1.0');
   await expect(page.getByRole('link', { name: /^To do list/ })).toBeVisible();
 });

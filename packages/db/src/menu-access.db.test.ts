@@ -4,10 +4,11 @@ import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from
 
 // Menu, recipes and costs (Prompt 9a, ADR 014, 123). Who reads what, enforced by RLS:
 //  - a recipe and its procedure: the managers of a department linked to a store that makes or
-//    sells it (READS_RECIPES: executive and sous chefs, the bar manager, the restaurant and F&B
-//    managers), the central kitchen's manager, and whoever has cost access (MENU: the outlet's
-//    managers, cost controllers, area managers, the account owner). Nobody who only works or
-//    leads a shift, and no store keeper; a cook given a prep task reads its recipe on the task.
+//    sells it (READS_RECIPES: executive and sous chefs, the bar manager; READS_OUTLET_RECIPES:
+//    the restaurant and F&B managers, every store of their outlet), the central kitchen's
+//    manager, and whoever has cost access (MENU: the outlet's managers, cost controllers, area
+//    managers, the account owner). Nobody who only works or leads a shift, and no store
+//    keeper; a cook given a prep task reads its recipe on the task.
 //  - prices and costs: MENU view at the store (department heads through their linked store,
 //    outlet managers, cost controllers, hub managers, area managers); never staff or store
 //    keepers.
@@ -113,6 +114,25 @@ describe('recipes are read only by the managers of where they are made or sold',
         for (const code of [...BATCHED, 'SUGAR-SYRUP', 'MOJITO'])
           expect(seen, `${who} ${code}`).not.toContain(code);
       }
+    });
+  });
+
+  // KI-15: the restaurant keeps no store, so READS_RECIPES at it read nothing and the Menu tile
+  // never showed; its managers read the whole outlet's recipes and menu (READS_OUTLET_RECIPES)
+  it('the restaurant and F&B managers read the kitchen’s and the bar’s recipes and menu', async () => {
+    await inRolledBackTx(async (c) => {
+      for (const who of ['test.restaurant-manager.1.0', 'test.fandb-manager.1.0']) {
+        const seen = await readable(c, who);
+        for (const code of [...KITCHEN, ...BAR]) expect(seen, `${who} ${code}`).toContain(code);
+        expect(await count(c, who, 'menu.my_menu_places()'), who).toBeGreaterThan(0);
+        // not another outlet's
+        expect(
+          [...seen].some((x) => x.startsWith('SOLO:')),
+          who,
+        ).toBe(false);
+      }
+      const other = await readable(c, 'test.restaurant-manager.1.1');
+      expect(other.size).toBeGreaterThan(0);
     });
   });
 

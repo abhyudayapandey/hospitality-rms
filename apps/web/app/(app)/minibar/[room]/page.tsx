@@ -69,7 +69,9 @@ export default async function MinibarRoomPage({ params }: { params: Promise<{ ro
                 <span>{i.item}</span>
               </span>
               <span className="text-slate-500">
-                par {Number(i.par)} · {formatMoney(i.price)}
+                par {Number(i.par)}
+                {i.price !== null &&
+                  (Number(i.price) === 0 ? ' · free' : ` · ${formatMoney(i.price)}`)}
               </span>
             </li>
           ))}
@@ -90,13 +92,18 @@ export default async function MinibarRoomPage({ params }: { params: Promise<{ ro
                     {formatWhen(h.checked_at)}
                     {h.checked_by && ` · ${h.checked_by}`}
                   </span>
+                  {/* the ₹ only for whoever bills it or reads its cost (KI-09) */}
                   <span className="font-semibold">
-                    {Number(h.charge) > 0 ? formatMoney(h.charge) : 'Nothing used'}
+                    {h.used.length === 0
+                      ? 'Nothing used'
+                      : h.charge !== null && Number(h.charge) > 0
+                        ? formatMoney(h.charge)
+                        : ''}
                   </span>
                 </div>
                 {h.used.length > 0 && <p className="text-slate-600">{usedWords(h.used)}</p>}
                 <p className="text-xs text-slate-500">
-                  {Number(h.charge) === 0
+                  {h.used.length === 0 || (h.charge !== null && Number(h.charge) === 0)
                     ? ''
                     : h.charged_at
                       ? `On the bill${h.charged_by ? ` (${h.charged_by})` : ''}`

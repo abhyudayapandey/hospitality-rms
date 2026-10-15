@@ -202,6 +202,16 @@ describe('licences', () => {
         task.rows[0]!.id,
       ]);
       expect(after.rows[0]!.status).toBe('done');
+      // the done task says the licence in force, never the old day
+      const about = await attemptAs<{ expires_on: string; number: string; renewed: boolean }>(
+        c,
+        ids.user(GM),
+        `select expires_on::text, number, renewed from ops.compliance_task($1)`,
+        [task.rows[0]!.id],
+      );
+      expect(about.rows).toEqual([
+        { expires_on: '2031-01-31', number: 'FSSAI/2026/9', renewed: true },
+      ]);
       // and it no longer counts as expiring
       const gm = await attemptAs<{ expiring: number }>(
         c,

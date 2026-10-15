@@ -3,7 +3,9 @@ import {
   DOMAINS,
   inPlanByDefault,
   LEVELS,
+  REGISTER_CODES,
   REGISTERS,
+  type RegisterDef,
   levelOf,
   MODULE_CODES,
   moduleOfDomain,
@@ -491,6 +493,20 @@ describe('approvers (ADR 009)', () => {
         const fields = r.fields as readonly { key: string; required?: true }[];
         expect(rows[0]!.req, r.code).toEqual(fields.filter((f) => f.required).map((f) => f.key));
         expect(rows[0]!.closes, r.code).toBe('close' in r);
+      }
+    });
+  });
+
+  it("every register is the database's, with its default keepers (ADR 090, KI-06)", async () => {
+    await inRolledBackTx(async (c) => {
+      const codes = await c.query<{ codes: string[] }>('select ops.register_codes() as codes');
+      expect(codes.rows[0]!.codes).toEqual([...REGISTER_CODES]);
+      for (const r of REGISTERS as readonly RegisterDef[]) {
+        const { rows } = await c.query<{ roles: string[] | null }>(
+          'select ops.register_default_roles($1) as roles',
+          [r.code],
+        );
+        expect(rows[0]!.roles, r.code).toEqual(r.keptBy ? [...r.keptBy] : null);
       }
     });
   });

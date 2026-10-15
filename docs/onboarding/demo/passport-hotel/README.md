@@ -22,7 +22,7 @@ past week, the licences and their numbers.
   are the hotel's rules on its supply point's row in file 02. The bar is one department with
   one store for Layover on the roof and the Mini Bar in the lobby, so everyone asks "Bar"
   (ADR 083).
-- **One person per job role**: 34 people, plus **Demo Presenter**, who may show the app as
+- **One person per job role** (two security guards): 39 people in 38 job roles, plus **Demo Presenter**, who may show the app as
   anyone (`demo_presenter` in file 07, ADR 071). The owner is Ashesh Sajnani (`test.ashesh-sajnani`), the GM Sainath. Usernames are `passport.<role>`, e.g. `passport.gm`, `passport.bar-manager`.
 - **Menus**: Mini Bar signatures and classics, Layover cocktails, beer and wine, breakfast
   (Ros omelette with poi), Layover's kitchen, in-room dining, pool snacks: 34 dishes, each
@@ -71,7 +71,7 @@ The Deploy that carries ADRs 071 and 072 must be out first (the minibar files an
 (cd docs/onboarding/demo/passport-hotel && zip -q -FS ~/passport-hotel.zip [0-9][0-9]_*.csv)
 ```
 
-It holds 40 files.
+It holds 46 files.
 
 **2. Create the customer**: on `/platform`, the link **New customer: the company and its owner
 only** (`/platform/customers/new`), not the **Set up a new customer** button: the set-up wizard
@@ -125,7 +125,7 @@ Mini Bar store is retired and its stock counted out (a test customer only). A st
 or order still open at the Mini Bar stops the import until it is finished or withdrawn.
 
 **5. Logins (the printed sheet)**: the customer's page → **Logins** → tick **Set passwords
-by the Test<Role>!12 rule** → **Create 37 username logins** (the 36
+by the Test<Role>!12 rule** → **Create 40 username logins** (the 39
 imported people and the owner) → **Print the login sheet** (and
 download the CSV once, if you want a copy; nothing keeps the passwords). Each person's
 password is `Test` + their job title without spaces + `!12`:
@@ -150,8 +150,8 @@ Demo**.
 
 ## Starting again
 
-A customer code can be created once. To show it fresh another day, re-import the same
-files: nothing changes (the past week loads once). Anything done in a rehearsal stays, so
-rehearse the live steps (receive, check a minibar, import the POS file) with other rooms and
-items than the pitch, or create a second customer with another code by editing file 00 and
-the usernames' prefix in the generator.
+To show it fresh after a rehearsal, open the customer on `/platform` and tap **Start again**
+(test customers only, ADR 130): everything done in the app is removed and the files are
+imported again; **Logins** then links everyone's sign-in again by username, passwords
+unchanged. Re-importing the same files
+without Start again changes nothing (the past week loads once) and keeps what was done.

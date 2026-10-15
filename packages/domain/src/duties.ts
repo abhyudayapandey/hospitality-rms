@@ -133,6 +133,14 @@ export const DUTIES: readonly DutyDef[] = [
     atAnotherDepartment: true,
   },
   {
+    // a restaurant sells what the kitchen and the bar make but keeps no store of its own, so
+    // its managers read the whole outlet's recipes and menu (KI-15)
+    code: 'READS_OUTLET_RECIPES',
+    name: "Reads the outlet's recipes",
+    does: 'Sees the recipes, menu prices and costs of everything the outlet makes and sells',
+    grants: [{ group: 'RECIPE_READER', scope: 'whole_outlet' }],
+  },
+  {
     code: 'READS_METERS',
     name: 'Reads the meters',
     does: "Reads the department's meters and sees their readings",

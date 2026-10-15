@@ -4,6 +4,7 @@ import {
   complianceCard,
   COMPLIANCE_CARD_ROWS,
   doFirst,
+  notOnCards,
   attentionGroups,
   currentShift,
   departmentIcon,
@@ -505,5 +506,19 @@ describe("department tiles on a manager's Home (ADR 105)", () => {
     expect(departmentIcon('Cashier')).toBe('bill');
     expect(departmentIcon('Galley', 'kitchen')).toBe('pot');
     expect(departmentIcon('Team Q')).toBe('people');
+  });
+});
+
+describe('notOnCards', () => {
+  const tasks = [
+    { id: 'a', kind: 'minibar_bill' },
+    { id: 'b', kind: 'checklist' },
+    { id: 'c', kind: null },
+  ];
+  it('leaves minibar bills to the Minibar charges card', () => {
+    expect(notOnCards(tasks, { minibarBills: true }).map((t) => t.id)).toEqual(['b', 'c']);
+  });
+  it('keeps them as tasks when that card does not list bills', () => {
+    expect(notOnCards(tasks, { minibarBills: false }).map((t) => t.id)).toEqual(['a', 'b', 'c']);
   });
 });

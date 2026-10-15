@@ -241,13 +241,13 @@ class Loader {
     await this.sections();
     if (this.isTest) {
       await this.shifts();
-      await this.pastWeek();
+      await this.history(() => this.pastWeek());
       await this.tasks();
       await this.maintenance();
-      await this.purchases();
-      await this.attendance();
-      await this.transfers();
-      await this.minibarChecks();
+      await this.history(() => this.purchases());
+      await this.history(() => this.attendance());
+      await this.history(() => this.transfers());
+      await this.history(() => this.minibarChecks());
     }
     this.step('');
     this.report.access = await this.preview();
@@ -1184,9 +1184,17 @@ class Loader {
           return r.rows[0]!.id;
         });
         if (first.charged_by) {
-          await this.as(first.charged_by, () =>
-            this.c.query(`select ops.mark_minibar_charged($1)`, [id]),
-          );
+          // added to the bill half an hour after the check, at the file's time, not the load's
+          await this.as(first.charged_by, async () => {
+            await this.c.query(
+              `select set_config('app.occurred_at',
+                        (($1::date + $2::time) at time zone $3 + interval '30 minutes')::text,
+                        true)`,
+              [this.day(first.day), first.time, this.timezoneOf(first.outlet_code)],
+            );
+            await this.c.query(`select ops.mark_minibar_charged($1)`, [id]);
+            await this.c.query(`select set_config('app.occurred_at', '', true)`);
+          });
         }
       }
       this.count('minibar checks', !done.rowCount);
@@ -2421,6 +2429,18 @@ class Loader {
   //    (production never goes below zero), so a later re-import would fail.
   // ---------------------------------------------------------------------------------------
 
+  /**
+   * Replays a test customer's past (files 26 to 28, 33, 35, 36, 42) with app.replay on: what
+   * happened then tells nobody now (ops.notify, ops.replaying), and needs no camera (ADR 127).
+   */
+  private async history<T>(fn: () => Promise<T>): Promise<T> {
+    await this.c.query(`select set_config('app.replay', 'on', true)`);
+    // on an error the transaction is aborted and rolled back: nothing to clear
+    const r = await fn();
+    await this.c.query(`select set_config('app.replay', '', true)`);
+    return r;
+  }
+
   /** Runs `fn` as a person from file 07 (app.user_id), then clears it. */
   private async as<T>(username: string, fn: () => Promise<T>): Promise<T> {
     await this.c.query(`select set_config('app.user_id', $1, true)`, [this.users.get(username)]);
@@ -3354,25 +3374,28 @@ class Loader {
         .map((x) => x.trim())
         .filter(Boolean)
         .map((label) => ({ label, kind: 'tick' }));
-      const id = await this.as(t.created_by, async () => {
-        const r = await this.c.query<{ id: string }>(
-          `select ops.create_task($1, $2, $3, ($4::date + $5::time) at time zone $6, $7, $8, $9,
+      const make = () =>
+        this.as(t.created_by, async () => {
+          const r = await this.c.query<{ id: string }>(
+            `select ops.create_task($1, $2, $3, ($4::date + $5::time) at time zone $6, $7, $8, $9,
                                   $10) as id`,
-          [
-            this.nodes.get(t.place_code),
-            t.title,
-            t.description ?? null,
-            this.day(t.day),
-            t.due_time,
-            this.timezoneOf(t.place_code),
-            t.priority,
-            JSON.stringify(this.assignJson(t.assign_to)),
-            JSON.stringify(steps),
-            key,
-          ],
-        );
-        return r.rows[0]!.id;
-      });
+            [
+              this.nodes.get(t.place_code),
+              t.title,
+              t.description ?? null,
+              this.day(t.day),
+              t.due_time,
+              this.timezoneOf(t.place_code),
+              t.priority,
+              JSON.stringify(this.assignJson(t.assign_to)),
+              JSON.stringify(steps),
+              key,
+            ],
+          );
+          return r.rows[0]!.id;
+        });
+      // a task already done is the past: given and done, it tells nobody now
+      const id = t.done_by === undefined ? await make() : await this.history(make);
       this.count('tasks', !existed.rowCount);
       if (existed.rowCount || t.done_by === undefined) continue;
       await this.as(t.done_by, async () => {
@@ -3380,13 +3403,14 @@ class Loader {
           `select id from ops.task_step where task_id = $1 order by position`,
           [id],
         );
-        // a test customer's past task, replayed: no camera, so no photos (ADR 127)
-        await this.c.query(`select set_config('app.replay', 'on', true)`);
-        for (const step of s.rows) {
-          await this.c.query(`select ops.complete_step($1, $2, '{"done": true}')`, [id, step.id]);
-        }
-        await this.c.query(`select ops.complete_task($1)`, [id]);
-        await this.c.query(`select set_config('app.replay', '', true)`);
+        // a test customer's past task, replayed: no camera, so no photos (ADR 127), and
+        // nobody is told now
+        await this.history(async () => {
+          for (const step of s.rows) {
+            await this.c.query(`select ops.complete_step($1, $2, '{"done": true}')`, [id, step.id]);
+          }
+          await this.c.query(`select ops.complete_task($1)`, [id]);
+        });
       });
     }
   }

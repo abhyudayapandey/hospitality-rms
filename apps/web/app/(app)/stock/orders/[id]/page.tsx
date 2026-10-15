@@ -64,7 +64,7 @@ export default async function OrderPage({
       supplier: string | null;
       phone: string | null;
       email: string | null;
-      total: string;
+      total: string | null;
       status: string;
       progress: string;
       notes: string | null;
@@ -73,7 +73,8 @@ export default async function OrderPage({
       can_modify: boolean;
     }>`
       select po.id, po.delivery_node_id, core.node_name(po.delivery_node_id) as store,
-             s.id as supplier_id, s.name as supplier, s.phone, s.contact as email, po.total,
+             s.id as supplier_id, s.name as supplier, s.phone, s.contact as email,
+             case when inv.po_sees_money(po.id) then po.total end as total,
              po.status, po.progress, po.notes, po.created_at, po.expected_on,
              core.can('PURCHASE_ORDERS', 'modify', null, po.delivery_node_id) as can_modify
         from inv.purchase_order_summary po left join inv.supplier s on s.id = po.supplier_id
@@ -99,11 +100,12 @@ export default async function OrderPage({
           }
         : undefined);
     const lines = canPlace
-      ? await sql<ReceiveLine & { unit_cost: string; preferred_supplier_id: string | null }>`
+      ? await sql<ReceiveLine & { unit_cost: string | null; preferred_supplier_id: string | null }>`
           select item_id, name, base_uom, qty as ordered, unit_cost, received, preferred_supplier_id
             from inv.order_lines_for_desk(${id}::uuid)`.execute(tx)
-      : await sql<ReceiveLine & { unit_cost: string; preferred_supplier_id: string | null }>`
-          select pl.item_id, i.name, i.base_uom, pl.qty as ordered, pl.unit_cost,
+      : await sql<ReceiveLine & { unit_cost: string | null; preferred_supplier_id: string | null }>`
+          select pl.item_id, i.name, i.base_uom, pl.qty as ordered,
+                 case when inv.po_sees_money(pl.po_id) then pl.unit_cost end as unit_cost,
                  null::uuid as preferred_supplier_id,
                  coalesce((select sum(gl.qty) from inv.goods_receipt_line gl
                             where gl.po_line_id = pl.id), 0) as received
@@ -217,9 +219,10 @@ export default async function OrderPage({
       name: l.name,
       qty: l.ordered,
       unit: l.base_uom,
-      unitCost: l.unit_cost,
+      unitCost: l.unit_cost ?? 0,
     })),
-    prices,
+    // prices only for whoever may see what it costs (null to the rest)
+    prices: prices && lines.every((l) => l.unit_cost !== null),
     sender: user.name,
   };
   const text = orderText(message);

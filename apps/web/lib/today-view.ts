@@ -32,6 +32,17 @@ export function todaysTasks<T extends TaskLike>(
   return { shown: list.slice(0, max), total: list.length };
 }
 
+/**
+ * Home shows a job once (ADR 113): a minibar bill is a row of the Minibar charges card, so it
+ * is never a task on Home as well while that card lists the bills.
+ */
+export function notOnCards<T extends { kind?: string | null }>(
+  tasks: readonly T[],
+  cards: { minibarBills: boolean },
+): T[] {
+  return tasks.filter((t) => !(cards.minibarBills && t.kind === 'minibar_bill'));
+}
+
 export interface ShiftLike {
   start_at: Date | string;
   end_at: Date | string;

@@ -166,6 +166,8 @@ export interface ComplianceTaskRow {
   can_hand_on: boolean;
   /** a regular job's accountable role */
   owner_role_name: string | null;
+  /** the licence was renewed: `expires_on` and `number` are the new licence's */
+  renewed: boolean;
 }
 
 /** What a To do item about a licence or a calendar job points at. */
@@ -175,7 +177,7 @@ export async function complianceTask(tx: Tx, task: string): Promise<ComplianceTa
       await sql<ComplianceTaskRow>`
         select licence_id, item_id, name, place_name, number, authority, expires_on::text,
                next_due::text, every_months, needs_proof, can_act, can_hand_on,
-               owner_role_name
+               owner_role_name, renewed
           from ops.compliance_task(${task}::uuid)`.execute(tx)
     ).rows[0] ?? null
   );
