@@ -40,7 +40,7 @@ describe('the access audit in words (ADR 149)', () => {
     expect(auditAction('user created')).toBe('Person added');
     expect(auditAction('granted')).toBe('Access given');
     expect(auditAction('something new')).toBe('Something new');
-    expect(auditActor('Platform')).toBe('the Outlet Ops team');
-    expect(groupLabel('AI_AGENT')).toBe('Outlet Ops assistant');
+    expect(auditActor('Platform')).toBe('the Hey Senior team');
+    expect(groupLabel('AI_AGENT')).toBe('Senior, the assistant');
   });
 });

@@ -5,10 +5,10 @@ import { DEFAULT_THEME, THEME_SCRIPT } from '@/lib/theme';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Outlet Ops',
-  description: 'Stock, orders, people and operations for every outlet.',
-  appleWebApp: { capable: true, title: 'Outlet Ops', statusBarStyle: 'default' },
-  icons: { icon: '/icons/icon-192.png', apple: '/icons/icon-192.png' },
+  title: 'Hey Senior',
+  description: "Recipes, stock, rosters and every role's day, for hotels, bars and restaurants.",
+  appleWebApp: { capable: true, title: 'Hey Senior', statusBarStyle: 'default' },
+  icons: { icon: '/icons/icon-192.png', apple: '/icons/apple-180.png' },
 };
 
 export const viewport: Viewport = {

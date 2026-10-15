@@ -7,7 +7,7 @@ import { Empty } from './messages';
 
 /**
  * A block's screens when the customer doesn't have it on (ADR 026, 085): the page says so
- * instead of showing the screen. The data is kept; only Outlet Ops switches blocks and bundles.
+ * instead of showing the screen. The data is kept; only the Hey Senior team switches blocks and bundles.
  */
 export async function ModuleGate({
   code,
@@ -35,8 +35,8 @@ export function ModuleOff({ code, plan = null }: { code: ModuleCode; plan?: stri
       <h1 className="text-xl font-semibold">{name}</h1>
       <Empty>
         {plan
-          ? `${plan} isn't part of your company's plan. Ask Outlet Ops to add it.`
-          : `${name} isn't switched on for your company. Ask Outlet Ops to switch it on.`}
+          ? `${plan} isn't part of your company's plan. Ask the Hey Senior team to add it.`
+          : `${name} isn't switched on for your company. Ask the Hey Senior team to switch it on.`}
       </Empty>
       <Link href="/" className="block text-sm text-slate-700 underline">
         Back to Home

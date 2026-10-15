@@ -110,15 +110,33 @@ describe('Cognito config and OAuth calls', () => {
     });
   });
 
-  it('refreshes server-side and returns a rotated refresh token when Cognito sends one', async () => {
+  it('refreshes server-side with REFRESH_TOKEN_AUTH on the user API (ADR 161)', async () => {
     const rotated = vi.fn(() =>
-      Promise.resolve(Response.json({ id_token: 'id2', refresh_token: 'r2' })),
+      Promise.resolve(
+        Response.json({ AuthenticationResult: { IdToken: 'id2', RefreshToken: 'r2' } }),
+      ),
     );
     expect(await refreshTokens(cfg, 'r1', rotated)).toEqual({ idToken: 'id2', refreshToken: 'r2' });
-    const notRotated = vi.fn(() => Promise.resolve(Response.json({ id_token: 'id3' })));
+    const [url, init] = rotated.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://cognito-idp.ap-south-1.amazonaws.com/');
+    expect((init.headers as Record<string, string>)['x-amz-target']).toBe(
+      'AWSCognitoIdentityProviderService.InitiateAuth',
+    );
+    expect(JSON.parse(init.body as string)).toEqual({
+      ClientId: 'client123',
+      AuthFlow: 'REFRESH_TOKEN_AUTH',
+      AuthParameters: { REFRESH_TOKEN: 'r1' },
+    });
+    const notRotated = vi.fn(() =>
+      Promise.resolve(Response.json({ AuthenticationResult: { IdToken: 'id3' } })),
+    );
     expect(await refreshTokens(cfg, 'r1', notRotated)).toEqual({ idToken: 'id3' });
-    const failed = vi.fn(() => Promise.resolve(new Response('{}', { status: 400 })));
-    await expect(refreshTokens(cfg, 'revoked', failed)).rejects.toThrow('COGNITO_TOKEN_400');
+    const failed = vi.fn(() =>
+      Promise.resolve(Response.json({ __type: 'NotAuthorizedException' }, { status: 400 })),
+    );
+    await expect(refreshTokens(cfg, 'revoked', failed)).rejects.toThrow(
+      'COGNITO_InitiateAuth_NotAuthorizedException',
+    );
   });
 });
 
@@ -147,7 +165,7 @@ describe('Cognito not answering (ADR 063)', () => {
       CognitoUnavailable,
     );
     const rejected = refreshTokens(cfg as never, 'r', answer(400));
-    await expect(rejected).rejects.toThrow('COGNITO_TOKEN_400');
+    await expect(rejected).rejects.toThrow('COGNITO_InitiateAuth_Unknown');
     await expect(rejected).rejects.not.toBeInstanceOf(CognitoUnavailable);
   });
 });

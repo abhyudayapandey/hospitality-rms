@@ -1,5 +1,5 @@
 // Shapes and words shared by the platform console's pages (ADR 012, 013). The console is for
-// Outlet Ops staff, and it speaks plainly too (ADR 077): no codes, no job kinds, no table
+// Hey Senior staff, and it speaks plainly too (ADR 077): no codes, no job kinds, no table
 // names, no raw states.
 
 export interface PlatformCustomer {

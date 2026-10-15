@@ -1,10 +1,10 @@
-# Outlet Ops — Product Requirements Document
+# Hey Senior — Product Requirements Document
 
 Sep 30, 2026 · @AP · updated 12 Oct 2026 (through ADR 137)
 
 ## 1. Overview
 
-Outlet Ops is a mobile-first operations platform for hotels, restaurants and bars. It brings stock, orders, rosters, attendance, leave and events into one application, with role-based access per place, approvals that route themselves, and an AI layer that recommends actions for managers to approve.
+Hey Senior is a mobile-first operations platform for hotels, restaurants and bars. It brings stock, orders, rosters, attendance, leave and events into one application, with role-based access per place, approvals that route themselves, and an AI layer that recommends actions for managers to approve.
 
 **Product statement:** one intelligent platform to manage stock, orders, people and operations across every outlet.
 
@@ -35,7 +35,7 @@ Initial market: India, starting in Mumbai.
 
 **Personas**
 
-| Persona              | Examples                                            | Uses Outlet Ops to                                            |
+| Persona              | Examples                                            | Uses Hey Senior to                                            |
 | -------------------- | --------------------------------------------------- | ------------------------------------------------------------- |
 | Frontline staff      | Bartender, steward, room attendant, commis          | See shifts, clock in, request leave and swaps                 |
 | Stock users          | Chef, head bartender, store keeper, receiving clerk | Count stock, record wastage, request transfers, receive goods |
@@ -43,7 +43,7 @@ Initial market: India, starting in Mumbai.
 | Outlet heads         | General manager, standalone bar manager             | Run the whole outlet from one dashboard and To do list        |
 | Multi-outlet leaders | Area manager, owner                                 | See every outlet, approve escalations                         |
 | Customer admins      | Account owner, user admin                           | Manage users and access for their company                     |
-| Platform admin       | The Outlet Ops team                                 | Onboard and support customers                                 |
+| Platform admin       | The Hey Senior team                                 | Onboard and support customers                                 |
 
 ## 3. Goals, non-goals and success metrics
 
@@ -57,7 +57,7 @@ Initial market: India, starting in Mumbai.
 
 **Non-goals (for now)**
 
-- Point of sale, billing or table management. Outlet Ops works alongside a POS; Full POS integration comes later; importing daily item sales from the POS is in scope (SAL-1, section 13).
+- Point of sale, billing or table management. Hey Senior works alongside a POS; Full POS integration comes later; importing daily item sales from the POS is in scope (SAL-1, section 13).
 - Payroll calculation and statutory compliance filings. A payroll export is planned; payroll itself is not.
 - Guest-facing features such as reservations or room booking.
 - Accounting. Stock valuation is provided for control, not as a ledger of record for finance.
@@ -368,7 +368,7 @@ If the worker's department has no head, the request goes to the GM, then the are
 - **USR-3** Password reset for username users (temporary password, change at next sign-in); deactivate leavers (login disabled immediately).
 - **USR-4** Access-audit view: who granted or removed what, when, and who approved it.
 - **USR-6** Customer access groups (ADR 027): the account owner (Admin → Access groups) or a platform admin (file 05) builds groups from the product's business rights, each at see or change, optionally carrying the requests and approvals of product roles. Given like any group; sensitive ones need approval; held ones can't be removed; every change audited.
-- **USR-5** Building blocks per customer (ADR 026, 067, 085): every group of functionality (stock, buying, recipes, production, prep lists, menu and sales, roster, clock-in, salaries and labour cost, leave, swaps, checklists, maintenance, briefing, room minibars, events, compliance) is a block, sold in bundles. Only Outlet Ops (platform admins) switches blocks and bundles, in the console or file 00; the company's administrators see the plan read-only in Admin → Your plan. A block that is off disappears from every screen and the database refuses it; its data is kept.
+- **USR-5** Building blocks per customer (ADR 026, 067, 085): every group of functionality (stock, buying, recipes, production, prep lists, menu and sales, roster, clock-in, salaries and labour cost, leave, swaps, checklists, maintenance, briefing, room minibars, events, compliance) is a block, sold in bundles. Only Hey Senior (platform admins) switches blocks and bundles, in the console or file 00; the company's administrators see the plan read-only in Admin → Your plan. A block that is off disappears from every screen and the database refuses it; its data is kept.
 
 **Setup files.** One file per data type: customer, people tree, stock tree, links, locations, job roles, users, extra access, suppliers, items, item locations, opening stock, leave types, leave balances, roster settings, shift templates, menus and recipes, checklist templates. A generated access preview lets the customer check who can do what before loading.
 
@@ -447,7 +447,7 @@ One EC2 server in Mumbai runs the web app, the background jobs and the database;
 
 ## 12. Competitor analysis: Barometer Technologies
 
-Barometer is the closest Indian competitor on stock control, and it does not touch people operations. It is stronger than Outlet Ops on recipe costing, POS-driven variance, bill scanning and bar-specific counting; Outlet Ops is stronger on rosters, attendance, leave, approvals and access control. Barometer sells software plus human auditors; Outlet Ops sells software with AI and approvals.
+Barometer is the closest Indian competitor on stock control, and it does not touch people operations. It is stronger than Hey Senior on recipe costing, POS-driven variance, bill scanning and bar-specific counting; Hey Senior is stronger on rosters, attendance, leave, approvals and access control. Barometer sells software plus human auditors; Hey Senior sells software with AI and approvals.
 
 **Company snapshot**
 
@@ -487,7 +487,7 @@ A one-time setup fee is quoted by organisation size. There is no lock-in and bil
 
 **Capability comparison**
 
-| Capability                                                 | Barometer                                                    | Outlet Ops today                                 | Gap for Outlet Ops      |
+| Capability                                                 | Barometer                                                    | Hey Senior today                                 | Gap for Hey Senior      |
 | ---------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------ | ----------------------- |
 | Append-only stock ledger, counts with tolerance approval   | Stock-take with variance; approval flow not advertised       | Built                                            | Ahead                   |
 | Theoretical vs actual consumption (recipes × sales)        | Yes, from POS sales                                          | No; POS is a non-goal                            | Critical                |
@@ -511,10 +511,10 @@ A one-time setup fee is quoted by organisation size. There is no lock-in and bil
 | AI                                                         | AI insights checked by a human analyst                       | Planned: AI proposes, manager approves           | Different model         |
 | Human audit service                                        | Core of the offer                                            | None                                             | Business choice         |
 
-**What this means for Outlet Ops**
+**What this means for Hey Senior**
 
 - Win where Barometer is absent: hotels with many departments, and any customer that wants stock and staff in one app with approvals.
-- Close the cost-control gap before selling to bars and restaurants: without recipes and sales-based variance, a bar owner comparing the two sees Outlet Ops as a stock register.
+- Close the cost-control gap before selling to bars and restaurants: without recipes and sales-based variance, a bar owner comparing the two sees Hey Senior as a stock register.
 - Price against the anchor: Barometer's software-only floor is ₹2,500 per kitchen cost centre and ₹5,000 per bar licence a month, so a bundled outlet price that also replaces a rostering tool can sit at or above ₹7,500.
 - Offer an optional assisted-onboarding and monthly audit add-on rather than building a large service team; Barometer shows Indian operators pay for hand-holding.
 
@@ -522,7 +522,7 @@ Sources opened 30 Sep 2026: [pricing](https://www.barometertech.com/pricing), [M
 
 ## 13. Feature updates from the competitor analysis
 
-Twelve changes follow from section 12: seven additions, four changes to existing requirements and one replacement. Together they turn inventory from a stock register into a cost-control module, which is what bar and restaurant buyers compare against Barometer. Rosters, attendance, approvals and the AI principle stay as they are; they are where Outlet Ops already leads.
+Twelve changes follow from section 12: seven additions, four changes to existing requirements and one replacement. Together they turn inventory from a stock register into a cost-control module, which is what bar and restaurant buyers compare against Barometer. Rosters, attendance, approvals and the AI principle stay as they are; they are where Hey Senior already leads.
 
 **Changes to the feature list**
 
@@ -551,7 +551,7 @@ Twelve changes follow from section 12: seven additions, four changes to existing
 **Deliberately not built**
 
 - Multi-channel order management and rack dispatch: this serves bakeries selling online, outside our customers.
-- A human audit team: instead, an optional paid onboarding and monthly review add-on delivered by the Outlet Ops team (section 12).
+- A human audit team: instead, an optional paid onboarding and monthly review add-on delivered by the Hey Senior team (section 12).
 
 **Roadmap effect:** RCP-1, SAL-1 (CSV), INV-7, INV-8, PO-4 and the variance and valuation reports join Pilot readiness. BILL-1 becomes the first AI-layer feature. The rest joins the Later stage in section 11.
 
@@ -627,7 +627,7 @@ Photos add under ₹30 a month in every row and are included in the totals. The 
 
 1. Pricing: per outlet per month, onboarding fee, AI add-on — \[to decide\].
 2. Pilot outlet and start date — \[to decide\].
-3. Product name: "Outlet Ops" is the working name.
+3. Product name: _(Decided 15 Oct: "Hey Senior", ADR 161.)_ The code, database and AWS names keep `outlet-ops`.
 4. AI provider: Anthropic API vs Amazon Bedrock, decided when the AI layer is built.
 5. When to move from the AWS free plan to paid (and to a managed database) — by 15 Feb 2027 at the latest.
 6. Weekly-off-aware leave counting (currently calendar days) — Phase 2.
@@ -641,7 +641,7 @@ Photos add under ₹30 a month in every row and are included in the totals. The 
    not the first market. Outlet formats can already give one job
    role combined access (for example a manager with HR built in).
 8. Languages: Hindi alongside English first, then regional languages, and read-aloud of tasks and recipes for staff who read little (UX-6) — \[to decide\].
-9. **Statutory retention.** _(Decided 5 Oct: money data and bills 7 years.)_ That covers GST; it may still be shorter than the law asks: GST records are kept about 6 years (72 months from the annual return's due date) and the Companies Act asks 8 years for books of account and their supporting papers (bills); labour registers have their own periods. Outlet Ops is not the books of account, but bills and sales stored here may be the supporting papers. Confirm with a chartered accountant before the first paying customer; the retention period is one setting.
+9. **Statutory retention.** _(Decided 5 Oct: money data and bills 7 years.)_ That covers GST; it may still be shorter than the law asks: GST records are kept about 6 years (72 months from the annual return's due date) and the Companies Act asks 8 years for books of account and their supporting papers (bills); labour registers have their own periods. Hey Senior is not the books of account, but bills and sales stored here may be the supporting papers. Confirm with a chartered accountant before the first paying customer; the retention period is one setting.
 
 **Risks**
 
@@ -658,7 +658,7 @@ Photos add under ₹30 a month in every row and are included in the totals. The 
 
 | Term              | Meaning                                                                |
 | ----------------- | ---------------------------------------------------------------------- |
-| Tenant / customer | One company using Outlet Ops, fully isolated from others               |
+| Tenant / customer | One company using Hey Senior, fully isolated from others               |
 | Org tree          | The people structure: company, region, area, outlet, department        |
 | Supply tree       | The stock structure: network, central kitchen, supply point, stores    |
 | Access group      | A product-defined set of permissions, granted at a place               |

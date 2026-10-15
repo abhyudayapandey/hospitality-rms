@@ -1,6 +1,6 @@
-// Outlet Ops service worker (ADR 004, 063). Makes the app installable. It never caches
+// Hey Senior service worker (ADR 004, 063). Makes the app installable. It never caches
 // authenticated pages or API responses. A page that doesn't start arriving within 10 s, or
-// can't be fetched at all, gets the "Can't reach Outlet Ops" screen below, which retries by
+// can't be fetched at all, gets the "Can't reach Hey Senior" screen below, which retries by
 // itself; the screen lives in this file, so nothing cached can go missing (sign-out deletes
 // every cache) or go stale after a deploy.
 const TIMEOUT_MS = 10000;
@@ -23,7 +23,7 @@ const OFFLINE_HTML = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
-<title>Can't reach Outlet Ops</title>
+<title>Can't reach Hey Senior</title>
 <style>
   :root { color-scheme: dark light; }
   body { margin: 0; min-height: 100dvh; display: flex; align-items: center; justify-content: center;
@@ -36,7 +36,7 @@ const OFFLINE_HTML = `<!doctype html>
   small { display: block; margin-top: 1rem; color: #64748b; }
 </style></head>
 <body><main>
-  <h1>Can't reach Outlet Ops</h1>
+  <h1>Can't reach Hey Senior</h1>
   <p>Check the Wi-Fi or mobile data. We'll keep trying.</p>
   <button id="retry" type="button">Try again</button>
   <small id="next"></small>
@@ -94,7 +94,7 @@ self.addEventListener('fetch', (event) => {
 // One alert per kind stays on the screen (a newer one replaces it); a tap opens its link in
 // the open app, or opens the app.
 self.addEventListener('push', (event) => {
-  let n = { title: 'Outlet Ops', body: '', link: '/', tag: 'outlet-ops' };
+  let n = { title: 'Hey Senior', body: '', link: '/', tag: 'outlet-ops' };
   try {
     n = { ...n, ...event.data.json() };
   } catch {

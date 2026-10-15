@@ -596,10 +596,10 @@ describe('the customer pool invitation (ADR 013)', () => {
       string,
       string
     >;
-    expect(invite.EmailSubject).toBe('Your Outlet Ops account');
+    expect(invite.EmailSubject).toBe('Your Hey Senior account');
     expect(invite.EmailMessage).toContain('{username}');
     expect(invite.EmailMessage).toContain('https://outletops.duckdns.org');
-    expect(invite.EmailMessage).toContain('sign-in code by email');
+    expect(invite.EmailMessage).toContain('Email me a code');
     expect(invite.EmailMessage).not.toContain('{####}');
     expect(invite.EmailMessage).not.toMatch(/password is/i);
     // no SMS is configured: no SMS invitation text either

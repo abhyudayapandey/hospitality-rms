@@ -1,4 +1,4 @@
-# CLAUDE.md — Outlet Ops Platform
+# CLAUDE.md — Hey Senior Platform
 
 ## What we're building
 
@@ -224,7 +224,7 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   done (ADR 081, `ops.refill_minibar`); front office marks it on the bill, which closes the bill
   task and tells housekeeping. The duty `CHECKS_MINIBARS`. The Passport Hotel pilot demo is
   `docs/onboarding/demo/passport-hotel`, written by `pnpm --filter @outlet-ops/onboarding passport-demo`.
-- The team console (`/platform`, ADR 077) is for Outlet Ops staff and speaks as plainly as the
+- The team console (`/platform`, ADR 077) is for Hey Senior staff and speaks as plainly as the
   app: no codes, job kinds, table names or raw states (`app/platform/parts.ts` has the words);
   one main action first, other tools last on their own rows; pausing a customer is on its
   page behind a tap; Add an outlet makes its code from the name.
@@ -464,12 +464,18 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   import of history notifies nobody (`ops.replaying`); a register is kept by its file 45 roles,
   else its default roles (`keptBy`), their departments' heads and the outlet's managers;
   overdue alerts go only to who answers for the task (`ops.answers_for`).
+- Hey Senior (ADR 161): the name people see everywhere; code, packages, the database, AWS and the
+  web address keep `outlet-ops`. The logo is Senior's mark (`public/icon.svg`, icons from it). The
+  landing screen is our own sign-in (`/login`): password, emailed code, first-sign-in password and
+  Forgot password through Cognito's user API (`lib/auth/sign-in.ts`), never stored or logged, with
+  per-login limits; `startSession` starts every session; refresh is REFRESH_TOKEN_AUTH. The
+  marketing site is `website/` (static, not hosted yet).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in
   Profile -> Picture credits). Never retailers' or brands' own images. A brand (`kind`) with no
   photo shows its kind's.
-- The service worker shows "Can't reach Outlet Ops" after 10 s and caches nothing; Cognito calls
+- The service worker shows "Can't reach Hey Senior" after 10 s and caches nothing; Cognito calls
   give up after 5 s, and Cognito not answering never signs anyone out (ADR 063). Caddy speaks
   HTTP/1.1 and HTTP/2 only (the security group has no UDP 443) and logs each request.
 

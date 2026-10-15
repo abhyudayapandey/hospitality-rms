@@ -73,13 +73,13 @@ function costTag(scope: Construct, profile: 'always-free' | 'credits', note: str
 /** The customer pool's invitation email (ADR 013): how to sign in with a code, no password. */
 export function invitationMessage(appUrl: string): cognito.UserInvitationConfig {
   return {
-    emailSubject: 'Your Outlet Ops account',
+    emailSubject: 'Your Hey Senior account',
     emailBody: [
       'Hello,',
-      'An Outlet Ops account has been set up for you. Your username is <b>{username}</b>.',
-      `To sign in, open <a href="${appUrl}">${appUrl}</a>, tap <b>Sign in</b> and enter this ` +
-        'email address. Choose to get a sign-in code by email, then type in the code we send ' +
-        'you. There is no password to remember.',
+      'A Hey Senior account has been set up for you. Your username is <b>{username}</b>.',
+      `To sign in, open <a href="${appUrl}">${appUrl}</a>, type this email address and tap ` +
+        '<b>Email me a code</b>. Then type in the code we send you. There is no password to ' +
+        'remember.',
       "If you weren't expecting this, you can ignore this email.",
     ].join('<br><br>'),
   };

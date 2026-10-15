@@ -70,7 +70,7 @@ export function PhotoField({
         onCancel={() => setCamera(false)}
         onFail={() => {
           setCamera(false);
-          setError('Allow the camera for Outlet Ops, then try again.');
+          setError('Allow the camera for Hey Senior, then try again.');
         }}
       />
     );
