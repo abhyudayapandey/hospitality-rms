@@ -64,4 +64,31 @@ describe('who can do the job', () => {
       expect(names).not.toContain('Test Room Attendant 1.0');
     });
   });
+  it("an event asks for staff from the outlet's own roles, at outlets the planner sees", async () => {
+    await inRolledBackTx(async (c) => {
+      const manager = ids.user('test.bar-manager.3.0');
+      const r = await attemptAs<{ code: string; name: string }>(
+        c,
+        manager,
+        'select * from ops.event_roles($1)',
+        [ids.node('TEST-BAR-3.0')],
+      );
+      expect(r.error).toBeUndefined();
+      const codes = r.rows!.map((x) => x.code);
+      expect(codes).toContain('BARTENDER');
+      expect(codes).not.toContain('ROOM_ATTENDANT');
+      // at the floor, the kitchen's roles are offered too
+      const floor = await attemptAs<{ code: string }>(
+        c,
+        manager,
+        'select * from ops.event_roles($1)',
+        [ids.node('TEST-BAR-3.0-FLOOR-SERVICE')],
+      );
+      expect(floor.rows!.map((x) => x.code).sort()).toEqual([...codes].sort());
+      const away = await attemptAs(c, manager, 'select * from ops.event_roles($1)', [
+        ids.node('TEST-HOTEL-1.0'),
+      ]);
+      expect(away.error).toMatch(/NOT_AUTHORISED/);
+    });
+  });
 });

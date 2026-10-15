@@ -14,7 +14,7 @@ export default async function NewEventPage({ searchParams }: { searchParams: Sea
     return <Empty>You can&apos;t create events.</Empty>;
   const node = ctx.node;
   const user = await requireUser();
-  const options = await withUser(user.id, (tx) => eventFormOptions(tx));
+  const options = await withUser(user.id, (tx) => eventFormOptions(tx, node.id));
   return (
     <div className="space-y-4">
       <Link href={`/events?node=${node.id}`} className="text-sm text-slate-600">

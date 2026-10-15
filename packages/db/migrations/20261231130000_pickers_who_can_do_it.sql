@@ -116,7 +116,34 @@ begin
      order by u.display_name;
 end $$;
 
+-- An event asks for staff by job role: only the roles someone holds at its outlet (an event at a
+-- department asks the whole outlet).
+create function ops.event_roles(p_node uuid)
+returns table(code text, name text)
+language plpgsql stable security definer
+set search_path = pg_catalog, core, hr, ops, extensions
+as $$
+begin
+  if not core.can('EVENTS', 'view', p_node, null) then
+    perform ops.fail('NOT_AUTHORISED', 'EVENTS view');
+  end if;
+  return query
+    select distinct jr.code, jr.name
+      from hr.worker w
+      join core.hierarchy_node h on h.id = w.org_node_id
+      join core.hierarchy_node n on n.id = coalesce(core.nearest(p_node, array['outlet']), p_node)
+                                and n.tenant_id = w.tenant_id
+      join hr.job_role jr on jr.tenant_id = w.tenant_id and jr.code = w.role_code
+     where w.status = 'active' and jr.archived_at is null
+       and h.path operator(extensions.<@) n.path
+     order by jr.name;
+end $$;
+
+revoke execute on function ops.event_roles(uuid) from public, platform_loader;
+grant execute on function ops.event_roles(uuid) to app_rw;
+
 -- migrate:down
+drop function ops.event_roles(uuid);
 -- Forward-only in production (ADR 005); this restores the previous pickers for local work.
 create or replace function ops.hand_on_people(p_task uuid)
 returns table(user_id uuid, name text, job_role text, place_name text)

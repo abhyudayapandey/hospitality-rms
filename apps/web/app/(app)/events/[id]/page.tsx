@@ -28,7 +28,7 @@ export default async function EventPage({
     const [e] = await events(tx, '', '', id);
     if (!e) return null;
     const editable = ctx.can('EVENTS', 'modify') && e.status !== 'cancelled';
-    return { e, options: editable ? await eventFormOptions(tx) : null };
+    return { e, options: editable ? await eventFormOptions(tx, e.org_node_id) : null };
   });
   if (!data) return <Empty>Event not found.</Empty>;
   const { e, options } = data;
