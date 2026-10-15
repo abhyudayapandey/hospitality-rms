@@ -8,9 +8,17 @@ export interface Database {}
 export type Db = Kysely<Database>;
 export type Tx = Transaction<Database>;
 
+/**
+ * The app's queries are many small ones: compiling one with JIT costs seconds and saves
+ * milliseconds, so the app's connections turn it off (ADR 160).
+ */
+export const APP_PG_OPTIONS = '-c jit=off';
+
 export function createDb(connectionString: string): Db {
   return new Kysely<Database>({
-    dialect: new PostgresDialect({ pool: new pg.Pool({ connectionString }) }),
+    dialect: new PostgresDialect({
+      pool: new pg.Pool({ connectionString, options: APP_PG_OPTIONS }),
+    }),
   });
 }
 

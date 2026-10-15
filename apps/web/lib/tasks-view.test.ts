@@ -5,6 +5,7 @@ import {
   doneLately,
   dueText,
   groupTasks,
+  isUrgent,
   myTaskWho,
   outOfRange,
   overdueWhenGiven,
@@ -189,5 +190,16 @@ describe('dueText (ADR 148)', () => {
   });
   it('01:30 tonight is still today, the business day', () => {
     expect(dueText('2026-10-02T20:00:00Z', 'Asia/Kolkata', now)).toBe('01:30');
+  });
+});
+
+describe('urgent (ADR 160)', () => {
+  it('only a high-priority task due within 7 days', () => {
+    const now = new Date('2026-10-15T06:00:00Z');
+    const due = (days: number) => new Date(now.getTime() + days * 86_400_000);
+    expect(isUrgent({ priority: 'high', due_at: due(18) }, now)).toBe(false);
+    expect(isUrgent({ priority: 'high', due_at: due(7) }, now)).toBe(true);
+    expect(isUrgent({ priority: 'high', due_at: due(-1) }, now)).toBe(true);
+    expect(isUrgent({ priority: 'normal', due_at: due(1) }, now)).toBe(false);
   });
 });

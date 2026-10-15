@@ -402,7 +402,17 @@ describe('the refill and the bill are tasks (ADR 081)', () => {
       expect(bill!.title).toBe('Bill room 101: 1 Test Lager Beer 330ml');
       // with nobody on shift at the front desk now, it is the Front Desk Executives' job
       expect(bill!.assignee_user_id ?? bill!.job_role_code).toBeTruthy();
-      // the front desk sees the bill on its list; the attendant's refill is theirs
+      // the front desk sees the bill on its list; the attendant's refill is theirs. The bill
+      // goes to the front desk at work when it is due (ADR 148): due when they work, so the
+      // test doesn't depend on the hour it runs at
+      await c.query(
+        `update ops.task set due_at = (
+           select min(t) from generate_series(date_trunc('minute', now()) + interval '30 minutes',
+                                              now() + interval '24 hours', interval '30 minutes') t
+            where ops.working_at($2, t))
+          where id = $1`,
+        [bill!.id, ids.user(FRONT_DESK)],
+      );
       const fd = await ok<{ id: string }>(c, FRONT_DESK, 'select id from ops.my_tasks()');
       expect(fd.map((t) => t.id)).toContain(bill!.id);
       // nothing used, nothing to do

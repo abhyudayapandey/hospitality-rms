@@ -19,7 +19,8 @@ export interface LicenceKind {
   from: string;
 }
 
-/** Who a calendar job goes to at an outlet: its kitchen head, chief engineer or manager. */
+/** Who does a calendar job at an outlet: its kitchen head, its Engineering (the chief engineer,
+ * else the department's technician) or its manager. The manager answers for every one. */
 export type CalendarOwner = 'kitchen' | 'engineering' | 'manager';
 
 export interface CalendarJob {
@@ -144,7 +145,8 @@ export const CALENDAR_JOBS: readonly CalendarJob[] = [
     version: 1,
     name: 'Pest control service',
     everyMonths: 1,
-    owner: 'manager',
+    // the pest control company is let in and checked on by Engineering (ADR 160)
+    owner: 'engineering',
     needsProof: true,
     formats: ALL,
     from: 'R FA-03 and calendar; H, B, C, Q calendars (monthly)',

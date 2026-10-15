@@ -328,7 +328,13 @@ describe('what the customer buys (ADR 067)', () => {
       doer_role: 'CHIEF_ENGINEER',
       place_code: 'GH-ONE-ENGINEERING',
     });
+    // pest control is Engineering's (ADR 160)
     expect(cal.get('PEST-CONTROL@1')).toMatchObject({
+      owner_role: 'GENERAL_MANAGER',
+      doer_role: 'CHIEF_ENGINEER',
+      place_code: 'GH-ONE-ENGINEERING',
+    });
+    expect(cal.get('FIRE-DRILL@1')).toMatchObject({
       owner_role: 'GENERAL_MANAGER',
       doer_role: '',
       place_code: 'GH-ONE',
@@ -341,6 +347,38 @@ describe('what the customer buys (ADR 067)', () => {
     d.bundlesOn = [];
     const none = filesFromDraft(d, '2026-10-07');
     expect(Object.keys(none).some((f) => /^3[89]_/.test(f))).toBe(false);
+  });
+
+  it("a restaurant's Engineering is its Technician: fire, pests and water are theirs (ADR 160)", () => {
+    const d = emptyDraft();
+    d.company = {
+      ...d.company,
+      name: 'Panjim Eats',
+      code: 'PE',
+      ownerName: 'Asha Rao',
+      ownerEmail: 'asha@panjim.test',
+    };
+    d.outlets.push({
+      ...readDraft({ outlets: [{ key: 'r', tile: 'restaurant_bar', extras: ['bar'] }] })
+        .outlets[0]!,
+      name: 'Panjim',
+    });
+    d.bundlesOn = ['events_compliance'];
+    const cal = new Map(
+      rows(filesFromDraft(d, '2026-10-07'), '39_').map((r) => [r['from_library'], r]),
+    );
+    for (const job of [
+      'EXTINGUISHER-CHECK@1',
+      'PEST-CONTROL@1',
+      'TANK-CLEANING@1',
+      'WATER-TEST@1',
+    ]) {
+      expect(cal.get(job), job).toMatchObject({
+        doer_role: 'TECHNICIAN',
+        place_code: 'PE-PANJIM-ENGINEERING',
+      });
+    }
+    expect(cal.get('FIRE-DRILL@1')!['doer_role']).toBe('');
   });
 
   it('without Daily work, no checklist rounds are set up', () => {

@@ -686,9 +686,12 @@ export function filesFromDraft(
       const qs = roleQuestions(draft, o);
       const manager = qs.find((q) => q.level === 'runs_outlet') ?? qs[0];
       if (!manager) continue;
+      // the department's head; a department with no head (a restaurant's Engineering is one
+      // Technician, ADR 140) gives it to its own people, never back to the manager (ADR 160)
       const head = (dept: string) =>
         outletPlanned.departments.some((d) => d.code === dept)
-          ? qs.find((q) => q.department === dept && q.level === 'runs_department')
+          ? (qs.find((q) => q.department === dept && q.level === 'runs_department') ??
+            qs.find((q) => q.department === dept && q.answer.mode !== 'not_done'))
           : undefined;
       for (const k of licencesFor(outletPlanned.format, o.extras)) {
         lic.rows.push({

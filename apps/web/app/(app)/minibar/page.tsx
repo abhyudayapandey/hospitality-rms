@@ -75,7 +75,10 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
   const href = (t: MinibarTab, extra = '') => `/minibar?outlet=${place.outlet_id}&tab=${t}${extra}`;
   const mineOnly = rooms.filter((r) => r.mine);
   const counted = mineOnly.length > 0 ? mineOnly : rooms;
-  const checkedToday = counted.filter((r) => r.checked_today).length;
+  // what is due today (ADR 160): a room still due, or one already checked today, so the header
+  // counts the day's work, never every room
+  const dueToday = counted.filter((r) => r.due_today || r.checked_today);
+  const checkedToday = dueToday.filter((r) => r.checked_today).length;
   const toCharge = charge.reduce((s, c) => s + Number(c.charge), 0);
 
   return (
@@ -101,8 +104,9 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
       <div>
         <h1 className="text-xl font-semibold">Minibars</h1>
         <p className="text-sm text-slate-600" data-testid="minibar-summary">
-          {checkedToday} of {mineOnly.length > 0 ? 'your ' : ''}
-          {counted.length} rooms checked today
+          {dueToday.length === 0
+            ? 'No minibar due today'
+            : `${checkedToday} of ${dueToday.length} due today checked`}
           {place.bills && toCharge > 0 && ` · ${formatMoney(toCharge)} to add to bills`}
         </p>
       </div>
@@ -299,8 +303,8 @@ function DueThenFloors({ rooms, bills }: { rooms: MinibarRoomRow[]; bills: boole
           ) : (
             <span className="size-5" aria-hidden />
           )}
-          <span className="text-lg leading-tight font-bold tabular-nums">
-            <span className="sr-only">Room </span>
+          {/* the link's label says "Room 101"; the tile itself reads "101" */}
+          <span aria-hidden className="text-lg leading-tight font-bold tabular-nums">
             {r.number}
           </span>
           {bills && charge > 0 && (

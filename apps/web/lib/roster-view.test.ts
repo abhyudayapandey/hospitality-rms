@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   dayStrip,
   groupByTime,
+  openSlots,
   peopleTabs,
   pickDay,
   rosterLanding,
@@ -111,6 +112,9 @@ const shift = (
   people: Array.from({ length: people }, (_, i) => i),
 });
 
+// before the week, so every slot is still open
+const BEFORE = new Date('2026-09-27T00:00:00Z');
+
 describe('dayStrip', () => {
   it('counts shifts, open slots and drafts per day', () => {
     const s = dayStrip(
@@ -120,12 +124,23 @@ describe('dayStrip', () => {
         shift('c', WEEK[2]!, '2026-09-30T11:30:00Z', '2026-09-30T19:30:00Z', 1, 3),
       ],
       WEEK,
+      BEFORE,
     );
     expect(s).toHaveLength(7);
     expect(s[0]).toEqual({ day: WEEK[0], shifts: 2, open: 2, drafts: 1 });
     expect(s[1]).toEqual({ day: WEEK[1], shifts: 0, open: 0, drafts: 0 });
     // more people than slots never counts as negative open slots
     expect(s[2]).toEqual({ day: WEEK[2], shifts: 1, open: 0, drafts: 0 });
+  });
+});
+
+describe('openSlots', () => {
+  it('a slot is open until its shift starts, never after', () => {
+    const s = shift('a', WEEK[0]!, '2026-09-28T00:30:00Z', '2026-09-28T08:30:00Z', 3, 1);
+    expect(openSlots(s, BEFORE)).toBe(2);
+    expect(openSlots(s, new Date('2026-09-28T00:30:00Z'))).toBe(0);
+    expect(dayStrip([s], WEEK, new Date('2026-10-01T00:00:00Z'))[0]!.open).toBe(0);
+    expect(groupByTime([s], new Date('2026-10-01T00:00:00Z'))[0]!.open).toBe(0);
   });
 });
 
@@ -140,12 +155,15 @@ describe('pickDay', () => {
 
 describe('groupByTime', () => {
   it('groups by start and end, earliest first, with open slots per group', () => {
-    const g = groupByTime([
-      shift('eve-host', WEEK[0]!, '2026-09-28T11:30:00Z', '2026-09-28T19:30:00Z', 1, 0),
-      shift('morn', WEEK[0]!, '2026-09-28T00:30:00Z', '2026-09-28T08:30:00Z', 2, 1),
-      shift('eve-server', WEEK[0]!, '2026-09-28T11:30:00Z', '2026-09-28T19:30:00Z', 3, 1),
-      shift('late', WEEK[0]!, '2026-09-28T11:30:00Z', '2026-09-28T21:30:00Z', 1, 1),
-    ]);
+    const g = groupByTime(
+      [
+        shift('eve-host', WEEK[0]!, '2026-09-28T11:30:00Z', '2026-09-28T19:30:00Z', 1, 0),
+        shift('morn', WEEK[0]!, '2026-09-28T00:30:00Z', '2026-09-28T08:30:00Z', 2, 1),
+        shift('eve-server', WEEK[0]!, '2026-09-28T11:30:00Z', '2026-09-28T19:30:00Z', 3, 1),
+        shift('late', WEEK[0]!, '2026-09-28T11:30:00Z', '2026-09-28T21:30:00Z', 1, 1),
+      ],
+      BEFORE,
+    );
     expect(g.map((x) => x.shifts.map((s) => s.id))).toEqual([
       ['morn'],
       ['eve-host', 'eve-server'],

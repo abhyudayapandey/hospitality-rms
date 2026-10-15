@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { placeId, signInAs } from './helpers';
+import { asMigrator, placeId, signInAs } from './helpers';
 
 // The simpler screens (UX-7 to UX-12, ADR 047): one thing first, detail on a tap. These
 // check the closed state with { expanded: false }; the other specs open the detail.
@@ -56,8 +56,14 @@ test('Outlet today opens with four headline figures; the rest is under More figu
   page,
 }) => {
   const hotel = await placeId('TEST-HOTEL-1.0');
+  // yesterday, a whole business day: today before its sales are in has no cost shares (ADR 160)
+  const [y] = await asMigrator<{ day: string }>(
+    `select to_char(((now() at time zone ops.tz_of($1)) - interval '4 hours')::date - 1,
+                    'YYYY-MM-DD') as day`,
+    [hotel],
+  );
   await signInAs(page, 'Test General Manager 1.0', { expanded: false });
-  await page.goto(`/reports/outlet?node=${hotel}`);
+  await page.goto(`/reports/outlet?node=${hotel}&day=${y!.day}`);
   await expect(page.getByTestId('headline').getByRole('listitem')).toHaveCount(4);
   const more = page.getByTestId('more-figures');
   await expect(more).not.toHaveAttribute('open', '');

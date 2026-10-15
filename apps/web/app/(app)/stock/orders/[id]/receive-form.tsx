@@ -29,7 +29,8 @@ const qtyText = (n: number, uom: string) => formatQty(n, uom);
 /**
  * Receiving an order (ADR 051): for each item still to come, what arrived and what it cost
  * (the amount on the bill, required for anything received). Nothing is filled in for them;
- * "Everything arrived as ordered" fills the quantities. The bill's photo or PDF can go with it,
+ * "Everything arrived as ordered" fills the quantities, until part of the order has come (ADR 160):
+ * then it is no longer true, so it is not offered. The bill's photo or PDF can go with it,
  * or be added later (the order then shows "Bill missing").
  */
 export function ReceiveForm({
@@ -47,6 +48,7 @@ export function ReceiveForm({
 }) {
   const router = useRouter();
   const open = lines.filter((l) => left(l) > 0);
+  const partly = lines.some((l) => Number(l.received) > 0);
   const [qty, setQty] = useState<Record<string, string>>({});
   const [amount, setAmount] = useState<Record<string, string>>({});
   // where each line goes (the item's default, ADR 080) and its expiry, if any
@@ -137,13 +139,17 @@ export function ReceiveForm({
     >
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-slate-500">What arrived</h2>
-        <button
-          type="button"
-          className="min-h-11 text-sm font-medium text-brand-700 underline"
-          onClick={() => setQty(Object.fromEntries(open.map((l) => [l.item_id, String(left(l))])))}
-        >
-          Everything arrived as ordered
-        </button>
+        {!partly && (
+          <button
+            type="button"
+            className="min-h-11 text-sm font-medium text-brand-700 underline"
+            onClick={() =>
+              setQty(Object.fromEntries(open.map((l) => [l.item_id, String(left(l))])))
+            }
+          >
+            Everything arrived as ordered
+          </button>
+        )}
       </div>
       <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
         {open.map((l) => {

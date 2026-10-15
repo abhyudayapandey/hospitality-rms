@@ -21,7 +21,7 @@ import {
   type TaskDetail,
   type TaskPhoto,
 } from '@/lib/tasks';
-import { overdueWhenGiven } from '@/lib/tasks-view';
+import { isUrgent, overdueWhenGiven } from '@/lib/tasks-view';
 import { complianceTask, dayWords, type ComplianceTaskRow } from '@/lib/compliance';
 import { DoneForm, RenewForm } from '../../compliance/act-forms';
 import {
@@ -196,7 +196,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
             <Icon name="clock" className="size-4 shrink-0" />
             {late ? 'Late · was due ' : 'Due '}
             {formatWhen(task.due_at)}
-            {task.priority === 'high' && ' · urgent'}
+            {isUrgent(task) && ' · urgent'}
           </p>
         ) : (
           <p className="text-sm text-slate-600" data-testid="task-status">

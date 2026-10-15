@@ -95,7 +95,8 @@ export async function expiryList(tx: Tx): Promise<ExpiryBatch[]> {
   return r.rows;
 }
 
-export async function stockList(tx: Tx, node: string): Promise<StockRow[]> {
+/** A store's items, or just `item` there (an item's page, which needs one line). */
+export async function stockList(tx: Tx, node: string, item?: string): Promise<StockRow[]> {
   const r = await sql<StockRow>`
     select i.id as item_id, i.sku, i.name, i.category, i.base_uom, n.par_level, i.photo_key,
            coalesce(s.on_hand, 0) as on_hand, s.avg_cost, s.value,
@@ -109,6 +110,7 @@ export async function stockList(tx: Tx, node: string): Promise<StockRow[]> {
            and l.qty < 0 and l.movement_type <> 'count_adjust'
            and l.occurred_at > now() - interval '14 days') u on true
      where n.delivery_node_id = ${node}::uuid and n.archived_at is null and i.archived_at is null
+       and (${item ?? null}::uuid is null or n.item_id = ${item ?? null}::uuid)
      order by i.category, i.name`.execute(tx);
   return r.rows;
 }

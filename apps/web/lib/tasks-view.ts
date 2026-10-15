@@ -38,6 +38,17 @@ export function groupTasks<T extends TaskRow>(
   return out;
 }
 
+/** Urgent is for what is close (ADR 160): a high-priority task due within 7 days. A licence
+ * renewal 18 days ahead is coming, not urgent. */
+export const URGENT_DAYS = 7;
+export function isUrgent(
+  t: { priority: string; due_at: Date | string },
+  now: Date = new Date(),
+): boolean {
+  if (t.priority !== 'high') return false;
+  return new Date(t.due_at).getTime() - now.getTime() <= URGENT_DAYS * 86_400_000;
+}
+
 /**
  * When a task is due, its day said when it isn't today (ADR 148): "16:00", "Yesterday 16:00",
  * "Tomorrow 07:00", "Mon, 12 Oct 07:00". Today is the 04:00 business day; 24-hour clock.

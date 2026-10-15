@@ -35,6 +35,7 @@ async function userId(name: string) {
 
 async function give(page: Page, to: string) {
   const form = page.getByTestId('reassign');
+  await expect(form.getByRole('button', { name: 'Assign' })).toBeEnabled();
   await form.getByLabel('Give it to someone').selectOption(await userId(to));
   await form.getByRole('button', { name: 'Assign' }).click();
   await expect(page.getByTestId('task-status')).toContainText(`With ${to} since`);

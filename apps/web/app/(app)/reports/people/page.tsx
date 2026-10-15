@@ -164,8 +164,8 @@ export default async function PeopleReport({ searchParams }: { searchParams: Sea
                 <span className="shrink-0 text-right tabular-nums">
                   {formatMeasure('days', l.balance_days)} left
                   {money && (
-                    <span className="block text-xs text-slate-500">
-                      {formatMeasure('money', l.liability)}
+                    <span className="block text-xs text-slate-500" data-testid="leave-worth">
+                      {l.liability === null ? '' : `worth ${formatMeasure('money', l.liability)}`}
                     </span>
                   )}
                 </span>
@@ -195,7 +195,9 @@ function DepartmentLine({ d }: { d: PeopleDepartmentRow }) {
         <span className="font-medium">
           {d.name.includes(' – ') ? d.name.split(' – ').pop() : 'Not in a department'}
         </span>
-        <span className="tabular-nums">{d.headcount} people</span>
+        <span className="tabular-nums">
+          {d.headcount} {d.headcount === 1 ? 'person' : 'people'}
+        </span>
       </div>
       <p className="text-xs text-slate-500">
         {d.shifts} {d.shifts === 1 ? 'shift' : 'shifts'}

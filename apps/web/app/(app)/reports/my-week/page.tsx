@@ -4,7 +4,7 @@ import { addDays, formatDay, isIsoDate, localToday, weekStart } from '@/lib/date
 import { withUser } from '@/lib/db';
 import { failure } from '@outlet-ops/domain';
 import { param, type SearchParams } from '@/lib/params';
-import { myWeek } from '@/lib/report-data';
+import { myReports, myWeek } from '@/lib/report-data';
 import { loadShell } from '@/lib/shell';
 
 // The person's own week (Monday to Sunday): shifts, hours, on-time record and tasks.
@@ -16,15 +16,23 @@ export default async function MyWeekReport({ searchParams }: { searchParams: Sea
   const thisWeek = weekStart(localToday(tz));
   const monday = isIsoDate(asked) && asked <= thisWeek ? weekStart(asked) : thisWeek;
   let rows;
+  let only: boolean;
   try {
-    rows = await withUser(shell.user.id, (tx) => myWeek(tx, monday));
+    [rows, only] = await withUser(
+      shell.user.id,
+      async (tx) =>
+        [
+          await myWeek(tx, monday),
+          (await myReports(tx)).every((r) => r === 'my_week') && !shell.domains.has('MENU'),
+        ] as const,
+    );
   } catch (err) {
     return <NoReport>{failure(err).message}</NoReport>;
   }
   const box = 'flex min-h-11 min-w-11 items-center justify-center rounded-lg ring-1 ring-slate-300';
   return (
     <div className="space-y-4">
-      <ReportHeader report="my_week" />
+      <ReportHeader report="my_week" onlyReport={only} />
       <div className="flex items-center justify-between gap-2">
         <Link
           href={`/reports/my-week?week=${addDays(monday, -7)}`}
