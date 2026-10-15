@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { homeTiles, screensFor, type ScreenInput } from './screens';
+import { homeTiles, inNavToo, screensFor, type ScreenInput } from './screens';
 
 // Me and Home's tiles (UX-6, ADR 034): every screen a person can open, chosen from their
 // domain access; frontline staff see four tiles.
@@ -123,7 +123,7 @@ describe('screens', () => {
           ['TRANSFERS', 'modify'],
           ['RECIPES', 'view'],
         ],
-        { menu: true },
+        { menu: true, groups: new Set(['SELF', 'STAFF', 'STORE_KEEPER']) },
       ),
     );
     expect(keeper.map((s) => s.key)).toEqual(
@@ -133,6 +133,41 @@ describe('screens', () => {
     const viewer = screensFor(input([['STOCK_ADJUSTMENTS', 'view']])).map((s) => s.key);
     expect(viewer).not.toContain('count');
     expect(viewer).not.toContain('wastage');
+  });
+
+  it('the floor asks for stock and leaves buying to the keepers (ADR 150)', () => {
+    const user = screensFor(
+      input(
+        [
+          ['STOCK_LEVELS', 'view'],
+          ['STOCK_ADJUSTMENTS', 'modify'],
+          ['PURCHASE_ORDERS', 'view'],
+        ],
+        { groups: new Set(['SELF', 'STAFF', 'STOCK_USER']) },
+      ),
+    ).map((s) => s.key);
+    expect(user).toEqual(expect.arrayContaining(['stock', 'count', 'wastage']));
+    expect(user).not.toContain('orders');
+  });
+
+  it('audits for those who run them, or read them away from the floor (ADR 150)', () => {
+    const keys = (access: 'view' | 'modify', atWork: boolean) =>
+      screensFor(input([['AUDITS', access]], { atWork })).map((s) => s.key);
+    expect(keys('modify', true)).toContain('audits');
+    expect(keys('view', false)).toContain('audits');
+    expect(keys('view', true)).not.toContain('audits');
+  });
+
+  it('the nav offers Roster only where Me does (ADR 150)', () => {
+    const reader = input([], { groups: new Set(['SELF', 'STAFF', 'ACCOUNTS']), atWork: true });
+    expect(inNavToo(reader)('/roster')).toBe(false);
+    expect(inNavToo(reader)('/tasks')).toBe(true);
+    const head = input([['ROSTER', 'modify']], { groups: new Set(['SELF', 'DEPARTMENT_HEAD']) });
+    expect(inNavToo(head)('/roster')).toBe(true);
+    // HR reads the roster of every department: Roster is theirs, in the nav and on Me
+    const hr = input([], { groups: new Set(['SELF', 'STAFF', 'OUTLET_HR']), rosterWide: true });
+    expect(inNavToo(hr)('/roster')).toBe(true);
+    expect(screensFor(hr).map((s) => s.key)).toContain('roster');
   });
 
   it('business reports and admin only with access; My week for everyone else', () => {

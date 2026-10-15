@@ -10,14 +10,15 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { NavProgress } from '@/components/nav-progress';
 import { VersionCheck } from '@/components/version-check';
 import { approvalsInNav, visibleNav } from '@/lib/nav';
-import { loadShell, navInput } from '@/lib/shell';
+import { inNavToo } from '@/lib/screens';
+import { loadShell, screenInput } from '@/lib/shell';
 
 const badge =
   'absolute top-1 right-0.5 rounded-full bg-rose-600 px-1.5 text-[10px] font-bold text-white';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const shell = await loadShell();
-  const input = navInput(shell);
+  const input = screenInput(shell);
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
       <header className="sticky top-0 z-10 flex print:hidden items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2">
@@ -95,7 +96,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <ActionSync userId={shell.user.id} />
       <main className="flex-1 px-4 pt-4 pb-24 print:p-0">{children}</main>
       <div className="print:hidden">
-        <BottomNav items={visibleNav(input)} inboxCount={shell.inboxCount} />
+        <BottomNav items={visibleNav(input, inNavToo(input))} inboxCount={shell.inboxCount} />
       </div>
     </div>
   );

@@ -5,7 +5,7 @@
 
 import { ACCESS_GROUPS, DUTY_BY_CODE, type Access } from '@outlet-ops/domain';
 import type { IconName } from '@/components/icon';
-import { canOpen, type NavInput } from './nav';
+import { canOpen, navProfile, type NavInput } from './nav';
 
 export interface ScreenInput extends NavInput {
   /** core.my_domains() with each domain's access, switched-off modules left out */
@@ -20,6 +20,8 @@ export interface ScreenInput extends NavInput {
   compliance?: boolean;
   /** screens that would open empty for them: no tile, no link (Shell.nothing, ADR 149) */
   nothing?: ReadonlySet<ScreenKey>;
+  /** they read the roster of more than one place (HR, Shell.rosterWide, ADR 150) */
+  rosterWide?: boolean;
 }
 
 export type ScreenKey =
@@ -192,7 +194,8 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/stock/orders',
     label: 'Orders',
     icon: 'cart',
-    show: (i) => can(i, 'PURCHASE_ORDERS'),
+    // buying is the keepers' and managers' work: the floor asks for stock from RFMs (ADR 150)
+    show: (i) => can(i, 'PURCHASE_ORDERS') && navProfile(i.groups) !== 'frontline',
   },
   {
     // vendor bills (BIL-1 to BIL-3, ADR 050)
@@ -322,7 +325,9 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/audits',
     label: 'Audits',
     icon: 'medal',
-    show: (i) => can(i, 'AUDITS'),
+    // those who run audits, and those who read them across places (area, auditor); a shift
+    // lead on the floor only sees an audit's score where it reaches them (ADR 150)
+    show: (i) => can(i, 'AUDITS', 'modify') || (!i.atWork && can(i, 'AUDITS')),
   },
   {
     // the laundry exchange and uniforms (ADR 094)
@@ -354,7 +359,8 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     href: '/roster',
     label: 'Roster',
     icon: 'roster',
-    show: (i) => can(i, 'ROSTER', 'modify') || (!i.atWork && can(i, 'ROSTER')),
+    show: (i) =>
+      can(i, 'ROSTER', 'modify') || (can(i, 'ROSTER') && (!i.atWork || i.rosterWide === true)),
   },
   {
     key: 'events',
@@ -378,6 +384,16 @@ const SCREENS: readonly (Screen & { show: (i: ScreenInput) => boolean })[] = [
     show: (i) => canOpen('admin', i),
   },
 ];
+
+/**
+ * The bottom nav offers a screen only where Me would (ADR 150): Roster is not in the nav of
+ * someone whose Me has no Roster tile (an accountant who only reads their own week's shifts).
+ */
+export function inNavToo(i: ScreenInput): (href: string) => boolean {
+  const shown = new Set(screensFor(i).map((s) => s.href));
+  const roster = SCREENS.find((s) => s.key === 'roster')!.href;
+  return (href) => href !== roster || shown.has(href);
+}
 
 /** The screens the person can open, in the order the Me page lists them. */
 export function screensFor(i: ScreenInput): Screen[] {

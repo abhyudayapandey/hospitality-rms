@@ -143,7 +143,10 @@ const PROFILES: Readonly<Record<NavProfile, readonly (NavKey | readonly NavKey[]
   office: ['home', 'inbox', 'reports', ['admin', 'roster'], 'me'],
 };
 
-export function visibleNav(i: NavInput): NavItem[] {
+export function visibleNav(
+  i: NavInput,
+  allowed: (href: string) => boolean = () => true,
+): NavItem[] {
   const keys: NavKey[] = [];
   for (const slot of PROFILES[navProfile(i.groups)]) {
     const options = typeof slot === 'string' ? [slot] : slot;
@@ -151,6 +154,7 @@ export function visibleNav(i: NavInput): NavItem[] {
     const pick = options.find(
       (k) =>
         canOpen(k, i) &&
+        allowed(NAV_ITEMS[k].href) &&
         !keys.includes(k) &&
         // one item per screen: inbox and tasks are the same To do list
         !keys.some((x) => NAV_ITEMS[x].href === NAV_ITEMS[k].href) &&

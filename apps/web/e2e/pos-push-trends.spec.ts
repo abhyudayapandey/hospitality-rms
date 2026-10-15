@@ -78,7 +78,9 @@ test('the bar manager sees the day came from the POS; typing in is closed', asyn
   await expect(page.getByTestId('sales-import-link')).toBeVisible();
 });
 
-test('Push today: servers see the dishes that use prep expiring by tomorrow', async ({ page }) => {
+test('Push today: food and drink see the dishes that use prep expiring by tomorrow', async ({
+  page,
+}) => {
   // a batch of sugar syrup at Test Bar 3.0's bar store, expiring in 20 hours
   await asMigrator(
     `insert into inv.stock_ledger (tenant_id, item_id, delivery_node_id, movement_type, qty,
@@ -95,8 +97,10 @@ test('Push today: servers see the dishes that use prep expiring by tomorrow', as
   await expect(push.getByTestId('push-dish').filter({ hasText: 'Mojito' })).toContainText(
     'Sugar Syrup',
   );
-  // the kitchen hears through the morning alert, not on Home
+  // everyone in food and drink sees it, the kitchen too (ADR 150); not the security guard
   await signInAs(page, 'Test Cook 3.0');
+  await expect(page.getByTestId('push-today')).toBeVisible();
+  await signInAs(page, 'Test Security Guard 3.0');
   await expect(page.getByTestId('push-today')).toHaveCount(0);
 });
 
