@@ -73,6 +73,7 @@ test('what was given to someone else stays under Given to others, marked done', 
       [HS],
     );
     const form = page.getByTestId('reassign');
+    await expect(form.getByRole('button', { name: 'Assign' })).toBeEnabled();
     await form.getByLabel('Give it to someone').selectOption(hs!.id);
     await form.getByRole('button', { name: 'Assign' }).click();
     await expect(page.getByTestId('task-status')).toContainText(`With ${HS} since`);
