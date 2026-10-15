@@ -20,7 +20,7 @@ test('asking for supplies: nothing filled in, have and keep on each line, says w
   // a real button that says what it does; then it clears what it put in (ADR 054)
   const fill = page.getByTestId('fill-to-keep');
   if (await fill.count()) {
-    await expect(fill).toHaveText(/^Fill (all \d+|the 1) short items? up to par$/);
+    await expect(fill).toHaveText(/^Fill (all \d+|the 1) short items?$/);
     await fill.click();
     await expect(page.getByRole('button', { name: /^Send request · [1-9]/ })).toBeVisible();
     // at most 2 decimals in every box

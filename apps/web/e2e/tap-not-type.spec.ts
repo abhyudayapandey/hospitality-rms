@@ -39,7 +39,7 @@ test('a reading: the safe range first, a number tapped, and the task done', asyn
     await expect(main(page).getByTestId('task-more')).not.toHaveAttribute('open', '');
     await expect(main(page).getByTestId('reading-range')).toHaveText('0 to 5 °C is good');
     const picks = main(page).getByTestId('reading-picks').getByRole('button');
-    await expect(picks).toHaveText(['-1', '0', '1', '2', '3', '4', '5', '6', '7']);
+    await expect(picks).toHaveText(['-1', '0', '1', '2', '3', '4', '5', '6']);
     await picks.filter({ hasText: /^3$/ }).click();
     await expect(main(page).getByRole('textbox', { name: 'Walk-in chiller' })).toHaveValue('3');
     // − and + move it by one

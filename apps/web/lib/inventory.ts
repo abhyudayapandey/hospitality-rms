@@ -79,8 +79,12 @@ export interface StockRow {
   avg_cost: string | null;
   value: string | null;
   below_par: boolean;
-  /** what went out over the last 14 days (lib/low-stock.ts) */
+  /** what went out over the last 14 days (`inv.recent_use`, lib/low-stock.ts) */
   used: string | null;
+  /** glasses, linen: no days on hand (ADR 076) */
+  durable: boolean;
+  /** running low: under par, or few days of use left (`inv.running_low`) */
+  low: boolean;
   /** the item's photo in the photo bucket (ADR 034) */
   photo_key: string | null;
 }
@@ -100,15 +104,12 @@ export async function stockList(tx: Tx, node: string, item?: string): Promise<St
   const r = await sql<StockRow>`
     select i.id as item_id, i.sku, i.name, i.category, i.base_uom, n.par_level, i.photo_key,
            coalesce(s.on_hand, 0) as on_hand, s.avg_cost, s.value,
-           coalesce(s.on_hand, 0) < n.par_level as below_par, u.used
+           coalesce(s.on_hand, 0) < n.par_level as below_par, u.used, i.durable,
+           inv.running_low(coalesce(s.on_hand, 0), n.par_level, u.used, i.durable) as low
       from inv.item_node n
       join inv.item i on i.id = n.item_id
       left join inv.stock_level s on s.item_id = n.item_id and s.delivery_node_id = n.delivery_node_id
-      left join lateral (
-        select -sum(l.qty) as used from inv.stock_ledger l
-         where l.item_id = n.item_id and l.delivery_node_id = n.delivery_node_id
-           and l.qty < 0 and l.movement_type <> 'count_adjust'
-           and l.occurred_at > now() - interval '14 days') u on true
+      cross join lateral (select inv.recent_use(n.item_id, n.delivery_node_id) as used) u
      where n.delivery_node_id = ${node}::uuid and n.archived_at is null and i.archived_at is null
        and (${item ?? null}::uuid is null or n.item_id = ${item ?? null}::uuid)
      order by i.category, i.name`.execute(tx);
@@ -133,15 +134,12 @@ export async function stockListAll(
     select i.id as item_id, i.sku, i.name, i.category, i.base_uom, n.par_level, i.photo_key,
            n.delivery_node_id::text as store_id,
            coalesce(s.on_hand, 0) as on_hand, s.avg_cost, s.value,
-           coalesce(s.on_hand, 0) < n.par_level as below_par, u.used
+           coalesce(s.on_hand, 0) < n.par_level as below_par, u.used, i.durable,
+           inv.running_low(coalesce(s.on_hand, 0), n.par_level, u.used, i.durable) as low
       from inv.item_node n
       join inv.item i on i.id = n.item_id
       left join inv.stock_level s on s.item_id = n.item_id and s.delivery_node_id = n.delivery_node_id
-      left join lateral (
-        select -sum(l.qty) as used from inv.stock_ledger l
-         where l.item_id = n.item_id and l.delivery_node_id = n.delivery_node_id
-           and l.qty < 0 and l.movement_type <> 'count_adjust'
-           and l.occurred_at > now() - interval '14 days') u on true
+      cross join lateral (select inv.recent_use(n.item_id, n.delivery_node_id) as used) u
      where n.delivery_node_id = any(${nodes}::uuid[])
        and n.archived_at is null and i.archived_at is null
      order by i.category, i.name, n.delivery_node_id`.execute(tx);
@@ -178,7 +176,11 @@ export interface ItemOption {
   name: string;
   base_uom: string;
   on_hand: string;
-  avg_cost: string;
+  /** null for whoever may not see what stock is worth here (`inv.sees_store_money`) */
+  avg_cost: string | null;
+  /** wastage over this quantity needs a photo and approval (worked out from its cost on the
+   * server, so the limit is known without the ₹); null when it has no cost */
+  approval_over?: string | null;
   /** Kitchen & Bar or Housekeeping, where the list is grouped (ADR 051 addendum) */
   item_group?: string | null;
   /** par at the asking store (stock requests, ADR 083) */
@@ -187,14 +189,19 @@ export interface ItemOption {
   needs_gm?: boolean;
 }
 
-/** Items set up at the node, for pickers. */
+/** Items set up at the node, for pickers: what they cost only for whoever reads the money of
+ * the store (KI-09); the wastage approval limit as a quantity for everyone. */
 export async function itemOptions(tx: Tx, node: string): Promise<ItemOption[]> {
   const r = await sql<ItemOption>`
     select i.id as item_id, i.name, i.base_uom, coalesce(s.on_hand, 0) as on_hand,
-           coalesce(s.avg_cost, 0) as avg_cost, i.discard_approval as needs_gm
+           case when m.sees then coalesce(s.avg_cost, 0) end as avg_cost,
+           case when s.avg_cost > 0 then round(m.threshold / s.avg_cost, 6) end as approval_over,
+           i.discard_approval as needs_gm
       from inv.item_node n
       join inv.item i on i.id = n.item_id
       left join inv.stock_level s on s.item_id = n.item_id and s.delivery_node_id = n.delivery_node_id
+      cross join (select inv.sees_store_money(${node}::uuid) as sees,
+                         inv.wastage_threshold(${node}::uuid) as threshold) m
      where n.delivery_node_id = ${node}::uuid and n.archived_at is null and i.archived_at is null
      order by i.name`.execute(tx);
   return r.rows;

@@ -418,6 +418,12 @@ describe('with a Main Store, a department asks it (ADR 115)', () => {
           (r) => r.name,
         ),
       ).toContain('Test Purchase Manager 1.0');
+      // never the keeper giving it, who can send it themselves (ADR 145)
+      expect(
+        (await rows<{ name: string }>(c, KEEPER, `select name from inv.send_people($1)`, [t])).map(
+          (r) => r.name,
+        ),
+      ).not.toContain('Test Store Keeper 1.0');
       expect(await fails(c, ASKER, `select * from inv.send_people($1)`, [t])).toMatch(
         /NOT_AUTHORISED/,
       );
@@ -573,10 +579,22 @@ describe('with no Main Store, a department asks the store that keeps it (ADR 115
         /Waiting for Test General Manager 1\.0.* to approve/,
       );
       expect(await told(c, GM)).toContainEqual(expect.stringMatching(/To approve.*Bar Store/));
+      // its status says so too, not "waiting to be sent" (ADR 145)
+      const progress = async () =>
+        (
+          await one<{ p: string }>(
+            c,
+            ASKER,
+            `select progress as p from inv.transfer_summary where id = $1`,
+            [t],
+          )
+        ).p;
+      expect(await progress()).toBe('awaiting_approval');
 
       await one(c, GM, `select wf.act($1, 'approve', null) as s`, [
         await requestOf(c, 'transfer', t),
       ]);
+      expect(await progress()).toBe('awaiting_dispatch');
       expect(await todo(c, BAR_MANAGER)).toContain(t);
       expect(await told(c, BAR_MANAGER)).toContainEqual(
         expect.stringMatching(/^Request from the .*: 12 /),
@@ -1245,6 +1263,37 @@ describe("an order's approval, on its page", () => {
       expect(
         await rows(c, 'test.bar-manager.3.0', `select * from inv.po_approval($1)`, [po]),
       ).toEqual([]);
+    });
+  });
+});
+
+describe('the ask and order forms say whose yes it waits for (ADR 145)', () => {
+  const preview = (c: PoolClient, node: string, item: string, qty: number, kind: string) =>
+    rows<{ approver: string | null; rule: string | null; why: string[] }>(
+      c,
+      ASKER,
+      `select * from inv.approval_preview($1, $2::jsonb, $3)`,
+      [ids.node(node), JSON.stringify([{ item_id: item, qty }]), kind],
+    );
+
+  it('the GM, where the outlet has the GM approve every request', async () => {
+    await inRolledBackTx(async (c) => {
+      await noMainStore(c);
+      const item = await lager(c);
+      expect(await preview(c, HK, item, 12, 'transfer')).toEqual([
+        { approver: 'gm', rule: 'every', why: [] },
+      ]);
+    });
+  });
+
+  it('nobody for a usual request by the usual rule; the GM for every order where so set', async () => {
+    await inRolledBackTx(async (c) => {
+      const item = await lager(c);
+      expect(await preview(c, HK, item, 1, 'transfer')).toEqual([]);
+      await approveEveryPurchase(c);
+      expect(await preview(c, HK, item, 1, 'order')).toEqual([
+        { approver: 'gm', rule: 'every', why: [] },
+      ]);
     });
   });
 });

@@ -79,7 +79,12 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
   // counts the day's work, never every room
   const dueToday = counted.filter((r) => r.due_today || r.checked_today);
   const checkedToday = dueToday.filter((r) => r.checked_today).length;
-  const toCharge = charge.reduce((s, c) => s + Number(c.charge), 0);
+  const toCharge = charge.reduce((s, c) => s + Number(c.charge ?? 0), 0);
+  // what guests were charged, and what it cost us: null for whoever sees no money (KI-09)
+  const total = (k: 'revenue' | 'cost') =>
+    usage.some((u) => u[k] !== null) ? usage.reduce((s, u) => s + Number(u[k] ?? 0), 0) : null;
+  const sold = total('revenue');
+  const costing = total('cost');
 
   return (
     <div className="space-y-4">
@@ -143,7 +148,9 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
               >
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="font-medium">Room {c.room}</span>
-                  <span className="font-semibold">{formatMoney(c.charge)}</span>
+                  {c.charge !== null && (
+                    <span className="font-semibold">{formatMoney(c.charge)}</span>
+                  )}
                 </div>
                 <UsedLines used={c.used} prices />
                 <p className="text-xs text-slate-500">
@@ -165,7 +172,7 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
             <>
               <p className="text-sm text-slate-600" data-testid="minibar-history-total">
                 {history.length} bill{history.length === 1 ? '' : 's'},{' '}
-                {formatMoney(history.reduce((s, c) => s + Number(c.charge), 0))}
+                {formatMoney(history.reduce((s, c) => s + Number(c.charge ?? 0), 0))}
               </p>
               <ul className="space-y-2" data-testid="minibar-history">
                 {history.map((c) => (
@@ -177,7 +184,11 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
                     <details>
                       <summary className="flex min-h-12 cursor-pointer items-center justify-between gap-2 px-4">
                         <span className="font-medium">Room {c.room}</span>
-                        <span className="font-semibold tabular-nums">{formatMoney(c.charge)}</span>
+                        {c.charge !== null && (
+                          <span className="font-semibold tabular-nums">
+                            {formatMoney(c.charge)}
+                          </span>
+                        )}
                       </summary>
                       <div className="space-y-1 border-t border-slate-100 px-4 pb-3">
                         <UsedLines used={c.used} prices />
@@ -206,10 +217,12 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
             <Empty>Nothing was taken from the minibars in these days.</Empty>
           ) : (
             <>
-              <p className="text-sm text-slate-600" data-testid="minibar-usage-total">
-                {formatMoney(usage.reduce((s, u) => s + Number(u.revenue), 0))} sold, costing{' '}
-                {formatMoney(usage.reduce((s, u) => s + Number(u.cost), 0))}
-              </p>
+              {/* the money only for whoever bills the minibars or reads their cost (KI-09) */}
+              {sold !== null && (
+                <p className="text-sm text-slate-600" data-testid="minibar-usage-total">
+                  {formatMoney(sold)} sold{costing !== null && `, costing ${formatMoney(costing)}`}
+                </p>
+              )}
               <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
                 {usage.map((u) => (
                   <li
@@ -223,12 +236,16 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
                         {formatQty(u.used, u.unit)} from {u.rooms} room{u.rooms === 1 ? '' : 's'}
                       </span>
                     </span>
-                    <span className="shrink-0 text-right text-sm">
-                      <span className="block font-semibold">{formatMoney(u.revenue)}</span>
-                      <span className="block text-xs text-slate-500">
-                        cost {formatMoney(u.cost)}
+                    {u.revenue !== null && (
+                      <span className="shrink-0 text-right text-sm">
+                        <span className="block font-semibold">{formatMoney(u.revenue)}</span>
+                        {u.cost !== null && (
+                          <span className="block text-xs text-slate-500">
+                            cost {formatMoney(u.cost)}
+                          </span>
+                        )}
                       </span>
-                    </span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -274,7 +291,7 @@ function DueThenFloors({ rooms, bills }: { rooms: MinibarRoomRow[]; bills: boole
   const due = rooms.filter((r) => r.due_today);
   const rest = rooms.filter((r) => !r.due_today);
   const tile = (r: MinibarRoomRow) => {
-    const charge = Number(r.to_charge);
+    const charge = Number(r.to_charge ?? 0);
     const tone = !r.set_name
       ? 'bg-slate-50 text-slate-500 ring-slate-200'
       : r.checked_today

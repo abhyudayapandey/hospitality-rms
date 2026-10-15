@@ -107,6 +107,8 @@ const L = 'LEADS_SHIFT';
 const D = 'RUNS_DEPARTMENT';
 /** Recipes, menu prices and costs: the kitchen's and the bar's managers only (ADR 123). */
 const R = 'READS_RECIPES';
+/** a restaurant's managers: the whole outlet's recipes and menu (KI-15) */
+const O = 'READS_OUTLET_RECIPES';
 
 const ROLE_LIST: readonly RoleDef[] = [
   // company and area
@@ -345,9 +347,8 @@ const ROLE_LIST: readonly RoleDef[] = [
       `${D}@department:BANQUETS`,
       'PLANS_EVENTS',
       'WRITES_SHIFT_BRIEFING',
-      R,
-      `${R}@department:BAR`,
-      `${R}@department:BANQUETS`,
+      // the whole outlet's recipes and menu: the restaurant keeps no store (KI-15)
+      O,
     ],
     sops: ['H'],
   },
@@ -356,7 +357,7 @@ const ROLE_LIST: readonly RoleDef[] = [
     title: 'Restaurant Manager',
     alsoCalled: ['Outlet Manager'],
     home: 'RESTAURANT',
-    duties: [D, 'PLANS_EVENTS', 'WRITES_SHIFT_BRIEFING', R],
+    duties: [D, 'PLANS_EVENTS', 'WRITES_SHIFT_BRIEFING', O],
     sops: ['H'],
   },
   {
@@ -558,7 +559,8 @@ const ROLE_LIST: readonly RoleDef[] = [
     code: 'LAUNDRY_ATTENDANT',
     title: 'Laundry Attendant',
     home: 'HOUSEKEEPING',
-    duties: [W],
+    // asks housekeeping's store for detergent and the like (ADR 145)
+    duties: ['USES_DEPARTMENT_STORE', W],
     sops: ['H'],
   },
 

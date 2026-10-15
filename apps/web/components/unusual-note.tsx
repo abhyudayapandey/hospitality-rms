@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { checkUnusual, type Line, type UnusualCheck } from '@/app/(app)/stock/actions';
+import { approvalHeadline } from '@/lib/approval-words';
 
 /**
- * Says before sending whether the department head will have to approve (PO-5, TR-3, ADR 044):
- * an item that is off the menu, or more than usual (a company setting times the week's use).
- * Nothing is shown for an order that goes through on its own beyond a short reassurance.
+ * Says before sending whether it will wait for a yes and whose (PO-5, TR-3, ADR 044, 142): the
+ * GM or the department head, as the outlet's rules decide (an item off the menu, more than
+ * usual, or every one). Nothing is shown for one that goes through on its own beyond a short
+ * reassurance.
  */
 export function UnusualNote({
   node,
@@ -44,7 +46,7 @@ export function UnusualNote({
   if (!check.needs) {
     return (
       <p data-testid="unusual-none" className="text-sm text-slate-600">
-        Menu items in usual quantities: no approval needed.
+        No approval needed.
       </p>
     );
   }
@@ -53,12 +55,14 @@ export function UnusualNote({
       data-testid="unusual-needs"
       className="space-y-1 rounded-lg bg-violet-50 p-3 text-sm text-violet-900"
     >
-      <p className="font-medium">The department head will be asked to approve this:</p>
-      <ul className="list-disc pl-5">
-        {check.why.map((w) => (
-          <li key={w}>{w}</li>
-        ))}
-      </ul>
+      <p className="font-medium">{approvalHeadline(check, kind)}</p>
+      {check.why.length > 0 && (
+        <ul className="list-disc pl-5">
+          {check.why.map((w) => (
+            <li key={w}>{w}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

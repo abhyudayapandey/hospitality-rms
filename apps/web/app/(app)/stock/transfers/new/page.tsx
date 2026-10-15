@@ -21,7 +21,7 @@ export default async function NewTransferPage({ searchParams }: { searchParams: 
     async (tx) =>
       (
         await sql<AskItem>`
-          select item_id::text, name, base_uom, on_hand::text, avg_cost::text, item_group,
+          select item_id::text, name, base_uom, on_hand::text, null::text as avg_cost, item_group,
                  par_level::text, source_id::text, source_name, source_on_hand::text
             from inv.ask_items(${ctx.node!.id}::uuid)`.execute(tx)
       ).rows,

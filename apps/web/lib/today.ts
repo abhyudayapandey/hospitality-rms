@@ -47,8 +47,10 @@ import {
   type PlaceDepartment,
 } from './today-view';
 
-// Whether an item is low (lib/low-stock.ts): below its par (ADR 141).
-const IS_LOW = sql`coalesce(s.on_hand, 0) < n.par_level`;
+// Whether an item is low (lib/low-stock.ts, `inv.running_low`): under its par, or few days of
+// use left, par or no par (ADR 141 with ADR 034, KI-05). The Stock lists use the same function.
+const IS_LOW = sql`inv.running_low(coalesce(s.on_hand, 0), n.par_level,
+  inv.recent_use(n.item_id, n.delivery_node_id), i.durable)`;
 
 // What Home's "Today" cards show (UX-2), read in one transaction. Each read is an existing
 // function or table under RLS; the cards are chosen by what the person can see, never by
@@ -72,7 +74,7 @@ export interface StoreWork {
   receive: number;
   /** transfers waiting to be sent from their stores */
   issue: number;
-  /** items below their par (lib/low-stock.ts) */
+  /** items running low: under par or few days left (lib/low-stock.ts) */
   low: number;
   /** the store they keep that was counted longest ago: whether a count is due (ADR 035, 053) */
   count: CountDue | null;
@@ -255,9 +257,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
                   join inv.item i on i.id = n.item_id and i.archived_at is null
                   left join inv.stock_level s on s.item_id = n.item_id
                                              and s.delivery_node_id = n.delivery_node_id
-                 where n.archived_at is null and n.par_level > 0 and ${IS_LOW})::int as low`.execute(
-        tx,
-      );
+                 where n.archived_at is null and ${IS_LOW})::int as low`.execute(tx);
       // the stores they count; the one counted longest ago (never counted first) says when
       const counted = await sql<{ last: Date | null; never: boolean }>`
         select min(x.last) as last, bool_or(x.last is null) as never
@@ -366,7 +366,7 @@ async function homeAttention(
       join inv.item i on i.id = n.item_id and i.archived_at is null
       left join inv.stock_level s on s.item_id = n.item_id
                                  and s.delivery_node_id = n.delivery_node_id
-     where n.archived_at is null and n.par_level > 0 and ${IS_LOW}
+     where n.archived_at is null and ${IS_LOW}
      group by n.delivery_node_id
     union all
     select 'flags', x.org_node_id::text, count(*)::int, null

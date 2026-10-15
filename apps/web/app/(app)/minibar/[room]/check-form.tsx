@@ -7,6 +7,7 @@ import { formatMoney } from '@/lib/format';
 import { inputQty } from '@/lib/qty';
 import { useHydrated } from '@/lib/use-hydrated';
 import { checkMinibar } from '../actions';
+import { chargeWords } from '../charge-words';
 import { ItemThumb } from '@/components/item-thumb';
 import { Stepper } from '@/components/stepper';
 
@@ -15,7 +16,8 @@ interface Item {
   name: string;
   unit: string;
   par: number;
-  price: string;
+  /** the guest's price; null for whoever sees no money (KI-09) */
+  price: string | null;
   inStore: number;
 }
 
@@ -34,7 +36,8 @@ export function CheckForm({ room, items }: { room: string; items: Item[] }) {
     const n = v === undefined || v === '' ? null : Number(v);
     return { ...i, left: n, used: n === null || Number.isNaN(n) ? 0 : Math.max(i.par - n, 0) };
   });
-  const charge = used.reduce((s, i) => s + i.used * Number(i.price), 0);
+  // the rupees for whoever bills it; for an attendant, the items and how many (KI-09)
+  const charge = chargeWords(used);
   const missing = used.filter((i) => i.left === null || Number.isNaN(i.left)).length;
 
   const save = () =>
@@ -51,8 +54,8 @@ export function CheckForm({ room, items }: { room: string; items: Item[] }) {
       setKey(crypto.randomUUID());
       setLeft({});
       setStatus(
-        charge > 0
-          ? `Saved. ${formatMoney(charge)} to add to the guest's bill. Refill it from your To do list.`
+        charge
+          ? `Saved. ${charge} to add to the guest's bill. Refill it from your To do list.`
           : 'Saved. Nothing was used.',
       );
       router.refresh();
@@ -82,7 +85,9 @@ export function CheckForm({ room, items }: { room: string; items: Item[] }) {
               <span className="min-w-0 flex-1">
                 <span className="block font-medium">{i.name}</span>
                 <span className="block text-xs text-slate-500">
-                  par {i.par} · {formatMoney(i.price)} each
+                  par {i.par}
+                  {i.price !== null &&
+                    (Number(i.price) === 0 ? ' · free' : ` · ${formatMoney(i.price)} each`)}
                   {i.inStore < i.par && ` · store has ${inputQty(i.inStore)}`}
                 </span>
               </span>
@@ -104,7 +109,7 @@ export function CheckForm({ room, items }: { room: string; items: Item[] }) {
         ))}
       </ul>
       <p className="text-sm" data-testid="minibar-charge-preview">
-        {charge > 0 ? `To charge: ${formatMoney(charge)}` : 'Nothing to charge yet'}
+        {charge ? `To charge: ${charge}` : 'Nothing to charge yet'}
       </p>
       <ErrorBox message={error} />
       <StatusBox message={status} />

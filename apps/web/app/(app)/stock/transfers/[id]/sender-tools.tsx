@@ -18,7 +18,7 @@ export function SenderTools({
   givenTo,
 }: {
   transfer: string;
-  people: { id: string; name: string }[];
+  people: { id: string; name: string; on_shift: boolean }[];
   givenTo: string | null;
 }) {
   const router = useRouter();
@@ -57,21 +57,32 @@ export function SenderTools({
       {picking ? (
         <div className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
           <p className="text-sm font-medium">Who brings it?</p>
-          <ul className="grid grid-cols-2 gap-2">
-            {people.map((p) => (
-              <li key={p.id}>
-                <button
-                  type="button"
-                  disabled={!hydrated || pending}
-                  onClick={() => give(p)}
-                  className="flex min-h-12 w-full items-center gap-2 rounded-lg bg-slate-50 p-2 text-left text-sm ring-1 ring-slate-200"
-                >
-                  <Initials name={p.name} />
-                  <span className="min-w-0 truncate">{p.name}</span>
-                </button>
-              </li>
+          {/* on shift today first (ADR 110, 142) */}
+          {[
+            ['On shift today', people.filter((p) => p.on_shift)] as const,
+            ['Not on shift today', people.filter((p) => !p.on_shift)] as const,
+          ]
+            .filter(([, list]) => list.length > 0)
+            .map(([title, list]) => (
+              <div key={title} className="space-y-1">
+                <p className="text-xs text-slate-500">{title}</p>
+                <ul className="grid grid-cols-2 gap-2">
+                  {list.map((p) => (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        disabled={!hydrated || pending}
+                        onClick={() => give(p)}
+                        className="flex min-h-12 w-full items-center gap-2 rounded-lg bg-slate-50 p-2 text-left text-sm ring-1 ring-slate-200"
+                      >
+                        <Initials name={p.name} />
+                        <span className="min-w-0 truncate">{p.name}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
           <button type="button" onClick={() => setPicking(false)} className={secondaryButton}>
             Not now
           </button>

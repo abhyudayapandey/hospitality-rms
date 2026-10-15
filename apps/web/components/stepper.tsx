@@ -66,20 +66,58 @@ export function Stepper({
 }
 
 /**
- * Tap-a-number for a reading with a safe range (ADR 098): the whole numbers around it, green
- * inside the range, amber just outside, red beyond. None when the range is wide or unknown.
+ * The step of a reading's taps (ADR 098): a round 1, 2 or 5 (times a power of ten) that crosses
+ * the safe range in at most 5 steps, so pH 7.2 to 7.8 goes by 0.2 and a chiller 0 to 5 by 1.
+ * `fine` is the − / + step: never coarser than 1, and 0.1 under 1 so a decimal reading fits.
+ * Null when the range is unknown.
+ */
+export function readingSteps(
+  min: number | null,
+  max: number | null,
+): { pick: number; fine: number } | null {
+  if (min === null || max === null || !(max > min)) return null;
+  const width = max - min;
+  let pick = 0;
+  for (let p = -2; p <= 6 && !pick; p++) {
+    for (const m of [1, 2, 5]) {
+      const s = Number((m * 10 ** p).toPrecision(6));
+      if (width / s <= 5 + 1e-9) {
+        pick = s;
+        break;
+      }
+    }
+  }
+  if (!pick) return null;
+  const fine = pick >= 1 ? 1 : pick >= 0.1 ? 0.1 : pick;
+  return { pick, fine };
+}
+
+const decimals = (s: number) => (String(s).split('.')[1] ?? '').length;
+
+/**
+ * Tap-a-number for a reading with a safe range (ADR 098): the safe range in round steps
+ * (`readingSteps`), with one step either side; green inside the range, amber outside. The label
+ * keeps the step's decimals ("7.0", "7.2"). None when the range is unknown.
  */
 export function quickPicks(
   min: number | null,
   max: number | null,
-): { value: number; tone: 'good' | 'near' | 'bad' }[] {
-  if (min === null || max === null || max - min > 8) return [];
-  const lo = Math.floor(min) - 1;
-  const hi = Math.ceil(max) + 2;
-  const out: { value: number; tone: 'good' | 'near' | 'bad' }[] = [];
-  for (let v = lo; v <= hi; v++) {
+): { value: number; label: string; tone: 'good' | 'near' | 'bad' }[] {
+  const steps = readingSteps(min, max);
+  if (!steps || min === null || max === null) return [];
+  const s = steps.pick;
+  const d = decimals(s);
+  const lo = Math.ceil(min / s - 1e-9) - 1;
+  const hi = Math.floor(max / s + 1e-9) + 1;
+  const out: { value: number; label: string; tone: 'good' | 'near' | 'bad' }[] = [];
+  for (let k = lo; k <= hi; k++) {
+    const v = Number((k * s).toFixed(6));
     const gap = v < min ? min - v : v > max ? v - max : 0;
-    out.push({ value: v, tone: gap === 0 ? 'good' : gap <= 1 ? 'near' : 'bad' });
+    out.push({
+      value: v,
+      label: v.toFixed(d),
+      tone: gap < 1e-9 ? 'good' : gap <= s + 1e-9 ? 'near' : 'bad',
+    });
   }
   return out;
 }

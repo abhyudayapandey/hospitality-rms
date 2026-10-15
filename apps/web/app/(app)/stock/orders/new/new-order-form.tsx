@@ -25,7 +25,7 @@ export interface OrderLine {
 
 /**
  * A supply request (ADR 049): items and quantities only. Nothing is filled in (ADR 053); each
- * line says what the store has and its par, and "Fill all N short items up to par" fills what
+ * line says what the store has and its par, and "Fill all N short items" fills what
  * would bring the short items back up to it (ADR 054).
  */
 export function NewOrderForm({

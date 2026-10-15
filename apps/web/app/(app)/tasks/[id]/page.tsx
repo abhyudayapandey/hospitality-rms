@@ -13,7 +13,7 @@ import { formatQty } from '@/lib/inventory';
 import { itemPhotoUrls, photosEnabled } from '@/lib/photos';
 import { prepTaskRecipe, type PrepRecipe } from '@/lib/production';
 import {
-  assignablePeople,
+  peopleOnShift,
   handOnPeople,
   taskDetail,
   taskPhotos,
@@ -110,7 +110,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         // a reported expired batch: the lead gives the discard to someone there
         const p =
           t.status === 'reported' && (t.can_manage || t.discard?.can_approve)
-            ? await assignablePeople(tx, t.org_node_id)
+            ? await peopleOnShift(tx, t.org_node_id)
             : t.can_hand_on
               ? await handOnPeople(tx, id)
               : [];
@@ -410,7 +410,11 @@ function ComplianceWork({ task, about }: { task: TaskDetail; about: ComplianceTa
             {about.name} at {about.place_name}
             {about.number && ` · ${about.number}`}
             {about.authority && ` · issued by ${about.authority}`}
-            {about.expires_on && ` · expires ${dayWords(about.expires_on)}`}
+            {/* once renewed, the new licence's day, never the old one's */}
+            {about.expires_on &&
+              (about.renewed
+                ? ` · renewed, now expires ${dayWords(about.expires_on)}`
+                : ` · expires ${dayWords(about.expires_on)}`)}
           </>
         ) : (
           <>

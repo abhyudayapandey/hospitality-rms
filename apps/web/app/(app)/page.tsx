@@ -29,6 +29,7 @@ import {
   complianceCard,
   departmentTiles,
   doFirst,
+  notOnCards,
   shiftLine,
   todaysTasks,
 } from '@/lib/today-view';
@@ -89,15 +90,19 @@ export default async function Home() {
   });
   const now = new Date();
   const pushKey = pushPublicKey();
+  // a job with its own card is shown there, never as a task too (ADR 113)
+  const myTasks = notOnCards(today.tasks, {
+    minibarBills: (today.minibar?.charge ?? null) !== null,
+  });
   // the next job, then the three after it (ADR 098)
-  const tasks = todaysTasks(today.tasks, now, tz, 4);
+  const tasks = todaysTasks(myTasks, now, tz, 4);
   const frontline = today.profile === 'frontline';
   const tiles = frontline
     ? homeTiles(screenInput(shell)).map((t) => ({
         ...t,
         badge:
           t.key === 'make'
-            ? { n: today.tasks.filter((x) => x.kind === 'prep').length, tone: 'brand' }
+            ? { n: myTasks.filter((x) => x.kind === 'prep').length, tone: 'brand' }
             : null,
       }))
     : [];
@@ -287,7 +292,7 @@ export default async function Home() {
           today.attention
             ? doFirst({
                 attention: today.attention,
-                overdueTasks: today.tasks.filter((x) => x.overdue).length,
+                overdueTasks: myTasks.filter((x) => x.overdue).length,
                 toAssign: today.approvals.toAssign,
                 openSlotsHref: today.openSlotsHref,
               })

@@ -10,8 +10,6 @@ import { ExportLink } from '@/components/date-range';
 import { ItemThumb } from '@/components/item-thumb';
 import { Empty } from '@/components/messages';
 import { requireUser } from '@/lib/auth/server';
-import { navProfile } from '@/lib/nav';
-import { loadShell } from '@/lib/shell';
 import { breakageItems, breakageLog, breakageMonths, breakagePlaces } from '@/lib/breakage';
 import { localToday } from '@/lib/dates';
 import { withUser } from '@/lib/db';
@@ -63,9 +61,10 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
         .map(async (e) => [e.id, await presignPhotoView(e.photo_key!).catch(() => null)] as const),
     ),
   );
-  const total = log.reduce((s, e) => s + Number(e.value), 0);
-  // what it cost is for managers; the floor records and reads what broke (ADR 153)
-  const money = navProfile((await loadShell()).groups) !== 'frontline';
+  // the ₹ only for whoever reads the store's cost (KI-09): the rest see counts
+  const total = log.some((e) => e.value !== null)
+    ? log.reduce((s, e) => s + Number(e.value ?? 0), 0)
+    : null;
   const href = (p: string, m = month) => `/breakage?place=${p}&month=${m}`;
   return (
     <div className="space-y-4">
@@ -99,7 +98,7 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
           {monthWords(month)}{' '}
           <span className="text-sm font-normal text-slate-600" data-testid="breakage-total">
             {log.length} {log.length === 1 ? 'entry' : 'entries'}
-            {money && ` · ${formatMoney(total)}`}
+            {total !== null && ` · ${formatMoney(total)}`}
           </span>
         </h2>
         {log.length > 0 && <ExportLink list="breakage" params={{ place: place.place_id, month }} />}
@@ -149,7 +148,7 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
                     />
                   </a>
                 )}
-                {money && (
+                {e.value !== null && (
                   <span className="shrink-0 font-medium tabular-nums">{formatMoney(e.value)}</span>
                 )}
               </li>
@@ -171,7 +170,7 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
                   <span>{monthWords(m.month)}</span>
                   <span className="tabular-nums">
                     {m.entries}
-                    {money && ` · ${formatMoney(m.value)}`}
+                    {m.value !== null && ` · ${formatMoney(m.value)}`}
                   </span>
                 </Link>
               </li>
