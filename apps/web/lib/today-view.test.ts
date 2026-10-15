@@ -57,9 +57,20 @@ describe('currentShift and shiftLine', () => {
     expect(currentShift([s('2026-10-04T00:30:00Z', '2026-10-04T08:30:00Z')], NOW)).toBeNull();
     expect(currentShift([s('2026-10-01T00:30:00Z', '2026-10-01T08:30:00Z')], NOW)).toBeNull();
   });
-  it('reads as today or tomorrow, with the place', () => {
+  it('a shift running past midnight reads "Now"; the next one is named by the business day', () => {
+    const night = s('2026-10-02T11:30:00Z', '2026-10-02T19:30:00Z'); // 17:00–01:00 in Kolkata
+    const at = new Date('2026-10-02T19:00:00Z'); // 00:30 on 3 Oct: still 2 Oct's business day
+    expect(shiftLine(night, at, TZ)).toBe('Now 17:00–01:00 +1 · Kitchen');
+    expect(shiftLine(s('2026-10-03T11:30:00Z', '2026-10-03T19:30:00Z'), at, TZ)).toBe(
+      'Tomorrow 17:00–01:00 +1 · Kitchen',
+    );
+  });
+  it('reads as now, today or tomorrow, with the place', () => {
     expect(shiftLine(s('2026-10-02T00:30:00Z', '2026-10-02T08:30:00Z'), NOW, TZ)).toBe(
-      'Today 06:00–14:00 · Kitchen',
+      'Now 06:00–14:00 · Kitchen',
+    );
+    expect(shiftLine(s('2026-10-02T09:30:00Z', '2026-10-02T17:30:00Z'), NOW, TZ)).toBe(
+      'Today 15:00–23:00 · Kitchen',
     );
     expect(shiftLine(s('2026-10-02T19:30:00Z', '2026-10-03T03:30:00Z'), NOW, TZ)).toBe(
       'Tomorrow 01:00–09:00 · Kitchen',
@@ -474,6 +485,23 @@ describe("department tiles on a manager's Home (ADR 105)", () => {
       else
         expect(g.lines.some((l) => t.fact.startsWith(`${l.n} `) && l.href === t.href)).toBe(true);
     }
+  });
+
+  it('a department with rounds late is never "All done"; the tile opens its team tasks', () => {
+    const groups = attentionGroups(
+      [
+        { kind: 'late', node: 'n-Engineering', n: 2 },
+        { kind: 'repairs', node: 'n-Engineering', n: 1 },
+      ],
+      places,
+      places.slice(0, 5),
+    );
+    const eng = departmentTiles(groups).find((t) => t.label === 'Engineering')!;
+    expect([eng.tone, eng.fact, eng.href]).toEqual([
+      'warn',
+      '2 late',
+      '/tasks/team?node=d-Engineering',
+    ]);
   });
 
   it("a department's picture from its name, else its type", () => {

@@ -366,13 +366,17 @@ export async function meTile(page: Page, key: string) {
  */
 export async function takePhoto(scope: Locator) {
   const shoot = scope.getByTestId('live-camera').getByRole('button', { name: 'Take photo' });
-  // a screen still refreshing after the last step can drop the first tap: tap until it opens
+  const camera = scope.getByTestId('live-camera');
+  const taken = scope.getByRole('button', { name: 'Take it again' });
+  // a screen still refreshing after the last step can drop a tap, the camera's or the shutter's:
+  // open the camera and shoot until the camera has closed on a photo
   await expect(async () => {
     if (!(await shoot.isVisible())) await scope.getByTestId('photo-camera').click();
     await expect(shoot).toBeEnabled({ timeout: 2_000 });
-  }).toPass({ timeout: 15_000 });
-  await shoot.click();
-  await expect(scope.getByRole('button', { name: 'Take it again' })).toBeVisible();
+    await shoot.click({ timeout: 2_000 });
+    await expect(camera).toHaveCount(0, { timeout: 3_000 });
+    await expect(taken.first()).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 30_000 });
 }
 
 /** A task with no steps takes a photo of the job done before it is marked done (ADR 127). */

@@ -8,12 +8,12 @@ import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import {
   addDays,
+  businessToday,
   formatDay,
   formatSpan,
   formatTime,
   hoursBetween,
   localDate,
-  localToday,
   localToInstant,
 } from '@/lib/dates';
 import { withUser } from '@/lib/db';
@@ -65,7 +65,7 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
   const ctx = await peopleContext(searchParams);
   const user = await requireUser();
   const title = await withUser(user.id, jobTitles);
-  const today = localToday(ctx.tz);
+  const today = businessToday(ctx.tz);
   const data = await withUser(user.id, async (tx) => {
     const worker = await myWorker(tx);
     const timeline = worker
@@ -148,11 +148,16 @@ export default async function MyShiftsPage({ searchParams }: { searchParams: Sea
             >
               <p className="text-sm text-brand-100">
                 Your next shift ·{' '}
-                {next.local_date === today
-                  ? 'Today'
-                  : next.local_date === addDays(today, 1)
-                    ? 'Tomorrow'
-                    : formatDay(next.local_date)}
+                {next.shift_start &&
+                next.shift_end &&
+                new Date(next.shift_start) <= now &&
+                new Date(next.shift_end) > now
+                  ? 'Now'
+                  : next.local_date === today
+                    ? 'Today'
+                    : next.local_date === addDays(today, 1)
+                      ? 'Tomorrow'
+                      : formatDay(next.local_date)}
               </p>
               <p className="flex items-center gap-2 text-2xl font-bold tabular-nums">
                 <Icon

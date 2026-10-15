@@ -1,3 +1,5 @@
+import { addDays, businessDate, formatTime } from './dates';
+
 export function processLabel(processType: string): string {
   return processType
     .toLowerCase()
@@ -16,21 +18,19 @@ export function formatMoney(amount: string | number | null, currency = 'INR'): s
 }
 
 /**
- * When something happened, in one short style (UX review U-25): "today, 2:54 pm",
- * "yesterday, 9:10 am", else "2 Oct, 2:54 pm". Times are the outlet's (Asia/Kolkata).
+ * When something happened or is due, in one short style (UX review U-25): "today, 14:54",
+ * "yesterday, 09:10", "tomorrow, 07:00", else "2 Oct, 14:54". Times are the outlet's (Asia/Kolkata), on the
+ * 24-hour clock, and "today" is the 04:00 business day (ADR 148).
  */
 export function formatWhen(d: Date | string, now: Date = new Date()): string {
   const tz = 'Asia/Kolkata';
   const at = new Date(d);
-  const day = (x: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(x);
-  const time = new Intl.DateTimeFormat('en-IN', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    timeZone: tz,
-  }).format(at);
-  if (day(at) === day(now)) return `today, ${time}`;
-  if (day(at) === day(new Date(now.getTime() - 86_400_000))) return `yesterday, ${time}`;
+  const time = formatTime(at, tz);
+  const today = businessDate(now, tz);
+  const day = businessDate(at, tz);
+  if (day === today) return `today, ${time}`;
+  if (day === addDays(today, -1)) return `yesterday, ${time}`;
+  if (day === addDays(today, 1)) return `tomorrow, ${time}`;
   const date = new Intl.DateTimeFormat('en-IN', {
     day: 'numeric',
     month: 'short',

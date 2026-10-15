@@ -281,8 +281,9 @@ A normal onboarding file: a real customer loads its own. One row per step; `temp
 - **`schedule`**, local to the place: `daily 07:00 15:00`, `weekly Mon,Thu 09:00`, or
   `every 2h 08:00-22:00` (1, 2, 3, 4, 6, 8 or 12 hours; a window like `22:00-02:00` runs past
   midnight).
-- **`assign_to`**: `role:COMMIS` (everyone in that job role at the place; the first to start
-  takes it), `on_shift` (whoever is rostered there at the due time) or `person:username`.
+- **`assign_to`**: `role:COMMIS` (that job role's people at the place who work at the due
+  time, or are not on the roster at all; else the department head; the first to start takes
+  it, ADR 148), `on_shift` (whoever is rostered there at the due time) or `person:username`.
 - **`from_library`** (optional, ADR 062): `CHILLER-LOG@1` on a copy of a starter library
   checklist, recorded so a newer library version can be offered later. Outlets added from a
   template in the console get it; the outlet owns its copy.
@@ -297,7 +298,7 @@ instance) makes each checklist's tasks for the next 24 hours.
 | ------------- | ---------------------- | -------------------------------------------------------------------- |
 | Test Company  | Hotel 1.0 Kitchen      | Kitchen opening, Kitchen closing, Fridge temperature log (every 4 h) |
 | Test Company  | Hotel 1.0 Bar          | Bar setup, Bar closing                                               |
-| Test Company  | Hotel 1.0 Front Office | Front desk shift handover (07:00, 15:00, 23:00)                      |
+| Test Company  | Hotel 1.0 Front Office | Front desk shift handover (07:00, 15:00, 23:00), Front Desk Exec.    |
 | Test Company  | Hotel 1.0 Housekeeping | Lobby washroom check (every 2 h), Linen room count (Mondays)         |
 | Test Company  | Hotel 1.1 Kitchen      | Kitchen opening, Chiller and freezer log: library copies (`@1`)      |
 | Test Company  | Bar 3.0 Kitchen, Bar   | Kitchen opening and closing; Bar setup                               |

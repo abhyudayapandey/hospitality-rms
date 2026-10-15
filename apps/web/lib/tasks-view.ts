@@ -1,4 +1,4 @@
-import { DEFAULT_TZ, localDate, localToday } from './dates';
+import { addDays, businessDate, DEFAULT_TZ, formatDay, formatTime } from './dates';
 import { formatWhen } from './format';
 
 // Presentation helpers for tasks and checklists (ADR 020), free of server-only so unit
@@ -27,15 +27,29 @@ export function groupTasks<T extends TaskRow>(
   tz: string = DEFAULT_TZ,
   now: Date = new Date(),
 ): Record<TaskGroup, T[]> {
-  const today = localToday(tz, now);
+  const today = businessDate(now, tz);
   const out: Record<TaskGroup, T[]> = { overdue: [], today: [], upcoming: [], done: [] };
   for (const r of rows) {
     if (r.status === 'done') out.done.push(r);
     else if (r.overdue) out.overdue.push(r);
-    else if (localDate(r.due_at, tz) <= today) out.today.push(r);
+    else if (businessDate(r.due_at, tz) <= today) out.today.push(r);
     else out.upcoming.push(r);
   }
   return out;
+}
+
+/**
+ * When a task is due, its day said when it isn't today (ADR 148): "16:00", "Yesterday 16:00",
+ * "Tomorrow 07:00", "Mon, 12 Oct 07:00". Today is the 04:00 business day; 24-hour clock.
+ */
+export function dueText(at: Date | string, tz: string = DEFAULT_TZ, now: Date = new Date()) {
+  const time = formatTime(at, tz);
+  const today = businessDate(now, tz);
+  const day = businessDate(at, tz);
+  if (day === today) return time;
+  if (day === addDays(today, -1)) return `Yesterday ${time}`;
+  if (day === addDays(today, 1)) return `Tomorrow ${time}`;
+  return `${formatDay(day)} ${time}`;
 }
 
 /**
@@ -83,9 +97,7 @@ export function rejected(t: { status: string; not_given_reason?: string | null }
  */
 export function doneLately(at: Date | string | null, now: Date = new Date()): boolean {
   if (!at) return false;
-  const day = (d: Date) => localDate(new Date(d.getTime() - 4 * 3_600_000), DEFAULT_TZ);
-  const yesterday = localDate(new Date(now.getTime() - 28 * 3_600_000), DEFAULT_TZ);
-  return day(new Date(at)) >= yesterday;
+  return businessDate(at, DEFAULT_TZ) >= addDays(businessDate(now, DEFAULT_TZ), -1);
 }
 
 /** Who has a task on a manager's list: "You" when it is theirs, else the name or the pool. */

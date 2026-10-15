@@ -62,6 +62,13 @@ const mine = async (c: pg.PoolClient, who: string, task: string) =>
 
 /** A one-off for the room attendants' job role in housekeeping, due an hour ago. */
 async function roleTask(c: pg.PoolClient): Promise<string> {
+  // rounds follow the roster (ADR 148): the department is taken off it, so its people keep
+  // their role's tasks whatever the time the test runs
+  await c.query(
+    `delete from hr.shift_assignment a using hr.worker w
+      where w.id = a.worker_id and w.org_node_id = $1`,
+    [ids.node(HK)],
+  );
   const r = await c.query<{ id: string }>(
     `insert into ops.task (tenant_id, org_node_id, kind, title, due_at, assign_mode, job_role_code)
      select tenant_id, id, 'one_off', 'Turn down the suites', now() - interval '1 hour',

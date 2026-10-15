@@ -65,3 +65,7 @@ PASSPORT-ASSAGAO-CASHIER,Evening,CASHIER,1,"Mon-Thu,Sat-Sun",passport.cashier,pa
 PASSPORT-ASSAGAO-ENGINEERING,Day,TECHNICIAN,1,"Mon-Fri,Sun",passport.technician,passport.chief-engineer
 PASSPORT-ASSAGAO-BANQUETS,Event,BANQUET_CAPTAIN,1,Tue-Sun,passport.banquet-captain,passport.banquet-manager
 PASSPORT-ASSAGAO-BANQUETS,Event,BANQUET_SERVER,1,"Mon,Wed-Sun",passport.banquet-server,passport.banquet-manager
+PASSPORT-ASSAGAO-SECURITY,Day,SECURITY_GUARD,0,Mon-Thu,passport.security-day,passport.security-supervisor
+PASSPORT-ASSAGAO-SECURITY,Night,SECURITY_GUARD,0,Mon-Thu,passport.security-night,passport.security-supervisor
+PASSPORT-ASSAGAO-SECURITY,Day,SECURITY_GUARD,1,Mon-Thu,passport.security-day,passport.security-supervisor
+PASSPORT-ASSAGAO-SECURITY,Night,SECURITY_GUARD,1,Mon-Thu,passport.security-night,passport.security-supervisor

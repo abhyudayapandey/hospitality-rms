@@ -2,11 +2,12 @@ import { Icon } from '@/components/icon';
 import { Empty } from '@/components/messages';
 import { PeopleHeader } from '@/components/people-header';
 import { requireUser } from '@/lib/auth/server';
-import { addDays, formatDay, formatSpan, formatTime, localDate, localToday } from '@/lib/dates';
+import { addDays, businessToday, formatDay, formatSpan, formatTime, localDate } from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import type { SearchParams } from '@/lib/inventory';
 import { myShifts, myWorker, openPunch, pastSessions, peopleContext } from '@/lib/people';
 import { formatDuration } from '@/lib/timeline';
+import { shiftLine } from '@/lib/today-view';
 import { ClockPanel } from './clock-panel';
 
 // Clock in/out. Location is checked against the outlet's geofence in SQL; outside the
@@ -16,7 +17,7 @@ import { ClockPanel } from './clock-panel';
 export default async function ClockPage({ searchParams }: { searchParams: SearchParams }) {
   const ctx = await peopleContext(searchParams);
   const user = await requireUser();
-  const today = localToday(ctx.tz);
+  const today = businessToday(ctx.tz);
   const data = await withUser(user.id, async (tx) => ({
     worker: await myWorker(tx),
     punch: await openPunch(tx),
@@ -43,7 +44,7 @@ export default async function ClockPage({ searchParams }: { searchParams: Search
             noShiftToday={!ended && next?.local_date !== today}
             shiftLine={
               next
-                ? `${next.local_date === today ? 'Today' : 'Tomorrow'} ${formatSpan(next.start_at, next.end_at, ctx.tz)} · ${next.node_name}`
+                ? shiftLine(next, new Date(), ctx.tz)
                 : ended
                   ? `Today's shift (${formatSpan(ended.start_at, ended.end_at, ctx.tz)}) has ended`
                   : null

@@ -289,6 +289,13 @@ describe('every way a task is assigned records who gave it to whom, and when', (
 
   it('a task made for a job role: given when made; taking it is recorded as taking it', async () => {
     await inRolledBackTx(async (c) => {
+      // rounds follow the roster (ADR 148): housekeeping is taken off it, so the attendant keeps
+      // the role's task whatever the time the test runs
+      await c.query(
+        `delete from hr.shift_assignment a using hr.worker w
+          where w.id = a.worker_id and w.org_node_id = $1`,
+        [ids.node(HK)],
+      );
       const task = await create(c, EH, HK, { mode: 'job_role', role: 'ROOM_ATTENDANT' });
       expect(await history(c, task)).toEqual([]);
       expect(await assignedAt(c, task)).not.toBeNull();
