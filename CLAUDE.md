@@ -433,6 +433,12 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   for those who run them; the nav offers Roster only where Me does (`inNavToo`; HR, reading many
   places' rosters, has it); Push today is for food and drink (kitchen and service departments,
   the outlet's managers).
+- The re-audit's fixes (ADR 160): one use-by rule (`inv.past_use_by`, the business day); count
+  units are plural (`unitWord`, `formatCount`); a started shift has no open slots; Deactivate is
+  on the person's page; a part day's report has no last week or cost shares (`partDayRows`);
+  People figures leave out the account owner and demo presenters. The app's connections run
+  with JIT off (`APP_PG_OPTIONS`); a screen's independent parts load side by side, each in its
+  own `withUser`; item pictures load lazily.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in
