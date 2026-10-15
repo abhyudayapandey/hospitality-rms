@@ -277,6 +277,13 @@ describe('staff see and complete only their own tasks', () => {
 
   it('a task for a job role reaches everyone in that role there; the first to start takes it', async () => {
     await inRolledBackTx(async (c) => {
+      // off the roster, the role's people all have it (who is on shift: ADR 148,
+      // rounds-follow-roster.db.test.ts)
+      await c.query(
+        `delete from hr.shift_assignment a using hr.worker w
+          where w.id = a.worker_id and w.org_node_id = $1`,
+        [ids.node(KITCHEN)],
+      );
       const t = await created(c, 'test.executive-chef.1.0', KITCHEN, {
         mode: 'job_role',
         role: 'COMMIS',

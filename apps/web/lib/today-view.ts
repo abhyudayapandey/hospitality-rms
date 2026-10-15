@@ -3,7 +3,7 @@
 
 import { daysWords } from '@outlet-ops/domain';
 import type { IconName } from '@/components/icon';
-import { addDays, formatDay, formatSpan, localDate } from './dates';
+import { addDays, businessToday, formatDay, formatSpan, localDate } from './dates';
 import { listHref, stockHref } from './stock-view';
 
 export interface TaskLike {
@@ -64,19 +64,26 @@ export function laterShift<S extends ShiftLike>(shifts: readonly S[], now: Date)
   );
 }
 
-/** "Today 06:00–14:00 · Kitchen", "Tomorrow 22:00–06:00 · Bar", "Mon, 12 Oct 16:00–00:00 · Bar". */
+/**
+ * "Now 17:00–01:00 · Bar" while it runs, else "Today 06:00–14:00 · Kitchen", "Tomorrow
+ * 22:00–06:00 · Bar", "Mon, 12 Oct 16:00–00:00 · Bar". Today is the business day (ADR 148).
+ */
 export function shiftLine(s: ShiftLike, now: Date, tz: string): string {
   const d = localDate(s.start_at, tz);
+  const today = businessToday(tz, now);
+  const t = now.getTime();
   const day =
-    d === localDate(now, tz)
-      ? 'Today'
-      : d === addDays(localDate(now, tz), 1)
-        ? 'Tomorrow'
-        : formatDay(d);
+    new Date(s.start_at).getTime() <= t && new Date(s.end_at).getTime() > t
+      ? 'Now'
+      : d === today
+        ? 'Today'
+        : d === addDays(today, 1)
+          ? 'Tomorrow'
+          : formatDay(d);
   return `${day} ${formatSpan(s.start_at, s.end_at, tz)} · ${s.node_name}`;
 }
 
-export type AttentionKind = 'lowStock' | 'flags' | 'repairs' | 'openSlots';
+export type AttentionKind = 'lowStock' | 'late' | 'flags' | 'repairs' | 'openSlots';
 
 /** One count at one place: a store (low stock) or an org place (the rest). */
 export interface AttentionCount {
@@ -122,11 +129,12 @@ export interface AttentionGroup {
   type?: string | null | undefined;
 }
 
-const KINDS: readonly AttentionKind[] = ['lowStock', 'flags', 'repairs', 'openSlots'];
+const KINDS: readonly AttentionKind[] = ['lowStock', 'late', 'flags', 'repairs', 'openSlots'];
 
 /** Low stock runs out within three days: red. The rest wait a little: amber. */
 const TONE: Record<AttentionKind, AttentionTone> = {
   lowStock: 'bad',
+  late: 'warn',
   repairs: 'warn',
   flags: 'warn',
   openSlots: 'warn',
@@ -139,6 +147,11 @@ const LINE: Record<AttentionKind, { href: string; one: string; many: string }> =
     href: stockHref({ tab: 'low', all: true }),
     one: 'item running low',
     many: 'items running low',
+  },
+  late: {
+    href: listHref('/tasks/team', { all: true }),
+    one: 'task late',
+    many: 'tasks late',
   },
   flags: {
     href: listHref('/roster/exceptions', { all: true }),
@@ -217,6 +230,8 @@ export function attentionGroups(
         return g.stores.size === 1
           ? stockHref({ tab: 'low', node: [...g.stores][0]! })
           : LINE[k].href;
+      case 'late':
+        return scope ? listHref('/tasks/team', { node: scope }) : LINE[k].href;
       case 'flags':
         return dept ? listHref('/roster/exceptions', { node: dept }) : LINE[k].href;
       case 'repairs':
@@ -304,10 +319,11 @@ export interface DepartmentTile {
   href: string;
 }
 
-// the one fact a tile shows: what runs out first, then what is broken, then people
-const FACT_ORDER: readonly AttentionKind[] = ['lowStock', 'repairs', 'flags', 'openSlots'];
+// the one fact a tile shows: what runs out first, then what is late, what is broken, people
+const FACT_ORDER: readonly AttentionKind[] = ['lowStock', 'late', 'repairs', 'flags', 'openSlots'];
 const FACT: Record<AttentionKind, [string, string]> = {
   lowStock: ['running low', 'running low'],
+  late: ['late', 'late'],
   repairs: ['repair', 'repairs'],
   flags: ['attendance issue', 'attendance issues'],
   openSlots: ['open shift', 'open shifts'],

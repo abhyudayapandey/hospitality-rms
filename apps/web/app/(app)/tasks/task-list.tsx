@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { taskIcon } from '@outlet-ops/domain';
 import { Icon } from '@/components/icon';
 import { formatWhen } from '@/lib/format';
-import { overdueWhenGiven, progress, rejected } from '@/lib/tasks-view';
+import { dueText, overdueWhenGiven, progress, rejected } from '@/lib/tasks-view';
 
 export interface ListedTask {
   id: string;
@@ -104,9 +104,7 @@ export function TaskList({
                       <span
                         className={t.overdue ? 'font-semibold text-rose-700' : 'text-slate-600'}
                       >
-                        {t.steps_total > 1 && t.steps_done > 0
-                          ? p.text
-                          : formatWhen(t.due_at).replace(/^today, /, '')}
+                        {t.steps_total > 1 && t.steps_done > 0 ? p.text : dueText(t.due_at)}
                       </span>
                       {(t.overdue || t.priority === 'high') && (
                         <span

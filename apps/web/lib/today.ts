@@ -1,5 +1,5 @@
 import 'server-only';
-import { addDays, localToday, weekStart } from './dates';
+import { addDays, businessToday, weekStart } from './dates';
 import { sql, withUser, type Tx } from './db';
 import { myBriefing, type MyBriefing } from './briefing';
 import { lastHandovers, type LastHandover } from './handover';
@@ -173,7 +173,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
   const atWork = shell.home?.at_workplace ?? false;
   return withUser(shell.user.id, async (tx) => {
     const now = new Date();
-    const today = localToday(tz, now);
+    const today = businessToday(tz, now);
     const shifts =
       atWork && shell.domains.has('ROSTER') ? await myShifts(tx, addDays(today, -1), 9) : [];
     const punch = atWork ? await openPunch(tx) : null;
@@ -289,6 +289,16 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
                  where core.can('TASKS', 'modify', d, null)`.execute(tx)
             ).rows.map((r) => r.id)
           : [];
+      // rounds late in a department they run: never "All done" while one is overdue. The same
+      // list Team tasks shows there (its last seven days), so the count is that list's.
+      if (run.length > 0) {
+        const late = await sql<AttentionCount>`
+          select 'late' as kind, d::text as node, null as href,
+                 (select count(*) from ops.team_tasks(d, ${addDays(today, -7)}::date, ${today}::date) t
+                   where t.overdue)::int as n
+            from unnest(${run}::uuid[]) d`.execute(tx);
+        all.push(...late.rows);
+      }
       const nodes = [...new Set([...all.map((c) => c.node), ...run])];
       const places =
         nodes.length > 0

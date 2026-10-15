@@ -78,8 +78,17 @@ async function template(
   return row!.id;
 }
 
-/** Makes the template's round due on 5 Oct 2026 (a Monday) at 07:00 and returns it. */
+/**
+ * Makes the template's round due on 5 Oct 2026 (a Monday) at 07:00 and returns it. The
+ * kitchen's people are taken off the roster first, so the round reaches the commis whatever
+ * their shifts that day (rounds follow the roster, ADR 148; rounds-follow-roster.db.test.ts).
+ */
 async function round(c: PoolClient, tpl: string) {
+  await c.query(
+    `delete from hr.shift_assignment a using hr.worker w
+      where w.id = a.worker_id and w.org_node_id = $1`,
+    [ids.node(KITCHEN)],
+  );
   await tick(c, '2026-10-05T06:00:00+05:30');
   const { rows } = await c.query<{ id: string }>(
     `select id from ops.task where template_id = $1 order by due_at limit 1`,

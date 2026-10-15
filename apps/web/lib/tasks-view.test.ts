@@ -3,6 +3,7 @@ import {
   describeSchedule,
   doneBy,
   doneLately,
+  dueText,
   groupTasks,
   myTaskWho,
   outOfRange,
@@ -14,14 +15,14 @@ import {
 } from './tasks-view';
 
 describe('my tasks grouping', () => {
-  it('puts overdue first, then today, coming up and done (in local days)', () => {
+  it('puts overdue first, then today, coming up and done (in business days, 04:00 to 04:00)', () => {
     const now = new Date('2026-10-02T12:00:00Z'); // 17:30 in Kolkata
     const g = groupTasks(
       [
         { id: 'a', title: 'A', due_at: '2026-10-02T10:00:00Z', status: 'open', overdue: true },
         // 23:00 IST today
         { id: 'b', title: 'B', due_at: '2026-10-02T17:30:00Z', status: 'open', overdue: false },
-        // 00:30 IST tomorrow
+        // 00:30 IST tomorrow: still today's business day
         {
           id: 'c',
           title: 'C',
@@ -29,6 +30,8 @@ describe('my tasks grouping', () => {
           status: 'in_progress',
           overdue: false,
         },
+        // 05:00 IST tomorrow
+        { id: 'e', title: 'E', due_at: '2026-10-02T23:30:00Z', status: 'open', overdue: false },
         { id: 'd', title: 'D', due_at: '2026-10-01T10:00:00Z', status: 'done', overdue: false },
       ],
       'Asia/Kolkata',
@@ -36,8 +39,8 @@ describe('my tasks grouping', () => {
     );
     expect(Object.fromEntries(Object.entries(g).map(([k, v]) => [k, v.map((t) => t.id)]))).toEqual({
       overdue: ['a'],
-      today: ['b'],
-      upcoming: ['c'],
+      today: ['b', 'c'],
+      upcoming: ['e'],
       done: ['d'],
     });
   });
@@ -160,10 +163,10 @@ describe('done stays in view (ADR 075)', () => {
   it('says who did it and when', () => {
     const at = new Date('2026-10-08T05:12:00Z');
     expect(doneBy({ status: 'done', completed_at: at, done_by_name: null }, now)).toBe(
-      'Done by you, today, 10:42 am',
+      'Done by you, today, 10:42',
     );
     expect(doneBy({ status: 'done', completed_at: at, done_by_name: 'Rohan Naik' }, now)).toBe(
-      'Done by Rohan Naik, today, 10:42 am',
+      'Done by Rohan Naik, today, 10:42',
     );
     expect(doneBy({ status: 'open', completed_at: null, done_by_name: null }, now)).toBeNull();
   });
@@ -173,5 +176,18 @@ describe('done stays in view (ADR 075)', () => {
     expect(doneLately('2026-10-06T23:00:00Z', now)).toBe(true); // 04:30 on the 7th
     expect(doneLately('2026-10-06T20:00:00Z', now)).toBe(false); // 01:30 on the 7th: the 6th's day
     expect(doneLately(null, now)).toBe(false);
+  });
+});
+
+describe('dueText (ADR 148)', () => {
+  const now = new Date('2026-10-02T12:00:00Z'); // 17:30 on 2 Oct in Kolkata
+  it('the time today, else the day said, on a 24-hour clock', () => {
+    expect(dueText('2026-10-02T13:30:00Z', 'Asia/Kolkata', now)).toBe('19:00');
+    expect(dueText('2026-10-01T10:30:00Z', 'Asia/Kolkata', now)).toBe('Yesterday 16:00');
+    expect(dueText('2026-10-03T01:30:00Z', 'Asia/Kolkata', now)).toBe('Tomorrow 07:00');
+    expect(dueText('2026-10-05T01:30:00Z', 'Asia/Kolkata', now)).toBe('Mon, 5 Oct 07:00');
+  });
+  it('01:30 tonight is still today, the business day', () => {
+    expect(dueText('2026-10-02T20:00:00Z', 'Asia/Kolkata', now)).toBe('01:30');
   });
 });

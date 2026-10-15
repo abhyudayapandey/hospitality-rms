@@ -2013,25 +2013,46 @@ csv(
   '25_shifts_TEST_DATA_ONLY.csv',
   ['roster_node_code', 'shift_name', 'job_role_code', 'week', 'days', 'username', 'rostered_by'],
   // the past seven days as worked (file 35), today to Sunday, and next week (ADR 114)
-  [-1, 0, 1].flatMap((week) =>
-    SHIFTS.map(([user, dept, shift], i) => {
-      const off = slot(i) % 7;
-      const days = OFF.filter((_, j) => j !== off);
-      // six days, as runs of consecutive days
-      const runs: string[] = [];
-      let from = -1;
-      for (let j = 0; j <= 7; j++) {
-        const on = j < 7 && j !== off;
-        if (on && from < 0) from = j;
-        if (!on && from >= 0) {
-          runs.push(from === j - 1 ? OFF[from]! : `${OFF[from]}-${OFF[j - 1]}`);
-          from = -1;
+  [-1, 0, 1]
+    .flatMap((week) =>
+      SHIFTS.map(([user, dept, shift], i) => {
+        const off = slot(i) % 7;
+        const days = OFF.filter((_, j) => j !== off);
+        // six days, as runs of consecutive days
+        const runs: string[] = [];
+        let from = -1;
+        for (let j = 0; j <= 7; j++) {
+          const on = j < 7 && j !== off;
+          if (on && from < 0) from = j;
+          if (!on && from >= 0) {
+            runs.push(from === j - 1 ? OFF[from]! : `${OFF[from]}-${OFF[j - 1]}`);
+            from = -1;
+          }
         }
-      }
-      void days;
-      return [D(dept), shift, roleOf(user), week, runs.join(','), U(user), U(headOf[dept]!)];
-    }),
-  ),
+        void days;
+        return [D(dept), shift, roleOf(user), week, runs.join(','), U(user), U(headOf[dept]!)];
+      }),
+    )
+    .concat(
+      // the guards' 12-hour shifts from this week (ADR 148): four a week each, under the weekly
+      // cap; the other nights the supervisor has the rounds. No past week, so no clock-ins owed.
+      [0, 1].flatMap((week) =>
+        (
+          [
+            ['security-day', 'Day'],
+            ['security-night', 'Night'],
+          ] as const
+        ).map(([user, shift]) => [
+          D('SECURITY'),
+          shift,
+          'SECURITY_GUARD',
+          week,
+          'Mon-Thu',
+          U(user),
+          U(headOf.SECURITY!),
+        ]),
+      ),
+    ),
 );
 // the past week's clock-ins, a few late, one missing
 const ATTENDANCE: Cell[][] = [];

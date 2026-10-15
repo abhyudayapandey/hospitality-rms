@@ -414,6 +414,13 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   `RequestActions`); a plain request's tasks open its own page. The To do list is `/tasks`:
   what waits for the person, then their tasks; `/inbox` redirects; nav, tray and Home open it,
   and its badge counts approvals and the tasks due today.
+- Rounds follow the roster (ADR 148, `ops.job_role_pool`): a job-role task goes to the role's
+  people on shift or clocked in at its due time, else (nobody of the role at work) the
+  department head; someone with no shift in the week around it is off the roster and keeps
+  their rounds; an outlet-level role gets its departments' rounds. To receive is on the order
+  desk's keepers' To do list only (`inv.desk_keepers`). A department tile is never "All done"
+  with a round late. "Today" is the 04:00 business day everywhere (`businessToday`, Home's
+  heading too; a running shift reads "Now"); times are 24-hour (`formatWhen`, `dueText`).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

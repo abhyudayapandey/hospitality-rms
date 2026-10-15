@@ -77,6 +77,19 @@ export function businessDate(at: Date | string, tz: string = DEFAULT_TZ): string
   return localDate(new Date(new Date(at).getTime() - BUSINESS_DAY_START_HOUR * 3_600_000), tz);
 }
 
+/**
+ * Today as the app counts it (ADR 046, 148): the 04:00 business day, so between midnight and
+ * 04:00 it is still yesterday. Every "Today" a person reads uses it, Home's heading too.
+ */
+export function businessToday(tz: string = DEFAULT_TZ, now: Date = new Date()): string {
+  return businessDate(now, tz);
+}
+
+/** 'Friday, 2 October' for a date (`2026-10-02`). */
+export function formatLongDate(date: string): string {
+  return formatLongDay(`${date}T12:00:00Z`, 'UTC');
+}
+
 /** The date an instant falls on in `tz`. */
 export function localDate(at: Date | string, tz: string = DEFAULT_TZ): string {
   return localToday(tz, new Date(at));

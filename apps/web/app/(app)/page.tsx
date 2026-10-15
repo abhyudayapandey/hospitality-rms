@@ -5,7 +5,7 @@ import { ExpiryBanner } from '@/components/expiry-banner';
 import { PhoneAlertsCard } from '@/components/phone-alerts';
 import { pushPublicKey } from '@/lib/push-key';
 import { Icon, type IconName } from '@/components/icon';
-import { businessDate, formatDay, formatLongDay, formatTime } from '@/lib/dates';
+import { businessDate, businessToday, formatDay, formatLongDate, formatTime } from '@/lib/dates';
 import { formatWhen } from '@/lib/format';
 import { compare, formatMeasure, MEASURES, trendHref, type MeasureRow } from '@/lib/reports';
 import { PART_WORDS } from '@/lib/briefing';
@@ -23,7 +23,7 @@ import {
   type TodayNumbers,
 } from '@/lib/today';
 import type { MyTask } from '@/lib/tasks';
-import { doneBy, rejected } from '@/lib/tasks-view';
+import { doneBy, dueText, rejected } from '@/lib/tasks-view';
 import {
   clockable,
   complianceCard,
@@ -105,7 +105,7 @@ export default async function Home() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold" data-testid="today">
-        {formatLongDay(now, tz)}
+        {formatLongDate(businessToday(tz, now))}
       </h1>
 
       <ComplianceCard card={complianceCard(today.compliance)} />
@@ -580,7 +580,7 @@ function NextTask({
             </span>
             <span className="min-w-0 flex-1">
               <span className="block font-semibold">{next.title}</span>
-              <span className="block text-sm text-slate-500">by {formatTime(next.due_at, tz)}</span>
+              <span className="block text-sm text-slate-500">by {dueText(next.due_at, tz)}</span>
             </span>
             <span
               className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
@@ -618,7 +618,7 @@ function NextTask({
                       <span
                         className={`shrink-0 text-sm tabular-nums ${t.overdue ? 'font-semibold text-rose-700' : 'text-slate-500'}`}
                       >
-                        {formatTime(t.due_at, tz)}
+                        {dueText(t.due_at, tz)}
                       </span>
                       {t.overdue && (
                         <span
