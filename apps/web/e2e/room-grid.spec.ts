@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { asMigrator, signInAs, takePhoto } from './helpers';
+import { asMigrator, dueWhenWorking, signInAs, takePhoto } from './helpers';
 
 // A round for each room, and each room's status (ADR 088), at 380 px on Test Hotel 1.0. The
 // front desk marks a room arriving on the Rooms screen; the room attendant's room check is a
@@ -15,11 +15,11 @@ async function roomCheck(): Promise<string> {
     `insert into ops.task (tenant_id, org_node_id, kind, title, due_at, assign_mode,
                            job_role_code, template_id)
      select c.tenant_id, c.org_node_id, 'checklist', c.name,
-            date_trunc('second', now()) + interval '1 hour' + random() * interval '1000 seconds',
+            $1::timestamptz + random() * interval '1000 seconds',
             'job_role', 'ROOM_ATTENDANT', c.id
        from ops.checklist_template c where c.code = 'HOTEL-1.0-HK-ROOM-CHECK'
      returning id`,
-    [],
+    [await dueWhenWorking('Test Room Attendant 1.0')],
   );
   await asMigrator(
     `select ops.add_round_steps(t, c.steps, c.for_each) from ops.task t, ops.checklist_template c

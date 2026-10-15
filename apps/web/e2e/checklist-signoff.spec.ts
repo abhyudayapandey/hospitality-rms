@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { asMigrator, signInAs, takePhoto } from './helpers';
+import { asMigrator, dueWhenWorking, signInAs, takePhoto } from './helpers';
 
 // A second signature (ADR 087) at 380 px, on Test Hotel 1.0's linen room count (file 29
 // `sign_off` = up). The room attendant counts and finishes it; the housekeeping supervisor,
@@ -12,17 +12,17 @@ const RA = 'Test Room Attendant 1.0';
 const HS = 'Test Housekeeping Supervisor 1.0';
 const main = (page: Page) => page.locator('main');
 
-/** A round of the linen count, due within the hour, with its steps. */
+/** A round of the linen count, due while the attendant works, with its steps. */
 async function linenRound(): Promise<string> {
   const [t] = await asMigrator<{ id: string }>(
     `insert into ops.task (tenant_id, org_node_id, kind, title, due_at, assign_mode,
                            job_role_code, template_id)
      select c.tenant_id, c.org_node_id, 'checklist', c.name,
-            date_trunc('second', now()) + interval '1 hour' + random() * interval '1000 seconds',
+            $1::timestamptz + random() * interval '1000 seconds',
             'job_role', 'ROOM_ATTENDANT', c.id
        from ops.checklist_template c where c.code = 'HOTEL-1.0-HK-LINEN'
      returning id`,
-    [],
+    [await dueWhenWorking(RA)],
   );
   await asMigrator(
     `select ops.add_steps(t, c.steps) from ops.task t, ops.checklist_template c

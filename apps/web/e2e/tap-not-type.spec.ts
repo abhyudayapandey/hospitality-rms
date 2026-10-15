@@ -1,6 +1,6 @@
 import { addDays, localToday } from '../lib/dates';
 import { expect, test } from '@playwright/test';
-import { asMigrator, signInAs, takePhoto } from './helpers';
+import { asMigrator, dueWhenWorking, signInAs, takePhoto } from './helpers';
 
 // Fewer words, tap instead of type (ADR 099), at 380 px: a reading shows its safe range first
 // and coloured numbers to tap; a task's who-and-when sits under History; one's own To do list
@@ -13,10 +13,10 @@ const main = (page: import('@playwright/test').Page) => page.locator('main');
 async function readingTask(title: string) {
   const [t] = await asMigrator<{ id: string }>(
     `insert into ops.task (tenant_id, org_node_id, kind, title, due_at, assign_mode, job_role_code)
-     select tenant_id, id, 'checklist', $1, now() + interval '2 hours', 'job_role', 'COMMIS'
+     select tenant_id, id, 'checklist', $1, $2::timestamptz, 'job_role', 'COMMIS'
        from core.hierarchy_node where code = 'TEST-HOTEL-1.0-KITCHEN'
      returning id`,
-    [title],
+    [title, await dueWhenWorking('Test Commis 1.0')],
   );
   await asMigrator(
     `insert into ops.task_step (tenant_id, task_id, org_node_id, position, label, kind, min_value,
