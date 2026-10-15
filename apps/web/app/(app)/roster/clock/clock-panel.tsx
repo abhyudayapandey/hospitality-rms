@@ -188,7 +188,7 @@ export function ClockPanel({
           onFail={() => {
             setShooting(false);
             setError(
-              'The camera did not open. Allow the camera for Outlet Ops and try again, or clock in without a selfie (your manager will check it).',
+              'The camera did not open. Allow the camera for Hey Senior and try again, or clock in without a selfie (your manager will check it).',
             );
           }}
         />

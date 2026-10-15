@@ -20,8 +20,9 @@ import {
 // Without Cognito configured (dev, e2e) the no-op directory stands in.
 //
 // changeOwnPassword is the one call made as the person, not as an admin (ADR 018): a
-// USER_PASSWORD_AUTH sign-in with their current password (the Web client allows it), then
-// ChangePassword with that session's access token. Cognito applies the pool's policy.
+// USER_AUTH sign-in with their current password (the Web client allows USER_AUTH, not
+// USER_PASSWORD_AUTH; ADR 161), then ChangePassword with that session's access token.
+// Cognito applies the pool's policy.
 
 export interface NewLogin {
   username: string;
@@ -182,8 +183,12 @@ export class CognitoDirectory implements LoginDirectory {
       auth = (await this.client.send(
         new InitiateAuthCommand({
           ClientId: this.clientId,
-          AuthFlow: 'USER_PASSWORD_AUTH',
-          AuthParameters: { USERNAME: username, PASSWORD: current },
+          AuthFlow: 'USER_AUTH',
+          AuthParameters: {
+            USERNAME: username,
+            PASSWORD: current,
+            PREFERRED_CHALLENGE: 'PASSWORD',
+          },
         }),
       )) as typeof auth;
     } catch (err) {

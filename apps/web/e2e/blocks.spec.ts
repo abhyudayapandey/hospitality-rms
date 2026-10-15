@@ -21,7 +21,7 @@ test('a company without Events and Swaps: they are gone from Roster and Home, an
   await expect(page.getByTestId('events-this-week')).toHaveCount(0);
   await page.goto('/events');
   await expect(page.getByTestId('module-off')).toContainText(
-    "Events isn't switched on for your company. Ask Outlet Ops to switch it on.",
+    "Events isn't switched on for your company. Ask the Hey Senior team to switch it on.",
   );
   await page.goto('/');
   expect(await page.getByRole('main').getByRole('link').allInnerTexts()).not.toContain('Events');
@@ -98,7 +98,7 @@ test('the platform admin switches a block and a bundle; the cook sees them go; t
     await expect(daily.getByRole('switch', { name: 'Checklists' })).toHaveCount(0);
     await cook.goto('/briefing');
     await expect(cook.getByTestId('module-off')).toContainText(
-      "Daily work isn't part of your company's plan. Ask Outlet Ops to add it.",
+      "Daily work isn't part of your company's plan. Ask the Hey Senior team to add it.",
     );
 
     // back in the plan: every block in it on again, Maintenance included

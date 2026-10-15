@@ -4,7 +4,7 @@ Status: **built**: R-1 to R-4 done (ADR 023, 028, 030, 031), then drill-downs an
 each figure (ADR 041, 042) and the reports audit (ADR 057, `docs/reports-audit.md`). Written
 2026-10-02; decisions in section 8.
 
-Outlet Ops already records the facts a hospitality business needs to run on numbers: every
+Hey Senior already records the facts a hospitality business needs to run on numbers: every
 stock movement, what was bought and at what price, what was made and thrown away, what was
 sold, who was rostered and who turned up, and which tasks were done on time. Today they are
 spread across screens, and only the Variance report adds them up. This plan turns them into

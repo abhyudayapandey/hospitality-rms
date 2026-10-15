@@ -1,4 +1,4 @@
-# Outlet Ops
+# Hey Senior
 
 A mobile-first outlet operations platform for hospitality. See `CLAUDE.md` for the stack
 and rules, and `docs/LLD.md` for the design.
@@ -19,7 +19,7 @@ pnpm lint && pnpm typecheck && pnpm test
 | `docs/prd.md`                | requirements by module, marked built, in progress or planned                  |
 | `docs/system-map.md`         | places, people, and who uses which part of the app today                      |
 | `docs/LLD.md`                | the original low-level design (`CLAUDE.md`'s AWS overrides win)               |
-| `docs/decisions/`            | ADRs 001–137: every design decision since the LLD                             |
+| `docs/decisions/`            | ADRs 001–161: every design decision since the LLD                             |
 | `docs/plans/`                | plans in progress (building blocks, the UX audit)                             |
 | `docs/backlog/`, `future.md` | what is still to do, and what was agreed to come back to                      |
 | `docs/ux-review.md`          | the first UX review (built, UX-1 to UX-6); later audits in `ux-audit-*.md`    |
@@ -28,3 +28,4 @@ pnpm lint && pnpm typecheck && pnpm test
 | `docs/deploy.md`             | the AWS runbook and every release's deploy steps                              |
 | `docs/onboarding/test-data/` | the two test customers, which are also the onboarding file spec               |
 | `docs/onboarding/demo/`      | the Passport Hotel pilot demo files, pitch and walk-through                   |
+| `website/`                   | the marketing site: one static page, no build step (not hosted yet)           |

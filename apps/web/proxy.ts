@@ -142,6 +142,6 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
 export const config = {
   // Everything except public pages, auth routes, the PWA files and static assets.
   matcher: [
-    '/((?!login|dev-login|offline|auth/|manifest.webmanifest|sw.js|icons/|icon|apple-icon|favicon|_next/).*)',
+    '/((?!login|dev-login|offline|auth/|manifest.webmanifest|sw.js|icons/|icon|apple-icon|favicon|senior.svg|_next/).*)',
   ],
 };

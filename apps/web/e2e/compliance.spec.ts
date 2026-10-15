@@ -154,6 +154,6 @@ test("a customer without it: Compliance isn't switched on", async ({ page }) => 
   await signInAs(page, 'Test Bar Manager');
   await page.goto('/compliance');
   await expect(page.getByTestId('module-off')).toContainText(
-    "Compliance isn't switched on for your company. Ask Outlet Ops to switch it on.",
+    "Compliance isn't switched on for your company. Ask the Hey Senior team to switch it on.",
   );
 });

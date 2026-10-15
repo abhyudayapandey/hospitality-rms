@@ -47,8 +47,12 @@ describe('changing your own password in Cognito', () => {
         name: 'InitiateAuthCommand',
         input: {
           ClientId: 'client-1',
-          AuthFlow: 'USER_PASSWORD_AUTH',
-          AuthParameters: { USERNAME: 'acme.ravi.k', PASSWORD: 'old-pass-1' },
+          AuthFlow: 'USER_AUTH',
+          AuthParameters: {
+            USERNAME: 'acme.ravi.k',
+            PASSWORD: 'old-pass-1',
+            PREFERRED_CHALLENGE: 'PASSWORD',
+          },
         },
       },
       {

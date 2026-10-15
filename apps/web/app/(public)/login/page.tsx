@@ -1,19 +1,21 @@
 import Link from 'next/link';
 import { messageFor } from '@outlet-ops/domain';
 import { cognitoConfig } from '@/lib/auth/cognito';
+import { signInWords } from '@/lib/auth/sign-in-words';
 import { isDevAuthEnabled } from '@/lib/dev-auth';
+import { SignInForm } from './sign-in-form';
 
 const REASONS: Record<string, string> = {
   expired: messageFor('SESSION_EXPIRED'),
-  unknown_user: "That account isn't set up for Outlet Ops yet. Ask your manager.",
-  rate_limited: 'Too many sign-in attempts from here. Wait a few minutes and try again.',
-  cognito: 'Sign-in failed. Please try again.',
+  unknown_user: signInWords.unknownUser,
+  rate_limited: signInWords.tooMany,
+  cognito: signInWords.failed,
   signed_out_everywhere: 'You are signed out on all your devices. Sign in again to carry on here.',
 };
 
 /**
- * The sign-in screen (ADR 056): the app's mark and what it is for, one "Sign in" button
- * (Cognito asks for the phone number or email and the code or password), and who to ask.
+ * The landing and sign-in screen (ADR 056, 161): Senior, what Hey Senior is, and the
+ * sign-in form right here, on our own page. Cognito checks the password or code behind it.
  */
 export default async function LoginPage({
   searchParams,
@@ -22,59 +24,60 @@ export default async function LoginPage({
 }) {
   const { reason } = await searchParams;
   const cognito = cognitoConfig() !== null;
+  const why = reason ? REASONS[reason] : undefined;
   return (
-    <div className="flex min-h-[calc(100dvh-2rem)] flex-col">
-      <div className="flex flex-1 flex-col justify-center gap-8">
-        <div className="flex flex-col items-center gap-4 text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element -- a fixed 64 px mark */}
-          <img
-            src="/icon.svg"
-            alt=""
-            width={64}
-            height={64}
-            className="size-16 rounded-2xl shadow-sm ring-1 ring-slate-200"
-          />
-          <div className="space-y-2">
-            <h1 className="text-3xl font-semibold tracking-tight">Outlet Ops</h1>
-            <p className="mx-auto max-w-xs text-slate-600">
-              Stock, orders, rosters and the day&apos;s jobs for every outlet, in one place.
-            </p>
-          </div>
-        </div>
+    <div className="flex min-h-[calc(100dvh-2rem)] flex-col gap-6 py-4">
+      <header className="flex items-center gap-2">
+        {/* eslint-disable-next-line @next/next/no-img-element -- a fixed 36 px mark */}
+        <img src="/icon.svg" alt="" width={36} height={36} className="size-9" />
+        <span className="text-xl font-bold tracking-tight">Hey Senior</span>
+      </header>
 
-        {reason && REASONS[reason] && (
-          <p role="alert" className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
-            {REASONS[reason]}
+      <section className="flex items-end gap-3">
+        <div className="flex-1 space-y-2 pb-4">
+          <h1 className="text-3xl leading-tight font-bold tracking-tight">
+            People come and go. <span className="text-brand-700">Senior stays.</span>
+          </h1>
+          <p className="text-slate-600">
+            Your outlet&apos;s recipes, stock, rosters and daily jobs, on every phone.
           </p>
-        )}
-
-        <div className="space-y-3">
-          {cognito ? (
-            <a
-              href="/auth/login"
-              className="flex min-h-14 items-center justify-center rounded-xl bg-brand-700 text-lg font-semibold text-white shadow-sm"
-            >
-              Sign in
-            </a>
-          ) : (
-            <p className="rounded-xl bg-white p-4 text-center text-sm text-slate-600 ring-1 ring-slate-200">
-              Sign-in is not set up in this environment.
-            </p>
-          )}
-          {isDevAuthEnabled() && (
-            <Link
-              href="/dev-login"
-              className="flex min-h-12 items-center justify-center rounded-xl border border-dashed border-slate-400 text-slate-700"
-            >
-              Dev login (pick a seeded user)
-            </Link>
-          )}
         </div>
+        {/* eslint-disable-next-line @next/next/no-img-element -- Senior, a fixed drawing */}
+        <img
+          src="/senior.svg"
+          alt="Senior: a smiling man with grey hair, round glasses and a pencil behind his ear"
+          width={120}
+          height={150}
+          className="h-[150px] w-[120px] shrink-0"
+          data-testid="senior"
+        />
+      </section>
+
+      <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+        {cognito ? (
+          <SignInForm initial={{ step: 'password', ...(why ? { error: why } : {}) }} />
+        ) : (
+          <div className="space-y-3">
+            {why && (
+              <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+                {why}
+              </p>
+            )}
+            <p className="text-center text-sm text-slate-600">{signInWords.notSetUp}</p>
+          </div>
+        )}
+        {isDevAuthEnabled() && (
+          <Link
+            href="/dev-login"
+            className="mt-3 flex min-h-12 items-center justify-center rounded-xl border border-dashed border-slate-400 text-slate-700"
+          >
+            Dev login (pick a seeded user)
+          </Link>
+        )}
       </div>
 
-      <p className="pt-6 pb-2 text-center text-sm text-slate-500">
-        Use the phone number or email your manager set up for you. Trouble signing in? Ask your
-        manager.
+      <p className="mt-auto text-center text-sm text-slate-500">
+        Use the login ID or email your manager gave you. Trouble signing in? Ask your manager.
       </p>
     </div>
   );

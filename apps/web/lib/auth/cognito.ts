@@ -1,7 +1,8 @@
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
 
-// Amazon Cognito Hosted UI, OAuth code flow with PKCE (ADR 004). Frontline staff sign
-// in with phone OTP configured on the user pool. The app is a public client (no secret).
+// Amazon Cognito (ADR 004). People sign in on our own screen, which calls Cognito's user
+// API (ADR 161); the Hosted UI code flow with PKCE stays for the team console and as a
+// fallback. The app is a public client (no secret).
 
 export interface CognitoConfig {
   userPoolId: string;
@@ -176,16 +177,85 @@ export function exchangeCode(
   );
 }
 
+/** Cognito refused the call (a wrong password, an expired code); `type` is its exception name. */
+export class CognitoRefused extends Error {
+  constructor(
+    readonly type: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 /**
- * Server-side refresh. With refresh-token rotation enabled on the app client, Cognito
- * returns a new refresh token, which the caller must store.
+ * One call to Cognito's user API (cognito-idp) as the public Web client: no AWS credentials,
+ * only the client id (ADR 161). Throws CognitoRefused for an answer that says no, and
+ * CognitoUnavailable when Cognito does not answer in time or fails on its side (ADR 063).
  */
-export function refreshTokens(
+export async function cognitoCall<T>(
+  cfg: Pick<CognitoConfig, 'userPoolId'>,
+  action: string,
+  body: Record<string, unknown>,
+  fetchImpl: typeof fetch = fetch,
+): Promise<T> {
+  const region = cfg.userPoolId.split('_')[0];
+  let res: Response;
+  try {
+    res = await withinTime(
+      fetchImpl(`https://cognito-idp.${region}.amazonaws.com/`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/x-amz-json-1.1',
+          'x-amz-target': `AWSCognitoIdentityProviderService.${action}`,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(COGNITO_TIMEOUT_MS),
+      }),
+    );
+  } catch (err) {
+    throw err instanceof CognitoUnavailable
+      ? err
+      : new CognitoUnavailable(err instanceof Error ? err.name : 'fetch failed');
+  }
+  if (res.status >= 500) throw new CognitoUnavailable(`COGNITO_${action}_${res.status}`);
+  const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    const raw = json.__type ?? json.code;
+    const type = (typeof raw === 'string' ? raw : 'Unknown').split('#').pop()!;
+    if (type === 'TooManyRequestsException' || type === 'InternalErrorException') {
+      throw new CognitoUnavailable(`COGNITO_${action}_${type}`);
+    }
+    throw new CognitoRefused(type, `COGNITO_${action}_${type}`);
+  }
+  return json as T;
+}
+
+/**
+ * Server-side refresh (REFRESH_TOKEN_AUTH on the Web client), for a session started on
+ * our own sign-in screen or on Cognito's page alike (ADR 161). A refused refresh token
+ * throws; Cognito not answering throws CognitoUnavailable (ADR 063).
+ */
+export async function refreshTokens(
   cfg: CognitoConfig,
   refreshToken: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<TokenSet> {
-  return tokenRequest(cfg, { grant_type: 'refresh_token', refresh_token: refreshToken }, fetchImpl);
+  const out = await cognitoCall<{
+    AuthenticationResult?: { IdToken?: string; RefreshToken?: string };
+  }>(
+    cfg,
+    'InitiateAuth',
+    {
+      ClientId: cfg.clientId,
+      AuthFlow: 'REFRESH_TOKEN_AUTH',
+      AuthParameters: { REFRESH_TOKEN: refreshToken },
+    },
+    fetchImpl,
+  );
+  const id = out.AuthenticationResult?.IdToken;
+  if (!id) throw new Error('COGNITO_REFRESH_NO_ID_TOKEN');
+  const next = out.AuthenticationResult?.RefreshToken;
+  return { idToken: id, ...(next ? { refreshToken: next } : {}) };
 }
 
 export async function revokeRefreshToken(

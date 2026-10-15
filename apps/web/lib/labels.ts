@@ -5,7 +5,7 @@
 import { humanizeCode } from './job-roles';
 
 // groups whose code doesn't read as their name (ADR 149)
-const GROUP_NAMES: Record<string, string> = { AI_AGENT: 'Outlet Ops assistant' };
+const GROUP_NAMES: Record<string, string> = { AI_AGENT: 'Senior, the assistant' };
 
 export function groupLabel(code: string | null | undefined): string {
   return code ? (GROUP_NAMES[code] ?? humanizeCode(code)) : '';
@@ -27,9 +27,9 @@ export function auditAction(action: string): string {
   return AUDIT_WORDS[action] ?? action.charAt(0).toUpperCase() + action.slice(1);
 }
 
-/** Who did it: a change made while setting the company up was the Outlet Ops team's. */
+/** Who did it: a change made while setting the company up was the Hey Senior team's. */
 export function auditActor(actor: string): string {
-  return actor === 'Platform' ? 'the Outlet Ops team' : actor;
+  return actor === 'Platform' ? 'the Hey Senior team' : actor;
 }
 
 /** Where a person's access comes from, in words (ADR 149): never `job_role` or a default's note. */

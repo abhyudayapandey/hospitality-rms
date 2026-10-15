@@ -1,4 +1,4 @@
-# Deploying Outlet Ops to AWS (Free plan)
+# Deploying Hey Senior to AWS (Free plan)
 
 This guide covers the production setup in `ap-south-1` (Mumbai) on an AWS **Free plan**
 account. The design reasons are in [ADR 005](decisions/005-hosting-free-plan.md).
@@ -557,7 +557,7 @@ that is already loaded. On **Logins**, the invitation note shows the daily allow
 
 1. `pnpm --filter @outlet-ops/infra synth`, then `cd infra && pnpm cdk diff`. Expect exactly
    one change: the `Users` pool (`AWS::Cognito::UserPool`) gains
-   `AdminCreateUserConfig.InviteMessageTemplate` (`EmailSubject` "Your Outlet Ops account"
+   `AdminCreateUserConfig.InviteMessageTemplate` (`EmailSubject` "Your Hey Senior account"
    and the `EmailMessage` that explains the sign-in code). It is an in-place update of
    the pool; `PlatformUsers` does not change. Any replacement: stop and ask.
 2. `pnpm cdk deploy`. If Cognito refuses the template (it should not: the pool has
@@ -2213,7 +2213,7 @@ group by 1`. It shows only `hotel` and `bar_pub` for the test customers.
    (no HTTP/3 offer).
 4. Check on the phone: open the app once on Wi-Fi so the new service worker takes over. Then
    switch to flight mode and open it again: within about 10 seconds it says "Can't reach
-   Outlet Ops", and with Wi-Fi back on it returns by itself.
+   Hey Senior", and with Wi-Fi back on it returns by itself.
 5. Check in the platform console: Outlet templates lists the seven kinds of outlet. A test
    customer created in the console can add a Café: Add an outlet → Café → name and code →
    See what it adds → Add and dry run.

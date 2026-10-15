@@ -163,7 +163,7 @@ function usePhoneAlerts(publicKey: string, who: string) {
 }
 
 const IOS_STEPS =
-  'On iPhone, add Outlet Ops to your Home Screen first. Tap Share, then Add to Home Screen. Then open it from there.';
+  'On iPhone, add Hey Senior to your Home Screen first. Tap Share, then Add to Home Screen. Then open it from there.';
 
 /** Home: asks once whether this phone should show alerts. */
 export function PhoneAlertsCard({ publicKey, who }: { publicKey: string; who: string }) {
@@ -250,7 +250,7 @@ function AlertsSwitch({ publicKey, who }: { publicKey: string; who: string }) {
     loading: '',
     unsupported: "This phone or browser can't show alerts.",
     'ios-browser': IOS_STEPS,
-    blocked: 'Alerts are blocked. Allow them for Outlet Ops in the phone settings.',
+    blocked: 'Alerts are blocked. Allow them for Hey Senior in the phone settings.',
     on: 'Alerts are on for this phone.',
     off: 'Alerts are off for this phone.',
   };
