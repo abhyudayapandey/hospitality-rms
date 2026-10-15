@@ -10,7 +10,7 @@
 -- * The test data's orders carry no "Test data PO-1" note: an order is known by its number.
 
 -- Replaces one piece of a function's current definition, failing if it is not there.
-create function pg_temp.patch(p_sig text, p_old text, p_new text) returns void
+create or replace function pg_temp.patch(p_sig text, p_old text, p_new text) returns void
 language plpgsql as $$
 declare
   v_def text := pg_get_functiondef(p_sig::regprocedure);
@@ -102,9 +102,11 @@ select pg_temp.patch('inv.batches(uuid)',
 update inv.purchase_order set notes = null
  where notes ~ '^Test data PO-[0-9]+$' and idempotency_key like 'test-data po %';
 
+drop function pg_temp.patch(text, text, text);
+
 -- migrate:down
 -- Forward-only in production (ADR 005); this restores the previous rules for local work.
-create function pg_temp.patch(p_sig text, p_old text, p_new text) returns void
+create or replace function pg_temp.patch(p_sig text, p_old text, p_new text) returns void
 language plpgsql as $$
 declare
   v_def text := pg_get_functiondef(p_sig::regprocedure);
@@ -129,3 +131,5 @@ select pg_temp.patch('inv.expiry_list(integer)',
   'and (b.expires_at <= now()
               or rpt.business_date(b.expires_at, z.tz)');
 drop function inv.past_use_by(timestamptz, text, timestamptz);
+
+drop function pg_temp.patch(text, text, text);

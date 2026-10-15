@@ -31,6 +31,7 @@ test('a room is counted; breakfast is given by room and read', async ({ page }) 
     }
     await main(page).getByRole('button', { name: 'Save the count' }).click();
     await page.waitForURL(/view=contents/);
+    // a count in plain words: "counted 1", never "1 each" (ADR 160)
     await expect(
       main(page)
         .getByTestId('room-contents')
@@ -38,7 +39,7 @@ test('a room is counted; breakfast is given by room and read', async ({ page }) 
         .getByTestId('room-line')
         .filter({ hasText: 'Test Bath Towel' })
         .getByTestId('room-counted'),
-    ).toContainText('counted 1 each');
+    ).toContainText(/^counted 1,/);
 
     // meals (ADR 110, 121): the next breakfast opens, buffet first; the restaurant adds rooms
     // as tiles, each with its guests inside, and saves
