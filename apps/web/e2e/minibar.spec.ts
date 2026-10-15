@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { asMigrator, signInAs } from './helpers';
+import { asMigrator, dueWhenWorking, signInAs } from './helpers';
 
 // The rooms' minibars (ADR 072, 081) at 380 px. Test Hotel & Bar 1.0's room attendant checks
 // room 103: one cola is gone, so it is charged; the refill is on the attendant's To do list and
@@ -56,6 +56,12 @@ test('the room attendant checks a minibar; the front desk adds it to the bill', 
     await page.getByRole('button', { name: 'Refilled' }).click();
     await expect(page.getByTestId('task-status')).toContainText(/done/i);
 
+    // the bill goes to the front desk at work when it is due (ADR 148): due when they work,
+    // so the test doesn't depend on the hour it runs at
+    await asMigrator(
+      `update ops.task set due_at = $1 where kind = 'minibar_bill' and created_at >= $2`,
+      [await dueWhenWorking('Test Front Desk Executive 1.0'), started],
+    );
     await signInAs(page, 'Test Front Desk Executive 1.0');
     // the bill is a To do item for the front desk too
     await page.goto('/tasks');
