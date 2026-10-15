@@ -893,6 +893,11 @@ describe('prep lists', () => {
 
   it('prep tasks are created by task managers of the linked department', async () => {
     await inRolledBackTx(async (c) => {
+      // rounds follow the roster (ADR 148): due in three hours may be past the commis's shift, so
+      // he is taken off the roster here and keeps his role's tasks whatever the time
+      await c.query(`delete from hr.shift_assignment where owner_user_id = $1`, [
+        ids.user('test.commis.1.0'),
+      ]);
       const create = (who: string) =>
         attemptAs<{ ids: string[] }>(
           c,
