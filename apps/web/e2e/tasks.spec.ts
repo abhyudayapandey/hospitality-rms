@@ -55,6 +55,7 @@ test('the executive chef gives the commis a task; an out-of-range reading is fla
     'Outside the range: your lead has been told.',
   );
   await takePhoto(main(page));
+  await expect(main(page).getByRole('button', { name: 'Done' })).toBeEnabled();
   await main(page).getByRole('button', { name: 'Done' }).click();
   await main(page).getByRole('button', { name: 'Mark task done' }).click();
   await expect(page.getByTestId('task-status')).toHaveText(/^Done/);
