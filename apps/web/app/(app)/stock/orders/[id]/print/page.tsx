@@ -66,7 +66,7 @@ export default async function PrintOrder({ params }: { params: Promise<{ id: str
     <article className="space-y-4 bg-white p-4 print:p-0" data-testid="printable-order">
       <div className="flex items-center justify-between gap-2 print:hidden">
         <Link href={`/stock/orders/${po.id}`} className="text-sm text-slate-600">
-          ← Order
+          ← Back
         </Link>
         <PrintButton />
       </div>

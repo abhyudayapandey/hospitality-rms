@@ -75,7 +75,7 @@ test('the front desk marks a room arriving; the attendant checks it on the grid'
     const towels = row.getByTestId('step').filter({ hasText: 'Bath towels' });
     await towels.getByLabel('101: Bath towels').fill('2');
     await takePhoto(towels);
-    await towels.getByRole('button', { name: 'Save' }).click();
+    await towels.getByRole('button', { name: 'Done' }).click();
     const toiletries = row.getByTestId('step').filter({ hasText: 'Toiletries topped up' });
     await takePhoto(toiletries);
     await toiletries.getByRole('button', { name: 'Done' }).click();

@@ -419,7 +419,7 @@ export async function takePhoto(scope: Locator) {
 
 /** A task with no steps takes a photo of the job done before it is marked done (ADR 127). */
 export async function addTaskPhoto(page: Page) {
-  await page.locator('main').getByRole('button', { name: 'Add a photo' }).click();
+  await page.getByTestId('task-photo-add').click();
   const form = page.getByTestId('task-photo-form');
   await takePhoto(form);
   await form.getByRole('button', { name: 'Save the photo' }).click();

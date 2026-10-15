@@ -28,7 +28,7 @@ export default async function ModulesPage() {
   return (
     <div className="space-y-4">
       <Link href="/admin" className="text-sm text-slate-600">
-        ← Administration
+        ← Back
       </Link>
       <h1 className="text-xl font-semibold">Your plan</h1>
       <p className="text-sm text-slate-600">

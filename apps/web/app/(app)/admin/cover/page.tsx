@@ -38,7 +38,7 @@ export default async function CoverPage({
         current={outlet}
       />
       <Link href="/admin" className="text-sm text-slate-600">
-        ← Administration
+        ← Back
       </Link>
       <h1 className="text-xl font-semibold">Who does what</h1>
       {outlet ? (

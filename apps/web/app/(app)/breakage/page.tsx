@@ -89,7 +89,7 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
                   : 'bg-white text-slate-700 ring-slate-300'
               }`}
             >
-              {p.kind === 'outlet' ? `All of ${p.name}` : p.name}
+              {p.kind === 'outlet' ? `${p.name} (whole outlet)` : p.name}
             </Link>
           ))}
         </nav>

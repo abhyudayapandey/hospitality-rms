@@ -36,7 +36,7 @@ export default async function StockCheckSheetPage({
   return (
     <div className="space-y-4">
       <Link href={back} className="text-sm text-slate-600">
-        ← Stock check
+        ← Back
       </Link>
       <h1 className="text-xl font-semibold">
         {check.mode === 'bar' ? 'Bar check' : 'Stock check'} at {ctx.node.name}

@@ -29,7 +29,7 @@ export default async function NewTransferPage({ searchParams }: { searchParams: 
   return (
     <div className="space-y-4">
       <Link href={`/stock/transfers?node=${ctx.node.id}`} className="text-sm text-slate-600">
-        ← Transfers
+        ← Back
       </Link>
       <h1 className="text-xl font-semibold">Request from a store for {ctx.node.name}</h1>
       <TransferRequestForm to={ctx.node.id} items={items} focus={focus} />

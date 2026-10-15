@@ -21,7 +21,7 @@ export default async function RoomCountPage({ searchParams }: { searchParams: Se
   return (
     <div className="space-y-4">
       <Link href={back} className="text-sm text-slate-600 underline">
-        Back to rooms
+        ← Back
       </Link>
       <h1 className="text-xl font-semibold">
         Count room {lines[0]?.number ?? ''}

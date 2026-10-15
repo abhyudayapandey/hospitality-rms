@@ -40,7 +40,7 @@ export default async function UserPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="space-y-5">
       <Link href="/admin/users" className="text-sm text-slate-600">
-        ← People
+        ← Back
       </Link>
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <div className="flex items-baseline justify-between gap-2">

@@ -36,14 +36,14 @@ async function count(page: Page, task: string, towels: string, sheets: string) {
   await page.goto(`/tasks/${task}`);
   await main(page).getByLabel('Bath towels on the shelf').fill(towels);
   await takePhoto(main(page));
-  await main(page).getByRole('button', { name: 'Save' }).click();
+  await main(page).getByRole('button', { name: 'Done' }).click();
   await main(page).getByLabel('Bed sheets on the shelf').fill(sheets);
   await takePhoto(main(page));
   // under 80 is out of range: say what was done about it (ADR 088)
   if (Number(sheets) < 80) {
     await main(page).getByLabel('What did you do about it?').fill('Asked the laundry for more');
   }
-  await main(page).getByRole('button', { name: 'Save' }).click();
+  await main(page).getByRole('button', { name: 'Done' }).click();
   await main(page).getByRole('button', { name: 'Mark task done' }).click();
 }
 

@@ -20,7 +20,7 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-4">
       <Link href="/admin" className="text-sm text-slate-600">
-        ← Administration
+        ← Back
       </Link>
       <h1 className="text-xl font-semibold">Targets and settings</h1>
       <p className="text-sm text-slate-600">

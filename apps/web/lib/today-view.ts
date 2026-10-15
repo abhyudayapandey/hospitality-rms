@@ -390,8 +390,6 @@ export function doFirst(
     toAssign: number;
     /** the roster, all departments, on the earliest day with an open slot */
     openSlotsHref?: string | null;
-    /** they may ask for or order supplies somewhere; else running low is only to see (ADR 052) */
-    canOrder?: boolean;
   },
   max = DO_FIRST_MAX,
 ): DoFirstItem[] {
@@ -403,14 +401,7 @@ export function doFirst(
   const slotHref = input.openSlotsHref ?? LINE.openSlots.href;
   const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
   const all: DoFirstItem[] = [
-    {
-      key: 'lowStock',
-      tone: 'bad',
-      n: sum('lowStock'),
-      text: '',
-      action: input.canOrder === false ? 'See' : 'Order',
-      href: LINE.lowStock.href,
-    },
+    // running low is said once, on the departments' tiles (ADR 153), never here as well
     {
       key: 'overdue',
       tone: 'bad',

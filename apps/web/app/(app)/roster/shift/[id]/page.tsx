@@ -53,7 +53,7 @@ export default async function ShiftPage({
   return (
     <div className="space-y-4">
       <Link href={back} className="text-sm text-slate-600">
-        ← Week
+        ← Back
       </Link>
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <h1 className="text-lg font-semibold">{formatDay(shift.local_date)}</h1>

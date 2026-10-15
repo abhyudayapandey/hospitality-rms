@@ -11,7 +11,7 @@ export default async function NewGroupPage() {
   return (
     <div className="space-y-4">
       <Link href="/admin/groups" className="text-sm text-slate-600">
-        ← Access groups
+        ← Back
       </Link>
       <h1 className="text-xl font-semibold">New access group</h1>
       <GroupForm initial={null} />

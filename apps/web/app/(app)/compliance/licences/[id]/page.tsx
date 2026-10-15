@@ -77,7 +77,7 @@ async function Licence({ params }: { params: Promise<{ id: string }> }) {
   return (
     <div className="space-y-4">
       <Link href="/compliance" className="text-sm text-slate-600 underline">
-        Back to Compliance
+        ← Back
       </Link>
       <header className="space-y-1">
         <h1 className="text-xl font-semibold">{l.name}</h1>

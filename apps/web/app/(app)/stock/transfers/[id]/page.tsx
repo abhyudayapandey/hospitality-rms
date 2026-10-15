@@ -85,7 +85,7 @@ export default async function TransferPage({
           href={backHref(param(await searchParams, 'back'), `/stock/transfers?node=${ctx.node.id}`)}
           className="text-sm text-slate-600"
         >
-          ← Transfers
+          ← Back
         </Link>
       )}
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">

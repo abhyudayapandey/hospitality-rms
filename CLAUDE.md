@@ -441,6 +441,10 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 - Swaps are for managers only (ADR 152): only someone who changes the roster at the shift's place
   offers one (`hr.request_swap`); no company setting; Swap shows only where a colleague of the
   role works there.
+- Said once, one name (ADR 153): leave, Give rooms and Breakage pick nothing until tapped; Ask
+  your head lists short items first, then by category; a submitted count lists what was counted,
+  then "Not counted: N"; a place picker with one place has no "All …"; every step's button is
+  "Done", the next step reads "Then: <step>", and every in-app back link reads "← Back".
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

@@ -35,41 +35,60 @@ export default async function CountSheetPage({
     return (
       <div className="space-y-4">
         <Link href={back} className="text-sm text-slate-600">
-          ← Counts
+          ← Back
         </Link>
         <h1 className="text-xl font-semibold">Submitted count</h1>
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800"
-        >
-          {lines.filter((l) => l.outcome === 'posted').length} posted,{' '}
-          {lines.filter((l) => l.outcome === 'approval').length} sent for approval,{' '}
-          {lines.filter((l) => (l.outcome ?? 'no_change') === 'no_change').length} unchanged.
-        </p>
-        <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-          {lines.map((l) => (
-            <li
-              key={l.item_id}
-              className="flex items-center justify-between gap-2 px-4 py-3 text-sm"
-            >
-              <span className="flex min-w-0 items-center gap-3">
-                <ItemThumb name={l.name} size="size-10" />
-                <span>{l.name}</span>
-              </span>
-              <span className="text-right tabular-nums">
-                {l.counted_qty === null ? '—' : formatQty(l.counted_qty, l.base_uom)} ·{' '}
-                {label[(l.outcome ?? 'no_change') as keyof typeof label]}
-              </span>
-            </li>
-          ))}
-        </ul>
+        {(() => {
+          // what was counted, then how many were not (ADR 153): "not counted" never reads like
+          // "counted, no change"
+          const counted = lines.filter((l) => l.counted_qty !== null);
+          const missed = lines.length - counted.length;
+          return (
+            <>
+              <p
+                role="status"
+                className="rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800"
+              >
+                {counted.filter((l) => l.outcome === 'posted').length} posted,{' '}
+                {counted.filter((l) => l.outcome === 'approval').length} sent for approval,{' '}
+                {counted.filter((l) => (l.outcome ?? 'no_change') === 'no_change').length}{' '}
+                unchanged.
+              </p>
+              <ul
+                className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
+                data-testid="counted-lines"
+              >
+                {counted.map((l) => (
+                  <li
+                    key={l.item_id}
+                    className="flex items-center justify-between gap-2 px-4 py-3 text-sm"
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <ItemThumb name={l.name} size="size-10" />
+                      <span>{l.name}</span>
+                    </span>
+                    <span className="text-right tabular-nums">
+                      {formatQty(l.counted_qty!, l.base_uom)} ·{' '}
+                      {label[(l.outcome ?? 'no_change') as keyof typeof label]}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {missed > 0 && (
+                <p className="text-sm text-slate-600" data-testid="not-counted">
+                  Not counted: {missed}
+                </p>
+              )}
+            </>
+          );
+        })()}
       </div>
     );
   }
   return (
     <div className="space-y-4">
       <Link href={back} className="text-sm text-slate-600">
-        ← Counts
+        ← Back
       </Link>
       <h1 className="text-xl font-semibold">Count at {ctx.node.name}</h1>
       <CountForm

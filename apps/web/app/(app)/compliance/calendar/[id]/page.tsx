@@ -72,7 +72,7 @@ async function Job({ params }: { params: Promise<{ id: string }> }) {
   return (
     <div className="space-y-4">
       <Link href="/compliance?tab=jobs" className="text-sm text-slate-600 underline">
-        Back to the regular jobs
+        ← Back
       </Link>
       <header className="space-y-1">
         <h1 className="text-xl font-semibold">{j.name}</h1>

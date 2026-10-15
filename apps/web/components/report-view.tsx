@@ -31,7 +31,7 @@ export function ReportHeader({
     <div className="space-y-2">
       {switcher && <PlaceSwitcher {...switcher} />}
       <Link href="/reports" className="text-sm text-slate-600 underline">
-        ← Reports
+        ← Back
       </Link>
       <h1 className="text-xl font-semibold">{REPORTS[report].title}</h1>
     </div>

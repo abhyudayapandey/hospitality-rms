@@ -29,7 +29,7 @@ export default async function CoverRolePage({
     return (
       <div className="space-y-4">
         <Link href="/admin/cover" className="text-sm text-slate-600">
-          ← Who does what
+          ← Back
         </Link>
         <p className="text-slate-700">You don&apos;t have access to this role here.</p>
       </div>
@@ -38,7 +38,7 @@ export default async function CoverRolePage({
   return (
     <div className="space-y-4">
       <Link href={back} className="text-sm text-slate-600">
-        ← Who does what
+        ← Back
       </Link>
       <div>
         <h1 className="text-xl font-semibold">{r.role_name}</h1>

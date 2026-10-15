@@ -36,7 +36,7 @@ export default async function EventPage({
   return (
     <div className="space-y-4">
       <Link href={`/events?node=${e.org_node_id}`} className="text-sm text-slate-600">
-        ← Events
+        ← Back
       </Link>
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <h1 className="text-lg font-semibold">{e.name}</h1>

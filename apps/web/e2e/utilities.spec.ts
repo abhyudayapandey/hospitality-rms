@@ -46,7 +46,7 @@ test('the technician reads the meters; the chief engineer sees the readings', as
     ] as const) {
       await main(page).getByLabel(label).fill(value);
       await takePhoto(main(page));
-      await main(page).getByRole('button', { name: 'Save' }).click();
+      await main(page).getByRole('button', { name: 'Done' }).click();
       await expect(main(page).getByTestId('step').filter({ hasText: label })).toContainText(
         '✓ done',
       );

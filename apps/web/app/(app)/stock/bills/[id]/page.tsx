@@ -55,7 +55,7 @@ export default async function BillPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="space-y-4">
       <Link href={`/stock/bills?node=${bill.store_id}`} className="text-sm text-slate-600">
-        ← Bills
+        ← Back
       </Link>
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200" data-testid="bill">
         <div className="flex items-baseline justify-between gap-2">

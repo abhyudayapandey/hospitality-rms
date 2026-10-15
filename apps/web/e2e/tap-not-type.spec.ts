@@ -47,7 +47,7 @@ test('a reading: the safe range first, a number tapped, and the task done', asyn
     await expect(main(page).getByRole('textbox', { name: 'Walk-in chiller' })).toHaveValue('4');
     // a photo of every step (ADR 127)
     await takePhoto(main(page));
-    await main(page).getByRole('button', { name: 'Save' }).click();
+    await main(page).getByRole('button', { name: 'Done' }).click();
     await expect(main(page).getByText('Acceptable: 0 to 5 °C')).toBeVisible();
   } finally {
     await asMigrator(`delete from ops.task_step where task_id = $1`, [task]);

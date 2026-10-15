@@ -35,7 +35,7 @@ test('the chef rates the taste panel; the GM reads its score', async ({ page }) 
       const step = main(page).getByTestId('step').filter({ hasText: label });
       await step.getByText(n, { exact: true }).click();
       await takePhoto(step);
-      await step.getByRole('button', { name: 'Save' }).click();
+      await step.getByRole('button', { name: 'Done' }).click();
       await expect(step).toContainText(`${n} of 5`);
     }
     await main(page).getByRole('button', { name: 'Mark task done' }).click();

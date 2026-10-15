@@ -149,9 +149,11 @@ export function TaskWork({
         </ol>
       )}
       {later.length > 0 && (
-        // what comes after, as pictures, not a list of words (ADR 098)
+        // what comes after (ADR 098): the next step in words, the rest as pictures (ADR 153)
         <div className="flex flex-wrap items-center gap-1.5" data-testid="steps-later">
-          <span className="text-sm text-slate-500">Then</span>
+          <span className="text-sm text-slate-500">
+            Then: <span className="font-medium text-slate-700">{later[0]!.label}</span>
+          </span>
           {later.map((s) => (
             <span
               key={s.id}
@@ -590,7 +592,7 @@ function StepInputs({
               ? approved
                 ? 'Record it thrown away'
                 : 'Record as expired wastage'
-              : 'Save'}
+              : 'Done'}
       </button>
     </div>
   );

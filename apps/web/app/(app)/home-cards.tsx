@@ -204,31 +204,26 @@ export function EventsCard({ events, tz }: { events: HomeEvent[]; tz: string }) 
   );
 }
 
-/** From the evening (ADR 112): tomorrow's roster where they build it, and what is not filled. */
+/** From the evening (ADR 112): tomorrow's roster where they build it. The open shifts are said
+ *  once, on Do these first (ADR 153); here "13 of 15" and a Fill when some are open. */
 export function TomorrowCard({ tomorrow: t }: { tomorrow: HomeTomorrow }) {
   const open = t.needed - t.rostered;
   return (
     <section aria-label="Tomorrow" className={card} data-testid="home-tomorrow">
       <h2 className={cardTitle}>Tomorrow · {formatDay(t.day)}</h2>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <Link href={t.href} className="block rounded-xl p-3 ring-1 ring-slate-200">
+      <Link
+        href={t.href}
+        className={`mt-2 flex items-center justify-between rounded-xl p-3 ring-1 ${open > 0 ? 'bg-amber-50 ring-amber-300' : 'ring-slate-200'}`}
+        data-testid="home-tomorrow-open"
+      >
+        <span>
           <span className="block text-xs text-slate-500">Rostered</span>
           <span className="block text-xl font-bold tabular-nums">
             {t.rostered} of {t.needed}
           </span>
-        </Link>
-        <Link
-          href={t.href}
-          className={`block rounded-xl p-3 ring-1 ${open > 0 ? 'bg-amber-50 ring-amber-300' : 'ring-slate-200'}`}
-          data-testid="home-tomorrow-open"
-        >
-          <span className="block text-xs text-slate-500">Shifts not filled</span>
-          <span className="block text-xl font-bold tabular-nums">
-            {open}
-            {open > 0 && <span className="ml-2 text-sm font-semibold text-amber-800">Fill</span>}
-          </span>
-        </Link>
-      </div>
+        </span>
+        {open > 0 && <span className="text-sm font-semibold text-amber-800">Fill</span>}
+      </Link>
     </section>
   );
 }

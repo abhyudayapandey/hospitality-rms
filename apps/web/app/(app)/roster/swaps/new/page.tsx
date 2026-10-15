@@ -47,7 +47,7 @@ export default async function NewSwapPage({ searchParams }: { searchParams: Sear
   return (
     <div className="space-y-4">
       <Link href="/roster/my" className="text-sm text-slate-600">
-        ← My shifts
+        ← Back
       </Link>
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <h1 className="text-lg font-semibold">Offer a shift</h1>

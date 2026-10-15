@@ -95,7 +95,7 @@ export function NoSupplyAccess() {
     <div className="space-y-3">
       <p className="text-slate-600">You don&apos;t have access to stock.</p>
       <Link href="/" className="flex min-h-11 items-center text-sm font-medium text-brand-700">
-        ← Home
+        ← Back
       </Link>
     </div>
   );

@@ -290,7 +290,6 @@ export default async function Home() {
                 overdueTasks: today.tasks.filter((x) => x.overdue).length,
                 toAssign: today.approvals.toAssign,
                 openSlotsHref: today.openSlotsHref,
-                canOrder: shell.domains.get('PURCHASE_ORDERS') === 'modify',
               })
             : []
         }
