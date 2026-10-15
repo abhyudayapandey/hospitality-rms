@@ -424,7 +424,7 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
       SHELF_LIFE: m,
     },
   },
-  { code: 'SUPPLY_VIEWER', name: 'Supply Viewer', kind: 'role', grants: { STOCK_LEVELS: v } },
+  { code: 'SUPPLY_VIEWER', name: 'Stock viewer', kind: 'role', grants: { STOCK_LEVELS: v } },
   // reads the stores' vendor bills and the orders they pay for, and so the purchasing report;
   // no stock, no changes (an accountant; ADR 109)
   {

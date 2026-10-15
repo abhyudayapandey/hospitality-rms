@@ -45,8 +45,8 @@ export const MODULES = [
   },
   {
     code: 'buying',
-    name: 'Supply requests & orders',
-    what: 'Supply requests, purchase orders, receiving and vendor bills.',
+    name: 'Requests and orders',
+    what: 'Requests to buy, orders, receiving and vendor bills.',
     bundle: 'stock_buying',
     needs: ['stock'],
     domains: ['PURCHASE_ORDERS', 'BILLS', 'DERIVED_PURCHASE_ORDERS'],
@@ -87,7 +87,7 @@ export const MODULES = [
   {
     code: 'prep_lists',
     name: 'Prep lists',
-    what: 'Daily prep tasks from par levels. Needs Production.',
+    what: 'Daily prep tasks from par. Needs Production.',
     bundle: 'kitchen_bar',
     needs: ['production'],
     domains: [],

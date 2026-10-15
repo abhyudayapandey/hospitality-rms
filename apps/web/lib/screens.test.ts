@@ -86,6 +86,18 @@ describe('screens', () => {
     expect(here).not.toContain('roster');
   });
 
+  it('a screen with nothing for the person has no tile (ADR 149)', () => {
+    const grants: [string, 'view' | 'modify'][] = [
+      ['EXCISE', 'modify'],
+      ['AUDITS', 'modify'],
+    ];
+    const all = screensFor(input(grants)).map((s) => s.key);
+    expect(all).toEqual(expect.arrayContaining(['excise', 'audits']));
+    const some = screensFor(input(grants, { nothing: new Set(['excise']) })).map((s) => s.key);
+    expect(some).not.toContain('excise');
+    expect(some).toContain('audits');
+  });
+
   it('swaps for management only (SW-4): no Swaps for staff, Swaps for roster builders', () => {
     const staff = screensFor(input([['SHIFT_SWAPS', 'modify']], { swapsManagersOnly: true }));
     expect(staff.map((s) => s.key)).not.toContain('swaps');

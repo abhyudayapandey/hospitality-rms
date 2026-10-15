@@ -127,7 +127,7 @@ describe('core.nodes', () => {
     const delivery = await nodes('test.central-kitchen-manager', 'delivery');
     expect(delivery[0]).toBe('delivery:Test Central Kitchen – Store');
     expect(delivery).toHaveLength(15);
-    expect(delivery).toContain('delivery:Test Guest House 2.0 – Supply Point');
+    expect(delivery).toContain('delivery:Test Guest House 2.0 stores');
     expect(await nodes('test.central-kitchen-manager', 'org')).toEqual([
       'org:Test Central Kitchen – Dispatch Team',
     ]);

@@ -1,6 +1,6 @@
 node_code,name,kind,parent_code,timezone,holds_stock,is_main_store,request_approval,purchase_approval,purchase_approver
 PASSPORT-SUPPLY-NETWORK,Passport Hotel – Supply Network,network,,,no,no,,,
-PASSPORT-ASSAGAO-SUPPLY,Passport Hotel – Supply Point,outlet,PASSPORT-SUPPLY-NETWORK,Asia/Kolkata,no,no,gm,every,gm
+PASSPORT-ASSAGAO-SUPPLY,Passport Hotel stores,outlet,PASSPORT-SUPPLY-NETWORK,Asia/Kolkata,no,no,gm,every,gm
 PASSPORT-ASSAGAO-KITCHEN-STORE,Kitchen Store,store,PASSPORT-ASSAGAO-SUPPLY,Asia/Kolkata,yes,no,,,
 PASSPORT-ASSAGAO-LAYOVER-BAR-STORE,Bar,store,PASSPORT-ASSAGAO-SUPPLY,Asia/Kolkata,yes,no,,,
-PASSPORT-ASSAGAO-HOUSEKEEPING-STORE,Housekeeping Store (with the in-room minibars),store,PASSPORT-ASSAGAO-SUPPLY,Asia/Kolkata,yes,no,,,
+PASSPORT-ASSAGAO-HOUSEKEEPING-STORE,Housekeeping Store,store,PASSPORT-ASSAGAO-SUPPLY,Asia/Kolkata,yes,no,,,

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { FilterList } from '@/components/filter-list';
-import { groupLabel } from '@/lib/labels';
+import { auditAction, auditActor, groupLabel } from '@/lib/labels';
 import { Empty } from '@/components/messages';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
@@ -52,15 +52,17 @@ export default async function AuditPage() {
           listClass="divide-y divide-slate-200 rounded-xl bg-white ring-1 ring-slate-200"
           rows={rows.map((e, i) => ({
             key: String(i),
-            text: [e.action, e.person, e.access_group, e.place, e.actor, e.note].join(' '),
+            text: [auditAction(e.action), e.person, e.access_group, e.place, e.actor, e.note].join(
+              ' ',
+            ),
             node: (
               <div className="p-3 text-sm">
-                <span className="font-medium">{e.action}</span>
+                <span className="font-medium">{auditAction(e.action)}</span>
                 {e.person ? ` · ${e.person}` : ''}
                 {e.access_group ? ` · ${groupLabel(e.access_group)}` : ''}
                 {e.place ? ` at ${e.place}` : ''}
                 <span className="block text-xs text-slate-500">
-                  by {e.actor} · {formatWhen(e.occurred_at)}
+                  by {auditActor(e.actor)} · {formatWhen(e.occurred_at)}
                   {e.note ? ` · ${e.note}` : ''}
                 </span>
               </div>

@@ -381,7 +381,7 @@ export function addOutlet(
   const supply = `${code}-SUPPLY`;
   addDlv({
     node_code: supply,
-    name: `${choice.name} – Supply Point`,
+    name: `${choice.name} stores`,
     kind: 'outlet',
     parent_code: supplyParent,
     timezone: tz,

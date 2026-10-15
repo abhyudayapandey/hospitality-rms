@@ -5,6 +5,7 @@ import { withBack } from '@/lib/back';
 import { Empty } from '@/components/messages';
 import { NoSupplyAccess, SupplyHeader } from '@/components/supply-header';
 import { RfmTabs } from '@/components/rfm-tabs';
+import { rfmRequestHref } from '@/lib/rfm';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
@@ -45,6 +46,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
     toSend,
     range,
     today,
+    request,
   } = await withUser(user.id, async (tx) => {
     const { range, today } = await listDays(tx, sp, node.id);
     const r = await transferList(tx, {
@@ -54,7 +56,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
       limit,
       range,
     });
-    return { ...r, range, today };
+    return { ...r, range, today, request: await rfmRequestHref(tx) };
   });
   const rows = fetched.slice(0, limit);
   // "Test Hotel & Bar 1.0 – Kitchen Store" → "Kitchen Store": the outlet is the screen's (ADR 053)
@@ -65,7 +67,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
   return (
     <div className="space-y-4">
       <PollRefresh />
-      <RfmTabs current="transfers" transfers />
+      <RfmTabs current="transfers" transfers request={request} />
       <SupplyHeader
         ctx={ctx}
         active="/stock/transfers"

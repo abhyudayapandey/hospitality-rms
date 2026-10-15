@@ -10,7 +10,7 @@ import {
 } from '@/components/report-view';
 import { requireUser } from '@/lib/auth/server';
 import { formatDay } from '@/lib/dates';
-import { withUser } from '@/lib/db';
+import { sql, withUser } from '@/lib/db';
 import { companySettings } from '@/lib/settings-data';
 import { formatMoney } from '@/lib/format';
 import { formatQty } from '@/lib/inventory';
@@ -55,10 +55,15 @@ export default async function CostOfSales({ searchParams }: { searchParams: Sear
         ? await labourCost(tx, place.id, range.from, range.to)
         : null;
     const { targets } = await companySettings(tx);
-    return { places, place, range, totals, items, expired, parts, labour, targets };
+    // "Count the stock" only for those with a store to count (ADR 149): never a dead link
+    const canCount = (
+      await sql<{ v: boolean }>`
+        select exists (select 1 from core.screen_places('count')) as v`.execute(tx)
+    ).rows[0]?.v;
+    return { places, place, range, totals, items, expired, parts, labour, targets, canCount };
   });
   if (!data) return <NoReport>You don&apos;t have access to this report.</NoReport>;
-  const { places, place, range, totals, items, expired, parts, labour, targets } = data;
+  const { places, place, range, totals, items, expired, parts, labour, targets, canCount } = data;
   const top = topLosses(items);
   const notCounted = items.filter((i) => !i.counted);
   const noCount = items.length > 0 && notCounted.length === items.length;
@@ -88,12 +93,14 @@ export default async function CostOfSales({ searchParams }: { searchParams: Sear
             Food cost is worked out from the recipes only. What was lost isn&apos;t known until the
             stock is counted.
           </p>
-          <Link
-            href="/stock/count"
-            className="inline-flex min-h-11 items-center font-semibold underline"
-          >
-            Count the stock
-          </Link>
+          {canCount && (
+            <Link
+              href="/stock/count"
+              className="inline-flex min-h-11 items-center font-semibold underline"
+            >
+              Count the stock
+            </Link>
+          )}
         </section>
       )}
       <ReportSections
@@ -127,9 +134,11 @@ export default async function CostOfSales({ searchParams }: { searchParams: Sear
           <p className="text-sm text-slate-600" data-testid="not-counted">
             {notCounted.length} {notCounted.length === 1 ? 'item' : 'items'} not counted in this
             period, so their loss isn&apos;t known.{' '}
-            <Link className="underline" href="/stock/count">
-              Start a count
-            </Link>
+            {canCount && (
+              <Link className="underline" href="/stock/count">
+                Start a count
+              </Link>
+            )}
           </p>
         )}
       </section>

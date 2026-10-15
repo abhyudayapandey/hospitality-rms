@@ -1,6 +1,6 @@
 node_code,name,kind,parent_code,timezone,holds_stock,is_main_store
 RESTAURANT-TEST-SUPPLY-NETWORK,[TEST] Restaurant – Supply Network,network,,,no,no
-RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-SUPPLY,"Restaurant & Bar, Panjim – Supply Point",outlet,RESTAURANT-TEST-SUPPLY-NETWORK,Asia/Kolkata,no,no
+RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-SUPPLY,"Restaurant & Bar, Panjim stores",outlet,RESTAURANT-TEST-SUPPLY-NETWORK,Asia/Kolkata,no,no
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-KITCHEN-STORE,"Restaurant & Bar, Panjim – Kitchen Store",store,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-SUPPLY,Asia/Kolkata,yes,no
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-MAIN-STORE,"Restaurant & Bar, Panjim – Main Store",store,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-SUPPLY,Asia/Kolkata,yes,yes
 RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-BAR-STORE,"Restaurant & Bar, Panjim – Bar Store",store,RESTAURANT-TEST-RESTAURANT-BAR-PANJIM-SUPPLY,Asia/Kolkata,yes,no
