@@ -47,7 +47,8 @@ export async function runOnce(
   opts: RunOptions = {},
 ): Promise<RunResult> {
   const result: RunResult = { completed: 0, retrying: 0, failed: 0 };
-  const now = opts.now ?? new Date();
+  // Without a given time, the database's own clock decides what is due.
+  const now = opts.now ?? null;
   const log = opts.log ?? (() => {});
 
   for (let i = 0; i < (opts.maxRows ?? 100); i++) {
@@ -55,7 +56,10 @@ export async function runOnce(
     try {
       await client.query('begin');
       await client.query(`select set_config('app.actor_kind', 'executor', true)`);
-      const { rows } = await client.query<ClaimRow>('select * from wf.claim_next($1)', [now]);
+      const { rows } = await client.query<ClaimRow>(
+        'select * from wf.claim_next(coalesce($1::timestamptz, now()))',
+        [now],
+      );
       const row = rows[0];
       if (!row) {
         await client.query('commit');
@@ -79,7 +83,7 @@ export async function runOnce(
         // retry: fail the request now and record the code (ADR 008).
         const final = BUSINESS_RULE_CODES.has(message);
         const { rows: f } = await client.query<{ status: string }>(
-          'select wf.record_failure($1, $2, $3, $4) as status',
+          'select wf.record_failure($1, $2, coalesce($3::timestamptz, now()), $4) as status',
           [row.outbox_id, message, now, final],
         );
         if (f[0]?.status === 'failed') result.failed++;

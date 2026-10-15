@@ -402,9 +402,21 @@ describe('the refill and the bill are tasks (ADR 081)', () => {
       expect(bill!.title).toBe('Bill room 101: 1 Test Lager Beer 330ml');
       // with nobody on shift at the front desk now, it is the Front Desk Executives' job
       expect(bill!.assignee_user_id ?? bill!.job_role_code).toBeTruthy();
-      // the front desk sees the bill on its list; the attendant's refill is theirs
-      const fd = await ok<{ id: string }>(c, FRONT_DESK, 'select id from ops.my_tasks()');
-      expect(fd.map((t) => t.id)).toContain(bill!.id);
+      // whoever the bill reaches sees it on their list: the front desk on shift, or at night,
+      // with nobody of the role at work, the department head (ADR 148)
+      const reach = (
+        await c.query<{ users: string[] }>(
+          `select case when t.assignee_user_id is not null then array[t.assignee_user_id]
+                       else ops.job_role_pool(t) end as users
+             from ops.task t where t.id = $1`,
+          [bill!.id],
+        )
+      ).rows[0]!.users;
+      expect(reach.length).toBeGreaterThan(0);
+      for (const user of reach) {
+        const mine = await attemptAs<{ id: string }>(c, user, 'select id from ops.my_tasks()');
+        expect((mine.rows ?? []).map((t) => t.id)).toContain(bill!.id);
+      }
       // nothing used, nothing to do
       const none = (
         await ok<{ id: string }>(c, ATTENDANT, 'select ops.check_minibar($1, $2) as id', [
