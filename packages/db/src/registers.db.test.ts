@@ -126,7 +126,7 @@ describe('registers', () => {
     });
   });
 
-  it('kept only by its roles (file 45), those who run a department, and where they work', async () => {
+  it('kept only by its roles (file 45), their heads, the outlet managers, and where they work', async () => {
     await inRolledBackTx(async (c) => {
       // visitors: security guards and supervisors; not the front desk, even at the gate
       expect(
@@ -144,10 +144,26 @@ describe('registers', () => {
       expect(
         (await add(c, 'test.steward.1.0', SECURITY, 'incidents', { what_happened: 'x' })).error,
       ).toMatch(/NOT_AUTHORISED/);
-      // the head of a department keeps every register there
+      // the head of another department does not keep it, even at their own desk
       expect(
         (await add(c, 'test.front-office-manager.1.0', FRONT, 'visitors', { name: 'Auditor' }))
           .error,
+      ).toMatch(/NOT_AUTHORISED/);
+      // the head of the keepers' department (security) and the GM do
+      expect(
+        (await add(c, 'test.security-supervisor.1.0', SECURITY, 'vehicles', { number: 'MH 01' }))
+          .error,
+      ).toBeUndefined();
+      expect(
+        (await add(c, 'test.general-manager.1.0', FRONT, 'visitors', { name: 'Auditor' })).error,
+      ).toBeUndefined();
+      // a register with no roles (incidents) stays with anyone who keeps registers there
+      expect(
+        (
+          await add(c, 'test.executive-chef.1.0', 'TEST-HOTEL-1.0-KITCHEN', 'incidents', {
+            what_happened: 'Cut finger',
+          })
+        ).error,
       ).toBeUndefined();
       const places = await run<{ place: string; registers: string[]; can_write: string[] }>(
         c,
@@ -159,6 +175,48 @@ describe('registers', () => {
         expect.arrayContaining(['visitors', 'vehicles', 'staff_movement', 'keys', 'lost_found']),
       );
       expect(places[0]!.can_write).not.toContain('fire_equipment');
+    });
+  });
+
+  it('booking leads with no roles named: the front office keeps them, and the GM (KI-06)', async () => {
+    await inRolledBackTx(async (c) => {
+      const sees = async (who: string) =>
+        (
+          await run<{ place: string; registers: string[] }>(
+            c,
+            who,
+            `select place, registers from ops.register_places()`,
+          )
+        ).some((p) => p.registers.includes('leads'));
+      const check = async () => {
+        expect(await sees('test.front-desk-executive.1.0')).toBe(true);
+        expect(await sees('test.bell-captain.1.0')).toBe(true);
+        expect(await sees('test.front-office-manager.1.0')).toBe(true);
+        expect(await sees('test.general-manager.1.0')).toBe(true);
+        // not the gate, nor a steward in the restaurant
+        expect(await sees('test.security-guard.1.0')).toBe(false);
+        expect(await sees('test.steward.1.0')).toBe(false);
+        // nor the heads of other departments
+        expect(await sees('test.executive-chef.1.0')).toBe(false);
+        expect(await sees('test.restaurant-manager.1.0')).toBe(false);
+      };
+      // file 45 does not list it (Test Company): the default
+      await check();
+      // file 45 lists it with its roles blank: the same
+      await c.query(
+        `update core.tenant set settings = jsonb_set(settings, '{registers,leads}',
+           '{"on": true, "roles": []}') where id = $1`,
+        [ids.tenant()],
+      );
+      await check();
+      expect(
+        (
+          await add(c, 'test.front-desk-executive.1.0', FRONT, 'leads', {
+            name: 'Mr Rao',
+            phone: '9800000000',
+          })
+        ).error,
+      ).toBeUndefined();
     });
   });
 

@@ -120,7 +120,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   yet ordered. A request to the Main Store is a "Supply request". Dark is the default theme
   (`html[data-theme]`, `lib/theme.ts`); colours come from the palette, never hard-coded.
 - Forms that ask for or send stock fill nothing in and say what the store has and its par, with
-  a "Fill all N short items up to par" button (ADR 053, 054). The word is "par" everywhere.
+  a "Fill all N short items" button (ADR 053, 054; up to par, or a week's use when it lasts 3 days
+  or fewer, `inv.fill_qty`, ADR 145). The word is "par" everywhere.
   Quantities show at most 2 decimals (`formatQty` / `inputQty`, `lib/qty.ts`); the DB keeps 6. Back links return to the list as it was (`withBack`,
   `backHref`, `lib/back.ts`). One name per thing: Request (ADR 144: "Request from a store",
   "Request to buy"; the Main Store's buying is an Order), Stock check (the verifier's is Verify stock), Reject, "waiting for approval". A step or status is never shown as its
@@ -392,7 +393,7 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   its par. A head's "Can't give it" reads "Rejected by <head>: <reason>" (`not_given_reason`; tapping it opens the ask, `ops.task_ask`),
   never "Done", and sends no "Done: ..."; "It arrived: give it" only once it has (`arrived`);
   a short store asks first. The Main Store's keeper buys what it doesn't keep for a store that
-  asks it. Running low is under par: "14 of 20 kg (~1 day left)" (replaces ADR 034's rule).
+  asks it. Running low is under par or 3 days or fewer left (ADR 145, `inv.running_low`).
 - An ask is handed over (ADR 142): once the head gives it, whoever asked gets a Collect task
   (due at their shift's end, else in 2 hours) whose button reads "Transfer to <Dept> done"
   (`inv.collect_staff_ask`; no stock moves), as does receiving from the Main Store. Whoever
@@ -453,6 +454,16 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   People figures leave out the account owner and demo presenters. The app's connections run
   with JIT off (`APP_PG_OPTIONS`); a screen's independent parts load side by side, each in its
   own `withUser`; item pictures load lazily.
+- The hotel QA walk's fixes (ADR 145): the ask and order forms name whose yes it waits for
+  (`inv.approval_preview`), and a GM approves a request from its card; running low is under par
+  or 3 days or fewer left (`inv.running_low`, replacing ADR 141's rule) and Fill all fills every
+  low item (`inv.fill_qty`); guest prices for billers and cost for `rpt.store_cost_access` only,
+  null in SQL for everyone else; order and wastage money for department heads (their own
+  stores, `inv.heads_store`), cost readers, bill readers and the order desk
+  (`inv.sees_store_money`); person pickers put "On shift today" first, never the giver; an
+  import of history notifies nobody (`ops.replaying`); a register is kept by its file 45 roles,
+  else its default roles (`keptBy`), their departments' heads and the outlet's managers;
+  overdue alerts go only to who answers for the task (`ops.answers_for`).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

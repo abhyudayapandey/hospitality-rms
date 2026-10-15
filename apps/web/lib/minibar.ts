@@ -2,7 +2,9 @@ import 'server-only';
 import { sql, type Tx } from './db';
 
 // The rooms' minibars (ADR 072): read through ops.* SECURITY DEFINER functions, which check
-// MINIBAR at the outlet (rule 2).
+// MINIBAR at the outlet (rule 2). Money comes back null for whoever may not see it (KI-09):
+// guest prices and charges are for whoever bills them and those who read the store's cost,
+// what it cost us for the latter only (ops.minibar_sees_prices, ops.minibar_sees_cost).
 
 export type MinibarTab = 'rooms' | 'charge' | 'history' | 'usage';
 export const MINIBAR_TABS: readonly MinibarTab[] = ['rooms', 'charge', 'history', 'usage'];
@@ -28,7 +30,8 @@ export interface MinibarRoomRow {
   last_checked_by: string | null;
   last_used: number | null;
   checked_today: boolean;
-  to_charge: string;
+  /** null when the viewer sees no money */
+  to_charge: string | null;
   /** the room's status code (never shown, ADR 104) */
   status: string;
   /** a minibar, not checked today, a guest in, arriving or departing */
@@ -47,7 +50,8 @@ export interface MinibarItem {
   item: string;
   unit: string;
   par: string;
-  price: string;
+  /** the guest's price; null when the viewer sees no money */
+  price: string | null;
   in_store: string;
 }
 
@@ -62,7 +66,8 @@ export interface MinibarCheckRow {
   checked_at: Date;
   checked_by: string | null;
   used: UsedLine[];
-  charge: string;
+  /** null when the viewer sees no money */
+  charge: string | null;
   short: boolean;
   charged_at: Date | null;
   charged_by: string | null;
@@ -74,7 +79,8 @@ export interface ToChargeRow {
   checked_at: Date;
   checked_by: string | null;
   used: UsedLine[];
-  charge: string;
+  /** null when the viewer sees no money */
+  charge: string | null;
 }
 
 export interface UsageRow {
@@ -82,8 +88,10 @@ export interface UsageRow {
   item: string;
   unit: string;
   used: string;
-  revenue: string;
-  cost: string;
+  /** what guests were charged; null when the viewer sees no money */
+  revenue: string | null;
+  /** what it cost us; null unless the viewer reads the store's cost */
+  cost: string | null;
   refilled: string;
   rooms: number;
 }

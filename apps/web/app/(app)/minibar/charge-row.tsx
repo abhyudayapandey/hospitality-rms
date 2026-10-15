@@ -18,7 +18,8 @@ export function ChargeRow({
 }: {
   id: string;
   room: string;
-  charge: string;
+  /** null for whoever sees no money (KI-09) */
+  charge: string | null;
   used: { item: string; qty: string; price?: string }[];
   checked: string;
 }) {
@@ -27,7 +28,9 @@ export function ChargeRow({
     <li className="space-y-2 py-2" data-testid="home-charge" data-room={room}>
       <p className="flex items-baseline justify-between gap-2">
         <span className="font-bold tabular-nums">Room {room}</span>
-        <span className="shrink-0 font-semibold tabular-nums">{formatMoney(charge)}</span>
+        {charge !== null && (
+          <span className="shrink-0 font-semibold tabular-nums">{formatMoney(charge)}</span>
+        )}
       </p>
       {open && (
         <div data-testid="home-charge-more">

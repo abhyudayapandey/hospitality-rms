@@ -72,8 +72,9 @@ function moduleLink(r: InboxRow): Pick<InboxEntry, 'link' | 'inline'> {
         inline: false,
       };
     case 'TRANSFER': {
-      // the department head's or GM's approval of a request for material (TR-3): decided here
-      if (r.step === 'approval') {
+      // the department head's or GM's approval (TR-3, ADR 115): decided here, never "Open to
+      // receive" (ADR 145)
+      if (r.step === 'approval' || r.step === 'gm_approval') {
         return {
           link: {
             href: `/stock/transfers/${r.subject_id}?node=${r.delivery_node_id}`,
@@ -86,7 +87,12 @@ function moduleLink(r: InboxRow): Pick<InboxEntry, 'link' | 'inline'> {
       return {
         link: {
           href: `/stock/transfers/${r.subject_id}?node=${node}`,
-          label: r.step === 'dispatch' ? 'Open to send' : 'Open to receive',
+          label:
+            r.step === 'dispatch'
+              ? 'Open to send'
+              : r.step === 'receipt'
+                ? 'Open to receive'
+                : 'Open',
         },
         inline: false,
       };

@@ -11,6 +11,7 @@ import { ACTION_QUEUE_EVENT, indexedDbActions, type QueuedWastage } from '@/lib/
 import { askDiscard, getWastageUploadUrl, recordWastage } from '../actions';
 import { ItemPicker } from '@/components/item-picker';
 import { Stepper } from '@/components/stepper';
+import { formatQty } from '@/lib/qty';
 
 const REASONS = [
   ['spoiled', 'Spoiled'],
@@ -40,7 +41,8 @@ export function WastageForm({
   items: ItemOption[];
   /** item ids wasted here lately, first in the grid */
   often: string[];
-  threshold: number;
+  /** the approval limit in ₹; null for whoever may not see what stock is worth (KI-09) */
+  threshold: number | null;
   photos: boolean;
   /** prefilled from a link, e.g. an expired batch on the production page */
   initial?: { item: string; qty: string; reason: string };
@@ -61,10 +63,16 @@ export function WastageForm({
   const [done, setDone] = useState<string | null>(null);
 
   const item = items.find((i) => i.item_id === itemId);
-  const value = useMemo(() => (item && qty ? Number(qty) * Number(item.avg_cost) : 0), [item, qty]);
+  // what it is worth, only for whoever may see it; the limit is a quantity worked out on the
+  // server, so everyone knows when a photo and approval are needed (KI-09)
+  const value = useMemo(
+    () => (item?.avg_cost != null && qty ? Number(qty) * Number(item.avg_cost) : null),
+    [item, qty],
+  );
   // thrown away only once the GM approves (ADR 092): asked, not recorded
   const needsGm = !!item?.needs_gm;
-  const needsApproval = !needsGm && value > threshold;
+  const over = item?.approval_over != null ? Number(item.approval_over) : null;
+  const needsApproval = !needsGm && over !== null && Number(qty) > over;
 
   const ask = () =>
     start(async () => {
@@ -183,11 +191,13 @@ export function WastageForm({
           here to throw away.
         </p>
       )}
-      {value > 0 && !needsGm && (
-        <p className="text-sm text-slate-600">
-          Worth about {formatMoney(value)}.{' '}
+      {item && Number(qty) > 0 && !needsGm && (
+        <p className="text-sm text-slate-600" data-testid="wastage-worth">
+          {value !== null && value > 0 && `Worth about ${formatMoney(value)}. `}
           {needsApproval
-            ? `Over ${formatMoney(threshold)}: needs a photo and the outlet manager's approval.`
+            ? threshold !== null
+              ? `Over ${formatMoney(threshold)}: needs a photo and the outlet manager's approval.`
+              : `Over ${formatQty(over ?? 0, item.base_uom)}: needs a photo and the outlet manager's approval.`
             : 'Recorded straight away.'}
         </p>
       )}

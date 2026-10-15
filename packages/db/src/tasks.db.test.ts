@@ -299,6 +299,46 @@ describe('working through a checklist', () => {
   const photo = (node: string, kind = 'routine') =>
     `tasks/${kind}/${ids.tenant()}/${ids.node(node)}/0190a8a2-0000-7000-8000-00000000000${kind === 'keep' ? 2 : 1}.jpg`;
 
+  it('a reading named by its unit says the unit once, without trailing zeros', async () => {
+    await inRolledBackTx(async (c) => {
+      const [row] = await run<{ id: string }>(
+        c,
+        'test.executive-chef.1.0',
+        `select ops.create_task($1, 'Pool check', null, now() + interval '1 hour', 'high',
+                                $2::jsonb, $3::jsonb) as id`,
+        [
+          ids.node(KITCHEN),
+          JSON.stringify({ mode: 'person', user_id: ids.user('test.commis.1.0') }),
+          JSON.stringify([{ label: 'pH', kind: 'number', min: 7.2, max: 7.8, unit: 'pH' }]),
+        ],
+      );
+      const { rows } = await c.query<{ id: string }>(
+        `select id from ops.task_step where task_id = $1`,
+        [row!.id],
+      );
+      const r = await attemptAs<{ r: { flagged: boolean } }>(
+        c,
+        ids.user('test.commis.1.0'),
+        `select ops.complete_step($1, $2, ${stepPhoto()} || $3::jsonb) as r`,
+        [
+          row!.id,
+          rows[0]!.id,
+          JSON.stringify({ number: 8.0, photo_key: photo(KITCHEN), action: 'Dosed the pool' }),
+        ],
+      );
+      expect(r.error).toBeUndefined();
+      expect(await notes(c, 'test.executive-chef.1.0', 'task_flagged')).toEqual([
+        'Pool check: pH is 8',
+      ]);
+      const { rows: body } = await c.query<{ body: string }>(
+        `select body from ops.notification
+          where owner_user_id = $1 and kind = 'task_flagged' and created_at >= now()`,
+        [ids.user('test.executive-chef.1.0')],
+      );
+      expect(body[0]!.body).toBe('Acceptable: 7.2 to 7.8. Done: Dosed the pool');
+    });
+  });
+
   it('flags a reading out of range and tells the lead', async () => {
     await inRolledBackTx(async (c) => {
       const { task, steps } = await checklist(c);

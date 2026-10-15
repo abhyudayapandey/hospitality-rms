@@ -25,7 +25,7 @@ export interface RequestActionData {
   gm: boolean;
   lines: RequestLine[];
   /** whoever may send it can give the sending to someone (ADR 115) */
-  sendPeople: { id: string; name: string }[];
+  sendPeople: { id: string; name: string; on_shift: boolean }[];
   givenTo: string | null;
   /** the viewer's own open send or receive task on it, done right here */
   task: {
@@ -80,8 +80,8 @@ export async function requestActions(tx: Tx, transfer: string): Promise<RequestA
   ).rows[0];
   const sendPeople = act?.may_send
     ? (
-        await sql<{ id: string; name: string }>`
-          select id::text, name from inv.send_people(${transfer}::uuid)`.execute(tx)
+        await sql<{ id: string; name: string; on_shift: boolean }>`
+          select id::text, name, on_shift from inv.send_people(${transfer}::uuid)`.execute(tx)
       ).rows
     : [];
   // what each store has, for whoever decides or sends it (ADR 141), until it is sent

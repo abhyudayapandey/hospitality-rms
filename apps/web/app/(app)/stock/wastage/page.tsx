@@ -20,12 +20,15 @@ export default async function WastagePage({ searchParams }: { searchParams: Sear
   const user = await requireUser();
   const data = await withUser(user.id, async (tx) => {
     const items = await itemOptions(tx, ctx.node!.id);
-    const t = await sql<{ v: string }>`
-      select inv.wastage_threshold(${ctx.node!.id}::uuid) as v`.execute(tx);
+    // the limit in ₹ only for whoever sees what stock is worth here (KI-09)
+    const t = await sql<{ v: string | null }>`
+      select case when inv.sees_store_money(${ctx.node!.id}::uuid)
+                  then inv.wastage_threshold(${ctx.node!.id}::uuid) end as v`.execute(tx);
     const { range, today } = await listDays(tx, sp, ctx.node!.id);
     // the latest ten, or every line on the days chosen (ADR 120)
     const recent = await wastageList(tx, ctx.node!.id, range, range ? 500 : 10);
-    return { items, threshold: Number(t.rows[0]!.v), recent, range, today };
+    const v = t.rows[0]?.v ?? null;
+    return { items, threshold: v === null ? null : Number(v), recent, range, today };
   });
   return (
     <div className="space-y-4">
@@ -68,7 +71,7 @@ export default async function WastagePage({ searchParams }: { searchParams: Sear
                 <span className="text-right tabular-nums">
                   {formatQty(r.qty, r.base_uom)}
                   <span className="block text-xs text-slate-500">
-                    {formatMoney(r.value)} ·{' '}
+                    {r.value !== null && `${formatMoney(r.value)} · `}
                     {r.outcome === 'approval' ? 'needs approval' : 'posted'}
                   </span>
                 </span>
