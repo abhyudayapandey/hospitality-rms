@@ -85,6 +85,62 @@ describe('Push today', () => {
     });
   });
 
+  it('one rule with Expired (ADR 160): past its use-by day is Expired, never Push', async () => {
+    await inRolledBackTx(async (c) => {
+      // use-by days, not hours, so it holds at any time of day: yesterday's business day and
+      // today's, each written at noon of that day
+      const at = (days: number, no: string) =>
+        c.query(
+          `insert into inv.stock_ledger (tenant_id, item_id, delivery_node_id, movement_type, qty,
+                                         unit_cost, ref_type, batch_no, expires_at, occurred_at)
+           select i.tenant_id, i.id, $1, 'production_in', 500, 0.2, 'production', $3,
+                  rpt.day_start(rpt.business_date(now(), 'Asia/Kolkata') + $4::int, 'Asia/Kolkata')
+                    + interval '8 hours',
+                  now() - interval '3 days'
+             from inv.item i where i.tenant_id = $2 and i.sku = 'GINGER-GARLIC-PASTE'`,
+          [ids.node(STORE), ids.tenant(), no, days],
+        );
+      await at(-1, 'YESTERDAY-1');
+      await at(0, 'TODAY-1');
+      const list = await attemptAs<{ batch_no: string; expired: boolean }>(
+        c,
+        ids.user('test.head-cook.3.0'),
+        `select batch_no, expired from inv.expiry_list(3) where batch_no in ('YESTERDAY-1', 'TODAY-1')`,
+      );
+      expect(list.error).toBeUndefined();
+      expect(Object.fromEntries(list.rows!.map((r) => [r.batch_no, r.expired]))).toEqual({
+        'YESTERDAY-1': true,
+        'TODAY-1': false,
+      });
+      // Push lists the dishes for today's batch only, its use-by today
+      const r = await push(c, 'test.server.3.0', 'TEST-BAR-3.0');
+      const paste = r.rows!.filter((x) => x.item === 'Ginger Garlic Paste');
+      expect(paste.map((x) => x.dish).sort()).toEqual(['Paneer Tikka', 'Prawns Masala']);
+      const { rows: today } = await c.query<{ d: string }>(
+        `select rpt.business_date(now(), 'Asia/Kolkata')::text as d`,
+      );
+      const { rows: useBy } = await c.query<{ d: string }>(
+        `select rpt.business_date($1::timestamptz, 'Asia/Kolkata')::text as d`,
+        [paste[0]!.expires_at],
+      );
+      expect(useBy[0]!.d).toBe(today[0]!.d);
+      // the same answer at the first and the last minute of today's business day
+      for (const minute of ['00:01', '23:59']) {
+        const { rows } = await c.query<{ batch_no: string }>(
+          `select batch_no from inv.expiring_soon($1,
+             rpt.day_start(rpt.business_date(now(), 'Asia/Kolkata'), 'Asia/Kolkata')
+               + $2::interval)
+            where batch_no in ('YESTERDAY-1', 'TODAY-1')`,
+          [ids.node(STORE), minute],
+        );
+        expect(
+          rows.map((x) => x.batch_no),
+          minute,
+        ).toEqual(['TODAY-1']);
+      }
+    });
+  });
+
   it('only for people at the outlet', async () => {
     await inRolledBackTx(async (c) => {
       await batch(c, 20);

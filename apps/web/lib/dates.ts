@@ -40,14 +40,18 @@ export function daysInclusive(from: string, to: string): number {
   return Math.round(ms / 86_400_000) + 1;
 }
 
-/** 'Mon 5 Oct' */
-export function formatDay(date: string): string {
+/** 'Mon, 5 Oct'; a day in another year than `now`'s says it: 'Fri, 27 Dec 2024'. */
+export function formatDay(date: string, now: Date = new Date()): string {
+  const otherYear = date.slice(0, 4) !== String(now.getUTCFullYear());
   return new Intl.DateTimeFormat('en-IN', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
+    ...(otherYear ? { year: 'numeric' as const } : {}),
     timeZone: 'UTC',
-  }).format(new Date(`${date}T00:00:00Z`));
+  })
+    .format(new Date(`${date}T00:00:00Z`))
+    .replace(/, (\d{4})$/, ' $1');
 }
 
 /** '09:30' in `tz` */

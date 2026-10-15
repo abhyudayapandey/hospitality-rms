@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import {
   CALENDAR_JOBS,
-  EVERY_MONTHS,
   NTHS,
   WEEKDAYS,
   everyWords,
@@ -23,14 +22,27 @@ const field = (f: FormData, name: string) => {
   return typeof v === 'string' ? v : '';
 };
 
-/** How a job repeats, as chips (ADR 116). */
-const KINDS = [
-  { key: 'months', label: 'Months' },
+/**
+ * How a job repeats, as one list of chips (ADR 116, 160): every week or 2 weeks on a weekday,
+ * every 1 to 12 months, or a day of the month ("2nd Tuesday").
+ */
+const OFTEN = [
   { key: 'week', label: 'Every week' },
   { key: 'fortnight', label: 'Every 2 weeks' },
+  ...[1, 2, 3, 4, 6, 12].map((m) => ({ key: `m${m}`, label: everyWords(m) })),
   { key: 'nth', label: 'A day of the month' },
-] as const;
-type Kind = (typeof KINDS)[number]['key'];
+] as const satisfies readonly { key: string; label: string }[];
+type Often = string;
+
+/** The chip a rule shows as; a job kept every 2 or 3 years keeps its own chip. */
+const oftenOf = (r: Repeat): Often =>
+  r.kind === 'weeks'
+    ? r.weeks === 2
+      ? 'fortnight'
+      : 'week'
+    : r.kind === 'nth'
+      ? 'nth'
+      : `m${r.months}`;
 
 const chip = (on: boolean) =>
   `flex min-h-11 items-center justify-center rounded-full px-3 text-sm font-medium ring-1 ${
@@ -62,18 +74,23 @@ export function JobForm({
   const [node, setNode] = useState(existing?.node ?? places[0]?.id ?? '');
   const [name, setName] = useState(existing?.name ?? '');
   const first: Repeat = existing?.repeat ?? { kind: 'months', months: 6 };
-  const [kind, setKind] = useState<Kind>(
-    first.kind === 'weeks' ? (first.weeks === 2 ? 'fortnight' : 'week') : first.kind,
-  );
-  const [every, setEvery] = useState(first.kind === 'months' ? first.months : 6);
+  const [often, setOften] = useState<Often>(oftenOf(first));
   const [weekday, setWeekday] = useState(first.kind === 'months' ? 1 : first.weekday);
   const [nth, setNth] = useState(first.kind === 'nth' ? first.nth : 1);
+  const kind =
+    often === 'nth' ? 'nth' : often === 'week' || often === 'fortnight' ? 'weeks' : 'months';
   const repeat: Repeat =
     kind === 'months'
-      ? { kind: 'months', months: every }
+      ? { kind: 'months', months: Number(often.slice(1)) }
       : kind === 'nth'
         ? { kind: 'nth', nth, weekday }
-        : { kind: 'weeks', weeks: kind === 'fortnight' ? 2 : 1, weekday };
+        : { kind: 'weeks', weeks: often === 'fortnight' ? 2 : 1, weekday };
+  // a job kept every 2 or 3 years shows its own chip beside the list
+  const chips: readonly { key: string; label: string }[] = OFTEN.some(
+    (o) => o.key === oftenOf(first),
+  )
+    ? OFTEN
+    : [...OFTEN.slice(0, -1), { key: oftenOf(first), label: repeatWords(first) }, OFTEN.at(-1)!];
   const [proof, setProof] = useState(existing?.needs_proof ?? true);
   const [key] = useState(() => crypto.randomUUID());
   const here = roles[node] ?? [];
@@ -131,8 +148,7 @@ export function JobForm({
             setName(e.target.value);
             const lib = CALENDAR_JOBS.find((j) => j.name === e.target.value);
             if (lib) {
-              setKind('months');
-              setEvery(lib.everyMonths);
+              setOften(`m${lib.everyMonths}`);
               setProof(lib.needsProof);
             }
           }}
@@ -146,34 +162,19 @@ export function JobForm({
       </label>
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">How often</legend>
-        <div className="grid grid-cols-2 gap-2" role="group" aria-label="Repeats">
-          {KINDS.map((k) => (
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Repeats">
+          {chips.map((o) => (
             <button
-              key={k.key}
+              key={o.key}
               type="button"
-              aria-pressed={kind === k.key}
-              onClick={() => setKind(k.key)}
-              className={chip(kind === k.key)}
+              aria-pressed={often === o.key}
+              onClick={() => setOften(o.key)}
+              className={chip(often === o.key)}
             >
-              {k.label}
+              {o.label}
             </button>
           ))}
         </div>
-        {kind === 'months' && (
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Every how many months">
-            {EVERY_MONTHS.map((m) => (
-              <button
-                key={m}
-                type="button"
-                aria-pressed={every === m}
-                onClick={() => setEvery(m)}
-                className={chip(every === m)}
-              >
-                {everyWords(m).replace('Every ', '')}
-              </button>
-            ))}
-          </div>
-        )}
         {kind === 'nth' && (
           <div className="flex flex-wrap gap-2" role="group" aria-label="Which one in the month">
             {NTHS.map((n) => (
@@ -255,7 +256,7 @@ export function JobForm({
             ? '14 days'
             : kind === 'nth'
               ? 'a week'
-              : kind === 'fortnight'
+              : often === 'fortnight'
                 ? '3 days'
                 : 'the day'}{' '}
           before); they can give it to someone there.

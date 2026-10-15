@@ -5,7 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, primaryButton } from '@/components/messages';
 import { ItemThumb } from '@/components/item-thumb';
 import { Stepper } from '@/components/stepper';
-import { formatQty } from '@/lib/qty';
+import { formatCount } from '@/lib/qty';
 import { useHydrated } from '@/lib/use-hydrated';
 import { countRoom } from '../actions';
 
@@ -59,7 +59,7 @@ export function RoomCountForm({
               <span className="min-w-0">
                 <span className="block text-sm font-medium">{l.item}</span>
                 <span className="block text-xs text-slate-500">
-                  should have {formatQty(l.expected, l.unit)}
+                  Should be {formatCount(l.expected, l.unit)}
                 </span>
               </span>
             </span>

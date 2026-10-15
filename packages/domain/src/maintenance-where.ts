@@ -1,14 +1,16 @@
 // Where a problem is (ADR 125): a place a person can point at, never a department. A room is
 // then picked by its number. A place that is a department's (the kitchen, the bar) is offered
-// only where the outlet has that department; the pool only at a hotel.
+// only where the outlet has that department; the pool and parking only at a hotel; a terrace or
+// garden at a hotel, or where one of the outlet's floor sections is called that (ADR 160).
 
 export interface MaintenanceWhere {
   code: string;
   word: string;
   /** offered only where the outlet has a department with this catalogue code */
   department?: string;
-  /** offered only where the outlet has rooms, or is a hotel */
-  needs?: 'rooms' | 'hotel';
+  /** offered only where the outlet has rooms, or is a hotel; `outdoor`: a hotel, or an outlet
+   * with a floor section of that name (a bar's "Terrace", ADR 160) */
+  needs?: 'rooms' | 'hotel' | 'outdoor';
 }
 
 export const MAINTENANCE_WHERE: readonly MaintenanceWhere[] = [
@@ -19,9 +21,9 @@ export const MAINTENANCE_WHERE: readonly MaintenanceWhere[] = [
   { code: 'kitchen', word: 'Kitchen', department: 'KITCHEN' },
   { code: 'banquet_hall', word: 'Banquet hall', department: 'BANQUETS' },
   { code: 'pool', word: 'Pool', needs: 'hotel' },
-  { code: 'terrace', word: 'Terrace' },
-  { code: 'garden', word: 'Garden' },
-  { code: 'parking', word: 'Parking' },
+  { code: 'terrace', word: 'Terrace', needs: 'outdoor' },
+  { code: 'garden', word: 'Garden', needs: 'outdoor' },
+  { code: 'parking', word: 'Parking', needs: 'hotel' },
   { code: 'store', word: 'Store' },
   { code: 'laundry', word: 'Laundry', department: 'HOUSEKEEPING' },
   { code: 'staff_area', word: 'Staff area' },

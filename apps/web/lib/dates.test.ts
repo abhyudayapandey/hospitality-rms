@@ -32,7 +32,10 @@ describe('people dates', () => {
       '22:00–06:00 +1',
     );
     expect(localToInstant('2026-10-01', '09:00', 'Asia/Kolkata')).toBe('2026-10-01T03:30:00.000Z');
-    expect(formatDay('2026-10-05')).toBe('Mon, 5 Oct');
+    const in2026 = new Date('2026-10-15T00:00:00Z');
+    expect(formatDay('2026-10-05', in2026)).toBe('Mon, 5 Oct');
+    // a day of another year says its year
+    expect(formatDay('2024-12-27', in2026)).toBe('Fri, 27 Dec 2024');
   });
 
   it('validates ISO dates', () => {

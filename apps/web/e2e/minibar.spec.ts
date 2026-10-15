@@ -18,12 +18,16 @@ test('the room attendant checks a minibar; the front desk adds it to the bill', 
     await page.goto('/me');
     await page.getByTestId('me-minibar').click();
     await page.waitForURL(/\/minibar$/);
-    await expect(page.getByTestId('minibar-summary')).toContainText('rooms checked today');
+    // the header counts what is due today, never every room (ADR 160)
+    await expect(page.getByTestId('minibar-summary')).toContainText(/due today|No minibar due/);
     // the rupees are for whoever bills them: the attendant has no To charge tab (ADR 104)
     await expect(page.getByRole('link', { name: /Charged to guests/ })).toBeVisible();
     await expect(page.getByRole('link', { name: /To charge/ })).toHaveCount(0);
     await expect(page.getByTestId('minibar-summary')).not.toContainText('₹');
-    await page.getByTestId('minibar-room').filter({ hasText: 'Room 103' }).click();
+    // the tile reads "103"; its link says "Room 103"
+    const room103 = page.locator('[data-testid="minibar-room"][data-room="103"]');
+    await expect(room103).toHaveText(/^\s*103\s*$/);
+    await room103.getByRole('link', { name: /^Room 103,/ }).click();
     await page.waitForURL(/\/minibar\/[0-9a-f-]{36}$/);
 
     const form = page.getByRole('form', { name: 'Minibar check' });

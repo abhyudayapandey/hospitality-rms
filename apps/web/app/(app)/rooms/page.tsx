@@ -14,7 +14,7 @@ import {
 } from '@/lib/rooms';
 import { Icon } from '@/components/icon';
 import { ViewTabs } from '@/components/view-tabs';
-import { formatQty } from '@/lib/qty';
+import { formatCount } from '@/lib/qty';
 import { ItemThumb } from '@/components/item-thumb';
 import { RoomGrid, RoomLegend } from './status-picker';
 
@@ -183,13 +183,13 @@ function Contents({ rows, outlet }: { rows: RoomContentRow[]; outlet: string }) 
                     <ItemThumb name={l.item} size="size-8" />
                     <span className="min-w-0 flex-1">{l.item}</span>
                     <span className="shrink-0 text-right tabular-nums">
-                      <span className="block">should have {formatQty(l.expected, l.unit)}</span>
+                      <span className="block">Should be {formatCount(l.expected, l.unit)}</span>
                       {l.counted !== null && (
                         <span
                           className={`block text-xs ${short ? 'text-rose-800' : 'text-slate-500'}`}
                           data-testid="room-counted"
                         >
-                          counted {formatQty(l.counted, l.unit)}
+                          counted {formatCount(l.counted, l.unit)}
                           {l.counted_at && `, ${formatWhen(l.counted_at)}`}
                         </span>
                       )}
