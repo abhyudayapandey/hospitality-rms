@@ -25,6 +25,14 @@ import {
 // items. For the GM, the purchase manager and whoever reads the stores' bills.
 
 type Tab = 'all' | 'ordered' | 'received' | 'transfer';
+/** "Nothing … on Wed, 14 Oct" for each tab, as a sentence (never "Nothing transfers"). */
+const EMPTY: Record<Tab, string> = {
+  all: 'ordered, received or moved',
+  ordered: 'ordered',
+  received: 'received',
+  transfer: 'moved between stores',
+};
+
 const TABS: readonly { key: Tab; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'ordered', label: 'Ordered' },
@@ -127,10 +135,7 @@ export default async function Movements({ searchParams }: { searchParams: Search
 
       {list.length === 0 ? (
         <Empty>
-          Nothing{' '}
-          {tab === 'all'
-            ? 'ordered, received or moved'
-            : TABS.find((t) => t.key === tab)!.label.toLowerCase()}{' '}
+          Nothing {EMPTY[tab]}{' '}
           {range.from === range.to ? `on ${formatDay(range.from)}` : 'in these days'}.
         </Empty>
       ) : (

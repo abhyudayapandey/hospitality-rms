@@ -18,9 +18,12 @@ test('a server: only My week; the outlet and department reports refuse', async (
   await expect(page.getByTestId('report-week')).toHaveText('This week');
   await expect(page.getByTestId('measure-shifts')).toBeVisible();
 
+  // My week is their only report: no "← Reports" to a list of one, and Reports opens it (ADR 160)
+  await expect(page.getByRole('link', { name: '← Reports' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: '← Back' })).toBeVisible();
   await page.goto('/reports');
-  await expect(page.getByTestId('report-list').getByRole('link')).toHaveCount(1);
-  await expect(page.getByTestId('report-list')).toContainText('My week');
+  await page.waitForURL(/\/reports\/my-week/);
+  await expect(page.getByRole('heading', { name: 'My week' })).toBeVisible();
   for (const path of ['/reports/outlet', '/reports/department']) {
     await page.goto(path);
     await expect(page.locator('main')).toContainText(NO_ACCESS);

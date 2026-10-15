@@ -12,7 +12,7 @@ import { formatMoney } from '@/lib/format';
 import { companySettings } from '@/lib/settings-data';
 import type { SearchParams } from '@/lib/params';
 import { outletFlash, reportDay, reportPlace, reportToday } from '@/lib/report-data';
-import { flashCostParts, trendHref } from '@/lib/reports';
+import { flashCostParts, partDayRows, trendHref } from '@/lib/reports';
 import { CoversForm } from './covers-form';
 
 // The outlet's day (the daily flash, docs/reporting.md): sales, recipe cost %, wastage,
@@ -39,7 +39,10 @@ export default async function OutletReport({ searchParams }: { searchParams: Sea
     };
   });
   if (!data) return <NoReport>You don&apos;t have access to this report.</NoReport>;
-  const { places, place, today, day, rows, targets, covers } = data;
+  const { places, place, today, day, targets, covers } = data;
+  // today before its sales are in: no comparison with last week, no shares of the cost (ADR 160)
+  const partDay = partDayRows(data.rows, day, today);
+  const rows = partDay ?? data.rows;
   return (
     <div className="space-y-4">
       <ReportHeader
@@ -51,13 +54,18 @@ export default async function OutletReport({ searchParams }: { searchParams: Sea
         day={day}
         today={today}
       />
+      {partDay && (
+        <p className="text-sm text-slate-600" data-testid="part-day">
+          Today so far. It is compared with last week once today&apos;s sales are in.
+        </p>
+      )}
       <ReportSections
         report="outlet_flash"
         rows={rows}
         targets={targets}
         trend={(m) => trendHref('outlet_flash', place.id, m)}
       />
-      <CostBreakdown rows={flashCostParts(rows)} />
+      {!partDay && <CostBreakdown rows={flashCostParts(rows)} />}
       {covers && <Covers outlet={place.id} day={day} rows={covers} />}
       <p className="text-xs text-slate-500">
         Business day 04:00 to 04:00. Cost is the recipe cost of what sold; sales come from the daily
@@ -100,7 +108,13 @@ function Covers({ outlet, day, rows }: { outlet: string; day: string; rows: Cove
         )}
       </p>
       {first?.can_edit ? (
-        <CoversForm key={`${outlet}-${day}`} outlet={outlet} day={day} given={given} />
+        <CoversForm
+          key={`${outlet}-${day}`}
+          outlet={outlet}
+          day={day}
+          given={given}
+          periods={rows.map((r) => r.period)}
+        />
       ) : (
         <ul className="text-sm text-slate-600">
           {rows.map((r) => (

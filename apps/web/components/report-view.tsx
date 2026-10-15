@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BackLink } from './back-link';
 import { addDays, formatDay } from '@/lib/dates';
 import {
   compare,
@@ -23,16 +24,24 @@ import type { ReportScreen } from '@/lib/place-screens';
 export function ReportHeader({
   report,
   switcher,
+  onlyReport = false,
 }: {
   report: ReportCode;
   switcher?: { screen: ReportScreen; places: SwitcherPlace[]; current: string } | undefined;
+  /** the person's only report (a frontline person's My week): "← Reports" would open a list
+   * of this one, so it goes back where they came from (ADR 160) */
+  onlyReport?: boolean;
 }) {
   return (
     <div className="space-y-2">
       {switcher && <PlaceSwitcher {...switcher} />}
-      <Link href="/reports" className="text-sm text-slate-600 underline">
-        ← Reports
-      </Link>
+      {onlyReport ? (
+        <BackLink fallback="/me" />
+      ) : (
+        <Link href="/reports" className="text-sm text-slate-600 underline">
+          ← Reports
+        </Link>
+      )}
       <h1 className="text-xl font-semibold">{REPORTS[report].title}</h1>
     </div>
   );

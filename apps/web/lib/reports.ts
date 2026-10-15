@@ -648,6 +648,27 @@ export function flashCostParts(rows: readonly MeasureRow[]): CostPartRow[] {
   });
 }
 
+/** Shares of the day's cost: from a part day they read as a collapse ("People cost 100%"). */
+const PART_DAY_HIDDEN = new Set(['labour_pct', 'materials_pct']);
+
+/**
+ * Outlet today before its sales are in (ADR 160): a part day against a whole day last week reads
+ * as a collapse (Sales ₹0 ▼ ₹1,14,560), and with no sales the people cost is all of the cost. So
+ * until the day's sales come in, no comparison and no shares of the cost; null when the day is a
+ * whole one (an earlier day, or today with sales in).
+ */
+export function partDayRows(
+  rows: readonly MeasureRow[],
+  day: string,
+  today: string,
+): MeasureRow[] | null {
+  if (day !== today) return null;
+  if (Number(rows.find((r) => r.measure === 'sales')?.value ?? 0) > 0) return null;
+  return rows
+    .filter((r) => !PART_DAY_HIDDEN.has(r.measure))
+    .map((r) => ({ ...r, last_week: null }));
+}
+
 /** A period of at most 93 days (the labour and People reports' limit), ending at `to`. */
 export function capRange(from: string, to: string, days = 93): { from: string; to: string } {
   const earliest = shift(to, -(days - 1));

@@ -63,13 +63,26 @@ export default async function MenuEngineering({ searchParams }: { searchParams: 
       {menus.map((menu) => {
         const list = dishes.filter((d) => d.menu === menu);
         const first = list[0]!;
+        const what = menu === 'Bar' ? 'drinks' : 'dishes';
+        // nothing sold on this menu in the period: nothing to place, so no groups and no
+        // "popular from" (ADR 160)
+        if (list.every((d) => !(Number(d.sold) > 0))) {
+          return (
+            <section key={menu} aria-label={menu} className="space-y-1" data-menu={menu}>
+              <h2 className="font-semibold">{menu === 'Bar' ? 'Drinks' : menu}</h2>
+              <p className="text-sm text-slate-600" data-testid="menu-nothing-sold">
+                No {what} sold in these months yet. They are placed once sales come in.
+              </p>
+            </section>
+          );
+        }
         return (
           <section key={menu} aria-label={menu} className="space-y-3" data-menu={menu}>
             <div>
               <h2 className="font-semibold">{menu === 'Bar' ? 'Drinks' : menu}</h2>
               <p className="text-xs text-slate-500">
                 Average margin {formatMoney(first.avg_margin) ?? '–'} a serve · popular from{' '}
-                {first.popular_from_pct ?? '–'}% of {menu === 'Bar' ? 'drinks' : 'dishes'} sold
+                {first.popular_from_pct ?? '–'}% of {what} sold
               </p>
             </div>
             {DISH_CLASSES.map((c) => {
@@ -91,7 +104,7 @@ export default async function MenuEngineering({ searchParams }: { searchParams: 
             })}
             {list.some((d) => dishClass(d.class) === null) && (
               <p className="text-xs text-slate-500">
-                Not placed (nothing sold on this menu, or no recipe):{' '}
+                Not placed (no recipe to cost it):{' '}
                 {list
                   .filter((d) => dishClass(d.class) === null)
                   .map((d) => d.name)

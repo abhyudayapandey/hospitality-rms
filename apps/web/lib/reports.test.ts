@@ -27,6 +27,7 @@ import {
   trendRange,
   trendSettings,
   type ReportCode,
+  partDayRows,
 } from './reports';
 import { daysInclusive } from './dates';
 
@@ -415,5 +416,25 @@ describe('the reports list is grouped by question (UX-7)', () => {
   it('every report is in exactly one group', () => {
     const all = groupReports(Object.keys(REPORTS) as ReportCode[]).flatMap((x) => x.reports);
     expect([...all].sort()).toEqual(Object.keys(REPORTS).sort());
+  });
+});
+
+describe('a part day (ADR 160)', () => {
+  const rows = [
+    { measure: 'sales', value: '0', last_week: '114560' },
+    { measure: 'labour_pct', value: '100.0', last_week: '31.0' },
+    { measure: 'materials_pct', value: '0.0', last_week: '69.0' },
+    { measure: 'wastage', value: '120', last_week: '300' },
+  ];
+  it('today before sales: no comparison and no shares of the cost', () => {
+    expect(partDayRows(rows, '2026-10-15', '2026-10-15')).toEqual([
+      { measure: 'sales', value: '0', last_week: null },
+      { measure: 'wastage', value: '120', last_week: null },
+    ]);
+  });
+  it('an earlier day, or today once sales are in, is a whole day', () => {
+    expect(partDayRows(rows, '2026-10-14', '2026-10-15')).toBeNull();
+    const sold = rows.map((r) => (r.measure === 'sales' ? { ...r, value: '5000' } : r));
+    expect(partDayRows(sold, '2026-10-15', '2026-10-15')).toBeNull();
   });
 });

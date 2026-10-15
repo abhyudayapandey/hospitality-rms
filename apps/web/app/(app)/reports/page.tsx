@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Empty } from '@/components/messages';
 import { withUser } from '@/lib/db';
 import { myReports } from '@/lib/report-data';
@@ -10,6 +11,9 @@ import { loadShell } from '@/lib/shell';
 export default async function ReportsPage() {
   const shell = await loadShell();
   const reports = await withUser(shell.user.id, myReports);
+  // one report and nothing else here (a frontline person's My week): open it, never a list of
+  // one (ADR 160)
+  if (reports.length === 1 && !shell.domains.has('MENU')) redirect(REPORTS[reports[0]!].href);
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Reports</h1>

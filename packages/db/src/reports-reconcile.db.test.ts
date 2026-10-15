@@ -202,6 +202,8 @@ async function mismatches(c: PoolClient, userId: string): Promise<string[]> {
         if (!d.error) {
           for (const k of ['shifts', 'late', 'no_shows'])
             eq(at, `${k} vs departments`, v.get(k), sum(d.rows, k));
+          // the people who work, never the account owner or the demo presenter (ADR 160)
+          eq(at, 'headcount vs departments', v.get('headcount'), sum(d.rows, 'headcount'));
           eq(at, 'worked hours vs departments', v.get('worked_hours'), sum(d.rows, 'hours'));
         }
         const bp = await q(`select * from rpt.bd_people('people', $1, $2::date, $3::date)`, [
@@ -544,10 +546,63 @@ describe('the rules the audit fixed', () => {
         [place, day],
       );
       const r = rows.rows!;
+      // a bar serves no breakfast, so its covers ask for lunch and dinner only (ADR 160)
+      expect(
+        (
+          await attemptAs<{ period: string }>(c, who, `select period from ops.covers_day($1, $2)`, [
+            place,
+            day,
+          ])
+        ).rows!.map((x) => x.period),
+      ).toEqual(['lunch', 'dinner']);
       expect(sum(r, 'covers')).toBe(r[0]!.total_covers);
       expect(n(r[0]!.sales)).toBe(n(flash.rows![0]!.value));
       expect(n(r[0]!.sales)).toBeGreaterThan(0);
       expect(n(r[0]!.per_cover)).toBe(Math.round((n(r[0]!.sales) / 100) * 100) / 100);
+    });
+  });
+
+  it('the People report leaves out the account owner and a demo presenter (ADR 160)', async () => {
+    await inRolledBackTx(async (c) => {
+      const company = ids.node('TEST-COMPANY');
+      // the HR admin's own record stands in for a demo presenter (test customers only)
+      await c.query(`update core.app_user set demo_presenter = true where id = $1`, [
+        ids.user('test.security-admin'),
+      ]);
+      const who = ids.user('test.hr-admin');
+      const s = await attemptAs<{ measure: string; value: string }>(
+        c,
+        who,
+        `select measure, value::text from rpt.people_summary($1, current_date - 6, current_date)`,
+        [company],
+      );
+      expect(s.error).toBeUndefined();
+      const headcount = n(s.rows!.find((x) => x.measure === 'headcount')!.value);
+      const { rows } = await c.query<{ n: string }>(
+        `select count(*)::text as n from hr.worker w
+           join core.app_user u on u.id = w.owner_user_id
+          where w.tenant_id = $1 and w.status = 'active'
+            and w.role_code <> 'ACCOUNT_OWNER' and not u.demo_presenter`,
+        [ids.tenant()],
+      );
+      expect(headcount).toBe(n(rows[0]!.n));
+      const d = await attemptAs<{ name: string; headcount: number }>(
+        c,
+        who,
+        `select name, headcount from rpt.people_departments($1, current_date - 6, current_date)`,
+        [company],
+      );
+      expect(d.error).toBeUndefined();
+      expect(sum(d.rows!, 'headcount')).toBe(headcount);
+      const list = await attemptAs<{ person: string }>(
+        c,
+        who,
+        `select person from rpt.bd_people('people', $1, current_date - 6, current_date)`,
+        [company],
+      );
+      expect(list.error).toBeUndefined();
+      expect(list.rows!.map((x) => x.person)).not.toContain('Test Account Owner');
+      expect(list.rows!.map((x) => x.person)).not.toContain('Test Security Admin');
     });
   });
 

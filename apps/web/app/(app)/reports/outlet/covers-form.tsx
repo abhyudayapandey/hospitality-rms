@@ -9,15 +9,18 @@ import { setCovers } from './actions';
 const PERIOD_WORDS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' } as const;
 type Period = keyof typeof PERIOD_WORDS;
 
-/** The day's covers per meal period (ADR 096); nothing is filled in that was not given. */
+/** The day's covers per meal period (ADR 096); nothing is filled in that was not given. Only
+ * the meals the outlet serves are asked (ADR 160): no Breakfast at a bar. */
 export function CoversForm({
   outlet,
   day,
   given,
+  periods,
 }: {
   outlet: string;
   day: string;
   given: Record<Period, number | null>;
+  periods: readonly Period[];
 }) {
   const router = useRouter();
   const hydrated = useHydrated();
@@ -31,7 +34,7 @@ export function CoversForm({
   const save = () =>
     start(async () => {
       setError(null);
-      const changed = (Object.keys(PERIOD_WORDS) as Period[]).filter(
+      const changed = periods.filter(
         (p) => values[p].trim() !== '' && Number(values[p]) !== given[p],
       );
       for (const p of changed) {
@@ -52,8 +55,8 @@ export function CoversForm({
         save();
       }}
     >
-      <div className="grid grid-cols-3 gap-2">
-        {(Object.keys(PERIOD_WORDS) as Period[]).map((p) => (
+      <div className={`grid gap-2 ${periods.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+        {periods.map((p) => (
           <label key={p} className="block space-y-1">
             <span className="text-sm font-medium">{PERIOD_WORDS[p]}</span>
             <input
