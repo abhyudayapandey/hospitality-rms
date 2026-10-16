@@ -54,6 +54,22 @@ test('the right password lands on Home', async ({ page }) => {
   await expectHome(page, 'Test General Manager 1.0');
 });
 
+test('a login takes no spaces, and the password can be shown (ADR 163)', async ({ page }) => {
+  await page.goto('/login');
+  const login = page.getByLabel('Login ID or email');
+  await login.pressSequentially(' gm. signin ');
+  await expect(login).toHaveValue('gm.signin');
+  const password = page.getByLabel('Password', { exact: true });
+  await password.fill('Right-pass-123');
+  await expect(password).toHaveAttribute('type', 'password');
+  await page.getByRole('button', { name: 'Show password' }).click();
+  await expect(password).toHaveAttribute('type', 'text');
+  await page.getByRole('button', { name: 'Hide password' }).click();
+  await expect(password).toHaveAttribute('type', 'password');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expectHome(page, 'Test General Manager 1.0');
+});
+
 test('a wrong password says so and stays on sign-in', async ({ page }) => {
   await typeLogin(page, 'gm.signin', 'Wrong-pass-123');
   await expect(page.getByTestId('sign-in-form').getByRole('alert')).toHaveText(

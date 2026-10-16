@@ -52,7 +52,11 @@ The owner walked [TEST] Restaurant step by step with the QA sheet and found thes
      is told when someone else cancels it. Started leave is `LEAVE_STARTED`.
    - Team → Leave lists every state (waiting, approved, rejected, cancelled) in words, by day or
      by person, each row opening the leave.
-5. **The QA sheet keeps its results.** Its saved answers are keyed by step, so new checks are
+5. **Signing in.** The login box drops spaces as they are typed or pasted, and the server drops
+   them too: a login ID or email never has one. Every password box (sign-in, first password,
+   reset, Profile) has Show / Hide (`PasswordInput`), since a mistyped password is hard to find
+   on a phone without seeing it.
+6. **The QA sheet keeps its results.** Its saved answers are keyed by step, so new checks are
    added as new steps and no step is renamed or removed.
 
 ## Consequences

@@ -40,7 +40,8 @@ function withError(prev: SignInState, login: string, error: string): SignInState
 
 export async function signIn(prev: SignInState, form: FormData): Promise<SignInState> {
   const intent = text(form, 'intent');
-  const login = text(form, 'login') || prev.login || '';
+  // a login has no spaces (ADR 163)
+  const login = text(form, 'login').replace(/\s+/g, '') || prev.login || '';
   if (intent === 'back') return { step: 'password', login };
   if (intent === 'forgot') return { step: 'forgot', login };
 

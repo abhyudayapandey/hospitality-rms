@@ -482,7 +482,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   receive task names its store (`ops.receive_into`); a task's History is always open. Leave
   alerts its approver and reads in words (`hr.leave_words`); the roster refuses a day of leave
   (`LEAVE_CONFLICT`, waiting `LEAVE_PENDING`) with a red line to it; approved leave not yet
-  started is cancelled by its person, LEAVE or ROSTER modify (`hr.may_cancel_leave`).
+  started is cancelled by its person, LEAVE or ROSTER modify (`hr.may_cancel_leave`). A login
+  takes no spaces; every password box has Show / Hide (`PasswordInput`).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in
