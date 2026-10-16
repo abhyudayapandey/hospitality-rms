@@ -1,7 +1,7 @@
 'use client';
 
 import { inputClass } from '@/components/messages';
-import { firstPick, PersonOptions } from '@/components/person-options';
+import { PersonOptions } from '@/components/person-options';
 import type { JobRole, Person } from '@/lib/tasks';
 import type { Assign } from './actions';
 
@@ -44,11 +44,11 @@ export function AssignPicker({
               checked={value.mode === mode}
               onChange={() =>
                 onChange(
+                  // nobody and no role is chosen for the person: they pick (ADR 113, 162)
                   mode === 'person'
-                    ? // someone on shift today, never whoever is first by name (ADR 113)
-                      { mode, user_id: firstPick(people) }
+                    ? { mode, user_id: '' }
                     : mode === 'job_role'
-                      ? { mode, role: roles[0]?.code ?? '' }
+                      ? { mode, role: '' }
                       : { mode },
                 )
               }
@@ -87,6 +87,7 @@ export function AssignPicker({
           onChange={(e) => onChange({ mode: 'job_role', role: e.target.value })}
           className={inputClass}
         >
+          {!value.role && <option value="">Choose…</option>}
           {roles.map((r) => (
             <option key={r.code} value={r.code}>
               {r.name}
@@ -103,4 +104,9 @@ export function AssignPicker({
       )}
     </fieldset>
   );
+}
+
+/** Whether the picker has a choice to send: a person, a role, or whoever is on shift. */
+export function assignChosen(a: Assign): boolean {
+  return a.mode === 'on_shift' || (a.mode === 'person' ? !!a.user_id : !!a.role);
 }

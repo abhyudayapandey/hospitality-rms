@@ -4,6 +4,7 @@ import {
   actAs,
   attemptAs,
   closePools,
+  giveIfOff,
   inRolledBackTx,
   loadSeedIds,
   resetRole,
@@ -60,6 +61,8 @@ describe('utilities', () => {
         [ids.tenant()],
       );
       const [task] = await rounds(c);
+      // the technician is rostered Monday to Friday; a weekend round is someone else's (ADR 148)
+      await giveIfOff(c, task!, ids.user('test.technician.1.0'));
       const steps = (
         await c.query<{ id: string; label: string }>(
           `select id, label from ops.task_step where task_id = $1 order by position`,

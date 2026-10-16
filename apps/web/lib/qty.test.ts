@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCount, formatQty, inputQty } from './qty';
+import { formatCount, formatNumber, formatQty, inputQty } from './qty';
 
 describe('quantities show at most 2 decimals (ADR 054)', () => {
   it('formats the database values the screens showed raw', () => {
@@ -25,6 +25,15 @@ describe('quantities show at most 2 decimals (ADR 054)', () => {
     expect(formatCount('2', 'each')).toBe('2');
     expect(formatCount('2', 'bottle')).toBe('2 bottles');
   });
+  it('counts cans, packs and boxes whole; a part bottle stays (ADR 162)', () => {
+    expect(formatQty('33.6', 'can')).toBe('34 cans');
+    expect(formatQty('2.4', 'box')).toBe('2 boxes');
+    expect(formatQty('1', 'pack')).toBe('1 pack');
+    expect(formatQty('20.01', 'bottle')).toBe('20.01 bottles');
+    expect(formatNumber('72.5', 'each')).toBe('73');
+    expect(formatNumber('19.471', 'bottle')).toBe('19.47');
+  });
+
   it('fills a box with a plain number', () => {
     expect(inputQty('4.800000')).toBe('4.8');
     expect(inputQty(0.036000000001)).toBe('0.04');

@@ -12,6 +12,7 @@ import { isoDate, salesSheet, todayIn } from '@/lib/production';
 import { weekdayName } from '@/lib/sales-entry';
 import { MenuTabs } from '../parts';
 import { SalesForm } from './sales-form';
+import { DateInput } from '@/components/date-time-inputs';
 
 // Daily sales entry (ADR 015), until the POS import: how many of each menu item an outlet
 // sold on a day. Each change depletes the store it is sold from by its recipe; sales may
@@ -53,8 +54,7 @@ export default async function SalesPage({ searchParams }: { searchParams: Search
         <input type="hidden" name="node" value={data.outlet.outlet_id} />
         <label className="flex-1 space-y-1">
           <span className="text-sm">Day</span>
-          <input
-            type="date"
+          <DateInput
             name="date"
             max={today}
             defaultValue={date}

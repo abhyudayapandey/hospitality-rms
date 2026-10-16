@@ -38,6 +38,32 @@ describe('the stores a person asks', () => {
     expect(await askStores('test.general-manager.1.0')).toEqual([]);
   });
 
+  // ADR 162: a head's ask went up to the GM as a task, never to the store that keeps it
+  it('a department head asks none: they request from a store instead', async () => {
+    for (const head of [
+      'test.executive-housekeeper.1.0',
+      'test.executive-chef.1.0',
+      'test.bar-manager.1.0',
+    ]) {
+      expect(await askStores(head), head).toEqual([]);
+      const may = await inRolledBackTx(async (c) => {
+        const r = await attemptAs<{ ok: boolean }>(
+          c,
+          ids.user(head),
+          `select exists (select 1 from core.screen_places('transfers') p
+                           where p.type = 'delivery'
+                             and core.can('TRANSFERS', 'modify', null, p.id)) as ok`,
+        );
+        expect(r.error).toBeUndefined();
+        return r.rows![0]!.ok;
+      });
+      expect(may, head).toBe(true);
+    }
+    // their staff still ask them; a head who may not request for a store still asks theirs
+    expect(await askStores('test.room-attendant.1.0')).toEqual(['Housekeeping Store']);
+    expect(await askStores('test.solo.floor-manager')).toEqual(['Bar Store', 'Kitchen Store']);
+  });
+
   it('a server’s ask goes to the store’s head, never to the server', async () => {
     await inRolledBackTx(async (c) => {
       const store = ids.node('TEST-SOLO-BAR-BAR-STORE');

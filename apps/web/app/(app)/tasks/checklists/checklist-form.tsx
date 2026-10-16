@@ -16,6 +16,7 @@ import { parseSteps, stepsText, type Schedule } from '@/lib/tasks-view';
 import { useHydrated } from '@/lib/use-hydrated';
 import { archiveChecklist, saveChecklist, type Assign } from '../actions';
 import { AssignPicker } from '../assign-picker';
+import { TimeInput } from '@/components/date-time-inputs';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TIMES = (s: string) =>
@@ -236,8 +237,7 @@ export function ChecklistForm({
           </label>
           <label className="block space-y-1">
             <span className="text-sm font-medium">From</span>
-            <input
-              type="time"
+            <TimeInput
               value={from}
               onChange={(e) => setFrom(e.target.value)}
               className={inputClass}
@@ -245,12 +245,7 @@ export function ChecklistForm({
           </label>
           <label className="block space-y-1">
             <span className="text-sm font-medium">To</span>
-            <input
-              type="time"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className={inputClass}
-            />
+            <TimeInput value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} />
           </label>
         </div>
       ) : (

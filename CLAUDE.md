@@ -470,6 +470,12 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   Forgot password through Cognito's user API (`lib/auth/sign-in.ts`), never stored or logged, with
   per-login limits; `startSession` starts every session; refresh is REFRESH_TOKEN_AUTH. The
   marketing site is `website/` (static, not hosted yet).
+- The demo walk's fixes (ADR 162): a head who may request for a store never asks their own head
+  (`inv.my_ask_stores`); Buy what's short buys only what's short (`NOTHING_SHORT`); the keeper's
+  stock check goes shelf by shelf; Request from a store has − / + and Fill all; the prep form and
+  task pickers choose nothing and never list the giver; quantities in SQL use `inv.qty_text`, and
+  cans, packs, boxes and rolls show whole; dates and times use `DateInput` (dd/mm/yyyy) and
+  `TimeInput` (24-hour), never the browser's own boxes.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

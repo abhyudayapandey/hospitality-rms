@@ -9,6 +9,7 @@ import { parseSteps } from '@/lib/tasks-view';
 import { useHydrated } from '@/lib/use-hydrated';
 import { createTask, type Assign } from '../actions';
 import { AssignPicker } from '../assign-picker';
+import { DateInput, TimeInput } from '@/components/date-time-inputs';
 
 export function TaskForm({
   node,
@@ -81,8 +82,7 @@ export function TaskForm({
       <div className="grid grid-cols-2 gap-3">
         <label className="block space-y-1">
           <span className="text-sm font-medium">Due date</span>
-          <input
-            type="date"
+          <DateInput
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className={inputClass}
@@ -90,8 +90,7 @@ export function TaskForm({
         </label>
         <label className="block space-y-1">
           <span className="text-sm font-medium">Time</span>
-          <input
-            type="time"
+          <TimeInput
             value={time}
             onChange={(e) => setTime(e.target.value)}
             className={inputClass}

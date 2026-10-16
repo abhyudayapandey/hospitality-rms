@@ -15,6 +15,8 @@ export interface CountLine {
   category: string;
   base_uom: string;
   counted_qty: string | null;
+  /** where it sits in the store (file 11), so the check goes shelf by shelf */
+  shelf: string | null;
 }
 
 export function CountForm({
@@ -35,6 +37,8 @@ export function CountForm({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const counted = Object.values(values).filter((v) => v.trim() !== '').length;
+  // the store's shelves as headings, where it has them (ADR 043)
+  const shelved = lines.some((l) => l.shelf);
 
   const submit = () =>
     start(async () => {
@@ -68,13 +72,21 @@ export function CountForm({
       <div id="count-lines" className="space-y-2">
         <ListSearch scope="count-lines" count={lines.length} noun="items" />
         <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-          {lines.map((l) => (
+          {lines.map((l, i) => (
             <li
               key={l.item_id}
               className="space-y-2 px-4 py-3"
               data-filter-row
               data-filter-text={l.name}
             >
+              {shelved && (i === 0 || lines[i - 1]!.shelf !== l.shelf) && (
+                <p
+                  className="-mx-4 -mt-3 mb-2 bg-slate-50 px-4 py-1 text-xs font-semibold text-slate-500"
+                  data-testid="count-shelf"
+                >
+                  {l.shelf ?? 'Not on a shelf'}
+                </p>
+              )}
               <span className="flex items-center gap-3">
                 <ItemThumb name={l.name} />
                 <span className="min-w-0 flex-1 truncate font-medium">{l.name}</span>

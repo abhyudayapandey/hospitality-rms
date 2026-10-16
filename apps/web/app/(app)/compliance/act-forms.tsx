@@ -6,6 +6,7 @@ import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/mes
 import { useHydrated } from '@/lib/use-hydrated';
 import { markJobDone, renewLicence } from './actions';
 import { DocumentFiles, type DocumentFile } from './document-files';
+import { DateInput } from '@/components/date-time-inputs';
 
 /** A form field's text (a file input gives none). */
 const field = (f: FormData, name: string) => {
@@ -73,11 +74,11 @@ export function RenewForm({
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-sm font-medium">
           Issued on
-          <input name="issued_on" type="date" defaultValue={today()} className={inputClass} />
+          <DateInput name="issued_on" defaultValue={today()} className={inputClass} />
         </label>
         <label className="block text-sm font-medium">
           New expiry
-          <input name="expires_on" type="date" required className={inputClass} />
+          <DateInput name="expires_on" required className={inputClass} />
         </label>
       </div>
       {photos ? (
@@ -161,7 +162,7 @@ export function DoneForm({
       <h2 className="font-semibold">Mark it done</h2>
       <label className="block text-sm font-medium">
         Done on
-        <input name="done_on" type="date" required defaultValue={today()} className={inputClass} />
+        <DateInput name="done_on" required defaultValue={today()} className={inputClass} />
       </label>
       {photos ? (
         <DocumentFiles

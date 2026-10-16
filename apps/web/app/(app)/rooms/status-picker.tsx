@@ -17,6 +17,7 @@ import {
 } from '@/lib/rooms-view';
 import { useHydrated } from '@/lib/use-hydrated';
 import { roomMaintenanceOpen, setRoomStatus, type RoomStatusDetails } from './actions';
+import { DateInput, TimeInput } from '@/components/date-time-inputs';
 
 /**
  * A room's new status as big buttons, each its colour, picture and word (ADR 088, 104): never a
@@ -186,8 +187,7 @@ function StatusDetailsForm({
           </label>
           <label className="block space-y-1">
             <span className="text-sm font-medium">Back on</span>
-            <input
-              type="date"
+            <DateInput
               name="until"
               min={today}
               value={until}
@@ -218,8 +218,7 @@ function StatusDetailsForm({
           <span className="text-sm font-medium">
             {code === 'ARR' ? 'Arriving at' : 'Departing at'}
           </span>
-          <input
-            type="time"
+          <TimeInput
             name="time"
             value={time}
             onChange={(e) => setTime(e.target.value)}

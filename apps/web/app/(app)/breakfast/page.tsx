@@ -11,6 +11,7 @@ import { isUuid, param, type SearchParams } from '@/lib/params';
 import { isMeal, mealDay, mealOutlets, mealRooms, type MealCode } from '@/lib/rooms';
 import { modeLabel, type Mode } from '@/lib/rooms-view';
 import { MealForm } from './breakfast-forms';
+import { DateInput } from '@/components/date-time-inputs';
 
 // Meals (ADR 094, 110, 121): breakfast, lunch and dinner, each the next one first. Before a meal
 // is over (breakfast 12:00, lunch 16:00, dinner 23:30 unless the company says otherwise) that is
@@ -103,8 +104,7 @@ export default async function MealsPage({ searchParams }: { searchParams: Search
             <input type="hidden" name="outlet" value={outlet.outlet_id} />
             <input type="hidden" name="meal" value={meal} />
             {/* a look back: never a day after today (ADR 121) */}
-            <input
-              type="date"
+            <DateInput
               name="day"
               aria-label="Day"
               defaultValue={day <= outlet.today ? day : outlet.today}

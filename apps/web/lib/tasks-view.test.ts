@@ -186,6 +186,10 @@ describe('dueText (ADR 148)', () => {
     expect(dueText('2026-10-02T13:30:00Z', 'Asia/Kolkata', now)).toBe('19:00');
     expect(dueText('2026-10-01T10:30:00Z', 'Asia/Kolkata', now)).toBe('Yesterday 16:00');
     expect(dueText('2026-10-03T01:30:00Z', 'Asia/Kolkata', now)).toBe('Tomorrow 07:00');
+    // ADR 162: at 00:05 on the 16th the business day is the 15th; 10:00 on the 16th is named,
+    // not "Tomorrow" (it is today on the calendar)
+    const late = new Date('2026-10-15T18:35:00Z'); // 00:05 IST, 16 Oct
+    expect(dueText('2026-10-16T04:30:00Z', 'Asia/Kolkata', late)).toBe('Fri, 16 Oct 10:00');
     expect(dueText('2026-10-05T01:30:00Z', 'Asia/Kolkata', now)).toBe('Mon, 5 Oct 07:00');
   });
   it('01:30 tonight is still today, the business day', () => {

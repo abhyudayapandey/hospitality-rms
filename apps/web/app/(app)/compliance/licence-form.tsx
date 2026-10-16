@@ -8,6 +8,7 @@ import { answering } from '@/lib/answering';
 import { useHydrated } from '@/lib/use-hydrated';
 import { saveLicence, type LicenceInput } from './actions';
 import { DocumentFiles, type DocumentFile } from './document-files';
+import { DateInput } from '@/components/date-time-inputs';
 
 /** A form field's text (a file input gives none). */
 const field = (f: FormData, name: string) => {
@@ -184,18 +185,16 @@ export function LicenceForm({
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-sm font-medium">
           Issued on
-          <input
+          <DateInput
             name="issued_on"
-            type="date"
             defaultValue={existing?.issued_on ?? ''}
             className={inputClass}
           />
         </label>
         <label className="block text-sm font-medium">
           Expires on
-          <input
+          <DateInput
             name="expires_on"
-            type="date"
             defaultValue={existing?.expires_on ?? ''}
             className={inputClass}
           />

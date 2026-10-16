@@ -7,6 +7,7 @@ import { Icon, type IconName } from '@/components/icon';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
 import { addDays, daysInclusive, formatDay, isIsoDate } from '@/lib/dates';
 import { requestLeave } from '../roster/actions';
+import { DateInput } from '@/components/date-time-inputs';
 
 export interface LeaveTypeOption {
   id: string;
@@ -124,8 +125,7 @@ export function LeaveForm({
         <div className="grid grid-cols-2 gap-2">
           <label className="block text-sm">
             From
-            <input
-              type="date"
+            <DateInput
               value={from}
               min={addDays(today, 1)}
               onChange={(e) => {
@@ -139,8 +139,7 @@ export function LeaveForm({
           </label>
           <label className="block text-sm">
             To
-            <input
-              type="date"
+            <DateInput
               value={to}
               min={from}
               onChange={(e) => {

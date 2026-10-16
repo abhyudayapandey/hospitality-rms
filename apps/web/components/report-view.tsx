@@ -19,6 +19,7 @@ import { vsTarget, type TargetKey } from '@/lib/settings';
 import { Icon } from './icon';
 import { PlaceSwitcher, type SwitcherPlace } from './place-switcher';
 import type { ReportScreen } from '@/lib/place-screens';
+import { DateInput } from '@/components/date-time-inputs';
 
 /** Title, a link back to the list, and the "Place:" switcher when there is a choice. */
 export function ReportHeader({
@@ -253,8 +254,7 @@ export function PeriodPicker({
           <input type="hidden" name="period" value="custom" />
           <label className="space-y-1">
             <span className="text-sm">From</span>
-            <input
-              type="date"
+            <DateInput
               name="from"
               defaultValue={from}
               className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3"
@@ -262,8 +262,7 @@ export function PeriodPicker({
           </label>
           <label className="space-y-1">
             <span className="text-sm">To</span>
-            <input
-              type="date"
+            <DateInput
               name="to"
               defaultValue={to}
               className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3"

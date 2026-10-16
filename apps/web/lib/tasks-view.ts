@@ -1,4 +1,4 @@
-import { addDays, businessDate, DEFAULT_TZ, formatDay, formatTime } from './dates';
+import { addDays, businessDate, DEFAULT_TZ, formatDay, formatTime, localDate } from './dates';
 import { formatWhen } from './format';
 
 // Presentation helpers for tasks and checklists (ADR 020), free of server-only so unit
@@ -59,7 +59,9 @@ export function dueText(at: Date | string, tz: string = DEFAULT_TZ, now: Date = 
   const day = businessDate(at, tz);
   if (day === today) return time;
   if (day === addDays(today, -1)) return `Yesterday ${time}`;
-  if (day === addDays(today, 1)) return `Tomorrow ${time}`;
+  // before 04:00 the business day is still yesterday's, so the calendar's today reads as
+  // "tomorrow": name the day instead (ADR 162)
+  if (day === addDays(today, 1) && localDate(now, tz) === today) return `Tomorrow ${time}`;
   return `${formatDay(day)} ${time}`;
 }
 

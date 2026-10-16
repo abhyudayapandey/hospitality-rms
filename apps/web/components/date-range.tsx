@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { formatDay } from '@/lib/dates';
 import { quickRanges, rangeQuery, type DateRange } from '@/lib/date-range';
 import { Icon } from './icon';
+import { DateInput } from '@/components/date-time-inputs';
 
 /**
  * Which days a list shows (ADR 120): quick chips (today, 7 and 30 days, this month) and any two
@@ -47,8 +48,7 @@ export function DateRangePicker({
         )}
         <label className="flex flex-1 flex-col text-xs text-slate-600">
           From
-          <input
-            type="date"
+          <DateInput
             name="from"
             defaultValue={range.from}
             max={today}
@@ -57,8 +57,7 @@ export function DateRangePicker({
         </label>
         <label className="flex flex-1 flex-col text-xs text-slate-600">
           To
-          <input
-            type="date"
+          <DateInput
             name="to"
             defaultValue={range.to}
             max={today}

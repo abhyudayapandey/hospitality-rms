@@ -284,3 +284,17 @@ export const photoKey = () =>
   `format('tasks/routine/%s/%s/%s.jpg', core.my_tenant(), current_setting('test.task_node'),
           gen_random_uuid())`;
 export const stepPhoto = () => `jsonb_build_object('photo_key', ${photoKey()})`;
+
+/**
+ * Gives a job-role round to `user` when they are off the roster at its due time (ADR 148), in
+ * the caller's transaction. The test data rosters most people Monday to Friday, so a round due
+ * on a weekend goes to someone else; a test about what a person does on a round then still has
+ * one to work, whatever day it runs.
+ */
+export async function giveIfOff(c: pg.PoolClient, task: string, user: string): Promise<void> {
+  await c.query(
+    `update ops.task t set assign_mode = 'person', assignee_user_id = $2
+      where t.id = $1 and t.assign_mode = 'job_role' and not ops.working_at($2, t.due_at)`,
+    [task, user],
+  );
+}

@@ -8,6 +8,7 @@ import { saveEvent, type EventRequirementInput } from '../roster/actions';
 import type { EventFormOptions } from './options';
 import { ItemThumb } from '@/components/item-thumb';
 import { Icon } from '@/components/icon';
+import { DateInput, TimeInput } from '@/components/date-time-inputs';
 
 export interface EventDraft {
   id: string;
@@ -115,8 +116,7 @@ export function EventForm({
       <div className="grid grid-cols-2 gap-2">
         <label className="col-span-2 block text-sm">
           Date
-          <input
-            type="date"
+          <DateInput
             value={e.date}
             min={today}
             onChange={(x) => set({ date: x.target.value })}
@@ -126,8 +126,7 @@ export function EventForm({
         </label>
         <label className="block text-sm">
           Start
-          <input
-            type="time"
+          <TimeInput
             value={e.start}
             onChange={(x) => set({ start: x.target.value })}
             required
@@ -136,8 +135,7 @@ export function EventForm({
         </label>
         <label className="block text-sm">
           End
-          <input
-            type="time"
+          <TimeInput
             value={e.end}
             onChange={(x) => set({ end: x.target.value })}
             required
@@ -215,9 +213,8 @@ export function EventForm({
               }
               className={inputClass}
             />
-            <input
+            <TimeInput
               aria-label="From"
-              type="time"
               value={r.start}
               onChange={(x) =>
                 set({
@@ -226,9 +223,8 @@ export function EventForm({
               }
               className={`${inputClass} col-span-2`}
             />
-            <input
+            <TimeInput
               aria-label="Until"
-              type="time"
               value={r.end}
               onChange={(x) =>
                 set({ roles: e.roles.map((y, j) => (j === i ? { ...y, end: x.target.value } : y)) })

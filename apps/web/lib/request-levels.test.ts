@@ -20,6 +20,11 @@ describe('request levels (ADR 141)', () => {
       'Main Store has 34 bottles · Bar Store has 19.57 of 24 bottles',
     );
   });
+  it('says the asking store’s figure as its unit does: whole limes, not 72.5 (ADR 162)', () => {
+    expect(
+      levelsText(line({ base_uom: 'each', from_on_hand: '120', to_on_hand: '72.5', to_par: '80' })),
+    ).toBe('Main Store has 120 each · Bar Store has 73 of 80 each');
+  });
   it('leaves out a par the asking store has not set', () => {
     expect(levelsText(line({ to_par: null }))).toBe(
       'Main Store has 34 bottles · Bar Store has 19.57 bottles',

@@ -16,6 +16,7 @@ import { Initials } from '@/components/initials';
 import { shiftIcon, shiftTypeHours, shiftTypeTimes, type ShiftTypeWords } from '@/lib/shift-types';
 import { useHydrated } from '@/lib/use-hydrated';
 import { repeatPattern, setCustomShift, setDayShift } from '../actions';
+import { DateInput, TimeInput } from '@/components/date-time-inputs';
 
 export interface TileType extends ShiftTypeWords {
   template_id: string;
@@ -272,8 +273,7 @@ export function PeopleTiles({
                 >
                   <label className="flex flex-1 flex-col text-xs text-slate-600">
                     From
-                    <input
-                      type="time"
+                    <TimeInput
                       required
                       value={custom.start}
                       onChange={(e) => setCustom({ ...custom, start: e.target.value })}
@@ -282,8 +282,7 @@ export function PeopleTiles({
                   </label>
                   <label className="flex flex-1 flex-col text-xs text-slate-600">
                     To
-                    <input
-                      type="time"
+                    <TimeInput
                       required
                       value={custom.end}
                       onChange={(e) => setCustom({ ...custom, end: e.target.value })}
@@ -342,8 +341,7 @@ export function RepeatPattern({ node, monday }: { node: string; monday: string }
       <div className="grid grid-cols-2 gap-2">
         <label className="block space-y-1">
           <span className="text-xs text-slate-600">From</span>
-          <input
-            type="date"
+          <DateInput
             value={from}
             onChange={(e) => setFrom(e.target.value)}
             className={inputClass}
@@ -351,12 +349,7 @@ export function RepeatPattern({ node, monday }: { node: string; monday: string }
         </label>
         <label className="block space-y-1">
           <span className="text-xs text-slate-600">To</span>
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className={inputClass}
-          />
+          <DateInput value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} />
         </label>
       </div>
       <ErrorBox message={error} />

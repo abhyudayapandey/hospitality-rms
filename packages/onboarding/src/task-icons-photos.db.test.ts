@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   attemptAs,
   closePools,
+  giveIfOff,
   inRolledBackTx,
   loadSeedIds,
   migratorPool,
@@ -33,6 +34,8 @@ async function openingTask(c: PoolClient): Promise<{ id: string; tenant: string;
       order by t.due_at limit 1`,
   );
   const t = r.rows[0]!;
+  // a round due when the commis is off goes to whoever is on (ADR 148): give it to them
+  await giveIfOff(c, t.id, ids.user(COMMIS));
   return { id: t.id, tenant: t.tenant_id, node: t.org_node_id };
 }
 

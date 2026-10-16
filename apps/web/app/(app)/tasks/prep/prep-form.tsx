@@ -8,7 +8,8 @@ import { formatDay, localToInstant } from '@/lib/dates';
 import type { JobRole, Person, PrepSuggestion } from '@/lib/tasks';
 import { useHydrated } from '@/lib/use-hydrated';
 import { createPrepTasks, type Assign } from '../actions';
-import { AssignPicker } from '../assign-picker';
+import { AssignPicker, assignChosen } from '../assign-picker';
+import { TimeInput } from '@/components/date-time-inputs';
 
 const n = (s: string) => Number(Number(s).toFixed(2));
 /** '2,000 g': Indian digit grouping, the unit on every figure (UX U-24) */
@@ -44,8 +45,9 @@ export function PrepForm({
   const short = lines.filter((l) => n(l.suggested) > 0);
   const [day, setDay] = useState(plan.day);
   const [time, setTime] = useState(plan.day === plan.today ? '12:00' : '10:00');
+  // nothing chosen for the person: they pick a role or someone (ADR 113, 162)
   const [assign, setAssign] = useState<Assign>(
-    roles[0] ? { mode: 'job_role', role: roles[0].code } : { mode: 'on_shift' },
+    roles.length > 0 ? { mode: 'job_role', role: '' } : { mode: 'on_shift' },
   );
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -191,8 +193,7 @@ export function PrepForm({
                   {t}
                 </button>
               ))}
-              <input
-                type="time"
+              <TimeInput
                 aria-label="Ready by"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
@@ -203,7 +204,11 @@ export function PrepForm({
           <AssignPicker value={assign} onChange={setAssign} people={people} roles={roles} />
           <ErrorBox message={error} />
           <StatusBox message={done} />
-          <button type="submit" disabled={!hydrated || pending} className={primaryButton}>
+          <button
+            type="submit"
+            disabled={!hydrated || pending || !assignChosen(assign)}
+            className={primaryButton}
+          >
             Create prep tasks ({chosen.length})
           </button>
         </div>

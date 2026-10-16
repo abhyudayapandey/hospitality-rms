@@ -9,19 +9,25 @@ import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import type { ItemOption } from '@/lib/inventory';
 import { UnusualNote } from '@/components/unusual-note';
 import { askForStock } from '../../actions';
-import { formatQty } from '@/lib/qty';
+import { formatQty, inputQty } from '@/lib/qty';
 import { ItemThumb } from '@/components/item-thumb';
+import { FillToPar } from '@/components/fill-to-par';
+import { Stepper } from '@/components/stepper';
+import { qtyStep } from '@/lib/short-first';
 
 export interface AskItem extends ItemOption {
   /** the store it comes from; null: no other store keeps it, so it is bought */
   source_id: string | null;
   source_name: string | null;
   source_on_hand: string;
+  /** what "Fill all" puts in: up to par, or a week's use (inv.fill_qty, ADR 145); 0 if not short */
+  suggested_qty: string;
 }
 
 /**
  * Ask for stock (ADR 115): items by the store they come from, short ones first; a quantity for
- * each wanted, nothing filled in (ADR 053). One tap asks every store at once.
+ * each wanted with − / +, nothing filled in (ADR 053, 099) until "Fill all N short items" (ADR 054,
+ * 145). One tap asks every store at once.
  */
 export function TransferRequestForm({
   to,
@@ -45,7 +51,9 @@ export function TransferRequestForm({
   const lines = askable
     .map((i) => ({ item_id: i.item_id, qty: Number(qty[i.item_id]) }))
     .filter((l) => qty[l.item_id]?.trim() && l.qty > 0);
-  const short = (i: AskItem) => Number(i.par_level ?? 0) > Number(i.on_hand);
+  const short = (i: AskItem) => Number(i.suggested_qty) > 0;
+  const shortItems = askable.filter(short);
+  const [filled, setFilled] = useState(false);
   // by the store it comes from, short items first in each
   const sources = [...new Set(askable.map((i) => i.source_name!))]
     .map((name) => ({
@@ -88,6 +96,25 @@ export function TransferRequestForm({
           </p>
         )}
         <ListSearch scope="transfer-lines" count={askable.length} noun="items" />
+        <FillToPar
+          short={shortItems.length}
+          filled={filled}
+          onFill={() => {
+            setQty((v) => ({
+              ...v,
+              ...Object.fromEntries(shortItems.map((i) => [i.item_id, inputQty(i.suggested_qty)])),
+            }));
+            setFilled(true);
+          }}
+          onClear={() => {
+            setQty((v) =>
+              Object.fromEntries(
+                Object.entries(v).filter(([id]) => !shortItems.some((i) => i.item_id === id)),
+              ),
+            );
+            setFilled(false);
+          }}
+        />
         {sources.map((g) => (
           <section key={g.name} className="space-y-1" data-testid={`from-${g.name}`}>
             <h2 className="text-sm font-semibold text-slate-500">From the {g.name}</h2>
@@ -95,30 +122,34 @@ export function TransferRequestForm({
               {g.rows.map((i) => (
                 <li
                   key={i.item_id}
-                  className={`flex items-center justify-between gap-3 px-4 py-2 ${
+                  className={`space-y-2 px-4 py-2 ${
                     i.item_id === focus ? 'rounded-xl ring-2 ring-brand-700' : ''
                   }`}
                   data-filter-row
                   data-filter-text={i.name}
                 >
-                  <ItemThumb name={i.name} />
-                  <label htmlFor={`t-${i.item_id}`} className="min-w-0 flex-1 text-sm">
-                    <span className="block font-medium">{i.name}</span>
-                    <span className={`text-xs ${short(i) ? 'text-amber-800' : 'text-slate-500'}`}>
-                      here {formatQty(i.on_hand, i.base_uom)}
-                      {Number(i.par_level ?? 0) > 0 &&
-                        ` · par ${formatQty(i.par_level!, i.base_uom)}`}
-                      {` · ${g.name} has ${formatQty(i.source_on_hand, i.base_uom)}`}
+                  <p className="flex items-center gap-3">
+                    <ItemThumb name={i.name} />
+                    <span className="min-w-0 flex-1 text-sm">
+                      <span className="block font-medium">{i.name}</span>
+                      <span className={`text-xs ${short(i) ? 'text-amber-800' : 'text-slate-500'}`}>
+                        here {formatQty(i.on_hand, i.base_uom)}
+                        {Number(i.par_level ?? 0) > 0 &&
+                          ` · par ${formatQty(i.par_level!, i.base_uom)}`}
+                        {` · ${g.name} has ${formatQty(i.source_on_hand, i.base_uom)}`}
+                      </span>
                     </span>
-                  </label>
-                  <input
-                    id={`t-${i.item_id}`}
-                    aria-label={`Request ${i.name}`}
+                  </p>
+                  {/* − / + to say how many (ADR 099); nothing in it until tapped */}
+                  <Stepper
+                    label={`Request ${i.name}`}
                     autoFocus={i.item_id === focus}
-                    inputMode="decimal"
                     value={qty[i.item_id] ?? ''}
-                    onChange={(e) => setQty((v) => ({ ...v, [i.item_id]: e.target.value }))}
-                    className={`${inputClass} max-w-24 text-right`}
+                    onChange={(x) => setQty((v) => ({ ...v, [i.item_id]: x }))}
+                    min={0}
+                    step={qtyStep(i.base_uom)}
+                    start={short(i) ? Number(inputQty(i.suggested_qty)) : undefined}
+                    unit={i.base_uom}
                   />
                 </li>
               ))}
