@@ -71,7 +71,7 @@ export function ImportForm({
         <input
           type="file"
           name="file"
-          accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+          accept=".xlsx,.csv,.tsv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/tab-separated-values,text/plain"
           data-testid="pos-file"
           className="block w-full text-sm file:mr-3 file:min-h-11 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:font-medium file:text-brand-700"
           onChange={(e) => void choose(e.target.files?.[0])}

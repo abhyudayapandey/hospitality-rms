@@ -240,6 +240,8 @@ export function CheckSheet({
                   <PhotoField
                     node={node}
                     photoKey={photoKeys[l.item_id] ?? null}
+                    // the photo taken before, when coming back to finish (CC-03)
+                    photoUrl={photoKeys[l.item_id] === l.photo_key ? l.photo_url : null}
                     onChange={(key) => {
                       setPhotoKeys((p) => ({ ...p, [l.item_id]: key }));
                       if (key) {

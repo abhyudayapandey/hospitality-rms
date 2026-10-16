@@ -28,16 +28,35 @@ export async function sectionPeople(
   ).rows;
 }
 
-export async function sectionsOn(
-  tx: Tx,
-  department: string,
-  day: string,
-): Promise<{ section_id: string; name: string; user_id: string | null }[]> {
+export interface SectionOn {
+  section_id: string;
+  name: string;
+  user_id: string | null;
+  user_name: string | null;
+}
+
+export async function sectionsOn(tx: Tx, department: string, day: string): Promise<SectionOn[]> {
   return (
-    await sql<{ section_id: string; name: string; user_id: string | null }>`
-      select section_id::text, name, user_id::text
+    await sql<SectionOn>`
+      select section_id::text, name, user_id::text, user_name
         from ops.sections(${department}::uuid, ${day}::date)`.execute(tx)
   ).rows;
+}
+
+/**
+ * Today's sections at each place I give them out, and who has each (ADR 164): what was given
+ * shows on Home, not only on the screen that gives it.
+ */
+export async function sectionsToday(tx: Tx): Promise<(SectionPlace & { sections: SectionOn[] })[]> {
+  const out: (SectionPlace & { sections: SectionOn[] })[] = [];
+  // one transaction answers one query at a time: one place after another
+  for (const p of await sectionPlaces(tx)) {
+    const today = (
+      await sql<{ d: string }>`select rpt.today(${p.department_id}::uuid)::text as d`.execute(tx)
+    ).rows[0]!.d;
+    out.push({ ...p, sections: await sectionsOn(tx, p.department_id, today) });
+  }
+  return out;
 }
 
 /** My sections today, one line per department ("Restaurant: Section 2"). */

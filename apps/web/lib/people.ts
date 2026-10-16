@@ -552,7 +552,9 @@ export interface TeamLeave {
   from_date: string;
   to_date: string;
   days: string;
-  status: 'submitted' | 'approved' | 'rejected' | 'cancelled';
+  /** the state its words say (hr.leave_state, ADR 164): approved as soon as the last person
+   * says yes; failed when it could not go through */
+  status: 'submitted' | 'approved' | 'rejected' | 'cancelled' | 'failed';
   /** its state in words (ADR 163) */
   words: string;
 }

@@ -28,7 +28,7 @@ export default async function MePage() {
       <Link
         href={x.href}
         data-testid={`me-${x.key}`}
-        className="flex min-h-22 flex-col items-center justify-center gap-1.5 rounded-xl bg-white p-2 text-center text-sm font-medium shadow-sm ring-1 ring-slate-200"
+        className="flex h-full min-h-22 flex-col items-center justify-center gap-1.5 rounded-xl bg-white p-2 text-center text-sm font-medium shadow-sm ring-1 ring-slate-200"
       >
         <Icon name={x.icon} className="size-7 text-brand-700" />
         <span className="leading-tight">{x.label}</span>

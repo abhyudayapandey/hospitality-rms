@@ -10,7 +10,7 @@ import { formatWhen } from '@/lib/format';
 import { compare, formatMeasure, MEASURES, trendHref, type MeasureRow } from '@/lib/reports';
 import { PART_WORDS } from '@/lib/briefing';
 import { homeTiles } from '@/lib/screens';
-import { mySections, sectionPlaces } from '@/lib/sections';
+import { mySections, sectionsToday } from '@/lib/sections';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { vsTarget, type TargetKey } from '@/lib/settings';
@@ -68,17 +68,16 @@ export default async function Home() {
   const user = await requireUser();
   const sections = await withUser(user.id, async (tx) => {
     // "Restaurant", without its outlet's name in front ("Hotel 1.0 – Restaurant")
-    const places = [
-      ...new Set(
-        (await sectionPlaces(tx)).map((p) => {
-          const lead = p.outlet_name ? `${p.outlet_name} – ` : null;
-          return lead && p.name.startsWith(lead) ? p.name.slice(lead.length) : p.name;
-        }),
-      ),
-    ];
+    const given = (await sectionsToday(tx)).map((p) => {
+      const lead = p.outlet_name ? `${p.outlet_name} – ` : null;
+      return { ...p, name: lead && p.name.startsWith(lead) ? p.name.slice(lead.length) : p.name };
+    });
+    const places = [...new Set(given.map((p) => p.name))];
     return {
       mine: await mySections(tx),
       gives: places.length > 0,
+      // who has which section today, where I give them (ADR 164)
+      given,
       // named by the place they are in: "Restaurant sections"
       title:
         places.length === 1
@@ -177,6 +176,23 @@ export default async function Home() {
               {m.sections}
               <span className="block text-sm font-normal text-slate-600">{m.department_name}</span>
             </p>
+          ))}
+          {sections.given.map((p) => (
+            <div key={p.department_id} className="mt-2" data-testid="home-sections-given">
+              {sections.given.length > 1 && (
+                <p className="text-sm font-semibold text-slate-700">{p.name}</p>
+              )}
+              <ul className="text-sm">
+                {p.sections.map((x) => (
+                  <li key={x.section_id} className="flex justify-between gap-2">
+                    <span>{x.name}</span>
+                    <span className={x.user_name ? 'font-medium' : 'text-slate-500'}>
+                      {x.user_name ?? 'Not given yet'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
           {sections.gives && (
             <Link
@@ -876,8 +892,8 @@ const DEPT_FACT = {
 } as const;
 
 /**
- * Every department as a tile, two to a row (DB-2 order; ADR 105): its picture, its name and
- * one fact in its colour; a tap opens that department.
+ * Every department as a tile, two to a row (DB-2 order; ADR 105): its picture, its name and up
+ * to three facts in their colours (ADR 164); a tap opens that department.
  */
 function Attention({ today }: { today: Today }) {
   // a GM's Home names only the departments in the red (ADR 113): eleven tiles mostly saying
@@ -894,23 +910,34 @@ function Attention({ today }: { today: Today }) {
           <li key={t.key}>
             <Link
               href={t.href}
-              aria-label={`${t.label}: ${t.fact}`}
+              aria-label={`${t.label}: ${t.facts.length > 0 ? t.facts.map((f) => f.text).join(', ') : t.fact}`}
               data-testid="attention-group"
               data-tone={t.tone}
               data-label={t.label}
-              className={`flex min-h-18 items-center gap-2 rounded-2xl p-3 ring-1 ${DEPT_TONE[t.tone]}`}
+              className={`h-full flex min-h-18 items-center gap-2 rounded-2xl p-3 ring-1 ${DEPT_TONE[t.tone]}`}
             >
               <Icon name={t.icon} className="size-7 shrink-0 text-slate-700" />
               <span className="min-w-0">
                 <span className="block text-sm leading-tight font-semibold break-words">
                   {t.label}
                 </span>
+                {/* up to three facts, late first, then what waits, then what runs low; the
+                    first is the one the tile opens (ADR 164) */}
                 <span
-                  className={`block text-sm font-medium ${DEPT_FACT[t.tone]}`}
+                  className={`block text-sm font-medium ${DEPT_FACT[t.facts[0]?.tone ?? t.tone]}`}
                   data-testid="dept-fact"
                 >
                   {t.fact}
                 </span>
+                {t.facts.slice(1).map((f) => (
+                  <span
+                    key={f.text}
+                    className={`block text-sm font-medium ${DEPT_FACT[f.tone]}`}
+                    data-testid="dept-more"
+                  >
+                    {f.text}
+                  </span>
+                ))}
               </span>
             </Link>
           </li>

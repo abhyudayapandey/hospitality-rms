@@ -145,7 +145,7 @@ function LicenceItem({ l, all }: { l: LicenceRow; all: boolean }) {
     <li data-testid="licence" data-name={l.name}>
       <Link
         href={`/compliance/licences/${l.id}`}
-        className="block rounded-xl bg-white p-4 ring-1 ring-slate-200"
+        className="h-full block rounded-xl bg-white p-4 ring-1 ring-slate-200"
       >
         <span className="flex items-baseline justify-between gap-2">
           <span className="min-w-0 font-medium">

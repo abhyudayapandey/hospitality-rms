@@ -139,8 +139,9 @@ async function Job({ params }: { params: Promise<{ id: string }> }) {
             needsProof={j.needs_proof}
             photos={photosEnabled()}
           />
-          <details className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-            <summary className="min-h-11 cursor-pointer font-semibold">Change the job</summary>
+          {/* always open under its own heading (ADR 164) */}
+          <section className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+            <h2 className="flex min-h-11 items-center font-semibold">Change the job</h2>
             <div className="pt-3">
               <JobForm
                 places={[{ id: j.org_node_id, name: j.place_name }]}
@@ -158,7 +159,7 @@ async function Job({ params }: { params: Promise<{ id: string }> }) {
                 }}
               />
             </div>
-          </details>
+          </section>
           <RemoveButton kind="job" id={j.id} />
         </>
       )}

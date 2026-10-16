@@ -237,11 +237,15 @@ test('one request, one screen: every link to it opens the ask, with the buttons 
   await page.getByRole('button', { name: 'Send', exact: true }).click();
   await runExecutor();
 
-  // the head opens it from RFMs → History: the same screen, receive and then give it there
+  // the head opens it from RFMs → History, one row for the chain (ADR 164): the ask, the
+  // same screen, receive and then give it there
   await signInAs(page, 'Test Executive Housekeeper 1.0');
   await page.goto('/requests?tab=history');
+  await expect(
+    page.getByTestId('request-item').filter({ hasText: '300 × Test Bath Towel' }),
+  ).toHaveCount(0);
   await page
-    .getByTestId('request-item')
+    .getByTestId('ask-item')
     .filter({ hasText: '300 × Test Bath Towel' })
     .first()
     .getByRole('link')
