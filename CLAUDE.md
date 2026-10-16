@@ -614,6 +614,30 @@ are approved at once, PO-4 is unusual and the GM approves it.
 - Work in small steps. Run `pnpm lint && pnpm typecheck && pnpm test` before saying a task
   is done; show the output.
 - Write the security/RLS tests before or with the feature, not after.
+- Before you push (every PR, no exceptions; CI is the last check, never the first):
+  1. Map what the change touches before writing it: every SQL function, view, trigger and
+     screen that reads or writes the tables changed (`grep` the migrations and `apps/web`),
+     every place the same thing is said in words (labels, alerts, History, reports, exports,
+     e2e text, the QA sheets), and the access rules involved (`core.can`, RLS, who sees it).
+     Check a function's real signature before calling it (`core.can` takes five arguments).
+  2. Ask these questions of every change and every new test:
+     - Time: does it hold at 02:00, 15:30 and 23:00, on a weekday and at the weekend, after
+       the last shift of a Friday and across the 04:00 business day? The test data publishes
+       this week's roster only (next week is draft), so a test that needs someone on shift
+       rosters them itself (`giveIfOff`, `dueWhenWorking`), never hopes the data has it.
+     - Ties: a query that picks one row ("the latest", "the first") orders by something that
+       cannot tie, such as a step's `seq` or an `id`, never a timestamp alone: one transaction
+       shares one `now()`.
+     - Who: the person, their head, the GM, someone without access, another company.
+     - Words: a changed word is changed in its e2e tests and the QA sheets too.
+  3. When a test fails, fix the class, not the instance: search the codebase for the same
+     assumption and fix every place before pushing.
+  4. Run everything locally on a freshly seeded database (`pnpm db:seed` on a new database)
+     with nothing else running: `pnpm lint && pnpm typecheck && pnpm test:unit`, the full
+     DB suite as CI runs it (`DB_TEST_WORKERS=4 pnpm test:db`), then reseed and the full
+     e2e. Show the numbers before pushing. Run a new DB test three times.
+  5. A local failure caused by the environment (data left by an earlier run, a stale server,
+     two runs at once) is resolved by a clean rerun, not explained away.
 - One branch per prompt, named `feat/<name>`, cut from `master`; conventional commits
   (`feat(inv): ...`).
 - When you make a design decision not covered by the LLD, add a short ADR in
