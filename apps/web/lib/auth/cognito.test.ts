@@ -7,6 +7,7 @@ import {
   cognitoConfig,
   createIdTokenVerifier,
   exchangeCode,
+  localIdpEndpoint,
   logoutUrl,
   refreshTokens,
   type CognitoConfig,
@@ -75,6 +76,29 @@ describe('Cognito config and OAuth calls', () => {
         APP_URL: 'https://app.example.com/',
       }),
     ).toEqual(cfg);
+  });
+
+  it('takes a stand-in user API only on this machine (the sign-in e2e tests)', () => {
+    expect(localIdpEndpoint(undefined)).toBeUndefined();
+    expect(localIdpEndpoint('http://127.0.0.1:3109/')).toBe('http://127.0.0.1:3109');
+    expect(localIdpEndpoint('http://localhost:3109')).toBe('http://localhost:3109');
+    for (const elsewhere of [
+      'https://127.0.0.1:3109',
+      'http://evil.example.com',
+      'http://127.0.0.1.evil.example.com',
+      'https://cognito-idp.ap-south-1.amazonaws.com',
+    ]) {
+      expect(() => localIdpEndpoint(elsewhere), elsewhere).toThrow(/COGNITO_IDP_ENDPOINT/);
+    }
+    expect(
+      cognitoConfig({
+        COGNITO_USER_POOL_ID: cfg.userPoolId,
+        COGNITO_CLIENT_ID: cfg.clientId,
+        COGNITO_DOMAIN: cfg.domain,
+        APP_URL: cfg.appUrl,
+        COGNITO_IDP_ENDPOINT: 'http://127.0.0.1:3109',
+      }),
+    ).toEqual({ ...cfg, idpEndpoint: 'http://127.0.0.1:3109' });
   });
 
   it('builds a PKCE authorize URL and a logout URL', () => {
