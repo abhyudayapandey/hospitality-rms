@@ -337,6 +337,38 @@ describe('with a Main Store, a department asks it (ADR 115)', () => {
     });
   });
 
+  it('an order the GM approved reads approved at once, not waiting, until it is released (ADR 164)', async () => {
+    await inRolledBackTx(async (c) => {
+      await approveEveryPurchase(c);
+      const item = await lager(c);
+      await stockAt(c, item, HK, 0);
+      await stockAt(c, item, MAIN, 0);
+      const t = await ask(c, item, 24);
+      await execute(c);
+      const po = (
+        await one<{ id: string }>(c, KEEPER, `select inv.order_for_request($1, null) as id`, [t])
+      ).id;
+      const progress = async (who: string) =>
+        (
+          await one<{ progress: string }>(
+            c,
+            who,
+            `select progress from inv.purchase_order_summary where id = $1`,
+            [po],
+          )
+        ).progress;
+      expect(await progress(KEEPER)).toBe('awaiting_approval');
+      await one(c, GM, `select wf.act($1, 'approve') as s`, [
+        await requestOf(c, 'purchase_order', po),
+      ]);
+      // the executor has not run: approved, for the keeper and the GM alike
+      expect(await progress(KEEPER)).toBe('approved');
+      expect(await progress(GM)).toBe('approved');
+      await execute(c);
+      expect(await progress(KEEPER)).toBe('to_order');
+    });
+  });
+
   // ADR 162: a line the store has in full was ordered too, at the whole quantity asked
   it('Buy what’s short buys only what is short; nothing short is refused', async () => {
     await inRolledBackTx(async (c) => {
@@ -1049,9 +1081,8 @@ describe('a frontline person asks their department head, and follows it', () => 
         asked_by: 'Test Room Attendant 1.0',
         mine: false,
       });
-      expect(head).toContainEqual(
-        expect.objectContaining({ kind: 'request', page_id: t, mine: true }),
-      );
+      // the request the head made for it is in the ask's row: one row a chain (ADR 164)
+      expect(head.map((h) => h.page_id)).not.toContain(t);
       expect(await history(KEEPER)).toContainEqual(
         expect.objectContaining({
           kind: 'request',
@@ -1066,6 +1097,59 @@ describe('a frontline person asks their department head, and follows it', () => 
         expect(theirs, who).not.toContain(ask);
         expect(theirs, who).not.toContain(t);
       }
+    });
+  });
+
+  it('History is one row a chain; the keeper keeps the request and the order apart (ADR 164)', async () => {
+    await inRolledBackTx(async (c) => {
+      // the QA case: an ask, the head's request to the Main Store for it, and its keeper
+      // buying what was short; the GM approves the request and the order
+      await outletRules(c, {
+        request_approval: 'gm',
+        purchase_approval: 'every',
+        purchase_approver: 'gm',
+      });
+      const item = await lager(c);
+      await stockAt(c, item, HK, 0);
+      await stockAt(c, item, MAIN, 0);
+      const ask = await raise(c, item, 6);
+      const [t] = (
+        await one<{ ids: string[] }>(c, ASKER, `select inv.ask_for_staff($1) as ids`, [ask])
+      ).ids;
+      expect(await todo(c, GM)).toContain(t);
+      await one(c, GM, `select wf.act($1, 'approve') as s`, [await requestOf(c, 'transfer', t!)]);
+      await execute(c);
+      const po = (
+        await one<{ id: string }>(c, KEEPER, `select inv.order_for_request($1, null) as id`, [t])
+      ).id;
+      expect(await todo(c, GM)).toContain(po);
+      await one(c, GM, `select wf.act($1, 'approve') as s`, [
+        await requestOf(c, 'purchase_order', po),
+      ]);
+      await execute(c);
+      await buyAndReceive(c, KEEPER, po, item, 6);
+      await one(c, KEEPER, `select inv.send_request($1, null) as s`, [t]);
+      await execute(c);
+
+      const chain = [ask, t, po];
+      const inChain = async (who: string) =>
+        (
+          await rows<{ kind: string; page_id: string }>(
+            c,
+            who,
+            `select kind, page_id::text from inv.my_material_history(50)`,
+          )
+        )
+          .filter((h) => chain.includes(h.page_id))
+          .map((h) => h.kind)
+          .sort();
+      // whoever asked and the head who asked the Main Store for it: the ask's row only
+      expect(await inChain(ATTENDANT)).toEqual(['ask']);
+      expect(await inChain(ASKER)).toEqual(['ask']);
+      // the GM approved the request and the order bought for it: one row, the request's
+      expect(await inChain(GM)).toEqual(['request']);
+      // the Main Store's keeper had no part in the ask: the request sent and the order bought
+      expect(await inChain(KEEPER)).toEqual(['request', 'supply']);
     });
   });
 

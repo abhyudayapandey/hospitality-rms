@@ -73,7 +73,7 @@ export function SenderTools({
                         type="button"
                         disabled={!hydrated || pending}
                         onClick={() => give(p)}
-                        className="flex min-h-12 w-full items-center gap-2 rounded-lg bg-slate-50 p-2 text-left text-sm ring-1 ring-slate-200"
+                        className="h-full flex min-h-12 w-full items-center gap-2 rounded-lg bg-slate-50 p-2 text-left text-sm ring-1 ring-slate-200"
                       >
                         <Initials name={p.name} />
                         <span className="min-w-0 truncate">{p.name}</span>

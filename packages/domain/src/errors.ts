@@ -185,10 +185,11 @@ export const ERROR_MESSAGES = {
   POS_TOTALS_MISMATCH: "The file's lines don't add up to its Grand Total. Export it again.",
   POS_FILE_EMPTY: 'Choose the POS file to upload.',
   POS_FILE_TOO_LARGE: 'That file is too large (5 MB at most).',
-  POS_FILE_TYPE: "Upload the POS's Sale by item report as Excel (.xlsx) or CSV.",
+  POS_FILE_TYPE:
+    "Upload the till's Sale by item report. It can be Excel, or a file with commas, tabs or semicolons.",
   POS_NO_HEADER:
-    'The file has no Item, Description, Quantity, Rate, Value and Discount columns. Export the Sale by item report.',
-  POS_BAD_NUMBER: 'A quantity or amount in the file is not a number. Export it again.',
+    "We can't find the columns Item, Description, Quantity, Rate, Value and Discount. Export the Sale by item report from the till again.",
+  POS_BAD_NUMBER: 'A number in the file is not right. Export it from the till again.',
   POS_NO_GRAND_TOTAL: 'The file has no Grand Total row. Export the whole report.',
   POS_NO_LINES: 'The file has no sales lines.',
   INVALID_AMOUNT: 'Amounts are zero or more.',

@@ -42,6 +42,23 @@ describe('todaysTasks', () => {
     expect(r.shown.map((x) => x.id)).toEqual(['overdue', 'earlier-today', 'later-today']);
     expect(r.total).toBe(4);
   });
+  it("a Lock-up due at 00:00 is tonight's: the 04:00 business day (ADR 164)", () => {
+    // 22:00 IST on 2 Oct; Lock-up due 00:00 on 3 Oct, the opening round 07:00 on 3 Oct
+    const night = new Date('2026-10-02T16:30:00Z');
+    const r = todaysTasks(
+      [t('lock-up', '2026-10-02T18:30:00Z'), t('opening', '2026-10-03T01:30:00Z')],
+      night,
+      TZ,
+    );
+    expect(r.shown.map((x) => x.id)).toEqual(['lock-up']);
+    // at 01:00 on 3 Oct it is still the 2nd's business day
+    const late = todaysTasks(
+      [t('lock-up', '2026-10-02T18:30:00Z')],
+      new Date('2026-10-02T19:30:00Z'),
+      TZ,
+    );
+    expect(late.total).toBe(1);
+  });
 });
 
 describe('currentShift and shiftLine', () => {
@@ -462,7 +479,8 @@ describe("department tiles on a manager's Home (ADR 105)", () => {
     );
     const tiles = departmentTiles(groups);
     expect(tiles.map((t) => [t.label, t.icon, t.tone, t.fact, t.href])).toEqual([
-      ['Kitchen', 'pot', 'bad', '3 running low', '/stock?node=s-kitchen&tab=low'],
+      // what waits comes before what runs low (ADR 164)
+      ['Kitchen', 'pot', 'bad', '4 open shifts', '/roster/week?node=n-Kitchen'],
       ['Bar', 'glass', 'warn', '1 open shift', '/roster/week?node=n-Bar'],
       [
         'Housekeeping',
@@ -481,6 +499,36 @@ describe("department tiles on a manager's Home (ADR 105)", () => {
       else
         expect(g.lines.some((l) => t.fact.startsWith(`${l.n} `) && l.href === t.href)).toBe(true);
     }
+  });
+
+  it('up to three facts: late rounds, then what waits, then what runs low (ADR 164)', () => {
+    const groups = attentionGroups(
+      [
+        { kind: 'lowStock', node: 's-kitchen', n: 3 },
+        { kind: 'openSlots', node: 'n-Kitchen', n: 4, href: '/roster/week?node=n-Kitchen' },
+        { kind: 'flags', node: 'n-Kitchen', n: 1 },
+        { kind: 'late', node: 'n-Kitchen', n: 2 },
+        { kind: 'repairs', node: 'n-Kitchen', n: 1 },
+      ],
+      places,
+      places.slice(0, 5),
+    );
+    const kitchen = departmentTiles(groups).find((t) => t.label === 'Kitchen')!;
+    expect(kitchen.facts).toEqual([
+      { text: '2 late', tone: 'warn' },
+      { text: '1 repair', tone: 'warn' },
+      { text: '1 attendance issue', tone: 'warn' },
+    ]);
+    expect([kitchen.tone, kitchen.fact, kitchen.href]).toEqual([
+      'bad',
+      '2 late',
+      '/tasks/team?node=d-Kitchen',
+    ]);
+    // just low stock: one fact
+    const low = departmentTiles(
+      attentionGroups([{ kind: 'lowStock', node: 's-kitchen', n: 3 }], places, places.slice(0, 5)),
+    ).find((t) => t.label === 'Kitchen')!;
+    expect(low.facts).toEqual([{ text: '3 running low', tone: 'bad' }]);
   });
 
   it('a department with rounds late is never "All done"; the tile opens its team tasks', () => {

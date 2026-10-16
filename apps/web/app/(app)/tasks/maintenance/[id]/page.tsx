@@ -47,20 +47,23 @@ export default async function MaintenanceRequestPage({
           {r.title}
         </h1>
         {/* one line: where and from whom; who handles it and how it got there are under
-            History, open for those who assign it (ADR 098) */}
+            History, always open (ADR 164) */}
         <p className="text-sm text-slate-600">
           {maintenanceWhereWord(r.location) ?? r.place_name} · from {r.reported_by_name}
         </p>
         {r.description && <p className="text-sm whitespace-pre-line">{r.description}</p>}
         {r.photo_key && <p className="text-xs text-slate-500">Photo added</p>}
         {r.done_note && <p className="text-sm">Fix: {r.done_note}</p>}
-        <details
+        <section
           className="rounded-xl bg-white text-sm ring-1 ring-slate-200"
-          open={!mine && data.canAssign}
+          aria-labelledby="repair-history"
         >
-          <summary className="flex min-h-11 cursor-pointer items-center px-4 font-medium text-slate-600">
+          <h2
+            id="repair-history"
+            className="flex min-h-11 items-center px-4 font-medium text-slate-600"
+          >
             History
-          </summary>
+          </h2>
           {/* newest first (ADR 142): where it is now, who has it, then when it was reported */}
           <div className="space-y-1 px-4 pb-3 text-slate-600">
             {/* where it is now, a sentence of its own: "With Vinay", never "assigned with" */}
@@ -82,7 +85,7 @@ export default async function MaintenanceRequestPage({
             <p>Handled by {r.handled_by}</p>
             <p>Reported {formatWhen(r.created_at)}</p>
           </div>
-        </details>
+        </section>
       </header>
       {data.canAssign && (r.status === 'open' || r.status === 'assigned') && (
         <AssignRepair id={r.id} people={data.people} current={r.assigned_to} />

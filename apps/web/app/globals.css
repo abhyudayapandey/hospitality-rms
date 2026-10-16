@@ -138,3 +138,16 @@ a[data-pending] {
 fieldset:has(input[value='covered_by']:checked) .cover-by {
   display: block;
 }
+
+/* The calendar over its icon (DateInput, ADR 164): on a computer the browser opens its calendar
+   only from the date box's own indicator, so the indicator fills the whole invisible box. */
+.date-over::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+}

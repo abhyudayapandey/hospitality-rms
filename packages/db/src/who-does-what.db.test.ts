@@ -450,6 +450,22 @@ describe('who does what at an outlet', () => {
       });
       expect(by.get('FRONT_DESK_EXECUTIVE')).toMatchObject({ people: 1, answer: 'have' });
       expect(by.get('GENERAL_MANAGER')).toMatchObject({ duties: ['RUNS_OUTLET'] });
+      // each role says its department there; the outlet's own roles none (OW-03, ADR 164).
+      // The guest house has no departments: every role is the outlet's
+      expect(by.get('GENERAL_MANAGER')).toMatchObject({ department_name: null });
+      expect(by.get('FRONT_DESK_EXECUTIVE')).toMatchObject({ department_name: null });
+      const hotel = new Map(
+        (
+          await attemptAs<{ job_role_code: string; department_name: string | null }>(
+            c,
+            ids.user(OWNER),
+            'select job_role_code, department_name from core.admin_role_cover($1)',
+            [ids.node(H11)],
+          )
+        ).rows!.map((r) => [r.job_role_code, r.department_name]),
+      );
+      expect(hotel.get('SOUS_CHEF')).toMatch(/Kitchen$/);
+      expect(hotel.get('GENERAL_MANAGER')).toBeNull();
       // never a role that works above the outlet
       for (const code of ['ACCOUNT_OWNER', 'AREA_MANAGER', 'HR_ADMIN', 'AUDITOR'])
         expect(by.has(code), code).toBe(false);

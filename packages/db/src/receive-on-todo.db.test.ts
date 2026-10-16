@@ -52,3 +52,48 @@ describe('orders to receive on the To do list', () => {
     });
   });
 });
+
+describe('an order received in part says so (SK-06, ADR 164)', () => {
+  it('"Part received" once some of it came, and only then', async () => {
+    await inRolledBackTx(async (c) => {
+      const keeper = ids.user('test.store-keeper.1.0');
+      const desk = async () => {
+        const r = await attemptAs<{ po_id: string; part_received: boolean }>(
+          c,
+          keeper,
+          `select po_id::text, part_received from inv.desk_orders() where stage = 'to_receive'`,
+        );
+        expect(r.error).toBeUndefined();
+        return r.rows!;
+      };
+      const rows = await desk();
+      // every row agrees with its receipts
+      for (const row of rows) {
+        const got = await c.query<{ n: number }>(
+          `select count(*)::int n from inv.goods_receipt_line gl
+             join inv.purchase_order_line pl on pl.id = gl.po_line_id
+            where pl.po_id = $1 and gl.qty > 0`,
+          [row.po_id],
+        );
+        expect(row.part_received, row.po_id).toBe(got.rows[0]!.n > 0);
+      }
+      // one that nothing came for yet: one of its lines comes, in part
+      const none = rows.find((r) => !r.part_received);
+      expect(none).toBeDefined();
+      const line = await c.query<{ item_id: string; qty: string }>(
+        `select item_id::text, qty from inv.purchase_order_line where po_id = $1
+          order by id limit 1`,
+        [none!.po_id],
+      );
+      const { item_id, qty } = line.rows[0]!;
+      const half = Math.max(Number(qty) / 2, 0.5);
+      const got = await attemptAs(c, keeper, `select inv.receive_goods($1, $2::jsonb, null)`, [
+        none!.po_id,
+        JSON.stringify([{ item_id, qty: half, amount: half * 10 }]),
+      ]);
+      expect(got.error).toBeUndefined();
+      const after = (await desk()).find((r) => r.po_id === none!.po_id);
+      expect(after).toEqual({ po_id: none!.po_id, part_received: true });
+    });
+  });
+});

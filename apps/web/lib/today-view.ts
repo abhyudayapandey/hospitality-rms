@@ -3,7 +3,7 @@
 
 import { daysWords } from '@outlet-ops/domain';
 import type { IconName } from '@/components/icon';
-import { addDays, businessToday, formatDay, formatSpan, localDate } from './dates';
+import { addDays, businessDate, businessToday, formatDay, formatSpan, localDate } from './dates';
 import { listHref, stockHref } from './stock-view';
 
 export interface TaskLike {
@@ -14,16 +14,19 @@ export interface TaskLike {
   place_name: string;
 }
 
-/** Overdue first, then what is due today (local), oldest first; the first `max` of them. */
+/**
+ * Overdue first, then what is due today, oldest first; the first `max` of them. Today is the
+ * 04:00 business day (ADR 148, 164): a Lock-up due at 00:00 is tonight's, not tomorrow's.
+ */
 export function todaysTasks<T extends TaskLike>(
   tasks: readonly T[],
   now: Date,
   tz: string,
   max = 3,
 ): { shown: T[]; total: number } {
-  const today = localDate(now, tz);
+  const today = businessDate(now, tz);
   const list = tasks
-    .filter((t) => t.overdue || localDate(t.due_at, tz) <= today)
+    .filter((t) => t.overdue || businessDate(t.due_at, tz) <= today)
     .sort(
       (a, b) =>
         Number(b.overdue) - Number(a.overdue) ||
@@ -319,19 +322,28 @@ export function departmentIcon(name: string, type?: string | null): IconName {
   return 'people';
 }
 
-/** A department's tile on a manager's Home (ADR 105): one fact, its colour, one tap. */
+/**
+ * A department's tile on a manager's Home (ADR 105, 164): up to three facts, each in its colour,
+ * one tap.
+ */
 export interface DepartmentTile {
   key: string;
   label: string;
   icon: IconName;
   tone: AttentionTone | 'ok';
-  /** "3 running low", "1 repair", "All done" */
+  /** the first fact, the one the tile opens: "2 late", "1 repair", "All done" */
   fact: string;
   href: string;
+  /** every fact it shows, the first one first (at most DEPARTMENT_FACTS) */
+  facts: { text: string; tone: AttentionTone }[];
 }
 
-// the one fact a tile shows: what runs out first, then what is late, what is broken, people
-const FACT_ORDER: readonly AttentionKind[] = ['lowStock', 'late', 'repairs', 'flags', 'openSlots'];
+/** Most facts a department's tile says (GM-14, ADR 164). */
+export const DEPARTMENT_FACTS = 3;
+
+// the facts a tile shows, in this order (GM-14, ADR 164): rounds that are late, then what
+// waits (a repair, attendance, an open shift), then what runs low
+const FACT_ORDER: readonly AttentionKind[] = ['late', 'repairs', 'flags', 'openSlots', 'lowStock'];
 const FACT: Record<AttentionKind, [string, string]> = {
   lowStock: ['running low', 'running low'],
   late: ['late', 'late'],
@@ -342,21 +354,27 @@ const FACT: Record<AttentionKind, [string, string]> = {
 
 /**
  * Every department as a tile (ADR 105): red when something runs low, amber when something
- * waits, green when nothing does. The fact is one of its lines, so its number is that line's
- * and the tile opens what the line opens, at that department (ADR 048); a green tile opens
- * the department's team tasks.
+ * waits, green when nothing does. Its facts are its lines (up to three: late, waiting, low;
+ * ADR 164), so each number is that line's, and the tile opens what the first line opens, at
+ * that department (ADR 048); a green tile opens the department's team tasks.
  */
 export function departmentTiles(groups: readonly AttentionGroup[]): DepartmentTile[] {
   return groups.map((g) => {
-    const line = FACT_ORDER.map((k) => g.lines.find((l) => l.kind === k)).find(Boolean);
+    const lines = FACT_ORDER.flatMap((k) => g.lines.filter((l) => l.kind === k)).slice(
+      0,
+      DEPARTMENT_FACTS,
+    );
+    const words = (l: AttentionLine) => `${l.n} ${FACT[l.kind][l.n === 1 ? 0 : 1]}`;
+    const line = lines[0];
     const dept = g.key.startsWith('outlet:') ? null : g.key;
     return {
       key: g.key,
       label: g.label,
       icon: dept ? departmentIcon(g.label, g.type) : 'home',
       tone: g.tone,
-      fact: line ? `${line.n} ${FACT[line.kind][line.n === 1 ? 0 : 1]}` : 'All done',
+      fact: line ? words(line) : 'All done',
       href: line ? line.href : listHref('/tasks/team', { node: dept }),
+      facts: lines.map((l) => ({ text: words(l), tone: TONE[l.kind] })),
     };
   });
 }

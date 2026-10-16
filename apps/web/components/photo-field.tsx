@@ -25,9 +25,12 @@ export function PhotoField({
   getUploadUrl,
   label = 'Photo',
   gallery = false,
+  photoUrl = null,
 }: {
   node: string;
   photoKey: string | null;
+  /** where the photo already saved under photoKey shows, coming back to it (ADR 164) */
+  photoUrl?: string | null;
   onChange: (key: string | null) => void;
   getUploadUrl: GetUploadUrl;
   label?: string;
@@ -102,9 +105,14 @@ export function PhotoField({
           />
         </label>
       )}
-      {preview && photoKey && (
-        // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
-        <img src={preview} alt={label} className="max-h-48 rounded-lg" />
+      {(preview ?? photoUrl) && photoKey && (
+        // eslint-disable-next-line @next/next/no-img-element -- local object URL or presigned preview
+        <img
+          src={(preview ?? photoUrl)!}
+          alt={label}
+          className="max-h-48 rounded-lg"
+          data-testid="photo-preview"
+        />
       )}
       <ErrorBox message={error} />
     </div>

@@ -484,6 +484,14 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   (`LEAVE_CONFLICT`, waiting `LEAVE_PENDING`) with a red line to it; approved leave not yet
   started is cancelled by its person, LEAVE or ROSTER modify (`hr.may_cancel_leave`). A login
   takes no spaces; every password box has Show / Hide (`PasswordInput`).
+- The restaurant QA walk, round two (ADR 164): an assignment leaving `assigned` clears
+  `coming_off` (a trigger), and approved leave drops `pending` ones too; task lists, late counts
+  and the completion week use the 04:00 business day (a 00:00 Lock-up is the night before's);
+  History is always open; RFMs History is one row a chain (the keeper keeps their order apart);
+  one leave state (`hr.leave_state`) drives words, pill and roster; an approved order reads
+  `approved` before the executor releases it (`inv.po_approved`); department tiles say up to three
+  facts (late, waiting, low); wastage lists first with costs; no Swaps tile on Me; Excise under
+  My work; the date picker is a real date box over its icon; till files take `,` tab or `;`.
 - Food teams know the menu (ADR 165): every role in a kitchen or service department reads the
   outlet's recipes, ingredients and methods without money (duty `READS_MENU`, group
   `MENU_READER` = `RECIPES_TEAM` view) and, where the department keeps a store, its stock read

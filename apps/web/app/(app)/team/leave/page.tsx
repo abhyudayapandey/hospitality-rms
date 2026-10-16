@@ -8,13 +8,14 @@ import { param, type SearchParams } from '@/lib/inventory';
 import { Initials } from '@/components/initials';
 import { peopleContext, teamLeave, type TeamLeave } from '@/lib/people';
 
-// each state as a pill: waiting, approved, rejected (asked, not approved), cancelled (approved,
-// then taken back)
+// each state as a pill, the same state its words say (ADR 164): waiting, approved, rejected
+// (asked, not approved), cancelled (approved, then taken back), could not go through
 const LEAVE_PILL: Record<TeamLeave['status'], [string, string]> = {
   submitted: ['Waiting', 'bg-amber-50 text-amber-800'],
   approved: ['Approved', 'bg-emerald-50 text-emerald-800'],
   rejected: ['Rejected', 'bg-rose-50 text-rose-800'],
   cancelled: ['Cancelled', 'bg-slate-100 text-slate-700'],
+  failed: ['Could not go through', 'bg-rose-100 text-rose-900 font-semibold'],
 };
 
 // Team → Leave (UX-5, ADR 035, 163): who is off when at the place over the next 30 or 90 days,

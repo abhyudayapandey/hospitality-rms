@@ -1289,3 +1289,173 @@ describe('LEAVE in words, alerts, roster blocks and cancel (ADR 163)', () => {
     });
   });
 });
+
+describe('Leave over a roster change waiting for Publish (ADR 164)', () => {
+  /** Sam's assignment on a shift of `day`, its status and whether it is coming off. */
+  const state = (c: PoolClient, id: string) =>
+    one<{ status: string; drop_reason: string | null; coming_off: boolean }>(
+      c,
+      'select status, drop_reason, coming_off from hr.shift_assignment where id = $1',
+      [id],
+    );
+  const approveLeave = async (c: PoolClient, f: Fx, from: number, to: number) => {
+    const { id } = await first<{ id: string }>(
+      c,
+      SAM(),
+      `select hr.request_leave($1, $2::date + $3::int, $2::date + $4::int) as id`,
+      [f.annual, f.monday, from, to],
+    );
+    const req = (
+      await one<{ r: string }>(c, 'select wf_request_id r from hr.leave_request where id = $1', [
+        id,
+      ])
+    ).r;
+    await as(c, FLOOR(), `select wf.act($1, 'approve')`, [req]);
+    await as(c, OLIVIA(), `select wf.act($1, 'approve')`, [req]);
+    await execute(c, req);
+    return id;
+  };
+
+  it('a published shift they are coming off is dropped for the leave, and the leave applies', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c);
+      const wed = await shift(c, f, 2);
+      // on the shift before it was published, then taken off it (waits for Publish)
+      await c.query(`update hr.shift set status = 'draft', published_at = null where id = $1`, [
+        wed,
+      ]);
+      const a = await assign(c, wed, f.sam);
+      await c.query(
+        `update hr.shift set status = 'published', published_at = now() where id = $1`,
+        [wed],
+      );
+      await as(c, OLIVIA(), 'select hr.unassign($1)', [a]);
+      expect(await state(c, a)).toEqual({
+        status: 'assigned',
+        drop_reason: null,
+        coming_off: true,
+      });
+
+      const leave = await approveLeave(c, f, 2, 2);
+      expect(
+        (
+          await one<{ s: string }>(c, 'select status s from hr.leave_request where id = $1', [
+            leave,
+          ])
+        ).s,
+      ).toBe('approved');
+      expect(await state(c, a)).toEqual({
+        status: 'dropped',
+        drop_reason: 'leave',
+        coming_off: false,
+      });
+      // nothing is left for Publish to do on that day
+      expect(
+        (
+          await first<{ n: number }>(c, OLIVIA(), 'select hr.week_changes($1, $2::date) as n', [
+            ids.node('TEST-BAR-3.0-FLOOR-SERVICE'),
+            f.monday,
+          ])
+        ).n,
+      ).toBe(0);
+    });
+  });
+
+  it('a shift they are put on, waiting for Publish, is dropped too: Publish never puts them on leave', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c);
+      const thu = await shift(c, f, 3);
+      // the roster's tap (hr.assign with the warnings seen) on a published shift waits
+      const [{ id: a }] = (await as<{ id: string }>(
+        c,
+        OLIVIA(),
+        `select hr.assign($1, $2, '{}') as id`,
+        [thu, f.sam],
+      )) as [{ id: string }];
+      expect((await state(c, a)).status).toBe('pending');
+      await approveLeave(c, f, 3, 3);
+      expect(await state(c, a)).toEqual({
+        status: 'dropped',
+        drop_reason: 'leave',
+        coming_off: false,
+      });
+      await as(c, OLIVIA(), 'select hr.publish_week($1, $2::date)', [
+        ids.node('TEST-BAR-3.0-FLOOR-SERVICE'),
+        f.monday,
+      ]);
+      expect((await state(c, a)).status).toBe('dropped');
+    });
+  });
+
+  it('the pill follows the words: approved before the executor, failed when it could not go through', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c);
+      const team = async () =>
+        as<{ leave_id: string; status: string; words: string }>(
+          c,
+          OLIVIA(),
+          `select leave_id, status, words from hr.team_leave($1, $2::date, $2::date + 6)`,
+          [ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), f.monday],
+        );
+      const { id: leave } = await first<{ id: string }>(
+        c,
+        SAM(),
+        `select hr.request_leave($1, $2::date + 2, $2::date + 2) as id`,
+        [f.annual, f.monday],
+      );
+      const req = (
+        await one<{ r: string }>(c, 'select wf_request_id r from hr.leave_request where id = $1', [
+          leave,
+        ])
+      ).r;
+      expect((await team()).find((r) => r.leave_id === leave)?.status).toBe('submitted');
+      await as(c, FLOOR(), `select wf.act($1, 'approve')`, [req]);
+      await as(c, OLIVIA(), `select wf.act($1, 'approve')`, [req]);
+      // the last yes is in, the executor has not run: approved in words and in the pill
+      expect((await team()).find((r) => r.leave_id === leave)).toMatchObject({
+        status: 'approved',
+        words: 'Approved by Test Bar Manager 3.0',
+      });
+      const [day] = await as<{ status: string }>(
+        c,
+        OLIVIA(),
+        `select status from hr.leave_for_day($1, $2::date + 2) where worker_id = $3`,
+        [ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), f.monday, f.sam],
+      );
+      expect(day?.status).toBe('approved');
+      // it could not go through: the pill says so, and the roster has no leave that day
+      await c.query(`update wf.request set state = 'failed' where id = $1`, [req]);
+      expect((await team()).find((r) => r.leave_id === leave)).toMatchObject({
+        status: 'failed',
+        words: 'It could not go through. Tell your manager.',
+      });
+      expect(
+        await as(
+          c,
+          OLIVIA(),
+          `select status from hr.leave_for_day($1, $2::date + 2) where worker_id = $3`,
+          [ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), f.monday, f.sam],
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  it('whatever takes an assignment off "assigned" clears coming off', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c);
+      const fri = await shift(c, f, 4);
+      await c.query(`update hr.shift set status = 'draft', published_at = null where id = $1`, [
+        fri,
+      ]);
+      const a = await assign(c, fri, f.sam);
+      await c.query(`update hr.shift set status = 'published' where id = $1`, [fri]);
+      await as(c, OLIVIA(), 'select hr.unassign($1)', [a]);
+      // any writer (a swap, a deactivation, a role change) that drops it
+      await c.query(
+        `update hr.shift_assignment set status = 'swapped', drop_reason = 'swap' where id = $1`,
+        [a],
+      );
+      expect(await state(c, a)).toMatchObject({ status: 'swapped', coming_off: false });
+    });
+  });
+});

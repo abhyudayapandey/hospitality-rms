@@ -529,7 +529,8 @@ export function meTiles(
   i: ScreenInput,
   hide: ReadonlySet<string> = new Set(),
 ): { mine: Screen[]; more: Screen[] } {
-  const all = screensFor(i).filter((s) => !hide.has(s.href));
+  // Swaps live in Roster and Shifts & leave, never as a tile of their own on Me (ADR 164)
+  const all = screensFor(i).filter((s) => !hide.has(s.href) && s.key !== 'swaps');
   const day = DAY.flatMap((k) => all.filter((s) => s.key === k));
   const rank = (k: ScreenKey) => {
     const n = WORK_ORDER.indexOf(k);
@@ -594,7 +595,9 @@ const DAY_KEYS: ReadonlySet<ScreenKey> = new Set([
   'inbox',
 ]);
 const TEAM_KEYS: ReadonlySet<ScreenKey> = new Set(['roster', 'reports']);
-const ADMIN_KEYS: ReadonlySet<ScreenKey> = new Set(['admin', 'compliance', 'audits', 'excise']);
+// the excise register is the bar's and the cost controller's daily work: under My work where
+// it is theirs, never under Admin (CC-02, ADR 164)
+const ADMIN_KEYS: ReadonlySet<ScreenKey> = new Set(['admin', 'compliance', 'audits']);
 
 /**
  * Me's tiles under headings (ADR 132): the person's own work, their day (shifts, SOPs,

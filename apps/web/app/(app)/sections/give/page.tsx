@@ -81,6 +81,30 @@ export default async function GiveSectionsPage({ searchParams }: { searchParams:
           </Link>
         ))}
       </nav>
+      {/* what is given, as saved: shown first, so a saved change is seen (AM-03, ADR 164) */}
+      <section
+        aria-label="Given"
+        className="rounded-xl bg-white p-3 ring-1 ring-slate-200"
+        data-testid="sections-given"
+      >
+        <h2 className="text-sm font-semibold text-slate-500">
+          {data.day === data.today ? 'Given today' : 'Given for tomorrow'}
+        </h2>
+        <ul className="mt-1 text-sm">
+          {data.sections.map((x) => (
+            <li
+              key={x.section_id}
+              className="flex min-h-8 items-center justify-between gap-2"
+              data-testid="section-given"
+            >
+              <span>{x.name}</span>
+              <span className={x.user_name ? 'font-medium' : 'text-slate-500'}>
+                {x.user_name ?? 'Not given yet'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
       {data.people.length === 0 ? (
         <Empty>No one works here yet.</Empty>
       ) : (

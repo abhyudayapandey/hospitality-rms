@@ -113,8 +113,9 @@ describe('Me tiles per person (ADR 106)', () => {
     for (const r of rows) {
       const t = tiles(r.duties, r.home);
       const nav = new Set(visibleNav(t.i).map((n) => n.href));
+      // every screen but Swaps, which is in Roster and Shifts & leave (ADR 164)
       const all = screensFor(t.i)
-        .filter((s) => !nav.has(s.href))
+        .filter((s) => !nav.has(s.href) && s.key !== 'swaps')
         .map((s) => s.key);
       expect([...t.mine, ...t.more].sort(), r.code).toEqual([...all].sort());
       expect(new Set([...t.mine, ...t.more]).size, r.code).toBe(all.length);
@@ -173,6 +174,20 @@ describe('Me under headings (ADR 132)', () => {
     expect(of('Team')).toContain('roster');
     expect(of('Admin')).toEqual(expect.arrayContaining(['compliance', 'audits']));
     expect(of('My work')).toEqual(expect.arrayContaining(['rooms', 'stock']));
+  });
+
+  it('no one has a Swaps tile on Me: it is in Roster and Shifts & leave (ADR 164)', () => {
+    for (const r of ROLES) {
+      const keys = groups(r.code).flatMap((g) => g.screens.map((s) => s.key));
+      expect(keys, r.code).not.toContain('swaps');
+    }
+  });
+
+  it('the cost controller keeps the excise register under My work, not Admin (ADR 164)', () => {
+    const g = groups('COST_CONTROLLER');
+    const of = (title: string) => g.find((x) => x.title === title)?.screens.map((s) => s.key) ?? [];
+    expect(of('My work')).toContain('excise');
+    expect(of('Admin')).not.toContain('excise');
   });
 
   it('a server: their work and their day first, no Team or Admin heading', () => {

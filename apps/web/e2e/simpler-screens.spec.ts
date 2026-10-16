@@ -15,11 +15,13 @@ test('the GM: Do these first (at most five), then Waiting for you, department ti
   expect(n).toBeLessThanOrEqual(5);
   // every line has one action and no summed badge of its own
   await expect(first.getByTestId('dofirst-item').first().getByRole('link')).toHaveCount(1);
-  // the departments are tiles, two to a row, each one fact in its colour (ADR 105)
+  // the departments are tiles, two to a row, each up to three facts in their colours, the
+  // first the one it opens (ADR 105, 164)
   const tiles = page.getByTestId('attention-card').getByTestId('attention-group');
   await expect(tiles.first()).toBeVisible();
   for (const t of await tiles.all()) {
     await expect(t.getByTestId('dept-fact')).toHaveCount(1);
+    expect(await t.getByTestId('dept-more').count()).toBeLessThanOrEqual(2);
     expect(['bad', 'warn', 'ok']).toContain(await t.getAttribute('data-tone'));
   }
   const [a, b] = [await tiles.nth(0).boundingBox(), await tiles.nth(1).boundingBox()];

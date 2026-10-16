@@ -32,10 +32,17 @@ export function RequestNow({ stage, words }: { stage: string; words: string }) {
 export function RequestStory({ story }: { story: { at: Date; words: string }[] }) {
   if (story.length === 0) return null;
   return (
-    <details className="rounded-xl bg-white text-sm ring-1 ring-slate-200" open>
-      <summary className="flex min-h-11 cursor-pointer items-center px-4 font-medium text-slate-600">
+    // always open under its own heading (ADR 164)
+    <section
+      className="rounded-xl bg-white text-sm ring-1 ring-slate-200"
+      aria-labelledby="request-history"
+    >
+      <h2
+        id="request-history"
+        className="flex min-h-11 items-center px-4 font-medium text-slate-600"
+      >
         What happened
-      </summary>
+      </h2>
       <ol className="space-y-2 px-4 pb-3" data-testid="request-story">
         {/* newest first (ADR 142) */}
         {[...story].reverse().map((s, i) => (
@@ -48,6 +55,6 @@ export function RequestStory({ story }: { story: { at: Date; words: string }[] }
           </li>
         ))}
       </ol>
-    </details>
+    </section>
   );
 }

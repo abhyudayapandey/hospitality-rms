@@ -153,8 +153,9 @@ async function Licence({ params }: { params: Promise<{ id: string }> }) {
             photos={photosEnabled()}
             done="/compliance/licences/{id}"
           />
-          <details className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-            <summary className="min-h-11 cursor-pointer font-semibold">Correct its details</summary>
+          {/* always open under its own heading (ADR 164) */}
+          <section className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+            <h2 className="flex min-h-11 items-center font-semibold">Correct its details</h2>
             <div className="pt-3">
               <LicenceForm
                 places={[{ id: l.org_node_id, name: l.place_name }]}
@@ -176,7 +177,7 @@ async function Licence({ params }: { params: Promise<{ id: string }> }) {
                 }}
               />
             </div>
-          </details>
+          </section>
           <RemoveButton kind="licence" id={l.id} />
         </>
       )}

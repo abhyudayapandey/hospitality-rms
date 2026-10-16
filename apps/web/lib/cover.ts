@@ -19,6 +19,8 @@ export interface CoverRow {
   changed_by: string | null;
   changed_at: Date | null;
   can_change: boolean;
+  /** the department its people work in at the outlet; null for the outlet's own roles */
+  department_name: string | null;
 }
 
 export interface CoverOutlet {
