@@ -180,7 +180,7 @@ export async function requestSupplies(
 export interface OrderGroup {
   supplier_id: string | null;
   expected_on: string;
-  lines: { item_id: string; unit_cost?: number | null }[];
+  lines: { item_id: string; unit_cost?: number | null; qty?: number | null }[];
 }
 
 // The order desk places the order: one group per supplier (ADR 049)

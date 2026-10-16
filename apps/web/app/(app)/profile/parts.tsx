@@ -11,6 +11,7 @@ import {
 import { clearCaches, LeavingScreen } from '@/components/leaving-screen';
 import { passwordProblems } from '@/lib/auth/passwords';
 import { changeOwnPassword, signOutEverywhere } from './actions';
+import { PasswordInput } from '@/components/password-input';
 
 export function PasswordForm() {
   const [current, setCurrent] = useState('');
@@ -40,21 +41,21 @@ export function PasswordForm() {
 
   return (
     <form onSubmit={(e) => void submit(e)} className="space-y-3" data-testid="password-form">
-      <label className="block text-sm">
-        Current password
-        <input
-          type="password"
+      <div className="block text-sm">
+        <label htmlFor="pw-current">Current password</label>
+        <PasswordInput
+          id="pw-current"
           autoComplete="current-password"
           required
           value={current}
           onChange={(e) => setCurrent(e.target.value)}
           className={inputClass}
         />
-      </label>
-      <label className="block text-sm">
-        New password
-        <input
-          type="password"
+      </div>
+      <div className="block text-sm">
+        <label htmlFor="pw-new">New password</label>
+        <PasswordInput
+          id="pw-new"
           autoComplete="new-password"
           required
           value={next}
@@ -62,24 +63,24 @@ export function PasswordForm() {
           aria-describedby="password-rule"
           className={inputClass}
         />
-      </label>
+      </div>
       <p id="password-rule" className="text-xs text-slate-500">
         At least 10 characters, with a digit and a lower-case letter.
         {problems.length > 0 && (
           <span className="text-rose-700"> Still needs: {problems.join(', ')}.</span>
         )}
       </p>
-      <label className="block text-sm">
-        New password again
-        <input
-          type="password"
+      <div className="block text-sm">
+        <label htmlFor="pw-again">New password again</label>
+        <PasswordInput
+          id="pw-again"
           autoComplete="new-password"
           required
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           className={inputClass}
         />
-      </label>
+      </div>
       <ErrorBox message={error} />
       <StatusBox
         message={done ? 'Password changed. Use the new one next time you sign in.' : null}

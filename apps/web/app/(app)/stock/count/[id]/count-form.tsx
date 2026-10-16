@@ -81,7 +81,7 @@ export function CountForm({
             >
               {shelved && (i === 0 || lines[i - 1]!.shelf !== l.shelf) && (
                 <p
-                  className="-mx-4 -mt-3 mb-2 bg-slate-50 px-4 py-1 text-xs font-semibold text-slate-500"
+                  className="-mx-4 -mt-3 mb-2 border-b border-slate-200 bg-slate-100 px-4 py-2 text-base font-bold text-slate-900"
                   data-testid="count-shelf"
                 >
                   {l.shelf ?? 'Not on a shelf'}

@@ -107,7 +107,9 @@ export async function requestActions(tx: Tx, transfer: string): Promise<RequestA
       select t.id::text, t.kind, core.current_user_id()::text as me,
              (d ->> 'can_work')::boolean as can_work,
              (d ->> 'can_hand_on')::boolean as can_hand_on,
-             regexp_replace(d ->> 'place_name', '^.*\\s[–-]\\s', '') as department
+             -- a receive names the store it goes into (ADR 163)
+             coalesce(ops.receive_into(t.id),
+                      regexp_replace(d ->> 'place_name', '^.*\\s[–-]\\s', '')) as department
         from ops.task t, ops.task_detail(t.id) d
        where t.transfer_id = ${transfer}::uuid and t.assignee_user_id = core.current_user_id()
          and t.kind in ('send', 'receive') and t.status in ('open', 'in_progress')

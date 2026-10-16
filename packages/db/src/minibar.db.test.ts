@@ -1,6 +1,13 @@
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
+import {
+  attemptAs,
+  closePools,
+  giveIfOff,
+  inRolledBackTx,
+  loadSeedIds,
+  type SeedIds,
+} from '../test/helpers';
 
 // The rooms' minibars (ADR 072). Test Hotel & Bar 1.0 has rooms 101 to 202 (files 40, 41):
 // a "Standard" minibar of beer, cola and tonic at par 2, refilled from the Bar Store; 202 has
@@ -404,15 +411,17 @@ describe('the refill and the bill are tasks (ADR 081)', () => {
       expect(bill!.assignee_user_id ?? bill!.job_role_code).toBeTruthy();
       // the front desk sees the bill on its list; the attendant's refill is theirs. The bill
       // goes to the front desk at work when it is due (ADR 148): due when they work, so the
-      // test doesn't depend on the hour it runs at
+      // test doesn't depend on the hour it runs at; after their last shift of the week (the
+      // test data publishes this week only) it is given to them
       await c.query(
-        `update ops.task set due_at = (
+        `update ops.task set due_at = coalesce((
            select min(t) from generate_series(date_trunc('minute', now()) + interval '30 minutes',
                                               now() + interval '24 hours', interval '30 minutes') t
-            where ops.working_at($2, t))
+            where ops.working_at($2, t)), due_at)
           where id = $1`,
         [bill!.id, ids.user(FRONT_DESK)],
       );
+      await giveIfOff(c, bill!.id, ids.user(FRONT_DESK));
       const fd = await ok<{ id: string }>(c, FRONT_DESK, 'select id from ops.my_tasks()');
       expect(fd.map((t) => t.id)).toContain(bill!.id);
       // nothing used, nothing to do

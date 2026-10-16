@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import type { SignInState } from '@/lib/auth/sign-in-words';
+import { PasswordInput, noSpaces } from '@/components/password-input';
 import { signIn } from './actions';
 
 // The sign-in form (ADR 161): one screen that walks through Cognito's steps. Each button
@@ -63,6 +64,7 @@ export function SignInForm({ initial }: { initial: SignInState }) {
             name="login"
             defaultValue={login}
             autoComplete="username"
+            onInput={noSpaces}
             autoCapitalize="none"
             spellCheck={false}
             required
@@ -79,10 +81,9 @@ export function SignInForm({ initial }: { initial: SignInState }) {
         <>
           <div className="space-y-1">
             <Label htmlFor="password">Password</Label>
-            <input
+            <PasswordInput
               id="password"
               name="password"
-              type="password"
               autoComplete="current-password"
               className={field}
             />
@@ -141,10 +142,9 @@ export function SignInForm({ initial }: { initial: SignInState }) {
           )}
           <div className="space-y-1">
             <Label htmlFor="new-password">New password</Label>
-            <input
+            <PasswordInput
               id="new-password"
               name="password"
-              type="password"
               autoComplete="new-password"
               className={field}
             />
@@ -152,10 +152,9 @@ export function SignInForm({ initial }: { initial: SignInState }) {
           </div>
           <div className="space-y-1">
             <Label htmlFor="confirm">Type it again</Label>
-            <input
+            <PasswordInput
               id="confirm"
               name="confirm"
-              type="password"
               autoComplete="new-password"
               className={field}
             />

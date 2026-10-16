@@ -54,6 +54,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
   let minibar: MinibarTaskCheck | null;
   let send: SendLine[];
   let forAsk: string | null;
+  let into: string | null;
   // what a frontline person asked for (ADR 115), or its Collect task (ADR 142): its own page,
   // where the head acts on it and whoever asked follows it (ADR 141); found through
   // ops.task_ask first, since the head's task row is hidden from whoever asked
@@ -98,7 +99,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
     return { transfer: t, story };
   }).catch(() => null);
   try {
-    ({ task, people, sent, about, recipe, photos, minibar, send, forAsk } = await withUser(
+    ({ task, people, sent, about, recipe, photos, minibar, send, forAsk, into } = await withUser(
       user.id,
       async (tx) => {
         const t = await taskDetail(tx, id);
@@ -155,9 +156,19 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
                   (select transfer_id from ops.task where id = ${id}::uuid))`.execute(tx)
               ).rows[0]
             : undefined;
+        // a receive names the store it goes into: "Transfer to Bar Store done" (ADR 163)
+        const into =
+          t.kind === 'receive'
+            ? ((
+                await sql<{ s: string | null }>`select ops.receive_into(${id}::uuid) as s`.execute(
+                  tx,
+                )
+              ).rows[0]?.s ?? null)
+            : null;
         return {
           task: t,
           people: p,
+          into,
           sent: lines,
           send: toSend,
           forAsk: ask ? `For ${ask.asked_by}${ask.note ? `: ${ask.note}` : ''}` : null,
@@ -323,7 +334,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
           <ReceiveSent
             task={task.id}
             lines={sent}
-            department={task.place_name.replace(/^.*\s[–-]\s/, '')}
+            department={into ?? task.place_name.replace(/^.*\s[–-]\s/, '')}
           />
         ) : (
           <SentLines lines={sent} />
@@ -353,17 +364,19 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
           </Link>
         </>
       )}
-      {/* who has it and how it got there: open for those who follow it, folded for the person
-          doing it, who needs only the job (ADR 098) */}
+      {/* who has it and how it got there: always open, for everyone (ADR 163) */}
       {(!chain || open) && (
-        <details
+        <section
           className="rounded-xl bg-white text-sm ring-1 ring-slate-200"
-          open={!mine && (task.can_manage || task.can_hand_on)}
           data-testid="task-more"
+          aria-labelledby="task-history"
         >
-          <summary className="flex min-h-11 cursor-pointer items-center px-4 font-medium text-slate-600">
+          <h2
+            id="task-history"
+            className="flex min-h-11 items-center px-4 font-medium text-slate-600"
+          >
             History
-          </summary>
+          </h2>
           <div className="space-y-2 px-4 pb-3">
             {!chain && (
               <p className="text-slate-600">
@@ -387,7 +400,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
               )}
             {task.handovers.length > 0 && !chain && <History task={task} />}
           </div>
-        </details>
+        </section>
       )}
       {open &&
         task.can_manage &&

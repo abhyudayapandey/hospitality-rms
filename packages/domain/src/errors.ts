@@ -31,6 +31,7 @@ export const ERROR_MESSAGES = {
   NO_STORE_KEEPS_IT: 'No other store here keeps it. Ask to buy it instead.',
   NOT_WHOLE_PACKS: 'Open whole packs only. Say how many you opened.',
   NOTHING_SHORT: 'The store has all of it. Send it instead of buying.',
+  MORE_THAN_APPROVED: 'Order no more than was approved.',
   COUNT_TOO_HIGH:
     "That's far more than this store ever holds of it. Check the number and count again.",
   MAKE_BY_TASK:
@@ -74,7 +75,10 @@ export const ERROR_MESSAGES = {
   EXPIRY_PASSED: 'That expiry date has passed. Check the date on the pack.',
   TOO_MANY_PHOTOS: 'A task keeps three photos at most.',
   WEEKLY_HOURS_CAP: 'That would take them over the weekly hours limit.',
-  LEAVE_CONFLICT: 'They are on approved leave that day.',
+  LEAVE_CONFLICT:
+    'They are on approved leave that day. Cancel the leave before giving them a shift.',
+  LEAVE_PENDING: 'They have asked for leave that day. Reject it before giving them a shift.',
+  LEAVE_STARTED: 'This leave has started. It can no longer be cancelled.',
   ROLE_MISMATCH: "Their role doesn't match this shift.",
   SHIFT_FULL: 'This shift already has everyone it needs.',
   WORKER_NOT_AT_NODE: 'They work at another location.',

@@ -588,6 +588,85 @@ describe('with a Main Store, a department asks it (ADR 115)', () => {
       expect((await seen(c, ASKER, t)).stage).toBe('being_ordered');
     });
   });
+
+  // one screen for an order (ADR 163)
+  const place = (c: PoolClient, po: string, item: string, qty: number) =>
+    one<{ ids: string[] }>(c, KEEPER, `select inv.place_order($1, $2::jsonb) as ids`, [
+      po,
+      JSON.stringify([
+        { supplier_id: null, expected_on: '2099-01-01', lines: [{ item_id: item, qty }] },
+      ]),
+    ]);
+  const orderedQty = async (c: PoolClient, po: string) =>
+    Number(
+      (
+        await c.query<{ q: string }>(
+          `select qty as q from inv.purchase_order_line where po_id = $1`,
+          [po],
+        )
+      ).rows[0]!.q,
+    );
+
+  it('no one approves it: the keeper places it at once, and may order more than was short', async () => {
+    await inRolledBackTx(async (c) => {
+      const item = await lager(c);
+      await stockAt(c, item, MAIN, 0);
+      const t = await ask(c, item, 24);
+      const po = (
+        await one<{ id: string }>(c, KEEPER, `select inv.order_for_request($1, null) as id`, [t])
+      ).id;
+      // the executor has not run: the order is approved, not yet released, and placed anyway
+      const ids = (await place(c, po, item, 36)).ids;
+      expect(ids).toEqual([po]);
+      expect(await orderedQty(c, po)).toBe(36);
+      const s = (
+        await c.query<{ status: string; ordered: boolean }>(
+          `select status, ordered_at is not null as ordered from inv.purchase_order where id = $1`,
+          [po],
+        )
+      ).rows[0];
+      expect(s).toEqual({ status: 'released', ordered: true });
+      // the executor's own run then finds it done
+      await execute(c);
+      expect(
+        (
+          await c.query(
+            `select 1 from inv.purchase_order where id = $1 and ordered_at is not null`,
+            [po],
+          )
+        ).rowCount,
+      ).toBe(1);
+    });
+  });
+
+  it('someone approved it: the keeper waits for the yes, then orders no more than approved', async () => {
+    await inRolledBackTx(async (c) => {
+      await approveEveryPurchase(c);
+      const item = await lager(c);
+      await stockAt(c, item, MAIN, 0);
+      const t = await ask(c, item, 24);
+      const po = (
+        await one<{ id: string }>(c, KEEPER, `select inv.order_for_request($1, null) as id`, [t])
+      ).id;
+      const groups = (qty: number) =>
+        JSON.stringify([
+          { supplier_id: null, expected_on: '2099-01-01', lines: [{ item_id: item, qty }] },
+        ]);
+      // waiting for the GM: not yet
+      expect(
+        await fails(c, KEEPER, `select inv.place_order($1, $2::jsonb)`, [po, groups(24)]),
+      ).toMatch(/INVALID_STATE/);
+      await one(c, GM, `select wf.act($1, 'approve', null) as s`, [
+        await requestOf(c, 'purchase_order', po),
+      ]);
+      // approved, the executor not yet run: more than approved is refused, less is placed
+      expect(
+        await fails(c, KEEPER, `select inv.place_order($1, $2::jsonb)`, [po, groups(30)]),
+      ).toMatch(/MORE_THAN_APPROVED/);
+      await place(c, po, item, 20);
+      expect(await orderedQty(c, po)).toBe(20);
+    });
+  });
 });
 
 describe('with no Main Store, a department asks the store that keeps it (ADR 115)', () => {
@@ -937,6 +1016,56 @@ describe('a frontline person asks their department head, and follows it', () => 
       expect(done.story.join(' | ')).toMatch(
         /Asked by .* \| .*asked the Main Store.* \| .*Received by Test Executive Housekeeper 1\.0.* \| Given by/,
       );
+    });
+  });
+
+  it('History lists every request each person took part in, and no one else’s (ADR 163)', async () => {
+    await inRolledBackTx(async (c) => {
+      const item = await lager(c);
+      await stockAt(c, item, HK, 0);
+      await stockAt(c, item, MAIN, 40);
+      const ask = await raise(c, item, 6);
+      const [t] = (
+        await one<{ ids: string[] }>(c, ASKER, `select inv.ask_for_staff($1) as ids`, [ask])
+      ).ids;
+      await one(c, KEEPER, `select inv.send_request($1, null) as s`, [t]);
+      const history = (who: string) =>
+        rows<{ kind: string; page_id: string; asked_by: string; mine: boolean }>(
+          c,
+          who,
+          `select kind, page_id::text, asked_by, mine from inv.my_material_history(50)`,
+        );
+      // whoever asked, the head who was asked and asked on, and the keeper who sent it
+      expect(await history(ATTENDANT)).toContainEqual({
+        kind: 'ask',
+        page_id: ask,
+        asked_by: 'Test Room Attendant 1.0',
+        mine: true,
+      });
+      const head = await history(ASKER);
+      expect(head).toContainEqual({
+        kind: 'ask',
+        page_id: ask,
+        asked_by: 'Test Room Attendant 1.0',
+        mine: false,
+      });
+      expect(head).toContainEqual(
+        expect.objectContaining({ kind: 'request', page_id: t, mine: true }),
+      );
+      expect(await history(KEEPER)).toContainEqual(
+        expect.objectContaining({
+          kind: 'request',
+          page_id: t,
+          asked_by: 'Test Executive Housekeeper 1.0',
+          mine: false,
+        }),
+      );
+      // someone who had no part in it, and another company, see neither
+      for (const who of ['test.commis.1.0', 'test.solo.bar-manager']) {
+        const theirs = (await history(who)).map((h) => h.page_id);
+        expect(theirs, who).not.toContain(ask);
+        expect(theirs, who).not.toContain(t);
+      }
     });
   });
 

@@ -35,8 +35,8 @@ test('a reading: the safe range first, a number tapped, and the task done', asyn
     await signInAs(page, 'Test Commis 1.0');
     await page.goto(`/tasks/${task}`);
     await expect(main(page).getByTestId('task-due')).toContainText('Due');
-    // who it is for is under History, folded for the person doing it
-    await expect(main(page).getByTestId('task-more')).not.toHaveAttribute('open', '');
+    // who it is for is under History, open for everyone (ADR 163)
+    await expect(main(page).getByTestId('task-more')).toBeVisible();
     await expect(main(page).getByTestId('reading-range')).toHaveText('0 to 5 °C is good');
     const picks = main(page).getByTestId('reading-picks').getByRole('button');
     await expect(picks).toHaveText(['-1', '0', '1', '2', '3', '4', '5', '6']);

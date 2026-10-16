@@ -150,7 +150,7 @@ test('manager builds and publishes; approved leave drops the shift after both ap
   await form.getByRole('button', { name: 'Request 1 day' }).click();
   await expect(form.getByRole('status')).toContainText('Leave requested');
   await expect(page.getByTestId('my-leave').locator('li').first()).toContainText(
-    'Waiting for approval',
+    /Waiting for .+ to approve/,
   );
 
   // The department head (Floor Manager) reviews: the screen lists the shift approval will drop
@@ -612,7 +612,7 @@ test('the sole owner: own leave approved at the top of the chain; the admin page
     .getByRole('link', { name: /Unpaid Leave/ })
     .first()
     .click();
-  await expect(page.getByTestId('leave-status')).toHaveText('Approved');
+  await expect(page.getByTestId('leave-status')).toHaveText(/^Approved by /);
   await expect(page.getByTestId('top-of-chain')).toHaveText(
     'Approved at once: nobody above you approves this.',
   );

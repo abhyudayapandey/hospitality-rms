@@ -7,7 +7,8 @@ import { isUuid } from '@/lib/inventory';
 import { balances } from '@/lib/people';
 import { RequestDecision } from '@/components/request-decision';
 import { Icon } from '@/components/icon';
-import { LEAVE_STATUS, leaveIcon } from '@/lib/leave-icons';
+import { leaveIcon } from '@/lib/leave-icons';
+import { CancelLeave } from './cancel-leave';
 import { jobTitles } from '@/lib/job-titles';
 
 // A leave request: the worker, dates and days, their balance for that type, and the
@@ -34,12 +35,16 @@ export default async function LeaveRequestPage({ params }: { params: Promise<{ i
       pending_for_me: boolean;
       mine: boolean;
       tz: string | null;
+      words: string;
+      can_cancel: boolean;
     }>`
       select l.id, l.worker_id, d.display_name as worker_name, t.name as type_name, t.code as type_code, l.leave_type_id,
              l.from_date::text, l.to_date::text, l.days, l.reason, l.status, l.wf_request_id,
              exists (select 1 from wf.my_inbox() i where i.request_id = l.wf_request_id) as pending_for_me,
              l.owner_user_id = core.current_user_id() as mine,
-             (select timezone from core.nodes('org') n where n.id = l.org_node_id) as tz
+             (select timezone from core.nodes('org') n where n.id = l.org_node_id) as tz,
+             coalesce(hr.leave_words(l.id), 'Waiting for approval') as words,
+             hr.may_cancel_leave(l.id) as can_cancel
         from hr.leave_request l
         join hr.leave_type t on t.id = l.leave_type_id
         left join hr.worker_directory d on d.worker_id = l.worker_id
@@ -101,7 +106,7 @@ export default async function LeaveRequestPage({ params }: { params: Promise<{ i
         </p>
         {leave.reason && <p className="mt-1 text-sm">“{leave.reason}”</p>}
         <p className="mt-1 text-sm text-slate-600" data-testid="leave-status">
-          {LEAVE_STATUS[leave.status] ?? 'Waiting for approval'}
+          {leave.words}
         </p>
         {topOfChain && (
           <p className="mt-1 text-sm text-slate-600" data-testid="top-of-chain">
@@ -141,6 +146,7 @@ export default async function LeaveRequestPage({ params }: { params: Promise<{ i
       {leave.pending_for_me && leave.wf_request_id && (
         <RequestDecision requestId={leave.wf_request_id} back="/tasks" />
       )}
+      {leave.can_cancel && <CancelLeave leave={leave.id} mine={leave.mine} />}
     </div>
   );
 }

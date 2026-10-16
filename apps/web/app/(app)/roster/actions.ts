@@ -254,6 +254,15 @@ export async function requestLeave(
   });
 }
 
+/** Cancels approved leave not yet started: the person's own, or one whose leave you manage
+ * (ADR 163). The days go back to their balance. */
+export async function cancelLeave(leave: string, reason: string): Promise<ActionResult<null>> {
+  return run('cancel_leave', async (tx) => {
+    await sql`select hr.cancel_leave(${leave}::uuid, ${reason})`.execute(tx);
+    return null;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Shift swaps
 // ---------------------------------------------------------------------------

@@ -69,7 +69,7 @@ test('housekeeping asks, the Main Store gives it to someone who takes it down, h
   await page.goto(`/stock/transfers/${id}`);
   await expect(page.getByTestId('request-now')).toContainText('On the way');
   await page.getByRole('button', { name: 'Everything arrived' }).click();
-  await page.getByRole('button', { name: 'Transfer to Housekeeping done' }).click();
+  await page.getByRole('button', { name: 'Transfer to Housekeeping Store done' }).click();
   await expect(page.getByTestId('receive-sent')).toHaveCount(0);
   await page.reload();
   await expect(page.getByTestId('request-now')).toContainText('Received by');
@@ -249,6 +249,6 @@ test('one request, one screen: every link to it opens the ask, with the buttons 
     .click();
   await page.waitForURL(`**/stock/asks/${ask}`);
   await page.getByRole('button', { name: 'Everything arrived' }).click();
-  await page.getByRole('button', { name: 'Transfer to Housekeeping done' }).click();
+  await page.getByRole('button', { name: 'Transfer to Housekeeping Store done' }).click();
   await expect(page.getByRole('button', { name: 'It arrived: give it' })).toBeVisible();
 });
