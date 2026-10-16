@@ -208,6 +208,16 @@ describe('Test Company activity (files 25 to 28): the README figures', () => {
   });
 });
 
+// Whether a task of the test data is in this person's pool now (ADR 148): a job role's task is
+// for the role's people who work at its due time, else the department's head.
+async function inPool(c: PoolClient, title: string, username: string): Promise<boolean> {
+  const r = await c.query<{ yes: boolean }>(
+    `select ops.in_pool(t, $1) as yes from ops.task t where t.tenant_id = $2 and t.title = $3`,
+    [ids.user(username), ids.tenant(), title],
+  );
+  return r.rows[0]!.yes;
+}
+
 describe('Test Company tasks (files 29 to 32): the README figures', () => {
   it('tasks: the commis has an overdue deep clean; commis B finished the descale', async () => {
     await inRolledBackTx(async (c) => {
@@ -216,9 +226,13 @@ describe('Test Company tasks (files 29 to 32): the README figures', () => {
         ids.user('test.commis.1.0'),
         `select title, overdue, status from ops.my_tasks() where kind = 'one_off' order by due_at`,
       );
+      // a job role's task, due tomorrow, is the commis's when they work then (ADR 148); they
+      // are rostered Monday to Friday, so a Friday's load gives it to whoever is on
       expect(mine.rows).toEqual([
         { title: 'Deep clean the walk-in chiller', overdue: true, status: 'open' },
-        { title: 'Label the dry store shelves', overdue: false, status: 'open' },
+        ...((await inPool(c, 'Label the dry store shelves', 'test.commis.1.0'))
+          ? [{ title: 'Label the dry store shelves', overdue: false, status: 'open' }]
+          : []),
       ]);
       const done = await c.query<{ status: string; done_by: string }>(
         `select t.status, u.username as done_by from ops.task t
@@ -232,7 +246,17 @@ describe('Test Company tasks (files 29 to 32): the README figures', () => {
         ids.user('test.server-b.3.0'),
         `select title from ops.my_tasks() where kind = 'one_off'`,
       );
-      expect(servers.rows).toEqual([{ title: 'Wipe down the menu cards' }]);
+      expect(servers.rows).toEqual(
+        (await inPool(c, 'Wipe down the menu cards', 'test.server-b.3.0'))
+          ? [{ title: 'Wipe down the menu cards' }]
+          : [],
+      );
+      // whatever the day, someone of the role or the head has it
+      expect(
+        (await inPool(c, 'Wipe down the menu cards', 'test.server.3.0')) ||
+          (await inPool(c, 'Wipe down the menu cards', 'test.server-b.3.0')) ||
+          (await inPool(c, 'Wipe down the menu cards', 'test.floor-manager.3.0')),
+      ).toBe(true);
     });
   });
 

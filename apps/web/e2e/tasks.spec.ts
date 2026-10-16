@@ -168,13 +168,21 @@ test('an expired batch: reported, assigned by the chef, thrown away and remade, 
 });
 
 test('staff see only their own tasks; task screens refuse them', async ({ page }) => {
-  await signInAs(page, 'Test Server 3.0');
-  await page.goto('/tasks');
   // a task for their job role at Bar 3.0 (file 30), due tomorrow from the load's UTC date:
-  // after 18:30 UTC that is already today in India, so it may sit under Today
+  // after 18:30 UTC that is already today in India, so it may sit under Today. It is the
+  // server's who works at its due time, else the floor manager's (ADR 148).
+  const [server] = await asMigrator<{ name: string }>(
+    `select u.display_name as name from ops.task t
+       join core.app_user u on u.id = any (ops.job_role_pool(t))
+      where t.title = 'Wipe down the menu cards' and u.username like 'test.server%'
+      order by u.display_name limit 1`,
+    [],
+  );
+  await signInAs(page, server?.name ?? 'Test Server 3.0');
+  await page.goto('/tasks');
   await expect(
     page.getByTestId(/^tasks-(today|upcoming)$/).filter({ hasText: 'Wipe down the menu cards' }),
-  ).toHaveCount(1);
+  ).toHaveCount(server ? 1 : 0);
   await expect(
     page.getByRole('navigation', { name: 'Tasks' }).getByRole('link', { name: 'Team' }),
   ).toHaveCount(0);

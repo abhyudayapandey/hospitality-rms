@@ -13,7 +13,16 @@ test.use({ viewport: { width: 380, height: 900 } });
 test('a commis sees a picture for each step; the chef chooses one in the editor', async ({
   page,
 }) => {
-  await signInAs(page, 'Test Commis 1.0');
+  // the commis's round, or on a day they are off the roster whoever has it then (ADR 148)
+  const [doer] = await asMigrator<{ name: string }>(
+    `select u.display_name as name from ops.task t
+       join ops.checklist_template c on c.id = t.template_id
+       join core.app_user u on u.id = any (ops.job_role_pool(t))
+      where c.code = 'HOTEL-1.0-KITCHEN-OPENING' and t.status in ('open', 'in_progress')
+      order by t.due_at, u.display_name = 'Test Commis 1.0' desc limit 1`,
+    [],
+  );
+  await signInAs(page, doer!.name);
   await page.goto('/tasks');
   await page
     .getByRole('link', { name: /Kitchen opening/ })
