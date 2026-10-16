@@ -1131,3 +1131,161 @@ describe('ROLE_CHANGE', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+describe('LEAVE in words, alerts, roster blocks and cancel (ADR 163)', () => {
+  const words = (c: PoolClient, user: string, leave: string) =>
+    first<{ w: string }>(c, user, 'select hr.leave_words($1) as w', [leave]).then((r) => r.w);
+  // the fixture clears shift types: one evening tile for servers at Floor Service
+  const tile = async (c: PoolClient, f: Fx) =>
+    (
+      await one<{ id: string }>(
+        c,
+        `insert into hr.shift_template (tenant_id, org_node_id, name, role_code, start_time,
+                                        end_time)
+         values ($1, $2, 'Floor Evening', 'SERVER', '17:00', '23:00') returning id`,
+        [f.tenant, ids.node('TEST-BAR-3.0-FLOOR-SERVICE')],
+      )
+    ).id;
+
+  it('the approver is told, the words follow it, and the roster refuses the day', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c);
+      const { id: leave } = await first<{ id: string }>(
+        c,
+        SAM(),
+        `select hr.request_leave($1, $2::date + 2, $2::date + 3, 'family') as id`,
+        [f.annual, f.monday],
+      );
+      const req = (
+        await one<{ r: string }>(c, 'select wf_request_id r from hr.leave_request where id = $1', [
+          leave,
+        ])
+      ).r;
+      const alerts = await c.query<{ owner_user_id: string; link: string }>(
+        `select owner_user_id, link from ops.notification
+          where kind = 'leave_asked' and link = '/leave/' || $1`,
+        [leave],
+      );
+      expect(alerts.rows.map((r) => r.owner_user_id)).toEqual([FLOOR()]);
+      expect(await words(c, SAM(), leave)).toMatch(/^Waiting for .+ to approve$/);
+
+      // asked for, not yet approved: the roster says so and points at the leave
+      const set = `select hr.set_day_shift($1, $2::date + 2, $3)`;
+      const t = await tile(c, f);
+      expect(await err(c, OLIVIA(), set, [f.sam, f.monday, t])).toBe('LEAVE_PENDING');
+      const [day] = await as<{ leave_id: string; status: string }>(
+        c,
+        OLIVIA(),
+        `select leave_id, status from hr.leave_for_day($1, $2::date + 2) where worker_id = $3`,
+        [ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), f.monday, f.sam],
+      );
+      expect(day).toEqual({ leave_id: leave, status: 'submitted' });
+
+      await as(c, FLOOR(), `select wf.act($1, 'approve')`, [req]);
+      await as(c, OLIVIA(), `select wf.act($1, 'approve')`, [req]);
+      // approved before the executor has run: already "Approved by", never "Waiting"
+      expect(await words(c, SAM(), leave)).toBe('Approved by Test Bar Manager 3.0');
+      await execute(c, req);
+      expect(await words(c, OLIVIA(), leave)).toBe('Approved by Test Bar Manager 3.0');
+      expect(await err(c, OLIVIA(), set, [f.sam, f.monday, t])).toBe('LEAVE_CONFLICT');
+      // a day off the leave is fine
+      expect(
+        await err(c, OLIVIA(), `select hr.set_day_shift($1, $2::date + 4, $3)`, [
+          f.sam,
+          f.monday,
+          t,
+        ]),
+      ).toBeUndefined();
+
+      // the team list has it in words, with every state
+      const team = await as<{ leave_id: string; status: string; words: string }>(
+        c,
+        OLIVIA(),
+        `select leave_id, status, words from hr.team_leave($1, $2::date, $2::date + 6)`,
+        [ids.node('TEST-BAR-3.0-FLOOR-SERVICE'), f.monday],
+      );
+      expect(team.find((r) => r.leave_id === leave)).toMatchObject({
+        status: 'approved',
+        words: 'Approved by Test Bar Manager 3.0',
+      });
+    });
+  });
+
+  it('approved leave is cancelled by its person or a manager, before it starts', async () => {
+    await inRolledBackTx(async (c) => {
+      const f = await fixture(c);
+      const ask = async () => {
+        const { id } = await first<{ id: string }>(
+          c,
+          SAM(),
+          `select hr.request_leave($1, $2::date + 2, $2::date + 3) as id`,
+          [f.annual, f.monday],
+        );
+        const req = (
+          await one<{ r: string }>(
+            c,
+            'select wf_request_id r from hr.leave_request where id = $1',
+            [id],
+          )
+        ).r;
+        await as(c, FLOOR(), `select wf.act($1, 'approve')`, [req]);
+        await as(c, OLIVIA(), `select wf.act($1, 'approve')`, [req]);
+        await execute(c, req);
+        return id;
+      };
+      const used = async () =>
+        (
+          await one<{ u: string }>(
+            c,
+            `select used_days::text u from hr.leave_balance
+              where worker_id = $1 and leave_type_id = $2
+                and year = extract(year from $3::date)::int`,
+            [f.sam, f.annual, f.monday],
+          )
+        ).u;
+
+      const first1 = await ask();
+      expect(await used()).toBe('2.0');
+      // a colleague may not; still waiting may not (reject it instead)
+      expect(
+        await err(c, ids.user('test.bartender.3.0'), 'select hr.cancel_leave($1)', [first1]),
+      ).toBe('NOT_AUTHORISED');
+      const may = (u: string, l: string) =>
+        first<{ m: boolean }>(c, u, 'select hr.may_cancel_leave($1) as m', [l]).then((r) => r.m);
+      expect([await may(SAM(), first1), await may(OLIVIA(), first1)]).toEqual([true, true]);
+      expect(await may(ids.user('test.bartender.3.0'), first1)).toBe(false);
+      await as(c, SAM(), 'select hr.cancel_leave($1)', [first1]);
+      expect(await may(SAM(), first1)).toBe(false);
+      expect(await used()).toBe('0.0');
+      expect(await words(c, SAM(), first1)).toBe('Cancelled');
+      const t = await tile(c, f);
+      expect(
+        await err(c, OLIVIA(), `select hr.set_day_shift($1, $2::date + 2, $3)`, [
+          f.sam,
+          f.monday,
+          t,
+        ]),
+      ).toBeUndefined();
+
+      // by the manager, with a reason: the person is told
+      const second = await ask();
+      await as(c, OLIVIA(), `select hr.cancel_leave($1, 'busy week')`, [second]);
+      const told = await c.query<{ body: string }>(
+        `select body from ops.notification where owner_user_id = $1 and kind = 'leave_cancelled'`,
+        [SAM()],
+      );
+      expect(told.rows[0]?.body).toMatch(/by Test Bar Manager 3\.0: busy week$/);
+      expect(await err(c, SAM(), 'select hr.cancel_leave($1)', [second])).toBe('INVALID_STATE');
+
+      // started leave stays
+      const started = await ask();
+      await c.query(
+        `update hr.leave_request set from_date = (now() at time zone 'Asia/Kolkata')::date
+          where id = $1`,
+        [started],
+      );
+      expect(await err(c, SAM(), 'select hr.cancel_leave($1)', [started])).toBe('LEAVE_STARTED');
+    });
+  });
+});

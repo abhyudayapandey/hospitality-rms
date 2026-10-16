@@ -380,11 +380,14 @@ export interface LeaveRow {
   days: string;
   status: string;
   reason: string | null;
+  /** its state in words: "Approved by …", "Waiting for … to approve" (ADR 163) */
+  words: string;
 }
 
 export async function myLeave(tx: Tx): Promise<LeaveRow[]> {
   const r = await sql<LeaveRow>`
-    select l.id, t.code as type_code, t.name as type_name, l.from_date::text, l.to_date::text, l.days, l.status, l.reason
+    select l.id, t.code as type_code, t.name as type_name, l.from_date::text, l.to_date::text, l.days, l.status, l.reason,
+           coalesce(hr.leave_words(l.id), 'Waiting for approval') as words
       from hr.leave_request l join hr.leave_type t on t.id = l.leave_type_id
      where l.owner_user_id = core.current_user_id()
      order by l.from_date desc limit 30`.execute(tx);
@@ -549,10 +552,12 @@ export interface TeamLeave {
   from_date: string;
   to_date: string;
   days: string;
-  status: 'submitted' | 'approved';
+  status: 'submitted' | 'approved' | 'rejected' | 'cancelled';
+  /** its state in words (ADR 163) */
+  words: string;
 }
 
-/** Leave waiting or approved at the place over a period (up to three months). */
+/** Leave at the place over a period (up to three months), in every state (ADR 163). */
 export async function teamLeave(
   tx: Tx,
   node: string,
@@ -561,7 +566,7 @@ export async function teamLeave(
 ): Promise<TeamLeave[]> {
   const r = await sql<TeamLeave>`
     select leave_id, worker_id, name, job_role, place, leave_type, from_date::text,
-           to_date::text, days::text, status
+           to_date::text, days::text, status, coalesce(words, '') as words
       from hr.team_leave(${node}::uuid, ${from}::date, ${to}::date)`.execute(tx);
   return r.rows;
 }

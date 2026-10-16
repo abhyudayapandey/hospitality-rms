@@ -33,6 +33,9 @@ export interface TilePerson {
   status: 'draft' | 'published' | null;
   /** a change to their day not yet published (ADR 135) */
   changed: boolean;
+  /** their leave that day, approved or asked for (ADR 163) */
+  leave_id?: string | null;
+  leave_status?: 'approved' | 'submitted' | null;
 }
 
 export interface RosterDay {
@@ -43,5 +46,20 @@ export interface RosterDay {
 export async function rosterDay(tx: Tx, node: string, day: string): Promise<RosterDay> {
   const r = await sql<{ d: RosterDay }>`
     select hr.roster_day(${node}::uuid, ${day}::date) as d`.execute(tx);
-  return r.rows[0]!.d;
+  const d = r.rows[0]!.d;
+  // who is on leave, or has asked for it, that day (ADR 163)
+  const leave = (
+    await sql<{ worker_id: string; leave_id: string; status: 'approved' | 'submitted' }>`
+      select worker_id::text, leave_id::text, status
+        from hr.leave_for_day(${node}::uuid, ${day}::date)`.execute(tx)
+  ).rows;
+  const of = new Map(leave.map((l) => [l.worker_id, l]));
+  return {
+    ...d,
+    people: d.people.map((p) => ({
+      ...p,
+      leave_id: of.get(p.worker_id)?.leave_id ?? null,
+      leave_status: of.get(p.worker_id)?.status ?? null,
+    })),
+  };
 }

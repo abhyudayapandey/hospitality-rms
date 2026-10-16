@@ -476,6 +476,13 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   task pickers choose nothing and never list the giver; quantities in SQL use `inv.qty_text`, and
   cans, packs, boxes and rolls show whole; dates and times use `DateInput` (dd/mm/yyyy) and
   `TimeInput` (24-hour), never the browser's own boxes.
+- The QA walk's fixes (ADR 163): RFMs History is every request the person took part in
+  (`inv.my_material_history`); after Buy what's short the order form shows at once, greyed out
+  while it waits, with − / + (never more than a person approved, `MORE_THAN_APPROVED`); a
+  receive task names its store (`ops.receive_into`); a task's History is always open. Leave
+  alerts its approver and reads in words (`hr.leave_words`); the roster refuses a day of leave
+  (`LEAVE_CONFLICT`, waiting `LEAVE_PENDING`) with a red line to it; approved leave not yet
+  started is cancelled by its person, LEAVE or ROSTER modify (`hr.may_cancel_leave`).
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

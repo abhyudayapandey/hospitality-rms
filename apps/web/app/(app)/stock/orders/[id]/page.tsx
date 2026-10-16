@@ -234,9 +234,18 @@ export default async function OrderPage({
     po.progress !== 'closed';
   // approved but not yet released (the executor's next minute): say approved, never both
   // "waiting for approval" and "Approved" on one screen
+  // (the desk reads a department's order as 'submitted' until it is released)
+  const awaiting = po.progress === 'awaiting_approval' || po.progress === 'submitted';
   const approved =
-    po.progress === 'awaiting_approval' &&
-    ['approved', 'executing', 'completed'].includes(data.approval?.state ?? '');
+    awaiting && ['approved', 'executing', 'completed'].includes(data.approval?.state ?? '');
+  // one screen (ADR 163): the desk sees the order form from the start, greyed out while it
+  // waits for someone's yes, and places it as soon as the yes is in
+  const placeForm =
+    canPlace && (po.progress === 'to_order' || (awaiting && data.approval?.state !== 'failed'));
+  const waitingWords =
+    awaiting && !approved
+      ? `Waiting for ${data.approval?.waiting_for ?? 'approval'} to approve`
+      : null;
   const [label, style] = approved
     ? ['approved', 'bg-sky-100 text-sky-900']
     : ((follow ? SUPPLY_PROGRESS : PROGRESS)[po.progress] ?? [po.progress, '']);
@@ -316,7 +325,7 @@ export default async function OrderPage({
               stage="waiting_approval"
               words={`Waiting for ${data.approval.waiting_for ?? 'approval'} to approve${data.approval.why ? `: ${data.approval.why}` : ''}`}
             />
-          ) : approved ? (
+          ) : approved && !placeForm ? (
             <RequestNow
               stage="being_ordered"
               words={`Approved${data.approval.approved_by ? ` by ${data.approval.approved_by}` : ''}. It reaches the store in a minute.`}
@@ -347,10 +356,12 @@ export default async function OrderPage({
           ))}
         </ul>
       )}
-      {canPlace && po.progress === 'to_order' && (
+      {placeForm && (
         <PlaceOrderForm
           po={po.id}
           suppliers={suppliers}
+          waiting={waitingWords}
+          capped={!!data.approval?.approved_by}
           lines={lines.map((l): PlaceLine => ({
             item_id: l.item_id,
             name: l.name,
@@ -360,7 +371,7 @@ export default async function OrderPage({
           }))}
         />
       )}
-      {po.progress === 'to_order' ? (
+      {placeForm ? null : po.progress === 'to_order' ? (
         !canPlace && (
           <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
             {lines.map((l) => (

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Icon } from '@/components/icon';
 import { Empty } from '@/components/messages';
-import { LEAVE_STATUS, leaveIcon } from '@/lib/leave-icons';
+import { leaveIcon } from '@/lib/leave-icons';
 import { PeopleHeader } from '@/components/people-header';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
@@ -92,9 +92,7 @@ export default async function LeavePage({ searchParams }: { searchParams: Search
                         {Number(l.days)} day{Number(l.days) === 1 ? '' : 's'}
                       </span>
                     </span>
-                    <span className="text-right text-xs text-slate-600">
-                      {LEAVE_STATUS[l.status] ?? 'Waiting for approval'}
-                    </span>
+                    <span className="text-right text-xs text-slate-600">{l.words}</span>
                   </Link>
                 </li>
               ))}

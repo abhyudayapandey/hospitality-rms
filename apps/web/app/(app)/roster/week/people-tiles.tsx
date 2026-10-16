@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { formatDay } from '@/lib/dates';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { isErrorCode, messageFor } from '@outlet-ops/domain';
@@ -36,6 +38,9 @@ export interface TileRow {
   end: string | null;
   /** a change to their day not yet published (ADR 135) */
   changed?: boolean;
+  /** their leave that day, approved or asked for (ADR 163) */
+  leave_id?: string | null;
+  leave_status?: 'approved' | 'submitted' | null;
 }
 
 const KIND: Record<TileType['shift_type'], string> = {
@@ -82,6 +87,8 @@ export function PeopleTiles({
   const hydrated = useHydrated();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // a shift refused for leave, shown on that person's row with a way to the leave (ADR 163)
+  const [onLeave, setOnLeave] = useState<{ worker: string; code: string } | null>(null);
   const [warn, setWarn] = useState<{
     worker: string;
     template: string | null;
@@ -101,12 +108,17 @@ export function PeopleTiles({
     start(async () => {
       setError(null);
       setWarn(null);
+      setOnLeave(null);
       const r = times
         ? await setCustomShift(p.worker_id, day, times.start, times.end, accept)
         : await setDayShift(p.worker_id, day, template, accept);
       if (!r.ok) {
         if ((WARNING_CODES as readonly string[]).includes(r.code)) {
           setWarn({ worker: p.worker_id, template, custom: times, code: r.code, name: p.name });
+          return;
+        }
+        if ((r.code === 'LEAVE_CONFLICT' || r.code === 'LEAVE_PENDING') && p.leave_id) {
+          setOnLeave({ worker: p.worker_id, code: r.code });
           return;
         }
         setError(`${p.name}: ${r.message}`);
@@ -172,8 +184,34 @@ export function PeopleTiles({
                     Not published
                   </span>
                 )}
+                {p.leave_status && (
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs ${
+                      p.leave_status === 'approved'
+                        ? 'bg-sky-50 text-sky-800'
+                        : 'bg-amber-50 text-amber-800'
+                    }`}
+                    data-testid="on-leave"
+                  >
+                    {p.leave_status === 'approved' ? 'On leave' : 'Asked for leave'}
+                  </span>
+                )}
                 {p.job_role && <span className="text-xs text-slate-500">{p.job_role}</span>}
               </p>
+              {onLeave?.worker === p.worker_id && p.leave_id && (
+                <p
+                  role="alert"
+                  className="rounded-lg bg-rose-50 p-3 text-sm text-rose-800"
+                  data-testid="leave-block"
+                >
+                  {onLeave.code === 'LEAVE_CONFLICT'
+                    ? `${p.name} is on approved leave on ${formatDay(day)}. Cancel their leave before giving them a shift. `
+                    : `${p.name} has asked for leave on ${formatDay(day)}. Reject the request before giving them a shift. `}
+                  <Link href={`/leave/${p.leave_id}`} className="font-semibold underline">
+                    Open their leave
+                  </Link>
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {tiles.map((t) => {
                   const on = isOn(t);
