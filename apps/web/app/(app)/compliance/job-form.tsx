@@ -16,6 +16,7 @@ import { ErrorBox, inputClass, primaryButton, secondaryButton } from '@/componen
 import { useHydrated } from '@/lib/use-hydrated';
 import { archiveJob, archiveLicence, saveJob, type JobInput } from './actions';
 import type { Choice } from './licence-form';
+import { DateInput } from '@/components/date-time-inputs';
 
 /** A form field's text (a file input gives none). */
 const field = (f: FormData, name: string) => {
@@ -215,9 +216,8 @@ export function JobForm({
       <div className="grid grid-cols-1 gap-2">
         <label className="block text-sm font-medium">
           Next due
-          <input
+          <DateInput
             name="next_due"
-            type="date"
             required
             defaultValue={existing?.next_due ?? ''}
             className={inputClass}

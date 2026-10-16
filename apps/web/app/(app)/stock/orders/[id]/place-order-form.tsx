@@ -7,6 +7,7 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { placeOrder, type OrderGroup } from '../../actions';
 import { formatQty } from '@/lib/qty';
 import { ItemThumb } from '@/components/item-thumb';
+import { DateInput } from '@/components/date-time-inputs';
 
 export interface PlaceLine {
   item_id: string;
@@ -174,8 +175,7 @@ export function PlaceOrderForm({
                 </span>
               )}
             </span>
-            <input
-              type="date"
+            <DateInput
               required
               min={day(0)}
               value={dateOf(k)}

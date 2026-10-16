@@ -10,6 +10,7 @@ import { BillFiles, type BillFile } from '../../bills/bill-files';
 import { formatQty } from '@/lib/qty';
 import { ItemThumb } from '@/components/item-thumb';
 import { Stepper } from '@/components/stepper';
+import { DateInput } from '@/components/date-time-inputs';
 
 export interface ReceiveLine {
   item_id: string;
@@ -225,8 +226,7 @@ export function ReceiveForm({
               )}
               <label className="block space-y-1">
                 <span className="text-xs text-slate-600">Expiry date (optional)</span>
-                <input
-                  type="date"
+                <DateInput
                   aria-label={`Expiry ${l.name}`}
                   value={expiry[l.item_id] ?? ''}
                   onChange={(e) => setExpiry((v) => ({ ...v, [l.item_id]: e.target.value }))}

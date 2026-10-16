@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { addPermit } from './actions';
+import { DateInput } from '@/components/date-time-inputs';
 
 /** A transport permit for liquor that arrived (ADR 096); FOC bottles go in the note. */
 export function PermitForm({ store, today }: { store: string; today: string }) {
@@ -40,12 +41,7 @@ export function PermitForm({ store, today }: { store: string; today: string }) {
       </label>
       <label className="block space-y-1">
         <span className="text-sm font-medium">Received on</span>
-        <input
-          type="date"
-          value={day}
-          onChange={(e) => setDay(e.target.value)}
-          className={inputClass}
-        />
+        <DateInput value={day} onChange={(e) => setDay(e.target.value)} className={inputClass} />
       </label>
       <label className="block space-y-1">
         <span className="text-sm font-medium">Note (optional, e.g. FOC bottles)</span>

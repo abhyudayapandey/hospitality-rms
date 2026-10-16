@@ -232,7 +232,14 @@ export default async function OrderPage({
     po.supplier_id !== null &&
     po.progress !== 'to_order' &&
     po.progress !== 'closed';
-  const [label, style] = (follow ? SUPPLY_PROGRESS : PROGRESS)[po.progress] ?? [po.progress, ''];
+  // approved but not yet released (the executor's next minute): say approved, never both
+  // "waiting for approval" and "Approved" on one screen
+  const approved =
+    po.progress === 'awaiting_approval' &&
+    ['approved', 'executing', 'completed'].includes(data.approval?.state ?? '');
+  const [label, style] = approved
+    ? ['approved', 'bg-sky-100 text-sky-900']
+    : ((follow ? SUPPLY_PROGRESS : PROGRESS)[po.progress] ?? [po.progress, '']);
   const open = po.progress === 'released' || po.progress === 'partially_received';
   const canReceive = runs && open;
   // what was paid, from the receipts (ADR 051); the order's own prices are only estimates
@@ -309,12 +316,12 @@ export default async function OrderPage({
               stage="waiting_approval"
               words={`Waiting for ${data.approval.waiting_for ?? 'approval'} to approve${data.approval.why ? `: ${data.approval.why}` : ''}`}
             />
-          ) : (
+          ) : approved ? (
             <RequestNow
               stage="being_ordered"
               words={`Approved${data.approval.approved_by ? ` by ${data.approval.approved_by}` : ''}. It reaches the store in a minute.`}
             />
-          )}
+          ) : null}
           {data.approval.may_act && (
             <RequestDecision requestId={data.approval.request_id} back={`/stock/orders/${po.id}`} />
           )}

@@ -30,6 +30,7 @@ export const ERROR_MESSAGES = {
   CHECK_FINISHED: 'This stock check is already finished.',
   NO_STORE_KEEPS_IT: 'No other store here keeps it. Ask to buy it instead.',
   NOT_WHOLE_PACKS: 'Open whole packs only. Say how many you opened.',
+  NOTHING_SHORT: 'The store has all of it. Send it instead of buying.',
   COUNT_TOO_HIGH:
     "That's far more than this store ever holds of it. Check the number and count again.",
   MAKE_BY_TASK:

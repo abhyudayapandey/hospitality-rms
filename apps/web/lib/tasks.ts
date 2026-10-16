@@ -273,7 +273,10 @@ export async function assignablePeople(tx: Tx, node: string): Promise<Person[]> 
   return (
     await sql<Person>`
       select user_id::text, name, job_role, place_name
-        from ops.assignable_people(${node}::uuid) order by name`.execute(tx)
+        from ops.assignable_people(${node}::uuid)
+       -- never whoever is giving it (ADR 151)
+       where user_id <> core.current_user_id()
+       order by name`.execute(tx)
   ).rows;
 }
 
@@ -285,7 +288,9 @@ export async function peopleOnShift(tx: Tx, node: string): Promise<Person[]> {
   return (
     await sql<Person>`
       select user_id::text, name, job_role, place_name, on_shift
-        from ops.assignable_people(${node}::uuid)`.execute(tx)
+        from ops.assignable_people(${node}::uuid)
+       -- never whoever is giving it (ADR 151)
+       where user_id <> core.current_user_id()`.execute(tx)
   ).rows;
 }
 

@@ -6,6 +6,7 @@ import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/mes
 import { useHydrated } from '@/lib/use-hydrated';
 import { addBill } from './actions';
 import { BillFiles, type BillFile } from './bill-files';
+import { DateInput } from '@/components/date-time-inputs';
 
 const OTHER = 'other';
 const today = () => new Date().toISOString().slice(0, 10);
@@ -168,8 +169,7 @@ export function BillForm({
         </label>
         <label className="block space-y-1">
           <span className="text-sm font-medium">Bill date</span>
-          <input
-            type="date"
+          <DateInput
             value={date}
             max={today()}
             onChange={(e) => setDate(e.target.value)}

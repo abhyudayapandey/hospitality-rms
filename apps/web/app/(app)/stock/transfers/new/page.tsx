@@ -21,9 +21,15 @@ export default async function NewTransferPage({ searchParams }: { searchParams: 
     async (tx) =>
       (
         await sql<AskItem>`
-          select item_id::text, name, base_uom, on_hand::text, null::text as avg_cost, item_group,
-                 par_level::text, source_id::text, source_name, source_on_hand::text
-            from inv.ask_items(${ctx.node!.id}::uuid)`.execute(tx)
+          select a.item_id::text, a.name, a.base_uom, a.on_hand::text, null::text as avg_cost,
+                 a.item_group, a.par_level::text, a.source_id::text, a.source_name,
+                 a.source_on_hand::text, coalesce(s.suggested_qty, 0)::text as suggested_qty
+            from inv.ask_items(${ctx.node!.id}::uuid) a
+            -- what Fill all puts in: up to par, or a week's use when it lasts 3 days or fewer
+            -- (inv.fill_qty, ADR 145), as the order form does
+            left join inv.suggested_order(${ctx.node!.id}::uuid) s on s.item_id = a.item_id`.execute(
+          tx,
+        )
       ).rows,
   );
   return (

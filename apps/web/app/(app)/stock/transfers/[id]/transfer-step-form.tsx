@@ -13,6 +13,7 @@ import {
 import { actOnRequest } from '@/app/(app)/inbox/actions';
 import { dispatchTransfer, receiveTransfer } from '../../actions';
 import { ItemThumb } from '@/components/item-thumb';
+import { formatQty } from '@/lib/qty';
 
 export interface TransferLine {
   item_id: string;
@@ -143,9 +144,9 @@ export function TransferStepForm({
             <label htmlFor={`q-${l.item_id}`} className="min-w-0 flex-1 text-sm">
               <span className="block font-medium">{l.name}</span>
               <span className="text-xs text-slate-500">
-                asked {n(l.requested_qty)}
-                {l.dispatched_qty !== null && ` · sent ${n(l.dispatched_qty)}`}
-                {l.received_qty !== null && ` · received ${n(l.received_qty)}`} {l.base_uom}
+                asked {formatQty(l.requested_qty ?? 0, l.base_uom)}
+                {l.dispatched_qty !== null && ` · sent ${formatQty(l.dispatched_qty, l.base_uom)}`}
+                {l.received_qty !== null && ` · received ${formatQty(l.received_qty, l.base_uom)}`}
               </span>
               {l.levels && (
                 <span className="block text-xs text-slate-500" data-testid="line-levels">

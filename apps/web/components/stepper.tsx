@@ -15,6 +15,7 @@ export function Stepper({
   start,
   unit,
   testId,
+  autoFocus,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -25,6 +26,8 @@ export function Stepper({
   start?: number | undefined;
   unit?: string | null | undefined;
   testId?: string;
+  /** the box to type in first (an item opened from its own page, ADR 134) */
+  autoFocus?: boolean | undefined;
 }) {
   const bump = (d: number) => {
     if (value.trim() === '') {
@@ -48,6 +51,7 @@ export function Stepper({
         <input
           inputMode="decimal"
           aria-label={label}
+          autoFocus={autoFocus}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="min-h-14 w-full rounded-xl border border-slate-300 bg-white px-3 text-center text-2xl font-semibold tabular-nums"

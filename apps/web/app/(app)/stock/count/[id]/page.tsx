@@ -22,10 +22,16 @@ export default async function CountSheetPage({
     const c = await sql<{ id: string; status: string; delivery_node_id: string }>`
       select id, status, delivery_node_id from inv.stock_count where id = ${id}::uuid`.execute(tx);
     const l = await sql<CountLine & { system_qty: string; outcome: string | null }>`
-      select cl.item_id, i.name, i.category, i.base_uom, cl.counted_qty, cl.system_qty, cl.outcome
-        from inv.stock_count_line cl join inv.item i on i.id = cl.item_id
+      select cl.item_id, i.name, i.category, i.base_uom, cl.counted_qty, cl.system_qty, cl.outcome,
+             inn.shelf
+        from inv.stock_count_line cl
+        join inv.stock_count sc on sc.id = cl.count_id
+        join inv.item i on i.id = cl.item_id
+        left join inv.item_node inn on inn.item_id = cl.item_id
+                                   and inn.delivery_node_id = sc.delivery_node_id
        where cl.count_id = ${id}::uuid
-       order by i.category, i.name`.execute(tx);
+       -- shelf by shelf, as the store is walked (file 11, ADR 043)
+       order by inn.shelf_order nulls last, inn.shelf nulls last, i.category, i.name`.execute(tx);
     return { count: c.rows[0], lines: l.rows };
   });
   if (!count) return <Empty>Stock check not found.</Empty>;
@@ -94,12 +100,13 @@ export default async function CountSheetPage({
       <CountForm
         countId={id}
         node={count.delivery_node_id}
-        lines={lines.map(({ item_id, name, category, base_uom, counted_qty }) => ({
+        lines={lines.map(({ item_id, name, category, base_uom, counted_qty, shelf }) => ({
           item_id,
           name,
           category,
           base_uom,
           counted_qty,
+          shelf,
         }))}
       />
     </div>

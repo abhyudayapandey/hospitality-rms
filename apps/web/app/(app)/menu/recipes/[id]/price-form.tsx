@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { setPrice } from '../../actions';
+import { DateInput } from '@/components/date-time-inputs';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -61,9 +62,8 @@ export function PriceForm({
       </label>
       <label className="block space-y-1">
         <span className="text-sm">From</span>
-        <input
+        <DateInput
           className={inputClass}
-          type="date"
           min={today()}
           value={from}
           onChange={(e) => setFrom(e.target.value)}

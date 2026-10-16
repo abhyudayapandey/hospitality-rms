@@ -1,4 +1,4 @@
-import { formatQty } from './qty';
+import { formatNumber, formatQty } from './qty';
 
 // What a request's approver and sender decide on (ADR 141): for each line, what the giving
 // store has, and what the asking store already has against its par. Read through
@@ -16,11 +16,11 @@ export interface RequestLevel {
   to_par: string | null;
 }
 
-/** "Main Store has 34 bottle · Bar Store has 19.57 of 24 bottle". */
+/** "Main Store has 34 bottles · Bar Store has 19.57 of 24 bottles"; "73 of 80 each". */
 export function levelsText(l: RequestLevel): string {
   const here =
     Number(l.to_par) > 0
-      ? `${formatQty(l.to_on_hand, '')} of ${formatQty(l.to_par!, l.base_uom)}`
+      ? `${formatNumber(l.to_on_hand, l.base_uom)} of ${formatQty(l.to_par!, l.base_uom)}`
       : formatQty(l.to_on_hand, l.base_uom);
   return `${l.from_name} has ${formatQty(l.from_on_hand, l.base_uom)} · ${l.to_name} has ${here}`;
 }

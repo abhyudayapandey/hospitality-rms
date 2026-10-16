@@ -11,6 +11,7 @@ import { isoDate, todayIn } from '@/lib/production';
 import { reportToday } from '@/lib/report-data';
 import { ImportForm } from './import-form';
 import { MatchForm } from './match-form';
+import { DateInput } from '@/components/date-time-inputs';
 
 // The POS import (SAL-2, ADR 039): the cashier's end-of-day job. They export the day's
 // "Sale by item" report from the POS and upload it here; each POS code is matched to a menu
@@ -47,8 +48,7 @@ export default async function PosImportPage({ searchParams }: { searchParams: Se
         <input type="hidden" name="node" value={place.id} />
         <label className="flex-1 space-y-1">
           <span className="text-sm">Day</span>
-          <input
-            type="date"
+          <DateInput
             name="date"
             max={max}
             defaultValue={date}

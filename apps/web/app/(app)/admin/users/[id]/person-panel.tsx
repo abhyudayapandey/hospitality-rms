@@ -17,6 +17,7 @@ import {
   updatePerson,
 } from '../../actions';
 import { AppliesBadge, OneTimePassword } from '../parts';
+import { DateInput } from '@/components/date-time-inputs';
 
 export interface AccessRow {
   assignment_id: string | null;
@@ -290,8 +291,7 @@ export function AddAccess({
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-sm font-medium">
           From
-          <input
-            type="date"
+          <DateInput
             value={g.from}
             onChange={(e) => setG({ ...g, from: e.target.value })}
             className={inputClass}
@@ -299,8 +299,7 @@ export function AddAccess({
         </label>
         <label className="block text-sm font-medium">
           To
-          <input
-            type="date"
+          <DateInput
             value={g.to}
             onChange={(e) => setG({ ...g, to: e.target.value })}
             className={inputClass}

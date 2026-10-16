@@ -8,6 +8,7 @@ import type { IngredientOption, RecipeRow } from '@/lib/menu';
 import { useHydrated } from '@/lib/use-hydrated';
 import { saveRecipe } from '../../../actions';
 import { ItemThumb } from '@/components/item-thumb';
+import { DateInput } from '@/components/date-time-inputs';
 
 interface Line {
   ingredient_item_id: string;
@@ -152,9 +153,8 @@ export function RecipeEditor({
       )}
       <label className="block space-y-1">
         <span className="text-sm">In use from</span>
-        <input
+        <DateInput
           className={inputClass}
-          type="date"
           min={today()}
           value={from}
           onChange={(e) => setFrom(e.target.value)}

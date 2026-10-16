@@ -337,6 +337,42 @@ describe('with a Main Store, a department asks it (ADR 115)', () => {
     });
   });
 
+  // ADR 162: a line the store has in full was ordered too, at the whole quantity asked
+  it('Buy what’s short buys only what is short; nothing short is refused', async () => {
+    await inRolledBackTx(async (c) => {
+      const item = await lager(c);
+      const towel = await towelOf(c);
+      await stockAt(c, item, MAIN, 10);
+      await stockAt(c, towel, MAIN, 50);
+      const r = await one<{ ids: string[] }>(
+        c,
+        ASKER,
+        `select inv.ask_for_stock($1, $2::jsonb, null) as ids`,
+        [
+          ids.node(HK),
+          JSON.stringify([
+            { item_id: item, qty: 24 },
+            { item_id: towel, qty: 6 },
+          ]),
+        ],
+      );
+      const t = r.ids[0]!;
+      const po = (
+        await one<{ id: string }>(c, KEEPER, `select inv.order_for_request($1, null) as id`, [t])
+      ).id;
+      const lines = await c.query<{ item_id: string; qty: number }>(
+        `select item_id::text, qty::float as qty from inv.purchase_order_line where po_id = $1`,
+        [po],
+      );
+      expect(lines.rows).toEqual([{ item_id: item, qty: 14 }]);
+
+      const whole = await ask(c, towel, 6);
+      expect(await fails(c, KEEPER, `select inv.order_for_request($1, null)`, [whole])).toMatch(
+        /NOTHING_SHORT/,
+      );
+    });
+  });
+
   it('asks the Main Store for everything, though the Bar keeps lager: one request', async () => {
     await inRolledBackTx(async (c) => {
       const item = await lager(c);
