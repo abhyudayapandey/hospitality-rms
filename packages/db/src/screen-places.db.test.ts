@@ -163,9 +163,13 @@ describe('core.screen_places', () => {
     });
   });
 
-  it('frontline staff: no stock places; production at their store only', async () => {
+  it('frontline staff: their department’s store, read only; production at their store only', async () => {
     await inRolledBackTx(async (c) => {
-      expect(await places(c, 'test.bartender.1.0', 'stock')).toEqual([]);
+      // the bar store, read only (ADR 165); a steward's restaurant keeps none
+      expect(codes(await places(c, 'test.bartender.1.0', 'stock'))).toEqual([
+        'TEST-HOTEL-1.0-BAR-STORE',
+      ]);
+      expect(await places(c, 'test.steward.1.0', 'stock')).toEqual([]);
       expect(codes(await places(c, 'test.commis.1.0', 'production'))).toEqual([
         'TEST-HOTEL-1.0-KITCHEN-STORE',
       ]);

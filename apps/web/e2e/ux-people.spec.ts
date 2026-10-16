@@ -28,16 +28,17 @@ test("Me: a server's own day first, the rest under More; no two tiles share a pi
   expect(width).toBeLessThanOrEqual(380);
 });
 
-test('Me: a commis has Make and Opened packs first, and no recipes', async ({ page }) => {
+test('Me: a commis has Make first, then the menu and the kitchen store', async ({ page }) => {
   await signInAs(page, 'Test Commis 1.0');
   await page.goto('/me');
   const tiles = page.getByTestId('me-tiles');
-  for (const k of ['make', 'opened', 'shifts']) {
+  for (const k of ['make', 'menu', 'stock', 'shifts']) {
     await expect(tiles.getByTestId(`me-${k}`), k).toBeVisible();
   }
-  // their own work comes first (ADR 113); recipes are for the kitchen's managers (ADR 123)
+  // their own work comes first (ADR 113); the menu without money and the kitchen store read
+  // only (ADR 165), where opened packs are a tab
   await expect(tiles.locator('a').first()).toHaveAttribute('data-testid', 'me-make');
-  await expect(tiles.getByTestId('me-menu')).toHaveCount(0);
+  await expect(tiles.getByTestId('me-menu')).toHaveText(/Recipes/);
 });
 
 test('an empty roster week: one Fill button adds the usual shifts as drafts', async ({ page }) => {

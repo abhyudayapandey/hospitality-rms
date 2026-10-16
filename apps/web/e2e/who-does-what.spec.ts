@@ -56,9 +56,9 @@ test('"Our Sous Chef left; the Executive Chef covers", then back', async ({ page
       .getByLabel('Which role does it')
       .selectOption({ label: 'Executive Chef (1 person)' });
     await expect(page.getByTestId('cover-sentence')).toHaveText(
-      "The Executive Chef does the Sous Chef's work here: reads the department's recipes, looks " +
-        'after linen and breakage, leads the shift, works shifts in the department and uses the ' +
-        "department's store. Its tasks go to the Executive Chef on duty.",
+      "The Executive Chef does the Sous Chef's work here: reads the department's recipes, reads " +
+        'the menu, looks after linen and breakage, leads the shift, works shifts in the ' +
+        "department and uses the department's store. Its tasks go to the Executive Chef on duty.",
     );
     // the outlet still has a Sous Chef: the same warning file 37 gives
     await expect(page.getByTestId('cover-warning')).toHaveText([

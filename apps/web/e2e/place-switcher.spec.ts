@@ -89,21 +89,24 @@ test('the choice is remembered per screen, and tabs carry the place where it fit
   await page.waitForURL(new RegExp(`node=${await placeId('TEST-HOTEL-1.0-MAIN-STORE')}`));
 });
 
-test('a bartender sees no switcher on Stock and only the Bar Store on Production', async ({
+test('a bartender sees only the Bar Store on Stock, read only, and on Production', async ({
   page,
 }) => {
   await signInAs(page, 'Test Bartender 1.0');
+  // the bar store's stock, read only (ADR 165): one place, so no choice to make
   await page.goto('/stock');
-  await expect(page.getByRole('main')).toContainText("You don't have access to stock.");
-  await expect(page.getByTestId('place-switcher')).toHaveCount(0);
+  await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Bar Store');
+  await expect.poll(() => viewingOptions(page)).toEqual([]);
+  const tabs = page.getByRole('navigation', { name: 'Stock tabs' }).getByRole('link');
+  await expect(
+    tabs.filter({ hasText: /Stock check|Wastage|Orders|Verify stock|Bills/ }),
+  ).toHaveCount(0);
   await page.goto('/stock/production');
   await expect.poll(() => viewing(page)).toBe('Test Hotel & Bar 1.0 – Bar Store');
   await expect.poll(() => viewingOptions(page)).toEqual([]);
 });
 
-test('a commis sees only the Kitchen Store on Make, and no other stock screen', async ({
-  page,
-}) => {
+test('a commis sees only the Kitchen Store on Make, and stock read only', async ({ page }) => {
   await signInAs(page, 'Test Commis 1.0');
   // Make is one of the commis's four tiles on Home (UX-6)
   await page.getByTestId('tile-make').click();
@@ -112,9 +115,10 @@ test('a commis sees only the Kitchen Store on Make, and no other stock screen', 
   await expect.poll(() => viewingOptions(page)).toEqual([]);
   const main = page.locator('main');
   await expect(main.getByRole('heading', { name: 'Make', exact: true })).toBeVisible();
-  // production and opened packs only (ADR 097): no stock tabs; an expired batch is reported to
-  // the lead, not wasted
+  // the store's stock read only (ADR 165), opened packs and production (ADR 097): no count or
+  // wastage; an expired batch is reported to the lead, not wasted
   await expect(page.getByRole('navigation', { name: 'Stock tabs' }).getByRole('link')).toHaveText([
+    'Stock',
     'Opened',
     'Make',
   ]);

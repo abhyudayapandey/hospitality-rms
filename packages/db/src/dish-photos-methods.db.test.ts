@@ -158,12 +158,16 @@ describe("a dish's method and its sub-recipes (item 8)", () => {
         [dal],
       );
       expect(direct.rows?.length).toBe(2);
-      // a commis reads a recipe only on a prep task they were given (ADR 123)
-      for (const who of [
-        'test.solo.bar-manager',
-        'test.housekeeping-supervisor.1.0',
-        'test.commis.1.0',
-      ]) {
+      // a commis reads it too, from the menu without money (ADR 165)
+      const commis = await attemptAs<{ step: number }>(
+        c,
+        ids.user('test.commis.1.0'),
+        'select step from inv.recipe_method($1)',
+        [recipe],
+      );
+      expect(commis.rows?.map((s) => s.step)).toEqual([1, 2]);
+      // another company and housekeeping do not
+      for (const who of ['test.solo.bar-manager', 'test.housekeeping-supervisor.1.0']) {
         const r = await attemptAs(c, ids.user(who), 'select * from inv.recipe_method($1)', [
           recipe,
         ]);

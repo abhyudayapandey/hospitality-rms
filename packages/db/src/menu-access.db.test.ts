@@ -7,8 +7,10 @@ import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from
 //    sells it (READS_RECIPES: executive and sous chefs, the bar manager; READS_OUTLET_RECIPES:
 //    the restaurant and F&B managers, every store of their outlet), the central kitchen's
 //    manager, and whoever has cost access (MENU: the outlet's managers, cost controllers, area
-//    managers, the account owner). Nobody who only works or leads a shift, and no store
-//    keeper; a cook given a prep task reads its recipe on the task.
+//    managers, the account owner). Everyone else in a kitchen, bar or restaurant reads the
+//    outlet's menu without money (READS_MENU, ADR 165; menu-for-food-teams.db.test.ts); no
+//    one in housekeeping, the front office, security or the stores; a cook given a prep task
+//    reads its recipe on the task.
 //  - prices and costs: MENU view at the store (department heads through their linked store,
 //    outlet managers, cost controllers, hub managers, area managers); never staff or store
 //    keepers.
@@ -70,9 +72,11 @@ const BAR = [
 const BATCHED = ['NEGRONI-BATCH', 'OLD-FASHIONED-BATCH', 'HOUSE-SANGRIA-BATCH'];
 
 describe('recipes are read only by the managers of where they are made or sold', () => {
-  // ADR 123: whoever works or leads a shift reads no recipe, prices or costs; a cook given a
-  // prep task reads that task's recipe through ops.prep_task_recipe (make-by-task.db.test.ts)
-  it('frontline staff, shift leads and store keepers read no recipes', async () => {
+  // ADR 123, 165: outside the kitchen, the bar and the restaurant nobody reads a recipe; a
+  // cook given a prep task reads that task's recipe through ops.prep_task_recipe
+  // (make-by-task.db.test.ts). The guest house's kitchen keeps no store of its own, so its
+  // cook's menu has nothing to read there
+  it('housekeeping, the front office, security and store keepers read no recipes', async () => {
     await inRolledBackTx(async (c) => {
       for (const who of [
         'test.room-attendant.1.0',
@@ -80,14 +84,7 @@ describe('recipes are read only by the managers of where they are made or sold',
         'test.security-guard.1.0',
         'test.room-attendant.2.0',
         'test.security-guard.2.0',
-        'test.bartender.1.0',
-        'test.head-bartender.1.0',
-        'test.bar-back.1.0',
-        'test.commis.1.0',
-        'test.chef-de-partie.1.0',
-        'test.kitchen-steward.1.0',
         'test.cook.2.0',
-        'test.central-kitchen-commis',
         'test.store-keeper.1.0',
       ]) {
         for (const t of ['inv.recipe', 'inv.recipe_line', 'inv.prep_procedure', 'menu.menu_item']) {
@@ -97,22 +94,21 @@ describe('recipes are read only by the managers of where they are made or sold',
     });
   });
 
-  it('the bar manager reads bar recipes but not kitchen ones', async () => {
+  // the whole outlet's menu, without money (READS_MENU, ADR 165); costs stay with their own
+  // store (prices and costs, below)
+  it('the bar manager reads the whole menu, not the central kitchen’s gravy', async () => {
     await inRolledBackTx(async (c) => {
       const seen = await readable(c, 'test.bar-manager.1.0');
-      for (const code of BAR) expect(seen, code).toContain(code);
-      for (const code of KITCHEN) expect(seen, code).not.toContain(code);
+      for (const code of [...BAR, ...KITCHEN]) expect(seen, code).toContain(code);
       expect(seen).not.toContain('MAKHANI-GRAVY');
     });
   });
 
-  it('a sous chef and the executive chef read kitchen recipes but not batched cocktails', async () => {
+  it('a sous chef and the executive chef read the kitchen’s and the bar’s recipes', async () => {
     await inRolledBackTx(async (c) => {
       for (const who of ['test.sous-chef.1.0', 'test.executive-chef.1.0']) {
         const seen = await readable(c, who);
-        for (const code of KITCHEN) expect(seen, `${who} ${code}`).toContain(code);
-        for (const code of [...BATCHED, 'SUGAR-SYRUP', 'MOJITO'])
-          expect(seen, `${who} ${code}`).not.toContain(code);
+        for (const code of [...KITCHEN, ...BAR]) expect(seen, `${who} ${code}`).toContain(code);
       }
     });
   });
@@ -166,7 +162,7 @@ describe('recipes are read only by the managers of where they are made or sold',
     });
   });
 
-  it('the central kitchen manager reads the gravies made there; its commis does not', async () => {
+  it('the central kitchen manager reads the gravies made there; so does its commis', async () => {
     await inRolledBackTx(async (c) => {
       const seen = await readable(c, 'test.central-kitchen-manager');
       expect(seen).toContain('MAKHANI-GRAVY');
@@ -179,7 +175,11 @@ describe('recipes are read only by the managers of where they are made or sold',
       ]) {
         expect(seen, code).not.toContain(code);
       }
-      expect((await readable(c, 'test.central-kitchen-commis')).size).toBe(0);
+      // the commis reads them without money (READS_MENU, ADR 165)
+      const commis = await readable(c, 'test.central-kitchen-commis');
+      expect(commis).toContain('MAKHANI-GRAVY');
+      expect(commis).not.toContain('BUTTER-CHICKEN');
+      expect(await count(c, 'test.central-kitchen-commis', 'menu.my_menu_places()')).toBe(0);
     });
   });
 
@@ -501,34 +501,43 @@ describe('screen reads follow the same rules', () => {
     });
   });
 
-  it('a sous chef lists and opens kitchen recipes; a commis lists none', async () => {
+  it('a sous chef and a commis list and open the menu; a room attendant cannot', async () => {
     await inRolledBackTx(async (c) => {
-      const who = ids.user('test.sous-chef.1.0');
-      const list = await attemptAs<{ code: string }>(c, who, 'select * from inv.my_recipes()');
-      const codes = list.rows!.map((r) => r.code);
-      expect(codes).toContain('GINGER-GARLIC-PASTE');
-      expect(codes).not.toContain('NEGRONI-BATCH');
-      const card = await attemptAs<{ name: string }>(c, who, 'select * from inv.recipe_card($1)', [
-        await recipeOf(c, 'GINGER-GARLIC-PASTE'),
-      ]);
-      expect(card.rows!.length).toBeGreaterThan(0);
-      const batch = await attemptAs(c, who, 'select * from inv.recipe_card($1)', [
-        await recipeOf(c, 'NEGRONI-BATCH'),
-      ]);
-      expect(batch.error).toMatch(/NOT_AUTHORISED/);
+      for (const u of ['test.sous-chef.1.0', 'test.commis.1.0']) {
+        const who = ids.user(u);
+        const list = await attemptAs<{ code: string }>(c, who, 'select * from inv.my_recipes()');
+        const codes = list.rows!.map((r) => r.code);
+        expect(codes, u).toContain('GINGER-GARLIC-PASTE');
+        expect(codes, u).toContain('NEGRONI-BATCH');
+        for (const sku of ['GINGER-GARLIC-PASTE', 'NEGRONI-BATCH']) {
+          const card = await attemptAs<{ name: string }>(
+            c,
+            who,
+            'select * from inv.recipe_card($1)',
+            [await recipeOf(c, sku)],
+          );
+          expect(card.rows!.length, `${u} ${sku}`).toBeGreaterThan(0);
+        }
+      }
       const commis = ids.user('test.commis.1.0');
-      const none = await attemptAs<{ code: string }>(c, commis, 'select * from inv.my_recipes()');
-      expect(none.rows ?? []).toEqual([]);
-      const card2 = await attemptAs(c, commis, 'select * from inv.recipe_card($1)', [
-        await recipeOf(c, 'GINGER-GARLIC-PASTE'),
-      ]);
-      expect(card2.error).toMatch(/NOT_AUTHORISED/);
+      // what a recipe may be made of (the editor's list) and the costs: not theirs
       for (const fn of ['inv.recipe_ingredients()', 'menu.my_menu_places()']) {
         const r = await attemptAs<{ n: number }>(c, commis, `select count(*)::int as n from ${fn}`);
         expect(r.error ?? r.rows[0]!.n, fn).toSatisfy(
           (v: unknown) => v === 0 || /NOT_AUTHORISED/.test(String(v)),
         );
       }
+      const housekeeping = ids.user('test.room-attendant.1.0');
+      const none = await attemptAs<{ code: string }>(
+        c,
+        housekeeping,
+        'select * from inv.my_recipes()',
+      );
+      expect(none.rows ?? []).toEqual([]);
+      const card = await attemptAs(c, housekeeping, 'select * from inv.recipe_card($1)', [
+        await recipeOf(c, 'GINGER-GARLIC-PASTE'),
+      ]);
+      expect(card.error).toMatch(/NOT_AUTHORISED/);
     });
   });
 

@@ -200,6 +200,15 @@ export const ACCESS_GROUPS: readonly GroupDef[] = [
     grants: { RECIPES_TEAM: v, DERIVED_MENU: v },
   },
   {
+    // the menu: every dish's and prep item's recipe, ingredients and method at the outlet's
+    // stores, with no prices, costs or margins (ADR 165). Everyone in a kitchen, bar or
+    // restaurant; the money stays with MENU (RECIPE_READER, the managers)
+    code: 'MENU_READER',
+    name: 'Menu Reader',
+    kind: 'role',
+    grants: { RECIPES_TEAM: v },
+  },
+  {
     // the meters and their readings: Engineering's (ADR 124, 130). Its chief engineer, shift
     // engineers and technicians hold it; the GM and area managers see them as managers
     code: 'METER_READER',
@@ -540,6 +549,7 @@ const GROUP_PLACES: Readonly<Record<string, readonly string[]>> = {
   DEPARTMENT_HEAD: ['org:department'],
   BRIEFING_WRITER: ['org:department', 'org:outlet'],
   RECIPE_READER: ['org:department', 'org:outlet'],
+  MENU_READER: ['org:outlet', 'org:site', 'org:department'],
   METER_READER: ['org:department', 'org:outlet'],
   WARE_KEEPER: ['org:department', 'org:outlet'],
   PRODUCTION_TEAM: ['org:department', 'org:outlet', 'org:site'],
@@ -550,7 +560,7 @@ const GROUP_PLACES: Readonly<Record<string, readonly string[]>> = {
   CASHIER: ['delivery:outlet', 'delivery:store'],
   COST_CONTROLLER: ['delivery:outlet', 'delivery:hub'],
   ACCOUNTS: ['delivery:outlet', 'delivery:hub'],
-  SUPPLY_VIEWER: ['delivery:outlet', 'delivery:hub'],
+  SUPPLY_VIEWER: ['delivery:outlet', 'delivery:hub', 'delivery:store'],
 };
 
 export function groupFitsPlace(group: string, place: { type: string; kind: string }): boolean {
