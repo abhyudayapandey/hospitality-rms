@@ -56,7 +56,19 @@ test('a reading: the safe range first, a number tapped, and the task done', asyn
 });
 
 test('the To do list: one line a task, done ones folded into one row', async ({ page }) => {
-  await signInAs(page, 'Test Room Attendant 1.0');
+  // a frontline person with a task to do: rounds follow the roster (ADR 148), and most test
+  // people work Monday to Friday, so on a Friday the room attendant's next round is Monday's
+  const [who] = await asMigrator<{ name: string }>(
+    `select u.display_name as name from core.app_user u
+       join unnest($1::text[]) with ordinality c(username, n) on c.username = u.username
+      where exists (select 1 from ops.task t
+                     where t.status in ('open', 'in_progress')
+                       and t.due_at < now() + interval '2 days'
+                       and (t.assignee_user_id = u.id or ops.in_pool(t, u.id)))
+      order by c.n limit 1`,
+    [['test.room-attendant.1.0', 'test.commis.1.0', 'test.server.3.0', 'test.commis-b.1.0']],
+  );
+  await signInAs(page, who!.name);
   await page.goto('/tasks');
   const rows = main(page).locator('[data-testid^="tasks-"] li');
   await expect(rows.first()).toBeVisible();

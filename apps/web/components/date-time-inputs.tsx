@@ -135,6 +135,9 @@ export function DateInput({
         placeholder="dd/mm/yyyy"
         value={text}
         onChange={(e) => take(typedDay(e.target.value))}
+        // the box's own limits, as days (the calendar's too); checked below, not by the browser
+        min={min}
+        max={max}
         {...rest}
         name={undefined}
         className={`${rest.className ?? ''} min-w-0 flex-1`}
@@ -151,11 +154,12 @@ export function DateInput({
         max={max}
         onChange={(e) => take(isoToDay(e.target.value))}
       />
-      {/* a span, not a button: inside a label it must not take the label's name */}
+      {/* A shortcut for a finger, hidden from screen readers: inside a label it would join the
+          box's name ("From Pick from a calendar"). The box itself takes the typed day. */}
       <span
-        role="button"
-        tabIndex={0}
-        aria-label="Pick from a calendar"
+        aria-hidden="true"
+        title="Pick from a calendar"
+        data-testid="date-picker"
         className="flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg ring-1 ring-slate-300"
         onClick={(e) => {
           e.preventDefault();
@@ -163,12 +167,6 @@ export function DateInput({
           const p = picker.current;
           if (typeof p?.showPicker === 'function') p.showPicker();
           else p?.click();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            picker.current?.showPicker?.();
-          }
         }}
       >
         <svg
