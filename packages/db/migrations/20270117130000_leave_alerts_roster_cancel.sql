@@ -30,12 +30,12 @@ begin
   end if;
   if v_l.status = 'rejected' or v_r.state = 'rejected' then
     select u.display_name into v_by from wf.step_instance s join core.app_user u on u.id = s.actor_id
-     where s.request_id = v_r.id and s.state = 'rejected' order by s.acted_at desc limit 1;
+     where s.request_id = v_r.id and s.state = 'rejected' order by s.seq desc limit 1;
     return 'Rejected' || coalesce(' by ' || v_by, '');
   end if;
   if v_l.status = 'approved' or v_r.state in ('approved', 'executing', 'completed') then
     select u.display_name into v_by from wf.step_instance s join core.app_user u on u.id = s.actor_id
-     where s.request_id = v_r.id and s.state = 'approved' order by s.acted_at desc limit 1;
+     where s.request_id = v_r.id and s.state = 'approved' order by s.seq desc limit 1;
     return 'Approved' || coalesce(' by ' || v_by, '');
   end if;
   if v_r.state = 'failed' then
@@ -58,7 +58,7 @@ as $$
   select l.id, l.status from hr.leave_request l
    where l.worker_id = p_worker and l.status in ('approved', 'submitted')
      and p_day between l.from_date and l.to_date
-   order by l.status = 'approved' desc, l.created_at
+   order by l.status = 'approved' desc, l.created_at, l.id
    limit 1;
 $$;
 
@@ -246,7 +246,7 @@ begin
        and h.path operator(extensions.<@) n.path
        and l.status in ('approved', 'submitted')
        and p_day between l.from_date and l.to_date
-     order by w.id, l.status = 'approved' desc, l.created_at;
+     order by w.id, l.status = 'approved' desc, l.created_at, l.id;
 end $$;
 
 revoke execute on function hr.leave_words(uuid), hr.leave_on_day(uuid, date),
