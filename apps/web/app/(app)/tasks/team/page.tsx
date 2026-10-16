@@ -2,7 +2,7 @@ import { Empty } from '@/components/messages';
 import { TasksHeader } from '@/components/tasks-header';
 import { PollRefresh } from '@/components/use-polling';
 import { requireUser } from '@/lib/auth/server';
-import { addDays, localDate, localToday, weekStart } from '@/lib/dates';
+import { addDays, businessDate, businessToday, weekStart } from '@/lib/dates';
 import { withUser } from '@/lib/db';
 import { ListDays } from '@/components/date-range';
 import { listDays } from '@/lib/list-days';
@@ -20,7 +20,8 @@ export default async function TeamTasksPage({ searchParams }: { searchParams: Se
   const { places, place } = await placesFor('tasks', searchParams);
   const user = await requireUser();
   const tz = place?.timezone ?? 'Asia/Kolkata';
-  const today = localToday(tz);
+  // the 04:00 business day (ADR 148, 164): a Lock-up due at 00:00 is the night before's
+  const today = businessToday(tz);
   const thisWeek = weekStart(today);
   const sp = await searchParams;
   // days chosen (ADR 120): every task due on them, done or not
@@ -38,7 +39,7 @@ export default async function TeamTasksPage({ searchParams }: { searchParams: Se
     place ? withUser(user.id, (tx) => completion(tx, place.id, addDays(thisWeek, -7))) : [],
   ]);
   const data = { range, listToday: days?.today ?? today, tabs, tasks, now, last };
-  const todays = data.tasks.filter((t) => !t.overdue && localDate(t.due_at, tz) === today);
+  const todays = data.tasks.filter((t) => !t.overdue && businessDate(t.due_at, tz) === today);
   const overdue = data.tasks.filter((t) => t.overdue);
   const listed = (ts: typeof data.tasks) =>
     ts.map((t) => ({ ...t, who: teamWho(t, user.id), given: t.assigned_at, flagged: t.flagged }));

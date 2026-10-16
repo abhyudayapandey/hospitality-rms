@@ -94,7 +94,7 @@ export default async function BillPage({ params }: { params: Promise<{ id: strin
                 href={f.url}
                 target="_blank"
                 rel="noreferrer"
-                className="flex min-h-24 flex-col items-center justify-center gap-1 overflow-hidden rounded-xl bg-white p-2 text-sm font-medium ring-1 ring-slate-200"
+                className="h-full flex min-h-24 flex-col items-center justify-center gap-1 overflow-hidden rounded-xl bg-white p-2 text-sm font-medium ring-1 ring-slate-200"
               >
                 {f.pdf ? (
                   <span className="text-2xl" aria-hidden>

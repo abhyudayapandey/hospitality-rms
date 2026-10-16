@@ -15,7 +15,9 @@ checks them.
   the Stores team, Engineering (one technician, run by the GM) and Admin & Finance (the cost
   controller and the accountant; ADR 140).
 - **Stores**: a Main Store run by the store keeper, the Kitchen Store and the Bar Store
-  (the stock check goes shelf by shelf: back bar, fridges, wine rack, ice machine). The kitchen and the bar ask the
+  (the stock check goes shelf by shelf: the Bar Store's back bar, fridges, wine rack and ice
+  machine; the Main Store's dry store, spice rack, oils and tins, liquor cage, beer and soft
+  drinks, and packaging). The kitchen and the bar ask the
   Main Store; the store keeper buys.
 - **One person per job role**: 19 people, an owner (Leena Sequeira, `test.leena-sequeira`)
   and **Demo Presenter**, who may show the app as anyone (`demo_presenter` in file 07,
@@ -34,6 +36,8 @@ checks them.
   round), **14 starter SOPs** in Me → SOPs (handwashing, allergies, labelling, receiving,
   taking an order, the bill, complaints, serving alcohol, pouring with a measure and more), and
   **floor sections**: Section 1 to 3 in the restaurant, the Bar counter and the Terrace.
+- **Meters** for the technician's Utilities: the electricity main, the kitchen gas and the water
+  inlet at Engineering, read at the end of the shift (file 43).
 - **Push today** lists food and drinks: yesterday's lime cordial is used up in today's
   cocktails, and the cafreal marinade in the kitchen's dishes.
 
@@ -56,7 +60,7 @@ pnpm --filter @outlet-ops/onboarding restaurant-demo --today 2026-10-20
 (cd docs/onboarding/demo/test-restaurant && zip -q -FS ~/test-restaurant.zip [0-9][0-9]_*.csv)
 ```
 
-It holds 38 files.
+It holds 39 files.
 
 **2. Create the customer**: on `/platform`, the link **New customer: the company and its owner
 only** (`/platform/customers/new`), not **Set up a new customer** (the wizard always makes an

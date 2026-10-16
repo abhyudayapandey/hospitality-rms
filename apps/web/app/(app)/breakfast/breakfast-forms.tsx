@@ -311,7 +311,7 @@ function RoomPicker({
                     aria-pressed={false}
                     aria-label={`Room ${r.number}`}
                     onClick={() => onGuests(r, GUESTS)}
-                    className="flex min-h-[4.5rem] w-full items-center justify-center rounded-xl bg-white text-lg font-bold text-slate-800 tabular-nums ring-1 ring-slate-300"
+                    className="h-full flex min-h-[4.5rem] w-full items-center justify-center rounded-xl bg-white text-lg font-bold text-slate-800 tabular-nums ring-1 ring-slate-300"
                     data-testid="breakfast-pick"
                     data-room={r.number}
                   >

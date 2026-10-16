@@ -44,7 +44,17 @@ export function DeskOrders({ rows }: { rows: DeskOrder[] }) {
                             : ''}
                       </span>
                     </span>
-                    <span className="shrink-0 text-sm underline">{action}</span>
+                    <span className="flex shrink-0 flex-col items-end gap-1">
+                      {r.part_received && (
+                        <span
+                          data-testid="part-received"
+                          className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-900"
+                        >
+                          Part received
+                        </span>
+                      )}
+                      <span className="text-sm underline">{action}</span>
+                    </span>
                   </Link>
                 </li>
               ))}

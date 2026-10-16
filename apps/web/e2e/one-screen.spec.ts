@@ -104,8 +104,11 @@ test("the GM: a department's tile opens that department, not all (ADR 105)", asy
     checked++;
   }
   expect(checked).toBeGreaterThan(0);
-  // and an attendance tile lands on its department with as many issues as it says
-  const tile = tiles.filter({ hasText: /attendance issue/ }).first();
+  // and a tile whose first fact is attendance lands on its department with as many issues as
+  // it says (a tile says up to three facts and opens its first, ADR 164)
+  const tile = tiles
+    .filter({ has: page.getByTestId('dept-fact').filter({ hasText: /attendance issue/ }) })
+    .first();
   if ((await tile.count()) > 0) {
     const want = Number((await tile.getByTestId('dept-fact').innerText()).split(' ')[0]);
     const dept = await tile.getAttribute('data-label');

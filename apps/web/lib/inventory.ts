@@ -218,6 +218,8 @@ export const WASTAGE_REASONS = [
 /** Purchase order progress (inv.purchase_order_summary.progress): label and badge style. */
 export const PO_PROGRESS: Record<string, [string, string]> = {
   awaiting_approval: ['waiting for approval', 'bg-amber-100 text-amber-900'],
+  // the last yes is in; it is released within the minute (ADR 164)
+  approved: ['approved', 'bg-sky-100 text-sky-900'],
   to_order: ['to be ordered', 'bg-amber-100 text-amber-900'],
   released: ['ordered', 'bg-sky-100 text-sky-900'],
   partially_received: ['part received', 'bg-sky-100 text-sky-900'],
@@ -262,6 +264,8 @@ export interface DeskOrder {
   stage: 'to_order' | 'to_receive';
   items: string | null;
   unusual: boolean;
+  /** some of it came already (SK-06, ADR 164) */
+  part_received: boolean;
 }
 
 /** What the order desk (the Main Store's keeper) has to do: requests to order, orders to

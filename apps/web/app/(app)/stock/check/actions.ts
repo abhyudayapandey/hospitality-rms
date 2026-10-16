@@ -9,6 +9,7 @@ import {
   MAX_PHOTO_BYTES,
   photosEnabled,
   presignPhotoUpload,
+  presignPhotoView,
   type UploadTarget,
 } from '@/lib/photos';
 
@@ -78,17 +79,30 @@ export interface ReviewLine {
   difference: string;
   needs_photo: boolean;
   photo_key: string | null;
+  /** the photo already taken, to show on coming back to it (CC-03, ADR 164) */
+  photo_url: string | null;
   uncounted: boolean;
 }
 
 export async function reviewStockCheck(check: string): Promise<ActionResult<ReviewLine[]>> {
-  return run('review_stock_check', async (tx) => {
-    const r = await sql<ReviewLine>`
+  const r = await run('review_stock_check', async (tx) => {
+    const q = await sql<Omit<ReviewLine, 'photo_url'>>`
       select item_id, name, unit, area, expected_qty, counted_qty, difference, needs_photo,
              photo_key, uncounted
         from inv.review_stock_check(${check}::uuid)`.execute(tx);
-    return r.rows;
+    return q.rows;
   });
+  if (!r.ok) return r;
+  const on = photosEnabled();
+  return {
+    ok: true,
+    data: await Promise.all(
+      r.data.map(async (l) => ({
+        ...l,
+        photo_url: on && l.photo_key ? await presignPhotoView(l.photo_key) : null,
+      })),
+    ),
+  };
 }
 
 export interface CheckSummary {

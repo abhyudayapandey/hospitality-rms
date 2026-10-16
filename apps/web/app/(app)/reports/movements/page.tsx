@@ -112,7 +112,7 @@ export default async function Movements({ searchParams }: { searchParams: Search
           <li key={t.key}>
             <Link
               href={q({ tab: t.key })}
-              className="block rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200"
+              className="h-full block rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200"
               data-testid={`total-${t.key}`}
             >
               <span className="block text-xs text-slate-600">{t.label}</span>

@@ -212,6 +212,34 @@ describe('the restaurant demo', () => {
       for (const u of ['restaurant.bartender', 'restaurant.steward']) {
         expect(new Set(await push(u)), u).toEqual(new Set(['Bar', 'Food']));
       }
+
+      // the technician reads Engineering's meters in Utilities (TE-04, ADR 164)
+      const places = await attemptAs<{ id: string }>(
+        c,
+        technician,
+        'select p.place_id as id from ops.utility_places() p',
+      );
+      expect(places.rows?.length).toBe(1);
+      const meters = await attemptAs<{ name: string }>(
+        c,
+        technician,
+        'select meter as name from ops.utility_meters($1) order by meter',
+        [places.rows![0]!.id],
+      );
+      expect(meters.rows?.map((m) => m.name)).toEqual([
+        'Electricity main',
+        'Kitchen gas',
+        'Water inlet',
+      ]);
+      // every Main Store item sits on a shelf, for the keeper's stock check (SK-08)
+      expect(
+        await one(
+          `select count(*)::int n from inv.item_node l
+             join core.hierarchy_node s on s.id = l.delivery_node_id
+            where s.tenant_id = $1 and s.code = '${H}-MAIN-STORE' and l.archived_at is null
+              and l.shelf is null`,
+        ),
+      ).toBe(0);
     });
   });
 });

@@ -1,6 +1,6 @@
 import { strToU8, zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
-import { csvRows, datesIn, PosFileError, readPosFile } from './pos';
+import { csvRows, datesIn, PosFileError, readPosFile, separatorOf } from './pos';
 
 // The POS's "Sale by item" export (ADR 039), laid out as the IDSNEXT sample is.
 const SAMPLE = [
@@ -156,6 +156,42 @@ describe('readPosFile (Excel)', () => {
     ]);
     expect(f.posOutlets).toEqual(['TEST BAR 3.0']);
     expect(f.periodFrom).toBe('2026-10-04');
+  });
+});
+
+describe('readPosFile: tabs and semicolons (ADR 164)', () => {
+  const plain = SAMPLE.replace('"MOJITO, CLASSIC"', 'MOJITO CLASSIC').replace(
+    '"1,290.00"',
+    '1290.00',
+  );
+  const expected = csv(plain).lines;
+
+  it('reads a tab-separated file as a comma one', () => {
+    const tabs = plain.replaceAll(',', '\t');
+    expect(csv(tabs, 'sale_by_item.txt').lines).toEqual(expected);
+    expect(csv(tabs, 'sale_by_item.tsv').totalValue).toBe(3260);
+  });
+
+  it('reads a semicolon file, with commas for decimal points', () => {
+    const semi = plain
+      .replaceAll(',', ';')
+      .replace(/(\d)\.(\d)/g, '$1,$2')
+      .replace('1290,00', '1.290,00');
+    expect(csv(semi).lines).toEqual(expected);
+  });
+
+  it('keeps a comma inside quotes in a semicolon file as text', () => {
+    const semi =
+      'Item;Description;Quantity;Rate;Value;Discount\n7;"Fish, fried";1;10;10;0\nGrand Total;;1;;10;0';
+    expect(csv(semi).lines).toEqual([
+      { code: '7', description: 'Fish, fried', qty: 1, value: 10, discount: 0 },
+    ]);
+  });
+
+  it('picks the separator from the header line', () => {
+    expect(separatorOf('Title, with a comma\nItem\tDescription\tQuantity\n')).toBe('\t');
+    expect(separatorOf('Item;Description;Quantity\n1;"a, b";2')).toBe(';');
+    expect(separatorOf('Item,Description\n')).toBe(',');
   });
 });
 

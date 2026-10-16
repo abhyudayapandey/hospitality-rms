@@ -80,7 +80,7 @@ export function ItemPicker<T extends { item_id: string; name: string }>({
               onClick={() => onChange(i.item_id)}
               aria-label={i.name}
               data-testid="item-choice"
-              className="flex min-h-26 w-full flex-col items-center justify-start gap-1 rounded-xl bg-white p-2 text-center ring-1 ring-slate-200"
+              className="h-full flex min-h-26 w-full flex-col items-center justify-start gap-1 rounded-xl bg-white p-2 text-center ring-1 ring-slate-200"
             >
               <ItemThumb name={i.name} />
               <span className="line-clamp-2 text-xs leading-tight font-medium">{i.name}</span>

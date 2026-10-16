@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Dates and times as the app says them (ADR 162): a day as dd/mm/yyyy and a time on the 24-hour
 // clock, whatever language the phone's browser is set to. The browser's own boxes follow the
@@ -69,16 +69,6 @@ export function isTime(text: string): boolean {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(text);
 }
 
-const hidden: CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  opacity: 0,
-  pointerEvents: 'none',
-  bottom: 0,
-  left: 0,
-};
-
 /** A day, typed as dd/mm/yyyy on a number pad or picked from the phone's calendar. */
 export function DateInput({
   value,
@@ -97,7 +87,6 @@ export function DateInput({
   const [text, setText] = useState(() => isoToDay(value ?? defaultValue ?? ''));
   const sent = useRef(value ?? defaultValue ?? '');
   const box = useRef<HTMLInputElement>(null);
-  const picker = useRef<HTMLInputElement>(null);
   // a value set from outside (a chip, Clear) shows; one this box sent is left as typed
   useEffect(() => {
     if (value !== undefined && value !== sent.current) {
@@ -143,31 +132,14 @@ export function DateInput({
         className={`${rest.className ?? ''} min-w-0 flex-1`}
       />
       {rest.name && <input type="hidden" name={rest.name} value={iso ?? ''} />}
-      <input
-        ref={picker}
-        type="date"
-        tabIndex={-1}
-        aria-hidden="true"
-        style={hidden}
-        value={iso ?? ''}
-        min={min}
-        max={max}
-        onChange={(e) => take(isoToDay(e.target.value))}
-      />
-      {/* A shortcut for a finger, hidden from screen readers: inside a label it would join the
-          box's name ("From Pick from a calendar"). The box itself takes the typed day. */}
+      {/* The calendar: the phone's own date box, invisible, laid over the icon at its size, so
+          a tap opens the phone's calendar and it closes as it always does (ADR 164; a hidden
+          box opened by script stayed open on some phones). Hidden from screen readers, so inside
+          a label it never joins the box's name; the text box takes the typed day. */}
       <span
         aria-hidden="true"
         title="Pick from a calendar"
-        data-testid="date-picker"
-        className="flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg ring-1 ring-slate-300"
-        onClick={(e) => {
-          e.preventDefault();
-          // older browsers have no showPicker: a click opens it there
-          const p = picker.current;
-          if (typeof p?.showPicker === 'function') p.showPicker();
-          else p?.click();
-        }}
+        className="relative flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg ring-1 ring-slate-300"
       >
         <svg
           viewBox="0 0 24 24"
@@ -175,10 +147,23 @@ export function DateInput({
           fill="none"
           stroke="currentColor"
           strokeWidth={2}
+          aria-hidden="true"
         >
           <rect x="3" y="5" width="18" height="16" rx="2" />
           <path d="M3 10h18M8 3v4M16 3v4" />
         </svg>
+        <input
+          type="date"
+          tabIndex={-1}
+          aria-hidden="true"
+          data-testid="date-picker"
+          className="date-over absolute inset-0 size-full cursor-pointer opacity-0"
+          value={iso ?? ''}
+          min={min}
+          max={max}
+          disabled={rest.disabled}
+          onChange={(e) => take(isoToDay(e.target.value))}
+        />
       </span>
     </span>
   );

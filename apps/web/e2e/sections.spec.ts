@@ -45,6 +45,13 @@ test('the restaurant manager gives Section 2; the steward sees it on Home', asyn
     await page.reload();
     await expect(tile('Test Steward 1.0', 'Section 2')).toHaveAttribute('aria-pressed', 'true');
     await expect(tile('Test Steward B 1.0', 'Section 3')).toHaveAttribute('aria-pressed', 'true');
+    // what is given shows first, in words (ADR 164), and on the manager's Home
+    const given = main(page).getByTestId('section-given');
+    await expect(given.filter({ hasText: 'Section 2' })).toContainText('Test Steward 1.0');
+    await expect(given.filter({ hasText: 'Section 3' })).toContainText('Test Steward B 1.0');
+    await expect(given.filter({ hasText: 'Section 1' })).toContainText('Not given yet');
+    await page.goto('/');
+    await expect(main(page).getByTestId('home-sections-given')).toContainText('Test Steward 1.0');
 
     await signInAs(page, 'Test Steward 1.0');
     await page.goto('/');

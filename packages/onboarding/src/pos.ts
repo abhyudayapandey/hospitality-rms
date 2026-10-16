@@ -4,7 +4,8 @@ import { unzipSync } from 'fflate';
 // and others alike: a title, then the header `Item | Description | Quantity | Rate | Value |
 // Discount`; lines grouped by POS outlet and menu type, each group closed by a total row,
 // and `Grand Total` at the end. Excel (.xlsx, read with fflate, which the onboarding upload
-// already uses) or CSV. Total rows are skipped, the lines must add up to the Grand Total,
+// already uses) or a text file separated by commas, tabs or semicolons, as tills write them
+// (ADR 164; a semicolon file may write 12,50 for 12.50). Total rows are skipped, the lines must add up to the Grand Total,
 // and an item sold at two rates is one line. The database checks it all again
 // (menu.import_pos); this only turns the file into lines.
 
@@ -61,22 +62,53 @@ export function readPosFile(fileName: string, bytes: Uint8Array): PosFile {
   let rows: string[][];
   if (isZip) {
     rows = xlsxRows(bytes);
-  } else if (/\.(csv|txt)$/i.test(fileName)) {
+  } else if (/\.(csv|tsv|txt)$/i.test(fileName)) {
     let text: string;
     try {
       text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     } catch {
       text = new TextDecoder('windows-1252').decode(bytes);
     }
-    rows = csvRows(text);
+    const sep = separatorOf(text);
+    return readRows(fileName, csvRows(text, sep), { decimalComma: sep === ';' });
   } else {
     throw new PosFileError('POS_FILE_TYPE', 'an Excel (.xlsx) or CSV file');
   }
   return readRows(fileName, rows);
 }
 
+const SEPARATORS = [',', '\t', ';'] as const;
+export type Separator = (typeof SEPARATORS)[number];
+
+/**
+ * How a text file's cells are separated: the separator that splits its header line (the one
+ * naming Item and Description) into the most cells; else the one most used on its first
+ * lines. Separators inside quotes don't count.
+ */
+export function separatorOf(text: string): Separator {
+  const lines = text.split(/\r?\n/).slice(0, 50);
+  const count = (line: string, sep: string) => {
+    let n = 0;
+    let quoted = false;
+    for (const ch of line) {
+      if (ch === '"') quoted = !quoted;
+      else if (!quoted && ch === sep) n++;
+    }
+    return n;
+  };
+  const header = lines.find((l) => /\bitem\b/i.test(l) && /\bdescription\b/i.test(l));
+  const score = (sep: string) =>
+    header !== undefined ? count(header, sep) : lines.reduce((t, l) => t + count(l, sep), 0);
+  return [...SEPARATORS].sort((a, b) => score(b) - score(a))[0]!;
+}
+
 /** The lines of a grid of cells (exported for tests). */
-export function readRows(fileName: string, rows: string[][]): PosFile {
+export function readRows(
+  fileName: string,
+  rows: string[][],
+  opts: { decimalComma?: boolean } = {},
+): PosFile {
+  const num = (s: string, row: number) => toNumber(s, row, opts.decimalComma ?? false);
   const headerAt = rows.findIndex((r) => {
     const cells = r.map((c) => c.trim().toLowerCase());
     return COLUMNS.every((c) => cells.includes(c));
@@ -177,8 +209,11 @@ const round = (n: number, places: number) => {
   return Math.round((n + Number.EPSILON) * f) / f;
 };
 
-function num(s: string, row: number): number {
-  const cleaned = s.replace(/[,\s₹]/g, '').replace(/^\((.*)\)$/, '-$1');
+/** A number as the file writes it: "1,290.00", "(40.00)", "₹ 760"; "1.290,50" where commas
+ * are decimal points (a semicolon file). */
+function toNumber(s: string, row: number, decimalComma: boolean): number {
+  const t = decimalComma && /,\d+\s*$/.test(s) ? s.replace(/\./g, '').replace(',', '.') : s;
+  const cleaned = t.replace(/[,\s₹]/g, '').replace(/^\((.*)\)$/, '-$1');
   const n = Number(cleaned);
   if (cleaned === '' || !Number.isFinite(n)) {
     throw new PosFileError('POS_BAD_NUMBER', `row ${row + 1}: "${s}"`);
@@ -208,7 +243,7 @@ export function datesIn(text: string): string[] {
 }
 
 /** CSV rows of any width (the title lines are shorter than the table). */
-export function csvRows(text: string): string[][] {
+export function csvRows(text: string, sep: Separator = ','): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';
@@ -223,7 +258,7 @@ export function csvRows(text: string): string[][] {
       } else if (ch === '"') quoted = false;
       else field += ch;
     } else if (ch === '"') quoted = true;
-    else if (ch === ',') {
+    else if (ch === sep) {
       row.push(field);
       field = '';
     } else if (ch === '\n' || ch === '\r') {

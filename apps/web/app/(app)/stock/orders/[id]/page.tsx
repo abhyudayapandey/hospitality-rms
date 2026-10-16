@@ -235,9 +235,13 @@ export default async function OrderPage({
   // approved but not yet released (the executor's next minute): say approved, never both
   // "waiting for approval" and "Approved" on one screen
   // (the desk reads a department's order as 'submitted' until it is released)
-  const awaiting = po.progress === 'awaiting_approval' || po.progress === 'submitted';
+  const awaiting =
+    po.progress === 'awaiting_approval' ||
+    po.progress === 'approved' ||
+    po.progress === 'submitted';
   const approved =
-    awaiting && ['approved', 'executing', 'completed'].includes(data.approval?.state ?? '');
+    po.progress === 'approved' ||
+    (awaiting && ['approved', 'executing', 'completed'].includes(data.approval?.state ?? ''));
   // one screen (ADR 163): the desk sees the order form from the start, greyed out while it
   // waits for someone's yes, and places it as soon as the yes is in
   const placeForm =
@@ -255,7 +259,10 @@ export default async function OrderPage({
   const paid = !follow && receivedValue && Number(receivedValue) > 0 ? receivedValue : null;
   // whoever asked may withdraw it until it is ordered (ADR 052)
   const canWithdraw =
-    data.mine && (po.progress === 'to_order' || po.progress === 'awaiting_approval');
+    data.mine &&
+    (po.progress === 'to_order' ||
+      po.progress === 'awaiting_approval' ||
+      po.progress === 'approved');
   // the status sits in the header only when there is nothing to do here
   const showStatus = !canReceive && !(canPlace && po.progress === 'to_order');
   return (
@@ -313,7 +320,7 @@ export default async function OrderPage({
           </p>
         )}
       </div>
-      {data.approval && po.progress === 'awaiting_approval' && (
+      {data.approval && (po.progress === 'awaiting_approval' || po.progress === 'approved') && (
         <section className="space-y-2" data-testid="po-approval">
           {data.approval.state === 'failed' ? (
             <RequestNow
@@ -448,18 +455,16 @@ export default async function OrderPage({
             </ul>
           )}
           {runs && (
-            // while more is to come the receive form takes the bill; this one is for later
-            <details
-              open={bills.length === 0 && !canReceive}
-              className="rounded-xl bg-white p-4 ring-1 ring-slate-200"
-            >
-              <summary className="min-h-11 cursor-pointer py-2 font-medium">
+            // while more is to come the receive form takes the bill; this one is for later.
+            // Always open under its own heading (ADR 164).
+            <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+              <h3 className="flex min-h-11 items-center font-medium">
                 {bills.length === 0
                   ? canReceive
                     ? 'Add the bill for what came earlier'
                     : 'Add the bill'
                   : 'Add another bill'}
-              </summary>
+              </h3>
               <div className="pt-2">
                 <BillForm
                   node={null}
@@ -469,7 +474,7 @@ export default async function OrderPage({
                   amount={bills.length === 0 && paid ? String(Number(paid)) : ''}
                 />
               </div>
-            </details>
+            </div>
           )}
         </section>
       )}

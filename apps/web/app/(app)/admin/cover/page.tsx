@@ -10,7 +10,7 @@ import { OutletPicker } from './outlet-picker';
 // Admin → Who does what (ADR 065, Step 6 of docs/templates-and-cover.md): per outlet, each
 // job role that works there and who does its work: "We have it", "Someone else does it:
 // [role]" or "We don't do this". "All outlets" lists only the covers in place; an outlet
-// lists every role, highest level first. User administration only; view-only admins read.
+// lists every role under its department (the outlet's own first), highest level first. User administration only; view-only admins read.
 export default async function CoverPage({
   searchParams,
 }: {
@@ -48,13 +48,26 @@ export default async function CoverPage({
             it isn&apos;t done here.
             {!here?.can_change && ' You can see this outlet but not change it.'}
           </p>
-          <ul className="space-y-2" data-testid="cover-roles">
-            {byLevel(rows.map((r) => ({ ...r, name: r.role_name }))).map((r) => (
-              <li key={r.job_role_code} data-testid="cover-role" data-role={r.job_role_code}>
-                <RoleLine row={r} />
-              </li>
+          {/* by department, the outlet's own roles first (OW-03, ADR 164) */}
+          <div className="space-y-4" data-testid="cover-roles">
+            {byDepartment(rows, here?.outlet_name ?? '').map((d) => (
+              <section
+                key={d.name}
+                aria-label={d.name}
+                className="space-y-2"
+                data-testid="cover-department"
+              >
+                <h2 className="text-sm font-semibold text-slate-500">{d.name}</h2>
+                <ul className="space-y-2">
+                  {byLevel(d.rows.map((r) => ({ ...r, name: r.role_name }))).map((r) => (
+                    <li key={r.job_role_code} data-testid="cover-role" data-role={r.job_role_code}>
+                      <RoleLine row={r} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ))}
-          </ul>
+          </div>
         </>
       ) : rows.length === 0 ? (
         <Empty>
@@ -81,6 +94,29 @@ export default async function CoverPage({
       )}
     </div>
   );
+}
+
+/**
+ * An outlet's roles under their departments: first the outlet's own (its managers), then each
+ * department by name, without the outlet's name in front ("Restaurant & Bar – Bar" is "Bar").
+ */
+function byDepartment(rows: CoverRow[], outletName: string) {
+  const lead = `${outletName} – `;
+  const nameOf = (r: CoverRow) =>
+    r.department_name === null
+      ? 'Whole outlet'
+      : r.department_name.startsWith(lead)
+        ? r.department_name.slice(lead.length)
+        : r.department_name;
+  const groups = new Map<string, CoverRow[]>();
+  for (const r of rows) groups.set(nameOf(r), [...(groups.get(nameOf(r)) ?? []), r]);
+  return [...groups.entries()]
+    .map(([name, list]) => ({ name, rows: list }))
+    .sort(
+      (a, b) =>
+        Number(b.name === 'Whole outlet') - Number(a.name === 'Whole outlet') ||
+        a.name.localeCompare(b.name),
+    );
 }
 
 function RoleLine({ row: r, outlet = false }: { row: CoverRow; outlet?: boolean }) {
