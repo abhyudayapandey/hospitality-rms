@@ -103,8 +103,12 @@ describe('core.my_domains', () => {
 });
 
 describe('core.nodes', () => {
-  it('head cook: their department and the store it uses', async () => {
+  it('head cook: their department and the store it uses, and the outlet whose menu they read', async () => {
+    // the whole outlet's menu (READS_MENU at the outlet, ADR 165)
     expect(await nodes('test.head-cook.3.0')).toEqual([
+      'org:Test Bar 3.0',
+      'org:Test Bar 3.0 – Bar',
+      'org:Test Bar 3.0 – Floor Service',
       'org:Test Bar 3.0 – Kitchen',
       'delivery:Test Bar 3.0 – Kitchen Store',
     ]);

@@ -499,9 +499,13 @@ function isOwn(s: Screen, i: ScreenInput): boolean {
     case 'reports':
     case 'admin':
       return true;
-    // recipes for those who make what is in them, or who see the recipes of the stores they use
+    // recipes for those who make what is in them, or who see the recipes of the stores they
+    // use; everyone in a kitchen, bar or restaurant knows the menu (ADR 165)
     case 'menu':
-      return i.production || ['MENU', 'DERIVED_MENU', 'RECIPES'].some((d) => ownWork(i, d));
+      return (
+        i.production ||
+        ['MENU', 'DERIVED_MENU', 'RECIPES', 'RECIPES_TEAM'].some((d) => ownWork(i, d))
+      );
     // their department's licences and jobs (ADR 124)
     case 'compliance':
       return i.compliance === true || ownWork(i, 'COMPLIANCE');

@@ -17,15 +17,12 @@ async function recipeId(sku: string): Promise<string> {
   return rows[0]!.id;
 }
 
-test('a sous chef reads kitchen recipes and procedures, and no bar recipes; a commis none', async ({
-  page,
-}) => {
-  // recipes are for the kitchen's managers (ADR 123)
+test('a sous chef reads the kitchen’s recipes and procedures and the bar’s', async ({ page }) => {
+  // the whole outlet's menu (ADR 165); costs stay with the kitchen's managers (ADR 123)
   await signInAs(page, 'Test Sous Chef 1.0');
   await page.goto('/menu/recipes');
-  const main = page.locator('main');
   await expect(page.locator('[data-code="GINGER-GARLIC-PASTE"]')).toBeVisible();
-  await expect(page.locator('[data-code="NEGRONI-BATCH"]')).toHaveCount(0);
+  await expect(page.locator('[data-code="NEGRONI-BATCH"]')).toBeVisible();
 
   await page.locator('[data-code="GINGER-GARLIC-PASTE"] a').click();
   await expect(page.getByTestId('recipe-name')).toHaveText('Ginger Garlic Paste');
@@ -35,15 +32,35 @@ test('a sous chef reads kitchen recipes and procedures, and no bar recipes; a co
   await expect(page.getByTestId('step')).toHaveCount(0);
   await page.getByTestId('tab-recipe').click();
   await expect(page.getByTestId('step').first()).toBeVisible();
+});
 
-  // a batched cocktail's page is refused, not just hidden from the list
-  await page.goto(`/menu/recipes/${await recipeId('NEGRONI-BATCH')}`);
-  await expect(main).toContainText("You can't open this recipe.");
+test('a commis, a bartender and a steward read the menu with no ₹ anywhere', async ({ page }) => {
+  // everyone in a kitchen, bar or restaurant knows the menu, never its money (ADR 165)
+  for (const who of ['Test Commis 1.0', 'Test Bartender 1.0', 'Test Steward 1.0']) {
+    await signInAs(page, who);
+    await page.goto('/menu');
+    const main = page.locator('main');
+    await expect(main.getByRole('heading', { name: 'Recipes' }), who).toBeVisible();
+    for (const code of ['BUTTER-CHICKEN', 'MOJITO', 'GINGER-GARLIC-PASTE']) {
+      await expect(
+        page.locator(`[data-testid="recipe-row"][data-code="${code}"]`),
+        who,
+      ).toBeVisible();
+    }
+    await expect(main, who).not.toContainText('₹');
+    await expect(main.getByRole('link', { name: 'Menu costs' }), who).toHaveCount(0);
 
-  // a commis sees a recipe only on the prep task it is given
-  await signInAs(page, 'Test Commis 1.0');
-  await page.goto(`/menu/recipes/${await recipeId('GINGER-GARLIC-PASTE')}`);
-  await expect(main).toContainText("You can't open this recipe.");
+    await page.goto(`/menu/recipes/${await recipeId('GINGER-GARLIC-PASTE')}`);
+    await expect(page.getByTestId('recipe-name'), who).toHaveText('Ginger Garlic Paste');
+    await expect(page.getByTestId('recipe-line').first(), who).toBeVisible();
+    await expect(page.getByTestId('line-cost'), who).toHaveCount(0);
+    await expect(page.getByTestId('recipe-total'), who).toHaveCount(0);
+    await expect(main, who).not.toContainText('Costs at');
+    await expect(main, who).not.toContainText('₹');
+    await page.getByTestId('tab-recipe').click();
+    await expect(page.getByTestId('step').first(), who).toBeVisible();
+    await expect(main.getByRole('link', { name: 'Change recipe' }), who).toHaveCount(0);
+  }
 });
 
 test('a room attendant has no menu at all', async ({ page }) => {

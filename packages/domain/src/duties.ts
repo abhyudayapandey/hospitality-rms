@@ -141,6 +141,14 @@ export const DUTIES: readonly DutyDef[] = [
     grants: [{ group: 'RECIPE_READER', scope: 'whole_outlet' }],
   },
   {
+    // everyone in a kitchen, bar or restaurant knows the menu: what is in each dish and how it
+    // is made, never what it costs or sells for (ADR 165)
+    code: 'READS_MENU',
+    name: 'Reads the menu',
+    does: "Sees every dish's recipe, ingredients and method at the outlet, with no prices or costs",
+    grants: [{ group: 'MENU_READER', scope: 'whole_outlet' }],
+  },
+  {
     code: 'READS_METERS',
     name: 'Reads the meters',
     does: "Reads the department's meters and sees their readings",
@@ -188,6 +196,13 @@ export const DUTIES: readonly DutyDef[] = [
     name: 'Opens packs',
     does: "Opens packs in the department's store and labels them with their use-by",
     grants: [{ group: 'PACK_OPENER', scope: 'department_store' }],
+  },
+  {
+    // read only: no count, wastage, transfer or stock check (ADR 165)
+    code: 'SEES_DEPARTMENT_STOCK',
+    name: "Sees the department's stock",
+    does: "Sees what the department's store has and its par, read only",
+    grants: [{ group: 'SUPPLY_VIEWER', scope: 'department_store' }],
   },
   {
     code: 'USES_DEPARTMENT_STORE',

@@ -26,13 +26,19 @@ test('the Meals tile: front office and a hotel kitchen, not engineering or a bar
   }
 });
 
-test('a commis opens a pack of milk from their own Opened packs screen', async ({ page }) => {
+test('a commis opens a pack of milk from the kitchen store’s Opened tab', async ({ page }) => {
   const store = await placeId('TEST-HOTEL-1.0-KITCHEN-STORE');
   const started = new Date();
   try {
     await signInAs(page, 'Test Commis 1.0');
     await page.goto('/me');
-    await page.getByTestId('me-opened').click();
+    // the kitchen store, read only, is theirs (ADR 165): Opened is its tab
+    await page.getByTestId('me-stock').click();
+    await page.waitForURL(/\/stock/);
+    await page
+      .getByRole('navigation', { name: 'Stock tabs' })
+      .getByRole('link', { name: 'Opened' })
+      .click();
     await page.waitForURL(/\/stock\/opened/);
     await main(page)
       .getByRole('group', { name: 'What you opened' })

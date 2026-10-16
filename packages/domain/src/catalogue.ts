@@ -811,18 +811,34 @@ const ROLE_LIST: readonly RoleDef[] = [
 /** The departments whose people swap linen with the laundry and break crockery (ADR 124). */
 const WARE_TYPES: ReadonlySet<DepartmentType> = new Set(['kitchen', 'service', 'housekeeping']);
 
+/** The departments whose people know the menu and see their store's stock (ADR 165). */
+const FOOD_TYPES: ReadonlySet<DepartmentType> = new Set(['kitchen', 'service']);
+
+/** Duties that already show a department's store's stock (and more). */
+const STORE_DUTIES: readonly string[] = ['USES_DEPARTMENT_STORE', 'KEEPS_DEPARTMENT_STORE'];
+
 /**
  * Every role. Whoever works, leads or runs a kitchen, service or housekeeping department also
  * looks after its linen and breakage (HANDLES_LINEN); engineering, the front office, security,
- * the offices and the cash desk do not (ADR 124).
+ * the offices and the cash desk do not (ADR 124). Everyone in a kitchen, bar or restaurant
+ * reads the menu without money (READS_MENU, unless they read the whole outlet's with it) and,
+ * where the department keeps a store, sees its stock read only (SEES_DEPARTMENT_STOCK, unless
+ * they use or keep it already; ADR 165).
  */
 export const ROLES: readonly RoleDef[] = ROLE_LIST.map((r) => {
-  const type = DEPARTMENTS.find((d) => d.code === r.home)?.type;
-  const works =
-    r.duties.some((d) => d === W || d === L || d === D) && !r.duties.includes('UPLOADS_POS_SALES');
-  return type && WARE_TYPES.has(type) && works
-    ? { ...r, duties: [...r.duties, 'HANDLES_LINEN'] }
-    : r;
+  const dept = DEPARTMENTS.find((d) => d.code === r.home);
+  const type = dept?.type;
+  const inDept = r.duties.some((d) => d === W || d === L || d === D);
+  const works = inDept && !r.duties.includes('UPLOADS_POS_SALES');
+  const added: string[] = [];
+  if (type && WARE_TYPES.has(type) && works) added.push('HANDLES_LINEN');
+  if (type && FOOD_TYPES.has(type) && inDept) {
+    if (!r.duties.includes(O)) added.push('READS_MENU');
+    if (dept.store && !r.duties.some((d) => STORE_DUTIES.includes(d))) {
+      added.push('SEES_DEPARTMENT_STOCK');
+    }
+  }
+  return added.length ? { ...r, duties: [...r.duties, ...added] } : r;
 });
 
 export const ROLE_BY_CODE: ReadonlyMap<string, RoleDef> = new Map(ROLES.map((r) => [r.code, r]));

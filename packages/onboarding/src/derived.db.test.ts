@@ -89,7 +89,7 @@ describe('derived stock view', () => {
   it('a derived grant on a department reaches only its own store', async () => {
     await inRolledBackTx(async (c) => {
       const t = await loaded(c);
-      const bm = await t.user('test.bartender.1.0'); // no stock access of their own
+      const bm = await t.user('test.front-desk-executive.1.0'); // no stock access of their own
       expect(await t.stockPlaces(bm)).toEqual([]);
       await t.grant(bm, 'AREA_MANAGER', 'TEST-HOTEL-1.0-BAR');
       expect(await t.stockPlaces(bm)).toEqual(['TEST-HOTEL-1.0-BAR-STORE']);

@@ -492,6 +492,10 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   `approved` before the executor releases it (`inv.po_approved`); department tiles say up to three
   facts (late, waiting, low); wastage lists first with costs; no Swaps tile on Me; Excise under
   My work; the date picker is a real date box over its icon; till files take `,` tab or `;`.
+- Food teams know the menu (ADR 165): every role in a kitchen or service department reads the
+  outlet's recipes, ingredients and methods without money (duty `READS_MENU`, group
+  `MENU_READER` = `RECIPES_TEAM` view) and, where the department keeps a store, its stock read
+  only (`SEES_DEPARTMENT_STOCK`, SUPPLY_VIEWER); prices and costs stay behind `MENU`.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

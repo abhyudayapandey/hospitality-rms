@@ -104,6 +104,9 @@ const FRONTLINE = new Set([
   'WARE_KEEPER',
   'METER_READER',
   'RECIPE_READER',
+  // the menu without money and their department's stock, read only (ADR 165)
+  'MENU_READER',
+  'SUPPLY_VIEWER',
 ]);
 
 export type NavProfile = 'outlet' | 'department' | 'store' | 'cost' | 'frontline' | 'office';

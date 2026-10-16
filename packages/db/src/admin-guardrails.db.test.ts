@@ -288,7 +288,8 @@ describe('(c) sensitive grants go through ROLE_CHANGE; everyday grants apply at 
         `select core.create_user('test.new-commis.1.0', 'New Commis', $1, 'COMMIS') as r`,
         [ids.node('TEST-HOTEL-1.0-KITCHEN')],
       );
-      expect(commis.r).toMatchObject({ applied: 4, pending: [] }); // STAFF, PRODUCTION_TEAM, PACK_OPENER, WARE_KEEPER
+      // STAFF, PRODUCTION_TEAM, PACK_OPENER, WARE_KEEPER, MENU_READER, SUPPLY_VIEWER (ADR 165)
+      expect(commis.r).toMatchObject({ applied: 6, pending: [] });
       const gm = await call<{ r: { user_id: string; applied: number; pending: string[] } }>(
         c,
         GM1,

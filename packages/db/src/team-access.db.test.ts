@@ -190,7 +190,7 @@ describe('PRODUCTION_TEAM: production at the department store, nothing else', ()
     });
   });
 
-  it('no stock, count, wastage, order or transfer access comes with it', async () => {
+  it('no count, wastage, order or transfer access comes with it; the store read only', async () => {
     await inRolledBackTx(async (c) => {
       const commis = ids.user('test.commis.1.0');
       const store = 'TEST-HOTEL-1.0-KITCHEN-STORE';
@@ -221,9 +221,17 @@ describe('PRODUCTION_TEAM: production at the department store, nothing else', ()
       for (const [sql, params] of writes) {
         expect((await attemptAs(c, commis, sql, params)).error, sql).toBe('NOT_AUTHORISED');
       }
+      // the commis sees the kitchen store's stock, read only (SEES_DEPARTMENT_STOCK, ADR 165)
+      for (const table of ['inv.stock_level', 'inv.stock_ledger']) {
+        const r = await attemptAs<{ n: string }>(
+          c,
+          commis,
+          `select count(*) n from ${table} where delivery_node_id <> $1`,
+          [ids.node(store)],
+        );
+        expect(r.rows![0]!.n, table).toBe('0');
+      }
       for (const table of [
-        'inv.stock_level',
-        'inv.stock_ledger',
         'inv.stock_count',
         'inv.purchase_order',
         'inv.transfer',
@@ -236,7 +244,7 @@ describe('PRODUCTION_TEAM: production at the department store, nothing else', ()
         c,
         commis,
         `select d, core.can(d, a, null, $1) as ok
-           from (values ('STOCK_LEVELS', 'view'), ('STOCK_ADJUSTMENTS', 'modify'),
+           from (values ('STOCK_ADJUSTMENTS', 'modify'), ('STOCK_CHECK', 'view'),
                         ('PURCHASE_ORDERS', 'view'), ('TRANSFERS', 'view'),
                         ('PRODUCTION', 'view'), ('MENU', 'view')) v(d, a)`,
         [ids.node(store)],

@@ -31,6 +31,9 @@ const FRONTLINE = new Set([
   'WARE_KEEPER',
   'METER_READER',
   'PACK_OPENER',
+  // the menu without money and their department's stock, read only (ADR 165)
+  'MENU_READER',
+  'SUPPLY_VIEWER',
 ]);
 
 /** The store reports: a stock-holding store, for the people who answer for its cost. */
@@ -339,9 +342,9 @@ describe('reports: the rpt tables behind them', () => {
           const r = await as<{ n: number }>(c, p.id, `select count(*)::int as n from ${t}`);
           if (r.error !== undefined || r.rows[0]!.n > 0) seen.push(`${p.username} ${t}`);
         }
-        // staff without a store see no store figures either (stock users see their
-        // store's, as they already see its stock levels)
-        if (!p.groups.includes('STOCK_USER')) {
+        // staff without a store see no store figures either (stock users and those who see
+        // their department's store, ADR 165, see its figures, as they see its stock levels)
+        if (!p.groups.includes('STOCK_USER') && !p.groups.includes('SUPPLY_VIEWER')) {
           const r = await as<{ n: number }>(
             c,
             p.id,

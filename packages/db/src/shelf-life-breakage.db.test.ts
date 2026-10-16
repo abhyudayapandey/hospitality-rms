@@ -185,7 +185,7 @@ describe('opened packs', () => {
     });
   });
 
-  it("a commis opens packs in the kitchen's store, with no other stock access (ADR 097)", async () => {
+  it("a commis opens packs in the kitchen's store, and sees its stock only read only (ADR 097, 165)", async () => {
     await inRolledBackTx(async (c) => {
       const store = ids.node(KITCHEN_STORE);
       const items = await run<{ name: string; hours: number }>(
@@ -212,11 +212,11 @@ describe('opened packs', () => {
         [store],
       );
       expect(packs.map((x) => x.id)).toContain(p!.id);
-      // still no stock levels, counts or other stores
+      // the store's stock read only (ADR 165); still no counts or other stores
       const levels = await run(
         c,
         'test.commis.1.0',
-        `select 1 from inv.stock_level where delivery_node_id = $1`,
+        `select 1 from inv.stock_level where delivery_node_id <> $1`,
         [store],
       );
       expect(levels).toEqual([]);

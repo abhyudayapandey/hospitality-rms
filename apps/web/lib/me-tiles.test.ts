@@ -62,18 +62,19 @@ describe('Me tiles per person (ADR 106)', () => {
     expect(t.more).toEqual(expect.arrayContaining(['logbook', 'registers', 'events', 'count']));
   });
 
-  it('a commis: Make, opened packs, linen and breakage; no recipes (ADR 123)', () => {
-    expect(role('COMMIS').mine).toEqual(['make', 'opened', 'linen', 'breakage', ...DAY]);
+  it('a commis: Make, the menu, linen, the kitchen store and breakage (ADR 165)', () => {
+    // the menu without money and the kitchen store read only; opened packs are a Stock tab
+    expect(role('COMMIS').mine).toEqual(['make', 'menu', 'linen', 'stock', 'breakage', ...DAY]);
   });
 
-  it('a server: linen and breakage, then their day; a security guard: their day only', () => {
-    expect(role('SERVER').mine).toEqual(['linen', 'breakage', ...DAY]);
+  it('a server: the menu, linen and breakage, then their day; a security guard: their day only', () => {
+    expect(role('SERVER').mine).toEqual(['menu', 'linen', 'breakage', ...DAY]);
     expect(role('SECURITY_GUARD').mine).toEqual(DAY);
   });
 
   it('a room attendant: rooms and minibars first; a cashier: importing sales', () => {
     expect(role('ROOM_ATTENDANT').mine).toEqual(['rooms', 'minibar', 'linen', 'breakage', ...DAY]);
-    expect(role('CASHIER').mine).toEqual(['posImport', ...DAY]);
+    expect(role('CASHIER').mine).toEqual(['posImport', 'menu', ...DAY]);
   });
 
   it('the accountant: bills and orders; the sales manager: events (ADR 109)', () => {
