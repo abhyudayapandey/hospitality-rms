@@ -43,20 +43,45 @@ async function userId(name: string): Promise<string> {
  * A job-role round goes only to the role's people at work at its due time (ADR 148), so a test
  * round is due when its people work: the first half hour in the next 4 days (a Friday reaches
  * Monday) that all of them are on shift or clocked in for 20 minutes (someone off the roster
- * works any time). Keeps a test from depending on the hour or the day CI runs on.
+ * works any time). Keeps a test from depending on the hour or the day CI runs on: when they
+ * don't, they are given a shift tomorrow.
  */
 export async function dueWhenWorking(...names: string[]): Promise<string> {
   const users = await Promise.all(names.map(userId));
-  const [row] = await asMigrator<{ at: string }>(
-    `select min(t)::text as at
-       from generate_series(date_trunc('minute', now()) + interval '30 minutes',
-                            now() + interval '4 days', interval '30 minutes') t
-      where (select bool_and(ops.working_at(u, t) and ops.working_at(u, t + interval '20 minutes'))
-               from unnest($1::uuid[]) u)`,
-    [users],
-  );
-  if (!row?.at) throw new Error(`${names.join(', ')} don't work together in the next 4 days`);
-  return row.at;
+  const first = () =>
+    asMigrator<{ at: string | null }>(
+      `select min(t)::text as at
+         from generate_series(date_trunc('minute', now()) + interval '30 minutes',
+                              now() + interval '4 days', interval '30 minutes') t
+        where (select bool_and(ops.working_at(u, t) and ops.working_at(u, t + interval '20 minutes'))
+                 from unnest($1::uuid[]) u)`,
+      [users],
+    ).then((r) => r[0]?.at ?? null);
+  let at = await first();
+  if (!at) {
+    // The test data rosters this week only, so late on a Friday or at the weekend someone may
+    // not work again in the window: give each of them a shift tomorrow, 09:00-17:00 local.
+    for (const user of users) {
+      await asMigrator(
+        `with w as (select w.*, hr.node_tz(w.org_node_id) as tz
+                      from hr.worker w where w.owner_user_id = $1 limit 1),
+              s as (insert into hr.shift (tenant_id, org_node_id, local_date, start_at, end_at,
+                                          role_code, headcount, status, published_at)
+                    select tenant_id, org_node_id, d, (d + time '09:00') at time zone tz,
+                           (d + time '17:00') at time zone tz, role_code, 1, 'published', now()
+                      from w, lateral (select (now() at time zone w.tz)::date + 1 as d) dd
+                    returning *)
+         insert into hr.shift_assignment (tenant_id, shift_id, worker_id, owner_user_id,
+                                          org_node_id, start_at, end_at)
+         select s.tenant_id, s.id, w.id, w.owner_user_id, s.org_node_id, s.start_at, s.end_at
+           from s, w`,
+        [user],
+      );
+    }
+    at = await first();
+  }
+  if (!at) throw new Error(`${names.join(', ')} don't work together in the next 4 days`);
+  return at;
 }
 
 /** The id of a test place by code, e.g. TEST-BAR-3.0-KITCHEN-STORE. */
