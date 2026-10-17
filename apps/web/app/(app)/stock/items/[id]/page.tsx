@@ -18,7 +18,9 @@ import {
 import { packItems } from '@/lib/opened-packs';
 import { itemRequests } from '@/lib/item-requests';
 import { parLine } from '@/lib/low-stock';
+import { backHref } from '@/lib/back';
 import { param } from '@/lib/params';
+import { stockHref } from '@/lib/stock-view';
 import { itemPhotoUrls, photosEnabled } from '@/lib/photos';
 import { ItemPhoto } from './item-photo';
 
@@ -83,7 +85,10 @@ export default async function ItemLedgerPage({
   const shown = all ? rows : rows.slice(0, 5);
   return (
     <div className="space-y-4">
-      <Link href={`/stock?node=${ctx.node.id}`} className="text-sm text-slate-600">
+      <Link
+        href={backHref(param(await searchParams, 'back'), stockHref({ node: ctx.node.id }))}
+        className="text-sm text-slate-600"
+      >
         ← Back
       </Link>
       <div className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200">

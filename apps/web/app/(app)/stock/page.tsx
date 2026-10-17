@@ -17,6 +17,7 @@ import { parLine } from '@/lib/low-stock';
 import { STOCK_TABS, stockHref, stockTab, type StockTab } from '@/lib/stock-view';
 import { itemPhotoUrls } from '@/lib/photos';
 import { listPage } from '@/lib/list-page';
+import { withBack } from '@/lib/back';
 import { ShowMore } from '@/components/show-more';
 import {
   expiryList,
@@ -222,7 +223,7 @@ export default async function StockPage({ searchParams }: { searchParams: Search
                       data-filter-text={`${r.name} ${r.sku} ${r.category}`}
                     >
                       <Link
-                        href={`/stock/items/${r.item_id}?node=${storeOf(r)}`}
+                        href={withBack(`/stock/items/${r.item_id}?node=${storeOf(r)}`, link(tab))}
                         className="flex min-h-14 items-center justify-between gap-3 px-4 py-2"
                       >
                         <ItemThumb

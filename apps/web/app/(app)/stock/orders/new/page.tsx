@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { NoSupplyAccess } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
+import { backHref } from '@/lib/back';
 import { isUuid, param } from '@/lib/params';
+import { listHref } from '@/lib/stock-view';
 import { sql, withUser } from '@/lib/db';
 import { supplyContext, type SearchParams } from '@/lib/inventory';
 import { NewOrderForm, type OrderLine } from './new-order-form';
@@ -28,7 +30,13 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Sea
   });
   return (
     <div className="space-y-4">
-      <Link href={`/stock/orders?node=${ctx.node.id}`} className="text-sm text-slate-600">
+      <Link
+        href={backHref(
+          param(await searchParams, 'back'),
+          listHref('/stock/orders', { node: ctx.node.id }),
+        )}
+        className="text-sm text-slate-600"
+      >
         ← Back
       </Link>
       <h1 className="text-xl font-semibold">Request to buy for {ctx.node.name}</h1>
