@@ -2,7 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { attemptAs, closePools, inRolledBackTx, loadSeedIds, type SeedIds } from '../test/helpers';
 
 // Floor sections (ADR 133) on Test Hotel 1.0's restaurant (file 47: Section 1 to 3): its
-// manager, captain or the GM gives them to the restaurant's people for a day; a server sees
+// manager, captain or the GM gives them to the restaurant's people for a day, a section to one
+// or several (ADR 170); a server sees
 // theirs on Home; nobody gives another department's sections or gives them to outsiders.
 
 let ids: SeedIds;
@@ -40,16 +41,48 @@ describe('floor sections (ADR 133)', () => {
         'select sections from ops.my_sections()',
       );
       expect(mine.rows).toEqual([{ sections: 'Section 2' }]);
-      // the same section to another moves it; the first steward has none left
+      // the same section to another as well: both have it (ADR 170)
+      const stewardB = ids.user('test.steward-b.1.0');
       await as('test.captain.1.0', 'select ops.give_sections($1, $2::date, $3, $4::uuid[])', [
         dept,
         today,
-        ids.user('test.steward-b.1.0'),
+        stewardB,
         [two],
       ]);
       expect((await as('test.steward.1.0', 'select sections from ops.my_sections()')).rows).toEqual(
+        [{ sections: 'Section 2' }],
+      );
+      expect(
+        (await as('test.steward-b.1.0', 'select sections from ops.my_sections()')).rows,
+      ).toEqual([{ sections: 'Section 2' }]);
+      const both = await as<{ user_ids: string[]; user_names: string }>(
+        'test.restaurant-manager.1.0',
+        'select user_ids, user_names from ops.sections($1, $2::date) where section_id = $3',
+        [dept, today, two],
+      );
+      expect([...both.rows![0]!.user_ids].sort()).toEqual([steward, stewardB].sort());
+      expect(both.rows![0]!.user_names).toBe('Test Steward 1.0, Test Steward B 1.0');
+      // given again, nothing doubles; taken off one, the other keeps it
+      await as('test.captain.1.0', 'select ops.give_sections($1, $2::date, $3, $4::uuid[])', [
+        dept,
+        today,
+        stewardB,
+        [two, two],
+      ]);
+      await as(
+        'test.restaurant-manager.1.0',
+        'select ops.give_sections($1, $2::date, $3, $4::uuid[])',
+        [dept, today, steward, []],
+      );
+      expect((await as('test.steward.1.0', 'select sections from ops.my_sections()')).rows).toEqual(
         [],
       );
+      const left = await as<{ user_names: string }>(
+        'test.restaurant-manager.1.0',
+        'select user_names from ops.sections($1, $2::date) where section_id = $3',
+        [dept, today, two],
+      );
+      expect(left.rows).toEqual([{ user_names: 'Test Steward B 1.0' }]);
     });
   });
 

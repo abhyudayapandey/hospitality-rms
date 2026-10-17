@@ -361,7 +361,8 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   A room checking out reads Departing, the front office's word (ADR 131).
 - Floor sections (ADR 133, file 47): a restaurant's or bar's sections, given per day to its
   people by whoever manages tasks there (`ops.give_sections`), like rooms; Home says "Your section
-  today". Passport's restaurant has Section 1 to 3. Give sections is a row per person with
+  today". A section may go to several people; a tap adds, never moves (ADR 170). Passport's
+  restaurant has Section 1 to 3. Give sections is a row per person with
   section tiles, saved by "Save changes (N)" with Undo; nothing saves on a tap.
 - An item's page (ADR 134): five latest movements and Show all, its open requests, then "Ask for
   more" (the store that keeps it, else a supply request), the form opening with the item first.

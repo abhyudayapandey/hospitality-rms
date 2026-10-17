@@ -98,8 +98,8 @@ export default async function GiveSectionsPage({ searchParams }: { searchParams:
               data-testid="section-given"
             >
               <span>{x.name}</span>
-              <span className={x.user_name ? 'font-medium' : 'text-slate-500'}>
-                {x.user_name ?? 'Not given yet'}
+              <span className={`text-right ${x.user_names ? 'font-medium' : 'text-slate-500'}`}>
+                {x.user_names ?? 'Not given yet'}
               </span>
             </li>
           ))}

@@ -189,8 +189,10 @@ export default async function Home() {
                 {p.sections.map((x) => (
                   <li key={x.section_id} className="flex justify-between gap-2">
                     <span>{x.name}</span>
-                    <span className={x.user_name ? 'font-medium' : 'text-slate-500'}>
-                      {x.user_name ?? 'Not given yet'}
+                    <span
+                      className={`text-right ${x.user_names ? 'font-medium' : 'text-slate-500'}`}
+                    >
+                      {x.user_names ?? 'Not given yet'}
                     </span>
                   </li>
                 ))}
