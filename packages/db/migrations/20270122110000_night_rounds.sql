@@ -74,36 +74,36 @@ returns setof timestamptz
 language sql stable
 as $$ select o.occurs_at from ops.occurrence_days(p_schedule, p_tz, p_from, p_to) o $$;
 
-select core.patch_function('ops.tasks_tick(timestamptz)',
+select core.patch_function('ops.tasks_tick(timestamptz, uuid)',
 $x$  v_at timestamptz;
 $x$,
 $x$  v_at timestamptz;
   v_day date;
 $x$);
-select core.patch_function('ops.tasks_tick(timestamptz)',
+select core.patch_function('ops.tasks_tick(timestamptz, uuid)',
 $x$    for v_at in select * from ops.occurrences(v_tpl.schedule, ops.tz_of(v_tpl.org_node_id),$x$,
 $x$    for v_at, v_day in select * from ops.occurrence_days(v_tpl.schedule,
                                                          ops.tz_of(v_tpl.org_node_id),$x$);
-select core.patch_function('ops.tasks_tick(timestamptz)',
+select core.patch_function('ops.tasks_tick(timestamptz, uuid)',
 $x$(v_at at time zone ops.tz_of(v_tpl.org_node_id))::date$x$,
 $x$v_day$x$);
 
 -- migrate:down
-select core.patch_function('ops.tasks_tick(timestamptz)',
+select core.patch_function('ops.tasks_tick(timestamptz, uuid)',
 $x$ops.steps_on(v_tpl.steps,
                                             v_day)$x$,
 $x$ops.steps_on(v_tpl.steps,
                                             (v_at at time zone ops.tz_of(v_tpl.org_node_id))::date)$x$);
-select core.patch_function('ops.tasks_tick(timestamptz)',
+select core.patch_function('ops.tasks_tick(timestamptz, uuid)',
 $x$ops.steps_on(v_tpl.steps,
                                           v_day)$x$,
 $x$ops.steps_on(v_tpl.steps,
                                           (v_at at time zone ops.tz_of(v_tpl.org_node_id))::date)$x$);
-select core.patch_function('ops.tasks_tick(timestamptz)',
+select core.patch_function('ops.tasks_tick(timestamptz, uuid)',
 $x$    for v_at, v_day in select * from ops.occurrence_days(v_tpl.schedule,
                                                          ops.tz_of(v_tpl.org_node_id),$x$,
 $x$    for v_at in select * from ops.occurrences(v_tpl.schedule, ops.tz_of(v_tpl.org_node_id),$x$);
-select core.patch_function('ops.tasks_tick(timestamptz)',
+select core.patch_function('ops.tasks_tick(timestamptz, uuid)',
 $x$  v_at timestamptz;
   v_day date;
 $x$,
