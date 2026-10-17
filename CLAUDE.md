@@ -529,6 +529,12 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
 - The service worker shows "Can't reach Hey Senior" after 10 s and caches nothing; Cognito calls
   give up after 5 s, and Cognito not answering never signs anyone out (ADR 063). Caddy speaks
   HTTP/1.1 and HTTP/2 only (the security group has no UDP 443) and logs each request.
+- App behaviour, speed and time (ADR 169): forms call actions through `callAction` (No
+  connection in place, typed values kept, the same idempotency key on retry); uploads are kept
+  in `platform.upload`, never the expiring bucket; `db:new` names after the newest file; every
+  date helper takes the time zone and forms default to the business day there; the service
+  worker cuts short GET pages only; a saved item that keeps failing shows after 3 tries and
+  can be discarded; long lists page in the screen (30, Notifications 50, Stock 150).
 
 ## Commands
 

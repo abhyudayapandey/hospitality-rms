@@ -3,10 +3,11 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
-// Where the console keeps an upload between the dry run and the apply (ADR 013): the
-// private photo bucket under onboarding/<customer>/<upload>.json, which expires after 30
-// days. The web app writes it and the platform worker reads it, both with the instance
-// role. Without a bucket (dev, e2e) a local folder stands in.
+// Where an upload used to be kept between the dry run and the apply (ADR 013): the private
+// photo bucket under onboarding/<customer>/<upload>.json, which expires after 30 days. Since
+// ADR 169 the console keeps every upload in the database (platform.upload), which never
+// expires; this store is only read for uploads made before that. Without a bucket (dev, e2e)
+// a local folder stands in.
 
 export interface StoredUpload {
   files: Record<string, string>;
