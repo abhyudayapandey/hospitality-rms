@@ -36,7 +36,10 @@ function format(at: Date): string {
  * the current UTC minute when that is later. Always sorts after every existing file.
  */
 export function nextVersion(existing: readonly string[], now: Date): string {
-  const versions = existing.filter((f) => MIGRATION_NAME.test(f)).map(versionOf).sort();
+  const versions = existing
+    .filter((f) => MIGRATION_NAME.test(f))
+    .map(versionOf)
+    .sort();
   const newest = versions.at(-1);
   const clock = new Date(Math.floor(now.getTime() / 60_000) * 60_000);
   if (!newest) return format(clock);

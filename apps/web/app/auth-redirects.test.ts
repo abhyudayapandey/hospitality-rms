@@ -201,9 +201,7 @@ describe('customer auth redirects use APP_URL, not the request host', () => {
     jar.set('oo_pkce', 'st.verifier');
     expectApp(await cb('?code=c&state=st'), '/');
     // set on /auth, so cleared on /auth: a delete on / would leave it in the browser (ADR 169)
-    expect(deleted.filter((d) => d.startsWith('oo_pkce@'))).toEqual(
-      Array(3).fill('oo_pkce@/auth'),
-    );
+    expect(deleted.filter((d) => d.startsWith('oo_pkce@'))).toEqual(Array(3).fill('oo_pkce@/auth'));
   });
 
   it('logout without a Cognito session: a relative /login', async () => {
