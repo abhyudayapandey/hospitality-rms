@@ -201,6 +201,23 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
           return { expiring: { n: n(false) }, expired: { n: n(true) } };
         })
       : Promise.resolve(null);
+  // the job's own cards (ADR 113), apart from the rest
+  const cardsP = side(async (tx) => {
+    // today's briefing: everyone who works at the outlet reads it (ADR 070)
+    const briefing = atWork && shell.modules.has('briefing') ? await myBriefing(tx) : null;
+    // the shift before mine: its handover, until I have read it (ADR 118)
+    const handovers = atWork ? await lastHandovers(tx) : [];
+    const plan = shell.home ? await planDay(tx, shell.home.id) : null;
+    const rooms = await homeRooms(tx, shell);
+    const minibar = await homeMinibar(tx, shell);
+    const breakfast = await homeBreakfast(tx, shell);
+    const tomorrow =
+      plan?.evening && shell.domains.get('ROSTER') === 'modify'
+        ? await homeTomorrow(tx, plan.day)
+        : null;
+    const desk = await loadDesk(tx, shell);
+    return { briefing, handovers, plan, rooms, minibar, breakfast, tomorrow, desk };
+  });
   const mainP = withUser(shell.user.id, async (tx) => {
     const shifts =
       atWork && shell.domains.has('ROSTER') ? await myShifts(tx, addDays(today, -1), 9) : [];
@@ -294,20 +311,6 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
         };
       }
     }
-    // today's briefing: everyone who works at the outlet reads it (ADR 070)
-    const briefing = atWork && shell.modules.has('briefing') ? await myBriefing(tx) : null;
-    // the shift before mine: its handover, until I have read it (ADR 118)
-    const handovers = atWork ? await lastHandovers(tx) : [];
-    const plan = shell.home ? await planDay(tx, shell.home.id) : null;
-    // the job's own cards (ADR 113)
-    const rooms = await homeRooms(tx, shell);
-    const minibar = await homeMinibar(tx, shell);
-    const breakfast = await homeBreakfast(tx, shell);
-    const tomorrow =
-      plan?.evening && shell.domains.get('ROSTER') === 'modify'
-        ? await homeTomorrow(tx, plan.day)
-        : null;
-
     // a compliance reminder is a row of the Compliance card, never a task as well (ADR 113)
     const onCard = new Set((compliance?.rows ?? []).flatMap((r) => (r.task_id ? [r.task_id] : [])));
     return {
@@ -322,21 +325,23 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
       compliance,
       store,
       pos,
-      briefing,
-      handovers,
-      plan,
-      rooms,
-      minibar,
-      breakfast,
-      tomorrow,
-      desk: await loadDesk(tx, shell),
       targets: (await companySettings(tx)).targets,
     };
   });
   // all together, so a part that fails fails the screen ("We couldn't open this")
-  const [main, , , { attention, openSlotsHref }, { numbers, league }, push, events, expiry] =
-    await Promise.all([mainP, tasksP, inboxP, attentionP, numbersP, pushP, eventsP, expiryP]);
-  return { ...main, attention, openSlotsHref, numbers, league, push, events, expiry };
+  const [main, cards, , , { attention, openSlotsHref }, { numbers, league }, push, events, expiry] =
+    await Promise.all([
+      mainP,
+      cardsP,
+      tasksP,
+      inboxP,
+      attentionP,
+      numbersP,
+      pushP,
+      eventsP,
+      expiryP,
+    ]);
+  return { ...main, ...cards, attention, openSlotsHref, numbers, league, push, events, expiry };
 }
 
 /** The order desk's tiles are the store keeper's, and whoever else keeps a Main Store (ADR 151). */

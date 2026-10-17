@@ -43,32 +43,10 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
     isIsoDate(asked) ? asked : planningWeekDay(localToday(ctx.tz), ctx.tz, new Date()),
   );
   const user = await requireUser();
-  const title = await withUser(user.id, jobTitles);
   // "All departments" (ADR 048): every department's shifts, in a section each; Home's open
   // shifts count opens it
   const all = param(sp, 'all') === '1' && ctx.nodes.length > 1;
-  const { shifts, places, changes } = await withUser(user.id, async (tx) => {
-    const shifts = await weekRoster(tx, all ? ctx.nodes.map((n) => n.id) : node.id, monday);
-    const nodes = [...new Set(shifts.map((s) => s.org_node_id))];
-    const places =
-      all && nodes.length > 0
-        ? (
-            await sql<PlaceDepartment>`
-              select node_id::text, department_id::text, department, rank, outlet_id::text, outlet
-                from core.department_of(${nodes}::uuid[])`.execute(tx)
-          ).rows
-        : [];
-    // what Publish publishes: drafts and changes to published shifts (ADR 135)
-    const changes =
-      !all && ctx.can('ROSTER', 'modify') ? await weekChanges(tx, node.id, monday) : 0;
-    return { shifts, places, changes };
-  });
   const canEdit = ctx.can('ROSTER', 'modify');
-  const drafts = shifts.filter((s) => s.status === 'draft').length;
-  // a slot is open only until its shift starts: a past day has nothing left to fill
-  const now = new Date();
-  const open = shifts.reduce((n, s) => n + openSlots(s, now), 0);
-  const window = canEdit && !all ? await templateWindow(user.id, node.id, monday) : null;
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const view = param(sp, 'view');
   const list = view === 'list';
@@ -82,9 +60,33 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
     param(sp, 'all') !== '1' &&
     (view === 'people' || (view === '' && navProfile(ctx.shell.groups) === 'department'));
   const day = pickDay(days, param(sp, 'day'), localToday(ctx.tz));
-  const tiles: RosterDay | null = byPerson
-    ? await withUser(user.id, (tx) => rosterDay(tx, node.id, day))
-    : null;
+  // the screen's independent parts load side by side, each in its own withUser (ADR 160)
+  const [title, { shifts, places, changes }, window, tiles] = await Promise.all([
+    withUser(user.id, jobTitles),
+    withUser(user.id, async (tx) => {
+      const shifts = await weekRoster(tx, all ? ctx.nodes.map((n) => n.id) : node.id, monday);
+      const nodes = [...new Set(shifts.map((s) => s.org_node_id))];
+      const places =
+        all && nodes.length > 0
+          ? (
+              await sql<PlaceDepartment>`
+                select node_id::text, department_id::text, department, rank, outlet_id::text, outlet
+                  from core.department_of(${nodes}::uuid[])`.execute(tx)
+            ).rows
+          : [];
+      // what Publish publishes: drafts and changes to published shifts (ADR 135)
+      const changes = !all && canEdit ? await weekChanges(tx, node.id, monday) : 0;
+      return { shifts, places, changes };
+    }),
+    canEdit && !all ? templateWindow(user.id, node.id, monday) : Promise.resolve(null),
+    byPerson
+      ? withUser(user.id, (tx) => rosterDay(tx, node.id, day))
+      : Promise.resolve<RosterDay | null>(null),
+  ]);
+  const drafts = shifts.filter((s) => s.status === 'draft').length;
+  // a slot is open only until its shift starts: a past day has nothing left to fill
+  const now = new Date();
+  const open = shifts.reduce((n, s) => n + openSlots(s, now), 0);
   const base = `/roster/week?node=${node.id}${all ? '&all=1' : ''}`;
   const viewQ = list ? '&view=list' : byPerson ? '&view=people' : '&view=shift';
   const link = (week: string) => `${base}&week=${week}${viewQ}`;
