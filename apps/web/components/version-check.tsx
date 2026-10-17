@@ -32,6 +32,12 @@ export function VersionCheck() {
   }, [stale]);
 
   useEffect(() => {
+    // a page arrived: the "Can't reach" screen's back-off starts again from 10 s (sw.js)
+    try {
+      sessionStorage.removeItem('oo.offline.tries');
+    } catch {
+      // storage off (private mode): nothing kept either
+    }
     if (!MINE) return;
     const check = async () => {
       if (document.visibilityState !== 'visible') return;
