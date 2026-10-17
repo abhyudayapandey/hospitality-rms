@@ -11,6 +11,7 @@ import {
   type PhotoPrefix,
   type PhotoType,
   type UploadTarget,
+  viewWindowStart,
 } from './photo-policy';
 
 // Photos on this machine's disk (PHOTO_DIR) where there is no bucket: local development and the
@@ -81,7 +82,8 @@ export async function saveLocalUpload(form: FormData): Promise<boolean> {
 }
 
 export function presignLocalView(key: string): string {
-  const exp = String(Math.floor(Date.now() / 1000) + URL_TTL_SECONDS);
+  // the same link through a 5-minute window, as presignView (ADR 169)
+  const exp = String(Math.floor(viewWindowStart().getTime() / 1000) + 2 * URL_TTL_SECONDS);
   const q = new URLSearchParams({ key, exp, sig: sign(['get', key, exp]) });
   return `/api/photo-local?${q}`;
 }

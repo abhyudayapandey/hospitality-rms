@@ -16,6 +16,8 @@ import { splitExpiry } from '@/lib/expiry';
 import { parLine } from '@/lib/low-stock';
 import { STOCK_TABS, stockHref, stockTab, type StockTab } from '@/lib/stock-view';
 import { itemPhotoUrls } from '@/lib/photos';
+import { listPage } from '@/lib/list-page';
+import { ShowMore } from '@/components/show-more';
 import {
   expiryList,
   formatQty,
@@ -28,6 +30,7 @@ import {
   type SearchParams,
 } from '@/lib/inventory';
 
+const STOCK_PAGE = 150;
 const storeOfRow = (r: StockRow, node: string) => (r as Partial<StockRowAll>).store_id ?? node;
 
 // The one Stock screen (ADR 048): four tabs, All, Running low, Expiring and Expired, and the
@@ -112,9 +115,12 @@ export default async function StockPage({ searchParams }: { searchParams: Search
   });
   const { rows, dated } = data;
   const due = adjust && !all ? countDue(data.last, data.settings.count_due_days) : null;
-  const photos = await itemPhotoUrls(rows);
   const low = rows.filter((r) => r.low);
-  const shown = tab === 'low' ? low : rows;
+  // a long list (all stores of a big outlet) shows 150 rows, then Show more; the tab counts
+  // stay the whole list, and only the rows shown get a signed photo address (ADR 169)
+  const page = listPage(tab === 'low' ? low : rows, '/stock', sp, STOCK_PAGE);
+  const shown = page.shown;
+  const photos = await itemPhotoUrls(shown);
   const q = `node=${node.id}`;
   const link = (t: StockTab) => stockHref({ tab: t, all, node: node.id });
   const count: Record<StockTab, number> = {
@@ -280,6 +286,7 @@ export default async function StockPage({ searchParams }: { searchParams: Search
               </ul>
             </section>
           ))}
+          {page.more && <ShowMore href={page.more} />}
         </div>
       )}
       {/* the list first, then the store's jobs (ADR 051, 052); kept above the nav while the
