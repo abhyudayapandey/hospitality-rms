@@ -496,6 +496,15 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   outlet's recipes, ingredients and methods without money (duty `READS_MENU`, group
   `MENU_READER` = `RECIPES_TEAM` view) and, where the department keeps a store, its stock read
   only (`SEES_DEPARTMENT_STOCK`, SUPPLY_VIEWER); prices and costs stay behind `MENU`.
+- Security fixes from the review (ADR 166): every view the app reads is `security_invoker` or
+  allow-listed with a reason, every relation is read as the other company in
+  `security-guards.db.test.ts`, and no SECURITY DEFINER function is PUBLIC (a new function is
+  granted to the roles that call it). "Set up login again" is a checked reset
+  (`core.login_admin_target(person, 'create_login')` before Cognito; an existing login gets a
+  password only once linked to that person). Money on adjustments and order reasons in SQL
+  (`inv.sees_adjustment_money`, `inv.po_approval`). `isAppPath` / `appLink` for links; CI runs
+  `pnpm audit --prod`. No pattern passwords: a test customer's Logins page has New passwords
+  for all, and no committed doc holds a password (`no-passwords-in-docs.test.ts`).
 - Stuck states and time bombs (ADR 167): a request that fails for good lets go (`wf.after_failure`:
   leave, swaps, role changes and deactivations become `failed`, an unreleased order or adjustment
   `cancelled`, and whoever asked is told); transient errors (40001, 40P01, 55P03, 08xxx, 57P0x)

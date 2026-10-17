@@ -76,8 +76,6 @@ export interface StockRow {
   base_uom: string;
   par_level: string;
   on_hand: string;
-  avg_cost: string | null;
-  value: string | null;
   below_par: boolean;
   /** what went out over the last 14 days (`inv.recent_use`, lib/low-stock.ts) */
   used: string | null;
@@ -103,7 +101,7 @@ export async function expiryList(tx: Tx): Promise<ExpiryBatch[]> {
 export async function stockList(tx: Tx, node: string, item?: string): Promise<StockRow[]> {
   const r = await sql<StockRow>`
     select i.id as item_id, i.sku, i.name, i.category, i.base_uom, n.par_level, i.photo_key,
-           coalesce(s.on_hand, 0) as on_hand, s.avg_cost, s.value,
+           coalesce(s.on_hand, 0) as on_hand,
            coalesce(s.on_hand, 0) < n.par_level as below_par, u.used, i.durable,
            inv.running_low(coalesce(s.on_hand, 0), n.par_level, u.used, i.durable) as low
       from inv.item_node n
@@ -133,7 +131,7 @@ export async function stockListAll(
   const r = await sql<StockRowAll>`
     select i.id as item_id, i.sku, i.name, i.category, i.base_uom, n.par_level, i.photo_key,
            n.delivery_node_id::text as store_id,
-           coalesce(s.on_hand, 0) as on_hand, s.avg_cost, s.value,
+           coalesce(s.on_hand, 0) as on_hand,
            coalesce(s.on_hand, 0) < n.par_level as below_par, u.used, i.durable,
            inv.running_low(coalesce(s.on_hand, 0), n.par_level, u.used, i.durable) as low
       from inv.item_node n
@@ -151,7 +149,6 @@ export interface LedgerRow {
   occurred_at: Date;
   movement_type: string;
   qty: string;
-  unit_cost: string;
   reason: string | null;
   ref_type: string;
   item_name: string;
@@ -160,7 +157,7 @@ export interface LedgerRow {
 
 export async function ledger(tx: Tx, node: string, item?: string): Promise<LedgerRow[]> {
   const r = await sql<LedgerRow>`
-    select l.id, l.occurred_at, l.movement_type, l.qty, l.unit_cost, l.reason, l.ref_type,
+    select l.id, l.occurred_at, l.movement_type, l.qty, l.reason, l.ref_type,
            i.name as item_name, i.base_uom
       from inv.stock_ledger l
       join inv.item i on i.id = l.item_id

@@ -124,22 +124,23 @@ store, renames the other "Bar" and moves the Mini Bar's 7 dishes to it: a warnin
 Mini Bar store is retired and its stock counted out (a test customer only). A stock request
 or order still open at the Mini Bar stops the import until it is finished or withdrawn.
 
-**5. Logins (the printed sheet)**: the customer's page → **Logins** → tick **Set passwords
-by the Test<Role>!12 rule** → **Create 40 username logins** (the 39
-imported people and the owner) → **Print the login sheet** (and
-download the CSV once, if you want a copy; nothing keeps the passwords). Each person's
-password is `Test` + their job title without spaces + `!12`:
+**5. Logins (the printed sheet)**: the customer's page → **Logins** → **Create 40 sign-ins**
+(the 39 imported people and the owner) → **Print the login sheet** (and download the CSV
+once, if you want a copy; nothing keeps the passwords). Each person gets a random one-time
+password and sets their own at first sign-in (ADR 166). Passwords are never written in this
+repository, which is public. To replace passwords that were shared: **Logins** → **New
+passwords for all** (test customers only; everyone is signed out).
 
-| Who                                | Username                    | Password                 |
-| ---------------------------------- | --------------------------- | ------------------------ |
-| Demo Presenter (you, in the pitch) | `passport.presenter`        | `TestAccountOwner!12`    |
-| Sainath, General Manager           | `passport.gm`               | `TestGeneralManager!12`  |
-| Dylan Coutinho, Bar Manager        | `passport.bar-manager`      | `TestBarManager!12`      |
-| Savio Dias, Room Attendant         | `passport.room-attendant`   | `TestRoomAttendant!12`   |
-| Kunal Sawant, Cashier              | `passport.cashier`          | `TestCashier!12`         |
-| Shreya Kenkre, Purchase Manager    | `passport.purchase-manager` | `TestPurchaseManager!12` |
+| Who                                | Username                    |
+| ---------------------------------- | --------------------------- |
+| Demo Presenter (you, in the pitch) | `passport.presenter`        |
+| Sainath, General Manager           | `passport.gm`               |
+| Dylan Coutinho, Bar Manager        | `passport.bar-manager`      |
+| Savio Dias, Room Attendant         | `passport.room-attendant`   |
+| Kunal Sawant, Cashier              | `passport.cashier`          |
+| Shreya Kenkre, Purchase Manager    | `passport.purchase-manager` |
 
-The owner, Ashesh Sajnani, signs in as `test.ashesh-sajnani` with `TestAccountOwner!12`. The
+The owner, Ashesh Sajnani, signs in as `test.ashesh-sajnani` with the sheet's password. The
 import refuses files whose account owners don't include the customer's (`ownersInFiles`), so
 the owner username in file 07 must be the one typed when the customer was created.
 

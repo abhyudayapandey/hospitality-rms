@@ -11,3 +11,8 @@ onlyBuiltDependencies:
 # Refuse to run scripts (lint, test, ...) when node_modules does not match the lockfile,
 # e.g. after a pull that added a workspace dependency. Fix: pnpm install.
 verifyDepsBeforeRun: error
+
+# Security floors for transitive dependencies (ADR 166): next 16.3.8 still pulls postcss with
+# source-map-js 1.2.1 (GHSA-68fv-2mgg-jv7q, high). CI runs pnpm audit --prod.
+overrides:
+  source-map-js: '>=1.2.2 <2'

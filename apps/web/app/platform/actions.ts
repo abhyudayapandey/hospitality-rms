@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { failure, type ActionResult } from '@outlet-ops/domain';
 import { loginDirectory } from '@/lib/auth/directory';
-import { generateTemporaryPassword, testRulePassword } from '@/lib/auth/passwords';
+import { generateTemporaryPassword } from '@/lib/auth/passwords';
 import { sql, withPlatformAdmin, type Tx } from '@/lib/db';
 import { requirePlatformAdmin } from '@/lib/platform/server';
 import { requireSameOrigin } from '@/lib/security/same-origin';
@@ -158,55 +158,42 @@ export interface CreatedLogin {
   displayName: string;
   /** Shown once and offered as a download once; never stored or logged. */
   password: string;
-  /** Test<Role>!12 passwords are kept; generated ones are changed at the first sign-in. */
-  permanent: boolean;
 }
 
 export interface LoginBatch {
   created: CreatedLogin[];
-  /** People skipped, with why (no job title for the Test<Role>!12 rule). */
-  skipped: { username: string; reason: string }[];
   /** Set when a login failed part-way; the ones before it are created and shown. */
   error: string | null;
 }
 
 /**
  * Username logins for a customer's imported people (ADR 013). The database says who needs
- * one and refuses the Test<Role>!12 option for customers that are not test customers; each
- * login is created in Cognito, then linked (and audited, without the password).
+ * one; each login is created in Cognito with a random one-time password, then linked (and
+ * audited, without the password). Test customers get random passwords too (ADR 166): the
+ * old pattern-password option is gone. A login that is there already gets the new password only once
+ * the database has linked it to this person, so someone else's login is never reset.
  */
-export async function createUsernameLogins(
-  tenantId: string,
-  testRule: boolean,
-): Promise<ActionResult<LoginBatch>> {
+export async function createUsernameLogins(tenantId: string): Promise<ActionResult<LoginBatch>> {
   const people = await run('begin_logins', async (tx) => {
     const r = await sql<{
       user_id: string;
       username: string;
       display_name: string;
-      job_title: string | null;
-    }>`select * from platform.begin_logins(${tenantId}::uuid, ${testRule})`.execute(tx);
+    }>`select user_id, username, display_name
+         from platform.begin_logins(${tenantId}::uuid, false)`.execute(tx);
     return r.rows;
   });
   if (!people.ok) return people;
-  const batch: LoginBatch = { created: [], skipped: [], error: null };
+  const batch: LoginBatch = { created: [], error: null };
   const directory = loginDirectory();
   for (const p of people.data) {
-    if (testRule && !p.job_title) {
-      batch.skipped.push({
-        username: p.username,
-        reason: 'no job title for the Test<Role>!12 rule',
-      });
-      continue;
-    }
-    const password = testRule ? testRulePassword(p.job_title!) : generateTemporaryPassword();
+    const password = generateTemporaryPassword();
     try {
-      const { sub } = await directory.create({
+      const { sub, existed } = await directory.create({
         username: p.username,
         loginType: 'username',
         temporaryPassword: password,
       });
-      if (testRule) await directory.setPermanentPassword(p.username, password);
       const linked = await run('link_customer_login', (tx) =>
         sql`select platform.link_customer_login(${p.user_id}::uuid, ${sub})`.execute(tx),
       );
@@ -214,17 +201,44 @@ export async function createUsernameLogins(
         batch.error = `${p.username}: ${linked.message}`;
         break;
       }
+      // linked to this person (unlinked before, or theirs already): a checked reset
+      if (existed) await directory.setTemporaryPassword(p.username, password);
     } catch (err) {
       console.error('login creation failed', (err as Error).name);
       batch.error = `${p.username}: ${failure(new Error('UNEXPECTED')).message}`;
       break;
     }
-    batch.created.push({
-      username: p.username,
-      displayName: p.display_name,
-      password,
-      permanent: testRule,
-    });
+    batch.created.push({ username: p.username, displayName: p.display_name, password });
+  }
+  return { ok: true, data: batch };
+}
+
+/**
+ * New one-time passwords for every username login of a test customer (ADR 166): the database
+ * checks it is a test customer, ends their app sessions and writes the audit; then each login
+ * gets its password in Cognito and is signed out there too. Shown once, like new logins.
+ */
+export async function newDemoPasswords(tenantId: string): Promise<ActionResult<LoginBatch>> {
+  const people = await run('begin_new_passwords', async (tx) => {
+    const r = await sql<{ user_id: string; username: string; display_name: string }>`
+      select user_id, username, display_name
+        from platform.begin_new_passwords(${tenantId}::uuid)`.execute(tx);
+    return r.rows;
+  });
+  if (!people.ok) return people;
+  const batch: LoginBatch = { created: [], error: null };
+  const directory = loginDirectory();
+  for (const p of people.data) {
+    const password = generateTemporaryPassword();
+    try {
+      await directory.setTemporaryPassword(p.username, password);
+      await directory.signOutEverywhere(p.username);
+    } catch (err) {
+      console.error('new password failed', (err as Error).name);
+      batch.error = `${p.username}: ${failure(new Error('UNEXPECTED')).message}`;
+      break;
+    }
+    batch.created.push({ username: p.username, displayName: p.display_name, password });
   }
   return { ok: true, data: batch };
 }

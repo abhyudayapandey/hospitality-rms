@@ -67,24 +67,18 @@ export async function ReviewStep({
   const people = logins(draft);
   const byEmail = people.filter((p) => p.email).length;
   let waitingIds = 0;
-  let isTest = draft.company.isTest;
   if (stage.kind === 'live' && row.tenant_id) {
     const admin = await requirePlatformAdmin();
-    const r = await withPlatformAdmin(admin, async (tx) => ({
-      people: (
-        await sql<{ login_type: string; has_login: boolean }>`
-          select login_type, has_login from platform.login_candidates(${row.tenant_id}::uuid)`.execute(
-          tx,
-        )
-      ).rows,
-      test: (
-        await sql<{
-          is_test: boolean;
-        }>`select is_test from platform.customer(${row.tenant_id}::uuid)`.execute(tx)
-      ).rows[0]?.is_test,
-    }));
-    waitingIds = r.people.filter((p) => p.login_type === 'username' && !p.has_login).length;
-    isTest = r.test ?? isTest;
+    const candidates = await withPlatformAdmin(
+      admin,
+      async (tx) =>
+        (
+          await sql<{ login_type: string; has_login: boolean }>`
+            select login_type, has_login
+              from platform.login_candidates(${row.tenant_id}::uuid)`.execute(tx)
+        ).rows,
+    );
+    waitingIds = candidates.filter((p) => p.login_type === 'username' && !p.has_login).length;
   }
 
   return (
@@ -189,11 +183,9 @@ export async function ReviewStep({
                 <h3 className="font-semibold">Login IDs for the printed sheet</h3>
                 <UsernameLogins
                   tenantId={row.tenant_id}
-                  isTest={isTest}
                   waiting={waitingIds}
                   suspended={false}
                   company={draft.company.name}
-                  testOption={false}
                 />
               </div>
             )}
