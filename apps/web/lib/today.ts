@@ -183,7 +183,8 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
   const tasksP = side(async (tx) =>
     shell.domains.has('TASKS') ? (await myTasks(tx)).filter((t) => t.status !== 'done') : [],
   );
-  const inboxP = side((tx) => inboxEntries(tx, tz));
+  // Home shows the first few: only they get a transfer's details (ADR 169)
+  const inboxP = side((tx) => inboxEntries(tx, tz, { detailsFor: HOME_APPROVALS }));
   const attentionP = lead
     ? side((tx) => homeAttention(tx, shell, profile, today))
     : Promise.resolve({ attention: null, openSlotsHref: null });
