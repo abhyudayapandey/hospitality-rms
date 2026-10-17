@@ -24,5 +24,6 @@ export const LEAVE_STATUS: Readonly<Record<string, string>> = {
   approved: 'Approved',
   rejected: 'Not approved',
   cancelled: 'Cancelled',
+  failed: 'It could not go through',
   draft: 'Draft',
 };

@@ -1,11 +1,14 @@
 import { join } from 'node:path';
 import pg from 'pg';
+import { runJobs, TASKS_TICK_JOBS } from '../src/ticks';
 
-// The tasks job (ADR 020), every 5 minutes: checklist instances for the next 24 hours,
-// reminders 30 minutes before the due time, and escalation when a task is overdue; and,
-// once each business day from 04:00, the expiry alert to the leads of each store's team
-// (INV-12, ADR 040); and licence and compliance calendar reminders where Compliance is on
-// (ADR 069).
+// The tasks job (ADR 020), every 5 minutes: approvals past their time or with nobody left to
+// approve move up their chain (ADR 167); checklist instances for the next 24 hours, reminders
+// 30 minutes before the due time, and escalation when a task is overdue; and, once each
+// business day from 04:00, the expiry alert to the leads of each store's team (INV-12,
+// ADR 040); and licence and compliance calendar reminders where Compliance is on (ADR 069).
+// Each job runs for each customer in its own transaction, so one customer's trouble stops
+// only their part (ADR 167); anything that failed makes the run exit non-zero.
 // Runs as wf_executor (systemd timer on the instance; locally on demand):
 //   pnpm --filter @outlet-ops/workflow tasks-tick
 try {
@@ -19,23 +22,17 @@ if (!url) throw new Error('WF_EXECUTOR_DATABASE_URL is not set');
 const client = new pg.Client({ connectionString: url });
 await client.connect();
 try {
-  await client.query('begin');
-  await client.query(`select set_config('app.actor_kind', 'executor', true)`);
-  const { rows } = await client.query<{ created: number; reminded: number; escalated: number }>(
-    'select * from ops.tasks_tick()',
-  );
-  const alerts = await client.query<{ sent: number }>('select ops.expiry_alerts() as sent');
-  const compliance = await client.query<{ created: number; noticed: number }>(
-    'select * from ops.compliance_tick()',
-  );
-  await client.query('commit');
-  const r = rows[0];
+  const r = await runJobs(client, TASKS_TICK_JOBS, {
+    log: (m) => console.error(`[tasks-tick] ${m}`),
+  });
+  const sum = (job: string, field: string) =>
+    Object.entries(r.done)
+      .filter(([k]) => k.startsWith(`${job} `))
+      .reduce((n, [, row]) => n + Number(row?.[field] ?? 0), 0);
   console.log(
-    `[tasks-tick] created=${r?.created ?? 0} reminded=${r?.reminded ?? 0} escalated=${r?.escalated ?? 0} expiry_alerts=${alerts.rows[0]?.sent ?? 0} compliance=${compliance.rows[0]?.created ?? 0}/${compliance.rows[0]?.noticed ?? 0}`,
+    `[tasks-tick] created=${sum('tasks', 'created')} reminded=${sum('tasks', 'reminded')} escalated=${sum('tasks', 'escalated')} expiry_alerts=${sum('expiry', 'sent')} compliance=${sum('compliance', 'created')}/${sum('compliance', 'noticed')} approvals=${sum('approvals', 'escalated')}/${sum('approvals', 'rerouted')} stuck_approvals=${sum('approvals', 'unroutable')} failed=${r.failed.length}`,
   );
-} catch (err) {
-  await client.query('rollback').catch(() => undefined);
-  throw err;
+  if (r.failed.length > 0) process.exitCode = 1;
 } finally {
   await client.end();
 }

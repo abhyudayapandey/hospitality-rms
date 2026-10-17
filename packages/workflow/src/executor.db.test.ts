@@ -240,6 +240,34 @@ describe('executor', () => {
     expect(calls).toBe(3);
   });
 
+  it('retries a transient error (a deadlock) past three tries, backing off longer (ADR 167)', async () => {
+    const id = await approvedRequest();
+    let calls = 0;
+    const handlers = {
+      'test.exec': (() => {
+        calls++;
+        return Promise.reject(Object.assign(new Error('deadlock detected'), { code: '40P01' }));
+      }) satisfies Handler,
+    };
+    expect(await runOnce(executorPool, handlers)).toEqual({ completed: 0, retrying: 1, failed: 0 });
+    // the first wait is a minute, not 30 seconds
+    const { rows } = await migratorPool.query<{ secs: number }>(
+      `select extract(epoch from next_attempt_at - updated_at)::int as secs
+         from wf.outbox where request_id = $1`,
+      [id],
+    );
+    expect(rows[0]!.secs).toBeGreaterThanOrEqual(59);
+    for (const minutes of [5, 10, 20, 40]) {
+      expect(await runOnce(executorPool, handlers, { now: later(minutes) })).toEqual({
+        completed: 0,
+        retrying: 1,
+        failed: 0,
+      });
+    }
+    expect(calls).toBe(5);
+    expect(await state(id)).toMatchObject({ state: 'approved', status: 'pending', attempts: 5 });
+  });
+
   it('recovers from a SQL error inside the handler and keeps the row retryable', async () => {
     const id = await approvedRequest();
     const handlers = {

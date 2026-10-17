@@ -505,6 +505,15 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   (`inv.sees_adjustment_money`, `inv.po_approval`). `isAppPath` / `appLink` for links; CI runs
   `pnpm audit --prod`. No pattern passwords: a test customer's Logins page has New passwords
   for all, and no committed doc holds a password (`no-passwords-in-docs.test.ts`).
+- Stuck states and time bombs (ADR 167): a request that fails for good lets go (`wf.after_failure`:
+  leave, swaps, role changes and deactivations become `failed`, an unreleased order or adjustment
+  `cancelled`, and whoever asked is told); transient errors (40001, 40P01, 55P03, 08xxx, 57P0x)
+  retry 12 times over about four hours. A missing leave balance is the type's `annual_days`,
+  made on first approval. The tasks tick moves approvals on (`wf.approvals_tick`: late, or nobody
+  left to approve) and runs each job per customer in its own transaction (`runJobs`,
+  `ops.tick_tenants`); the nightly job keeps the audit partitions (`audit.keep_partitions`). A
+  shift meets leave on its `local_date`; Publish leaves out what breaks a rule now
+  (`hr.publish_left_out`) and says so; a test customer's file 25 skips a day of approved leave.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in
@@ -543,12 +552,15 @@ pnpm db:rollback       roll back the last migration
 pnpm db:down           stop local Postgres
 pnpm --filter @outlet-ops/workflow execute [--once]   run the workflow executor locally
 pnpm --filter @outlet-ops/workflow attendance-nightly  nightly attendance exceptions + location purge +
-                                                      selfie and device purge (ADR 045), then the
-                                                      report tables (35 days, ADR 023)
+                                                      selfie and device purge (ADR 045), the audit
+                                                      partitions (ADR 167), then the report tables
+                                                      (35 days, ADR 023); each step on its own
 pnpm --filter @outlet-ops/workflow reports-rebuild     the report tables only
-pnpm --filter @outlet-ops/workflow tasks-tick          checklist rounds 24 h ahead, reminders and
+pnpm --filter @outlet-ops/workflow tasks-tick          approvals moved on (ADR 167), checklist
+                                                      rounds 24 h ahead, reminders and
                                                       escalation (the 5-minute timer, ADR 020);
-                                                      the morning expiry alert (ADR 040)
+                                                      the morning expiry alert (ADR 040); each
+                                                      job per customer, exit 1 if any failed
 pnpm --filter @outlet-ops/web photos                  rebuild the photo library from scripts/photos/library.json
                                                       (NODE_USE_ENV_PROXY=1 behind a proxy; ADR 086)
 pnpm --filter @outlet-ops/web e2e                     build, then Playwright vs the standalone server

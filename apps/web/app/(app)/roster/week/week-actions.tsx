@@ -75,7 +75,12 @@ export function WeekActions({
       setError(null);
       const r = await publishWeek(node, monday);
       if (!r.ok) return setError(r.message);
-      after(`Published ${plural(r.data, 'change')}. Staff have been told.`);
+      after(
+        `Published ${plural(r.data.n, 'change')}. Staff have been told.` +
+          (r.data.leftOut.length
+            ? ` Left out, as it breaks a rule now: ${r.data.leftOut.join('; ')}.`
+            : ''),
+      );
     });
   const ask = (what: 'add' | 'discard') => {
     setError(null);

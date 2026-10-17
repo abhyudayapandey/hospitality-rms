@@ -18,6 +18,7 @@ const STATUS: Record<string, string> = {
   approved: 'Approved',
   rejected: 'Not approved',
   cancelled: 'Cancelled',
+  failed: 'It could not go through',
   reassigned: 'Your manager gave the shift to someone else',
 };
 

@@ -12,29 +12,55 @@ import { jobTitles } from '@/lib/job-titles';
 export default async function UserPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
-  const title = await withUser(user.id, jobTitles);
+  // the page's parts load side by side, each in its own transaction (ADR 160): one after
+  // another they took over 2 s (the job roles one alone 1.3 s), and far longer on a busy server
+  const titles = withUser(user.id, jobTitles);
+  void titles.catch(() => undefined); // awaited below; never unhandled if the page returns early
   let data;
   try {
-    data = await withUser(user.id, async (tx) => ({
-      person: (await sql<AdminUserRow>`select * from core.admin_user(${id}::uuid)`.execute(tx))
-        .rows[0],
-      access: (await sql<AccessRow>`select * from core.admin_user_access(${id}::uuid)`.execute(tx))
-        .rows,
-      groups: (
-        await sql<{ code: string; name: string; sensitive: boolean }>`
-          select * from core.admin_groups()`.execute(tx)
-      ).rows,
-      places: (
-        await sql<{ id: string; name: string; type: string; kind: string }>`
-          select id, name, type, kind from core.admin_places()`.execute(tx)
-      ).rows,
-      jobRoles: (
-        await sql<{ code: string; name: string }>`select * from core.admin_job_roles()`.execute(tx)
-      ).rows,
-    }));
+    const [person, access, groups, places, jobRoles] = await Promise.all([
+      withUser(
+        user.id,
+        async (tx) =>
+          (await sql<AdminUserRow>`select * from core.admin_user(${id}::uuid)`.execute(tx)).rows[0],
+      ),
+      withUser(
+        user.id,
+        async (tx) =>
+          (await sql<AccessRow>`select * from core.admin_user_access(${id}::uuid)`.execute(tx))
+            .rows,
+      ),
+      withUser(
+        user.id,
+        async (tx) =>
+          (
+            await sql<{ code: string; name: string; sensitive: boolean }>`
+              select * from core.admin_groups()`.execute(tx)
+          ).rows,
+      ),
+      withUser(
+        user.id,
+        async (tx) =>
+          (
+            await sql<{ id: string; name: string; type: string; kind: string }>`
+              select id, name, type, kind from core.admin_places()`.execute(tx)
+          ).rows,
+      ),
+      withUser(
+        user.id,
+        async (tx) =>
+          (
+            await sql<{ code: string; name: string }>`select * from core.admin_job_roles()`.execute(
+              tx,
+            )
+          ).rows,
+      ),
+    ]);
+    data = { person, access, groups, places, jobRoles };
   } catch {
     return <p className="text-slate-700">You don&apos;t have access to this person.</p>;
   }
+  const title = await titles;
   const p = data.person;
   if (!p) return <p className="text-slate-700">You don&apos;t have access to this person.</p>;
   return (
