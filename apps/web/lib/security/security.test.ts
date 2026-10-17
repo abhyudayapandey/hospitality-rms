@@ -1,7 +1,7 @@
 import { UsernameExistsException } from '@aws-sdk/client-cognito-identity-provider';
 import { describe, expect, it } from 'vitest';
 import { CognitoDirectory, type CognitoSender } from '../auth/directory';
-import { generateTemporaryPassword, testRulePassword } from '../auth/passwords';
+import { generateTemporaryPassword } from '../auth/passwords';
 import { isSameOrigin } from './same-origin';
 
 const headers = (h: Record<string, string>) => ({
@@ -46,14 +46,6 @@ describe('temporary passwords', () => {
   });
 });
 
-describe('the Test<Role>!12 rule (test customers only, ADR 013)', () => {
-  it('is Test + the job title without spaces + !12', () => {
-    expect(testRulePassword('Bar Manager')).toBe('TestBarManager!12');
-    expect(testRulePassword('Head  Cook')).toBe('TestHeadCook!12');
-    expect(testRulePassword('Account Owner')).toBe('TestAccountOwner!12');
-  });
-});
-
 describe('Cognito directory', () => {
   function fake(
     responses: ((cmd: { constructor: { name: string }; input: unknown }) => unknown)[],
@@ -78,7 +70,7 @@ describe('Cognito directory', () => {
     const d = new CognitoDirectory(sender, 'ap-south-1_pool');
     expect(
       await d.create({ username: 'acme.ravi.k', loginType: 'username', temporaryPassword: 'Tmp' }),
-    ).toEqual({ sub: 'sub-1' });
+    ).toEqual({ sub: 'sub-1', existed: false });
     expect(calls).toEqual([
       {
         name: 'AdminCreateUserCommand',
@@ -93,23 +85,21 @@ describe('Cognito directory', () => {
     ]);
   });
 
-  it('an existing login is found, not duplicated (safe to retry)', async () => {
+  it('an existing login is found, not duplicated, and its password left alone (ADR 166)', async () => {
     const { sender, calls } = fake([
       () => {
         throw new UsernameExistsException({ message: 'exists', $metadata: {} });
       },
-      () => ({}),
       () => ({ UserAttributes: [{ Name: 'sub', Value: 'sub-2' }] }),
     ]);
     const d = new CognitoDirectory(sender, 'ap-south-1_pool');
     expect(
       await d.create({ username: 'acme.ravi.k', loginType: 'username', temporaryPassword: 'Tmp' }),
-    ).toEqual({ sub: 'sub-2' });
-    expect(calls.map((c) => c.name)).toEqual([
-      'AdminCreateUserCommand',
-      'AdminSetUserPasswordCommand',
-      'AdminGetUserCommand',
-    ]);
+    ).toEqual({ sub: 'sub-2', existed: true });
+    // no AdminSetUserPassword: someone's login is never reset by "create" (a view-only admin
+    // could otherwise lock out anyone, the owner too); the caller resets it only after the
+    // database has checked and linked it
+    expect(calls.map((c) => c.name)).toEqual(['AdminCreateUserCommand', 'AdminGetUserCommand']);
   });
 
   it('disables and signs out with exactly those calls', async () => {
@@ -120,23 +110,6 @@ describe('Cognito directory', () => {
     expect(calls.map((c) => c.name)).toEqual([
       'AdminDisableUserCommand',
       'AdminUserGlobalSignOutCommand',
-    ]);
-  });
-
-  it('a Test<Role>!12 password is set as permanent (kept at sign-in)', async () => {
-    const { sender, calls } = fake([]);
-    const d = new CognitoDirectory(sender, 'ap-south-1_pool');
-    await d.setPermanentPassword('test.solo.bar-manager', 'TestBarManager!12');
-    expect(calls).toEqual([
-      {
-        name: 'AdminSetUserPasswordCommand',
-        input: {
-          UserPoolId: 'ap-south-1_pool',
-          Username: 'test.solo.bar-manager',
-          Password: 'TestBarManager!12',
-          Permanent: true,
-        },
-      },
     ]);
   });
 

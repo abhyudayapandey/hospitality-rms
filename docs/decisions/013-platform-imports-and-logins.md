@@ -64,10 +64,10 @@ the imported people's logins.
     never the AI agent, and never over another login.
   - Generated temporary passwords are shown once, can be downloaded once as a CSV (a
     browser Blob built from the response), and are never stored or logged.
-- **Test<Role>!12 (PRD ADM-1).** The option sets `Test` + job title without spaces +
-  `!12`, as a permanent password. It is offered only to test customers (`is_test`, fixed
-  at creation). `begin_logins` refuses it for any other customer
-  (`TEST_RULE_NOT_ALLOWED`), so a tampered request gets nothing (e2e).
+- **Pattern passwords for test customers (PRD ADM-1): removed by ADR 166.** A permanent
+  pattern password was once offered to test customers. The repository is public, so it was
+  withdrawn: `begin_logins` now refuses the option for every customer
+  (`TEST_RULE_NOT_ALLOWED`), and test customers get random one-time passwords too.
 - **Email logins** are Cognito invitations, sent by the worker (`invite_logins` jobs).
   Cognito's default sender allows about 50 emails a day for the whole pool, and the
   sign-in codes of email-login staff come out of the same allowance. So:

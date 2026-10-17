@@ -1,6 +1,6 @@
 import { createECDH } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { pushEndpointOk, pushPayload, vapidKeys } from './push';
+import { appLink, pushEndpointOk, pushPayload, vapidKeys } from './push';
 
 // Web Push pieces (ADR 137): the key pair from SSM's 64 hex characters, the payload a phone
 // shows, and the push services the sender will talk to (nothing else).
@@ -29,6 +29,24 @@ describe('pushPayload', () => {
       pushPayload({ kind: 'x', title: 't', body: 'b', link: 'https://evil.example' }),
     ) as { link: string };
     expect(off.link).toBe('/');
+  });
+  it('a link is a path inside the app only (ADR 166)', () => {
+    for (const bad of [
+      '//evil.example',
+      '/\\evil',
+      '\\evil',
+      '/\t/evil.example',
+      '/\n/evil.example',
+      '/\r/evil.example',
+      'javascript:alert(1)',
+      'evil',
+    ]) {
+      expect(appLink(bad), JSON.stringify(bad)).toBe('/');
+    }
+    expect(appLink(null)).toBe('/');
+    for (const ok of ['/', '/leave', '/stock/orders/1?tab=receive', '/%09/x']) {
+      expect(appLink(ok)).toBe(ok);
+    }
   });
 });
 

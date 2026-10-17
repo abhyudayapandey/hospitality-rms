@@ -7,6 +7,7 @@ import { usePolling } from '@/components/use-polling';
 import { useHydrated } from '@/lib/use-hydrated';
 import {
   createUsernameLogins,
+  newDemoPasswords,
   requestInvites,
   type CreatedLogin,
   type LoginBatch,
@@ -47,42 +48,15 @@ keep this sheet private and throw it away afterwards.</p>
 
 const csvCell = (v: string) => (/[",\r\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v);
 
-/**
- * Creates the waiting username logins. Their passwords are in this response only: shown
- * once and downloadable once, never stored. The Test<Role>!12 option is for test
- * customers; the server refuses it for anyone else.
- */
-export function UsernameLogins({
-  tenantId,
-  isTest,
-  waiting,
-  suspended,
-  company,
-  testOption = true,
-}: {
-  tenantId: string;
-  isTest: boolean;
-  waiting: number;
-  suspended: boolean;
-  /** The company's name, for the printed sheet. */
-  company?: string;
-  /** The Test<Role>!12 option (the Logins page; not the set-up wizard). */
-  testOption?: boolean;
-}) {
-  const router = useRouter();
-  const hydrated = useHydrated();
-  const [pending, start] = useTransition();
-  const [testRule, setTestRule] = useState(false);
-  const [batch, setBatch] = useState<LoginBatch | null>(null);
+/** The passwords just made: shown once, printed or downloaded once, never stored. */
+function NewPasswords({ batch, company }: { batch: LoginBatch; company: string }) {
   const [downloaded, setDownloaded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const download = () => {
-    if (!batch || downloaded) return;
+    if (downloaded) return;
     const rows = [
       'username,display_name,password,change_at_first_sign_in',
       ...batch.created.map((c) =>
-        [c.username, c.displayName, c.password, c.permanent ? 'no' : 'yes'].map(csvCell).join(','),
+        [c.username, c.displayName, c.password, 'yes'].map(csvCell).join(','),
       ),
     ];
     const url = URL.createObjectURL(new Blob([rows.join('\n') + '\n'], { type: 'text/csv' }));
@@ -93,6 +67,62 @@ export function UsernameLogins({
     URL.revokeObjectURL(url);
     setDownloaded(true);
   };
+  if (batch.created.length === 0) return null;
+  return (
+    <div className="space-y-2 rounded-lg bg-amber-50 p-3 text-sm" data-testid="created-logins">
+      <p className="font-medium">
+        {batch.created.length} password{batch.created.length === 1 ? '' : 's'} made. Print the sheet
+        or download them now. They are not shown again.
+      </p>
+      <table className="w-full">
+        <tbody>
+          {batch.created.map((c) => (
+            <tr key={c.username} data-username={c.username}>
+              <td className="py-1 pr-2">{c.username}</td>
+              <td className="py-1 font-mono" data-testid="password">
+                {c.password}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={primaryButton}
+          onClick={() => printLoginSheet(batch.created, company)}
+        >
+          Print the login sheet
+        </button>
+        <button type="button" className={secondaryButton} disabled={downloaded} onClick={download}>
+          {downloaded ? 'Downloaded' : 'Download as CSV (once)'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Creates the waiting username logins, each with a random one-time password (ADR 166: no
+ * pattern passwords, test customers included). The passwords are in this response only.
+ */
+export function UsernameLogins({
+  tenantId,
+  waiting,
+  suspended,
+  company,
+}: {
+  tenantId: string;
+  waiting: number;
+  suspended: boolean;
+  /** The company's name, for the printed sheet. */
+  company?: string;
+}) {
+  const router = useRouter();
+  const hydrated = useHydrated();
+  const [pending, start] = useTransition();
+  const [batch, setBatch] = useState<LoginBatch | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <form
@@ -103,8 +133,7 @@ export function UsernameLogins({
         start(async () => {
           setError(null);
           setBatch(null);
-          setDownloaded(false);
-          const r = await createUsernameLogins(tenantId, testRule);
+          const r = await createUsernameLogins(tenantId);
           if (!r.ok) {
             setError(r.message);
             return;
@@ -115,27 +144,6 @@ export function UsernameLogins({
         });
       }}
     >
-      {testOption && (
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="testRule"
-            checked={testRule}
-            disabled={!isTest}
-            onChange={(e) => setTestRule(e.target.checked)}
-            className="mt-1 h-5 w-5"
-          />
-          <span>
-            Use the demo passwords (Test + their role + !12, e.g. TestBarManager!12), kept at
-            sign-in.{' '}
-            {isTest ? (
-              <span className="text-slate-500">Demo customers only.</span>
-            ) : (
-              <span className="text-slate-500">Only for demo customers; this one isn’t.</span>
-            )}
-          </span>
-        </label>
-      )}
       <button
         type="submit"
         disabled={!hydrated || pending || waiting === 0 || suspended}
@@ -144,53 +152,79 @@ export function UsernameLogins({
         Create {waiting} sign-in{waiting === 1 ? '' : 's'}
       </button>
       <ErrorBox message={error} />
-      {batch && batch.created.length > 0 && (
-        <div className="space-y-2 rounded-lg bg-amber-50 p-3 text-sm" data-testid="created-logins">
-          <p className="font-medium">
-            {batch.created.length} sign-in{batch.created.length === 1 ? '' : 's'} created. Print the
-            sheet or download the passwords now: they are not shown again.
+      {batch && <NewPasswords batch={batch} company={company ?? ''} />}
+    </form>
+  );
+}
+
+/**
+ * A test customer only (ADR 166): every login ID gets a new one-time password, and whoever is
+ * signed in is signed out. For demo companies whose old passwords were shared.
+ */
+export function NewDemoPasswords({
+  tenantId,
+  ready,
+  suspended,
+  company,
+}: {
+  tenantId: string;
+  ready: number;
+  suspended: boolean;
+  company: string;
+}) {
+  const hydrated = useHydrated();
+  const [pending, start] = useTransition();
+  const [sure, setSure] = useState(false);
+  const [batch, setBatch] = useState<LoginBatch | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="space-y-2" data-testid="new-passwords">
+      {!sure ? (
+        <button
+          type="button"
+          className={secondaryButton}
+          disabled={!hydrated || pending || ready === 0 || suspended}
+          onClick={() => setSure(true)}
+        >
+          New passwords for all {ready}
+        </button>
+      ) : (
+        <div className="space-y-2 rounded-lg bg-white p-3 text-sm ring-1 ring-slate-200">
+          <p>
+            Everyone gets a new one-time password and is signed out. Their old password stops
+            working.
           </p>
-          <table className="w-full">
-            <tbody>
-              {batch.created.map((c) => (
-                <tr key={c.username} data-username={c.username}>
-                  <td className="py-1 pr-2">{c.username}</td>
-                  <td className="py-1 font-mono" data-testid="password">
-                    {c.password}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               className={primaryButton}
-              onClick={() => printLoginSheet(batch.created, company ?? '')}
+              disabled={!hydrated || pending}
+              onClick={() =>
+                start(async () => {
+                  setError(null);
+                  setBatch(null);
+                  const r = await newDemoPasswords(tenantId);
+                  setSure(false);
+                  if (!r.ok) {
+                    setError(r.message);
+                    return;
+                  }
+                  setBatch(r.data);
+                  if (r.data.error) setError(r.data.error);
+                })
+              }
             >
-              Print the login sheet
+              Yes, make new passwords
             </button>
-            <button
-              type="button"
-              className={secondaryButton}
-              disabled={downloaded}
-              onClick={download}
-            >
-              {downloaded ? 'Downloaded' : 'Download as CSV (once)'}
+            <button type="button" className={secondaryButton} onClick={() => setSure(false)}>
+              Cancel
             </button>
           </div>
         </div>
       )}
-      {batch && batch.skipped.length > 0 && (
-        <ul className="text-sm text-slate-600">
-          {batch.skipped.map((s) => (
-            <li key={s.username}>
-              {s.username}: not created, {s.reason}
-            </li>
-          ))}
-        </ul>
-      )}
-    </form>
+      <ErrorBox message={error} />
+      {batch && <NewPasswords batch={batch} company={company} />}
+    </div>
   );
 }
 

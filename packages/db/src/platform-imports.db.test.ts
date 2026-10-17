@@ -15,8 +15,8 @@ import {
 // Imports and logins in the Platform Admin console (ADR 013), written before the feature.
 // An upload belongs to one customer: its storage key is under that customer and its file 00
 // names that customer. Applying needs a successful dry run of the same upload, and only the
-// worker (platform_loader) runs jobs. The Test<Role>!12 option is refused in SQL for a
-// customer that is not a test customer. Logins are only ever linked to that customer's
+// worker (platform_loader) runs jobs. The old pattern-password option is refused in SQL for
+// every customer (ADR 166); a test customer's logins get new random passwords. Logins are only ever linked to that customer's
 // people (never the AI agent), every step is in the platform audit, and email invites are
 // counted against the pool's daily allowance.
 
@@ -209,37 +209,80 @@ describe('an upload belongs to one customer', () => {
   });
 });
 
-describe('the Test<Role>!12 option', () => {
-  it('is refused for a customer that is not a test customer', async () => {
+describe('passwords for logins (ADR 166)', () => {
+  it('the old pattern-password option is refused for every customer, test ones too', async () => {
     await inRolledBackTx(async (c) => {
       const admin = await newPlatformAdmin(c);
       const acme = await nonTestCustomer(c);
       await c.query(`update core.app_user set cognito_sub = null where tenant_id = $1`, [SOLO()]);
       const begin = (tenant: string, rule: boolean) =>
-        asPlatform<{ username: string; job_title: string | null }>(
+        asPlatform<{ username: string }>(
           c,
           admin,
-          'select username, job_title from platform.begin_logins($1, $2) order by username',
+          'select username from platform.begin_logins($1, $2) order by username',
           [tenant, rule],
         );
       expect((await begin(acme, true)).error).toBe('TEST_RULE_NOT_ALLOWED');
+      expect((await begin(SOLO(), true)).error).toBe('TEST_RULE_NOT_ALLOWED');
       // generated passwords are fine for anyone
-      expect((await begin(acme, false)).rows).toEqual([
-        { username: 'acme.ravi.k', job_title: null },
-      ]);
-      // a test customer may use it; each person comes with their job title
-      const solo = await begin(SOLO(), true);
-      expect(solo.error).toBeUndefined();
-      expect(solo.rows).toContainEqual({
-        username: 'test.solo.bar-manager',
-        job_title: 'Bar Manager',
-      });
+      expect((await begin(acme, false)).rows).toEqual([{ username: 'acme.ravi.k' }]);
+      const solo = await begin(SOLO(), false);
+      expect(solo.rows).toContainEqual({ username: 'test.solo.bar-manager' });
       const audit = await c.query<{ detail: { test_rule: boolean; count: number } }>(
         `select detail from platform.audit_event where action = 'logins_started' and at = now()
           order by tenant_id = $1 desc`,
         [SOLO()],
       );
-      expect(audit.rows[0]!.detail).toMatchObject({ test_rule: true, count: solo.rows!.length });
+      expect(audit.rows[0]!.detail).toMatchObject({ test_rule: false, count: solo.rows!.length });
+    });
+  });
+
+  it("new passwords: a test customer's linked username logins, their sessions ended", async () => {
+    await inRolledBackTx(async (c) => {
+      const admin = await newPlatformAdmin(c);
+      const acme = await nonTestCustomer(c);
+      const fresh = (tenant: string) =>
+        asPlatform<{ username: string }>(
+          c,
+          admin,
+          'select username from platform.begin_new_passwords($1) order by username',
+          [tenant],
+        );
+      // never a real customer
+      expect((await fresh(acme)).error).toBe('TEST_CUSTOMER_ONLY');
+      // only people with a login; the rest get one from "Create sign-ins"
+      await c.query(
+        `update core.app_user set cognito_sub = 'sub-' || username
+          where tenant_id = $1 and login_type = 'username'`,
+        [SOLO()],
+      );
+      await c.query(`update core.app_user set cognito_sub = null where username = $1`, [
+        'test.solo.server-b',
+      ]);
+      const r = await fresh(SOLO());
+      expect(r.error).toBeUndefined();
+      const names = r.rows!.map((x) => x.username);
+      expect(names).toContain('test.solo.bar-manager');
+      expect(names).not.toContain('test.solo.server-b');
+      const ended = await c.query<{ n: string }>(
+        `select count(*) as n from core.app_user
+          where tenant_id = $1 and sessions_valid_from = now()`,
+        [SOLO()],
+      );
+      expect(Number(ended.rows[0]!.n)).toBe(names.length);
+      const audit = await c.query<{ detail: { count: number } }>(
+        `select detail from platform.audit_event where action = 'passwords_reset' and tenant_id = $1`,
+        [SOLO()],
+      );
+      expect(audit.rows).toEqual([{ detail: { count: names.length } }]);
+      // nobody else may call it
+      const app = await attemptAs(
+        c,
+        ids.user('test.solo.bar-manager'),
+        'select * from platform.begin_new_passwords($1)',
+        [SOLO()],
+      );
+      expect(app.error).toBeDefined();
     });
   });
 

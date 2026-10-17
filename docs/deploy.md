@@ -811,8 +811,8 @@ that are new by then.
 **Apply**, then **Apply** again: "No changes".
 
 **4. Logins.** On each customer's **Logins**, **Create 6 username logins** (Test Company)
-and **Create 2 username logins** (Solo), for the `-b` people. The test password rule is
-`Test<Role>!12`.
+and **Create 2 username logins** (Solo), for the `-b` people. Their one-time passwords are
+on the printed sheet (ADR 166).
 
 These counts were checked on a scratch database set up the way production is now:
 
@@ -1618,8 +1618,8 @@ again: no changes.
 
 **Re-import Test Solo Bar Co.** The dry run should report no problems and: job roles 1 new,
 job role access 1 new, users 1 new, workers 1 new, leave balances 3 new; everything else
-unchanged. Apply, then dry-run again: no changes. The new user's password follows the usual
-rule (`TestStockVerifier!12`), or take it from the new logins file.
+unchanged. Apply, then dry-run again: no changes. The new user's one-time password is on the
+printed login sheet.
 
 **Check.**
 
@@ -1683,8 +1683,8 @@ The production database has no dev seed.
     person; people change them at first sign-in (at least 10 characters). Accounts
     without email cannot recover their own password: an outlet manager or user admin
     resets it in the app.
-  - **Test customers only**: the Test<Role>!12 option sets permanent pattern passwords.
-    The console refuses it for any other customer.
+  - **Test customers only**: **New passwords for all** gives every login ID a new one-time
+    password and signs everyone out (ADR 166). There are no pattern passwords.
   - **Email logins**: **Send N invitations**. The worker sends at most 40 invitations a
     day (for all customers together) and sends the rest automatically as the allowance
     frees up. People sign in with **email** and the code they are sent.
@@ -1698,8 +1698,7 @@ The production database has no dev seed.
 
 The two test customers (`docs/onboarding/test-data`, ADR 009) through the Platform Admin
 console, exactly as a real customer would be loaded. Each is created as a **test
-customer** (the `Test<Role>!12` passwords are allowed only for those, and the flag cannot
-be changed later) with the **same first account owner as its `07_users.csv`**: a username
+customer** (the flag cannot be changed later) with the **same first account owner as its `07_users.csv`**: a username
 login without email, so there is no second owner after the import and no email is sent.
 Tested end to end on an empty database with the same console functions and worker.
 
@@ -1782,19 +1781,17 @@ report.
 
 **5. Logins**: the customer's page → **Logins**.
 
-- Username logins: "0 of 113 have a login; 113 waiting" (Test Solo Bar Co: 0 of 9). Tick
-  **Set passwords by the Test<Role>!12 rule** → **Create 113 username logins** (9). Test
-  Company takes about a minute. Every password is `Test` + the job title without spaces
-  - `!12` (`TestAccountOwner!12`, `TestBarManager!12`) and is kept at sign-in; the list
-    and the one-time CSV show them, and `TEST_LOGINS_do_not_commit.csv` has the same. If it
-    stops part-way with an error, press the button again: it goes on with those still
-    waiting.
+- Username logins: "0 of 113 have a login; 113 waiting" (Test Solo Bar Co: 0 of 9).
+  **Create 113 sign-ins** (9). Test Company takes about a minute. Every password is a random
+  one-time password (ADR 166), changed at first sign-in; print the login sheet or download
+  the one-time CSV, as nothing keeps them. If it stops part-way with an error, press the
+  button again: it goes on with those still waiting.
 - Email invitations: 0 waiting. The test customers have no email logins, so nothing is
   sent and the daily email allowance is untouched.
 
 **6. Check**: sign out of the console, open `https://<domainName>`, sign in as
-`test.account-owner` / `TestAccountOwner!12` (and `test.solo.bar-manager` /
-`TestBarManager!12`); each sees only their own customer. In `/platform` both customers
+`test.account-owner` (and `test.solo.bar-manager`) with the sheet's password; each sees
+only their own customer. In `/platform` both customers
 show as `active` and `test`, with 113 and 9 active people.
 
 ### Fixing an extra account owner
@@ -2285,8 +2282,8 @@ test customers are re-imported. No stack change.
    people: `test.guest-relations-executive.1.0` and `.1.1`, `test.host.1.0` and `.1.1`,
    `test.store-manager.1.0` and `.1.1`; and, as **Test Bar Manager** (the Solo Bar's owner),
    `test.solo.stock-verifier`. An import never removes a person.
-4. In the console, each customer's **Logins** page: create the new username logins with the
-   Test<Role>!12 rule (`TestPurchaseManager!12`, `TestAccountant!12`, ...).
+4. In the console, each customer's **Logins** page: create the new username logins and print
+   their sheet.
 5. Check: sign in as **Test Front Desk Executive 2.0**. Stock shows Guest House 2.0's supply
    point (they cover its Store Keeper). Sign in as **Test Accountant** (Solo Bar): the stock
    check's Verify step is theirs.
@@ -2792,7 +2789,7 @@ or housekeeping, who read it. No new settings are needed (`lunch_ends` 16:00 and
      Manager's job role with its duties, Shreya Kenkre in Purchase (the same username: changed,
      not added) and the front office handover's new steps (checklists 1 changed). **Apply**, then
      a second dry run shows no changes. Then Logins → create the missing username login for
-     `passport.purchase-manager` (password `TestPurchaseManager!12`) if she has none.
+     `passport.purchase-manager` if she has none (her password is on the printed sheet).
    - **The test customers** (test environment only): the step 7 zips. Test Company: its two
      Purchase Managers gain ACCOUNTS at their outlet's supply point (job role access 2 new).
 5. Check, at 380 px:

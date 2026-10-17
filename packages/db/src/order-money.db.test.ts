@@ -135,3 +135,128 @@ describe('order values (KI-09)', () => {
     });
   });
 });
+
+describe('money on adjustments and order reasons (ADR 166)', () => {
+  it("a chef de partie's wastage adjustment shows them no ₹; the chef and its approver see it", async () => {
+    await inRolledBackTx(async (c) => {
+      await c.query(`select set_config('app.user_id', $1, true)`, [ids.user(CHEF)]);
+      const it = (
+        await c.query<{ item_id: string; avg: string; limit: string }>(
+          `select s.item_id, s.avg_cost as avg, inv.wastage_threshold($1) as limit
+             from inv.stock_level s where s.delivery_node_id = $1 and s.avg_cost > 0
+              and (s.on_hand - 1) * s.avg_cost > inv.wastage_threshold($1)
+            order by s.avg_cost desc, s.item_id limit 1`,
+          [kitchen()],
+        )
+      ).rows[0]!;
+      await c.query(`select set_config('app.user_id', '', true)`);
+      const qty = Math.ceil(Number(it.limit) / Number(it.avg)) + 1;
+      const photo = `wastage/${ids.tenant()}/${kitchen()}/${crypto.randomUUID()}.jpg`;
+      const w = await one<{ id: string }>(
+        c,
+        CDP,
+        `select inv.record_wastage($1, $2::jsonb) as id`,
+        [
+          kitchen(),
+          JSON.stringify([{ item_id: it.item_id, qty, reason: 'spoiled', photo_key: photo }]),
+        ],
+      );
+      const { adj, req } = (
+        await c.query<{ adj: string; req: string }>(
+          `select a.id as adj, a.wf_request_id as req
+             from inv.wastage w join inv.stock_adjustment a on a.id = w.adjustment_id
+            where w.id = $1`,
+          [w.id],
+        )
+      ).rows[0]!;
+      // the adjustment page's reads
+      const page = `
+        select a.id, case when inv.sees_adjustment_money(a.id) then a.amount end as amount,
+               (select array_agg(case when inv.sees_adjustment_money(a.id) then l.unit_cost end)
+                  from inv.stock_adjustment_line l where l.adjustment_id = a.id) as costs
+          from inv.stock_adjustment a where a.id = $1`;
+      const cdp = await one<{ id: string; amount: string | null; costs: (string | null)[] }>(
+        c,
+        CDP,
+        page,
+        [adj],
+      );
+      expect(cdp).toEqual({ id: adj, amount: null, costs: [null] });
+      for (const who of [CHEF, COST]) {
+        const r = await one<{ amount: string | null; costs: (string | null)[] }>(c, who, page, [
+          adj,
+        ]);
+        expect(Number(r.amount), who).toBeGreaterThan(0);
+        expect(Number(r.costs[0]), who).toBeGreaterThan(0);
+      }
+      // whoever may approve it sees what they approve
+      const approvers = (
+        await c.query<{ id: string }>(
+          `select u as id from wf.request r, unnest(inv.step_people(r.id, r.current_step)) u
+            where r.id = $1`,
+          [req],
+        )
+      ).rows;
+      expect(approvers.length).toBeGreaterThan(0);
+      for (const a of approvers) {
+        const r = await attemptAs<{ sees: boolean }>(
+          c,
+          a.id,
+          'select inv.sees_adjustment_money($1) as sees',
+          [adj],
+        );
+        expect(r.rows?.[0]?.sees).toBe(true);
+      }
+      // another company never
+      const solo = await attemptAs<{ sees: boolean }>(
+        c,
+        ids.user('test.solo.bar-manager'),
+        'select inv.sees_adjustment_money($1) as sees',
+        [adj],
+      );
+      expect(solo.rows?.[0]?.sees).toBe(false);
+    });
+  });
+
+  it('an order\'s "Worth ₹X" reason reaches its approver and money readers only', async () => {
+    await inRolledBackTx(async (c) => {
+      await c.query(
+        `update core.tenant set settings = settings || '{"purchase_approval": "above:1000"}'
+          where id = $1`,
+        [ids.tenant()],
+      );
+      const onions = (
+        await c.query<{ id: string }>(
+          `select id from inv.item where tenant_id = $1 and sku = 'ONIONS'`,
+          [ids.tenant()],
+        )
+      ).rows[0]!.id;
+      const po = await one<{ id: string }>(
+        c,
+        CHEF,
+        `select inv.request_supplies($1, $2::jsonb) as id`,
+        [kitchen(), JSON.stringify([{ item_id: onions, qty: 30 }])],
+      );
+      const q = `select why, may_act from inv.po_approval($1)`;
+      expect(await one(c, CHEF, q, [po.id])).toMatchObject({ why: 'Worth ₹1050, above ₹1000' });
+      // a chef de partie follows the kitchen's orders but reads no money
+      expect(await one(c, CDP, q, [po.id])).toEqual({
+        why: 'Over the amount that needs approval',
+        may_act: false,
+      });
+      const approvers = (
+        await c.query<{ id: string }>(
+          `select u as id from inv.purchase_order p join wf.request r on r.id = p.wf_request_id,
+                  unnest(inv.step_people(r.id, r.current_step)) u
+            where p.id = $1`,
+          [po.id],
+        )
+      ).rows;
+      expect(approvers.length).toBeGreaterThan(0);
+      for (const a of approvers) {
+        const r = await attemptAs<{ why: string; may_act: boolean }>(c, a.id, q, [po.id]);
+        expect(r.rows?.[0]).toEqual({ why: 'Worth ₹1050, above ₹1000', may_act: true });
+      }
+    });
+  });
+});

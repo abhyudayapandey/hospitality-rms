@@ -191,14 +191,17 @@ catalogue is `packages/domain/src/duties.ts`; a test keeps this table in step wi
 
 Fallbacks are shown in the `source` column of file 99 (see the Guest House Cook).
 
-## Test passwords
+## Usernames and passwords
 
-`Test` + job title without spaces + `!12`, e.g. Bar Manager → `TestBarManager!12`. Usernames tell outlets apart: `test.bar-manager.1.0`, `test.bar-manager.3.0`, `test.solo.bar-manager`.
+Usernames tell outlets apart: `test.bar-manager.1.0`, `test.bar-manager.3.0`,
+`test.solo.bar-manager`. Locally the dev login needs no password. In a deployed app, the
+console's **Logins** page gives each person a random one-time password on the printed sheet
+(ADR 166); no password is written in this repository, which is public.
 Platform Admin accounts are not in these files: they are created separately, with a strong password and authenticator-app MFA.
 
 ## Second people
 
-A second person in the same job at the same place, ending in `-b`. Same password rule.
+A second person in the same job at the same place, ending in `-b`.
 
 - Hotel 1.0: `test.commis-b.1.0`, `test.bartender-b.1.0`, `test.steward-b.1.0`,
   `test.room-attendant-b.1.0`.
