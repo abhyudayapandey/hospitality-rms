@@ -483,6 +483,8 @@ describe('every list links to a task the person can open, and every button there
           end if;
           return null;
         end $$`);
+        // a function is no one else's by default (ADR 166): the app's role runs it below
+        await c.query('grant execute on function pg_temp.check_task(uuid) to app_rw');
         const users = (
           await c.query<{ id: string; username: string }>(
             `select u.id, u.username from core.app_user u join core.tenant t on t.id = u.tenant_id
