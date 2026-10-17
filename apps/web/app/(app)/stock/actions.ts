@@ -58,7 +58,8 @@ export interface CountSummary {
 
 export async function submitCount(
   countId: string,
-  lines: { item_id: string; counted_qty: number }[],
+  /** ago_ms: how long ago the line was counted (ADR 168) */
+  lines: { item_id: string; counted_qty: number; ago_ms?: number }[],
 ): Promise<ActionResult<CountSummary>> {
   return run('submit_count', async (tx) => {
     const r = await sql<{ s: CountSummary }>`
@@ -202,6 +203,8 @@ export interface ReceivedLine {
   item_id: string;
   qty: number;
   amount: number;
+  /** came free (a sample, an offer, a replacement): no amount, a reason (ADR 168) */
+  free_reason?: string;
   /** into the store or to the department that asked (ADR 080) */
   to?: 'store' | 'department';
   /** the expiry date, YYYY-MM-DD, if it has one */
@@ -221,11 +224,11 @@ export async function receiveGoods(
 ): Promise<ActionResult<{ id: string }>> {
   return run('receive_goods', async (tx) => {
     const clean = lines
-      .filter((l) => Number.isFinite(l.qty) && Number.isFinite(l.amount))
+      .filter((l) => Number.isFinite(l.qty) && (l.free_reason || Number.isFinite(l.amount)))
       .map((l) => ({
         item_id: l.item_id,
         qty: l.qty,
-        amount: l.amount,
+        ...(l.free_reason ? { free: true, free_reason: l.free_reason } : { amount: l.amount }),
         ...(l.to && { to: l.to }),
         ...(l.expires_on &&
           /^\d{4}-\d{2}-\d{2}$/.test(l.expires_on) && { expires_on: l.expires_on }),
@@ -234,8 +237,14 @@ export async function receiveGoods(
       select inv.receive_goods(${po}::uuid, ${json(clean)}::jsonb, ${idempotencyKey}) as id`.execute(
       tx,
     );
-    if (bill && bill.files.length > 0) {
-      const total = clean.reduce((t, l) => t + l.amount, 0);
+    // the bill is for what was typed on the receipt, in whole paise as the receipt keeps it
+    // (ADR 168): never a float's sum
+    const paise = clean.reduce(
+      (t, l) => t + (l.qty > 0 && 'amount' in l ? Math.round(l.amount * 100) : 0),
+      0,
+    );
+    const total = paise / 100;
+    if (bill && bill.files.length > 0 && total > 0) {
       await sql`
         select inv.add_bill(null, ${po}::uuid, null, null, ${bill.bill_no}, current_date,
                             ${total}, null, ${bill.files}::text[], ${`${idempotencyKey}:bill`})`.execute(

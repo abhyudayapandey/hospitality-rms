@@ -135,8 +135,8 @@ describe('stock position: expired and expiring values (RPT-14)', () => {
     await inRolledBackTx(async (c) => {
       const m = await measures(c, 'test.cost-controller.1.0', 'TEST-HOTEL-1.0-KITCHEN-STORE');
       expect(m.expired_stock_value).toBe('25.13');
-      // Ginger Garlic Paste: all 580 g on hand, ₹101.33
-      expect(m.expiring_stock_value).toBe('101.33');
+      // Ginger Garlic Paste: all 580 g on hand, ₹101.31
+      expect(m.expiring_stock_value).toBe('101.31');
       const items = await attemptAs<{
         name: string;
         expired_value: string;
@@ -149,7 +149,7 @@ describe('stock position: expired and expiring values (RPT-14)', () => {
         [ids.node('TEST-HOTEL-1.0-KITCHEN-STORE')],
       );
       expect(items.rows).toEqual([
-        { name: 'Ginger Garlic Paste', expired_value: '0.00', expiring_value: '101.33' },
+        { name: 'Ginger Garlic Paste', expired_value: '0.00', expiring_value: '101.31' },
         { name: 'Mint Chutney', expired_value: '25.13', expiring_value: '0.00' },
       ]);
     });

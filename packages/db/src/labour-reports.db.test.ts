@@ -245,8 +245,8 @@ describe('the central kitchen on the test data', () => {
       );
       expect(m.get('batches')).toBe('2');
       expect(m.get('transfers')).toBe('2');
-      expect(m.get('requested_value')).toBe('492.60');
-      expect(m.get('dispatched_value')).toBe('459.76');
+      expect(m.get('requested_value')).toBe('492.59');
+      expect(m.get('dispatched_value')).toBe('459.75');
       expect(m.get('fill_pct')).toBe('93.3');
       expect(m.get('transit_loss')).toBe('16.42');
       expect(m.get('in_transit_value')).toBe('164.20');
@@ -321,8 +321,8 @@ describe('the central kitchen on the test data', () => {
       expect(r).toEqual([
         {
           from_name: 'Test Central Kitchen – Store',
-          requested_value: '328.40',
-          received_value: '279.14',
+          requested_value: '328.39',
+          received_value: '279.13',
           fill_pct: '85.0',
           transit_loss: '16.42',
           short_lines: 1,

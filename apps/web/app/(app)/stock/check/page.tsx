@@ -36,7 +36,8 @@ export default async function StockCheckPage({ searchParams }: { searchParams: S
         from inv.stock_check_view(${node.id}::uuid)`.execute(tx);
     const open = await sql<{ id: string }>`
       select id from inv.stock_check
-       where delivery_node_id = ${node.id}::uuid and status <> 'finished' limit 1`.execute(tx);
+       where delivery_node_id = ${node.id}::uuid and status in ('open', 'review')
+         and not inv.count_too_old(started_at) limit 1`.execute(tx);
     return { rows: rows.rows, open: open.rows[0]?.id ?? null };
   });
   const verified = data.rows.filter((r) => r.verified_at).length;

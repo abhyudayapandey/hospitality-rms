@@ -109,6 +109,18 @@ export async function minibarRoom(tx: Tx, room: string): Promise<MinibarItem[]> 
   return (await sql<MinibarItem>`select * from ops.minibar_room(${room}::uuid)`.execute(tx)).rows;
 }
 
+/** What should be in the room of each item now, and whether its last refill is open (ADR 168). */
+export interface MinibarExpected {
+  item_id: string;
+  expected: string;
+  refill_open: boolean;
+}
+
+export async function minibarExpected(tx: Tx, room: string): Promise<MinibarExpected[]> {
+  return (await sql<MinibarExpected>`select * from ops.minibar_expected(${room}::uuid)`.execute(tx))
+    .rows;
+}
+
 export async function minibarHistory(tx: Tx, room: string): Promise<MinibarCheckRow[]> {
   return (await sql<MinibarCheckRow>`select * from ops.minibar_history(${room}::uuid)`.execute(tx))
     .rows;

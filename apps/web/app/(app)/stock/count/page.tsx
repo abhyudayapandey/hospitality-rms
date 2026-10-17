@@ -20,7 +20,9 @@ export default async function CountPage({ searchParams }: { searchParams: Search
       started_at: Date;
       submitted_at: Date | null;
     }>`
-      select id, status, started_at, submitted_at from inv.stock_count
+      -- an open count older than a day is closed when the next one starts (ADR 168)
+      select id, case when status = 'open' and inv.count_too_old(started_at) then 'expired'
+                      else status end as status, started_at, submitted_at from inv.stock_count
        where delivery_node_id = ${ctx.node!.id}::uuid
        order by started_at desc limit 10`.execute(tx);
     return r.rows;

@@ -29,6 +29,7 @@ test('the room attendant checks a minibar; the front desk adds it to the bill', 
     await expect(room103).toHaveText(/^\s*103\s*$/);
     await room103.getByRole('link', { name: /^Room 103,/ }).click();
     await page.waitForURL(/\/minibar\/[0-9a-f-]{36}$/);
+    const roomPage = page.url();
 
     const form = page.getByRole('form', { name: 'Minibar check' });
     // nothing is filled in: saving now asks for every count
@@ -45,6 +46,9 @@ test('the room attendant checks a minibar; the front desk adds it to the bill', 
     await expect(form).toContainText("Saved. Test Cola 300ml ×1 to add to the guest's bill");
     await expect(page.getByTestId('minibar-history')).not.toContainText('₹');
     await expect(page.getByTestId('minibar-history')).toContainText('Test Cola 300ml ×1');
+    // not counted again until it is refilled: the next guest is never charged twice (ADR 168)
+    await expect(page.getByTestId('minibar-refill-first')).toBeVisible();
+    await expect(form.getByRole('button', { name: 'Save' })).toHaveCount(0);
 
     // the refill is the attendant's To do item: refilled from the Bar Store
     await page.goto('/tasks');
@@ -60,6 +64,11 @@ test('the room attendant checks a minibar; the front desk adds it to the bill', 
     await expect(page.getByTestId('minibar-used')).not.toContainText('₹');
     await page.getByRole('button', { name: 'Refilled' }).click();
     await expect(page.getByTestId('task-status')).toContainText(/done/i);
+    // refilled: the room can be checked again
+    await page.goto(roomPage);
+    await expect(
+      page.getByRole('form', { name: 'Minibar check' }).getByRole('button', { name: 'Save' }),
+    ).toBeVisible();
 
     // the bill goes to the front desk at work when it is due (ADR 148): due when they work,
     // so the test doesn't depend on the hour it runs at
