@@ -39,12 +39,14 @@ const { proxy } = await import('../proxy');
 const SECRET = 'test-secret-0123456789-abcdefghijklmnop';
 
 /** A request with a Cognito session last checked `ago` seconds back. */
+let n = 0;
 async function request(ago: number) {
   const now = nowSeconds();
   const session = { ...newSession('user-1', 'cognito', now), ref: now - ago };
   const req = new NextRequest('http://localhost:3000/');
   req.cookies.set(SESSION_COOKIE, await signSession(session, SECRET));
-  req.cookies.set('oo_refresh', 'refresh-token');
+  // a token of its own: one session's refresh answer is shared for 30 s (ADR 169)
+  req.cookies.set('oo_refresh', `refresh-token-${++n}`);
   return req;
 }
 

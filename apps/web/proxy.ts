@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { appUrl } from './lib/app-url';
+import { sharedRefresh } from './lib/auth/shared-refresh';
 import {
   CognitoUnavailable,
   cognitoConfig,
@@ -95,8 +96,11 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
     if (!cfg || !refresh) return toLogin(req, 'expired');
     const started = Date.now();
     try {
-      const tokens = await refreshTokens(cfg, refresh);
-      await withinTime(verifyIdToken(cfg, tokens.idToken));
+      const tokens = await sharedRefresh(refresh, async () => {
+        const t = await refreshTokens(cfg, refresh);
+        await withinTime(verifyIdToken(cfg, t.idToken));
+        return t;
+      });
       newRefresh = tokens.refreshToken;
       payload = { ...payload, ref: now };
       const ms = Date.now() - started;
