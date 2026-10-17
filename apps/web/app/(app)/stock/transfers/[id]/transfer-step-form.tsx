@@ -14,6 +14,7 @@ import { actOnRequest } from '@/app/(app)/inbox/actions';
 import { dispatchTransfer, receiveTransfer } from '../../actions';
 import { ItemThumb } from '@/components/item-thumb';
 import { formatQty } from '@/lib/qty';
+import { callAction, useActionKey } from '@/lib/call-action';
 
 export interface TransferLine {
   item_id: string;
@@ -55,6 +56,8 @@ export function TransferStepForm({
       : Object.fromEntries(lines.map((l) => [l.item_id, String(n(l.requested_qty))])),
   );
   const [pending, start] = useTransition();
+  // one key per decision, kept when a try does not get through (ADR 169)
+  const keys = useActionKey();
   const hydrated = useHydrated();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -71,8 +74,8 @@ export function TransferStepForm({
       const payload = lines.map((l) => ({ item_id: l.item_id, qty: Number(qty[l.item_id] || 0) }));
       const r =
         mode === 'dispatch'
-          ? await dispatchTransfer(transfer, payload)
-          : await receiveTransfer(transfer, payload);
+          ? await callAction(dispatchTransfer, transfer, payload)
+          : await callAction(receiveTransfer, transfer, payload);
       if (!r.ok) {
         setError(r.message);
         return;
@@ -83,8 +86,9 @@ export function TransferStepForm({
   const approve = () =>
     start(async () => {
       setError(null);
-      const r = await actOnRequest(requestId, 'approve', crypto.randomUUID());
+      const r = await callAction(actOnRequest, requestId, 'approve', keys.key('approve'));
       if (r.ok) {
+        keys.done();
         setDone('Approved. It goes to the store now.');
         router.refresh();
       } else setError(r.message);
@@ -99,8 +103,9 @@ export function TransferStepForm({
         setError('Say why it is rejected.');
         return;
       }
-      const r = await actOnRequest(requestId, 'reject', crypto.randomUUID(), why);
+      const r = await callAction(actOnRequest, requestId, 'reject', keys.key('reject'), why);
       if (r.ok) {
+        keys.done();
         setDone('Rejected.');
         router.refresh();
       } else setError(r.message);

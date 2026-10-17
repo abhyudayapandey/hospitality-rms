@@ -6,6 +6,7 @@ import { registerDef } from '@outlet-ops/domain';
 import { ErrorBox, inputClass, secondaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { closeRegisterEntry } from './actions';
+import { callAction } from '@/lib/call-action';
 
 /** Close an open entry (returned, left, back in), with its outcome and a note where asked. */
 export function CloseEntry({ entry, register }: { entry: string; register: string }) {
@@ -47,7 +48,8 @@ export function CloseEntry({ entry, register }: { entry: string; register: strin
         className={secondaryButton}
         onClick={() =>
           start(async () => {
-            const r = await closeRegisterEntry(
+            const r = await callAction(
+              closeRegisterEntry,
               entry,
               close.outcomes ? outcome : null,
               note || null,

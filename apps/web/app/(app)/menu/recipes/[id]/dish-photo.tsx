@@ -6,6 +6,7 @@ import { ErrorBox, primaryButton, secondaryButton } from '@/components/messages'
 import { PhotoField } from '@/components/photo-field';
 import { useHydrated } from '@/lib/use-hydrated';
 import { getDishUploadUrl, setDishPhoto } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 /** Take or change the dish's photo (ADR 078); menu.set_dish_photo checks who. */
 export function DishPhoto({ dish, has }: { dish: string; has: boolean }) {
@@ -18,7 +19,7 @@ export function DishPhoto({ dish, has }: { dish: string; has: boolean }) {
   const save = (photo: string | null) =>
     start(async () => {
       setError(null);
-      const r = await setDishPhoto(dish, photo);
+      const r = await callAction(setDishPhoto, dish, photo);
       if (!r.ok) return setError(r.message);
       setOpen(false);
       setKey(null);

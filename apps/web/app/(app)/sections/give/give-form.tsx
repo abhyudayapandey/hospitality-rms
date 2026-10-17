@@ -6,6 +6,7 @@ import { Initials } from '@/components/initials';
 import { ErrorBox, primaryButton, secondaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { giveSections } from '../actions';
+import { callAction } from '@/lib/call-action';
 
 /**
  * Give sections as the roster by person (ADR 133): a row per person with every section as a
@@ -59,7 +60,8 @@ export function GiveSectionsForm({
     start(async () => {
       setError(null);
       for (const p of changed) {
-        const r = await giveSections(
+        const r = await callAction(
+          giveSections,
           department,
           day,
           p.user_id,

@@ -7,6 +7,7 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { markJobDone, renewLicence } from './actions';
 import { DocumentFiles, type DocumentFile } from './document-files';
 import { DateInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
 
 /** A form field's text (a file input gives none). */
 const field = (f: FormData, name: string) => {
@@ -50,7 +51,7 @@ export function RenewForm({
         const f = new FormData(e.currentTarget);
         start(async () => {
           setError(null);
-          const r = await renewLicence({
+          const r = await callAction(renewLicence, {
             id: licence,
             number: field(f, 'number'),
             issued_on: field(f, 'issued_on') || null,
@@ -137,7 +138,7 @@ export function DoneForm({
         const f = new FormData(e.currentTarget);
         start(async () => {
           setError(null);
-          const r = await markJobDone({
+          const r = await callAction(markJobDone, {
             id: job,
             done_on: field(f, 'done_on'),
             files: files.map((x) => x.key),

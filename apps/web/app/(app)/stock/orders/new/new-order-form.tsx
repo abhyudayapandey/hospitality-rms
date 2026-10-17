@@ -12,6 +12,7 @@ import { requestSupplies } from '../../actions';
 import { ItemThumb } from '@/components/item-thumb';
 import { Stepper } from '@/components/stepper';
 import { qtyStep, shortFirst } from '@/lib/short-first';
+import { callAction } from '@/lib/call-action';
 
 export interface OrderLine {
   item_id: string;
@@ -59,7 +60,7 @@ export function NewOrderForm({
         setError('Check the quantities.');
         return;
       }
-      const r = await requestSupplies(node, chosen, notes, key);
+      const r = await callAction(requestSupplies, node, chosen, notes, key);
       if (r.ok) router.push(`/stock/orders/${r.data.id}?node=${node}`);
       else setError(r.message);
     });

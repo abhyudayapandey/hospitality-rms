@@ -6,6 +6,7 @@ import { ALWAYS_ON, BUNDLES, MODULES, needsOf } from '@outlet-ops/domain';
 import { ErrorBox } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { setBundle, setModule } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 /** One block of the customer, as platform.customer_modules returns it. */
 export interface CustomerModule {
@@ -58,7 +59,7 @@ export function Bundles({
                   label={b.name}
                   on={inPlan}
                   confirmText={`Every part of it stops for everyone at ${customer}. Nothing is deleted.`}
-                  save={(next) => setBundle(tenantId, b.code, next)}
+                  save={(next) => callAction(setBundle, tenantId, b.code, next)}
                 />
               </div>
               {inPlan && (
@@ -88,7 +89,7 @@ export function Bundles({
                           label={nameOf(code)}
                           on={switched}
                           confirmText={`It stops for everyone at ${customer}. Nothing is deleted.`}
-                          save={(next) => setModule(tenantId, code, next)}
+                          save={(next) => callAction(setModule, tenantId, code, next)}
                         />
                       </li>
                     );

@@ -6,6 +6,7 @@ import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/mes
 import { useHydrated } from '@/lib/use-hydrated';
 import { setPrice } from '../../actions';
 import { DateInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -40,7 +41,7 @@ export function PriceForm({
             setError('Enter a price of zero or more.');
             return;
           }
-          const r = await setPrice(menuItemId, outletId, n, from);
+          const r = await callAction(setPrice, menuItemId, outletId, n, from);
           if (!r.ok) setError(r.message);
           else {
             setDone(`Price saved from ${from}.`);

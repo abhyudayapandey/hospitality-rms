@@ -10,6 +10,7 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { createTask, type Assign } from '../actions';
 import { AssignPicker } from '../assign-picker';
 import { DateInput, TimeInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
 
 export function TaskForm({
   node,
@@ -45,7 +46,7 @@ export function TaskForm({
       const parsed = parseSteps(steps);
       if (typeof parsed === 'string') return setError(parsed);
       if (!title.trim()) return setError('Give the task a title.');
-      const r = await createTask({
+      const r = await callAction(createTask, {
         node,
         title,
         description,

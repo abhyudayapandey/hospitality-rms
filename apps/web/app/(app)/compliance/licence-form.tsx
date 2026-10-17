@@ -9,6 +9,7 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { saveLicence, type LicenceInput } from './actions';
 import { DocumentFiles, type DocumentFile } from './document-files';
 import { DateInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
 
 /** A form field's text (a file input gives none). */
 const field = (f: FormData, name: string) => {
@@ -67,7 +68,8 @@ export function LicenceForm({
         const f = new FormData(e.currentTarget);
         start(async () => {
           setError(null);
-          const r = await saveLicence(
+          const r = await callAction(
+            saveLicence,
             {
               id: existing?.id ?? null,
               node,

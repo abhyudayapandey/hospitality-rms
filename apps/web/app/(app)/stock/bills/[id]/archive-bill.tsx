@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, secondaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { archiveBill } from '../actions';
+import { callAction } from '@/lib/call-action';
 
 /** A wrong bill is archived with a reason, never deleted (ADR 050). */
 export function ArchiveBill({ bill, back }: { bill: string; back: string }) {
@@ -32,7 +33,7 @@ export function ArchiveBill({ bill, back }: { bill: string; back: string }) {
       onSubmit={(e) => {
         e.preventDefault();
         start(async () => {
-          const r = await archiveBill(bill, reason);
+          const r = await callAction(archiveBill, bill, reason);
           if (r.ok) router.push(back);
           else setError(r.message);
         });

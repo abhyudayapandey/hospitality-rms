@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { archiveSetup } from './actions';
+import { callAction } from '@/lib/call-action';
 
 // "Throw away this set-up" (ADR 064) in two taps, like Go live: the first asks, the second
 // does it. The draft is kept, archived, out of every list; a company that its Check everything
@@ -66,7 +67,7 @@ export function ThrowAway({
           onClick={() =>
             start(async () => {
               setError(null);
-              const r = await archiveSetup(id);
+              const r = await callAction(archiveSetup, id);
               if (!r.ok) {
                 setError(r.message);
                 return;

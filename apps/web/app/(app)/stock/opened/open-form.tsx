@@ -9,6 +9,7 @@ import { packAmount, packCount } from '@/lib/pack';
 import { Stepper } from '@/components/stepper';
 import { useHydrated } from '@/lib/use-hydrated';
 import { openPack } from '../actions';
+import { callAction } from '@/lib/call-action';
 
 export interface PackOption {
   item_id: string;
@@ -60,7 +61,7 @@ export function OpenPackForm({
       }
       const n = item.pack_size ? many * Number(item.pack_size) : Number(qty);
       if (!Number.isFinite(n) || n <= 0) return setError('Enter how much you opened.');
-      const r = await openPack(node, item.item_id, n, key);
+      const r = await callAction(openPack, node, item.item_id, n, key);
       if (!r.ok) return setError(r.message);
       setKey(crypto.randomUUID());
       router.push(`/stock/opened/label/${r.data.id}`);

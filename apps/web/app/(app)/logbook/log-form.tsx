@@ -6,6 +6,7 @@ import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import type { LogbookTargets } from '@/lib/logbook';
 import { useHydrated } from '@/lib/use-hydrated';
 import { writeLog, type HandoverTo } from './actions';
+import { callAction } from '@/lib/call-action';
 
 /**
  * Write in the logbook (ADR 089): a handover, for the next shift somewhere at the outlet, a job
@@ -35,7 +36,7 @@ export function LogForm({ place, targets }: { place: string; targets: LogbookTar
   const save = () =>
     start(async () => {
       setError(null);
-      const r = await writeLog({
+      const r = await callAction(writeLog, {
         place,
         kind,
         body,

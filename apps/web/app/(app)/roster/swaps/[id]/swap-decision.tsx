@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { RequestDecision } from '@/components/request-decision';
 import { approveSwap, reassignSwap } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 /** Approve (naming the warnings shown) or reject; ADR 019. */
 export function SwapDecision({
@@ -19,7 +20,7 @@ export function SwapDecision({
     <RequestDecision
       requestId={requestId}
       back="/tasks"
-      approve={() => approveSwap(swap, '', accept)}
+      approve={() => callAction(approveSwap, swap, '', accept)}
       approveLabel={accept.length > 0 ? 'Approve anyway' : 'Approve'}
     />
   );
@@ -47,7 +48,7 @@ export function ReassignButton({
         onClick={() =>
           start(async () => {
             setError(null);
-            const r = await reassignSwap(swap, worker, accept);
+            const r = await callAction(reassignSwap, swap, worker, accept);
             if (!r.ok) setError(r.message);
             else {
               setDone(true);

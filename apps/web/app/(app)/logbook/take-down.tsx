@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { takeDownLog } from './actions';
+import { callAction } from '@/lib/call-action';
 
 export function TakeDown({ entry }: { entry: string }) {
   const router = useRouter();
@@ -19,7 +20,7 @@ export function TakeDown({ entry }: { entry: string }) {
         className="min-h-11 text-sm text-slate-600 underline"
         onClick={() =>
           start(async () => {
-            const r = await takeDownLog(entry);
+            const r = await callAction(takeDownLog, entry);
             if (!r.ok) setError(r.message);
             else router.refresh();
           })

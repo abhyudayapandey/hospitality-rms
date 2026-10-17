@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, secondaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { closePack } from '@/app/(app)/stock/actions';
+import { callAction } from '@/lib/call-action';
 
 /**
  * An opened pack's ending (ADR 093): used up (nothing leaves the store), or thrown away as
@@ -18,7 +19,7 @@ export function PackButtons({ pack, expired }: { pack: string; expired: boolean 
   const act = (thrown: boolean) =>
     start(async () => {
       setError(null);
-      const r = await closePack(pack, thrown);
+      const r = await callAction(closePack, pack, thrown);
       if (!r.ok) setError(r.message);
       else router.refresh();
     });

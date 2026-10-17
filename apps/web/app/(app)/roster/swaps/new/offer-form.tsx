@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { useHydrated } from '@/lib/use-hydrated';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { offerSwap } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 export function OfferForm({
   assignment,
@@ -26,7 +27,7 @@ export function OfferForm({
         e.preventDefault();
         start(async () => {
           setError(null);
-          const r = await offerSwap(assignment, to, note);
+          const r = await callAction(offerSwap, assignment, to, note);
           if (!r.ok) setError(r.message);
           else router.push('/roster/swaps');
         });

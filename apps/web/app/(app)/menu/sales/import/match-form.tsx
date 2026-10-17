@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, secondaryButton, StatusBox } from '@/components/messages';
 import { formatMoney } from '@/lib/format';
 import { mapPosItem, repostPos } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 interface Unmatched {
   code: string;
@@ -83,13 +84,13 @@ export function MatchForm({
             setDone(null);
             for (const [code, item] of Object.entries(pick)) {
               if (!item) continue;
-              const r = await mapPosItem(outlet, code, item);
+              const r = await callAction(mapPosItem, outlet, code, item);
               if (!r.ok) {
                 setError(r.message);
                 return;
               }
             }
-            const r = await repostPos(importId);
+            const r = await callAction(repostPos, importId);
             if (!r.ok) {
               setError(r.message);
               return;

@@ -14,6 +14,7 @@ import { ItemThumb } from '@/components/item-thumb';
 import { FillToPar } from '@/components/fill-to-par';
 import { Stepper } from '@/components/stepper';
 import { qtyStep } from '@/lib/short-first';
+import { callAction } from '@/lib/call-action';
 
 export interface AskItem extends ItemOption {
   /** the store it comes from; null: no other store keeps it, so it is bought */
@@ -75,7 +76,7 @@ export function TransferRequestForm({
   const submit = () =>
     start(async () => {
       setError(null);
-      const r = await askForStock(to, lines, note, key);
+      const r = await callAction(askForStock, to, lines, note, key);
       if (!r.ok) setError(r.message);
       else if (r.data.ids.length === 1) router.push(`/stock/transfers/${r.data.ids[0]}?node=${to}`);
       else router.push(`/stock/transfers?node=${to}`);

@@ -7,6 +7,7 @@ import { ItemThumb } from '@/components/item-thumb';
 import { Stepper } from '@/components/stepper';
 import { useHydrated } from '@/lib/use-hydrated';
 import { issueUniform, recordLaundry, returnUniform } from './actions';
+import { callAction } from '@/lib/call-action';
 
 /** Today's row for an item: what the day already has, added to, never replaced (ADR 113). */
 export interface LaundryToday {
@@ -50,7 +51,7 @@ export function SendForm({
           };
         });
       if (lines.length === 0) return setError('Enter what goes to the laundry.');
-      const r = await recordLaundry(place, day, lines);
+      const r = await callAction(recordLaundry, place, day, lines);
       if (!r.ok) return setError(r.message);
       setV({});
       setSaved(true);
@@ -132,7 +133,7 @@ export function ReceiveForm({
           };
         });
       if (lines.length === 0) return setError('Enter what came back.');
-      const r = await recordLaundry(place, day, lines);
+      const r = await callAction(recordLaundry, place, day, lines);
       if (!r.ok) return setError(r.message);
       setV({});
       router.refresh();
@@ -208,7 +209,7 @@ export function UniformForm({
       if (!person) return setError('Choose who it is for.');
       if (!item.trim()) return setError('Say what was issued.');
       if (!(Number(qty) > 0)) return setError('Say how many.');
-      const r = await issueUniform({ place, person, item, size, qty: Number(qty) });
+      const r = await callAction(issueUniform, { place, person, item, size, qty: Number(qty) });
       if (!r.ok) return setError(r.message);
       setItem('');
       setSize('');
@@ -276,7 +277,7 @@ export function ReturnUniform({ id }: { id: string }) {
         className={secondaryButton}
         onClick={() =>
           start(async () => {
-            const r = await returnUniform(id);
+            const r = await callAction(returnUniform, id);
             if (!r.ok) setError(r.message);
             else router.refresh();
           })

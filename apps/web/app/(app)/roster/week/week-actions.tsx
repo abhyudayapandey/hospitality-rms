@@ -7,6 +7,7 @@ import { Icon } from '@/components/icon';
 import { formatDay } from '@/lib/dates';
 import { ErrorBox, primaryButton, secondaryButton, StatusBox } from '@/components/messages';
 import { addTemplateShifts, discardDrafts, publishWeek, unassignShift } from '../actions';
+import { callAction } from '@/lib/call-action';
 
 /** What "Add template shifts" would do for tomorrow to day 7 (hr.preview_template_shifts). */
 export interface TemplateWindow {
@@ -51,7 +52,7 @@ export function WeekActions({
   const add = () =>
     start(async () => {
       setError(null);
-      const r = await addTemplateShifts(node);
+      const r = await callAction(addTemplateShifts, node);
       if (!r.ok) return setError(r.message);
       after(
         r.data === 0
@@ -62,7 +63,7 @@ export function WeekActions({
   const discard = () =>
     start(async () => {
       setError(null);
-      const r = await discardDrafts(node, monday);
+      const r = await callAction(discardDrafts, node, monday);
       if (!r.ok) return setError(r.message);
       after(
         r.data === 0
@@ -73,7 +74,7 @@ export function WeekActions({
   const publish = () =>
     start(async () => {
       setError(null);
-      const r = await publishWeek(node, monday);
+      const r = await callAction(publishWeek, node, monday);
       if (!r.ok) return setError(r.message);
       after(
         `Published ${plural(r.data.n, 'change')}. Staff have been told.` +
@@ -201,7 +202,7 @@ export function RemoveButton({ assignment, name }: { assignment: string; name: s
         aria-label={`Remove ${name}`}
         onClick={() =>
           start(async () => {
-            const r = await unassignShift(assignment);
+            const r = await callAction(unassignShift, assignment);
             if (!r.ok) setError(r.message);
             else router.refresh();
           })

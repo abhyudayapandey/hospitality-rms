@@ -8,6 +8,7 @@ import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/mes
 import { addDays, daysInclusive, formatDay, isIsoDate } from '@/lib/dates';
 import { requestLeave } from '../roster/actions';
 import { DateInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
 
 export interface LeaveTypeOption {
   id: string;
@@ -59,7 +60,7 @@ export function LeaveForm({
   const submit = () =>
     start(async () => {
       setError(null);
-      const r = await requestLeave(type, from, to, reason, key.current);
+      const r = await callAction(requestLeave, type, from, to, reason, key.current);
       if (!r.ok) return setError(r.message);
       key.current = crypto.randomUUID();
       setDone('Leave requested. Your manager has been asked to approve it.');

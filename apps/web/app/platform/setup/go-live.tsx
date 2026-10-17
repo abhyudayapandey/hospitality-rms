@@ -6,6 +6,7 @@ import { ErrorBox, primaryButton, StatusBox } from '@/components/messages';
 import { usePolling } from '@/components/use-polling';
 import { useHydrated } from '@/lib/use-hydrated';
 import { advanceSetup, applySetup, checkSetup, sendSetupLogins } from './actions';
+import { callAction } from '@/lib/call-action';
 
 // Go live (ADR 064) in two taps: "Check everything" creates the customer and dry runs its
 // files; "Looks right" applies them and sends logins. In between the page follows the worker.
@@ -48,12 +49,12 @@ export function GoLive({ id, stage }: { id: string; stage: Stage }) {
     once.current = due;
     void (async () => {
       if (due === 'advance') {
-        const r = await advanceSetup(id);
+        const r = await callAction(advanceSetup, id);
         if (!r.ok) setError(r.message);
         router.refresh();
         return;
       }
-      const r = await sendSetupLogins(id);
+      const r = await callAction(sendSetupLogins, id);
       if (!r.ok) setError(r.message);
       else setStatus('Invitations are on their way to the owner and everyone with an email.');
     })();
@@ -80,7 +81,7 @@ export function GoLive({ id, stage }: { id: string; stage: Stage }) {
             type="button"
             disabled={!hydrated || pending}
             className={primaryButton}
-            onClick={() => act(() => checkSetup(id))}
+            onClick={() => act(() => callAction(checkSetup, id))}
           >
             Check everything
           </button>
@@ -95,7 +96,7 @@ export function GoLive({ id, stage }: { id: string; stage: Stage }) {
             type="button"
             disabled={!hydrated || pending}
             className={primaryButton}
-            onClick={() => act(() => applySetup(id))}
+            onClick={() => act(() => callAction(applySetup, id))}
           >
             Looks right: apply and send logins
           </button>
@@ -110,7 +111,7 @@ export function GoLive({ id, stage }: { id: string; stage: Stage }) {
             type="button"
             disabled={!hydrated || pending}
             className={primaryButton}
-            onClick={() => act(() => checkSetup(id))}
+            onClick={() => act(() => callAction(checkSetup, id))}
           >
             Check again
           </button>

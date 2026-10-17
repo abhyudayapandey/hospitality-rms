@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, primaryButton, secondaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { addSession, markAttendance } from './actions';
+import { callAction } from '@/lib/call-action';
 
 /** A new training session at a place (ADR 095): what, when, who trains, and whether it is a test. */
 export function SessionForm({ place }: { place: string }) {
@@ -20,7 +21,7 @@ export function SessionForm({ place }: { place: string }) {
     start(async () => {
       setError(null);
       if (!title.trim() || !at) return setError('Say what it is and when.');
-      const r = await addSession({
+      const r = await callAction(addSession, {
         place,
         title,
         startsAt: new Date(at).toISOString(),
@@ -97,7 +98,8 @@ export function AttendanceRow({
   const save = () =>
     start(async () => {
       setError(null);
-      const r = await markAttendance(
+      const r = await callAction(
+        markAttendance,
         session,
         person,
         came,

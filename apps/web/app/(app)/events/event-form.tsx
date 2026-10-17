@@ -9,6 +9,7 @@ import type { EventFormOptions } from './options';
 import { ItemThumb } from '@/components/item-thumb';
 import { Icon } from '@/components/icon';
 import { DateInput, TimeInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
 
 export interface EventDraft {
   id: string;
@@ -77,7 +78,7 @@ export function EventForm({
             ends_at: instant(r.end, r.start),
           })),
       ];
-      const r = await saveEvent({
+      const r = await callAction(saveEvent, {
         id: e.id || null,
         node,
         name: e.name,

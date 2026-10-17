@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { ErrorBox } from '@/components/messages';
 import { respondSwap, withdrawSwap } from '../actions';
+import { callAction } from '@/lib/call-action';
 
 export function SwapResponse({
   swap,
@@ -29,7 +30,7 @@ export function SwapResponse({
           <button
             type="button"
             disabled={pending}
-            onClick={() => run(() => respondSwap(swap, false))}
+            onClick={() => run(() => callAction(respondSwap, swap, false))}
             className="min-h-11 rounded-lg text-sm font-medium ring-1 ring-slate-300 disabled:opacity-50"
           >
             Decline
@@ -37,7 +38,7 @@ export function SwapResponse({
           <button
             type="button"
             disabled={pending}
-            onClick={() => run(() => respondSwap(swap, true))}
+            onClick={() => run(() => callAction(respondSwap, swap, true))}
             className="min-h-11 rounded-lg bg-brand-700 text-sm font-medium text-white disabled:opacity-50"
           >
             Accept
@@ -47,7 +48,7 @@ export function SwapResponse({
         <button
           type="button"
           disabled={pending}
-          onClick={() => run(() => withdrawSwap(swap))}
+          onClick={() => run(() => callAction(withdrawSwap, swap))}
           className="min-h-11 w-full rounded-lg text-sm font-medium ring-1 ring-slate-300 disabled:opacity-50"
         >
           Withdraw offer

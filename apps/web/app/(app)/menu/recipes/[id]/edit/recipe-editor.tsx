@@ -9,6 +9,7 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { saveRecipe } from '../../../actions';
 import { ItemThumb } from '@/components/item-thumb';
 import { DateInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
 
 interface Line {
   ingredient_item_id: string;
@@ -57,7 +58,8 @@ export function RecipeEditor({
             setError('Each line needs an ingredient and a quantity above zero.');
             return;
           }
-          const r = await saveRecipe(
+          const r = await callAction(
+            saveRecipe,
             recipe.kind,
             recipe.subject_id,
             clean,

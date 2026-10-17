@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { setCustomerStatus } from './actions';
+import { callAction } from '@/lib/call-action';
 
 /** Pause (every session and sign-in of the customer ends) or resume, with a reason. */
 export function StatusControl({
@@ -30,7 +31,7 @@ export function StatusControl({
         e.preventDefault();
         start(async () => {
           setError(null);
-          const r = await setCustomerStatus(tenantId, next, reason);
+          const r = await callAction(setCustomerStatus, tenantId, next, reason);
           if (!r.ok) setError(r.message);
           else {
             setReason('');

@@ -14,6 +14,7 @@ import {
   type PreviewRow,
 } from '../../actions';
 import { AppliesBadge, OneTimePassword } from '../parts';
+import { callAction } from '@/lib/call-action';
 
 export function NewPersonForm({
   jobRoles,
@@ -72,12 +73,12 @@ export function NewPersonForm({
         start(async () => {
           setError(null);
           if (!preview) {
-            const r = await previewPerson(p);
+            const r = await callAction(previewPerson, p);
             if (r.ok) setPreview(r.data);
             else setError(r.message);
             return;
           }
-          const r = await createPerson(p);
+          const r = await callAction(createPerson, p);
           if (r.ok) setCreated(r.data);
           else setError(r.message);
         });
@@ -91,7 +92,7 @@ export function NewPersonForm({
           onChange={(e) => set({ displayName: e.target.value })}
           onBlur={() => {
             if (p.displayName && !p.username) {
-              void suggestUsername(p.displayName).then((r) => {
+              void callAction(suggestUsername, p.displayName).then((r) => {
                 if (r.ok) setP((cur) => (cur.username ? cur : { ...cur, username: r.data }));
               });
             }

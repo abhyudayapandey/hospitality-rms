@@ -4,17 +4,20 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { ErrorBox, primaryButton, secondaryButton, StatusBox } from '@/components/messages';
 import { actOnRequest } from '@/app/(app)/inbox/actions';
+import { callAction, useActionKey } from '@/lib/call-action';
 
 export function AdjustmentDecision({ requestId }: { requestId: string }) {
   const router = useRouter();
+  const keys = useActionKey();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const act = (action: 'approve' | 'reject') =>
     start(async () => {
       setError(null);
-      const r = await actOnRequest(requestId, action, crypto.randomUUID());
+      const r = await callAction(actOnRequest, requestId, action, keys.key(action));
       if (r.ok) {
+        keys.done();
         setDone(action === 'approve' ? 'Approved' : 'Rejected');
         setTimeout(() => router.push('/tasks'), 1200);
       } else setError(r.message);

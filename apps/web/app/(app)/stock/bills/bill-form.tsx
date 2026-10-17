@@ -7,6 +7,7 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { addBill } from './actions';
 import { BillFiles, type BillFile } from './bill-files';
 import { DateInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
 
 const OTHER = 'other';
 const today = () => new Date().toISOString().slice(0, 10);
@@ -65,7 +66,8 @@ export function BillForm({
         setError('Enter the amount on the bill.');
         return;
       }
-      const r = await addBill(
+      const r = await callAction(
+        addBill,
         {
           node,
           po,

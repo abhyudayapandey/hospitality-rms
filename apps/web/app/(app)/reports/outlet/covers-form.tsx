@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { setCovers } from './actions';
+import { callAction } from '@/lib/call-action';
 
 const PERIOD_WORDS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' } as const;
 type Period = keyof typeof PERIOD_WORDS;
@@ -42,7 +43,7 @@ export function CoversForm({
         if (!Number.isInteger(n) || n < 0) return setError('Covers are a whole number.');
       }
       for (const p of changed) {
-        const r = await setCovers(outlet, day, p, Number(values[p]));
+        const r = await callAction(setCovers, outlet, day, p, Number(values[p]));
         if (!r.ok) return setError(r.message);
       }
       router.refresh();

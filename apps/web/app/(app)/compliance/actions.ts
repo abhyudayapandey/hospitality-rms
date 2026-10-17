@@ -1,9 +1,9 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { failure, repeatColumns, type ActionResult, type Repeat } from '@outlet-ops/domain';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser, type Tx } from '@/lib/db';
+import { runAction } from '@/lib/run-action';
 import {
   isBillFileType,
   MAX_BILL_BYTES,
@@ -15,20 +15,8 @@ import {
 // Licences and the compliance calendar (ADR 069). Each write is one ops.* SECURITY DEFINER
 // function, which decides access in SQL (COMPLIANCE, or the reminder's To do item; rule 2).
 
-async function run<T>(label: string, fn: (tx: Tx) => Promise<T>): Promise<ActionResult<T>> {
-  const user = await requireUser();
-  try {
-    const data = await withUser(user.id, fn);
-    revalidatePath('/compliance', 'layout');
-    revalidatePath('/tasks', 'layout');
-    revalidatePath('/');
-    return { ok: true, data };
-  } catch (err) {
-    const f = failure(err);
-    if (f.code === 'UNEXPECTED') console.error(`${label} failed`, err);
-    return f;
-  }
-}
+const run = <T>(label: string, fn: (tx: Tx) => Promise<T>) =>
+  runAction(label, fn, { revalidate: [['/compliance', 'layout'], ['/tasks', 'layout'], '/'] });
 
 /** A presigned POST for one document at `node`'s outlet (a photo or a PDF, 10 MB at most). */
 export async function getComplianceUploadUrl(

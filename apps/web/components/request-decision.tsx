@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import type { ActionResult } from '@outlet-ops/domain';
 import { actOnRequest } from '@/app/(app)/inbox/actions';
 import { ErrorBox, primaryButton, secondaryButton, StatusBox } from './messages';
+import { callAction, useActionKey } from '@/lib/call-action';
 
 /**
  * Approve / reject buttons for a request's pending step. `approve` replaces the generic
@@ -23,6 +24,8 @@ export function RequestDecision({
   approveLabel?: string;
 }) {
   const router = useRouter();
+  // one key per decision, kept when a try does not get through (ADR 169)
+  const keys = useActionKey();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -32,8 +35,9 @@ export function RequestDecision({
       const r =
         action === 'approve' && approve
           ? await approve()
-          : await actOnRequest(requestId, action, crypto.randomUUID());
+          : await callAction(actOnRequest, requestId, action, keys.key(action));
       if (r.ok) {
+        keys.done();
         setDone(action === 'approve' ? 'Approved' : 'Rejected');
         setTimeout(() => router.push(back), 1200);
       } else setError(r.message);

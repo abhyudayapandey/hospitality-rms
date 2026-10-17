@@ -6,6 +6,7 @@ import { ErrorBox, primaryButton } from '@/components/messages';
 import { byFloor, floorName } from '@/lib/rooms-view';
 import { useHydrated } from '@/lib/use-hydrated';
 import { giveRooms } from '../actions';
+import { callAction } from '@/lib/call-action';
 
 /** Pick a person, tap their rooms or a whole floor (others' rooms show whose they are), save
  *  (ADR 111, 132). Nobody is picked until tapped; who is on shift today comes first (ADR 153). */
@@ -64,7 +65,8 @@ export function GiveRoomsForm({
   const save = () =>
     start(async () => {
       setError(null);
-      const r = await giveRooms(
+      const r = await callAction(
+        giveRooms,
         outlet,
         day,
         person,

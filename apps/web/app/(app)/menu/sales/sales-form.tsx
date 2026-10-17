@@ -7,6 +7,7 @@ import { copyQuantities, matchesSearch, totalSold } from '@/lib/sales-entry';
 import { useHydrated } from '@/lib/use-hydrated';
 import { postSales } from '../actions';
 import { ItemThumb } from '@/components/item-thumb';
+import { callAction } from '@/lib/call-action';
 
 /** Another day's posted quantities, to copy (UX-4). */
 interface Copy {
@@ -71,7 +72,7 @@ export function SalesForm({
             setError('Quantities are whole numbers of zero or more.');
             return;
           }
-          const r = await postSales(outlet, date, lines, key);
+          const r = await callAction(postSales, outlet, date, lines, key);
           if (!r.ok) {
             setError(r.message);
             return;

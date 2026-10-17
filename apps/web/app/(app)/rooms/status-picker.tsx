@@ -18,6 +18,7 @@ import {
 import { useHydrated } from '@/lib/use-hydrated';
 import { roomMaintenanceOpen, setRoomStatus, type RoomStatusDetails } from './actions';
 import { DateInput, TimeInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
 
 /**
  * A room's new status as big buttons, each its colour, picture and word (ADR 088, 104): never a
@@ -46,7 +47,7 @@ export function RoomStatusButtons({
   const save = (code: string, d: RoomStatusDetails = {}) =>
     start(async () => {
       setError(null);
-      const r = await setRoomStatus(room, code, d);
+      const r = await callAction(setRoomStatus, room, code, d);
       if (!r.ok) return setError(r.message);
       setAsking(null);
       onDone?.();
@@ -132,7 +133,7 @@ function StatusDetailsForm({
   useEffect(() => {
     if (code !== 'OOO') return;
     let live = true;
-    void roomMaintenanceOpen(room).then((r) => {
+    void callAction(roomMaintenanceOpen, room).then((r) => {
       if (live) setOpen(r.ok ? r.data : []);
     });
     return () => {

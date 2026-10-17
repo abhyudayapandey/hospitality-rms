@@ -17,6 +17,7 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { archiveChecklist, saveChecklist, type Assign } from '../actions';
 import { AssignPicker } from '../assign-picker';
 import { TimeInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TIMES = (s: string) =>
@@ -100,7 +101,7 @@ export function ChecklistForm({
       setError(null);
       const parsed = parseSteps(steps);
       if (typeof parsed === 'string') return setError(parsed);
-      const r = await saveChecklist({
+      const r = await callAction(saveChecklist, {
         id: existing?.id ?? null,
         node,
         name,
@@ -117,7 +118,7 @@ export function ChecklistForm({
 
   const stop = () =>
     start(async () => {
-      const r = await archiveChecklist(existing!.id);
+      const r = await callAction(archiveChecklist, existing!.id);
       if (!r.ok) return setError(r.message);
       router.push(`/tasks/checklists?node=${node}`);
     });

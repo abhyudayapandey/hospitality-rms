@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, primaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { ackSop } from '../../../training/actions';
+import { callAction } from '@/lib/call-action';
 
 export function AckButton({ sop }: { sop: string }) {
   const router = useRouter();
@@ -20,7 +21,7 @@ export function AckButton({ sop }: { sop: string }) {
         className={primaryButton}
         onClick={() =>
           start(async () => {
-            const r = await ackSop(sop);
+            const r = await callAction(ackSop, sop);
             if (!r.ok) setError(r.message);
             else router.refresh();
           })

@@ -17,6 +17,7 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { archiveJob, archiveLicence, saveJob, type JobInput } from './actions';
 import type { Choice } from './licence-form';
 import { DateInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
 
 /** A form field's text (a file input gives none). */
 const field = (f: FormData, name: string) => {
@@ -107,7 +108,8 @@ export function JobForm({
         const f = new FormData(e.currentTarget);
         start(async () => {
           setError(null);
-          const r = await saveJob(
+          const r = await callAction(
+            saveJob,
             {
               id: existing?.id ?? null,
               node,
@@ -310,7 +312,10 @@ export function RemoveButton({ kind, id }: { kind: 'licence' | 'job'; id: string
         const reason = field(new FormData(e.currentTarget), 'reason');
         start(async () => {
           setError(null);
-          const r = kind === 'licence' ? await archiveLicence(id, reason) : await archiveJob(id);
+          const r =
+            kind === 'licence'
+              ? await callAction(archiveLicence, id, reason)
+              : await callAction(archiveJob, id);
           if (!r.ok) {
             setError(r.message);
             return;

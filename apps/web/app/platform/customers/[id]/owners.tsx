@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, secondaryButton, StatusBox } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { removeAccountOwner } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 export interface Owner {
   user_id: string;
@@ -100,7 +101,7 @@ function OwnerRow({
             e.preventDefault();
             start(async () => {
               setError(null);
-              const r = await removeAccountOwner(tenantId, owner.user_id, reason);
+              const r = await callAction(removeAccountOwner, tenantId, owner.user_id, reason);
               if (!r.ok) {
                 setError(r.message);
                 return;

@@ -7,6 +7,7 @@ import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { byFloor, floorName, modeLabel, type Meal, type Mode } from '@/lib/rooms-view';
 import { useHydrated } from '@/lib/use-hydrated';
 import { setMealRooms } from '../rooms/actions';
+import { callAction } from '@/lib/call-action';
 
 export type { Meal, Mode } from '@/lib/rooms-view';
 
@@ -100,7 +101,7 @@ export function MealForm({
             .map((b) => ({ room_id: b.room_id, guests: 0, note: '' })),
         ];
         if (lines.length === 0) continue;
-        const r = await setMealRooms(outlet, day, meal, m.mode, lines);
+        const r = await callAction(setMealRooms, outlet, day, meal, m.mode, lines);
         if (!r.ok) return setError(r.message);
       }
       setSaved(true);

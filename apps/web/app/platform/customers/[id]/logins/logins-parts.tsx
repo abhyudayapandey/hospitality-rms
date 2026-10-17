@@ -12,6 +12,7 @@ import {
   type CreatedLogin,
   type LoginBatch,
 } from '../../../actions';
+import { callAction } from '@/lib/call-action';
 
 export function InvitePoller() {
   usePolling(2000);
@@ -133,7 +134,7 @@ export function UsernameLogins({
         start(async () => {
           setError(null);
           setBatch(null);
-          const r = await createUsernameLogins(tenantId);
+          const r = await callAction(createUsernameLogins, tenantId);
           if (!r.ok) {
             setError(r.message);
             return;
@@ -263,7 +264,7 @@ export function SendInvites({
         onClick={() =>
           start(async () => {
             setError(null);
-            const r = await requestInvites(tenantId);
+            const r = await callAction(requestInvites, tenantId);
             if (!r.ok) setError(r.message);
             else {
               setStatus(

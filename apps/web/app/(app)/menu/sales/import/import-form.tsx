@@ -7,6 +7,7 @@ import { PosFileError, readPosFile, type PosFile } from '@outlet-ops/onboarding/
 import { ErrorBox, primaryButton, StatusBox } from '@/components/messages';
 import { formatMoney } from '@/lib/format';
 import { importPos } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 // The file is read here, in the browser, with the same reader the tests use: only its
 // lines go to the server, which checks them all again (ADR 039).
@@ -47,7 +48,7 @@ export function ImportForm({
         start(async () => {
           setError(null);
           setDone(null);
-          const r = await importPos(outlet, date, file, key);
+          const r = await callAction(importPos, outlet, date, file, key);
           if (!r.ok) {
             setError(r.message);
             return;

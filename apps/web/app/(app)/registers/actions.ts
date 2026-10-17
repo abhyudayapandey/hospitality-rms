@@ -1,29 +1,14 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { failure, type ActionResult } from '@outlet-ops/domain';
-import { requireUser } from '@/lib/auth/server';
-import { sql, withUser, type Tx } from '@/lib/db';
-import { requireModule } from '@/lib/modules-server';
+import { type ActionResult } from '@outlet-ops/domain';
+import { sql, type Tx } from '@/lib/db';
+import { runAction } from '@/lib/run-action';
 
 // Registers (ADR 090). Each write is one ops.* SECURITY DEFINER function, which checks who
 // keeps the register at the place and raises stable codes (rule 2).
 
-async function run<T>(label: string, fn: (tx: Tx) => Promise<T>): Promise<ActionResult<T>> {
-  const user = await requireUser();
-  try {
-    const data = await withUser(user.id, async (tx) => {
-      await requireModule(tx, 'registers');
-      return fn(tx);
-    });
-    revalidatePath('/registers');
-    return { ok: true, data };
-  } catch (err) {
-    const f = failure(err);
-    if (f.code === 'UNEXPECTED') console.error(`${label} failed`, err);
-    return f;
-  }
-}
+const run = <T>(label: string, fn: (tx: Tx) => Promise<T>) =>
+  runAction(label, fn, { module: 'registers', revalidate: ['/registers'] });
 
 export async function addRegisterEntry(input: {
   place: string;

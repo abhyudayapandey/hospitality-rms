@@ -12,6 +12,7 @@ import {
 import { ErrorBox, StatusBox, primaryButton } from '@/components/messages';
 import { outcomeLines, savedMessage } from '@/lib/cover-words';
 import { previewRoleCover, setRoleCover, type CoverPreview } from '../../../actions';
+import { callAction, useActionKey } from '@/lib/call-action';
 
 interface Role {
   code: string;
@@ -62,6 +63,7 @@ export function CoverForm({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const keys = useActionKey();
   const [checking, check] = useTransition();
   const coverer = others.find((o) => o.code === by) ?? null;
   const ready = answer !== 'covered_by' || coverer !== null;
@@ -72,7 +74,8 @@ export function CoverForm({
     if (!ready || same) return;
     let live = true;
     check(async () => {
-      const r = await previewRoleCover(
+      const r = await callAction(
+        previewRoleCover,
         outlet,
         role.code,
         answer,
@@ -103,17 +106,18 @@ export function CoverForm({
   const save = () =>
     start(async () => {
       setError(null);
-      const r = await setRoleCover({
+      const r = await callAction(setRoleCover, {
         outlet,
         role: role.code,
         answer,
         by: answer === 'covered_by' ? by : null,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: keys.key(`${answer}:${by}`),
       });
       if (!r.ok) {
         setError(r.message);
         return;
       }
+      keys.done();
       setSaved(savedMessage(r.data));
       router.refresh();
     });

@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { rememberPlace } from '@/app/(app)/actions';
 import { groupPlaces, type NamedPlace, type Screen } from '@/lib/place-screens';
+import { callAction } from '@/lib/call-action';
 
 export type SwitcherPlace = NamedPlace;
 
@@ -83,7 +84,7 @@ export function PlaceSwitcher({
             q.delete('all');
             q.set('node', id);
             start(async () => {
-              await rememberPlace(screen, id);
+              await callAction(rememberPlace, screen, id);
               router.push(`${path}?${q.toString()}`);
             });
           }}
