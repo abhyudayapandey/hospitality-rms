@@ -3,6 +3,7 @@ import {
   accessSource,
   auditAction,
   auditActor,
+  eventStatusLabel,
   groupLabel,
   sinceText,
   statusLabel,
@@ -42,5 +43,14 @@ describe('the access audit in words (ADR 149)', () => {
     expect(auditAction('something new')).toBe('Something new');
     expect(auditActor('Platform')).toBe('the Hey Senior team');
     expect(groupLabel('AI_AGENT')).toBe('Senior, the assistant');
+  });
+});
+
+describe('eventStatusLabel', () => {
+  it('says an event’s status in words, never its code', () => {
+    expect(eventStatusLabel('planned')).toBe('Planned');
+    expect(eventStatusLabel('confirmed')).toBe('Confirmed');
+    expect(eventStatusLabel('cancelled')).toBe('Cancelled');
+    expect(eventStatusLabel('constructor')).toBe('Constructor');
   });
 });

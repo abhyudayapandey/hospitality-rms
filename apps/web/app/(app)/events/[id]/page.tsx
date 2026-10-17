@@ -10,6 +10,7 @@ import { eventFormOptions } from '../options';
 import { CancelEvent } from './cancel-event';
 import { jobTitles } from '@/lib/job-titles';
 import { formatQty } from '@/lib/qty';
+import { eventStatusLabel } from '@/lib/labels';
 import { ItemThumb } from '@/components/item-thumb';
 
 export default async function EventPage({
@@ -42,7 +43,7 @@ export default async function EventPage({
         <h1 className="text-lg font-semibold">{e.name}</h1>
         <p className="text-sm text-slate-600 tabular-nums">
           {formatDay(localDate(e.starts_at, tz))} · {formatSpan(e.starts_at, e.ends_at, tz)} ·{' '}
-          {e.covers} covers · {e.status}
+          {e.covers} covers · {eventStatusLabel(e.status)}
         </p>
         {e.notes && <p className="mt-1 text-sm">{e.notes}</p>}
         <ul className="mt-3 space-y-1 text-sm" data-testid="event-requirements">

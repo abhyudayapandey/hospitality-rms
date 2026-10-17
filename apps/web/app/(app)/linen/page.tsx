@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { formatCount } from '@/lib/qty';
 import { BackLink } from '@/components/back-link';
 import { Empty } from '@/components/messages';
 import { ViewTabs } from '@/components/view-tabs';
@@ -195,7 +196,7 @@ export default async function LinenPage({ searchParams }: { searchParams: Search
                   <span className="min-w-0">
                     <span className="block font-medium">{u.person}</span>
                     <span className="block text-xs text-slate-500">
-                      {u.qty} × {u.item}
+                      {formatCount(u.qty, '')} × {u.item}
                       {u.size && ` (${u.size})`} · issued {formatWhen(u.issued_at, tz)}
                       {u.returned_at && ` · returned ${formatWhen(u.returned_at, tz)}`}
                     </span>
