@@ -270,7 +270,7 @@ variance):
 - **Bar 3.0.** Negroni (day -4, Bar Store) and Ginger Garlic Paste (day -2, Kitchen Store).
 - **Expiry (ADR 033).** On the load day the Hotel 1.0 Kitchen Store shows both banners:
   Mint Chutney expired (₹25.13 on Stock position) and Ginger Garlic Paste expiring within
-  3 days (its use-by is three days after the load day; ₹101.33). Pinned by
+  3 days (its use-by is three days after the load day; ₹101.31). Pinned by
   `packages/db/src/expiry.db.test.ts`.
 
 Each batch's expiry runs from its batch time, so the other batches expire over the
@@ -431,11 +431,11 @@ The central kitchen's batches (file 26: 6,400 g on day -2, 3,200 g on day -1) an
   Kitchen today, day -2: ₹10,225.
 - **People, Hotel 1.0:** headcount 42, 789 hours, leave not yet taken 1,573 days; leave
   liability ₹25,82,200 (HR Admin only; the HR Executive sees days).
-- **Central kitchen, the last 7 days:** 2 batches; ₹492.60 asked for, ₹459.76 sent,
+- **Central kitchen, the last 7 days:** 2 batches; ₹492.59 asked for, ₹459.75 sent,
   **93.3%** filled; ₹16.42 lost on the way; ₹164.20 on the way to Bar 3.0. Onion Tomato
   Masala: 11,200 g planned, 9,600 g made.
-- **Purchasing, Hotel 1.1 Kitchen Store:** from the central kitchen ₹328.40 asked for,
-  ₹279.14 received, **85.0%**, ₹16.42 lost on the way, 1 line short.
+- **Purchasing, Hotel 1.1 Kitchen Store:** from the central kitchen ₹328.39 asked for,
+  ₹279.13 received, **85.0%**, ₹16.42 lost on the way, 1 line short.
 
 ## GM round 1, the rest (ADR 078 to 082)
 

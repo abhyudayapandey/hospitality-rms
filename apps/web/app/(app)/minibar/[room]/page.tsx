@@ -3,7 +3,7 @@ import { Empty } from '@/components/messages';
 import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatMoney, formatWhen } from '@/lib/format';
-import { minibarHistory, minibarRoom, usedWords } from '@/lib/minibar';
+import { minibarExpected, minibarHistory, minibarRoom, usedWords } from '@/lib/minibar';
 import { isUuid } from '@/lib/params';
 import { CheckForm } from './check-form';
 import { ItemThumb } from '@/components/item-thumb';
@@ -16,7 +16,11 @@ export default async function MinibarRoomPage({ params }: { params: Promise<{ ro
   if (!isUuid(room)) return <Empty>We couldn&apos;t find that room.</Empty>;
   const data = await withUser(user.id, async (tx) => {
     try {
-      return { items: await minibarRoom(tx, room), history: await minibarHistory(tx, room) };
+      return {
+        items: await minibarRoom(tx, room),
+        expected: await minibarExpected(tx, room),
+        history: await minibarHistory(tx, room),
+      };
     } catch {
       return null;
     }
@@ -31,6 +35,9 @@ export default async function MinibarRoomPage({ params }: { params: Promise<{ ro
   }
   const { items, history } = data;
   const first = items[0];
+  // what should be there: full, or what the last refill left (ADR 168)
+  const expected = new Map(data.expected.map((e) => [e.item_id, Number(e.expected)]));
+  const refillOpen = data.expected.some((e) => e.refill_open);
   return (
     <div className="space-y-4">
       <BackLink />
@@ -48,11 +55,13 @@ export default async function MinibarRoomPage({ params }: { params: Promise<{ ro
       ) : first.can_check ? (
         <CheckForm
           room={room}
+          refillOpen={refillOpen}
           items={items.map((i) => ({
             id: i.item_id,
             name: i.item,
             unit: i.unit,
             par: Number(i.par),
+            expected: expected.get(i.item_id) ?? Number(i.par),
             price: i.price,
             inStore: Number(i.in_store),
           }))}

@@ -24,6 +24,9 @@ export interface ReceiveLine {
   desk_keeps?: boolean;
 }
 
+/** why goods came free, tapped not typed (ADR 098, 168) */
+const FREE_REASONS = ['Sample', 'Offer', 'Replacement'] as const;
+
 const left = (l: ReceiveLine) => Math.max(0, Number(l.ordered) - Number(l.received));
 const qtyText = (n: number, uom: string) => formatQty(n, uom);
 
@@ -52,6 +55,9 @@ export function ReceiveForm({
   const partly = lines.some((l) => Number(l.received) > 0);
   const [qty, setQty] = useState<Record<string, string>>({});
   const [amount, setAmount] = useState<Record<string, string>>({});
+  // a line that came free: no amount, a reason instead (ADR 168)
+  const [free, setFree] = useState<Record<string, boolean>>({});
+  const [freeWhy, setFreeWhy] = useState<Record<string, string>>({});
   // where each line goes (the item's default, ADR 080) and its expiry, if any
   const [dest, setDest] = useState<Record<string, 'store' | 'department'>>(() =>
     Object.fromEntries(
@@ -71,7 +77,10 @@ export function ReceiveForm({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
-  const total = open.reduce((t, l) => t + (Number(amount[l.item_id]) || 0), 0);
+  const total = open.reduce(
+    (t, l) => t + (free[l.item_id] ? 0 : Number(amount[l.item_id]) || 0),
+    0,
+  );
 
   const submit = () =>
     start(async () => {
@@ -81,24 +90,31 @@ export function ReceiveForm({
           item_id: l.item_id,
           name: l.name,
           qty: Number(qty[l.item_id] || 0),
-          amount: Number(amount[l.item_id] || 0),
+          amount: free[l.item_id] ? 0 : Number(amount[l.item_id] || 0),
+          free_reason: free[l.item_id] ? (freeWhy[l.item_id] ?? '') : undefined,
         }))
         .filter((l) => l.qty > 0);
       if (payload.length === 0) {
         setError('Enter what arrived.');
         return;
       }
-      const noAmount = payload.find((l) => !(l.amount > 0));
+      const noAmount = payload.find((l) => l.free_reason === undefined && !(l.amount > 0));
       if (noAmount) {
         setError(`Enter the amount for ${noAmount.name} (what the bill says).`);
         return;
       }
+      const noWhy = payload.find((l) => l.free_reason === '');
+      if (noWhy) {
+        setError(`Say why ${noWhy.name} came free.`);
+        return;
+      }
       const r = await receiveGoods(
         po,
-        payload.map(({ item_id, qty, amount }) => ({
+        payload.map(({ item_id, qty, amount, free_reason }) => ({
           item_id,
           qty,
           amount,
+          ...(free_reason && { free_reason }),
           ...(department && { to: dest[item_id] ?? 'store' }),
           ...(expiry[item_id] && { expires_on: expiry[item_id] }),
         })),
@@ -122,6 +138,8 @@ export function ReceiveForm({
       );
       setQty({});
       setAmount({});
+      setFree({});
+      setFreeWhy({});
       setExpiry({});
       setFiles([]);
       setKey(crypto.randomUUID());
@@ -180,17 +198,52 @@ export function ReceiveForm({
                     min={0}
                   />
                 </div>
-                <label className="block space-y-1">
-                  {/* the line's total on the bill, not a price per unit (ADR 053) */}
-                  <span className="text-xs text-slate-600">Bill amount, total (₹)</span>
+                {!free[l.item_id] && (
+                  <label className="block space-y-1">
+                    {/* the line's total on the bill, not a price per unit (ADR 053) */}
+                    <span className="text-xs text-slate-600">Bill amount, total (₹)</span>
+                    <input
+                      aria-label={`Amount ${l.name}`}
+                      inputMode="decimal"
+                      value={amount[l.item_id] ?? ''}
+                      onChange={(e) => setAmount((v) => ({ ...v, [l.item_id]: e.target.value }))}
+                      className={`${inputClass} text-right`}
+                    />
+                  </label>
+                )}
+                {/* free goods: no amount, and why (ADR 168) */}
+                <label className="flex min-h-11 items-center gap-3 text-sm">
                   <input
-                    aria-label={`Amount ${l.name}`}
-                    inputMode="decimal"
-                    value={amount[l.item_id] ?? ''}
-                    onChange={(e) => setAmount((v) => ({ ...v, [l.item_id]: e.target.value }))}
-                    className={`${inputClass} text-right`}
+                    type="checkbox"
+                    aria-label={`Free ${l.name}`}
+                    checked={free[l.item_id] ?? false}
+                    onChange={(e) => setFree((v) => ({ ...v, [l.item_id]: e.target.checked }))}
+                    className="size-5"
                   />
+                  Free, no charge
                 </label>
+                {free[l.item_id] && (
+                  <fieldset className="space-y-1" data-testid="free-why">
+                    <legend className="text-xs text-slate-600">Why was it free?</legend>
+                    <div className="grid grid-cols-3 gap-2">
+                      {FREE_REASONS.map((why) => (
+                        <button
+                          key={why}
+                          type="button"
+                          aria-pressed={freeWhy[l.item_id] === why}
+                          onClick={() => setFreeWhy((v) => ({ ...v, [l.item_id]: why }))}
+                          className={`min-h-11 rounded-lg px-2 text-sm ring-1 ${
+                            freeWhy[l.item_id] === why
+                              ? 'bg-brand-700 font-semibold text-white ring-brand-700'
+                              : 'ring-slate-300'
+                          }`}
+                        >
+                          {why}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                )}
               </div>
               {department && (
                 <fieldset className="space-y-1" data-testid="receive-dest">
@@ -233,7 +286,7 @@ export function ReceiveForm({
                   className={inputClass}
                 />
               </label>
-              {Number(qty[l.item_id]) > 0 && Number(amount[l.item_id]) > 0 && (
+              {!free[l.item_id] && Number(qty[l.item_id]) > 0 && Number(amount[l.item_id]) > 0 && (
                 <p className="text-right text-xs text-slate-500" data-testid="unit-price">
                   = {formatMoney(Number(amount[l.item_id]) / Number(qty[l.item_id]))} per{' '}
                   {l.base_uom}

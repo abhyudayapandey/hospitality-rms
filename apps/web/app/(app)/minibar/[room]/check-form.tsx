@@ -16,13 +16,24 @@ interface Item {
   name: string;
   unit: string;
   par: number;
+  /** what should be there: par, or what the last refill left when the store was short (ADR 168) */
+  expected: number;
   /** the guest's price; null for whoever sees no money (KI-09) */
   price: string | null;
   inStore: number;
 }
 
 /** What is left of each item, nothing filled in (ADR 053); "All there" when nothing was used. */
-export function CheckForm({ room, items }: { room: string; items: Item[] }) {
+export function CheckForm({
+  room,
+  items,
+  refillOpen = false,
+}: {
+  room: string;
+  items: Item[];
+  /** its last check still waits for a refill: not counted again until then (ADR 168) */
+  refillOpen?: boolean;
+}) {
   const router = useRouter();
   const hydrated = useHydrated();
   const [pending, start] = useTransition();
@@ -34,7 +45,7 @@ export function CheckForm({ room, items }: { room: string; items: Item[] }) {
   const used = items.map((i) => {
     const v = left[i.id];
     const n = v === undefined || v === '' ? null : Number(v);
-    return { ...i, left: n, used: n === null || Number.isNaN(n) ? 0 : Math.max(i.par - n, 0) };
+    return { ...i, left: n, used: n === null || Number.isNaN(n) ? 0 : Math.max(i.expected - n, 0) };
   });
   // the rupees for whoever bills it; for an attendant, the items and how many (KI-09)
   const charge = chargeWords(used);
@@ -61,6 +72,24 @@ export function CheckForm({ room, items }: { room: string; items: Item[] }) {
       router.refresh();
     });
 
+  // the same form stays, so "Saved." stays on screen once the refill is waiting
+  if (refillOpen) {
+    return (
+      <form
+        aria-label="Minibar check"
+        className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-slate-200"
+      >
+        <StatusBox message={status} />
+        {/* never counted again before its refill: two guests' use would mix (ADR 168) */}
+        <p
+          className="rounded-lg bg-amber-50 p-3 text-sm font-medium text-amber-900"
+          data-testid="minibar-refill-first"
+        >
+          Refill this minibar first. Its last check still waits for a refill on the To do list.
+        </p>
+      </form>
+    );
+  }
   return (
     <form
       aria-label="Minibar check"
@@ -73,7 +102,7 @@ export function CheckForm({ room, items }: { room: string; items: Item[] }) {
       <button
         type="button"
         className={secondaryButton}
-        onClick={() => setLeft(Object.fromEntries(items.map((i) => [i.id, inputQty(i.par)])))}
+        onClick={() => setLeft(Object.fromEntries(items.map((i) => [i.id, inputQty(i.expected)])))}
       >
         All there: nothing used
       </button>
@@ -86,6 +115,7 @@ export function CheckForm({ room, items }: { room: string; items: Item[] }) {
                 <span className="block font-medium">{i.name}</span>
                 <span className="block text-xs text-slate-500">
                   par {i.par}
+                  {i.expected < i.par && ` · ${inputQty(i.expected)} after the last refill`}
                   {i.price !== null &&
                     (Number(i.price) === 0 ? ' · free' : ` · ${formatMoney(i.price)} each`)}
                   {i.inStore < i.par && ` · store has ${inputQty(i.inStore)}`}
@@ -101,7 +131,7 @@ export function CheckForm({ room, items }: { room: string; items: Item[] }) {
                   onChange={(x) => setLeft({ ...left, [i.id]: x })}
                   label={`Left: ${i.name}`}
                   min={0}
-                  start={i.par}
+                  start={i.expected}
                 />
               </span>
             </span>

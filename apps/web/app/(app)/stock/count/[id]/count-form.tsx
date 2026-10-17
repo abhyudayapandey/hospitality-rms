@@ -32,6 +32,8 @@ export function CountForm({
   const [values, setValues] = useState<Record<string, string>>(
     Object.fromEntries(lines.map((l) => [l.item_id, l.counted_qty ?? ''])),
   );
+  // when each line was counted, so the difference is from what was there then (ADR 168)
+  const [countedAt, setCountedAt] = useState<Record<string, number>>({});
   const [pending, start] = useTransition();
   const hydrated = useHydrated();
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +47,14 @@ export function CountForm({
       setError(null);
       const payload = Object.entries(values)
         .filter(([, v]) => v.trim() !== '')
-        .map(([item_id, v]) => ({ item_id, counted_qty: Number(v) }));
+        .map(([item_id, v]) => ({
+          item_id,
+          counted_qty: Number(v),
+          // how long ago, never a clock time: the phone's clock may be off
+          ...(countedAt[item_id] !== undefined && {
+            ago_ms: Math.max(0, Date.now() - countedAt[item_id]),
+          }),
+        }));
       if (payload.some((l) => !Number.isFinite(l.counted_qty) || l.counted_qty < 0)) {
         setError('Counts must be zero or more.');
         return;
@@ -94,7 +103,10 @@ export function CountForm({
               {/* − / + to count, the unit beside the number (ADR 098) */}
               <Stepper
                 value={values[l.item_id] ?? ''}
-                onChange={(x) => setValues((v) => ({ ...v, [l.item_id]: x }))}
+                onChange={(x) => {
+                  setValues((v) => ({ ...v, [l.item_id]: x }));
+                  setCountedAt((t) => ({ ...t, [l.item_id]: Date.now() }));
+                }}
                 label={`Counted ${l.name}`}
                 unit={l.base_uom}
                 min={0}

@@ -51,6 +51,13 @@ test('receiving: nothing filled in, an amount for each item, and "Bill missing" 
   await form.getByRole('textbox', { name: `Received ${name}` }).fill('1');
   await page.getByRole('button', { name: 'Receive', exact: true }).click();
   await expect(form.getByRole('alert')).toContainText(`Enter the amount for ${name}`);
+  // a line that came free has no amount, but says why (ADR 168)
+  await form.getByRole('checkbox', { name: `Free ${name}` }).check();
+  await expect(form.getByRole('textbox', { name: `Amount ${name}` })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Receive', exact: true }).click();
+  await expect(form.getByRole('alert')).toContainText(`Say why ${name} came free`);
+  await expect(form.getByTestId('free-why').getByRole('button', { name: 'Sample' })).toBeVisible();
+  await form.getByRole('checkbox', { name: `Free ${name}` }).uncheck();
   await form.getByRole('textbox', { name: `Amount ${name}` }).fill('120');
   await expect(form.getByTestId('receive-total')).toContainText('₹120.00');
   await page.getByRole('button', { name: 'Receive', exact: true }).click();

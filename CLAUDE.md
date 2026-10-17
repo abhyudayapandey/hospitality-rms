@@ -514,6 +514,13 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   `ops.tick_tenants`); the nightly job keeps the audit partitions (`audit.keep_partitions`). A
   shift meets leave on its `local_date`; Publish leaves out what breaks a rule now
   (`hr.publish_left_out`) and says so; a test customer's file 25 skips a day of approved leave.
+- Stock and money correctness (ADR 168): a count or stock check posts counted less what was on
+  hand when each line was counted (`counted_at`, `inv.on_hand_at`); an open one closes after a
+  day (`COUNT_EXPIRED`). A minibar charges what was used since the room was last full and its
+  refill fills to par (`fill_qty`); no check while its refill is open (`MINIBAR_NOT_REFILLED`).
+  Only a live order (`inv.po_live`) is handed back or counted as coming; a send task closes when
+  its request leaves "to send" (a trigger). A receipt keeps the amount typed (6-decimal unit
+  costs); a free line has a reason (`free_reason`) and costs 0.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in

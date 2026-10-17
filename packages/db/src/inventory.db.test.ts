@@ -466,7 +466,7 @@ describe('count -> PO -> approve -> receive', () => {
         [f.item('P-TOMATO'), node('kitchen')],
       );
       // (11.5 x 40 + 18.5 x 50) / 30
-      expect(level.rows).toEqual([{ avg_cost: '46.1667', value: '1385.00' }]);
+      expect(level.rows).toEqual([{ avg_cost: '46.166667', value: '1385.00' }]);
 
       const reconcile = await c.query<{ ledger: string; cached: string }>(
         `select (select sum(qty) from inv.stock_ledger where item_id = $1 and delivery_node_id = $2)::text as ledger,
@@ -567,8 +567,8 @@ describe('over-receipt', () => {
         [f.item('R-CHICKEN')],
       );
       expect(moves.rows).toEqual([
-        { movement_type: 'receipt', qty: '10.500000', unit_cost: '300.0000' },
-        { movement_type: 'receipt', qty: '1.500000', unit_cost: '300.0000' },
+        { movement_type: 'receipt', qty: '10.500000', unit_cost: '300.000000' },
+        { movement_type: 'receipt', qty: '1.500000', unit_cost: '300.000000' },
       ]);
     });
   });
@@ -659,21 +659,21 @@ describe('two-leg transfer', () => {
           movement_type: 'transfer_out',
           qty: '-8.000000',
           reason: null,
-          unit_cost: '30.0000',
+          unit_cost: '30.000000',
         },
         {
           at: 'outlet',
           movement_type: 'transfer_in',
           qty: '8.000000',
           reason: null,
-          unit_cost: '30.0000',
+          unit_cost: '30.000000',
         },
         {
           at: 'outlet',
           movement_type: 'wastage',
           qty: '-1.000000',
           reason: 'transit_loss',
-          unit_cost: '30.0000',
+          unit_cost: '30.000000',
         },
       ]);
 

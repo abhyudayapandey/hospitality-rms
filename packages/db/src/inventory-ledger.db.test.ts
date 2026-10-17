@@ -162,7 +162,7 @@ describe('valuation and invariants', () => {
       await move(c, item, A, 'receipt', 10, 120);
       expect(await level(c, item, A)).toEqual({
         on_hand: '20.000000',
-        avg_cost: '110.0000',
+        avg_cost: '110.000000',
         value: '2200.00',
       });
       await move(c, item, A, 'wastage', -5);
@@ -170,10 +170,10 @@ describe('valuation and invariants', () => {
         `select unit_cost from inv.stock_ledger where item_id = $1 and movement_type = 'wastage'`,
         [item],
       );
-      expect(rows).toEqual([{ unit_cost: '110.0000' }]);
+      expect(rows).toEqual([{ unit_cost: '110.000000' }]);
       expect(await level(c, item, A)).toEqual({
         on_hand: '15.000000',
-        avg_cost: '110.0000',
+        avg_cost: '110.000000',
         value: '1650.00',
       });
     });

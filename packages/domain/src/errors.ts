@@ -28,6 +28,8 @@ export const ERROR_MESSAGES = {
   CHECK_LOCKED:
     'The counts are locked now that the differences are showing. Add photos, then finish.',
   CHECK_FINISHED: 'This stock check is already finished.',
+  // an open count or check closes after a day (ADR 168)
+  COUNT_EXPIRED: 'This stock check was started over a day ago and has closed. Start a new one.',
   NO_STORE_KEEPS_IT: 'No other store here keeps it. Ask to buy it instead.',
   NOT_WHOLE_PACKS: 'Open whole packs only. Say how many you opened.',
   NOTHING_SHORT: 'The store has all of it. Send it instead of buying.',
@@ -59,6 +61,8 @@ export const ERROR_MESSAGES = {
   NOT_A_TEST_CUSTOMER: 'Only a test company can have a demo presenter.',
   // the rooms' minibars (ADR 072)
   NO_MINIBAR: 'This room has no minibar.',
+  // a minibar is checked again only once its last refill is done (ADR 168)
+  MINIBAR_NOT_REFILLED: 'Refill this minibar first. Its last check still waits for a refill.',
   BREAKFAST_SERVED: "That breakfast has been served, so it can't be changed now.",
   // R-4, PO-4 (ADR 031, 032)
   INVALID_SETTING:
@@ -195,7 +199,10 @@ export const ERROR_MESSAGES = {
   INVALID_AMOUNT: 'Amounts are zero or more.',
   // vendor bills (BIL-1 to BIL-3, ADR 050)
   INVALID_BILL: 'Check the bill: its date (within the last year), amount and what it was for.',
-  AMOUNT_REQUIRED: 'Enter the amount for every item that arrived (what the bill says).',
+  AMOUNT_REQUIRED:
+    'Enter the amount for every item that arrived (what the bill says). Tick Free if it cost nothing.',
+  // free goods (ADR 168)
+  FREE_REASON_REQUIRED: 'Say why it came free: a sample, an offer or a replacement.',
   INVALID_FILE: "A file didn't upload. Add it again (photos or PDFs, up to 5).",
   INVALID_CODE: 'Enter the POS item code, up to 40 characters, no spaces.',
   // trends (RPT-12, ADR 041)
