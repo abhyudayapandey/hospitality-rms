@@ -2540,8 +2540,9 @@ class Loader {
    * demo's past is rostered as it was worked; week 0 is today to Sunday on the weekdays they
    * worked last week (ADR 114). For those two the row's days are not used. A shift that has
    * started is assigned with hr.record_test_assignment (test customers only). Week 0 loads once
-   * a person, like week -1: someone already on a shift from today to Sunday keeps their week,
-   * since a later load day picks other weekdays and would pass their weekly cap.
+   * a person, like week -1: someone already on a shift that week (on the first load, from today
+   * to Sunday) keeps their week, since a later load day picks other weekdays and would pass
+   * their weekly cap.
    */
   private async shifts() {
     const today = new Date(`${this.today}T00:00:00Z`);
@@ -2565,12 +2566,20 @@ class Loader {
       const node = this.nodes.get(s.roster_node_code)!;
       const worker = this.workers.get(s.username);
       if (s.week === 0) {
+        // on the first load, anyone already on a shift from today to Sunday; on a later one
+        // (file 35 loaded before), anyone on a shift any day of this week: an earlier load's
+        // week 0 began on an earlier day, and a later day picks other weekdays (a Sunday's
+        // reload added Sunday to a week already rostered Monday to Saturday: WEEKLY_HOURS_CAP)
         const rostered = await this.c.query(
           `select 1 from hr.shift_assignment a join hr.shift s on s.id = a.shift_id
             where a.worker_id = $1 and a.status in ('assigned', 'pending')
               and s.status <> 'cancelled' and s.local_date between $2::date and $3::date
             limit 1`,
-          [worker, this.today, this.day(nextMonday - 1)],
+          [
+            worker,
+            worked.rowCount ? this.day(nextMonday - 7) : this.today,
+            this.day(nextMonday - 1),
+          ],
         );
         if (rostered.rowCount) {
           this.count('shift assignments', false);
