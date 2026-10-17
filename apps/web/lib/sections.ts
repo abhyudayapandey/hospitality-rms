@@ -28,17 +28,19 @@ export async function sectionPeople(
   ).rows;
 }
 
+/** A section on a day and everyone who has it: one person or several (ADR 170). */
 export interface SectionOn {
   section_id: string;
   name: string;
-  user_id: string | null;
-  user_name: string | null;
+  user_ids: string[];
+  /** "Asha, Ravi", or null when nobody has it */
+  user_names: string | null;
 }
 
 export async function sectionsOn(tx: Tx, department: string, day: string): Promise<SectionOn[]> {
   return (
     await sql<SectionOn>`
-      select section_id::text, name, user_id::text, user_name
+      select section_id::text, name, user_ids::text[], user_names
         from ops.sections(${department}::uuid, ${day}::date)`.execute(tx)
   ).rows;
 }

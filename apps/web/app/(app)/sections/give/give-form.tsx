@@ -11,8 +11,9 @@ import { callAction } from '@/lib/call-action';
 /**
  * Give sections as the roster by person (ADR 133): a row per person with every section as a
  * tile. A tap marks it for them, tapped again it comes off; a person may have several, and a
- * section someone else has shows their name and moves when tapped. Nothing is saved until
- * Save changes; Undo puts back what was saved (the same confirm as the roster's Publish).
+ * section may go to several people (ADR 170): a tile names the others who have it, and a tap
+ * adds this person without taking it from them. Nothing is saved until Save changes; Undo puts
+ * back what was saved (the same confirm as the roster's Publish).
  */
 export function GiveSectionsForm({
   department,
@@ -23,35 +24,41 @@ export function GiveSectionsForm({
   department: string;
   day: string;
   people: { user_id: string; name: string; role_name: string }[];
-  sections: { section_id: string; name: string; user_id: string | null }[];
+  sections: { section_id: string; name: string; user_ids: string[] }[];
 }) {
   const router = useRouter();
   const hydrated = useHydrated();
   const [pending, start] = useTransition();
-  const initial: Record<string, string> = Object.fromEntries(
-    sections.flatMap((s) => (s.user_id ? [[s.section_id, s.user_id]] : [])),
-  );
-  const [owner, setOwner] = useState<Record<string, string>>(initial);
+  // who has which section, as "section|person" pairs
+  const pair = (section: string, person: string) => `${section}|${person}`;
+  const initial = new Set(sections.flatMap((s) => s.user_ids.map((u) => pair(s.section_id, u))));
+  const [given, setGiven] = useState<Set<string>>(initial);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const first = (id: string) =>
     (people.find((p) => p.user_id === id)?.name ?? '').split(/\s+/)[0] ?? '';
-  const mine = (o: Record<string, string>, person: string) =>
-    sections
-      .filter((s) => o[s.section_id] === person)
-      .map((s) => s.section_id)
-      .join();
+  const mine = (g: Set<string>, person: string) =>
+    sections.filter((s) => g.has(pair(s.section_id, person))).map((s) => s.section_id);
   // the people whose sections the taps change
-  const changed = people.filter((p) => mine(owner, p.user_id) !== mine(initial, p.user_id));
-  const moves = sections.filter((s) => owner[s.section_id] !== initial[s.section_id]).length;
+  const changed = people.filter(
+    (p) => mine(given, p.user_id).join() !== mine(initial, p.user_id).join(),
+  );
+  const moves =
+    [...given].filter((k) => !initial.has(k)).length +
+    [...initial].filter((k) => !given.has(k)).length;
+  const others = (section: string, person: string) =>
+    people
+      .filter((p) => p.user_id !== person && given.has(pair(section, p.user_id)))
+      .map((p) => first(p.user_id));
 
   const tap = (person: string, section: string) => {
     setSaved(false);
     setError(null);
-    setOwner((o) => {
-      const next = { ...o };
-      if (next[section] === person) delete next[section];
-      else next[section] = person;
+    setGiven((g) => {
+      const next = new Set(g);
+      const k = pair(section, person);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
       return next;
     });
   };
@@ -65,7 +72,7 @@ export function GiveSectionsForm({
           department,
           day,
           p.user_id,
-          sections.filter((s) => owner[s.section_id] === p.user_id).map((s) => s.section_id),
+          mine(given, p.user_id),
         );
         if (!r.ok) {
           setError(r.message);
@@ -94,8 +101,8 @@ export function GiveSectionsForm({
             </p>
             <div className="grid grid-cols-3 gap-2">
               {sections.map((s) => {
-                const o = owner[s.section_id];
-                const on = o === p.user_id;
+                const on = given.has(pair(s.section_id, p.user_id));
+                const also = others(s.section_id, p.user_id);
                 return (
                   <button
                     key={s.section_id}
@@ -103,18 +110,22 @@ export function GiveSectionsForm({
                     disabled={!hydrated || pending}
                     onClick={() => tap(p.user_id, s.section_id)}
                     aria-pressed={on}
-                    aria-label={`${s.name}${o && !on ? `, ${first(o)}'s` : ''}`}
+                    aria-label={`${s.name}${also.length ? `, also ${also.join(', ')}` : ''}`}
                     data-testid="section-tile"
                     className={`flex min-h-14 flex-col items-center justify-center rounded-lg px-2 text-sm ring-1 ${
                       on
                         ? 'bg-brand-700 font-semibold text-white ring-brand-700'
-                        : o
-                          ? 'bg-slate-50 text-slate-400 ring-slate-200'
-                          : 'bg-white text-slate-800 ring-slate-300'
+                        : 'bg-white text-slate-800 ring-slate-300'
                     }`}
                   >
                     <span className="font-semibold">{s.name}</span>
-                    {o && !on && <span className="text-[11px]">{first(o)}&apos;s</span>}
+                    {also.length > 0 && (
+                      <span
+                        className={`max-w-full truncate text-[11px] ${on ? '' : 'text-slate-500'}`}
+                      >
+                        also {also.join(', ')}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -131,7 +142,7 @@ export function GiveSectionsForm({
         <button
           type="button"
           disabled={!hydrated || pending || moves === 0}
-          onClick={() => setOwner(initial)}
+          onClick={() => setGiven(initial)}
           className={secondaryButton}
         >
           Undo

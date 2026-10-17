@@ -11,7 +11,8 @@ as housekeeping gives rooms to attendants (ADR 111).
 - `ops.service_section` and `ops.section_assignment` (one person per section per day), under
   the TASKS domain, read through functions. Whoever manages tasks at the department (its head, a
   captain, the GM: TASKS modify there) gives them, today up to a week ahead, only to people who
-  work in that department (`ops.give_sections`). A section given again moves.
+  work in that department (`ops.give_sections`). A section given again moves (since ADR 170, it
+  is shared instead).
 - Give sections (`/sections/give`) is laid out like the roster by person: Today or Tomorrow,
   then a row per person with every section as a tile. A tap marks it for them, tapped again it
   comes off, and nothing is saved until Save changes (Undo puts it back), as the roster waits
