@@ -1,0 +1,10 @@
+[Unit]
+Description=Outlet Ops security updates every Sunday, 04:30 India time
+
+[Timer]
+OnCalendar=Sun *-*-* 04:30:00 Asia/Kolkata
+Persistent=true
+Unit=outlet-ops-os-patch.service
+
+[Install]
+WantedBy=timers.target

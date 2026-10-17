@@ -1,6 +1,7 @@
 [Unit]
 Description=Outlet Ops platform worker (customers, imports and invitations queued in the platform console)
 After=network-online.target docker.service
+OnFailure=outlet-ops-notify@%n.service
 
 [Service]
 Type=simple
@@ -13,6 +14,8 @@ EnvironmentFile=/etc/outlet-ops/platform-worker.env
 ExecStart=/opt/outlet-ops/current/deploy/platform-worker.sh
 Restart=on-failure
 RestartSec=10
+# A deploy waits for the running job to finish (the worker stops between jobs), up to 10 min.
+TimeoutStopSec=600
 MemoryMax=384M
 NoNewPrivileges=yes
 PrivateTmp=yes

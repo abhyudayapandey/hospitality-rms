@@ -1,0 +1,10 @@
+[Unit]
+Description=Outlet Ops restore check every Sunday, 03:30 India time
+
+[Timer]
+OnCalendar=Sun *-*-* 03:30:00 Asia/Kolkata
+Persistent=true
+Unit=outlet-ops-restore-drill.service
+
+[Install]
+WantedBy=timers.target

@@ -2,6 +2,7 @@
 Description=Outlet Ops web (Next.js standalone, 127.0.0.1:3000)
 After=network-online.target docker.service
 Wants=network-online.target
+OnFailure=outlet-ops-notify@%n.service
 
 [Service]
 User=outletops-web

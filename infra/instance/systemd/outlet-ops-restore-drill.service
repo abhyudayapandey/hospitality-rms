@@ -1,0 +1,11 @@
+[Unit]
+Description=Outlet Ops weekly restore check of the newest backup (ADR 170)
+After=docker.service
+OnFailure=outlet-ops-notify@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/outlet-ops/current/deploy/restore-drill.sh
+ExecStartPost=/opt/outlet-ops/current/deploy/heartbeat.sh restore-drill
+TimeoutStartSec=1800
+Nice=10

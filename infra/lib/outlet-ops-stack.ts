@@ -8,17 +8,23 @@ import {
   Stack,
   Tags,
   aws_budgets as budgets,
+  aws_cloudwatch as cloudwatch,
+  aws_cloudwatch_actions as cwActions,
   aws_cognito as cognito,
   aws_dlm as dlm,
   aws_ec2 as ec2,
   aws_iam as iam,
   aws_s3 as s3,
+  aws_sns as sns,
+  aws_sns_subscriptions as subs,
   aws_ssm as ssm,
   type StackProps,
   Validations,
 } from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 import {
+  backupCopyBucketName,
+  BACKUP_COPY_REGION,
   CONFIG_PARAM_PATH,
   githubDeploySubject,
   PARAM_PREFIX,
@@ -85,6 +91,39 @@ export function invitationMessage(appUrl: string): cognito.UserInvitationConfig 
   };
 }
 
+/**
+ * The backups' lifecycle (ADR 170), the same in both regions: each 6-hour dump kept 35 days,
+ * the first of each month kept 7 years in Glacier Deep Archive (money data, NFR retention).
+ * Overwritten or deleted versions go a day later, once their Object Lock has run out.
+ */
+export function backupLifecycle(): s3.LifecycleRule[] {
+  return [
+    {
+      id: 'dumps-35-days',
+      prefix: 'pg/',
+      expiration: Duration.days(35),
+      noncurrentVersionExpiration: Duration.days(1),
+    },
+    {
+      id: 'monthly-7-years',
+      prefix: 'pg-monthly/',
+      transitions: [
+        { storageClass: s3.StorageClass.DEEP_ARCHIVE, transitionAfter: Duration.days(1) },
+      ],
+      expiration: Duration.days(2557),
+      noncurrentVersionExpiration: Duration.days(1),
+    },
+    {
+      id: 'tidy',
+      expiredObjectDeleteMarker: true,
+      abortIncompleteMultipartUploadAfter: Duration.days(1),
+    },
+  ];
+}
+
+/** Backups can be neither deleted nor overwritten for 35 days, by anyone on the server. */
+export const BACKUP_LOCK_DAYS = 35;
+
 export class OutletOpsStack extends Stack {
   constructor(scope: Construct, id: string, props: OutletOpsStackProps) {
     super(scope, id, props);
@@ -138,6 +177,73 @@ export class OutletOpsStack extends Stack {
       'S3 Standard pg_dump every 6 h kept 30 days - cents per month',
     );
 
+    // Backups that cannot be lost or overwritten (ADR 170, review M43). The old bucket above
+    // is no longer written; its last dumps expire within 30 days and it can then be removed.
+    // Versioning and Object Lock (governance, 35 days): nothing on the server can delete or
+    // overwrite a dump; the first dump of each month is locked 7 years. Every dump is copied
+    // to Hyderabad (BackupCopyStack) by S3 replication.
+    const copyBucketArn = `arn:aws:s3:::${backupCopyBucketName(this.account)}`;
+    const replicationRole = new iam.Role(this, 'BackupCopyRole', {
+      assumedBy: new iam.ServicePrincipal('s3.amazonaws.com'),
+      description: 'Copies Outlet Ops backups to the second region (ADR 170)',
+    });
+    const backupVault = new s3.Bucket(this, 'BackupVault', {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      versioned: true,
+      objectLockEnabled: true,
+      objectLockDefaultRetention: s3.ObjectLockRetention.governance(
+        Duration.days(BACKUP_LOCK_DAYS),
+      ),
+      lifecycleRules: backupLifecycle(),
+      replicationRole,
+      replicationRules: [
+        {
+          id: 'copy-to-hyderabad',
+          priority: 1,
+          destination: s3.Bucket.fromBucketAttributes(this, 'BackupCopy', {
+            bucketArn: copyBucketArn,
+            region: BACKUP_COPY_REGION,
+          }),
+          deleteMarkerReplication: false,
+        },
+      ],
+      removalPolicy: RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+    });
+    replicationRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: 'ReadSourceForReplication',
+        actions: [
+          's3:GetObjectVersionForReplication',
+          's3:GetObjectVersionAcl',
+          's3:GetObjectVersionTagging',
+          's3:GetObjectRetention',
+          's3:GetObjectLegalHold',
+        ],
+        resources: [backupVault.arnForObjects('*')],
+      }),
+    );
+    replicationRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: 'ReadReplicationConfig',
+        actions: ['s3:GetReplicationConfiguration', 's3:ListBucket'],
+        resources: [backupVault.bucketArn],
+      }),
+    );
+    replicationRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: 'WriteCopies',
+        actions: ['s3:ReplicateObject', 's3:ReplicateTags'],
+        resources: [`${copyBucketArn}/*`],
+      }),
+    );
+    costTag(
+      backupVault,
+      'credits',
+      'S3 Standard dumps kept 35 days and Deep Archive monthly dumps kept 7 years - cents per month',
+    );
+
     // Wastage, task and item photos: private, written and read only through presigned URLs that
     // the web app issues with the instance role (POST: 5 MB, image types; GET: 5 minutes).
     const photoBucket = new s3.Bucket(this, 'PhotoBucket', {
@@ -178,6 +284,16 @@ export class OutletOpsStack extends Stack {
       'credits',
       'S3 Standard wastage and task photos about 200 KB each kept 90 to 400 days - under 0.10 USD per month',
     );
+
+    // --- Alerts (ADR 170, review H5): one topic, emailed to the alert address -------------
+    // The instance publishes when a job fails or the disk fills; the alarms below publish too.
+    // The address confirms the subscription once, from the email AWS sends.
+    const alerts = new sns.Topic(this, 'Alerts', {
+      displayName: 'Hey Senior server',
+      enforceSSL: true,
+    });
+    alerts.addSubscription(new subs.EmailSubscription(config.alertEmail));
+    costTag(alerts, 'always-free', 'SNS email - first 1000 emails a month free');
 
     // --- Instance role (least privilege) --------------------------------------------
     const role = new iam.Role(this, 'InstanceRole', {
@@ -227,6 +343,13 @@ export class OutletOpsStack extends Stack {
     );
     role.addToPolicy(
       new iam.PolicyStatement({
+        sid: 'SendAlerts',
+        actions: ['sns:Publish'],
+        resources: [alerts.topicArn],
+      }),
+    );
+    role.addToPolicy(
+      new iam.PolicyStatement({
         sid: 'ReadReleases',
         actions: ['s3:GetObject'],
         resources: [deployBucket.arnForObjects('releases/*')],
@@ -234,8 +357,25 @@ export class OutletOpsStack extends Stack {
     );
     role.addToPolicy(
       new iam.PolicyStatement({
-        sid: 'WriteAndReadBackups', // no s3:DeleteObject: lifecycle expires dumps
+        // no s3:DeleteObject and no bypass of the lock: lifecycle expires dumps (ADR 170)
+        sid: 'WriteAndReadBackups',
         actions: ['s3:PutObject', 's3:GetObject'],
+        resources: [backupVault.arnForObjects('pg/*'), backupVault.arnForObjects('pg-monthly/*')],
+      }),
+    );
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        // the monthly dump is locked 7 years when it is written; a lock can only be lengthened
+        sid: 'LockMonthlyBackups',
+        actions: ['s3:PutObjectRetention'],
+        resources: [backupVault.arnForObjects('pg-monthly/*')],
+      }),
+    );
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        // the dumps from before ADR 170, until they expire: read only (a restore)
+        sid: 'ReadOldBackups',
+        actions: ['s3:GetObject'],
         resources: [backupBucket.arnForObjects('pg/*')],
       }),
     );
@@ -312,8 +452,8 @@ export class OutletOpsStack extends Stack {
       new iam.PolicyStatement({
         sid: 'ListBackups',
         actions: ['s3:ListBucket'],
-        resources: [backupBucket.bucketArn],
-        conditions: { StringLike: { 's3:prefix': ['pg/*'] } },
+        resources: [backupBucket.bucketArn, backupVault.bucketArn],
+        conditions: { StringLike: { 's3:prefix': ['pg/*', 'pg-monthly/*'] } },
       }),
     );
 
@@ -378,6 +518,35 @@ export class OutletOpsStack extends Stack {
     });
 
     const eip = new ec2.CfnEIP(this, 'Eip', { domain: 'vpc', instanceId: instance.instanceId });
+
+    // --- The server recovers itself (ADR 170, review M52) ------------------------------
+    // A failed hardware check moves the instance to new hardware (same disks, same IP); a
+    // failed operating-system check reboots it. Both tell the alert address. The status
+    // checks are free one-minute metrics.
+    const statusAlarm = (id: string, metricName: string, minutes: number, action: string) => {
+      const alarm = new cloudwatch.Alarm(this, id, {
+        alarmDescription: `Outlet Ops: ${metricName} for ${minutes} minutes - ${action}`,
+        metric: new cloudwatch.Metric({
+          namespace: 'AWS/EC2',
+          metricName,
+          dimensionsMap: { InstanceId: instance.instanceId },
+          period: Duration.minutes(1),
+          statistic: 'Maximum',
+        }),
+        threshold: 1,
+        comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+        evaluationPeriods: minutes,
+        treatMissingData: cloudwatch.TreatMissingData.MISSING,
+      });
+      alarm.addAlarmAction(new cwActions.SnsAction(alerts));
+      return alarm;
+    };
+    statusAlarm('RecoverAlarm', 'StatusCheckFailed_System', 2, 'recover').addAlarmAction(
+      new cwActions.Ec2Action(cwActions.Ec2InstanceAction.RECOVER),
+    );
+    statusAlarm('RebootAlarm', 'StatusCheckFailed_Instance', 3, 'reboot').addAlarmAction(
+      new cwActions.Ec2Action(cwActions.Ec2InstanceAction.REBOOT),
+    );
     costTag(eip, 'credits', 'Elastic IP public IPv4 0.005 USD per hour - about 3.65 USD per month');
 
     // --- Daily EBS snapshots of the data volume (DLM) --------------------------------
@@ -555,7 +724,8 @@ export class OutletOpsStack extends Stack {
       platform_cognito_user_pool_id: platformPool.userPoolId,
       platform_cognito_client_id: platformClient.userPoolClientId,
       platform_cognito_domain: `${config.platformCognitoDomainPrefix}.auth.${this.region}.amazoncognito.com`,
-      backup_bucket: backupBucket.bucketName,
+      backup_bucket: backupVault.bucketName,
+      alert_topic_arn: alerts.topicArn,
       photo_bucket: photoBucket.bucketName,
     };
     for (const [name, value] of Object.entries(cfg)) {
@@ -681,7 +851,9 @@ export class OutletOpsStack extends Stack {
     });
     new CfnOutput(this, 'InstanceId', { value: instance.instanceId });
     new CfnOutput(this, 'DeployBucketName', { value: deployBucket.bucketName });
-    new CfnOutput(this, 'BackupBucketName', { value: backupBucket.bucketName });
+    new CfnOutput(this, 'BackupBucketName', { value: backupVault.bucketName });
+    new CfnOutput(this, 'OldBackupBucketName', { value: backupBucket.bucketName });
+    new CfnOutput(this, 'AlertTopicArn', { value: alerts.topicArn });
     new CfnOutput(this, 'PhotoBucketName', { value: photoBucket.bucketName });
     new CfnOutput(this, 'DeployRoleArn', { value: deployRole.roleArn });
     new CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });

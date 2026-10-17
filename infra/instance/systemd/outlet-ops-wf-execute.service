@@ -1,6 +1,8 @@
 [Unit]
 Description=Outlet Ops workflow executor (one pass over wf.outbox)
 After=network-online.target docker.service
+# A failure emails the alert address and is shown in the console (ADR 170).
+OnFailure=outlet-ops-notify@%n.service
 
 [Service]
 Type=oneshot
@@ -11,6 +13,8 @@ EnvironmentFile=/etc/outlet-ops/wf.env
 LoadCredential=db_wf_executor:/etc/outlet-ops/creds/wf_executor
 LoadCredential=vapid_private:/etc/outlet-ops/creds/vapid_private
 ExecStart=/opt/outlet-ops/current/deploy/wf-execute.sh
+# + runs as root: records a good run (platform.job_ran) as the database superuser
+ExecStartPost=+/opt/outlet-ops/current/deploy/heartbeat.sh wf-execute
 TimeoutStartSec=55
 MemoryMax=256M
 NoNewPrivileges=yes

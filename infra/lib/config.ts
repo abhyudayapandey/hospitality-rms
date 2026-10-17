@@ -92,3 +92,14 @@ export function githubDeploySubject(
   const [owner, repo] = config.githubRepo.split('/');
   return `repo:${owner}@${config.githubOwnerId}/${repo}@${config.githubRepoId}:environment:production`;
 }
+
+/** The second copy of the backups (ADR 170): Hyderabad, an opt-in region, so data stays in India. */
+export const BACKUP_COPY_REGION = 'ap-south-2';
+
+/** Route 53 publishes health-check metrics in us-east-1 only, so the outside check's alarm lives there. */
+export const MONITOR_REGION = 'us-east-1';
+
+/** The backup copy bucket's fixed name: the main stack's replication rule names it across regions. */
+export function backupCopyBucketName(account: string): string {
+  return `outlet-ops-backup-copy-${account}`;
+}

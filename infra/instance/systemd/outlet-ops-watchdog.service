@@ -1,0 +1,10 @@
+[Unit]
+Description=Outlet Ops watchdog: disks, the app and the platform worker (ADR 170)
+After=network-online.target docker.service
+OnFailure=outlet-ops-notify@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/outlet-ops/current/deploy/watchdog.sh
+ExecStartPost=/opt/outlet-ops/current/deploy/heartbeat.sh watchdog
+TimeoutStartSec=60

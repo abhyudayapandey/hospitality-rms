@@ -6,7 +6,7 @@ set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 REL_DIR=$1
 
-docker build -q -t "$PG_IMAGE" "$REL_DIR/postgres" > /dev/null
+docker build --pull -q -t "$PG_IMAGE" "$REL_DIR/postgres" > /dev/null
 install -d -m 0755 "$OO_ETC/postgres"
 install -m 0644 "$REL_DIR/postgres/postgresql.conf" "$REL_DIR/postgres/pg_hba.conf" "$OO_ETC/postgres/"
 

@@ -9,6 +9,18 @@
 	}
 }
 
+# The outside check (ADR 170) asks plain http://<domain>/health: it answers here, with no
+# redirect (an HTTPS check costs twice as much and says no more). Everything else on HTTP goes
+# to HTTPS, as Caddy would do by itself; Let's Encrypt's HTTP challenge is still answered.
+http://{$APP_DOMAIN} {
+	handle /health {
+		reverse_proxy 127.0.0.1:3000
+	}
+	handle {
+		redir https://{host}{uri} 308
+	}
+}
+
 {$APP_DOMAIN} {
 	encode zstd gzip
 	header Strict-Transport-Security "max-age=31536000"

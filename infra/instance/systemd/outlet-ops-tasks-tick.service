@@ -1,6 +1,8 @@
 [Unit]
 Description=Outlet Ops tasks job: checklist instances, reminders and escalation
 After=network-online.target docker.service
+# A failure emails the alert address and is shown in the console (ADR 170).
+OnFailure=outlet-ops-notify@%n.service
 
 [Service]
 Type=oneshot
@@ -9,6 +11,8 @@ Group=outletops-wf
 # Only the wf_executor password (ops.tasks_tick is granted to wf_executor only).
 LoadCredential=db_wf_executor:/etc/outlet-ops/creds/wf_executor
 ExecStart=/opt/outlet-ops/current/deploy/tasks-tick.sh
+# + runs as root: records a good run (platform.job_ran) as the database superuser
+ExecStartPost=+/opt/outlet-ops/current/deploy/heartbeat.sh tasks-tick
 TimeoutStartSec=120
 MemoryMax=256M
 NoNewPrivileges=yes

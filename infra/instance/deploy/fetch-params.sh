@@ -50,7 +50,7 @@ done < <(aws ssm get-parameters-by-path --path "$PARAM_PREFIX/config" \
   --query 'Parameters[].[Name,Value]' --output text)
 for key in app_url app_domain acme_email cognito_user_pool_id cognito_client_id cognito_domain \
   platform_cognito_user_pool_id platform_cognito_client_id platform_cognito_domain \
-  backup_bucket photo_bucket; do
+  backup_bucket photo_bucket alert_topic_arn; do
   [ -n "${cfg[$key]:-}" ] || { echo "missing config parameter $key" >&2; exit 1; }
 done
 
@@ -89,5 +89,9 @@ ACME_EMAIL=${cfg[acme_email]}
 ENV
 cat > "$OO_ETC/backup.env" <<ENV
 BACKUP_BUCKET=${cfg[backup_bucket]}
+ENV
+# The alert topic (ADR 170): root's notify and watchdog scripts publish to it.
+cat > "$OO_ETC/alert.env" <<ENV
+ALERT_TOPIC_ARN=${cfg[alert_topic_arn]}
 ENV
 log "parameters fetched"

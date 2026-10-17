@@ -1,0 +1,13 @@
+[Unit]
+Description=Outlet Ops: the instance credentials only for root, the web app and the platform worker (ADR 170)
+After=docker.service
+Wants=docker.service
+Before=outlet-ops-web.service outlet-ops-platform-worker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/outlet-ops/current/deploy/imds-guard.sh
+
+[Install]
+WantedBy=multi-user.target
