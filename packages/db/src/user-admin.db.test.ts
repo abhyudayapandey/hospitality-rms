@@ -351,6 +351,80 @@ describe('edits and login actions', () => {
     });
   });
 
+  it('"Set up login again" is checked like a reset: modify, rank, self, audit (ADR 166)', async () => {
+    await inRolledBackTx(async (c) => {
+      const target = ids.user(IN_HOTEL);
+      // a company's own group with USER_ACCESS view only, held at Hotel 1.0
+      await c.query(
+        `with g as (insert into core.security_group (tenant_id, code, name, kind)
+                    values ($1, 'ZZ_PEOPLE_VIEWER', 'People viewer', 'role') returning id)
+         insert into core.domain_policy (tenant_id, domain_id, group_id, access)
+         select $1, d.id, g.id, 'view' from g, core.domain d
+          where d.tenant_id = $1 and d.code = 'USER_ACCESS'`,
+        [ids.tenant()],
+      );
+      const VIEWER = 'test.bell-captain.1.0';
+      await c.query(
+        `insert into core.role_assignment (tenant_id, user_id, group_id, node_id)
+         select $1, $2, id, $3 from core.security_group
+          where tenant_id = $1 and code = 'ZZ_PEOPLE_VIEWER'`,
+        [ids.tenant(), ids.user(VIEWER), ids.node('TEST-HOTEL-1.0')],
+      );
+      // the viewer may read the person (all the old path checked)...
+      expect(await ok(c, VIEWER, 'select * from core.admin_user($1)', [target])).toHaveLength(1);
+      // ...but may not set up their login, nor the owner's
+      for (const who of [target, ids.user(OWNER)]) {
+        expect(
+          await error(c, VIEWER, `select * from core.login_admin_target($1, 'create_login')`, [
+            who,
+          ]),
+        ).toBe('NOT_AUTHORISED');
+      }
+      // a User Admin: not their own, not an owner above them
+      expect(
+        await error(c, GM1, `select * from core.login_admin_target($1, 'create_login')`, [
+          ids.user(GM1),
+        ]),
+      ).toBe('SELF_GRANT');
+      await c.query(
+        `insert into core.role_assignment (tenant_id, user_id, group_id, node_id)
+         select $1, $2, id, $3 from core.security_group
+          where tenant_id = $1 and code = 'ACCOUNT_OWNER'`,
+        [ids.tenant(), ids.user('test.bar-manager.1.0'), ids.node('TEST-HOTEL-1.0')],
+      );
+      expect(
+        await error(c, GM1, `select * from core.login_admin_target($1, 'create_login')`, [
+          ids.user('test.bar-manager.1.0'),
+        ]),
+      ).toBe('ABOVE_OWN_RANK');
+      // in scope and rank: the login, and an audit row in words
+      const [t] = await ok<{ username: string; login_type: string }>(
+        c,
+        GM1,
+        `select username, login_type from core.login_admin_target($1, 'create_login')`,
+        [target],
+      );
+      expect(t).toEqual({ username: 'test.bellboy.1.0', login_type: 'username' });
+      const ev = await c.query<{ n: string }>(
+        `select count(*) as n from core.login_admin_event
+          where user_id = $1 and action = 'create_login'`,
+        [target],
+      );
+      expect(ev.rows[0]!.n).toBe('1');
+      const audit = await ok<{ action: string }>(
+        c,
+        OWNER,
+        'select action from core.access_audit(50)',
+      );
+      expect(audit.map((a) => a.action)).toContain('login set up');
+      // not for someone inactive
+      await ok(c, GM1, `select core.set_user_status($1, 'inactive')`, [target]);
+      expect(
+        await error(c, GM1, `select * from core.login_admin_target($1, 'create_login')`, [target]),
+      ).toBe('INVALID_STATE');
+    });
+  });
+
   it('link_login records the Cognito account once; sign-ins are timestamped', async () => {
     await inRolledBackTx(async (c) => {
       const target = ids.user(IN_HOTEL);

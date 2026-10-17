@@ -1,10 +1,13 @@
 import { join } from 'node:path';
 import pg from 'pg';
+import { NIGHTLY_JOBS, REPORT_JOBS, runJobs } from '../src/ticks';
 
 // Nightly attendance job (ADR 008): late / no_show / missing_clock_out / unscheduled
 // exceptions for recent local days, the 90-day purge of raw clock-in coordinates, and the
 // removal of selfies and devices older than the personnel retention rule (ADR 045) and of
-// task photos older than 30 days (ADR 079); then the report tables (ADR 023).
+// task photos older than 30 days (ADR 079); the audit log's monthly partitions (ADR 167);
+// then the report tables (ADR 023). Each step runs in its own transaction and a failed one
+// does not stop the rest (ADR 167); anything that failed makes the run exit non-zero.
 // Runs as wf_executor (systemd timer on the instance; locally on demand):
 //   pnpm --filter @outlet-ops/workflow attendance-nightly
 try {
@@ -20,37 +23,22 @@ const reportsOnly = process.argv.includes('--reports-only');
 
 const client = new pg.Client({ connectionString: url });
 await client.connect();
-
-/** One job in its own transaction, as the executor. */
-async function job<T extends object>(sql: string): Promise<T | undefined> {
-  try {
-    await client.query('begin');
-    await client.query(`select set_config('app.actor_kind', 'executor', true)`);
-    const { rows } = await client.query<T>(sql);
-    await client.query('commit');
-    return rows[0];
-  } catch (err) {
-    await client.query('rollback').catch(() => undefined);
-    throw err;
-  }
-}
-
 try {
+  const r = await runJobs(client, reportsOnly ? REPORT_JOBS : [...NIGHTLY_JOBS, ...REPORT_JOBS], {
+    log: (m) => console.error(`[attendance-nightly] ${m}`),
+  });
+  const d = r.done;
+  const n = (job: string, field = 'n') => Number(d[job]?.[field] ?? 0);
   if (!reportsOnly) {
-    const r = await job<{ exceptions: number; purged: number }>(
-      'select * from hr.nightly_attendance()',
+    console.log(
+      `[attendance-nightly] exceptions=${n('attendance', 'exceptions')} purged=${n('attendance', 'purged')}`,
     );
-    console.log(`[attendance-nightly] exceptions=${r?.exceptions ?? 0} purged=${r?.purged ?? 0}`);
-    // personnel data kept under the retention rule (ATT-7, ADR 045): old selfies and devices go
-    const p = await job<{ n: number }>('select hr.purge_personnel() as n');
-    console.log(`[attendance-nightly] selfies and devices removed=${p?.n ?? 0}`);
-    // routine task and step photos are kept 30 days (ADR 079); the bucket removes the files
-    const t = await job<{ n: number }>('select ops.purge_task_photos() as n');
-    console.log(`[attendance-nightly] task photos removed=${t?.n ?? 0}`);
+    console.log(`[attendance-nightly] selfies and devices removed=${n('personnel')}`);
+    console.log(`[attendance-nightly] task photos removed=${n('task photos')}`);
+    console.log(`[attendance-nightly] audit partitions made=${n('audit partitions')}`);
   }
-  // the report tables (ADR 023): the last 35 business days, after the day's exceptions
-  const rep = await job<{ n: number }>('select rpt.nightly() as n');
-  console.log(`[attendance-nightly] report rows changed=${rep?.n ?? 0}`);
+  console.log(`[attendance-nightly] report rows changed=${n('reports')}`);
+  if (r.failed.length > 0) process.exitCode = 1;
 } finally {
   await client.end();
 }

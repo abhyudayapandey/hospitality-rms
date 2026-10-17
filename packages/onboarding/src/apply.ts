@@ -729,7 +729,7 @@ class Loader {
     await this.c.query('select hr.label_job_role_duties($1)', [this.tenant]);
 
     if (await this.loginClashes()) return;
-    // the Test<Role>!12 password rule is for test customers only (ADR 012)
+    // file 07's test_rule mark is for test customers only (ADR 012; no pattern passwords, ADR 166)
     if (!this.isTest) {
       for (const u of this.b.users.filter((x) => x.password_mode === 'test_rule')) {
         this.report.issues.push({
@@ -2622,8 +2622,17 @@ class Loader {
             });
           }
           const shift = (
-            await this.c.query<{ id: string; assigned: boolean; started: boolean }>(
-              `select s.id, s.start_at <= now() as started,
+            await this.c.query<{
+              id: string;
+              assigned: boolean;
+              started: boolean;
+              day: string;
+              on_leave: boolean;
+            }>(
+              `select s.id, s.start_at <= now() as started, to_char(s.local_date, 'Dy FMDD Mon') as day,
+                      exists (select 1 from hr.leave_request l
+                               where l.worker_id = $5 and l.status = 'approved'
+                                 and s.local_date between l.from_date and l.to_date) as on_leave,
                       exists (select 1 from hr.shift_assignment a
                                where a.shift_id = s.id and a.worker_id = $5
                                  and a.status = 'assigned') as assigned
@@ -2634,6 +2643,18 @@ class Loader {
             )
           ).rows[0];
           if (!shift) continue; // the template doesn't run that day
+          if (!shift.assigned && shift.on_leave) {
+            // approved leave that day (asked for in the app since the last load): the shift is
+            // left out, never the whole load (ADR 167)
+            const who = this.b.users.find((u) => u.username === s.username)?.display_name;
+            this.report.warnings.push({
+              file: FILES.shifts.file,
+              row: s.line,
+              message: `${who ?? s.username} is on leave on ${shift.day}: that shift is left out`,
+            });
+            this.count('shift assignments', false);
+            continue;
+          }
           if (!shift.assigned) {
             await this.c.query(
               shift.started

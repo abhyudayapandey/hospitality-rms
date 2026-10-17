@@ -42,12 +42,21 @@ $x$  -- one at a time: a second tap waits, then finds the order the first made (
    order by po.created_at desc, po.id desc limit 1;
   if found then$x$);
 
--- where the request is: a closed order is not being ordered; the newest order speaks
+-- where the request is: a closed order is not being ordered; the newest order speaks (on top of
+-- ADR 167's failed-order rule)
 select core.patch_function('inv.now_of(uuid,integer)',
-$x$   where po.for_transfer_id = p_transfer and po.status in ('submitted', 'released')
+$x$   where po.for_transfer_id = p_transfer
+     and (po.status in ('submitted', 'released')
+          or (po.status = 'cancelled' and po.closed_at is null
+              and exists (select 1 from wf.request q
+                           where q.id = po.wf_request_id and q.state = 'failed')))
      and not exists (select 1 from inv.goods_receipt g where g.po_id = po.id)
-   order by po.created_at desc limit 1;$x$,
-$x$   where po.for_transfer_id = p_transfer and po.status in ('submitted', 'released')
+   order by po.created_at desc, po.id desc limit 1;$x$,
+$x$   where po.for_transfer_id = p_transfer
+     and (po.status in ('submitted', 'released')
+          or (po.status = 'cancelled' and po.closed_at is null
+              and exists (select 1 from wf.request q
+                           where q.id = po.wf_request_id and q.state = 'failed')))
      and po.closed_at is null
      and not exists (select 1 from inv.goods_receipt g where g.po_id = po.id)
    order by po.created_at desc, po.id desc limit 1;$x$);
@@ -83,11 +92,21 @@ $x$    select pl.item_id, sum(pl.qty - coalesce((select sum(gl.qty) from inv.goo
       join inv.purchase_order po on po.id = pl.po_id
      where po.delivery_node_id = p_node and po.status in ('submitted', 'released')$x$);
 select core.patch_function('inv.now_of(uuid,integer)',
-$x$     and po.closed_at is null
+$x$   where po.for_transfer_id = p_transfer
+     and (po.status in ('submitted', 'released')
+          or (po.status = 'cancelled' and po.closed_at is null
+              and exists (select 1 from wf.request q
+                           where q.id = po.wf_request_id and q.state = 'failed')))
+     and po.closed_at is null
      and not exists (select 1 from inv.goods_receipt g where g.po_id = po.id)
    order by po.created_at desc, po.id desc limit 1;$x$,
-$x$     and not exists (select 1 from inv.goods_receipt g where g.po_id = po.id)
-   order by po.created_at desc limit 1;$x$);
+$x$   where po.for_transfer_id = p_transfer
+     and (po.status in ('submitted', 'released')
+          or (po.status = 'cancelled' and po.closed_at is null
+              and exists (select 1 from wf.request q
+                           where q.id = po.wf_request_id and q.state = 'failed')))
+     and not exists (select 1 from inv.goods_receipt g where g.po_id = po.id)
+   order by po.created_at desc, po.id desc limit 1;$x$);
 select core.patch_function('inv.order_for_request(uuid,jsonb)',
 $x$  -- one at a time: a second tap waits, then finds the order the first made (ADR 168)
   perform 1 from inv.transfer where id = p_transfer for update;

@@ -58,11 +58,25 @@ export async function discardDrafts(node: string, monday: string): Promise<Actio
   });
 }
 
-export async function publishWeek(node: string, monday: string): Promise<ActionResult<number>> {
+/**
+ * Publish (ADR 135): the week's changes go live. What breaks a roster rule now (leave approved
+ * since, too little rest...) is left out, and the screen says who and when (ADR 167).
+ */
+export async function publishWeek(
+  node: string,
+  monday: string,
+): Promise<ActionResult<{ n: number; leftOut: string[] }>> {
   return run('publish_week', async (tx) => {
+    const out = await sql<{ worker_name: string; day: string; words: string }>`
+      select worker_name, to_char(local_date, 'Dy FMDD Mon') as day, words
+        from hr.publish_left_out(${node}::uuid, ${monday}::date)
+       order by local_date, worker_name`.execute(tx);
     const r = await sql<{ n: number }>`
       select hr.publish_week(${node}::uuid, ${monday}::date) as n`.execute(tx);
-    return r.rows[0]!.n;
+    return {
+      n: r.rows[0]!.n,
+      leftOut: out.rows.map((o) => `${o.worker_name} on ${o.day} (${o.words})`),
+    };
   });
 }
 

@@ -15,6 +15,7 @@ const STATUS: Record<string, string> = {
   approved: 'Approved',
   rejected: 'Not approved',
   cancelled: 'Cancelled',
+  failed: 'It could not go through',
   reassigned: 'Assigned to someone else',
 };
 

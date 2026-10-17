@@ -63,8 +63,9 @@ customer and suspend/reactivate; B2 adds imports and logins.
 
 - `core.tenant.is_test` is set when a customer is created (the console's checkbox, or
   `is_test` in file 00) and a trigger refuses any later change (`IS_TEST_IMMUTABLE`); the
-  audit trigger records it. Only test customers may use the `Test<Role>!12` password rule
-  (PRD ADM-1); the loader refuses `test_rule` for anyone else. The two test customers are
+  audit trigger records it. Only test customers may mark people `test_rule` in file 07
+  (the loader refuses it for anyone else); the pattern passwords it once stood for were
+  removed by ADR 166. The two test customers are
   flagged as test.
 
 ## The worker runs as platform_loader, never migrator

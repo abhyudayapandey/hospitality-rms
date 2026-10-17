@@ -11,6 +11,7 @@ const INTERNAL = 'http://localhost:3000';
 const jar = new Map<string, string>();
 const limit = { ok: true };
 const signIn = { groups: ['platform-admins'], fail: false };
+const request = { origin: APP };
 
 vi.mock('server-only', () => ({}));
 vi.mock('next/headers', () => ({
@@ -20,7 +21,7 @@ vi.mock('next/headers', () => ({
       set: (name: string, value: string) => void jar.set(name, value),
       delete: (c: string | { name: string }) => void jar.delete(typeof c === 'string' ? c : c.name),
     }),
-  headers: () => Promise.resolve(new Headers({ origin: APP })),
+  headers: () => Promise.resolve(new Headers({ origin: request.origin })),
 }));
 vi.mock('@/lib/security/rate-limit', () => ({
   LIMITS: { signIn: { limit: 30, windowS: 300 } },
@@ -94,6 +95,7 @@ beforeEach(() => {
   limit.ok = true;
   signIn.groups = ['platform-admins'];
   signIn.fail = false;
+  request.origin = APP;
   for (const k of [
     'COGNITO_USER_POOL_ID',
     'COGNITO_CLIENT_ID',
@@ -199,6 +201,16 @@ describe('customer auth redirects use APP_URL, not the request host', () => {
     const res = await customerLogout.POST();
     const { redirect } = (await res.json()) as { redirect: string };
     expect(redirect).toBe('/login'); // relative: resolved by the browser on the public host
+  });
+
+  it('logout from another site is refused and signs nobody out (ADR 166)', async () => {
+    jar.set('oo_session', 'kept');
+    request.origin = 'https://evil.example';
+    const res = await customerLogout.POST();
+    expect(res.status).toBe(403);
+    expect(jar.get('oo_session')).toBe('kept');
+    const platform = await platformLogout.POST();
+    expect(platform.status).toBe(403);
   });
 
   it('proxy: no session goes to /login', async () => {

@@ -37,12 +37,20 @@ export interface NewLogin {
   invite?: boolean;
 }
 
+export interface CreatedLogin {
+  sub: string;
+  /**
+   * The login was there already: it was found, and its password left alone (ADR 166). A caller
+   * sets one only as a checked reset, after the database agreed and linked this sub to this
+   * person (`setTemporaryPassword`).
+   */
+  existed: boolean;
+}
+
 export interface LoginDirectory {
-  /** Creates the login (or finds the existing one) and returns its sub. */
-  create(login: NewLogin): Promise<{ sub: string }>;
+  /** Creates the login (or finds the existing one, unchanged) and returns its sub. */
+  create(login: NewLogin): Promise<CreatedLogin>;
   setTemporaryPassword(username: string, password: string): Promise<void>;
-  /** Test customers' Test<Role>!12 passwords only (ADR 013): kept at the next sign-in. */
-  setPermanentPassword(username: string, password: string): Promise<void>;
   disable(username: string): Promise<void>;
   enable(username: string): Promise<void>;
   /** Revokes every refresh token: signed out everywhere at the next token refresh. */
@@ -66,7 +74,7 @@ export class CognitoDirectory implements LoginDirectory {
     private readonly clientId?: string,
   ) {}
 
-  async create(login: NewLogin): Promise<{ sub: string }> {
+  async create(login: NewLogin): Promise<CreatedLogin> {
     const attributes = [
       ...(login.email
         ? [
@@ -97,14 +105,14 @@ export class CognitoDirectory implements LoginDirectory {
         }),
       )) as { User?: { Attributes?: { Name?: string; Value?: string }[] } };
       const sub = r.User?.Attributes?.find((a) => a.Name === 'sub')?.Value;
-      if (sub) return { sub };
+      if (sub) return { sub, existed: false };
     } catch (err) {
       if (!(err instanceof UsernameExistsException)) throw err;
-      if (login.temporaryPassword) {
-        await this.setTemporaryPassword(login.username, login.temporaryPassword);
-      }
+      // someone's login already: never given a new password here (ADR 166). A view-only
+      // admin could otherwise reset anyone, the owner too, before the database said no.
+      return { sub: await this.sub(login.username), existed: true };
     }
-    return { sub: await this.sub(login.username) };
+    return { sub: await this.sub(login.username), existed: false };
   }
 
   private async sub(username: string): Promise<string> {
@@ -123,17 +131,6 @@ export class CognitoDirectory implements LoginDirectory {
         Username: username,
         Password: password,
         Permanent: false,
-      }),
-    );
-  }
-
-  async setPermanentPassword(username: string, password: string): Promise<void> {
-    await this.client.send(
-      new AdminSetUserPasswordCommand({
-        UserPoolId: this.userPoolId,
-        Username: username,
-        Password: password,
-        Permanent: true,
       }),
     );
   }
@@ -224,13 +221,10 @@ export class CognitoDirectory implements LoginDirectory {
 
 /** Dev and e2e: no Cognito. Logins get a stable fake sub; everything else is a no-op. */
 export class NoopDirectory implements LoginDirectory {
-  create(login: NewLogin): Promise<{ sub: string }> {
-    return Promise.resolve({ sub: `local:${login.username}` });
+  create(login: NewLogin): Promise<CreatedLogin> {
+    return Promise.resolve({ sub: `local:${login.username}`, existed: false });
   }
   setTemporaryPassword(): Promise<void> {
-    return Promise.resolve();
-  }
-  setPermanentPassword(): Promise<void> {
     return Promise.resolve();
   }
   disable(): Promise<void> {

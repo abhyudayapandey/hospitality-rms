@@ -35,8 +35,10 @@ export function NewPersonForm({
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [created, setCreated] = useState<Created | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // from the latest state: the username suggestion lands whenever its server call returns, and
+  // a change made just before it was drawn must not put the empty username back
   const set = (patch: Partial<NewPerson>) => {
-    setP({ ...p, ...patch });
+    setP((cur) => ({ ...cur, ...patch }));
     setPreview(null); // any change needs a fresh preview
   };
 

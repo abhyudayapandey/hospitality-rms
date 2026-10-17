@@ -115,7 +115,7 @@ export const ERROR_MESSAGES = {
   CUSTOMER_CODE_TAKEN: 'That customer code is already in use.',
   CUSTOMER_MISMATCH: 'These files are for a different customer (file 00 names another code).',
   CUSTOMER_SUSPENDED: 'This customer is suspended. Reactivate it first.',
-  TEST_RULE_NOT_ALLOWED: 'Demo passwords are only for demo customers.',
+  TEST_RULE_NOT_ALLOWED: 'Pattern passwords are not given any more.',
   INVALID_SETUP: 'Something in this set-up needs fixing first: see the list on Who does what.',
   INVALID_UPLOAD: 'That upload is not stored for this customer. Upload the files again.',
   UPLOAD_EMPTY: 'Choose a zip file or the CSV files to upload.',

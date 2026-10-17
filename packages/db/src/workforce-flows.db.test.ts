@@ -1427,7 +1427,7 @@ describe('Leave over a roster change waiting for Publish (ADR 164)', () => {
       await c.query(`update wf.request set state = 'failed' where id = $1`, [req]);
       expect((await team()).find((r) => r.leave_id === leave)).toMatchObject({
         status: 'failed',
-        words: 'It could not go through. Tell your manager.',
+        words: 'It could not go through. You can ask again.',
       });
       expect(
         await as(

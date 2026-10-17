@@ -26,7 +26,8 @@ export default async function AdjustmentPage({ params }: { params: Promise<{ id:
       node_name: string;
       reason: string;
       status: string;
-      amount: string;
+      /** null for whoever may not read its money (inv.sees_adjustment_money, ADR 166) */
+      amount: string | null;
       wf_request_id: string;
       created_at: Date;
       initiator: string | null;
@@ -35,7 +36,9 @@ export default async function AdjustmentPage({ params }: { params: Promise<{ id:
       pending_for_me: boolean;
     }>`
       select a.id, a.tenant_id, a.delivery_node_id, core.node_name(a.delivery_node_id) as node_name,
-             a.reason, a.status, a.amount, a.wf_request_id, a.created_at,
+             a.reason, a.status,
+             case when inv.sees_adjustment_money(a.id) then a.amount end as amount,
+             a.wf_request_id, a.created_at,
              (select initiator_name from wf.my_inbox() where request_id = a.wf_request_id) as initiator,
              -- sent in the lead's name for the person who threw an expired batch away (ADR 021)
              (select payload ->> 'recorded_by_name' from wf.request where id = a.wf_request_id)
@@ -49,12 +52,14 @@ export default async function AdjustmentPage({ params }: { params: Promise<{ id:
       base_uom: string;
       movement_type: string;
       qty: string;
-      unit_cost: string;
+      unit_cost: string | null;
       reason: string | null;
       photo_key: string | null;
     }>`
-      select l.id, i.name, i.base_uom, l.movement_type, l.qty, l.unit_cost, l.reason, l.photo_key
+      select l.id, i.name, i.base_uom, l.movement_type, l.qty,
+             case when m.sees then l.unit_cost end as unit_cost, l.reason, l.photo_key
         from inv.stock_adjustment_line l join inv.item i on i.id = l.item_id
+       cross join (select inv.sees_adjustment_money(${id}::uuid) as sees) m
        where l.adjustment_id = ${id}::uuid order by i.name`.execute(tx);
     return { a: a.rows[0], lines: lines.rows };
   });
@@ -87,7 +92,11 @@ export default async function AdjustmentPage({ params }: { params: Promise<{ id:
             {a.initiator ? ` on behalf of ${a.initiator}` : ''}.
           </p>
         )}
-        <p className="mt-1 text-lg font-semibold tabular-nums">{formatMoney(a.amount)}</p>
+        {a.amount !== null && (
+          <p className="mt-1 text-lg font-semibold tabular-nums" data-testid="adjustment-amount">
+            {formatMoney(a.amount)}
+          </p>
+        )}
         <p className="text-sm text-slate-600">Status: {a.status}</p>
       </div>
       <ul className="space-y-2">
@@ -108,9 +117,11 @@ export default async function AdjustmentPage({ params }: { params: Promise<{ id:
               <span className="text-right tabular-nums">
                 {Number(l.qty) > 0 ? '+' : ''}
                 {formatQty(l.qty, l.base_uom)}
-                <span className="block text-xs text-slate-500">
-                  {formatMoney(Math.abs(Number(l.qty)) * Number(l.unit_cost))}
-                </span>
+                {l.unit_cost !== null && (
+                  <span className="block text-xs text-slate-500">
+                    {formatMoney(Math.abs(Number(l.qty)) * Number(l.unit_cost))}
+                  </span>
+                )}
               </span>
             </div>
             {photos.has(l.id) && (

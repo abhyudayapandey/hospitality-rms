@@ -107,14 +107,26 @@ self.addEventListener('push', (event) => {
       renotify: true,
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
-      data: { link: typeof n.link === 'string' && n.link.startsWith('/') ? n.link : '/' },
+      data: { link: appLink(n.link) },
     }),
   );
 });
 
+// A path inside the app only: one slash, no second slash or backslash, no control characters
+// (browsers drop tab, CR and LF, so "/\t/x" would be "//x", another site; ADR 166).
+function appLink(link) {
+  return typeof link === 'string' &&
+    /^\/(?![/\\])/.test(link) &&
+    // eslint-disable-next-line no-control-regex -- control characters are what this refuses
+    !/[\u0000-\u001f\u007f\\]/.test(link)
+    ? link
+    : '/';
+}
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = new URL(event.notification.data?.link || '/', self.location.origin).href;
+  const target = new URL(appLink(event.notification.data?.link), self.location.origin);
+  const url = target.origin === self.location.origin ? target.href : self.location.origin + '/';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
       const open = wins.find((w) => new URL(w.url).origin === self.location.origin);
