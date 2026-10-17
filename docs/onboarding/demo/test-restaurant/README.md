@@ -92,20 +92,21 @@ checklists 21, SOPs 14, sections 5, shift templates 15, shifts 315, shift assign
 production batches 42, sales days 7, stock counts 1, purchase orders 3, attendance
 sessions 89. **Apply**, then a second dry run shows no changes.
 
-**5. Logins (the printed sheet)**: the customer's page → **Logins** → tick **Set passwords
-by the Test<Role>!12 rule** → **Create 21 username logins** → **Print the login sheet**.
-Each password is `Test` + the job title without spaces + `!12`:
+**5. Logins (the printed sheet)**: the customer's page → **Logins** → **Create 21 sign-ins**
+→ **Print the login sheet**. Each person gets a random one-time password and sets their own at
+first sign-in (ADR 166); passwords are never written in this repository, which is public. To
+replace passwords that were shared: **Logins** → **New passwords for all**.
 
-| Who                                | Username                     | Password                   |
-| ---------------------------------- | ---------------------------- | -------------------------- |
-| Demo Presenter                     | `restaurant.presenter`       | `TestAccountOwner!12`      |
-| Leena Sequeira, owner              | `test.leena-sequeira`        | `TestAccountOwner!12`      |
-| Rhea Fernandes, Restaurant Manager | `restaurant.manager`         | `TestRestaurantManager!12` |
-| Calvin Rodrigues, Bar Manager      | `restaurant.bar-manager`     | `TestBarManager!12`        |
-| Sana Shaikh, Bartender             | `restaurant.bartender`       | `TestBartender!12`         |
-| Dinesh Shetye, Store Keeper        | `restaurant.store-keeper`    | `TestStoreKeeper!12`       |
-| Santosh Naik, Technician           | `restaurant.technician`      | `TestTechnician!12`        |
-| Priya Kamat, Cost Controller       | `restaurant.cost-controller` | `TestCostController!12`    |
+| Who                                | Username                     |
+| ---------------------------------- | ---------------------------- |
+| Demo Presenter                     | `restaurant.presenter`       |
+| Leena Sequeira, owner              | `test.leena-sequeira`        |
+| Rhea Fernandes, Restaurant Manager | `restaurant.manager`         |
+| Calvin Rodrigues, Bar Manager      | `restaurant.bar-manager`     |
+| Sana Shaikh, Bartender             | `restaurant.bartender`       |
+| Dinesh Shetye, Store Keeper        | `restaurant.store-keeper`    |
+| Santosh Naik, Technician           | `restaurant.technician`      |
+| Priya Kamat, Cost Controller       | `restaurant.cost-controller` |
 
 **6. Check**: sign in as `restaurant.presenter`. Me shows **Show the app as someone**; pick
 Rhea Fernandes: Home shows Compliance (the bar licence expiring), the sections card, Push

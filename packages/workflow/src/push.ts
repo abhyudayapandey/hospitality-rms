@@ -39,12 +39,22 @@ export interface DuePush {
   link: string | null;
 }
 
+/**
+ * A path inside the app: one slash, then no second slash or backslash, and no control
+ * characters, which browsers drop ("/\t/x" is "//x", another site; ADR 166). The service
+ * worker checks the same (public/sw.js).
+ */
+export function appLink(link: string | null): string {
+  // eslint-disable-next-line no-control-regex -- control characters are what this refuses
+  return link && /^\/(?![/\\])/.test(link) && !/[\u0000-\u001f\u007f\\]/.test(link) ? link : '/';
+}
+
 /** What the service worker shows: the title, the body, where a tap goes; one per kind. */
 export function pushPayload(p: Pick<DuePush, 'kind' | 'title' | 'body' | 'link'>): string {
   return JSON.stringify({
     title: p.title,
     body: p.body ?? '',
-    link: p.link && p.link.startsWith('/') ? p.link : '/',
+    link: appLink(p.link),
     tag: p.kind,
   });
 }

@@ -36,15 +36,6 @@ export function generateTemporaryPassword(
 }
 
 /**
- * The Test<Role>!12 rule (docs/onboarding/test-data): "Test", the job title without
- * spaces, "!12" (Bar Manager -> TestBarManager!12). Only for test customers; the database
- * refuses the option for anyone else (ADR 013, PRD ADM-1).
- */
-export function testRulePassword(jobTitle: string): string {
-  return `Test${jobTitle.replace(/\s+/g, '')}!12`;
-}
-
-/**
  * What a new password lacks under the customer pool's policy (infra: at least 10
  * characters, a digit and a lower-case letter), for the form's early feedback. Cognito
  * applies the same policy when the password is changed.

@@ -96,11 +96,13 @@ test('an upload for another customer is refused before anything is queued', asyn
   );
 });
 
-test('logins for a test customer with the Test<Role>!12 rule', async ({ page }) => {
+test('logins for a test customer: random one-time passwords, then new ones for all (ADR 166)', async ({
+  page,
+}) => {
   const solo = await tenantId('TEST-SOLO-COMPANY');
   const reset = () =>
     asMigrator(
-      `update core.app_user set cognito_sub = null
+      `update core.app_user set cognito_sub = null, sessions_valid_from = null
         where tenant_id = $1 and (cognito_sub is null or cognito_sub like 'local:%')`,
       [solo],
     );
@@ -113,20 +115,23 @@ test('logins for a test customer with the Test<Role>!12 rule', async ({ page }) 
       page.getByText(/invitations go out a day, for all customers together/),
     ).toBeVisible();
     const form = page.getByRole('form', { name: 'Create their sign-ins' });
+    // no pattern passwords on offer any more
+    await expect(form.getByRole('checkbox')).toHaveCount(0);
     await expect(form.getByRole('button', { name: 'Create 10 sign-ins' })).toBeEnabled();
-    await form.getByRole('checkbox').check();
     await form.getByRole('button', { name: 'Create 10 sign-ins' }).click();
 
     const created = page.getByTestId('created-logins');
-    await expect(created).toContainText('10 sign-ins created');
-    await expect(
-      created.locator('[data-username="test.solo.bar-manager"]').getByTestId('password'),
-    ).toHaveText('TestBarManager!12');
+    await expect(created).toContainText('10 passwords made');
+    const first = created
+      .locator('[data-username="test.solo.bar-manager"]')
+      .getByTestId('password');
+    await expect(first).toHaveText(/^[A-Za-z2-9]{14}$/);
+    const password = (await first.textContent())!;
 
     const download = page.waitForEvent('download');
     await created.getByRole('button', { name: 'Download as CSV (once)' }).click();
     const csv = readFileSync(await (await download).path(), 'utf8');
-    expect(csv).toContain('test.solo.bar-manager,Test Bar Manager,TestBarManager!12,no');
+    expect(csv).toContain(`test.solo.bar-manager,Test Bar Manager,${password},yes`);
     await expect(created.getByRole('button', { name: 'Downloaded' })).toBeDisabled();
 
     // passwords are never shown again
@@ -134,12 +139,28 @@ test('logins for a test customer with the Test<Role>!12 rule', async ({ page }) 
     await expect(page.getByTestId('username-summary')).toContainText('10 of 10 are ready');
     await expect(page.getByTestId('created-logins')).toHaveCount(0);
     await expect(page.getByTestId('password')).toHaveCount(0);
+
+    // a test company's shared passwords are replaced: new ones for all, everyone signed out
+    const fresh = page.getByTestId('new-passwords');
+    await fresh.getByRole('button', { name: 'New passwords for all 10' }).click();
+    await fresh.getByRole('button', { name: 'Yes, make new passwords' }).click();
+    const again = fresh.getByTestId('created-logins');
+    await expect(again).toContainText('10 passwords made');
+    await expect(
+      again.locator('[data-username="test.solo.bar-manager"]').getByTestId('password'),
+    ).not.toHaveText(password);
+    const [ended] = await asMigrator<{ n: string }>(
+      `select count(*) as n from core.app_user
+        where tenant_id = $1 and login_type = 'username' and sessions_valid_from is not null`,
+      [solo],
+    );
+    expect(ended!.n).toBe('10');
   } finally {
     await reset();
   }
 });
 
-test('the Test<Role>!12 option is refused for a customer that is not a test customer', async ({
+test('a customer that is not a test customer: random passwords, no new passwords for all', async ({
   page,
 }) => {
   // a customer that is not a test customer, created the real way (console + worker)
@@ -172,28 +193,21 @@ test('the Test<Role>!12 option is refused for a customer that is not a test cust
   const t = { id: await tenantId(code) };
   await page.goto(`/platform/customers/${t.id}/logins`);
   const form = page.getByRole('form', { name: 'Create their sign-ins' });
-  // the screen does not offer it...
-  await expect(form.getByRole('checkbox')).toBeDisabled();
-  await expect(form).toContainText('Only for demo customers; this one isn’t.');
-
-  // ...and a tampered request asking for it anyway is refused by the server
-  await page.route(`**/platform/customers/${t.id}/logins`, async (route) => {
-    const req = route.request();
-    if (req.method() === 'POST' && req.headers()['next-action']) {
-      const body = req.postData() ?? '';
-      expect(body).toContain(`"${t.id}",false`);
-      await route.continue({ postData: body.replace(`"${t.id}",false`, `"${t.id}",true`) });
-    } else {
-      await route.continue();
-    }
-  });
+  await expect(form.getByRole('checkbox')).toHaveCount(0);
+  // "New passwords for all" is for test companies only
+  await expect(page.getByTestId('new-passwords')).toHaveCount(0);
   await form.getByRole('button', { name: 'Create 1 sign-in' }).click();
-  await expect(form.getByRole('alert')).toHaveText('Demo passwords are only for demo customers.');
+  await expect(
+    page
+      .getByTestId('created-logins')
+      .locator(`[data-username="${username}"]`)
+      .getByTestId('password'),
+  ).toHaveText(/^[A-Za-z2-9]{14}$/);
   const [user] = await asMigrator<{ cognito_sub: string | null }>(
     'select cognito_sub from core.app_user where username = $1',
     [username],
   );
-  expect(user!.cognito_sub).toBeNull();
+  expect(user!.cognito_sub).toBe(`local:${username}`);
 });
 
 test('an extra account owner is removed; the Logins page no longer lists them', async ({

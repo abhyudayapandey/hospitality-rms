@@ -4,7 +4,7 @@ import { sql, withPlatformAdmin } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { requirePlatformAdmin } from '@/lib/platform/server';
 import type { PlatformCustomer } from '../../../parts';
-import { InvitePoller, SendInvites, UsernameLogins } from './logins-parts';
+import { InvitePoller, NewDemoPasswords, SendInvites, UsernameLogins } from './logins-parts';
 
 interface Candidate {
   user_id: string;
@@ -64,12 +64,27 @@ export default async function LoginsPage({ params }: { params: Promise<{ id: str
         </p>
         <UsernameLogins
           tenantId={id}
-          isTest={customer.is_test}
           waiting={usernameWaiting}
           suspended={customer.status !== 'active'}
           company={customer.name}
         />
       </section>
+
+      {customer.is_test && (
+        <section className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+          <h2 className="font-semibold">New passwords</h2>
+          <p className="text-sm text-slate-600">
+            A test company only. Everyone with a login ID gets a new one-time password. Do this when
+            old passwords were shared.
+          </p>
+          <NewDemoPasswords
+            tenantId={id}
+            ready={byUsername.length - usernameWaiting}
+            suspended={customer.status !== 'active'}
+            company={customer.name}
+          />
+        </section>
+      )}
 
       <section className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-slate-200">
         <h2 className="font-semibold">People with an email</h2>

@@ -729,7 +729,7 @@ class Loader {
     await this.c.query('select hr.label_job_role_duties($1)', [this.tenant]);
 
     if (await this.loginClashes()) return;
-    // the Test<Role>!12 password rule is for test customers only (ADR 012)
+    // file 07's test_rule mark is for test customers only (ADR 012; no pattern passwords, ADR 166)
     if (!this.isTest) {
       for (const u of this.b.users.filter((x) => x.password_mode === 'test_rule')) {
         this.report.issues.push({

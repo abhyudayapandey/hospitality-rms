@@ -83,7 +83,7 @@ export async function createPerson(p: NewPerson): Promise<ActionResult<Created>>
     return r.rows[0]!.r;
   });
   if (!created.ok) return created;
-  const login = await createLogin(created.data.user_id);
+  const login = await setUpLogin(created.data.user_id);
   if (!login.ok) return login;
   return {
     ok: true,
@@ -97,38 +97,62 @@ export async function createPerson(p: NewPerson): Promise<ActionResult<Created>>
 }
 
 /**
- * Creates (or finds) the person's Cognito login and links it. Safe to retry after a
- * Cognito failure: the user row already exists and the login is found, not duplicated.
+ * "Set up login again": creates (or finds) the person's Cognito login and links it. Checked
+ * like a password reset (ADR 166): rate limited per admin, then the database checks USER_ACCESS
+ * modify, scope, rank and self and writes the audit row, all before any Cognito call. Safe to
+ * retry after a Cognito failure: the login is found, not duplicated.
  */
 export async function createLogin(
+  userId: string,
+): Promise<ActionResult<{ temporaryPassword: string | null }>> {
+  const me = await requireUser();
+  if (me.presentedBy) return failure(new Error('PRESENTING'));
+  if (!(await withinLimit(`reset:${me.id}`, LIMITS.passwordReset))) {
+    return failure(new Error('RATE_LIMITED'));
+  }
+  return setUpLogin(userId);
+}
+
+async function setUpLogin(
   userId: string,
 ): Promise<ActionResult<{ temporaryPassword: string | null }>> {
   // no Cognito login made while showing the app as someone (ADR 071)
   if ((await requireUser()).presentedBy) return failure(new Error('PRESENTING'));
   const target = await run('login_admin_target', async (tx) => {
     const r = await sql<{ username: string; email: string | null; login_type: string }>`
-      select username, email, login_type from core.admin_user(${userId}::uuid)`.execute(tx);
+      select username, email, login_type
+        from core.login_admin_target(${userId}::uuid, 'create_login')`.execute(tx);
     return r.rows[0]!;
   });
   if (!target.ok) return target;
   const temporaryPassword =
     target.data.login_type === 'username' ? generateTemporaryPassword() : null;
-  let sub: string;
+  let login: { sub: string; existed: boolean };
   try {
-    ({ sub } = await loginDirectory().create({
+    login = await loginDirectory().create({
       username: target.data.username,
       loginType: target.data.login_type as 'username' | 'email',
       email: target.data.email,
       ...(temporaryPassword ? { temporaryPassword } : {}),
-    }));
+    });
   } catch (err) {
     console.error('cognito create failed', (err as Error).name);
     return failure(new Error('UNEXPECTED'));
   }
+  // linked first: a login that is someone else's is refused before its password changes
   const linked = await run('link_login', (tx) =>
-    sql`select core.link_login(${userId}::uuid, ${sub})`.execute(tx),
+    sql`select core.link_login(${userId}::uuid, ${login.sub})`.execute(tx),
   );
   if (!linked.ok) return linked;
+  if (login.existed && temporaryPassword) {
+    // a checked reset: this person's own login, the database having agreed above
+    try {
+      await loginDirectory().setTemporaryPassword(target.data.username, temporaryPassword);
+    } catch (err) {
+      console.error('cognito password reset failed', (err as Error).name);
+      return failure(new Error('UNEXPECTED'));
+    }
+  }
   return { ok: true, data: { temporaryPassword } };
 }
 

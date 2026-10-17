@@ -18,9 +18,24 @@ describe('back links keep the list (ADR 053)', () => {
       '//evil.example',
       '/\\evil',
       'javascript:alert(1)',
+      // browsers drop tab, CR and LF: these would be //evil.example (ADR 166)
+      '/\t/evil.example',
+      '/\r/evil.example',
+      '/\n/evil.example',
+      '/%09/evil',
+      '/%2F/evil.example',
+      '/%5Cevil',
+      '\\evil',
+      '/\u0000x',
     ]) {
       expect(backHref(bad, '/stock/orders')).toBe('/stock/orders');
     }
     expect(backHref(null, '/stock/orders')).toBe('/stock/orders');
+    expect(backHref('', '/stock/orders')).toBe('/stock/orders');
+  });
+  it('keeps an ordinary list address, its query and encoded words', () => {
+    for (const ok of ['/stock', '/stock/orders?all=1&tab=receive', '/reports?q=Bar%20Store']) {
+      expect(backHref(ok, '/x')).toBe(ok);
+    }
   });
 });
