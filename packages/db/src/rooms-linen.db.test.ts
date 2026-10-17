@@ -213,8 +213,9 @@ describe('meals by room (ADR 121)', () => {
 
   it('lunch and dinner are kept apart from breakfast, each with its own end', async () => {
     await inRolledBackTx(async (c) => {
-      await mealEnds(c, 'lunch', '23:59:59');
-      await mealEnds(c, 'dinner', '00:00');
+      // a cut-off before 04:00 is that night's; 04:00 itself is the business day's start
+      await mealEnds(c, 'lunch', '03:59:59');
+      await mealEnds(c, 'dinner', '04:00');
       const next = await run<{ today: string; lunch: string; dinner: string }>(
         c,
         'test.steward.1.0',
@@ -222,11 +223,7 @@ describe('meals by room (ADR 121)', () => {
            from ops.meal_outlets() where outlet_id = $1`,
         [ids.node(OUTLET)],
       );
-      const day = (
-        await c.query<{ d: string }>(`select (now() at time zone ops.tz_of($1))::date::text as d`, [
-          ids.node(OUTLET),
-        ])
-      ).rows[0]!.d;
+      const day = await today(c); // the 04:00 business day (ADR 169)
       expect(next[0]!.lunch).toBe(day);
       expect(next[0]!.dinner > day).toBe(true);
       await run(
@@ -357,12 +354,8 @@ describe('meals by room (ADR 121)', () => {
   it('a meal that has been served is kept as it was; up to a week ahead may be given', async () => {
     await inRolledBackTx(async (c) => {
       // before it ends (12:00 by default) today's breakfast is the next one ...
-      await breakfastEnds(c, '23:59:59');
-      const day = (
-        await c.query<{ d: string }>(`select (now() at time zone ops.tz_of($1))::date::text as d`, [
-          ids.node(OUTLET),
-        ])
-      ).rows[0]!.d;
+      await breakfastEnds(c, '03:59:59');
+      const day = await today(c); // the 04:00 business day (ADR 169)
       expect(await nextBreakfast(c)).toBe(day);
       const set = (d: string, extra = 0) =>
         attemptAs(
@@ -378,7 +371,7 @@ describe('meals by room (ADR 121)', () => {
         [ids.node(OUTLET), day, await mealRooms(c, [['101', 2]])],
       );
       // ... after it ends, tomorrow's is: today's is read, never changed
-      await breakfastEnds(c, '00:00');
+      await breakfastEnds(c, '04:00');
       const next = await nextBreakfast(c);
       expect(next > day).toBe(true);
       expect((await set(day)).error).toMatch(/BREAKFAST_SERVED/);
