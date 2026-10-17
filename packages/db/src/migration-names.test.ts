@@ -86,5 +86,6 @@ describe('the migrations folder', () => {
       )
       .filter((s) => s.length > 0);
     expect(outOfOrder(steps).filter((v) => !APPLIED_OUT_OF_ORDER.has(v))).toEqual([]);
-  });
+    // the whole history's log: quick alone, past 5 s beside the full unit run
+  }, 60_000);
 });
