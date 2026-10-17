@@ -92,7 +92,7 @@ export function invitationMessage(appUrl: string): cognito.UserInvitationConfig 
 }
 
 /**
- * The backups' lifecycle (ADR 170), the same in both regions: each 6-hour dump kept 35 days,
+ * The backups' lifecycle (ADR 171), the same in both regions: each 6-hour dump kept 35 days,
  * the first of each month kept 7 years in Glacier Deep Archive (money data, NFR retention).
  * Overwritten or deleted versions go a day later, once their Object Lock has run out.
  */
@@ -177,7 +177,7 @@ export class OutletOpsStack extends Stack {
       'S3 Standard pg_dump every 6 h kept 30 days - cents per month',
     );
 
-    // Backups that cannot be lost or overwritten (ADR 170, review M43). The old bucket above
+    // Backups that cannot be lost or overwritten (ADR 171, review M43). The old bucket above
     // is no longer written; its last dumps expire within 30 days and it can then be removed.
     // Versioning and Object Lock (governance, 35 days): nothing on the server can delete or
     // overwrite a dump; the first dump of each month is locked 7 years. Every dump is copied
@@ -185,7 +185,7 @@ export class OutletOpsStack extends Stack {
     const copyBucketArn = `arn:aws:s3:::${backupCopyBucketName(this.account)}`;
     const replicationRole = new iam.Role(this, 'BackupCopyRole', {
       assumedBy: new iam.ServicePrincipal('s3.amazonaws.com'),
-      description: 'Copies Outlet Ops backups to the second region (ADR 170)',
+      description: 'Copies Outlet Ops backups to the second region (ADR 171)',
     });
     const backupVault = new s3.Bucket(this, 'BackupVault', {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
@@ -285,7 +285,7 @@ export class OutletOpsStack extends Stack {
       'S3 Standard wastage and task photos about 200 KB each kept 90 to 400 days - under 0.10 USD per month',
     );
 
-    // --- Alerts (ADR 170, review H5): one topic, emailed to the alert address -------------
+    // --- Alerts (ADR 171, review H5): one topic, emailed to the alert address -------------
     // The instance publishes when a job fails or the disk fills; the alarms below publish too.
     // The address confirms the subscription once, from the email AWS sends.
     const alerts = new sns.Topic(this, 'Alerts', {
@@ -357,7 +357,7 @@ export class OutletOpsStack extends Stack {
     );
     role.addToPolicy(
       new iam.PolicyStatement({
-        // no s3:DeleteObject and no bypass of the lock: lifecycle expires dumps (ADR 170)
+        // no s3:DeleteObject and no bypass of the lock: lifecycle expires dumps (ADR 171)
         sid: 'WriteAndReadBackups',
         actions: ['s3:PutObject', 's3:GetObject'],
         resources: [backupVault.arnForObjects('pg/*'), backupVault.arnForObjects('pg-monthly/*')],
@@ -373,7 +373,7 @@ export class OutletOpsStack extends Stack {
     );
     role.addToPolicy(
       new iam.PolicyStatement({
-        // the dumps from before ADR 170, until they expire: read only (a restore)
+        // the dumps from before ADR 171, until they expire: read only (a restore)
         sid: 'ReadOldBackups',
         actions: ['s3:GetObject'],
         resources: [backupBucket.arnForObjects('pg/*')],
@@ -519,7 +519,7 @@ export class OutletOpsStack extends Stack {
 
     const eip = new ec2.CfnEIP(this, 'Eip', { domain: 'vpc', instanceId: instance.instanceId });
 
-    // --- The server recovers itself (ADR 170, review M52) ------------------------------
+    // --- The server recovers itself (ADR 171, review M52) ------------------------------
     // A failed hardware check moves the instance to new hardware (same disks, same IP); a
     // failed operating-system check reboots it. Both tell the alert address. The status
     // checks are free one-minute metrics.

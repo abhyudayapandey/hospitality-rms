@@ -1,5 +1,5 @@
 #!/bin/bash
-# Every 15 minutes as root (ADR 170): the disks, the app and the platform worker. Records the
+# Every 15 minutes as root (ADR 171): the disks, the app and the platform worker. Records the
 # app's and the worker's heartbeats when they answer; fails (and so emails, through OnFailure)
 # when a disk is 85 % full or either is down. Its own heartbeat follows a clean run.
 set -euo pipefail

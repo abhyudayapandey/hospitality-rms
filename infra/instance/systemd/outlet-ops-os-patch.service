@@ -1,5 +1,5 @@
 [Unit]
-Description=Outlet Ops weekly security updates (ADR 170)
+Description=Outlet Ops weekly security updates (ADR 171)
 After=network-online.target
 OnFailure=outlet-ops-notify@%n.service
 

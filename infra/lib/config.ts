@@ -93,7 +93,7 @@ export function githubDeploySubject(
   return `repo:${owner}@${config.githubOwnerId}/${repo}@${config.githubRepoId}:environment:production`;
 }
 
-/** The second copy of the backups (ADR 170): Hyderabad, an opt-in region, so data stays in India. */
+/** The second copy of the backups (ADR 171): Hyderabad, an opt-in region, so data stays in India. */
 export const BACKUP_COPY_REGION = 'ap-south-2';
 
 /** Route 53 publishes health-check metrics in us-east-1 only, so the outside check's alarm lives there. */

@@ -5,7 +5,7 @@ import { BackupCopyStack } from './backup-copy-stack';
 import { backupCopyBucketName } from './config';
 import { MonitorStack } from './monitor-stack';
 
-// The two small stacks of ADR 170: the backups' second copy (ap-south-2) and the outside check
+// The two small stacks of ADR 171: the backups' second copy (ap-south-2) and the outside check
 // (us-east-1). Synthesized only; no AWS calls.
 
 const env = (region: string) => ({ region, account: '123456789012' });

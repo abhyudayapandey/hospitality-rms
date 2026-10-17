@@ -102,7 +102,7 @@ export async function userIdForUsername(
 export { sql, type Tx };
 
 /**
- * /health (ADR 170): answers as app_rw with no session. `jobs` false asks only whether the
+ * /health (ADR 171): answers as app_rw with no session. `jobs` false asks only whether the
  * database answers (the deploy's check); true also asks whether every server job ran in time
  * (the outside check). Never throws: a database that does not answer is `ok: false`.
  */

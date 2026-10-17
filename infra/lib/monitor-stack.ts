@@ -16,7 +16,7 @@ export interface MonitorStackProps extends StackProps {
   config: Pick<OutletOpsConfig, 'domainName' | 'alertEmail'>;
 }
 
-// The outside check (ADR 170, review H5), in us-east-1 because Route 53 publishes health-check
+// The outside check (ADR 171, review H5), in us-east-1 because Route 53 publishes health-check
 // metrics there only. Every 30 seconds it asks http://<domain>/health, which answers 200 only
 // when the server, Caddy, the app and the database answer and every server job ran in time
 // (plain HTTP: Caddy serves /health there and redirects everything else; an HTTPS check costs

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { healthCheck } from '@/lib/db';
 
-// The deploy's check (ADR 170): 200 when this build serves and the database answers as app_rw.
+// The deploy's check (ADR 171): 200 when this build serves and the database answers as app_rw.
 // Late jobs do not count here, so a deploy that fixes a broken job is never rolled back for it.
 export const dynamic = 'force-dynamic';
 

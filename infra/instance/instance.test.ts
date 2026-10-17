@@ -210,7 +210,7 @@ describe('database bootstrap', () => {
   });
 });
 
-describe('someone is told when the back office stops (ADR 170)', () => {
+describe('someone is told when the back office stops (ADR 171)', () => {
   const units = readdirSync(join(dir, 'systemd'));
   const migration = readFileSync(
     join(dir, '../../packages/db/migrations/20270123100000_job_heartbeats.sql'),
@@ -292,7 +292,7 @@ describe('someone is told when the back office stops (ADR 170)', () => {
   });
 });
 
-describe('backups (ADR 170)', () => {
+describe('backups (ADR 171)', () => {
   const backup = read('deploy/pg-backup.sh');
 
   it('dump to a file, check it, and only then upload: never piped straight to S3', () => {
@@ -320,7 +320,7 @@ describe('backups (ADR 170)', () => {
   });
 });
 
-describe('the server itself (ADR 170)', () => {
+describe('the server itself (ADR 171)', () => {
   it('caps Docker logs and the journal, and prunes old images on deploy', () => {
     const host = read('deploy/host-setup.sh');
     expect(host).toContain('"max-size":"10m","max-file":"3"');
@@ -356,7 +356,7 @@ describe('the server itself (ADR 170)', () => {
   });
 });
 
-describe('deploys (ADR 170)', () => {
+describe('deploys (ADR 171)', () => {
   const deploy = read('deploy/deploy.sh');
 
   it('checks /health/db, not /login, and a rollback restarts the worker and units too', () => {

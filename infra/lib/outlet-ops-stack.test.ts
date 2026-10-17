@@ -617,7 +617,7 @@ describe('the customer pool invitation (ADR 013)', () => {
   });
 });
 
-describe('alerts and recovery (ADR 170)', () => {
+describe('alerts and recovery (ADR 171)', () => {
   it('one alert topic, TLS only, emailed to the alert address', () => {
     t.resourceCountIs('AWS::SNS::Topic', 1);
     t.hasResourceProperties('AWS::SNS::Subscription', {
@@ -652,7 +652,7 @@ describe('alerts and recovery (ADR 170)', () => {
   });
 });
 
-describe('backups that cannot be lost or overwritten (ADR 170)', () => {
+describe('backups that cannot be lost or overwritten (ADR 171)', () => {
   const vault = () =>
     Object.values(t.findResources('AWS::S3::Bucket')).find(
       (b) => (b.Properties as { ObjectLockEnabled?: boolean }).ObjectLockEnabled,

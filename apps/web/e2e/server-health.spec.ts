@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { asMigrator, signInPlatform } from './helpers';
 
-// Someone is told when the back office stops (ADR 170): /health is what the outside check
+// Someone is told when the back office stops (ADR 171): /health is what the outside check
 // calls, /health/db what the deploy checks, and the platform console says which job is late.
 
 const fresh = () =>

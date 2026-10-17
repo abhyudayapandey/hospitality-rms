@@ -1,5 +1,5 @@
 [Unit]
-Description=Outlet Ops: tell the alert address that %i failed (ADR 170)
+Description=Outlet Ops: tell the alert address that %i failed (ADR 171)
 
 [Service]
 Type=oneshot

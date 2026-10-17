@@ -1,5 +1,5 @@
 [Unit]
-Description=Outlet Ops weekly restore check of the newest backup (ADR 170)
+Description=Outlet Ops weekly restore check of the newest backup (ADR 171)
 After=docker.service
 OnFailure=outlet-ops-notify@%n.service
 

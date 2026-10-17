@@ -1,5 +1,5 @@
 -- migrate:up
--- Someone is told when the back office stops (ADR 170, review H5, M49).
+-- Someone is told when the back office stops (ADR 171, review H5, M49).
 --
 -- Each job on the server records when it last ran: the root scripts call platform.job_ran
 -- after a unit succeeds (systemd ExecStartPost=+) and when it fails (the notify unit), as the

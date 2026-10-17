@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { healthCheck } from '@/lib/db';
 
-// The outside check (ADR 170): 200 only when the database answers and every server job ran in
+// The outside check (ADR 171): 200 only when the database answers and every server job ran in
 // time. It says nothing else; the platform console lists which job is late.
 export const dynamic = 'force-dynamic';
 

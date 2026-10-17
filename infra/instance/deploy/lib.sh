@@ -23,7 +23,7 @@ psql_super() {
   docker exec -i -u postgres "$PG_CONTAINER" psql -X -q -v ON_ERROR_STOP=1 "$@"
 }
 
-# Alerts and heartbeats (ADR 170). Root only: they use the instance role and the superuser.
+# Alerts and heartbeats (ADR 171). Root only: they use the instance role and the superuser.
 OO_ALERTS=/var/lib/outlet-ops/alerts
 
 # heartbeat JOB OK [NOTE]: records a run in platform.job_heartbeat. Never fails its caller:

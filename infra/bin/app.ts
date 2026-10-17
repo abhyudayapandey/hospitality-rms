@@ -11,7 +11,7 @@ const config = configFromContext((k) => app.node.tryGetContext(k));
 // No file/image assets, so no CDK bootstrap stack (S3 + ECR) is needed in any region (ADR 005).
 const synthesizer = () => new CliCredentialsStackSynthesizer();
 
-// The backups' second copy first: the main stack's replication rule writes to it (ADR 170).
+// The backups' second copy first: the main stack's replication rule writes to it (ADR 171).
 const copy = new BackupCopyStack(app, 'OutletOpsBackupCopy', {
   env: env(BACKUP_COPY_REGION),
   synthesizer: synthesizer(),

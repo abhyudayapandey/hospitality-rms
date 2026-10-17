@@ -3,7 +3,7 @@ import type { Construct } from 'constructs';
 import { backupCopyBucketName } from './config';
 import { BACKUP_LOCK_DAYS, backupLifecycle, tag } from './outlet-ops-stack';
 
-// The second copy of the backups (ADR 170, review M43), in Hyderabad (ap-south-2): S3
+// The second copy of the backups (ADR 171, review M43), in Hyderabad (ap-south-2): S3
 // replication from the main stack's BackupVault writes here. Same lock and lifecycle; nothing
 // else in this region. Its fixed name is what the main stack's replication rule points at.
 export class BackupCopyStack extends Stack {

@@ -522,7 +522,7 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   Only a live order (`inv.po_live`) is handed back or counted as coming; a send task closes when
   its request leaves "to send" (a trigger). A receipt keeps the amount typed (6-decimal unit
   costs); a free line has a reason (`free_reason`) and costs 0.
-- Operations (ADR 170): every job emails the alert address when it fails (`OnFailure=` →
+- Operations (ADR 171): every job emails the alert address when it fails (`OnFailure=` →
   `notify.sh`, once an hour per unit) and records a good run in `platform.job_heartbeat` (root,
   `heartbeat.sh`); `/health` (app_rw, no session) is 200 only when every job ran in time, and a
   Route 53 check in us-east-1 (`OutletOpsMonitor`) asks it; `/health/db` is the deploy's check;

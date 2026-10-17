@@ -1,5 +1,5 @@
 #!/bin/bash
-# pg_dump (custom format) every 6 hours (ADR 170, review M44): dumped to a file, checked with
+# pg_dump (custom format) every 6 hours (ADR 171, review M44): dumped to a file, checked with
 # pg_restore -l, and only then uploaded, so a dump cut short never becomes the newest backup.
 # The bucket keeps dumps 35 days under Object Lock; the first dump of each month also goes to
 # pg-monthly/, locked and kept 7 years. S3 copies both to Hyderabad.

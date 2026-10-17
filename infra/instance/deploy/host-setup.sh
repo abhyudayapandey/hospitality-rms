@@ -1,5 +1,5 @@
 #!/bin/bash
-# The server's own settings, applied by every deploy (ADR 170, review M46, H4); idempotent.
+# The server's own settings, applied by every deploy (ADR 171, review M46, H4); idempotent.
 #  * Docker logs capped at 3 x 10 MB a container; the journal at 500 MB
 #  * the metadata endpoint limited to the processes that need it (imds-guard.sh)
 set -euo pipefail

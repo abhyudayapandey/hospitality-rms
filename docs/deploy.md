@@ -46,7 +46,7 @@ One CDK stack (`infra/`, stack name `OutletOps`) deploys everything below.
   - Uploads are allowed only under `wastage/<tenant>/<node>/`.
   - CORS allows POST only from `https://<domainName>`.
   - Photos expire after 400 days.
-- **Backups (ADR 170).**
+- **Backups (ADR 171).**
   - `pg_dump` every 6 hours (00, 06, 12, 18 UTC), checked before it is uploaded, to a bucket
     with versioning and Object Lock: kept 35 days, nothing on the server can delete or
     overwrite one. The first dump of each month is kept 7 years in Glacier Deep Archive.
@@ -54,7 +54,7 @@ One CDK stack (`infra/`, stack name `OutletOps`) deploys everything below.
     `OutletOpsBackupCopy`).
   - Daily EBS snapshots of the data volume through Data Lifecycle Manager, 7 kept.
   - A restore check every Sunday at 03:30 IST.
-- **Alerts and recovery (ADR 170).** Every job emails the alert address when it fails (one
+- **Alerts and recovery (ADR 171).** Every job emails the alert address when it fails (one
   email an hour at most per job), and the disks, the app and the platform worker are checked
   every 15 minutes. A Route 53 check (stack `OutletOpsMonitor`, us-east-1) asks
   `http://<domain>/health` every 30 seconds and emails when it fails. A hardware fault moves
@@ -1660,7 +1660,7 @@ printed login sheet.
   no selfie.
 - **`test.account-owner`.** Admin → Settings: "A usual quantity is up to 1.5 ×".
 
-#### Releasing alerts, locked backups, recovery and a harder server (ADR 170)
+#### Releasing alerts, locked backups, recovery and a harder server (ADR 171)
 
 One migration (`20270123100000_job_heartbeats`) and **three stacks**: `OutletOps` changes, and
 two are new, `OutletOpsBackupCopy` (Hyderabad, ap-south-2) and `OutletOpsMonitor` (us-east-1).
@@ -1914,7 +1914,7 @@ no changes.
 - `-u outlet-ops-notify@*` (the alerts sent)
 - `docker logs outlet-ops-pg`
 
-**Alerts (ADR 170).** A failed job emails the alert address with its last 30 log lines, at
+**Alerts (ADR 171).** A failed job emails the alert address with its last 30 log lines, at
 most once an hour per job. The platform console's **The server** card lists any late job and
 its last error; `curl -s http://127.0.0.1:3000/health` on the instance says `ok` or `not ok`.
 To see who is late in SQL: `docker exec -u postgres outlet-ops-pg psql -d outlet_ops -c 'select
@@ -1929,7 +1929,7 @@ job, last_ok_at, last_failed_at, last_error from platform.job_heartbeat order by
   four times a day; the first of each month also to `pg-monthly/YYYY/MM/`. Object Lock keeps
   every dump 35 days (the monthly one 7 years) and S3 copies each to the Hyderabad bucket
   (`outlet-ops-backup-copy-<account>`). To take one now: `systemctl start outlet-ops-pg-backup`.
-  Dumps from before ADR 170 are in `<OldBackupBucketName>` until they expire (30 days).
+  Dumps from before ADR 171 are in `<OldBackupBucketName>` until they expire (30 days).
 - **Volume snapshots.** DLM snapshots the data volume (tag
   `Backup=outlet-ops-daily`) every day at 18:30 UTC (00:00 IST) and keeps 7.
 - **Before the Free plan ends,** and before any risky change, download a dump off

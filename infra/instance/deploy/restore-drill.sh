@@ -1,5 +1,5 @@
 #!/bin/bash
-# Restore drill (docs/deploy.md; weekly on a timer, ADR 170): restores a pg_dump from S3 into
+# Restore drill (docs/deploy.md; weekly on a timer, ADR 171): restores a pg_dump from S3 into
 # a scratch database, compares row counts with the live database, then drops it. Fails (and
 # so emails, through OnFailure) when the dump does not restore, a table comes back empty, or a
 # count is under 90 % of today's. Usage: restore-drill.sh [s3-key]   (default: latest dump)

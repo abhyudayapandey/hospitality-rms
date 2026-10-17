@@ -1,5 +1,5 @@
 [Unit]
-Description=Outlet Ops watchdog: disks, the app and the platform worker (ADR 170)
+Description=Outlet Ops watchdog: disks, the app and the platform worker (ADR 171)
 After=network-online.target docker.service
 OnFailure=outlet-ops-notify@%n.service
 

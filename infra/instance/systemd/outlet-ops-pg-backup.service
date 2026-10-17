@@ -1,7 +1,7 @@
 [Unit]
 Description=Outlet Ops pg_dump to S3
 After=docker.service
-# A failure emails the alert address and is shown in the console (ADR 170).
+# A failure emails the alert address and is shown in the console (ADR 171).
 OnFailure=outlet-ops-notify@%n.service
 
 [Service]

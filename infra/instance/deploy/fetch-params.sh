@@ -90,7 +90,7 @@ ENV
 cat > "$OO_ETC/backup.env" <<ENV
 BACKUP_BUCKET=${cfg[backup_bucket]}
 ENV
-# The alert topic (ADR 170): root's notify and watchdog scripts publish to it.
+# The alert topic (ADR 171): root's notify and watchdog scripts publish to it.
 cat > "$OO_ETC/alert.env" <<ENV
 ALERT_TOPIC_ARN=${cfg[alert_topic_arn]}
 ENV

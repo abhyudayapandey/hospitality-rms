@@ -9,7 +9,7 @@ import {
   sqlState,
 } from '../test/helpers';
 
-// Jobs on the server say when they last ran (ADR 170). The server's root scripts record each
+// Jobs on the server say when they last ran (ADR 171). The server's root scripts record each
 // run (platform.job_ran, superuser only); /health asks platform.health() as app_rw, with no
 // session, and gets only whether everything is fine and which jobs are late; the platform
 // console lists them in words. A platform job left 'running' by a worker that died is taken

@@ -1,4 +1,4 @@
-# 170. Operations: alerts, backups that cannot be lost, recovery, a harder server
+# 171. Operations: alerts, backups that cannot be lost, recovery, a harder server
 
 Date: 2026-10-17. Status: accepted. Migration `20270123100000_job_heartbeats`. Stacks
 `OutletOps` (changed), `OutletOpsBackupCopy` (new, ap-south-2), `OutletOpsMonitor` (new,

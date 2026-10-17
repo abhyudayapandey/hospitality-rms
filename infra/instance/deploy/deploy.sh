@@ -13,7 +13,7 @@ log "deploying $REL"
 id outletops-platform > /dev/null 2>&1 ||
   useradd --system --no-create-home --shell /sbin/nologin outletops-platform
 
-# Log limits and the metadata guard (ADR 170), before Postgres starts.
+# Log limits and the metadata guard (ADR 171), before Postgres starts.
 "$REL_DIR/deploy/host-setup.sh" "$REL_DIR"
 
 install -m 0755 "$REL_DIR/bin/caddy" /usr/local/bin/caddy
@@ -46,7 +46,7 @@ systemctl start outlet-ops-wf-execute.timer outlet-ops-pg-backup.timer \
   outlet-ops-attendance-nightly.timer outlet-ops-tasks-tick.timer outlet-ops-watchdog.timer \
   outlet-ops-restore-drill.timer outlet-ops-os-patch.timer
 
-# /health/db: this build serves and reaches the database as app_rw (ADR 170). Late jobs do
+# /health/db: this build serves and reaches the database as app_rw (ADR 171). Late jobs do
 # not count here, so a deploy that fixes a broken job is never rolled back for it.
 ok=
 for _ in $(seq 1 30); do
@@ -68,7 +68,7 @@ if [ -z "$ok" ]; then
   exit 1
 fi
 
-# Old Docker images (Postgres rebuilds) go, so they never fill the disk (ADR 170).
+# Old Docker images (Postgres rebuilds) go, so they never fill the disk (ADR 171).
 docker image prune -f > /dev/null
 
 # Keep the three most recent releases.

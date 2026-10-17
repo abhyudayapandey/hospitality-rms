@@ -1,6 +1,6 @@
 #!/bin/bash
 # The instance's AWS credentials (the metadata endpoint) only for the processes that need
-# them (ADR 170, review H4): root (fetch-params, backups, alerts, the SSM agent), the web app
+# them (ADR 171, review H4): root (fetch-params, backups, alerts, the SSM agent), the web app
 # (photos, logins) and the platform worker (uploads, invitations). The jobs' user, Postgres
 # and any container are refused, so a bug there cannot read the secrets. Run at boot (unit
 # outlet-ops-imds-guard) and by every deploy; idempotent.

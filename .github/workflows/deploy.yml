@@ -27,7 +27,7 @@ jobs:
       NEXT_TELEMETRY_DISABLED: '1'
 
     steps:
-      # Only master, and only a commit whose CI passed (ADR 170, review M48).
+      # Only master, and only a commit whose CI passed (ADR 171, review M48).
       - name: Only master with green CI
         env:
           GH_TOKEN: ${{ github.token }}
