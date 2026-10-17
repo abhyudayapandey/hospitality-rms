@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { PHOTO_MAX_SIDE, PHOTO_QUALITY, resizePhoto } from '../lib/photo-resize';
-import { placeId, signInAs, viewing, viewingOptions } from './helpers';
+import { asMigrator, dueWhenWorking, placeId, signInAs, viewing, viewingOptions } from './helpers';
 
 // The "Place:" switcher (ADR 016): each screen lists only its own kind of place, with the
 // most useful one first and the last choice remembered per screen.
@@ -107,6 +107,17 @@ test('a bartender sees only the Bar Store on Stock, read only, and on Production
 });
 
 test('a commis sees only the Kitchen Store on Make, and stock read only', async ({ page }) => {
+  // file 32 gives today's Mint Chutney to the Commis role at 12:00; a job-role task goes to the
+  // role's people at work when it is due, else to the head (ADR 148). The test data rosters the
+  // commis Monday to Friday, so at the weekend it is the head's: make it due when he works
+  await asMigrator(
+    `update ops.task t set due_at = $1
+       from core.hierarchy_node n
+      where n.id = t.delivery_node_id and n.code = 'TEST-HOTEL-1.0-KITCHEN-STORE'
+        and t.kind = 'prep' and t.status = 'open' and t.job_role_code = 'COMMIS'
+        and t.title like 'Make Mint Chutney%'`,
+    [await dueWhenWorking('Test Commis 1.0')],
+  );
   await signInAs(page, 'Test Commis 1.0');
   // Make is one of the commis's four tiles on Home (UX-6)
   await page.getByTestId('tile-make').click();
