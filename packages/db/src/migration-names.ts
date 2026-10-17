@@ -16,7 +16,7 @@ function parse(version: string): Date {
   const [y, mo, d, h, mi, s] = [0, 4, 6, 8, 10, 12].map((i, k) =>
     Number(version.slice(i, k === 0 ? 4 : i + 2)),
   );
-  return new Date(Date.UTC(y!, mo! - 1, d!, h!, mi!, s!));
+  return new Date(Date.UTC(y!, mo! - 1, d, h, mi, s));
 }
 
 function format(at: Date): string {

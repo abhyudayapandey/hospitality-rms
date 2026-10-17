@@ -76,7 +76,7 @@ describe('kept uploads', () => {
       });
       // app_rw cannot read or write the table itself
       expect(await asPlatform(c, admin, 'select * from platform.upload')).toMatchObject({
-        error: expect.stringMatching(/permission denied/),
+        error: expect.stringMatching(/permission denied/) as string,
       });
     });
   });
