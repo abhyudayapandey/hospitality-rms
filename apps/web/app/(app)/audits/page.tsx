@@ -6,6 +6,7 @@ import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { isUuid, param, type SearchParams } from '@/lib/params';
+import { loadShell } from '@/lib/shell';
 
 // Audits & taste panels (ADR 095): each audit at a place with its score over the last six
 // months, oldest to newest as bars, then its rounds. A round is done on the To do list like any
@@ -15,6 +16,7 @@ const pct = (s: string) => `${Number(s).toFixed(0)}%`;
 export default async function AuditsPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const user = await requireUser();
+  const { tz } = await loadShell();
   const places = await withUser(user.id, (tx) => auditPlaces(tx));
   const asked = param(sp, 'place');
   const place = places.find((p) => isUuid(asked) && p.place_id === asked) ?? places[0];
@@ -90,7 +92,7 @@ export default async function AuditsPage({ searchParams }: { searchParams: Searc
                         className="flex min-h-11 items-center justify-between gap-3 px-4 py-2 text-sm"
                       >
                         <span>
-                          {r.done_at && formatWhen(r.done_at)}
+                          {r.done_at && formatWhen(r.done_at, tz)}
                           {r.done_by && (
                             <span className="block text-xs text-slate-500">{r.done_by}</span>
                           )}

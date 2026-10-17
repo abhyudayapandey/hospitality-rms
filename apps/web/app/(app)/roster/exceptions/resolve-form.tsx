@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass } from '@/components/messages';
 import { resolveException } from '../actions';
+import { callAction } from '@/lib/call-action';
 
 export function ResolveForm({ id }: { id: string }) {
   const router = useRouter();
@@ -13,7 +14,7 @@ export function ResolveForm({ id }: { id: string }) {
   const act = (status: 'resolved' | 'dismissed') =>
     start(async () => {
       setError(null);
-      const r = await resolveException(id, status, note);
+      const r = await callAction(resolveException, id, status, note);
       if (!r.ok) setError(r.message);
       else router.refresh();
     });

@@ -21,6 +21,7 @@ import {
 } from '@/lib/minibar';
 import { isUuid, param, type SearchParams } from '@/lib/params';
 import { formatQty } from '@/lib/qty';
+import { loadShell } from '@/lib/shell';
 import { ChargedButton } from './charged-button';
 import { UsedLines } from './used-lines';
 
@@ -34,6 +35,7 @@ import { UsedLines } from './used-lines';
 export default async function MinibarPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const user = await requireUser();
+  const { tz } = await loadShell();
   const places = await withUser(user.id, (tx) => minibarPlaces(tx));
   const asked = param(sp, 'outlet');
   const place = places.find((p) => isUuid(asked) && p.outlet_id === asked) ?? places[0];
@@ -46,7 +48,7 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
     );
   }
   const raw = param(sp, 'tab');
-  const today = businessDate(new Date());
+  const today = businessDate(new Date(), tz);
   // the days shown on Added to bills and Charged to guests (ADR 120): any two days, the last 7
   // by default
   const range = readRange({ from: param(sp, 'from'), to: param(sp, 'to') }, today);
@@ -154,7 +156,7 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
                 </div>
                 <UsedLines used={c.used} prices />
                 <p className="text-xs text-slate-500">
-                  Checked {formatWhen(c.checked_at)}
+                  Checked {formatWhen(c.checked_at, tz)}
                   {c.checked_by && ` by ${c.checked_by}`}
                 </p>
                 <ChargedButton id={c.id} />
@@ -193,9 +195,9 @@ export default async function MinibarPage({ searchParams }: { searchParams: Sear
                       <div className="space-y-1 border-t border-slate-100 px-4 pb-3">
                         <UsedLines used={c.used} prices />
                         <p className="text-xs text-slate-500">
-                          Checked {formatWhen(c.checked_at)}
+                          Checked {formatWhen(c.checked_at, tz)}
                           {c.checked_by && ` by ${c.checked_by}`} · added to the bill{' '}
-                          {formatWhen(c.charged_at)}
+                          {formatWhen(c.charged_at, tz)}
                           {c.charged_by && ` by ${c.charged_by}`}
                         </p>
                       </div>

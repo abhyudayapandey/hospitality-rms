@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { backToMe } from '@/app/(app)/show-as/actions';
 import { useHydrated } from '@/lib/use-hydrated';
+import { callAction } from '@/lib/call-action';
 
 /** On every screen while a demo presenter shows the app as someone (ADR 071). */
 export function ShowAsBanner({ name, presenter }: { name: string; presenter: string }) {
@@ -30,7 +31,7 @@ export function ShowAsBanner({ name, presenter }: { name: string; presenter: str
           className="font-medium underline"
           onClick={() =>
             start(async () => {
-              const r = await backToMe();
+              const r = await callAction(backToMe);
               if (r.ok) {
                 router.push('/');
                 router.refresh();

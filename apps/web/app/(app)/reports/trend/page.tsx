@@ -21,6 +21,7 @@ import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { param, type SearchParams } from '@/lib/params';
 import { isReportScreen } from '@/lib/place-screens';
+import { loadShell } from '@/lib/shell';
 import {
   BREAKDOWN_TITLE,
   breakdownsFor,
@@ -63,6 +64,7 @@ const UUID = /^[0-9a-f-]{36}$/;
 
 export default async function MeasureTrend({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
+  const { tz } = await loadShell();
   const sp = await searchParams;
   const report = param(sp, 'report');
   const node = param(sp, 'node');
@@ -104,7 +106,7 @@ export default async function MeasureTrend({ searchParams }: { searchParams: Sea
       // a dish's or an item's trend has its own rows; the lists are the report's
       const picked = key ? null : selectedPeriod(points, at, by, today);
       const lists = picked
-        ? await loadLists(tx, breakdownsFor(report, measure), report, node, picked)
+        ? await loadLists(tx, breakdownsFor(report, measure), report, node, picked, tz)
         : [];
       return { points, placeName: place?.name ?? '', picked, lists };
     } catch (err) {
@@ -241,12 +243,13 @@ async function loadLists(
   report: string,
   node: string,
   { from, to }: Picked,
+  tz: string,
 ): Promise<List[]> {
   const out: List[] = [];
   for (const kind of kinds) {
     await sql`savepoint bd`.execute(tx);
     try {
-      out.push(await loadList(tx, kind, report, node, from, to));
+      out.push(await loadList(tx, kind, report, node, from, to, tz));
     } catch (err) {
       await sql`rollback to savepoint bd`.execute(tx);
       const f = failure(err);
@@ -274,6 +277,7 @@ async function loadList(
   node: string,
   from: string,
   to: string,
+  tz: string,
 ): Promise<List> {
   switch (kind) {
     case 'dishes': {
@@ -312,7 +316,7 @@ async function loadList(
     }
     case 'readings': {
       const rows = await bdReadings(tx, report, node, from, to);
-      return { kind, summary: readingsSummary(rows), body: <Readings rows={rows} /> };
+      return { kind, summary: readingsSummary(rows), body: <Readings rows={rows} tz={tz} /> };
     }
   }
 }

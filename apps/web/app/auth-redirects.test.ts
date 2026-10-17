@@ -9,6 +9,7 @@ const APP = 'https://outletops-ap.duckdns.org';
 const INTERNAL = 'http://localhost:3000';
 
 const jar = new Map<string, string>();
+const deleted: string[] = [];
 const limit = { ok: true };
 const signIn = { groups: ['platform-admins'], fail: false };
 const request = { origin: APP };
@@ -19,7 +20,11 @@ vi.mock('next/headers', () => ({
     Promise.resolve({
       get: (name: string) => (jar.has(name) ? { name, value: jar.get(name) } : undefined),
       set: (name: string, value: string) => void jar.set(name, value),
-      delete: (c: string | { name: string }) => void jar.delete(typeof c === 'string' ? c : c.name),
+      delete: (c: string | { name: string; path?: string }) => {
+        const name = typeof c === 'string' ? c : c.name;
+        deleted.push(`${name}@${typeof c === 'string' ? '/' : (c.path ?? '/')}`);
+        jar.delete(name);
+      },
     }),
   headers: () => Promise.resolve(new Headers({ origin: request.origin })),
 }));
@@ -92,6 +97,7 @@ function withCognito() {
 
 beforeEach(() => {
   jar.clear();
+  deleted.length = 0;
   limit.ok = true;
   signIn.groups = ['platform-admins'];
   signIn.fail = false;
@@ -194,6 +200,8 @@ describe('customer auth redirects use APP_URL, not the request host', () => {
     expectApp(await cb('?code=bad&state=st'), '/login?reason=cognito');
     jar.set('oo_pkce', 'st.verifier');
     expectApp(await cb('?code=c&state=st'), '/');
+    // set on /auth, so cleared on /auth: a delete on / would leave it in the browser (ADR 169)
+    expect(deleted.filter((d) => d.startsWith('oo_pkce@'))).toEqual(Array(3).fill('oo_pkce@/auth'));
   });
 
   it('logout without a Cognito session: a relative /login', async () => {

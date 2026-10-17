@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { failure, type ActionResult } from '@outlet-ops/domain';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser, type Tx } from '@/lib/db';
+import { runAction } from '@/lib/run-action';
 import { requireModule } from '@/lib/modules-server';
 import {
   isPhotoType,
@@ -19,20 +20,17 @@ import {
 // executor (rule 4). Mutating actions take an idempotency key where the function stores
 // one; the others are idempotent by nature (repeating returns the same result).
 
-async function run<T>(label: string, fn: (tx: Tx) => Promise<T>): Promise<ActionResult<T>> {
-  const user = await requireUser();
-  try {
-    const data = await withUser(user.id, fn);
-    for (const p of ['/roster', '/leave', '/events', '/notifications']) revalidatePath(p, 'layout');
-    revalidatePath('/tasks');
-    revalidatePath('/', 'layout');
-    return { ok: true, data };
-  } catch (err) {
-    const f = failure(err);
-    if (f.code === 'UNEXPECTED') console.error(`${label} failed`, err);
-    return f;
-  }
-}
+const run = <T>(label: string, fn: (tx: Tx) => Promise<T>) =>
+  runAction(label, fn, {
+    revalidate: [
+      ['/roster', 'layout'],
+      ['/leave', 'layout'],
+      ['/events', 'layout'],
+      ['/notifications', 'layout'],
+      '/tasks',
+      ['/', 'layout'],
+    ],
+  });
 
 // ---------------------------------------------------------------------------
 // Rostering

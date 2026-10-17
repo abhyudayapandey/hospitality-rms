@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { formatCount } from '@/lib/qty';
 import { BackLink } from '@/components/back-link';
 import { Empty } from '@/components/messages';
 import { ViewTabs } from '@/components/view-tabs';
@@ -10,6 +11,7 @@ import { listDays } from '@/lib/list-days';
 import { formatWhen } from '@/lib/format';
 import { laundry, linenItems, linenPlaces, uniforms } from '@/lib/linen';
 import { isUuid, param, type SearchParams } from '@/lib/params';
+import { loadShell } from '@/lib/shell';
 import { ReceiveForm, ReturnUniform, SendForm, UniformForm } from './linen-forms';
 
 // Linen & uniforms (ADR 094, 113): sending to the laundry and taking back are two moments, so
@@ -19,6 +21,7 @@ import { ReceiveForm, ReturnUniform, SendForm, UniformForm } from './linen-forms
 export default async function LinenPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const user = await requireUser();
+  const { tz } = await loadShell();
   const places = await withUser(user.id, (tx) => linenPlaces(tx));
   const asked = param(sp, 'place');
   const place =
@@ -39,7 +42,7 @@ export default async function LinenPage({ searchParams }: { searchParams: Search
   const asks = param(sp, 'view');
   const view = asks === 'uniforms' ? 'uniforms' : asks === 'receive' ? 'receive' : 'send';
   // the 04:00 business day (ADR 057), as ops.record_laundry checks it
-  const day = businessDate(new Date());
+  const day = businessDate(new Date(), tz);
   const { data, range, listToday } = await withUser(user.id, async (tx) => {
     // the days before: the last 14, or the days chosen (ADR 120)
     const { range, today: listToday } = await listDays(tx, sp, place.place_id);
@@ -193,9 +196,9 @@ export default async function LinenPage({ searchParams }: { searchParams: Search
                   <span className="min-w-0">
                     <span className="block font-medium">{u.person}</span>
                     <span className="block text-xs text-slate-500">
-                      {u.qty} × {u.item}
-                      {u.size && ` (${u.size})`} · issued {formatWhen(u.issued_at)}
-                      {u.returned_at && ` · returned ${formatWhen(u.returned_at)}`}
+                      {formatCount(u.qty, '')} × {u.item}
+                      {u.size && ` (${u.size})`} · issued {formatWhen(u.issued_at, tz)}
+                      {u.returned_at && ` · returned ${formatWhen(u.returned_at, tz)}`}
                     </span>
                   </span>
                   {place.can_edit && !u.returned_at && <ReturnUniform id={u.id} />}

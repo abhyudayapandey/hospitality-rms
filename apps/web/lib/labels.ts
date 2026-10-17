@@ -3,6 +3,7 @@
 // code is at hand this is the readable form of it.
 
 import { humanizeCode } from './job-roles';
+import { own } from './own';
 
 // groups whose code doesn't read as their name (ADR 149)
 const GROUP_NAMES: Record<string, string> = { AI_AGENT: 'Senior, the assistant' };
@@ -38,6 +39,16 @@ export function accessSource(source: string, note: string | null): string {
     source === 'job_role' ? 'comes with the job' : source === 'extra' ? 'given extra' : 'given';
   // the loader's own note ("job role default (bar_pub)") says nothing a person can use
   return note && !/^job role default/i.test(note) ? `${from} · ${note}` : from;
+}
+
+/** An event's status in words (ADR 169), never its code. */
+const EVENT_STATUS: Record<string, string> = {
+  planned: 'Planned',
+  confirmed: 'Confirmed',
+  cancelled: 'Cancelled',
+};
+export function eventStatusLabel(status: string): string {
+  return own(EVENT_STATUS, status) ?? humanizeCode(status);
 }
 
 /** A person's status in words: Active, Not active. */

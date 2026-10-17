@@ -6,6 +6,7 @@ import { ErrorBox, secondaryButton, StatusBox } from '@/components/messages';
 import { Initials } from '@/components/initials';
 import { useHydrated } from '@/lib/use-hydrated';
 import { giveSend, orderForRequest } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 /**
  * Whoever runs the store, besides sending it themselves (ADR 115): give it to someone of the
@@ -31,7 +32,7 @@ export function SenderTools({
   const give = (p: { id: string; name: string }) =>
     start(async () => {
       setError(null);
-      const r = await giveSend(transfer, p.id);
+      const r = await callAction(giveSend, transfer, p.id);
       if (!r.ok) setError(r.message);
       else {
         setDone(`Given to ${p.name}. It is in their To do list.`);
@@ -42,7 +43,7 @@ export function SenderTools({
   const order = () =>
     start(async () => {
       setError(null);
-      const r = await orderForRequest(transfer);
+      const r = await callAction(orderForRequest, transfer);
       if (!r.ok) setError(r.message);
       else router.push(`/stock/orders/${r.data.id}`);
     });

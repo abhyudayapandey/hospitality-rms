@@ -12,6 +12,7 @@ import {
   type Level,
 } from '@/lib/custom-groups';
 import { archiveCustomGroup, saveCustomGroup } from '../actions';
+import { callAction } from '@/lib/call-action';
 
 export interface GroupFormValue {
   code: string;
@@ -39,13 +40,18 @@ export function GroupForm({ initial }: { initial: GroupFormValue | null }) {
 
   const save = () =>
     start(async () => {
-      const r = await saveCustomGroup({ code, name, rights: rightsPayload(levels), actsAs });
+      const r = await callAction(saveCustomGroup, {
+        code,
+        name,
+        rights: rightsPayload(levels),
+        actsAs,
+      });
       if (!r.ok) setError(r.message);
       else router.push('/admin/groups');
     });
   const remove = () =>
     start(async () => {
-      const r = await archiveCustomGroup(code);
+      const r = await callAction(archiveCustomGroup, code);
       if (!r.ok) setError(r.message);
       else router.push('/admin/groups');
     });

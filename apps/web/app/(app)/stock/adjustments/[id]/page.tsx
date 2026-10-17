@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatMoney, formatWhen } from '@/lib/format';
 import { formatQty, movementLabel } from '@/lib/inventory';
+import { loadShell } from '@/lib/shell';
 import { photosEnabled, presignPhotoView, wastageKeyPattern } from '@/lib/photos';
 import { AdjustmentDecision } from './decision';
 import { ItemThumb } from '@/components/item-thumb';
@@ -83,7 +84,7 @@ export default async function AdjustmentPage({ params }: { params: Promise<{ id:
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <h1 className="text-lg font-semibold">{REASON[a.reason] ?? a.reason}</h1>
         <p className="text-sm text-slate-600">
-          {a.node_name} · {formatWhen(a.created_at)}
+          {a.node_name} · {formatWhen(a.created_at, (await loadShell()).tz)}
           {a.initiator ? ` · by ${a.initiator}` : ''}
         </p>
         {a.recorded_by && (

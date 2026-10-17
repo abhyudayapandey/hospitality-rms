@@ -5,6 +5,8 @@ import { ErrorBox, primaryButton } from '@/components/messages';
 import { PHOTO_MAX_SIDE, PHOTO_QUALITY, resizePhoto } from '@/lib/photo-resize';
 import type { ActionResult } from '@outlet-ops/domain';
 import type { UploadTarget } from '@/lib/photo-policy';
+import { callAction } from '@/lib/call-action';
+import { UploadFailed, uploadMessage } from '@/lib/upload-error';
 
 /** A server action that checks access in SQL and presigns one upload. */
 export type GetUploadUrl = (
@@ -47,17 +49,17 @@ export function PhotoField({
     onChange(null);
     try {
       const blob = await resizePhoto(file, PHOTO_MAX_SIDE, PHOTO_QUALITY);
-      const target = await getUploadUrl(node, 'image/jpeg', blob.size);
-      if (!target.ok) throw new Error(target.message);
+      const target = await callAction(getUploadUrl, node, 'image/jpeg', blob.size);
+      if (!target.ok) throw new UploadFailed(target.message);
       const form = new FormData();
       for (const [k, v] of Object.entries(target.data.fields)) form.append(k, v);
       form.append('file', blob);
       const res = await fetch(target.data.url, { method: 'POST', body: form });
-      if (!res.ok) throw new Error('The photo did not upload. Try again.');
+      if (!res.ok) throw new UploadFailed('The photo did not upload. Try again.');
       setPreview(URL.createObjectURL(blob));
       onChange(target.data.key);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'The photo did not upload. Try again.');
+      setError(uploadMessage(e, 'The photo did not upload. Try again.'));
     } finally {
       setBusy(false);
     }

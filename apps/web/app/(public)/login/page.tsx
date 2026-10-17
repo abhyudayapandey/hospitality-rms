@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { own } from '@/lib/own';
 import { messageFor } from '@outlet-ops/domain';
 import { cognitoConfig } from '@/lib/auth/cognito';
 import { signInWords } from '@/lib/auth/sign-in-words';
@@ -24,7 +25,7 @@ export default async function LoginPage({
 }) {
   const { reason } = await searchParams;
   const cognito = cognitoConfig() !== null;
-  const why = reason ? REASONS[reason] : undefined;
+  const why = reason ? own(REASONS, reason) : undefined;
   return (
     <div className="flex min-h-[calc(100dvh-2rem)] flex-col gap-6 py-4">
       <header className="flex items-center gap-2">

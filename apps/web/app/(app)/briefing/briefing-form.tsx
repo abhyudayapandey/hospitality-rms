@@ -12,6 +12,7 @@ import {
 import type { BriefingPart, Dish, PlaceNote } from '@/lib/briefing';
 import { useHydrated } from '@/lib/use-hydrated';
 import { saveBriefing, takeDownBriefing } from './actions';
+import { callAction } from '@/lib/call-action';
 
 const PARTS: readonly { part: BriefingPart; label: string; hint: string }[] = [
   { part: 'day', label: 'Whole day', hint: 'Shows all day' },
@@ -76,7 +77,14 @@ export function BriefingForm({
       if (!body.trim() && off.length === 0) {
         return setError('Write something, or pick the dishes that are off today.');
       }
-      const r = await saveBriefing({ place, part, body, offDishes: off, idempotencyKey: key, day });
+      const r = await callAction(saveBriefing, {
+        place,
+        part,
+        body,
+        offDishes: off,
+        idempotencyKey: key,
+        day,
+      });
       if (!r.ok) return setError(r.message);
       setKey(crypto.randomUUID());
       setStatus(`Saved. Everyone at the outlet sees it on Home ${when}.`);
@@ -87,7 +95,7 @@ export function BriefingForm({
     start(async () => {
       if (!note) return;
       setError(null);
-      const r = await takeDownBriefing(note.id);
+      const r = await callAction(takeDownBriefing, note.id);
       if (!r.ok) return setError(r.message);
       setBody('');
       setOff([]);

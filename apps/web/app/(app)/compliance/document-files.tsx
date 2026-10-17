@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { PHOTO_MAX_SIDE, PHOTO_QUALITY, resizePhoto } from '@/lib/photo-resize';
 import { useHydrated } from '@/lib/use-hydrated';
 import { getComplianceUploadUrl } from './actions';
+import { callAction } from '@/lib/call-action';
+import { UploadFailed, uploadMessage } from '@/lib/upload-error';
 
 export const MAX_DOCUMENTS = 5;
 
@@ -48,18 +50,18 @@ export function DocumentFiles({
         const pdf = file.type === 'application/pdf';
         const blob = pdf ? file : await resizePhoto(file, PHOTO_MAX_SIDE, PHOTO_QUALITY);
         const type = pdf ? 'application/pdf' : 'image/jpeg';
-        const target = await getComplianceUploadUrl(node, type, blob.size);
-        if (!target.ok) throw new Error(target.message);
+        const target = await callAction(getComplianceUploadUrl, node, type, blob.size);
+        if (!target.ok) throw new UploadFailed(target.message);
         const form = new FormData();
         for (const [k, v] of Object.entries(target.data.fields)) form.append(k, v);
         form.append('file', blob);
         const res = await fetch(target.data.url, { method: 'POST', body: form });
-        if (!res.ok) throw new Error(`${file.name} did not upload. Try again.`);
+        if (!res.ok) throw new UploadFailed(`${file.name} did not upload. Try again.`);
         next = [...next, { key: target.data.key, name: pdf ? file.name : 'Photo' }];
         onChange(next);
       }
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'The file did not upload. Try again.');
+      onError(uploadMessage(e, 'The file did not upload. Try again.'));
     } finally {
       busy(false);
     }

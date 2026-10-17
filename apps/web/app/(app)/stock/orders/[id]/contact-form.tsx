@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { ErrorBox } from '@/components/messages';
 import { updateSupplierContact } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 /** The supplier's phone (for WhatsApp) and email, kept by whoever runs the orders. */
 export function ContactForm({
@@ -23,7 +24,7 @@ export function ContactForm({
   const save = (ev: React.FormEvent) => {
     ev.preventDefault();
     start(async () => {
-      const r = await updateSupplierContact(supplier, p.trim(), e.trim());
+      const r = await callAction(updateSupplierContact, supplier, p.trim(), e.trim());
       if (!r.ok) setError(r.message);
       else {
         setError(null);

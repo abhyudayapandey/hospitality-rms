@@ -19,6 +19,7 @@ import { shiftIcon, shiftTypeHours, shiftTypeTimes, type ShiftTypeWords } from '
 import { useHydrated } from '@/lib/use-hydrated';
 import { repeatPattern, setCustomShift, setDayShift } from '../actions';
 import { DateInput, TimeInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
 
 export interface TileType extends ShiftTypeWords {
   template_id: string;
@@ -110,8 +111,8 @@ export function PeopleTiles({
       setWarn(null);
       setOnLeave(null);
       const r = times
-        ? await setCustomShift(p.worker_id, day, times.start, times.end, accept)
-        : await setDayShift(p.worker_id, day, template, accept);
+        ? await callAction(setCustomShift, p.worker_id, day, times.start, times.end, accept)
+        : await callAction(setDayShift, p.worker_id, day, template, accept);
       if (!r.ok) {
         if ((WARNING_CODES as readonly string[]).includes(r.code)) {
           setWarn({ worker: p.worker_id, template, custom: times, code: r.code, name: p.name });
@@ -356,7 +357,7 @@ export function RepeatPattern({ node, monday }: { node: string; monday: string }
       setDone(null);
       setSkipped([]);
       if (!from || !to) return setError('Choose both dates.');
-      const r = await repeatPattern(node, monday, from, to);
+      const r = await callAction(repeatPattern, node, monday, from, to);
       if (!r.ok) return setError(r.message);
       setDone(
         `${r.data.added} shift${r.data.added === 1 ? '' : 's'} added${

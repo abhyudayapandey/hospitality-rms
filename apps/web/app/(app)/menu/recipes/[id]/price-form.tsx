@@ -6,8 +6,9 @@ import { ErrorBox, inputClass, primaryButton, StatusBox } from '@/components/mes
 import { useHydrated } from '@/lib/use-hydrated';
 import { setPrice } from '../../actions';
 import { DateInput } from '@/components/date-time-inputs';
-
-const today = () => new Date().toISOString().slice(0, 10);
+import { callAction } from '@/lib/call-action';
+import { useTimeZone } from '@/components/time-zone';
+import { localToday } from '@/lib/dates';
 
 export function PriceForm({
   menuItemId,
@@ -20,10 +21,11 @@ export function PriceForm({
   outletName: string;
   price: string;
 }) {
+  const tz = useTimeZone();
   const router = useRouter();
   const hydrated = useHydrated();
   const [value, setValue] = useState(String(Number(price)));
-  const [from, setFrom] = useState(today);
+  const [from, setFrom] = useState(() => localToday(tz));
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export function PriceForm({
             setError('Enter a price of zero or more.');
             return;
           }
-          const r = await setPrice(menuItemId, outletId, n, from);
+          const r = await callAction(setPrice, menuItemId, outletId, n, from);
           if (!r.ok) setError(r.message);
           else {
             setDone(`Price saved from ${from}.`);
@@ -64,7 +66,7 @@ export function PriceForm({
         <span className="text-sm">From</span>
         <DateInput
           className={inputClass}
-          min={today()}
+          min={localToday(tz)}
           value={from}
           onChange={(e) => setFrom(e.target.value)}
         />

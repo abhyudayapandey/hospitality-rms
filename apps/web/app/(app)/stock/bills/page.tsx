@@ -6,6 +6,7 @@ import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatMoney } from '@/lib/format';
 import { param, supplyContext, type SearchParams } from '@/lib/inventory';
+import { withBack } from '@/lib/back';
 import { listHref } from '@/lib/stock-view';
 import { ListDays } from '@/components/date-range';
 import { BILL_TABS, billList, type BillTab } from '@/lib/bill-list';
@@ -119,7 +120,7 @@ export default async function BillsPage({ searchParams }: { searchParams: Search
             {bills.map((b) => (
               <li key={b.id} data-testid="bill-item">
                 <Link
-                  href={`/stock/bills/${b.id}?node=${b.store_id}`}
+                  href={withBack(`/stock/bills/${b.id}?node=${b.store_id}`, href(tab))}
                   className="block rounded-xl bg-white p-4 ring-1 ring-slate-200"
                 >
                   <span className="flex items-baseline justify-between gap-2">

@@ -28,6 +28,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
   const canWaste = ctx.can('STOCK_ADJUSTMENTS', 'modify');
   const sp = await searchParams;
   const user = await requireUser();
+  const tz = ctx.node.timezone ?? ctx.shell.tz;
   const node = ctx.node.id;
   const data = await withUser(user.id, async (tx) => {
     const lead = await leadsMaking(tx, node);
@@ -100,7 +101,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
                     <span
                       className={`text-xs ${t.overdue ? 'font-semibold text-rose-700' : 'text-slate-500'}`}
                     >
-                      {t.overdue ? 'overdue, ' : ''}due {formatWhen(t.due_at)}
+                      {t.overdue ? 'overdue, ' : ''}due {formatWhen(t.due_at, tz)}
                     </span>
                   </span>
                   {t.target_qty !== null && (
@@ -177,7 +178,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: S
                     {b.name}
                   </span>
                   <span className="block text-xs text-slate-500">
-                    batch {b.batch_no ?? '–'} · {useByText(b.expires_at)}
+                    batch {b.batch_no ?? '–'} · {useByText(b.expires_at, tz)}
                     {b.made_by && ` · made by ${b.made_by}`}
                   </span>
                   {allergenText(b.allergens) && (

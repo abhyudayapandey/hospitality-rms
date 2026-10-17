@@ -8,6 +8,7 @@ import { Stepper } from '@/components/stepper';
 import { formatCount } from '@/lib/qty';
 import { useHydrated } from '@/lib/use-hydrated';
 import { countRoom } from '../actions';
+import { callAction } from '@/lib/call-action';
 
 export interface CountLine {
   item_id: string;
@@ -36,7 +37,8 @@ export function RoomCountForm({
       setError(null);
       const missing = lines.filter((l) => (counts[l.item_id] ?? '').trim() === '');
       if (missing.length) return setError(`Count ${missing.map((l) => l.item).join(', ')}.`);
-      const r = await countRoom(
+      const r = await callAction(
+        countRoom,
         room,
         lines.map((l) => ({ item_id: l.item_id, counted: Number(counts[l.item_id]) })),
       );

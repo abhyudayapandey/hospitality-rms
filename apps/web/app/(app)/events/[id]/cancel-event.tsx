@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { ErrorBox, secondaryButton } from '@/components/messages';
 import { cancelEvent } from '../../roster/actions';
+import { callAction } from '@/lib/call-action';
 
 export function CancelEvent({ id, node }: { id: string; node: string }) {
   const router = useRouter();
@@ -19,7 +20,7 @@ export function CancelEvent({ id, node }: { id: string; node: string }) {
         onClick={() => {
           if (!confirm) return setConfirm(true);
           start(async () => {
-            const r = await cancelEvent(id);
+            const r = await callAction(cancelEvent, id);
             if (!r.ok) setError(r.message);
             else router.push(`/events?node=${node}`);
           });

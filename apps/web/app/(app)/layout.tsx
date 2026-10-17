@@ -7,6 +7,7 @@ import { ActionSync } from '@/components/action-sync';
 import { PunchSync } from '@/components/punch-sync';
 import { ShowAsBanner } from '@/components/show-as-banner';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { TimeZoneProvider } from '@/components/time-zone';
 import { NavProgress } from '@/components/nav-progress';
 import { VersionCheck } from '@/components/version-check';
 import { approvalsInNav, visibleNav } from '@/lib/nav';
@@ -94,7 +95,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <VersionCheck />
       <PunchSync userId={shell.user.id} />
       <ActionSync userId={shell.user.id} />
-      <main className="flex-1 px-4 pt-4 pb-24 print:p-0">{children}</main>
+      <main className="flex-1 px-4 pt-4 pb-24 print:p-0">
+        <TimeZoneProvider tz={shell.tz}>{children}</TimeZoneProvider>
+      </main>
       <div className="print:hidden">
         <BottomNav items={visibleNav(input, inNavToo(input))} inboxCount={shell.inboxCount} />
       </div>

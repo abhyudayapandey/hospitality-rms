@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox } from '@/components/messages';
 import { TARGETS, type CompanySettings, type TargetKey } from '@/lib/settings';
 import { saveCompanySettings } from '../actions';
+import { callAction } from '@/lib/call-action';
 
 const field =
   'min-h-12 w-24 rounded-lg border border-slate-300 bg-white px-3 text-right tabular-nums disabled:bg-slate-50';
@@ -36,7 +37,7 @@ export function SettingsForm({
   const save = (e: React.FormEvent) => {
     e.preventDefault();
     start(async () => {
-      const r = await saveCompanySettings({
+      const r = await callAction(saveCompanySettings, {
         targets: Object.fromEntries(TARGETS.map((t) => [t.key, Number(targets[t.key])])),
         menu_popular_pct: Number(popular),
         overtime_multiplier: Number(overtime),

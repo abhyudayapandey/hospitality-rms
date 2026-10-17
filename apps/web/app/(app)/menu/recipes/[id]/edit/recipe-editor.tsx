@@ -9,14 +9,15 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { saveRecipe } from '../../../actions';
 import { ItemThumb } from '@/components/item-thumb';
 import { DateInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
+import { useTimeZone } from '@/components/time-zone';
+import { localToday } from '@/lib/dates';
 
 interface Line {
   ingredient_item_id: string;
   qty: string;
   trim_loss_pct: string;
 }
-
-const today = () => new Date().toISOString().slice(0, 10);
 
 export function RecipeEditor({
   recipe,
@@ -29,10 +30,11 @@ export function RecipeEditor({
   options: IngredientOption[];
   back: string;
 }) {
+  const tz = useTimeZone();
   const router = useRouter();
   const hydrated = useHydrated();
   const [lines, setLines] = useState<Line[]>(initial);
-  const [from, setFrom] = useState(today);
+  const [from, setFrom] = useState(() => localToday(tz));
   const [batch, setBatch] = useState(recipe.batch_yield ? String(Number(recipe.batch_yield)) : '');
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +59,8 @@ export function RecipeEditor({
             setError('Each line needs an ingredient and a quantity above zero.');
             return;
           }
-          const r = await saveRecipe(
+          const r = await callAction(
+            saveRecipe,
             recipe.kind,
             recipe.subject_id,
             clean,
@@ -69,7 +72,7 @@ export function RecipeEditor({
             return;
           }
           // a version from a later date is not in force yet: back to the current one
-          router.push(from === today() ? back.replace(recipe.recipe_id, r.data.id) : back);
+          router.push(from === localToday(tz) ? back.replace(recipe.recipe_id, r.data.id) : back);
           router.refresh();
         });
       }}
@@ -155,7 +158,7 @@ export function RecipeEditor({
         <span className="text-sm">In use from</span>
         <DateInput
           className={inputClass}
-          min={today()}
+          min={localToday(tz)}
           value={from}
           onChange={(e) => setFrom(e.target.value)}
         />

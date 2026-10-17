@@ -8,6 +8,7 @@ import { ListDays } from '@/components/date-range';
 import { listDays } from '@/lib/list-days';
 import { placesFor } from '@/lib/places';
 import type { SearchParams } from '@/lib/params';
+import { loadShell } from '@/lib/shell';
 import { completion, taskTabs, teamTasks, type Completion } from '@/lib/tasks';
 import { teamWho } from '@/lib/tasks-view';
 import { TaskList } from '../task-list';
@@ -19,7 +20,7 @@ import { TaskList } from '../task-list';
 export default async function TeamTasksPage({ searchParams }: { searchParams: SearchParams }) {
   const { places, place } = await placesFor('tasks', searchParams);
   const user = await requireUser();
-  const tz = place?.timezone ?? 'Asia/Kolkata';
+  const tz = place?.timezone ?? (await loadShell()).tz;
   // the 04:00 business day (ADR 148, 164): a Lock-up due at 00:00 is the night before's
   const today = businessToday(tz);
   const thisWeek = weekStart(today);
@@ -79,7 +80,7 @@ export default async function TeamTasksPage({ searchParams }: { searchParams: Se
               {data.tasks.length === 0 ? (
                 <Empty>No tasks were due on these days.</Empty>
               ) : (
-                <TaskList tasks={listed(data.tasks)} testId="team-days" />
+                <TaskList tasks={listed(data.tasks)} testId="team-days" tz={tz} />
               )}
             </section>
           ) : (
@@ -87,7 +88,7 @@ export default async function TeamTasksPage({ searchParams }: { searchParams: Se
               {overdue.length > 0 && (
                 <section className="space-y-2">
                   <h2 className="text-sm font-semibold text-rose-700">Overdue</h2>
-                  <TaskList tasks={listed(overdue)} testId="team-overdue" />
+                  <TaskList tasks={listed(overdue)} testId="team-overdue" tz={tz} />
                 </section>
               )}
               <section className="space-y-2">
@@ -95,7 +96,7 @@ export default async function TeamTasksPage({ searchParams }: { searchParams: Se
                 {todays.length === 0 ? (
                   <Empty>Nothing due today.</Empty>
                 ) : (
-                  <TaskList tasks={listed(todays)} testId="team-today" />
+                  <TaskList tasks={listed(todays)} testId="team-today" tz={tz} />
                 )}
               </section>
             </>

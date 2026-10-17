@@ -11,6 +11,7 @@ import {
 } from '@/components/messages';
 import { currentPosition, mapLink, ROUGH_ACCURACY_M } from '@/lib/geo';
 import { setPlaceLocation } from './actions';
+import { callAction } from '@/lib/call-action';
 
 interface Props {
   place: {
@@ -57,7 +58,7 @@ export function LocationForm({ place }: Props) {
     setBusy(true);
     setError(null);
     setSaved(false);
-    const r = await setPlaceLocation({
+    const r = await callAction(setPlaceLocation, {
       node: place.id,
       lat: latN,
       lng: lngN,

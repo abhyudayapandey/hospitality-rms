@@ -10,6 +10,7 @@ import { formatWhen } from '@/lib/format';
 import { LIST_PAGE } from '@/lib/list-page';
 import { isUuid, param, type SearchParams } from '@/lib/params';
 import { utilityMeters, utilityMonths, utilityPlaces, utilityReadings } from '@/lib/utilities';
+import { loadShell } from '@/lib/shell';
 
 // Utilities (ADR 091, 097, 124): every meter of the place, read yet or not, and every reading
 // with its time and what was used since the one before: the last 60 days or any days picked
@@ -24,6 +25,7 @@ const num = (v: string) =>
 export default async function UtilitiesPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const user = await requireUser();
+  const { tz } = await loadShell();
   const places = await withUser(user.id, (tx) => utilityPlaces(tx));
   const asked = param(sp, 'place');
   const place = places.find((p) => isUuid(asked) && p.place_id === asked) ?? places[0];
@@ -99,7 +101,7 @@ export default async function UtilitiesPage({ searchParams }: { searchParams: Se
                 <p className="text-sm text-slate-600" data-testid="meter-last">
                   {m.last_reading === null
                     ? `No reading yet.${m.read_by ? ` ${m.read_by} reads it at ${m.read_at} each day.` : ''}`
-                    : `Last reading ${num(m.last_reading)} ${m.unit}, ${formatWhen(m.last_read_at!)}.${m.read_by ? ` Read by ${m.read_by} at ${m.read_at}.` : ''}`}
+                    : `Last reading ${num(m.last_reading)} ${m.unit}, ${formatWhen(m.last_read_at!, tz)}.${m.read_by ? ` Read by ${m.read_by} at ${m.read_at}.` : ''}`}
                 </p>
               </div>
               {rows.length === 0 ? (

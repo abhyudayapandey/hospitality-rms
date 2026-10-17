@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, StatusBox } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { adoptLibraryVersion } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 // "A newer version" (ADR 068): the starter library has moved on since this checklist was
 // copied. The person who edits it sees what is new beside what they have, and may take the
@@ -75,7 +76,7 @@ export function LibraryUpdate({
         onClick={() =>
           start(async () => {
             setError(null);
-            const r = await adoptLibraryVersion(id);
+            const r = await callAction(adoptLibraryVersion, id);
             if (!r.ok) {
               setError(r.message);
               return;

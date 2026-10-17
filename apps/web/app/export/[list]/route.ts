@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { own } from '@/lib/own';
 import { errorCodeOf } from '@outlet-ops/domain';
 import { currentUser } from '@/lib/auth/server';
 import { csvName, toCsv } from '@/lib/csv';
@@ -9,7 +10,7 @@ import { EXPORTS } from '@/lib/exports';
 // signed-in person (lib/exports.ts). Unknown list or place: 404; not theirs to see: 403.
 export async function GET(req: Request, ctx: { params: Promise<{ list: string }> }) {
   const { list } = await ctx.params;
-  const run = EXPORTS[list];
+  const run = own(EXPORTS, list);
   if (!run) return new NextResponse('not found', { status: 404 });
   const user = await currentUser();
   if (!user) return new NextResponse('signed out', { status: 401 });

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useTransition, type ReactNode } from 'react';
 import { markRead } from '../roster/actions';
+import { callAction } from '@/lib/call-action';
 
 export function MarkAllRead() {
   const router = useRouter();
@@ -13,7 +14,7 @@ export function MarkAllRead() {
       disabled={pending}
       onClick={() =>
         start(async () => {
-          await markRead(null);
+          await callAction(markRead, null);
           router.refresh();
         })
       }
@@ -45,7 +46,7 @@ export function NotificationItem({
   const [pending, start] = useTransition();
   const open = () =>
     start(async () => {
-      if (unread) await markRead(ids);
+      if (unread) await callAction(markRead, ids);
       if (link) router.push(link);
       else router.refresh();
     });

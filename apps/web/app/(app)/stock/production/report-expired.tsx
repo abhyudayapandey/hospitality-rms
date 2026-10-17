@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { reportExpired } from '@/app/(app)/tasks/actions';
 import { useHydrated } from '@/lib/use-hydrated';
+import { callAction } from '@/lib/call-action';
 
 /**
  * Tells the department head (or the outlet manager) about an expired batch; they give the
@@ -35,7 +36,7 @@ export function ReportExpired({
         className="min-h-11 rounded-lg bg-amber-900 px-3 text-sm font-medium text-white disabled:opacity-50"
         onClick={() =>
           start(async () => {
-            const r = await reportExpired(store, item, batchNo);
+            const r = await callAction(reportExpired, store, item, batchNo);
             setState(r.ok ? { ok: true, text: 'Reported' } : { ok: false, text: r.message });
           })
         }

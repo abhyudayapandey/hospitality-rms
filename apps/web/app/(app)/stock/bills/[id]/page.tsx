@@ -4,6 +4,10 @@ import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatMoney, formatWhen } from '@/lib/format';
 import { photosEnabled, presignPhotoView } from '@/lib/photos';
+import { backHref } from '@/lib/back';
+import { param, type SearchParams } from '@/lib/params';
+import { loadShell } from '@/lib/shell';
+import { listHref } from '@/lib/stock-view';
 import { ArchiveBill } from './archive-bill';
 
 // One vendor bill with its photos and PDFs (ADR 050). inv.bill_detail returns it only to whoever
@@ -29,9 +33,17 @@ interface Bill {
   can_archive: boolean;
 }
 
-export default async function BillPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function BillPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: SearchParams;
+}) {
   const { id } = await params;
+  const back = param(await searchParams, 'back');
   const user = await requireUser();
+  const { tz } = await loadShell();
   const bill = await withUser(user.id, async (tx) => {
     const r = await sql<Bill>`select * from inv.bill_detail(${id}::uuid)`.execute(tx);
     return r.rows[0];
@@ -54,7 +66,10 @@ export default async function BillPage({ params }: { params: Promise<{ id: strin
   });
   return (
     <div className="space-y-4">
-      <Link href={`/stock/bills?node=${bill.store_id}`} className="text-sm text-slate-600">
+      <Link
+        href={backHref(back, listHref('/stock/bills', { node: bill.store_id }))}
+        className="text-sm text-slate-600"
+      >
         ← Back
       </Link>
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200" data-testid="bill">
@@ -78,7 +93,7 @@ export default async function BillPage({ params }: { params: Promise<{ id: strin
           </Link>
         )}
         <p className="mt-1 text-xs text-slate-500">
-          Added by {bill.added_by ?? 'someone'}, {formatWhen(bill.added_at)}
+          Added by {bill.added_by ?? 'someone'}, {formatWhen(bill.added_at, tz)}
         </p>
         {bill.archived_at && (
           <p className="mt-2 rounded-lg bg-slate-100 p-2 text-sm text-slate-700">

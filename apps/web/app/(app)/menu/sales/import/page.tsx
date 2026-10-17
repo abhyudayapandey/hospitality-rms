@@ -22,7 +22,7 @@ export default async function PosImportPage({ searchParams }: { searchParams: Se
   const sp = await searchParams;
   const { shell, places, place } = await placesFor('pos_import', searchParams);
   if (!place) return <Empty>You don&apos;t import sales anywhere.</Empty>;
-  const tz = place.timezone ?? 'Asia/Kolkata';
+  const tz = place.timezone ?? shell.tz;
   const max = todayIn(tz);
   const data = await withUser(shell.user.id, async (tx) => {
     // the business day: after midnight, the night before is still being closed (ADR 037)

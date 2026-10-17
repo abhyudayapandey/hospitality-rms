@@ -33,6 +33,7 @@ import {
   sendBack,
   signOff,
 } from '../actions';
+import { callAction } from '@/lib/call-action';
 
 function range(s: TaskStep): string {
   if (s.min === null && s.max === null) return '';
@@ -68,7 +69,7 @@ export function TaskWork({
   const finish = () =>
     start(async () => {
       setError(null);
-      const r = await completeTask(task.id, note);
+      const r = await callAction(completeTask, task.id, note);
       if (!r.ok) setError(r.message);
       else router.refresh();
     });
@@ -355,10 +356,10 @@ function StepInputs({
       let r;
       if (step.kind === 'batch') {
         if (!(num > 0)) return setError('Enter how much you made.');
-        r = await recordTaskBatch(task.id, num, key);
+        r = await callAction(recordTaskBatch, task.id, num, key);
       } else if (step.kind === 'discard') {
         if (!(num > 0)) return setError('Enter how much you threw away.');
-        r = await discardExpired(task.id, num, photoKey);
+        r = await callAction(discardExpired, task.id, num, photoKey);
         if (r.ok) setStatus(approved ? 'Recorded as wastage.' : 'Recorded as expired wastage.');
       } else {
         if (step.kind === 'number' && (value === '' || !Number.isFinite(num))) {
@@ -373,7 +374,7 @@ function StepInputs({
         if (step.asks_thrown && thrown === null) {
           return setError('Say whether out-of-date food was thrown away.');
         }
-        r = await completeStep(task.id, step.id, {
+        r = await callAction(completeStep, task.id, step.id, {
           ...(step.kind === 'tick' && { done: true }),
           ...(step.kind === 'number' && { number: num }),
           ...(step.kind === 'text' && { text: value }),
@@ -619,7 +620,7 @@ export function AssignExpiry({ task, people }: { task: string; people: Person[] 
     start(async () => {
       setError(null);
       const due = new Date(Date.now() + Number(hours) * 3_600_000).toISOString();
-      const r = await assignExpiry(task, user, due, remake);
+      const r = await callAction(assignExpiry, task, user, due, remake);
       if (!r.ok) setError(r.message);
       else router.refresh();
     });
@@ -690,7 +691,7 @@ export function CancelTask({ task }: { task: string }) {
           className={secondaryButton}
           onClick={() =>
             start(async () => {
-              const r = await cancelTask(task, reason);
+              const r = await callAction(cancelTask, task, reason);
               if (!r.ok) setError(r.message);
               else router.refresh();
             })
@@ -727,7 +728,7 @@ export function SignOffWork({ task }: { task: TaskDetail }) {
         type="button"
         disabled={!hydrated || pending}
         className={primaryButton}
-        onClick={() => act(() => signOff(task.id))}
+        onClick={() => act(() => callAction(signOff, task.id))}
       >
         Sign it off
       </button>
@@ -747,7 +748,7 @@ export function SignOffWork({ task }: { task: TaskDetail }) {
           type="button"
           disabled={!hydrated || pending || !note.trim()}
           className={secondaryButton}
-          onClick={() => act(() => sendBack(task.id, note))}
+          onClick={() => act(() => callAction(sendBack, task.id, note))}
         >
           Send back
         </button>
@@ -771,7 +772,7 @@ export function AcknowledgeHandover({ task }: { task: string }) {
         className={primaryButton}
         onClick={() =>
           start(async () => {
-            const r = await acknowledgeHandover(task);
+            const r = await callAction(acknowledgeHandover, task);
             if (!r.ok) setError(r.message);
             else router.refresh();
           })
@@ -809,7 +810,7 @@ export function ApproveDiscard({ task, people }: { task: string; people: Person[
         className={primaryButton}
         onClick={() =>
           start(async () => {
-            const r = await approveDiscard(task, user || null);
+            const r = await callAction(approveDiscard, task, user || null);
             if (!r.ok) setError(r.message);
             else router.refresh();
           })

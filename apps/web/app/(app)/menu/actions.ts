@@ -1,9 +1,9 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { failure, type ActionResult } from '@outlet-ops/domain';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser, type Tx } from '@/lib/db';
+import { runAction } from '@/lib/run-action';
 import {
   isPhotoType,
   MAX_PHOTO_BYTES,
@@ -24,18 +24,8 @@ export interface RecipeLineInput {
   trim_loss_pct: number;
 }
 
-async function run<T>(label: string, fn: (tx: Tx) => Promise<T>): Promise<ActionResult<T>> {
-  const user = await requireUser();
-  try {
-    const data = await withUser(user.id, fn);
-    revalidatePath('/menu', 'layout');
-    return { ok: true, data };
-  } catch (err) {
-    const f = failure(err);
-    if (f.code === 'UNEXPECTED') console.error(`${label} failed`, err);
-    return f;
-  }
-}
+const run = <T>(label: string, fn: (tx: Tx) => Promise<T>) =>
+  runAction(label, fn, { revalidate: [['/menu', 'layout']] });
 
 export async function saveRecipe(
   kind: 'prep' | 'menu',

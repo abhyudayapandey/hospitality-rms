@@ -103,8 +103,18 @@ export async function presignUpload(
 }
 
 /** A 5-minute GET URL for a stored photo. */
+/**
+ * The start of the current 5-minute window (ADR 169): a GET URL is signed then and lasts two
+ * windows, so it has at least 5 minutes left, and a screen that refreshes every 30 s gets the
+ * same address each time and the browser keeps the photo it already has.
+ */
+export function viewWindowStart(now = Date.now()): Date {
+  return new Date(Math.floor(now / (URL_TTL_SECONDS * 1000)) * URL_TTL_SECONDS * 1000);
+}
+
 export function presignView(client: S3Client, bucket: string, key: string): Promise<string> {
   return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), {
-    expiresIn: URL_TTL_SECONDS,
+    signingDate: viewWindowStart(),
+    expiresIn: 2 * URL_TTL_SECONDS,
   });
 }

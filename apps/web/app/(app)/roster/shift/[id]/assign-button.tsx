@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { assignShift } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 /** Assign; with warnings (ADR 019) it reads "Assign anyway" and names them to the server. */
 export function AssignButton({
@@ -27,7 +28,7 @@ export function AssignButton({
         onClick={() =>
           start(async () => {
             setError(null);
-            const r = await assignShift(shift, worker, accept);
+            const r = await callAction(assignShift, shift, worker, accept);
             if (!r.ok) setError(r.message);
             else router.push(back);
           })

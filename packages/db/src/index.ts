@@ -14,11 +14,35 @@ export type Tx = Transaction<Database>;
  */
 export const APP_PG_OPTIONS = '-c jit=off';
 
+/**
+ * The app's pool, with limits (ADR 169): at most DB_POOL_MAX connections (15), a request
+ * waits 10 s for one, and on each connection a statement is stopped after 60 s, a lock is
+ * waited for 15 s and a transaction left idle is ended after 60 s, so one slow report or a
+ * stuck request cannot hold the pool. These go with each connection, not the role, so no
+ * database setting has to change.
+ */
+export function appPoolConfig(
+  connectionString: string,
+  env: Record<string, string | undefined> = process.env,
+): pg.PoolConfig {
+  const max = Number(env.DB_POOL_MAX);
+  return {
+    connectionString,
+    max: Number.isInteger(max) && max > 0 ? max : 15,
+    connectionTimeoutMillis: 10_000,
+    idleTimeoutMillis: 30_000,
+    options: [
+      APP_PG_OPTIONS,
+      '-c statement_timeout=60000',
+      '-c lock_timeout=15000',
+      '-c idle_in_transaction_session_timeout=60000',
+    ].join(' '),
+  };
+}
+
 export function createDb(connectionString: string): Db {
   return new Kysely<Database>({
-    dialect: new PostgresDialect({
-      pool: new pg.Pool({ connectionString, options: APP_PG_OPTIONS }),
-    }),
+    dialect: new PostgresDialect({ pool: new pg.Pool(appPoolConfig(connectionString)) }),
   });
 }
 

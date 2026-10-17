@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { unsentOnPhone, unsentWords } from '@/lib/unsent';
 import { clearCaches, LeavingScreen } from './leaving-screen';
 
 /**
@@ -24,7 +25,13 @@ async function stopAlerts(): Promise<void> {
 
 export function SignOutButton() {
   const [busy, setBusy] = useState(false);
+  // things saved on the phone and not sent yet: said once, then a second tap signs out
+  const [unsent, setUnsent] = useState<number | null>(null);
   async function signOut() {
+    if (unsent === null) {
+      const n = await unsentOnPhone().catch(() => 0);
+      if (n > 0) return setUnsent(n);
+    }
     setBusy(true);
     let redirect = '/login';
     try {
@@ -47,8 +54,14 @@ export function SignOutButton() {
         disabled={busy}
         className="min-h-11 rounded-lg px-3 text-sm font-medium text-slate-600 hover:bg-slate-100"
       >
-        Sign out
+        {unsent ? 'Sign out anyway' : 'Sign out'}
       </button>
+      {unsent ? (
+        <p role="alert" data-testid="unsent-on-phone" className="text-sm text-amber-800">
+          {unsentWords(unsent)} Signing out keeps them on the phone; they are sent when this person
+          signs in again with a connection.
+        </p>
+      ) : null}
       {busy && <LeavingScreen />}
     </>
   );

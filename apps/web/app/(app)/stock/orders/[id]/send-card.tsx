@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { ErrorBox } from '@/components/messages';
 import { recordPoSend } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 export interface Sent {
   channel: 'whatsapp' | 'email' | 'print';
@@ -32,7 +33,7 @@ export function SendCard({
   const [error, setError] = useState<string | null>(null);
   const send = (channel: Sent['channel'], url: string) =>
     start(async () => {
-      const r = await recordPoSend(po, channel);
+      const r = await callAction(recordPoSend, po, channel);
       if (!r.ok) {
         setError(r.message);
         return;

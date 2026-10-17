@@ -23,6 +23,7 @@ import {
   reportToday,
 } from '@/lib/report-data';
 import { capRange, formatMeasure, trendHref } from '@/lib/reports';
+import { loadShell } from '@/lib/shell';
 import { ItemThumb } from '@/components/item-thumb';
 
 // Central kitchen (R-3, ADR 030), per kitchen store: what was made against the prep lists,
@@ -30,6 +31,7 @@ import { ItemThumb } from '@/components/item-thumb';
 // on the road now. Opens where the person sees the store's costs (the R-2 store rule).
 export default async function KitchenReport({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
+  const { tz } = await loadShell();
   const data = await withUser(user.id, async (tx) => {
     const { places, place } = await reportPlace(tx, 'central_kitchen', searchParams);
     if (!place) return null;
@@ -161,7 +163,7 @@ export default async function KitchenReport({ searchParams }: { searchParams: Se
                 <span className="min-w-0">
                   <span className="block font-medium">{t.store_name}</span>
                   <span className="block text-xs text-slate-500">
-                    sent {formatWhen(t.dispatched_at)} · {t.lines}{' '}
+                    sent {formatWhen(t.dispatched_at, tz)} · {t.lines}{' '}
                     {t.lines === 1 ? 'line' : 'lines'}
                   </span>
                 </span>

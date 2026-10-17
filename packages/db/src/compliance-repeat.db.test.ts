@@ -15,6 +15,9 @@ beforeAll(async () => {
 
 const GM = 'test.general-manager.1.0';
 const H10 = 'TEST-HOTEL-1.0';
+// the hotel's 04:00 business day in India (ADR 169), as ops.today_at has it, never the
+// database's UTC date: from 00:00 to 05:30 IST that is yesterday
+const today = () => `((now() at time zone 'Asia/Kolkata') - interval '4 hours')::date`;
 
 async function next(c: pg.PoolClient, rule: object, due: string, done: string): Promise<string> {
   const r = await c.query<{ d: string }>(
@@ -103,17 +106,17 @@ describe('how a regular job repeats (ADR 116)', () => {
       // monthly through the same function, as before
       expect((await save(c, { every_months: 6 }, '2026-10-12')).error).toBeUndefined();
       // done: the next Monday
-      await c.query(`update ops.compliance_item set next_due = current_date - 1 where id = $1`, [
+      await c.query(`update ops.compliance_item set next_due = ${today()} - 1 where id = $1`, [
         weekly.rows![0]!.id,
       ]);
       const done = await attemptAs<{ next: string }>(
         c,
         ids.user(GM),
-        `select ops.mark_compliance_done($1, current_date - 1, '{}', null)::text as next`,
+        `select ops.mark_compliance_done($1, ${today()} - 1, '{}', null)::text as next`,
         [weekly.rows![0]!.id],
       );
       const want = await c.query<{ d: string }>(
-        `select ((current_date - 1) + 1 + ((1 - extract(isodow from current_date)::int + 7) % 7))::text d`,
+        `select ((${today()} - 1) + 1 + ((1 - extract(isodow from ${today()})::int + 7) % 7))::text d`,
       );
       expect(done.rows![0]!.next).toBe(want.rows[0]!.d);
     });

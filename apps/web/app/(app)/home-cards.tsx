@@ -67,7 +67,7 @@ export function RoomsCard({ rooms }: { rooms: HomeRooms }) {
 }
 
 /** The front desk's minibar bills (ADR 104), or the attendant's minibars still to check. */
-export function MinibarCard({ minibar }: { minibar: HomeMinibar }) {
+export function MinibarCard({ minibar, tz }: { minibar: HomeMinibar; tz: string }) {
   const href = `/minibar?outlet=${minibar.outlet}`;
   if (minibar.charge) {
     const rows = minibar.charge;
@@ -88,7 +88,7 @@ export function MinibarCard({ minibar }: { minibar: HomeMinibar }) {
               room={r.room}
               charge={r.charge}
               used={r.used}
-              checked={`Checked ${formatWhen(r.checked_at)}${r.checked_by ? ` by ${r.checked_by}` : ''}`}
+              checked={`Checked ${formatWhen(r.checked_at, tz)}${r.checked_by ? ` by ${r.checked_by}` : ''}`}
             />
           ))}
         </ul>

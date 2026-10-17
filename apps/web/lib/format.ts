@@ -19,11 +19,10 @@ export function formatMoney(amount: string | number | null, currency = 'INR'): s
 
 /**
  * When something happened or is due, in one short style (UX review U-25): "today, 14:54",
- * "yesterday, 09:10", "tomorrow, 07:00", else "2 Oct, 14:54". Times are the outlet's (Asia/Kolkata), on the
- * 24-hour clock, and "today" is the 04:00 business day (ADR 148).
+ * "yesterday, 09:10", "tomorrow, 07:00", else "2 Oct, 14:54". Times are in the outlet's time zone `tz`
+ * (ADR 169), on the 24-hour clock, and "today" is the 04:00 business day (ADR 148).
  */
-export function formatWhen(d: Date | string, now: Date = new Date()): string {
-  const tz = 'Asia/Kolkata';
+export function formatWhen(d: Date | string, tz: string, now: Date = new Date()): string {
   const at = new Date(d);
   const time = formatTime(at, tz);
   const today = businessDate(now, tz);

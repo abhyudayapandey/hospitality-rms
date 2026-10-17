@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, StatusBox } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { requestDeactivation } from '../../roster/actions';
+import { callAction } from '@/lib/call-action';
 
 /** Asks for a person to be deactivated (UX-5); the security admin approves. */
 export function DeactivateForm({ user, name }: { user: string; name: string }) {
@@ -37,7 +38,7 @@ export function DeactivateForm({ user, name }: { user: string; name: string }) {
           onClick={() =>
             start(async () => {
               setError(null);
-              const r = await requestDeactivation(user, reason, key);
+              const r = await callAction(requestDeactivation, user, reason, key);
               if (!r.ok) return setError(r.message);
               setDone('Sent for approval.');
               router.refresh();

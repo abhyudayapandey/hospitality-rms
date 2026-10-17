@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { requestCustomer, type NewCustomerForm as Form } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 export function NewCustomerForm() {
   const router = useRouter();
@@ -158,7 +159,7 @@ export function NewCustomerForm() {
               onClick={() =>
                 start(async () => {
                   setError(null);
-                  const r = await requestCustomer(f);
+                  const r = await callAction(requestCustomer, f);
                   if (r.ok) router.push(`/platform/jobs/${r.data}`);
                   else {
                     setError(r.message);

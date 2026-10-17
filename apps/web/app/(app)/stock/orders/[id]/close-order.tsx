@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, secondaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { closeOrder, withdrawRequest } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 /**
  * "Rest is not coming" (ADR 052): the keeper who receives the order closes it with a reason.
@@ -24,7 +25,7 @@ export function CloseOrder({ po }: { po: string }) {
         setError('Say why the rest is not coming.');
         return;
       }
-      const r = await closeOrder(po, reason.trim());
+      const r = await callAction(closeOrder, po, reason.trim());
       if (r.ok) router.refresh();
       else setError(r.message);
     });
@@ -69,7 +70,7 @@ export function WithdrawRequest({ po }: { po: string }) {
   const withdraw = () =>
     start(async () => {
       setError(null);
-      const r = await withdrawRequest(po, '');
+      const r = await callAction(withdrawRequest, po, '');
       if (r.ok) router.refresh();
       else setError(r.message);
     });

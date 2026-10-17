@@ -1,4 +1,4 @@
-import { addDays, businessDate, DEFAULT_TZ, formatDay, formatTime, localDate } from './dates';
+import { addDays, businessDate, formatDay, formatTime, localDate } from './dates';
 import { formatWhen } from './format';
 
 // Presentation helpers for tasks and checklists (ADR 020), free of server-only so unit
@@ -24,7 +24,7 @@ export const GROUP_TITLES: Record<TaskGroup, string> = {
 /** My tasks in the order a person works through them: overdue, today, later, done. */
 export function groupTasks<T extends TaskRow>(
   rows: readonly T[],
-  tz: string = DEFAULT_TZ,
+  tz: string,
   now: Date = new Date(),
 ): Record<TaskGroup, T[]> {
   const today = businessDate(now, tz);
@@ -53,7 +53,7 @@ export function isUrgent(
  * When a task is due, its day said when it isn't today (ADR 148): "16:00", "Yesterday 16:00",
  * "Tomorrow 07:00", "Mon, 12 Oct 07:00". Today is the 04:00 business day; 24-hour clock.
  */
-export function dueText(at: Date | string, tz: string = DEFAULT_TZ, now: Date = new Date()) {
+export function dueText(at: Date | string, tz: string, now: Date = new Date()) {
   const time = formatTime(at, tz);
   const today = businessDate(now, tz);
   const day = businessDate(at, tz);
@@ -92,11 +92,12 @@ export function doneBy(
     done_by_name: string | null;
     not_given_reason?: string | null;
   },
+  tz: string,
   now: Date = new Date(),
 ): string | null {
   if (t.status !== 'done' || !t.completed_at) return null;
   if (t.not_given_reason) return `Rejected by ${t.done_by_name ?? 'you'}: ${t.not_given_reason}`;
-  return `Done by ${t.done_by_name ?? 'you'}, ${formatWhen(t.completed_at, now)}`;
+  return `Done by ${t.done_by_name ?? 'you'}, ${formatWhen(t.completed_at, tz, now)}`;
 }
 
 /** A head's ask that was not given reads "rejected", never "done" (ADR 141). */
@@ -105,12 +106,12 @@ export function rejected(t: { status: string; not_given_reason?: string | null }
 }
 
 /**
- * Done this business day or the one before (the 04:00 day in India, as the To do list keeps
+ * Done this business day or the one before (the 04:00 day in the outlet's time zone, as the To do list keeps
  * done tasks, ADR 075): how long a done repair stays on its technician's list.
  */
-export function doneLately(at: Date | string | null, now: Date = new Date()): boolean {
+export function doneLately(at: Date | string | null, tz: string, now: Date = new Date()): boolean {
   if (!at) return false;
-  return businessDate(at, DEFAULT_TZ) >= addDays(businessDate(now, DEFAULT_TZ), -1);
+  return businessDate(at, tz) >= addDays(businessDate(now, tz), -1);
 }
 
 /** Who has a task on a manager's list: "You" when it is theirs, else the name or the pool. */

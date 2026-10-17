@@ -29,6 +29,7 @@ export default async function OpenedPage({ searchParams }: { searchParams: Searc
     );
   }
   const user = await requireUser();
+  const tz = ctx.node.timezone ?? ctx.shell.tz;
   const node = ctx.node;
   const canOpen = ctx.can('SHELF_LIFE', 'modify');
   const { packs, items } = await withUser(user.id, async (tx) => ({
@@ -54,7 +55,7 @@ export default async function OpenedPage({ searchParams }: { searchParams: Searc
                   <span className="min-w-0 flex-1">
                     <span className="block font-medium">{p.name}</span>
                     <span className="block text-xs text-slate-500">
-                      {formatQty(p.qty, p.unit)} · opened {formatWhen(p.opened_at)}
+                      {formatQty(p.qty, p.unit)} · opened {formatWhen(p.opened_at, tz)}
                       {p.opened_by && ` by ${p.opened_by}`}
                     </span>
                   </span>
@@ -65,7 +66,7 @@ export default async function OpenedPage({ searchParams }: { searchParams: Searc
                       {p.expired ? 'Expired' : 'Use by'}
                     </span>
                     <span className="block font-medium tabular-nums" data-testid="pack-use-by">
-                      {formatWhen(p.use_by)}
+                      {formatWhen(p.use_by, tz)}
                     </span>
                   </span>
                 </div>

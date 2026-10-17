@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, secondaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { markMinibarCharged } from './actions';
+import { callAction } from '@/lib/call-action';
 
 /** Front Office: the minibar charge is on the guest's bill. */
 export function ChargedButton({ id }: { id: string }) {
@@ -21,7 +22,7 @@ export function ChargedButton({ id }: { id: string }) {
         onClick={() =>
           start(async () => {
             setError(null);
-            const r = await markMinibarCharged(id);
+            const r = await callAction(markMinibarCharged, id);
             if (!r.ok) return setError(r.message);
             router.refresh();
           })

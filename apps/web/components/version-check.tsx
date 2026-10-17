@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ACTION_FAILED_EVENT } from '@/lib/call-action';
+import { markStale } from '@/lib/stale-build';
 
 /** The build this page's code came from; the server says its own at /api/version. */
 const MINE = process.env.NEXT_PUBLIC_BUILD_ID ?? '';
@@ -10,7 +12,8 @@ const MINE = process.env.NEXT_PUBLIC_BUILD_ID ?? '';
  * server which build it runs when the app comes back to the screen and every 5 minutes, and
  * offers a reload when it differs (ADR 055). Until then the next tap on a link loads the new
  * build itself, never the old code's copy of the screen (ADR 126: the installed app showed an
- * older Me for a few seconds).
+ * older Me for a few seconds). A tap that could not reach the server asks at once (ADR 169):
+ * after a deploy the old code's actions are gone.
  */
 export function VersionCheck() {
   const [stale, setStale] = useState(false);
@@ -30,6 +33,12 @@ export function VersionCheck() {
   }, [stale]);
 
   useEffect(() => {
+    // a page arrived: the "Can't reach" screen's back-off starts again from 10 s (sw.js)
+    try {
+      sessionStorage.removeItem('oo.offline.tries');
+    } catch {
+      // storage off (private mode): nothing kept either
+    }
     if (!MINE) return;
     const check = async () => {
       if (document.visibilityState !== 'visible') return;
@@ -37,7 +46,10 @@ export function VersionCheck() {
         const r = await fetch('/api/version', { cache: 'no-store' });
         if (!r.ok || !r.headers.get('content-type')?.includes('application/json')) return;
         const { build } = (await r.json()) as { build?: string };
-        if (build && build !== MINE) setStale(true);
+        if (build && build !== MINE) {
+          markStale();
+          setStale(true);
+        }
       } catch {
         // offline: ask again later
       }
@@ -46,9 +58,11 @@ export function VersionCheck() {
     run();
     const t = setInterval(run, 5 * 60_000);
     document.addEventListener('visibilitychange', run);
+    window.addEventListener(ACTION_FAILED_EVENT, run);
     return () => {
       clearInterval(t);
       document.removeEventListener('visibilitychange', run);
+      window.removeEventListener(ACTION_FAILED_EVENT, run);
     };
   }, []);
 

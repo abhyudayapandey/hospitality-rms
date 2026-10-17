@@ -125,7 +125,7 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
                         <span className="block truncate font-medium">{r.title}</span>
                         <span className="block truncate text-xs text-slate-500">
                           {maintenanceWhereWord(r.location) ?? r.place_name} · reported{' '}
-                          {formatWhen(r.created_at)}
+                          {formatWhen(r.created_at, shell.tz)}
                         </span>
                         {r.assigned_to_name && (
                           <span
@@ -133,7 +133,7 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
                             data-testid="repair-who"
                           >
                             {r.assigned_to === user.id ? 'You' : r.assigned_to_name}
-                            {r.assigned_at && ` · given ${formatWhen(r.assigned_at)}`}
+                            {r.assigned_at && ` · given ${formatWhen(r.assigned_at, shell.tz)}`}
                           </span>
                         )}
                       </span>

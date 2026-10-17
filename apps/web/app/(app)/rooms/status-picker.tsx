@@ -18,6 +18,9 @@ import {
 import { useHydrated } from '@/lib/use-hydrated';
 import { roomMaintenanceOpen, setRoomStatus, type RoomStatusDetails } from './actions';
 import { DateInput, TimeInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
+import { useTimeZone } from '@/components/time-zone';
+import { localToday } from '@/lib/dates';
 
 /**
  * A room's new status as big buttons, each its colour, picture and word (ADR 088, 104): never a
@@ -46,7 +49,7 @@ export function RoomStatusButtons({
   const save = (code: string, d: RoomStatusDetails = {}) =>
     start(async () => {
       setError(null);
-      const r = await setRoomStatus(room, code, d);
+      const r = await callAction(setRoomStatus, room, code, d);
       if (!r.ok) return setError(r.message);
       setAsking(null);
       onDone?.();
@@ -122,6 +125,7 @@ function StatusDetailsForm({
   onBack: () => void;
   onSave: (d: RoomStatusDetails) => void;
 }) {
+  const tz = useTimeZone();
   const s = roomStatus(code);
   const [time, setTime] = useState(details?.at_time ?? '');
   const [reason, setReason] = useState(details?.reason ?? '');
@@ -132,7 +136,7 @@ function StatusDetailsForm({
   useEffect(() => {
     if (code !== 'OOO') return;
     let live = true;
-    void roomMaintenanceOpen(room).then((r) => {
+    void callAction(roomMaintenanceOpen, room).then((r) => {
       if (live) setOpen(r.ok ? r.data : []);
     });
     return () => {
@@ -145,7 +149,6 @@ function StatusDetailsForm({
       : []),
     ...(open ?? []),
   ];
-  const today = new Date().toISOString().slice(0, 10);
   return (
     <form
       className="space-y-3"
@@ -189,7 +192,7 @@ function StatusDetailsForm({
             <span className="text-sm font-medium">Back on</span>
             <DateInput
               name="until"
-              min={today}
+              min={localToday(tz)}
               value={until}
               onChange={(e) => setUntil(e.target.value)}
               className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"

@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, inputClass, primaryButton, secondaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { actOnStaffAsk } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 /**
  * The department head (ADR 115): give it from the store (it leaves the store as given), ask
@@ -35,7 +36,7 @@ export function HeadActions({
         setError('Say why.');
         return;
       }
-      const r = await actOnStaffAsk(ask, action, action === 'close' ? why : '');
+      const r = await callAction(actOnStaffAsk, ask, action, action === 'close' ? why : '');
       if (r.ok) router.refresh();
       else setError(r.message);
     });

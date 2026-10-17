@@ -7,14 +7,15 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { markJobDone, renewLicence } from './actions';
 import { DocumentFiles, type DocumentFile } from './document-files';
 import { DateInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
+import { useTimeZone } from '@/components/time-zone';
+import { businessToday } from '@/lib/dates';
 
 /** A form field's text (a file input gives none). */
 const field = (f: FormData, name: string) => {
   const v = f.get(name);
   return typeof v === 'string' ? v : '';
 };
-
-const today = () => new Date().toISOString().slice(0, 10);
 
 /**
  * Renews a licence (ADR 069): the new number (if it changed), dates and the renewed licence
@@ -35,6 +36,7 @@ export function RenewForm({
   /** where to go once renewed; "{id}" becomes the renewed licence's id */
   done: string;
 }) {
+  const tz = useTimeZone();
   const router = useRouter();
   const hydrated = useHydrated();
   const [pending, start] = useTransition();
@@ -50,7 +52,7 @@ export function RenewForm({
         const f = new FormData(e.currentTarget);
         start(async () => {
           setError(null);
-          const r = await renewLicence({
+          const r = await callAction(renewLicence, {
             id: licence,
             number: field(f, 'number'),
             issued_on: field(f, 'issued_on') || null,
@@ -74,7 +76,7 @@ export function RenewForm({
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-sm font-medium">
           Issued on
-          <DateInput name="issued_on" defaultValue={today()} className={inputClass} />
+          <DateInput name="issued_on" defaultValue={businessToday(tz)} className={inputClass} />
         </label>
         <label className="block text-sm font-medium">
           New expiry
@@ -121,6 +123,7 @@ export function DoneForm({
   /** where to go once marked; stays (refreshed) when absent */
   done?: string;
 }) {
+  const tz = useTimeZone();
   const router = useRouter();
   const hydrated = useHydrated();
   const [pending, start] = useTransition();
@@ -137,7 +140,7 @@ export function DoneForm({
         const f = new FormData(e.currentTarget);
         start(async () => {
           setError(null);
-          const r = await markJobDone({
+          const r = await callAction(markJobDone, {
             id: job,
             done_on: field(f, 'done_on'),
             files: files.map((x) => x.key),
@@ -162,7 +165,12 @@ export function DoneForm({
       <h2 className="font-semibold">Mark it done</h2>
       <label className="block text-sm font-medium">
         Done on
-        <DateInput name="done_on" required defaultValue={today()} className={inputClass} />
+        <DateInput
+          name="done_on"
+          required
+          defaultValue={businessToday(tz)}
+          className={inputClass}
+        />
       </label>
       {photos ? (
         <DocumentFiles

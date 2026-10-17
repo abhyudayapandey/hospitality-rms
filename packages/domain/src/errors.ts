@@ -208,6 +208,9 @@ export const ERROR_MESSAGES = {
   // trends (RPT-12, ADR 041)
   INVALID_GRAIN: 'Show the trend by week or month.',
   INVALID_MEASURE: 'That figure has no trend on this report.',
+  // a server action that never reached the server, or reached an older build (ADR 169)
+  OFFLINE: 'No connection. Try again.',
+  APP_UPDATED: 'The app was updated. Reload, then try again.',
   UNEXPECTED: 'Something went wrong. Please try again.',
 } as const;
 

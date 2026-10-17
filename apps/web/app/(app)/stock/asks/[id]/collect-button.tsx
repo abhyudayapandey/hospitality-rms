@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { ErrorBox, primaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { collectStaffAsk } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 /** Whoever asked: it is with the department now (ADR 142). One tap, no stock moves. */
 export function CollectButton({ ask, department }: { ask: string; department: string }) {
@@ -22,7 +23,7 @@ export function CollectButton({ ask, department }: { ask: string; department: st
         onClick={() =>
           start(async () => {
             setError(null);
-            const r = await collectStaffAsk(ask);
+            const r = await callAction(collectStaffAsk, ask);
             if (r.ok) router.refresh();
             else setError(r.message);
           })

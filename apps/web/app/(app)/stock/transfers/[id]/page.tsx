@@ -31,6 +31,7 @@ export default async function TransferPage({
   ).catch(() => null);
   if (ask) redirect(`/stock/asks/${ask}`);
   const ctx = await supplyContext(searchParams, 'transfers');
+  const { tz } = ctx.shell;
   const data = await withUser(user.id, async (tx) => {
     const t = await sql<{
       id: string;
@@ -115,14 +116,14 @@ export default async function TransferPage({
           </p>
         )}
         <p className="text-sm text-slate-600">
-          Requested {formatWhen(t.created_at)}
-          {t.dispatched_at && ` · sent ${formatWhen(t.dispatched_at)}`}
-          {t.received_at && ` · received ${formatWhen(t.received_at)}`}
+          Requested {formatWhen(t.created_at, tz)}
+          {t.dispatched_at && ` · sent ${formatWhen(t.dispatched_at, tz)}`}
+          {t.received_at && ` · received ${formatWhen(t.received_at, tz)}`}
         </p>
       </div>
       {now && <RequestNow stage={now.stage} words={now.words} />}
       {actions && <RequestActions data={actions} />}
-      <RequestStory story={story} />
+      <RequestStory story={story} tz={tz} />
     </div>
   );
 }

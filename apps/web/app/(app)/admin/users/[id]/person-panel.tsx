@@ -18,6 +18,7 @@ import {
 } from '../../actions';
 import { AppliesBadge, OneTimePassword } from '../parts';
 import { DateInput } from '@/components/date-time-inputs';
+import { callAction, useActionKey } from '@/lib/call-action';
 
 export interface AccessRow {
   assignment_id: string | null;
@@ -86,7 +87,7 @@ export function LoginActions({
             disabled={!hydrated || pending}
             onClick={() =>
               act(
-                () => resetPassword(userId),
+                () => callAction(resetPassword, userId),
                 (p) => {
                   setPassword({ username: 'this person', password: p });
                   return 'Password reset. Hand the temporary password over in person.';
@@ -104,7 +105,7 @@ export function LoginActions({
             disabled={!hydrated || pending}
             onClick={() =>
               act(
-                () => deactivatePerson(userId),
+                () => callAction(deactivatePerson, userId),
                 () => 'Deactivated: signed out everywhere and unable to sign in.',
               )
             }
@@ -118,7 +119,7 @@ export function LoginActions({
             disabled={!hydrated || pending}
             onClick={() =>
               act(
-                () => reactivatePerson(userId),
+                () => callAction(reactivatePerson, userId),
                 () => 'Reactivated.',
               )
             }
@@ -133,7 +134,7 @@ export function LoginActions({
             disabled={!hydrated || pending}
             onClick={() =>
               act(
-                () => createLogin(userId),
+                () => callAction(createLogin, userId),
                 (r) => {
                   if (r.temporaryPassword) {
                     setPassword({ username: 'this person', password: r.temporaryPassword });
@@ -185,7 +186,7 @@ export function AccessList({ access }: { access: AccessRow[] }) {
                     disabled={!hydrated || pending}
                     onClick={() =>
                       act(
-                        () => revokeAccess(a.assignment_id!),
+                        () => callAction(revokeAccess, a.assignment_id!),
                         (r) =>
                           r.status === 'pending' ? 'Removal sent for approval.' : 'Access ended.',
                       )
@@ -218,6 +219,7 @@ export function AddAccess({
 }) {
   const hydrated = useHydrated();
   const { pending, error, status, act } = useAction();
+  const keys = useActionKey();
   // only the places the chosen access fits (ADR 151): a Hub Manager at a hub, a Store Keeper at
   // a store, a Department Head at a department
   const fitting = (group: string) => places.filter((p) => groupFitsPlace(group, p));
@@ -235,7 +237,7 @@ export function AddAccess({
     setG(next);
     setApplies(null);
     if (next.group && next.node) {
-      void previewGrant(userId, next.group, next.node).then((r) =>
+      void callAction(previewGrant, userId, next.group, next.node).then((r) =>
         setApplies(r.ok ? r.data : null),
       );
     }
@@ -248,8 +250,12 @@ export function AddAccess({
       onSubmit={(e) => {
         e.preventDefault();
         act(
-          () => grantAccess(userId, { ...g, idempotencyKey: crypto.randomUUID() }),
-          (r) => (r.status === 'pending' ? 'Sent for approval.' : 'Access added.'),
+          () =>
+            callAction(grantAccess, userId, { ...g, idempotencyKey: keys.key(JSON.stringify(g)) }),
+          (r) => {
+            keys.done();
+            return r.status === 'pending' ? 'Sent for approval.' : 'Access added.';
+          },
         );
       }}
     >
@@ -360,7 +366,7 @@ export function EditPerson({
         e.preventDefault();
         act(
           () =>
-            updatePerson(userId, {
+            callAction(updatePerson, userId, {
               displayName: v.displayName !== displayName ? v.displayName : '',
               email: loginType === 'email' && v.email !== (email ?? '') ? v.email : '',
               jobRole: v.jobRole !== (jobRole ?? '') ? v.jobRole : '',

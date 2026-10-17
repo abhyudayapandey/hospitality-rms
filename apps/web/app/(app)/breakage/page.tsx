@@ -17,6 +17,9 @@ import { formatMoney, formatWhen } from '@/lib/format';
 import { isUuid, param, type SearchParams } from '@/lib/params';
 import { formatQty } from '@/lib/qty';
 import { photosEnabled, presignPhotoView } from '@/lib/photos';
+import { listPage } from '@/lib/list-page';
+import { loadShell } from '@/lib/shell';
+import { ShowMore } from '@/components/show-more';
 import { BreakageForm } from './breakage-form';
 
 // Breakage (ADR 093): a department records what broke; the month's log for the place, its
@@ -27,6 +30,7 @@ const monthWords = (m: string) =>
 export default async function BreakagePage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const user = await requireUser();
+  const { tz } = await loadShell();
   const places = await withUser(user.id, (tx) => breakagePlaces(tx));
   const asked = param(sp, 'place');
   const place =
@@ -47,16 +51,18 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
   const askedMonth = param(sp, 'month');
   const month = /^\d{4}-\d{2}-01$/.test(askedMonth ?? '')
     ? askedMonth
-    : `${localToday().slice(0, 7)}-01`;
+    : `${localToday(tz).slice(0, 7)}-01`;
   const { log, months, items } = await withUser(user.id, async (tx) => ({
     log: await breakageLog(tx, place.place_id, month),
     months: await breakageMonths(tx, place.place_id),
     items: place.can_record && place.stores[0] ? await breakageItems(tx, place.stores[0].id) : [],
   }));
+  // 30, then Show more (ADR 052); the count and total stay the whole month's
+  const shown = listPage(log, '/breakage', { ...sp, place: place.place_id, month });
   // each photo of what broke, for a 5-minute look (ADR 143)
   const photoUrls = new Map(
     await Promise.all(
-      log
+      shown.shown
         .filter((e) => e.photo_key)
         .map(async (e) => [e.id, await presignPhotoView(e.photo_key!).catch(() => null)] as const),
     ),
@@ -109,7 +115,7 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
             className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200"
             data-testid="breakage-log"
           >
-            {log.map((e) => (
+            {shown.shown.map((e) => (
               <li
                 key={e.id}
                 className="flex items-center gap-3 px-4 py-3 text-sm"
@@ -126,7 +132,7 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
                     {place.kind === 'outlet' && ` · ${e.place}`}
                   </span>
                   <span className="block text-xs text-slate-500">
-                    {formatWhen(e.broken_at)}
+                    {formatWhen(e.broken_at, tz)}
                     {e.recorded_by && `, recorded by ${e.recorded_by}`}
                     {e.note && ` · ${e.note}`}
                   </span>
@@ -155,6 +161,7 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
             ))}
           </ul>
         )}
+        {shown.more && <ShowMore href={shown.more} />}
       </section>
       {months.length > 0 && (
         <section className="space-y-2">

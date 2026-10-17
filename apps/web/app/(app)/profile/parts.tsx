@@ -12,6 +12,7 @@ import { clearCaches, LeavingScreen } from '@/components/leaving-screen';
 import { passwordProblems } from '@/lib/auth/passwords';
 import { changeOwnPassword, signOutEverywhere } from './actions';
 import { PasswordInput } from '@/components/password-input';
+import { callAction } from '@/lib/call-action';
 
 export function PasswordForm() {
   const [current, setCurrent] = useState('');
@@ -27,7 +28,7 @@ export function PasswordForm() {
     setBusy(true);
     setError(null);
     setDone(false);
-    const r = await changeOwnPassword({ current, next, confirm });
+    const r = await callAction(changeOwnPassword, { current, next, confirm });
     setBusy(false);
     if (r.ok) {
       setDone(true);
@@ -100,7 +101,7 @@ export function SignOutEverywhere() {
   async function go() {
     setBusy(true);
     setError(null);
-    const r = await signOutEverywhere();
+    const r = await callAction(signOutEverywhere);
     if (!r.ok) {
       setBusy(false);
       setError(r.message);

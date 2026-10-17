@@ -7,6 +7,7 @@ import type { MadeHere } from '@/lib/production';
 import { useHydrated } from '@/lib/use-hydrated';
 import { recordProduction } from '../actions';
 import { ItemThumb } from '@/components/item-thumb';
+import { callAction } from '@/lib/call-action';
 
 interface Line {
   ingredient_id: string;
@@ -63,7 +64,7 @@ export function ProductionForm({
             setError('Ingredient quantities are zero or more.');
             return;
           }
-          const r = await recordProduction(node, item.item_id, qty, lines, key);
+          const r = await callAction(recordProduction, node, item.item_id, qty, lines, key);
           if (!r.ok) {
             setError(r.message);
             return;

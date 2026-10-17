@@ -17,6 +17,7 @@ import { breakable } from '@/lib/breakable';
 import { formatQty } from '@/lib/qty';
 import { useHydrated } from '@/lib/use-hydrated';
 import { getBreakageUploadUrl, itemsAt, recordBreakage } from './actions';
+import { callAction } from '@/lib/call-action';
 
 /**
  * Record a breakage (ADR 093) at a department: from which store, what, how many, why and who
@@ -57,7 +58,7 @@ export function BreakageForm({
       setItemId('');
       // a photo is stored at the store it came from: a new store needs a new one
       setPhotoKey(null);
-      const r = await itemsAt(id);
+      const r = await callAction(itemsAt, id);
       if (r.ok) setItems(r.data);
       else setError(r.message);
     });
@@ -71,7 +72,7 @@ export function BreakageForm({
       if (!Number.isFinite(n) || n <= 0) return setError('Enter how many.');
       if (!reason) return setError('Say how it broke.');
       if (!by) return setError('Say who broke it.');
-      const r = await recordBreakage({
+      const r = await callAction(recordBreakage, {
         place: place.place_id,
         store,
         item: item.item_id,

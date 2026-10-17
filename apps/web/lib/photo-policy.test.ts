@@ -1,5 +1,5 @@
 import { S3Client } from '@aws-sdk/client-s3';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   isBillFileType,
   isPhotoType,
@@ -62,9 +62,23 @@ describe('wastage photo upload policy', () => {
     expect(keptKey(`tasks/routine/${TENANT}/${NODE}/../x.jpg`)).toBeNull();
   });
 
-  it('issues short-lived GET URLs', async () => {
-    const url = new URL(await presignView(client, 'photos-bucket', 'wastage/a/b/c.jpg'));
-    expect(url.searchParams.get('X-Amz-Expires')).toBe('300');
+  it('issues short-lived GET URLs that stay the same between refreshes (ADR 169)', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-10-05T10:01:10Z'));
+      const first = await presignView(client, 'photos-bucket', 'wastage/a/b/c.jpg');
+      const url = new URL(first);
+      // signed at the start of a 5-minute window, good for 10: at least 5 minutes left
+      expect(url.searchParams.get('X-Amz-Date')).toBe('20261005T100000Z');
+      expect(url.searchParams.get('X-Amz-Expires')).toBe('600');
+      // a screen refreshed 30 s later gets the same address, so the photo is not fetched again
+      vi.setSystemTime(new Date('2026-10-05T10:01:40Z'));
+      expect(await presignView(client, 'photos-bucket', 'wastage/a/b/c.jpg')).toBe(first);
+      vi.setSystemTime(new Date('2026-10-05T10:05:00Z'));
+      expect(await presignView(client, 'photos-bucket', 'wastage/a/b/c.jpg')).not.toBe(first);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('takes PDFs up to 10 MB for bills only (ADR 050)', async () => {

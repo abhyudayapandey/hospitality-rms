@@ -1,6 +1,6 @@
 // Hey Senior service worker (ADR 004, 063). Makes the app installable. It never caches
-// authenticated pages or API responses. A page that doesn't start arriving within 10 s, or
-// can't be fetched at all, gets the "Can't reach Hey Senior" screen below, which retries by
+// authenticated pages or API responses. A page (GET) that doesn't start arriving within 10 s,
+// or any navigation that can't be fetched at all, gets the "Can't reach Hey Senior" screen below, which retries by
 // itself; the screen lives in this file, so nothing cached can go missing (sign-out deletes
 // every cache) or go stale after a deploy.
 const TIMEOUT_MS = 10000;
@@ -42,9 +42,16 @@ const OFFLINE_HTML = `<!doctype html>
   <small id="next"></small>
 </main>
 <script>
-  var wait = 10;
+  // 10 s, then 20, 40, up to a minute between tries; a GET of the same address, so a form
+  // that did not get through is never posted again (ADR 169)
+  var tries = 0;
+  try { tries = Number(sessionStorage.getItem('oo.offline.tries')) || 0; } catch (e) {}
+  var wait = Math.min(10 * Math.pow(2, tries), 60);
   var next = document.getElementById('next');
-  function retry() { location.reload(); }
+  function retry() {
+    try { sessionStorage.setItem('oo.offline.tries', String(tries + 1)); } catch (e) {}
+    location.replace(location.href);
+  }
   document.getElementById('retry').addEventListener('click', retry);
   addEventListener('online', retry);
   setInterval(function () {
@@ -69,7 +76,8 @@ self.addEventListener('fetch', (event) => {
   if (req.mode !== 'navigate') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  if (NO_TIMEOUT.test(url.pathname)) {
+  // only a page is cut short: a form post (an upload over mobile data) may take longer
+  if (req.method !== 'GET' || NO_TIMEOUT.test(url.pathname)) {
     event.respondWith(fetch(req).catch(offline));
     return;
   }

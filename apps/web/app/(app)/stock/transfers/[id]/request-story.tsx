@@ -29,7 +29,7 @@ export function RequestNow({ stage, words }: { stage: string; words: string }) {
   );
 }
 
-export function RequestStory({ story }: { story: { at: Date; words: string }[] }) {
+export function RequestStory({ story, tz }: { story: { at: Date; words: string }[]; tz: string }) {
   if (story.length === 0) return null;
   return (
     // always open under its own heading (ADR 164)
@@ -50,7 +50,7 @@ export function RequestStory({ story }: { story: { at: Date; words: string }[] }
             <span className="mt-1.5 size-2 shrink-0 rounded-full bg-slate-400" aria-hidden />
             <span>
               <span className="block text-slate-800">{s.words}</span>
-              <span className="text-xs text-slate-500">{formatWhen(s.at)}</span>
+              <span className="text-xs text-slate-500">{formatWhen(s.at, tz)}</span>
             </span>
           </li>
         ))}

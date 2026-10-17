@@ -9,6 +9,7 @@ import {
 } from '@outlet-ops/domain';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser, type Tx } from '@/lib/db';
+import { runAction } from '@/lib/run-action';
 import {
   copyPhoto,
   isPhotoType,
@@ -31,18 +32,8 @@ import { requireModule } from '@/lib/modules-server';
 export type Assign =
   { mode: 'person'; user_id: string } | { mode: 'job_role'; role: string } | { mode: 'on_shift' };
 
-async function run<T>(label: string, fn: (tx: Tx) => Promise<T>): Promise<ActionResult<T>> {
-  const user = await requireUser();
-  try {
-    const data = await withUser(user.id, fn);
-    revalidatePath('/tasks', 'layout');
-    return { ok: true, data };
-  } catch (err) {
-    const f = failure(err);
-    if (f.code === 'UNEXPECTED') console.error(`${label} failed`, err);
-    return f;
-  }
-}
+const run = <T>(label: string, fn: (tx: Tx) => Promise<T>) =>
+  runAction(label, fn, { revalidate: [['/tasks', 'layout']] });
 
 const json = (v: unknown) => JSON.stringify(v);
 

@@ -10,6 +10,7 @@ import { Stepper } from '@/components/stepper';
 import { shortFirst } from '@/lib/short-first';
 import { useHydrated } from '@/lib/use-hydrated';
 import { raiseStaffAsk } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 export interface AskStoreItem {
   item_id: string;
@@ -50,7 +51,7 @@ export function AskForm({
   const submit = () =>
     start(async () => {
       setError(null);
-      const r = await raiseStaffAsk(store.id, lines, note, key);
+      const r = await callAction(raiseStaffAsk, store.id, lines, note, key);
       if (r.ok) router.push(`/stock/asks/${r.data.id}`);
       else setError(r.message);
     });

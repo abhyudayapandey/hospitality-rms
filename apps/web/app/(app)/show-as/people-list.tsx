@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { ErrorBox, inputClass } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { backToMe, showAs } from './actions';
+import { callAction } from '@/lib/call-action';
 
 export interface ShowAsPerson {
   id: string;
@@ -47,7 +48,7 @@ export function PeopleList({
   const pick = (id: string) =>
     start(async () => {
       setError(null);
-      const r = await showAs(id);
+      const r = await callAction(showAs, id);
       if (!r.ok) return setError(r.message);
       router.push('/');
       router.refresh();
@@ -56,7 +57,7 @@ export function PeopleList({
   const back = () =>
     start(async () => {
       setError(null);
-      const r = await backToMe();
+      const r = await callAction(backToMe);
       if (!r.ok) return setError(r.message);
       router.push('/');
       router.refresh();

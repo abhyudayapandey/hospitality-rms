@@ -10,6 +10,7 @@ import { ItemThumb } from '@/components/item-thumb';
 import { DateInput } from '@/components/date-time-inputs';
 import { Stepper } from '@/components/stepper';
 import { qtyStep } from '@/lib/short-first';
+import { callAction } from '@/lib/call-action';
 
 export interface PlaceLine {
   item_id: string;
@@ -113,7 +114,7 @@ export function PlaceOrderForm({
         setError('Check the prices.');
         return;
       }
-      const r = await placeOrder(po, out, key);
+      const r = await callAction(placeOrder, po, out, key);
       if (r.ok) router.refresh();
       else setError(r.message);
     });

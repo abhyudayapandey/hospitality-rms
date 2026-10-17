@@ -6,6 +6,7 @@ import { registerDef } from '@outlet-ops/domain';
 import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { addRegisterEntry } from './actions';
+import { callAction } from '@/lib/call-action';
 
 /** A new entry in a register (ADR 090): its fields, the required ones first. */
 export function EntryForm({ place, register }: { place: string; register: string }) {
@@ -24,7 +25,7 @@ export function EntryForm({ place, register }: { place: string; register: string
         e.preventDefault();
         start(async () => {
           setError(null);
-          const r = await addRegisterEntry({
+          const r = await callAction(addRegisterEntry, {
             place,
             register,
             fields: values,

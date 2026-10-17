@@ -6,6 +6,7 @@ import { ErrorBox, inputClass, primaryButton } from '@/components/messages';
 import { useHydrated } from '@/lib/use-hydrated';
 import { addPermit } from './actions';
 import { DateInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
 
 /** A transport permit for liquor that arrived (ADR 096); FOC bottles go in the note. */
 export function PermitForm({ store, today }: { store: string; today: string }) {
@@ -20,7 +21,7 @@ export function PermitForm({ store, today }: { store: string; today: string }) {
     start(async () => {
       setError(null);
       if (!no.trim()) return setError('Enter the permit number.');
-      const r = await addPermit(store, no, day, note);
+      const r = await callAction(addPermit, store, no, day, note);
       if (!r.ok) return setError(r.message);
       setNo('');
       setNote('');

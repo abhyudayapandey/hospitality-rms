@@ -7,7 +7,13 @@ export { newCustomerFrom } from './customer-files';
 import { inviteSender, type InviteSender } from './invites';
 import type { ImportReport, InviteProgress } from './report';
 import { checkDishPhotos, readUpload, UploadError } from './upload';
-import { photosFromStore, photoStore, uploadStore, type UploadStore } from './upload-store';
+import {
+  photosFromStore,
+  photoStore,
+  uploadStore,
+  type StoredUpload,
+  type UploadStore,
+} from './upload-store';
 
 // The platform worker (ADR 012, 013): claims queued platform jobs and runs them. It
 // connects as platform_loader, which can write customer data but has no DDL rights and
@@ -133,6 +139,32 @@ export function importReport(report: LoadReport, files: string[]): ImportReport 
   };
 }
 
+const UPLOAD_GONE = 'The uploaded files are no longer kept. Upload them again.';
+
+/**
+ * An upload's files: kept in the database (ADR 169), or, for one made before that, in the
+ * bucket's onboarding/ prefix while it lasts (30 days). Null when neither has it.
+ */
+async function keptUpload(
+  client: ClientBase,
+  key: string,
+  store: UploadStore,
+): Promise<StoredUpload | null> {
+  const kept = await client.query<{
+    files: Record<string, string>;
+    photos: Record<string, string> | null;
+  }>('select files, photos from platform.kept_upload($1)', [key]);
+  const row = kept.rows[0];
+  if (row) return { files: row.files, ...(row.photos ? { photos: row.photos } : {}) };
+  try {
+    return await store.get(key);
+  } catch (err) {
+    const e = err as { code?: string; name?: string };
+    if (e.code === 'ENOENT' || e.name === 'NoSuchKey') return null;
+    throw err;
+  }
+}
+
 const problems = (n: number) => `${n} problem${n === 1 ? '' : 's'} found; nothing was changed`;
 
 async function runImport(
@@ -147,7 +179,8 @@ async function runImport(
   );
   const code = tenant.rows[0]?.code;
   if (!code) return { result: null, error: 'the customer does not exist' };
-  const stored = await (opts.store ?? uploadStore()).get(key);
+  const stored = await keptUpload(client, key, opts.store ?? uploadStore());
+  if (!stored) return { result: null, error: UPLOAD_GONE };
   let files: Record<string, string>;
   let customerCode: string;
   const photos = photosFromStore(stored.photos);

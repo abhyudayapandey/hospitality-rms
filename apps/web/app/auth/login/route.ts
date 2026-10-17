@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { appUrl } from '@/lib/app-url';
 import { authorizeUrl, cognitoConfig } from '@/lib/auth/cognito';
-import { PKCE_COOKIE, pkceChallenge, randomToken } from '@/lib/auth/session';
+import { PKCE_COOKIE, PKCE_PATH, pkceChallenge, randomToken } from '@/lib/auth/session';
 import { clientAddress, LIMITS, withinLimit } from '@/lib/security/rate-limit';
 
 // Starts the Cognito Hosted UI sign-in (authorization code + PKCE).
@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    path: '/auth',
+    path: PKCE_PATH,
     maxAge: 600,
   });
   return res;

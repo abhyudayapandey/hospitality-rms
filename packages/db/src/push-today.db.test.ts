@@ -230,6 +230,23 @@ describe('the morning expiry alert', () => {
     });
   });
 
+  it('a store whose leads were all told today is not scanned again (ADR 169)', async () => {
+    await inRolledBackTx(async (c) => {
+      await batch(c, 20);
+      expect(await alerts(c)).toBeGreaterThan(0);
+      await c.query('reset role');
+      // scanning this store now fails: once its leads were told, it must not be scanned
+      await c.query(`create or replace function inv.expiring_soon(p_store uuid, p_now timestamptz default now())
+        returns table (item_id uuid, name text, unit text, batch_no text,
+                       expires_at timestamptz, remaining numeric)
+        language plpgsql as $$
+        begin
+          if p_store = '${ids.node(STORE)}' then raise exception 'scanned'; end if;
+        end $$`);
+      expect(await alerts(c)).toBe(0);
+    });
+  });
+
   it('only the scheduled job sends it', async () => {
     await inRolledBackTx(async (c) => {
       const r = await attemptAs(c, ids.user('test.head-cook.3.0'), 'select ops.expiry_alerts()');

@@ -6,6 +6,7 @@ import { ErrorBox, primaryButton, StatusBox } from '@/components/messages';
 import { usePolling } from '@/components/use-polling';
 import { useHydrated } from '@/lib/use-hydrated';
 import { applyImport, inviteOwner } from '../../actions';
+import { callAction } from '@/lib/call-action';
 
 export function JobPoller() {
   usePolling(2000);
@@ -30,7 +31,7 @@ export function InviteOwner({ jobId, email }: { jobId: string; email: string }) 
         onClick={() =>
           start(async () => {
             setError(null);
-            const r = await inviteOwner(jobId);
+            const r = await callAction(inviteOwner, jobId);
             if (r.ok) setStatus(`Invitation sent to ${r.data}.`);
             else setError(r.message);
           })
@@ -59,7 +60,7 @@ export function ApplyImport({ dryRunJobId }: { dryRunJobId: string }) {
         onClick={() =>
           start(async () => {
             setError(null);
-            const r = await applyImport(dryRunJobId);
+            const r = await callAction(applyImport, dryRunJobId);
             if (r.ok) router.push(`/platform/jobs/${r.data}`);
             else setError(r.message);
           })

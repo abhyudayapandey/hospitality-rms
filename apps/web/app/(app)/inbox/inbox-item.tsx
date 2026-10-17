@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react';
 import { Initials } from '@/components/initials';
 import type { InboxEntry } from '@/lib/inbox';
 import { actOnRequest } from './actions';
+import { callAction, useActionKey } from '@/lib/call-action';
 
 /** One request; `compact` on Home: who and what, then No and Approve (UX-6). */
 export function InboxItem({ entry, compact = false }: { entry: InboxEntry; compact?: boolean }) {
@@ -13,11 +14,14 @@ export function InboxItem({ entry, compact = false }: { entry: InboxEntry; compa
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const router = useRouter();
+  // one key per decision, kept when a try does not get through (ADR 169)
+  const keys = useActionKey();
   const act = (action: 'approve' | 'reject') =>
     start(async () => {
       setError(null);
-      const r = await actOnRequest(entry.requestId, action, crypto.randomUUID());
+      const r = await callAction(actOnRequest, entry.requestId, action, keys.key(action));
       if (r.ok) {
+        keys.done();
         setDone(action === 'approve' ? 'Approved' : 'Rejected');
         // Let the confirmation show, then refresh the list and the inbox badge.
         setTimeout(() => router.refresh(), 1500);

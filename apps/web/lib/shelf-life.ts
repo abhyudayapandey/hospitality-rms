@@ -1,4 +1,4 @@
-import { DEFAULT_TZ, businessDate, formatDay } from './dates';
+import { businessDate, formatDay } from './dates';
 
 // Shelf life wording (Prompt 10): "Use within N days", or hours under a day. Whole days
 // and hours round down, so the label never promises longer than the item keeps.
@@ -14,11 +14,7 @@ export function shelfLifeText(hours: number | null): string {
 
 /** A batch's use-by, as a date only (the time of day doesn't matter on the floor):
  * "Use by Mon, 5 Oct", or "Expired". */
-export function useByText(
-  expiresAt: Date | string,
-  tz: string = DEFAULT_TZ,
-  now: Date = new Date(),
-): string {
+export function useByText(expiresAt: Date | string, tz: string, now: Date = new Date()): string {
   if (new Date(expiresAt).getTime() <= now.getTime()) return 'Expired';
   return `Use by ${formatDay(businessDate(expiresAt, tz))}`;
 }

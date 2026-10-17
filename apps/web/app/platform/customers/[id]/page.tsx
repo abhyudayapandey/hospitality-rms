@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { sql, withPlatformAdmin } from '@/lib/db';
+import { DEFAULT_TZ } from '@/lib/dates';
 import { formatWhen } from '@/lib/format';
 import { requirePlatformAdmin } from '@/lib/platform/server';
 import { customerStatus, jobLabel, jobStatus, type PlatformCustomer } from '../../parts';
@@ -79,7 +80,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
                 <Link href={`/platform/jobs/${j.id}`} className="flex justify-between gap-2 p-3">
                   <span>{jobLabel(j.kind)}</span>
                   <span className="shrink-0 text-right text-slate-600">
-                    {jobStatus(j.status)} · {formatWhen(j.created_at)}
+                    {jobStatus(j.status)} · {formatWhen(j.created_at, DEFAULT_TZ)}
                   </span>
                 </Link>
               </li>

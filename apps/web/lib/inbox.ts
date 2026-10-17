@@ -108,14 +108,23 @@ function moduleLink(r: InboxRow): Pick<InboxEntry, 'link' | 'inline'> {
   }
 }
 
-export async function inboxEntries(tx: Tx): Promise<InboxEntry[]> {
+/**
+ * What waits for the person. `detailsFor`: only the first so many get a transfer's ask and
+ * stock levels (Home shows 3); the rest are counted and labelled without them.
+ */
+export async function inboxEntries(
+  tx: Tx,
+  tz: string,
+  opts: { detailsFor?: number } = {},
+): Promise<InboxEntry[]> {
   const r = await sql<InboxRow>`
     select request_id, process_type, step, activated_at, amount, payload, subject_id,
            delivery_node_id, approve_via, initiator_name
       from wf.my_inbox()`.execute(tx);
+  const shown = r.rows.slice(0, opts.detailsFor ?? r.rows.length);
   // a supply request's items, so it is decided from what was asked for (ADR 053); RLS shows
   // the lines to whoever may approve the store's orders
-  const pos = r.rows.filter((x) => x.process_type === 'PURCHASE_ORDER').map((x) => x.subject_id);
+  const pos = shown.filter((x) => x.process_type === 'PURCHASE_ORDER').map((x) => x.subject_id);
   const items = new Map(
     pos.length === 0
       ? []
@@ -129,28 +138,36 @@ export async function inboxEntries(tx: Tx): Promise<InboxEntry[]> {
              group by pl.po_id`.execute(tx)
         ).rows.map((x) => [x.po, x.items]),
   );
-  // a request between stores waiting for approval: what each store has, per line (ADR 141)
+  // at every step, the frontline ask behind a request between stores: who asked, and why
+  // (ADR 142); one query for all of them (ADR 169)
+  const transfers = shown.filter((x) => x.process_type === 'TRANSFER').map((x) => x.subject_id);
+  const forAsk = new Map(
+    transfers.length === 0
+      ? []
+      : (
+          await sql<{ subject: string; asked_by: string; note: string | null }>`
+            select t.id::text as subject, a.asked_by, a.note
+              from unnest(${transfers}::uuid[]) t(id)
+              cross join lateral inv.request_for_ask(t.id) a`.execute(tx)
+        ).rows.map((a) => [a.subject, `For ${a.asked_by}${a.note ? `: ${a.note}` : ''}`]),
+  );
+  // and, waiting for approval, what each store has, per line (ADR 141)
+  const waiting = shown
+    .filter((x) => x.process_type === 'TRANSFER' && x.step.endsWith('approval'))
+    .map((x) => x.subject_id);
   const levels = new Map<string, string[]>();
-  // and, at every step, the frontline ask behind it: who asked, and why (ADR 142)
-  const forAsk = new Map<string, string>();
-  for (const x of r.rows) {
-    if (x.process_type !== 'TRANSFER') continue;
-    const ask = (
-      await sql<{ asked_by: string; note: string | null }>`
-        select asked_by, note from inv.request_for_ask(${x.subject_id}::uuid)`.execute(tx)
-    ).rows[0];
-    if (ask) forAsk.set(x.subject_id, `For ${ask.asked_by}${ask.note ? `: ${ask.note}` : ''}`);
-    if (!x.step.endsWith('approval')) continue;
+  if (waiting.length > 0) {
     const rows = (
-      await sql<RequestLevel>`
-        select item_id::text, name, base_uom, asked::text, from_name, from_on_hand::text,
-               to_name, to_on_hand::text, to_par::text
-          from inv.request_levels(${x.subject_id}::uuid)`.execute(tx)
+      await sql<RequestLevel & { subject: string }>`
+        select t.id::text as subject, l.item_id::text, l.name, l.base_uom, l.asked::text,
+               l.from_name, l.from_on_hand::text, l.to_name, l.to_on_hand::text, l.to_par::text
+          from unnest(${waiting}::uuid[]) with ordinality t(id, n)
+          cross join lateral inv.request_levels(t.id) with ordinality l
+         order by t.n, l.ordinality`.execute(tx)
     ).rows;
-    levels.set(
-      x.subject_id,
-      rows.map((l) => `${l.name}: ${levelsText(l)}`),
-    );
+    for (const l of rows) {
+      levels.set(l.subject, [...(levels.get(l.subject) ?? []), `${l.name}: ${levelsText(l)}`]);
+    }
   }
   return r.rows.map((x) => ({
     requestId: x.request_id,
@@ -171,7 +188,7 @@ export async function inboxEntries(tx: Tx): Promise<InboxEntry[]> {
         : x.process_type === 'PURCHASE_ORDER'
           ? `about ${formatMoney(x.amount)}`
           : formatMoney(x.amount),
-    waitingSince: formatWhen(x.activated_at),
+    waitingSince: formatWhen(x.activated_at, tz),
     // a discard sent in the lead's name for whoever threw the batch away (ADR 021)
     from:
       typeof x.payload.recorded_by_name === 'string'

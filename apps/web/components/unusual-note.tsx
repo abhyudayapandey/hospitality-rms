@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { checkUnusual, type Line, type UnusualCheck } from '@/app/(app)/stock/actions';
 import { approvalHeadline } from '@/lib/approval-words';
+import { callAction } from '@/lib/call-action';
 
 /**
  * Says before sending whether it will wait for a yes and whose (PO-5, TR-3, ADR 044, 142): the
@@ -28,7 +29,7 @@ export function UnusualNote({
     }
     let live = true;
     const t = setTimeout(() => {
-      checkUnusual(node, lines, kind)
+      callAction(checkUnusual, node, lines, kind)
         .then((r) => {
           if (live) setCheck(r.ok ? r.data : null);
         })

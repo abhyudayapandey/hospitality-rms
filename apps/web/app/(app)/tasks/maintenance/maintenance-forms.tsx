@@ -16,6 +16,7 @@ import {
   raiseMaintenance,
   startMaintenance,
 } from '../actions';
+import { callAction } from '@/lib/call-action';
 
 // Where it is, as pictures (ADR 125): a location, never a department
 const WHERE_ICON: Record<string, IconName> = {
@@ -87,7 +88,7 @@ export function ReportForm({
       if (!title) return setError('Say what is wrong.');
       if (!where) return setError('Say where it is.');
       if (inRoom && !room) return setError('Tap the room.');
-      const r = await raiseMaintenance({
+      const r = await callAction(raiseMaintenance, {
         place,
         location: where,
         title: what === 'Other' && room ? `${title} (room ${room})` : title,
@@ -250,7 +251,7 @@ export function AssignRepair({
         className={primaryButton}
         onClick={() =>
           start(async () => {
-            const r = await assignMaintenance(id, user);
+            const r = await callAction(assignMaintenance, id, user);
             if (!r.ok) setError(r.message);
             else router.refresh();
           })
@@ -294,7 +295,7 @@ export function WorkRepair({
           type="button"
           disabled={!hydrated || pending}
           className={secondaryButton}
-          onClick={() => act(() => startMaintenance(id))}
+          onClick={() => act(() => callAction(startMaintenance, id))}
         >
           Start the repair
         </button>
@@ -322,7 +323,7 @@ export function WorkRepair({
         type="button"
         disabled={!hydrated || pending || !photoKey}
         className={primaryButton}
-        onClick={() => act(() => closeMaintenance(id, photoKey, note))}
+        onClick={() => act(() => callAction(closeMaintenance, id, photoKey, note))}
       >
         Mark fixed
       </button>

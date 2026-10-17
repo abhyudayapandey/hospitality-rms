@@ -5,6 +5,7 @@ import { Empty } from '@/components/messages';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
+import { loadShell } from '@/lib/shell';
 
 interface AuditRow {
   occurred_at: Date;
@@ -20,6 +21,7 @@ interface AuditRow {
 // within the viewer's scope. Access events only, never business data (ADR 009, 010, 011).
 export default async function AuditPage() {
   const user = await requireUser();
+  const { tz } = await loadShell();
   let rows: AuditRow[];
   try {
     rows = await withUser(
@@ -62,7 +64,7 @@ export default async function AuditPage() {
                 {e.access_group ? ` · ${groupLabel(e.access_group)}` : ''}
                 {e.place ? ` at ${e.place}` : ''}
                 <span className="block text-xs text-slate-500">
-                  by {auditActor(e.actor)} · {formatWhen(e.occurred_at)}
+                  by {auditActor(e.actor)} · {formatWhen(e.occurred_at, tz)}
                   {e.note ? ` · ${e.note}` : ''}
                 </span>
               </div>

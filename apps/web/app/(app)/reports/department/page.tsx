@@ -13,11 +13,13 @@ import {
   reportPlace,
   reportToday,
 } from '@/lib/report-data';
+import { loadShell } from '@/lib/shell';
 
 // A department's day: who is on shift and who hasn't clocked in (today), hours, open
 // slots and tasks; its store's wastage and stock where the person sees that store.
 export default async function DepartmentReport({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
+  const { tz } = await loadShell();
   const data = await withUser(user.id, async (tx) => {
     const { places, place } = await reportPlace(tx, 'department', searchParams);
     if (!place) return null;
@@ -73,7 +75,7 @@ export default async function DepartmentReport({ searchParams }: { searchParams:
                     <span>
                       <span className="block font-medium">{p.name}</span>
                       <span className="block text-xs text-slate-500">
-                        {title(p.role_code)} · {formatSpan(p.start_at, p.end_at)}
+                        {title(p.role_code)} · {formatSpan(p.start_at, p.end_at, tz)}
                       </span>
                     </span>
                     <span

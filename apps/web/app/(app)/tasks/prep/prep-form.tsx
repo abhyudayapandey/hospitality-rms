@@ -10,6 +10,7 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { createPrepTasks, type Assign } from '../actions';
 import { AssignPicker, assignChosen } from '../assign-picker';
 import { TimeInput } from '@/components/date-time-inputs';
+import { callAction } from '@/lib/call-action';
 
 const n = (s: string) => Number(Number(s).toFixed(2));
 /** '2,000 g': Indian digit grouping, the unit on every figure (UX U-24) */
@@ -62,7 +63,7 @@ export function PrepForm({
       setError(null);
       setDone(null);
       if (chosen.length === 0) return setError('Tick at least one item and say how much to make.');
-      const r = await createPrepTasks({
+      const r = await callAction(createPrepTasks, {
         store,
         lines: chosen,
         due: localToInstant(day, time, tz),

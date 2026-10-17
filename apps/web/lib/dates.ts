@@ -2,6 +2,10 @@
 // (shifts, leave, weeks); instants are shown in the node's IANA timezone. Pure functions,
 // usable on the server and in client components.
 
+/**
+ * Only where no outlet is known yet (a customer being set up). Every date and time shown
+ * or decided is in the outlet's own time zone, so the helpers below take it (ADR 169).
+ */
 export const DEFAULT_TZ = 'Asia/Kolkata';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -13,7 +17,7 @@ export function isIsoDate(s: string): boolean {
 }
 
 /** Today's date in `tz`. */
-export function localToday(tz: string = DEFAULT_TZ, now: Date = new Date()): string {
+export function localToday(tz: string, now: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(now);
 }
 
@@ -55,7 +59,7 @@ export function formatDay(date: string, now: Date = new Date()): string {
 }
 
 /** '09:30' in `tz` */
-export function formatTime(at: Date | string, tz: string = DEFAULT_TZ): string {
+export function formatTime(at: Date | string, tz: string): string {
   return new Intl.DateTimeFormat('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
@@ -65,7 +69,7 @@ export function formatTime(at: Date | string, tz: string = DEFAULT_TZ): string {
 }
 
 /** '09:00–17:00' (end on the next day gets a '+1') */
-export function formatSpan(start: Date | string, end: Date | string, tz: string = DEFAULT_TZ) {
+export function formatSpan(start: Date | string, end: Date | string, tz: string) {
   const nextDay = localDate(end, tz) !== localDate(start, tz);
   return `${formatTime(start, tz)}–${formatTime(end, tz)}${nextDay ? ' +1' : ''}`;
 }
@@ -77,7 +81,7 @@ export const BUSINESS_DAY_START_HOUR = 4;
  * The business day an instant falls in, as a date: 02:00 on the 5th is still the 4th. A
  * batch's use-by is this date, whatever the time of day (ADR 046).
  */
-export function businessDate(at: Date | string, tz: string = DEFAULT_TZ): string {
+export function businessDate(at: Date | string, tz: string): string {
   return localDate(new Date(new Date(at).getTime() - BUSINESS_DAY_START_HOUR * 3_600_000), tz);
 }
 
@@ -85,7 +89,7 @@ export function businessDate(at: Date | string, tz: string = DEFAULT_TZ): string
  * Today as the app counts it (ADR 046, 148): the 04:00 business day, so between midnight and
  * 04:00 it is still yesterday. Every "Today" a person reads uses it, Home's heading too.
  */
-export function businessToday(tz: string = DEFAULT_TZ, now: Date = new Date()): string {
+export function businessToday(tz: string, now: Date = new Date()): string {
   return businessDate(now, tz);
 }
 
@@ -95,7 +99,7 @@ export function formatLongDate(date: string): string {
 }
 
 /** The date an instant falls on in `tz`. */
-export function localDate(at: Date | string, tz: string = DEFAULT_TZ): string {
+export function localDate(at: Date | string, tz: string): string {
   return localToday(tz, new Date(at));
 }
 
@@ -105,7 +109,7 @@ export function hoursBetween(start: Date | string, end: Date | string): number {
 }
 
 /** A local date and 'HH:MM' in `tz` as an ISO instant (for event times entered locally). */
-export function localToInstant(date: string, time: string, tz: string = DEFAULT_TZ): string {
+export function localToInstant(date: string, time: string, tz: string): string {
   // Start from the wall-clock time as if it were UTC, then correct by the zone's offset
   // at that moment (twice, to settle across a DST change; India has none).
   const wall = new Date(`${date}T${time}:00Z`).getTime();
@@ -131,7 +135,7 @@ export function localToInstant(date: string, time: string, tz: string = DEFAULT_
 }
 
 /** 'Friday, 2 October' for the day `at` falls on in `tz`. */
-export function formatLongDay(at: Date | string, tz: string = DEFAULT_TZ): string {
+export function formatLongDay(at: Date | string, tz: string): string {
   return new Intl.DateTimeFormat('en-IN', {
     weekday: 'long',
     day: 'numeric',
@@ -144,11 +148,7 @@ export function formatLongDay(at: Date | string, tz: string = DEFAULT_TZ): strin
  * The day whose week the roster opens on (ADR 112): today, except from Friday 18:00 through
  * Sunday, when what is left of this week is already set and next week is the one to plan.
  */
-export function planningWeekDay(
-  today: string,
-  now: Date = new Date(),
-  tz: string = DEFAULT_TZ,
-): string {
+export function planningWeekDay(today: string, tz: string, now: Date = new Date()): string {
   const wd = isoWeekday(today);
   const hour = Number(
     new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: tz }).format(now),
