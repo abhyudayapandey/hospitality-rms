@@ -13,6 +13,7 @@ import {
   type QueuedAction,
   type SendOutcome,
 } from '@/lib/action-queue';
+import { isStale } from '@/lib/stale-build';
 
 type Result = { ok: true } | { ok: false; code: string; message: string };
 
@@ -55,7 +56,8 @@ export function ActionSync({ userId }: { userId: string }) {
   const [confirming, setConfirming] = useState(false);
 
   const run = useCallback(async () => {
-    if (running.current || !('indexedDB' in window) || !navigator.onLine) return;
+    // an old build waits for the reload: its actions are gone from the server (ADR 169)
+    if (running.current || !('indexedDB' in window) || !navigator.onLine || isStale()) return;
     running.current = true;
     try {
       const r = await replay(indexedDbActions, userId, send);

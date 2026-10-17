@@ -3,6 +3,7 @@ import { Fragment } from 'react';
 import { taskIcon } from '@outlet-ops/domain';
 import { ExpiryBanner } from '@/components/expiry-banner';
 import { PhoneAlertsCard } from '@/components/phone-alerts';
+import { PollRefresh } from '@/components/use-polling';
 import { pushPublicKey } from '@/lib/push-key';
 import { Icon, type IconName } from '@/components/icon';
 import { businessDate, businessToday, formatDay, formatLongDate, formatTime } from '@/lib/dates';
@@ -108,6 +109,8 @@ export default async function Home() {
 
   return (
     <div className="space-y-4">
+      {/* Home's work changes while it is open: a minute, as it reads many parts (ADR 169) */}
+      <PollRefresh everyMs={60_000} />
       <h1 className="text-xl font-semibold" data-testid="today">
         {formatLongDate(businessToday(tz, now))}
       </h1>

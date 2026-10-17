@@ -20,7 +20,7 @@ export function usePolling(intervalMs: number = POLL_INTERVAL_MS): void {
   );
 }
 
-export function PollRefresh() {
-  usePolling();
+export function PollRefresh({ everyMs }: { everyMs?: number } = {}) {
+  usePolling(everyMs);
   return null;
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ACTION_FAILED_EVENT } from '@/lib/call-action';
+import { markStale } from '@/lib/stale-build';
 
 /** The build this page's code came from; the server says its own at /api/version. */
 const MINE = process.env.NEXT_PUBLIC_BUILD_ID ?? '';
@@ -45,7 +46,10 @@ export function VersionCheck() {
         const r = await fetch('/api/version', { cache: 'no-store' });
         if (!r.ok || !r.headers.get('content-type')?.includes('application/json')) return;
         const { build } = (await r.json()) as { build?: string };
-        if (build && build !== MINE) setStale(true);
+        if (build && build !== MINE) {
+          markStale();
+          setStale(true);
+        }
       } catch {
         // offline: ask again later
       }
