@@ -7,6 +7,8 @@ export const REFRESH_COOKIE = 'oo_refresh';
 /** The place last chosen on each screen (ADR 016), a JSON map of screen to place id. */
 export const PLACE_COOKIE = 'oo_places';
 export const PKCE_COOKIE = 'oo_pkce';
+/** where the sign-in cookie lives: set and cleared on this path only */
+export const PKCE_PATH = '/auth';
 
 export const IDLE_TIMEOUT_S = 12 * 60 * 60; // 12 h without activity
 export const ABSOLUTE_TIMEOUT_S = 30 * 24 * 60 * 60; // 30 days from sign-in

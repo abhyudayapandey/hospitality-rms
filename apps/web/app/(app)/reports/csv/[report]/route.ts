@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { own } from '@/lib/own';
 import { errorCodeOf } from '@outlet-ops/domain';
 import { currentUser } from '@/lib/auth/server';
 import { toCsv, csvName, type Cell } from '@/lib/csv';
@@ -269,7 +270,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export async function GET(req: Request, ctx: { params: Promise<{ report: string }> }) {
   const { report } = await ctx.params;
-  const ex = EXPORTS[report];
+  const ex = own(EXPORTS, report);
   if (!ex) return new NextResponse('not found', { status: 404 });
   const user = await currentUser();
   if (!user) return new NextResponse('signed out', { status: 401 });

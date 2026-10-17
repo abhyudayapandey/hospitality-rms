@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { appUrl } from '@/lib/app-url';
 import { cognitoConfig, exchangeCode } from '@/lib/auth/cognito';
-import { PKCE_COOKIE } from '@/lib/auth/session';
+import { PKCE_COOKIE, PKCE_PATH } from '@/lib/auth/session';
 import { startSession } from '@/lib/auth/start-session';
 import { clientAddress, LIMITS, withinLimit } from '@/lib/security/rate-limit';
 
@@ -17,7 +17,8 @@ export async function GET(req: Request) {
   const cfg = cognitoConfig();
   const jar = await cookies();
   const [state, verifier] = (jar.get(PKCE_COOKIE)?.value ?? '').split('.');
-  jar.delete(PKCE_COOKIE);
+  // set on /auth (auth/login), so only a delete on that path clears it (ADR 169)
+  jar.delete({ name: PKCE_COOKIE, path: PKCE_PATH });
   const code = url.searchParams.get('code');
   if (!cfg || !code || !state || !verifier || url.searchParams.get('state') !== state)
     return fail('cognito');

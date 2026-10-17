@@ -6,6 +6,7 @@ import { sql, withUser } from '../db';
 import {
   PLACE_COOKIE,
   PKCE_COOKIE,
+  PKCE_PATH,
   REFRESH_COOKIE,
   SESSION_COOKIE,
   issuedBeforeSignOut,
@@ -37,9 +38,10 @@ export async function setSessionCookie(payload: SessionPayload): Promise<void> {
 
 export async function clearAuthCookies(): Promise<void> {
   const jar = await cookies();
-  for (const name of [SESSION_COOKIE, REFRESH_COOKIE, PLACE_COOKIE, PKCE_COOKIE, SHOW_AS_COOKIE]) {
+  for (const name of [SESSION_COOKIE, REFRESH_COOKIE, PLACE_COOKIE, SHOW_AS_COOKIE]) {
     jar.delete(name);
   }
+  jar.delete({ name: PKCE_COOKIE, path: PKCE_PATH });
 }
 
 export interface CurrentUser {
