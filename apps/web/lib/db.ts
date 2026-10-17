@@ -100,3 +100,26 @@ export async function userIdForUsername(
 }
 
 export { sql, type Tx };
+
+/**
+ * /health (ADR 170): answers as app_rw with no session. `jobs` false asks only whether the
+ * database answers (the deploy's check); true also asks whether every server job ran in time
+ * (the outside check). Never throws: a database that does not answer is `ok: false`.
+ */
+export async function healthCheck(jobs: boolean): Promise<{ ok: boolean; late: string[] }> {
+  try {
+    return await db()
+      .transaction()
+      .execute(async (tx) => {
+        if (!jobs) {
+          await sql`select 1`.execute(tx);
+          return { ok: true, late: [] };
+        }
+        const r = await sql<{ ok: boolean; late: string[] }>`
+          select ok, late from platform.health()`.execute(tx);
+        return r.rows[0]!;
+      });
+  } catch {
+    return { ok: false, late: [] };
+  }
+}
