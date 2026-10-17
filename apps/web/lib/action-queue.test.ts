@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  discardPending,
+  MAX_TRIES,
   pending,
   replay,
   waitingLines,
@@ -85,6 +87,45 @@ describe('offline count and wastage queue', () => {
     );
     expect(r.refused.map((f) => f.message)).toEqual(['The counts are locked.']);
     expect(store.keys()).toEqual([]);
+  });
+
+  it('one that fails on the server is tried again later, without holding up the rest (ADR 169)', async () => {
+    const store = memoryStore([
+      line('a', '2026-10-01T03:30:00Z'),
+      line('b', '2026-10-01T04:30:00Z', 'rum'),
+    ]);
+    const sent: string[] = [];
+    const send = (a: QueuedAction) => {
+      sent.push(a.idempotencyKey);
+      return Promise.resolve(
+        a.idempotencyKey === 'a' ? { kind: 'failed' as const } : { kind: 'ok' as const },
+      );
+    };
+    expect(await replay(store, 'sam', send)).toEqual({ sent: 1, refused: [], remaining: 1 });
+    expect(sent).toEqual(['a', 'b']);
+    expect(store.keys()).toEqual(['a']);
+    expect((await store.all())[0]!.tries).toBe(1);
+  });
+
+  it(`after ${MAX_TRIES} failed tries it is shown as not sent and leaves the phone`, async () => {
+    const store = memoryStore([line('a', '2026-10-01T03:30:00Z')]);
+    const send = () => Promise.resolve({ kind: 'failed' as const });
+    for (let i = 1; i < MAX_TRIES; i++) await replay(store, 'sam', send);
+    expect(store.keys()).toEqual(['a']);
+    const r = await replay(store, 'sam', send);
+    expect(r.refused.map((f) => f.message)).toEqual([
+      `It could not be sent after ${MAX_TRIES} tries.`,
+    ]);
+    expect(store.keys()).toEqual([]);
+  });
+
+  it('the person can discard what is saved on this phone; others’ stays', async () => {
+    const store = memoryStore([
+      line('a', '2026-10-01T03:30:00Z'),
+      line('x', '2026-10-01T03:00:00Z', 'rum', 1, 'priya'),
+    ]);
+    expect(await discardPending(store, 'sam')).toBe(1);
+    expect(store.keys()).toEqual(['x']);
   });
 
   it('lists a user’s waiting actions and the latest waiting count per item', async () => {

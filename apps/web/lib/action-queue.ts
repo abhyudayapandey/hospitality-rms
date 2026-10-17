@@ -9,6 +9,8 @@
 export interface QueuedCheckLine {
   kind: 'check_line';
   idempotencyKey: string;
+  /** sends the server failed (ADR 169); refused after MAX_TRIES */
+  tries?: number;
   userId: string;
   clientTs: string;
   check: string;
@@ -24,6 +26,7 @@ export interface QueuedCheckLine {
 export interface QueuedWastage {
   kind: 'wastage';
   idempotencyKey: string;
+  tries?: number;
   userId: string;
   clientTs: string;
   node: string;
@@ -38,8 +41,18 @@ export interface ActionStore {
   remove(key: string): Promise<void>;
 }
 
+/**
+ * ok; refused (a rule said no: retrying will not help); failed (the server failed: try again
+ * later, MAX_TRIES at most); unreachable (no connection: stop until there is one).
+ */
 export type SendOutcome =
-  { kind: 'ok' } | { kind: 'refused'; message: string } | { kind: 'unreachable' };
+  | { kind: 'ok' }
+  | { kind: 'refused'; message: string }
+  | { kind: 'failed' }
+  | { kind: 'unreachable' };
+
+/** A saved item the server failed this many times is shown as not sent and leaves the phone. */
+export const MAX_TRIES = 3;
 
 export interface ReplayResult {
   sent: number;
@@ -55,8 +68,9 @@ export async function pending(store: ActionStore, userId: string): Promise<Queue
 
 /**
  * Sends this user's queued actions oldest first. Accepted and refused ones leave the queue
- * (a refusal, e.g. CHECK_LOCKED, will not change on retry); the first unreachable one stops
- * the run so order is kept for the next attempt.
+ * (a refusal, e.g. CHECK_LOCKED, will not change on retry); one the server failed stays for
+ * the next run, and after MAX_TRIES is refused; the first unreachable one stops the run so
+ * order is kept for the next attempt.
  */
 export async function replay(
   store: ActionStore,
@@ -68,12 +82,31 @@ export async function replay(
   for (const a of mine) {
     const r = await send(a);
     if (r.kind === 'unreachable') break;
+    if (r.kind === 'failed') {
+      // one item the server cannot take must not hold up the rest behind it (ADR 169)
+      const tries = (a.tries ?? 0) + 1;
+      if (tries < MAX_TRIES) {
+        await store.put({ ...a, tries });
+        continue;
+      }
+      await store.remove(a.idempotencyKey);
+      result.remaining--;
+      result.refused.push({ action: a, message: `It could not be sent after ${MAX_TRIES} tries.` });
+      continue;
+    }
     await store.remove(a.idempotencyKey);
     result.remaining--;
     if (r.kind === 'ok') result.sent++;
     else result.refused.push({ action: a, message: r.message });
   }
   return result;
+}
+
+/** Removes this user's saved items from the phone (they chose to discard them); how many. */
+export async function discardPending(store: ActionStore, userId: string): Promise<number> {
+  const mine = await pending(store, userId);
+  for (const a of mine) await store.remove(a.idempotencyKey);
+  return mine.length;
 }
 
 /** Waiting count lines of one check, newest value per item, for showing "saved on this phone". */

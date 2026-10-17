@@ -6,7 +6,9 @@ import { recordCheckLine } from '@/app/(app)/stock/check/actions';
 import { recordWastage } from '@/app/(app)/stock/actions';
 import {
   ACTION_QUEUE_EVENT,
+  discardPending,
   indexedDbActions,
+  pending,
   replay,
   type QueuedAction,
   type SendOutcome,
@@ -31,8 +33,9 @@ async function send(a: QueuedAction): Promise<SendOutcome> {
           })
         : await recordWastage(a.node, a.lines, a.idempotencyKey, a.clientTs);
     if (res.ok) return { kind: 'ok' };
+    // the server failed it: try it again later, without holding up the rest (ADR 169)
     return res.code === 'UNEXPECTED'
-      ? { kind: 'unreachable' }
+      ? { kind: 'failed' }
       : { kind: 'refused', message: res.message };
   } catch {
     return { kind: 'unreachable' }; // still no connection
@@ -47,6 +50,9 @@ export function ActionSync({ userId }: { userId: string }) {
   const router = useRouter();
   const running = useRef(false);
   const [refused, setRefused] = useState<string[]>([]);
+  // saved items the server has failed at least once: the person may discard them
+  const [stuck, setStuck] = useState(0);
+  const [confirming, setConfirming] = useState(false);
 
   const run = useCallback(async () => {
     if (running.current || !('indexedDB' in window) || !navigator.onLine) return;
@@ -58,6 +64,7 @@ export function ActionSync({ userId }: { userId: string }) {
         window.dispatchEvent(new Event(ACTION_QUEUE_EVENT));
         router.refresh();
       }
+      setStuck((await pending(indexedDbActions, userId)).filter((a) => a.tries).length);
     } catch {
       // IndexedDB unavailable (private mode): nothing was queued either
     } finally {
@@ -78,13 +85,58 @@ export function ActionSync({ userId }: { userId: string }) {
     };
   }, [run]);
 
-  if (refused.length === 0) return null;
+  const discard = async () => {
+    try {
+      await discardPending(indexedDbActions, userId);
+    } catch {
+      // IndexedDB unavailable: nothing to discard
+    }
+    setStuck(0);
+    setConfirming(false);
+    window.dispatchEvent(new Event(ACTION_QUEUE_EVENT));
+    router.refresh();
+  };
+
+  if (refused.length === 0 && stuck === 0) return null;
   return (
-    <div role="alert" className="mx-4 mt-2 rounded-lg bg-rose-50 p-3 text-sm text-rose-800">
-      Something saved on this phone could not be sent: {refused.join(' ')} Tell your manager.
-      <button type="button" onClick={() => setRefused([])} className="ml-2 underline">
-        Dismiss
-      </button>
-    </div>
+    <>
+      {refused.length > 0 && (
+        <div role="alert" className="mx-4 mt-2 rounded-lg bg-rose-50 p-3 text-sm text-rose-800">
+          Something saved on this phone could not be sent: {refused.join(' ')} Tell your manager.
+          <button type="button" onClick={() => setRefused([])} className="ml-2 underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+      {stuck > 0 && (
+        <div
+          role="status"
+          data-testid="saved-not-sent"
+          className="mx-4 mt-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900"
+        >
+          {stuck === 1 ? '1 thing' : `${stuck} things`} saved on this phone did not go through. We
+          will try again.{' '}
+          {confirming ? (
+            <>
+              Discard everything saved on this phone?{' '}
+              <button
+                type="button"
+                onClick={() => void discard()}
+                className="font-semibold underline"
+              >
+                Yes, discard
+              </button>{' '}
+              <button type="button" onClick={() => setConfirming(false)} className="underline">
+                Keep
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => setConfirming(true)} className="underline">
+              Discard what is saved on this phone
+            </button>
+          )}
+        </div>
+      )}
+    </>
   );
 }
