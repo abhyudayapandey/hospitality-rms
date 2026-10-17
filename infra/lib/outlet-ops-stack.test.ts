@@ -28,10 +28,13 @@ function synth(config = CONFIG): Template {
   return Template.fromStack(stack);
 }
 
+// A synth takes seconds; under a busy machine (the DB suite alongside) it passes 10 s.
+const SYNTH_MS = 60_000;
+
 let t: Template;
 beforeAll(() => {
   t = synth();
-});
+}, SYNTH_MS);
 
 const FORBIDDEN = [
   'AWS::EC2::NatGateway',
@@ -42,7 +45,6 @@ const FORBIDDEN = [
   'AWS::RDS::DBProxy',
   'AWS::SecretsManager::Secret',
   'AWS::Lambda::Function', // incl. hidden custom-resource Lambdas
-  'AWS::SNS::Topic',
   'AWS::Amplify::App',
   'AWS::ECR::Repository',
 ];
@@ -273,7 +275,7 @@ describe('least-privilege IAM', () => {
 describe('storage', () => {
   it('blocks public access, encrypts and enforces TLS on every bucket', () => {
     const buckets = t.findResources('AWS::S3::Bucket');
-    expect(Object.keys(buckets)).toHaveLength(3); // deploy, backup, photo
+    expect(Object.keys(buckets)).toHaveLength(4); // deploy, old backup, backup vault, photo
     for (const b of Object.values(buckets)) {
       expect(b.Properties).toMatchObject({
         PublicAccessBlockConfiguration: {
@@ -473,10 +475,14 @@ describe('pinned machine image (ADR 006)', () => {
     expect(JSON.stringify(t.toJSON())).not.toContain('/aws/service/ami-amazon-linux');
   });
 
-  it('follows a changed amiId (so the change is always deliberate)', () => {
-    const other = synth({ ...CONFIG, amiId: 'ami-0fedcba9876543210' });
-    other.hasResourceProperties('AWS::EC2::Instance', { ImageId: 'ami-0fedcba9876543210' });
-  });
+  it(
+    'follows a changed amiId (so the change is always deliberate)',
+    () => {
+      const other = synth({ ...CONFIG, amiId: 'ami-0fedcba9876543210' });
+      other.hasResourceProperties('AWS::EC2::Instance', { ImageId: 'ami-0fedcba9876543210' });
+    },
+    SYNTH_MS,
+  );
 });
 
 describe('wastage photos (ADR 006)', () => {
@@ -608,5 +614,98 @@ describe('the customer pool invitation (ADR 013)', () => {
 
   it('leaves the platform pool as it is', () => {
     expect(pool('PlatformUsers').AdminCreateUserConfig).toEqual({ AllowAdminCreateUserOnly: true });
+  });
+});
+
+describe('alerts and recovery (ADR 171)', () => {
+  it('one alert topic, TLS only, emailed to the alert address', () => {
+    t.resourceCountIs('AWS::SNS::Topic', 1);
+    t.hasResourceProperties('AWS::SNS::Subscription', {
+      Protocol: 'email',
+      Endpoint: CONFIG.alertEmail,
+    });
+    expect(JSON.stringify(t.findResources('AWS::SNS::TopicPolicy'))).toContain(
+      'aws:SecureTransport',
+    );
+  });
+
+  it('the instance may publish to that topic only, and the topic reaches it as a config parameter', () => {
+    const publish = statements('InstanceRole').filter((s) =>
+      actions(s).some((a) => a.startsWith('sns:')),
+    );
+    expect(publish.map((s) => s.Sid)).toEqual(['SendAlerts']);
+    expect(actions(publish[0]!)).toEqual(['sns:Publish']);
+    expect(JSON.stringify(publish[0]!.Resource)).toContain('Alerts');
+    t.hasResourceProperties('AWS::SSM::Parameter', {
+      Name: '/outlet-ops/prod/config/alert_topic_arn',
+    });
+  });
+
+  it('a failed hardware check recovers the instance, a failed OS check reboots it; both email', () => {
+    const alarms = Object.values(t.findResources('AWS::CloudWatch::Alarm')).map(
+      (a) => a.Properties as { MetricName: string; AlarmActions: unknown[] },
+    );
+    const by = (m: string) => alarms.find((a) => a.MetricName === m)!;
+    expect(JSON.stringify(by('StatusCheckFailed_System').AlarmActions)).toContain(':ec2:recover');
+    expect(JSON.stringify(by('StatusCheckFailed_Instance').AlarmActions)).toContain(':ec2:reboot');
+    for (const a of alarms) expect(JSON.stringify(a.AlarmActions)).toContain('Alerts');
+  });
+});
+
+describe('backups that cannot be lost or overwritten (ADR 171)', () => {
+  const vault = () =>
+    Object.values(t.findResources('AWS::S3::Bucket')).find(
+      (b) => (b.Properties as { ObjectLockEnabled?: boolean }).ObjectLockEnabled,
+    )!.Properties as Record<string, unknown>;
+
+  it('versioned, Object Lock in governance mode for 35 days, retained', () => {
+    expect(vault()).toMatchObject({
+      VersioningConfiguration: { Status: 'Enabled' },
+      ObjectLockEnabled: true,
+      ObjectLockConfiguration: {
+        ObjectLockEnabled: 'Enabled',
+        Rule: { DefaultRetention: { Mode: 'GOVERNANCE', Days: 35 } },
+      },
+    });
+  });
+
+  it('dumps 35 days; the monthly one 7 years in Deep Archive', () => {
+    const rules = (vault().LifecycleConfiguration as { Rules: Record<string, unknown>[] }).Rules;
+    expect(rules).toContainEqual(expect.objectContaining({ Prefix: 'pg/', ExpirationInDays: 35 }));
+    expect(rules).toContainEqual(
+      expect.objectContaining({
+        Prefix: 'pg-monthly/',
+        ExpirationInDays: 2557,
+        Transitions: [{ StorageClass: 'DEEP_ARCHIVE', TransitionInDays: 1 }],
+      }),
+    );
+  });
+
+  it('every dump is copied to the bucket in Hyderabad, deletes are not', () => {
+    const rep = vault().ReplicationConfiguration as {
+      Rules: { Destination: { Bucket: unknown }; DeleteMarkerReplication: unknown }[];
+    };
+    expect(rep.Rules).toHaveLength(1);
+    expect(JSON.stringify(rep.Rules[0]!.Destination.Bucket)).toContain('outlet-ops-backup-copy-');
+    expect(rep.Rules[0]!.DeleteMarkerReplication).toEqual({ Status: 'Disabled' });
+  });
+
+  it('the instance writes and reads dumps, locks the monthly one, and can neither delete nor bypass a lock', () => {
+    const st = statements('InstanceRole');
+    const all = st.flatMap(actions);
+    expect(all).not.toContain('s3:BypassGovernanceRetention');
+    expect(all).not.toContain('s3:PutBucketObjectLockConfiguration');
+    expect(all).not.toContain('s3:PutLifecycleConfiguration');
+    const lock = st.find((s) => s.Sid === 'LockMonthlyBackups')!;
+    expect(actions(lock)).toEqual(['s3:PutObjectRetention']);
+    expect(JSON.stringify(lock.Resource)).toContain('pg-monthly/*');
+    expect(actions(st.find((s) => s.Sid === 'ReadOldBackups')!)).toEqual(['s3:GetObject']);
+  });
+
+  it('the config parameter names the new vault', () => {
+    const param = Object.values(t.findResources('AWS::SSM::Parameter')).find(
+      (p) => (p.Properties as { Name: string }).Name === '/outlet-ops/prod/config/backup_bucket',
+    )!;
+    expect(JSON.stringify(param)).toContain('BackupVault');
   });
 });

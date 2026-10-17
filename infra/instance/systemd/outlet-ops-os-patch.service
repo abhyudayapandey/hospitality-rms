@@ -1,0 +1,9 @@
+[Unit]
+Description=Outlet Ops weekly security updates (ADR 171)
+After=network-online.target
+OnFailure=outlet-ops-notify@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/outlet-ops/current/deploy/os-patch.sh
+TimeoutStartSec=1800

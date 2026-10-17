@@ -46,9 +46,20 @@ One CDK stack (`infra/`, stack name `OutletOps`) deploys everything below.
   - Uploads are allowed only under `wastage/<tenant>/<node>/`.
   - CORS allows POST only from `https://<domainName>`.
   - Photos expire after 400 days.
-- **Backups.**
-  - `pg_dump` to S3 every 6 hours (00, 06, 12, 18 UTC), kept 30 days.
+- **Backups (ADR 171).**
+  - `pg_dump` every 6 hours (00, 06, 12, 18 UTC), checked before it is uploaded, to a bucket
+    with versioning and Object Lock: kept 35 days, nothing on the server can delete or
+    overwrite one. The first dump of each month is kept 7 years in Glacier Deep Archive.
+  - Every dump is copied to a second bucket in Hyderabad (ap-south-2, stack
+    `OutletOpsBackupCopy`).
   - Daily EBS snapshots of the data volume through Data Lifecycle Manager, 7 kept.
+  - A restore check every Sunday at 03:30 IST.
+- **Alerts and recovery (ADR 171).** Every job emails the alert address when it fails (one
+  email an hour at most per job), and the disks, the app and the platform worker are checked
+  every 15 minutes. A Route 53 check (stack `OutletOpsMonitor`, us-east-1) asks
+  `http://<domain>/health` every 30 seconds and emails when it fails. A hardware fault moves
+  the instance to new hardware by itself; a stuck OS reboots it. The platform console shows
+  each job's last good run under "The server".
 - **Secrets.** SSM Parameter Store SecureString parameters (standard tier), one per
   DB role plus the session key. You create them before the first deploy. systemd
   `LoadCredential` gives each service only its own secret:
@@ -92,21 +103,23 @@ Billing → Bills after the first week.** "Credits" means the resource is not Al
 Free and draws down the Free-plan credits. Every resource is also tagged `CostProfile`
 (`always-free` or `credits`) and `CostNote`.
 
-| Resource                                                                                   | Monthly                                                 | Always Free?                           |
-| ------------------------------------------------------------------------------------------ | ------------------------------------------------------- | -------------------------------------- |
-| EC2 `t4g.small` on-demand (~$0.0112/h)                                                     | ~$8.20                                                  | **No**, credits¹                       |
-| EBS gp3: 10 GiB root + 20 GiB data                                                         | ~$2.70                                                  | **No**, credits                        |
-| Elastic IP / public IPv4 ($0.005/h, charged even when attached)                            | ~$3.65                                                  | **No**, credits                        |
-| EBS snapshots (daily, 7 kept, incremental)                                                 | ~$0.50–1.00                                             | **No**, credits                        |
-| S3: release bundles (30 days) + `pg_dump` every 6 h (30 days)                              | < $0.50                                                 | **No**, credits (cents)                |
-| S3: wastage photos (~200 KB each after on-phone resize, ~30/day, 400 days) + requests      | < $0.01                                                 | **No**, credits (fractions of a cent)  |
-| SSM Parameter Store standard SecureString (AWS-managed `aws/ssm` key)                      | $0                                                      | Yes                                    |
-| SSM Run Command, Session Manager                                                           | $0                                                      | Yes                                    |
-| Cognito Essentials, email OTP via Cognito default sender                                   | $0                                                      | Yes, up to 10,000 monthly active users |
-| VPC, subnet, internet gateway, security group, IAM, OIDC provider, DLM, Budgets (1 budget) | $0                                                      | Yes                                    |
-| Data transfer out                                                                          | $0                                                      | Yes, first 100 GB/month                |
-| **Total**                                                                                  | **~$15–16/month**                                       |                                        |
-| **Runway**                                                                                 | $100 → ~6 months; $200 → the plan ends first (6 months) |                                        |
+| Resource                                                                                                             | Monthly                                                 | Always Free?                           |
+| -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------- |
+| EC2 `t4g.small` on-demand (~$0.0112/h)                                                                               | ~$8.20                                                  | **No**, credits¹                       |
+| EBS gp3: 10 GiB root + 20 GiB data                                                                                   | ~$2.70                                                  | **No**, credits                        |
+| Elastic IP / public IPv4 ($0.005/h, charged even when attached)                                                      | ~$3.65                                                  | **No**, credits                        |
+| EBS snapshots (daily, 7 kept, incremental)                                                                           | ~$0.50–1.00                                             | **No**, credits                        |
+| S3: release bundles (30 days) + `pg_dump` every 6 h (35 days, two regions) + monthly dumps in Deep Archive (7 years) | < $0.50                                                 | **No**, credits (cents)                |
+| Route 53 health check of `/health` (an AWS endpoint, HTTP)                                                           | ~$0.50                                                  | **No**, credits                        |
+| SNS email alerts, 3 CloudWatch alarms                                                                                | $0                                                      | Yes, first 1,000 emails and 10 alarms  |
+| S3: wastage photos (~200 KB each after on-phone resize, ~30/day, 400 days) + requests                                | < $0.01                                                 | **No**, credits (fractions of a cent)  |
+| SSM Parameter Store standard SecureString (AWS-managed `aws/ssm` key)                                                | $0                                                      | Yes                                    |
+| SSM Run Command, Session Manager                                                                                     | $0                                                      | Yes                                    |
+| Cognito Essentials, email OTP via Cognito default sender                                                             | $0                                                      | Yes, up to 10,000 monthly active users |
+| VPC, subnet, internet gateway, security group, IAM, OIDC provider, DLM, Budgets (1 budget)                           | $0                                                      | Yes                                    |
+| Data transfer out                                                                                                    | $0                                                      | Yes, first 100 GB/month                |
+| **Total**                                                                                                            | **~$15–16/month**                                       |                                        |
+| **Runway**                                                                                                           | $100 → ~6 months; $200 → the plan ends first (6 months) |                                        |
 
 ¹ One source says `t4g.small` has a free trial of 750 h/month until 31 Dec 2026. If
 your account gets it, EC2 shows $0 until then. Check in Billing → Bills.
@@ -1647,6 +1660,61 @@ printed login sheet.
   no selfie.
 - **`test.account-owner`.** Admin → Settings: "A usual quantity is up to 1.5 ×".
 
+#### Releasing alerts, locked backups, recovery and a harder server (ADR 171)
+
+One migration (`20270123100000_job_heartbeats`) and **three stacks**: `OutletOps` changes, and
+two are new, `OutletOpsBackupCopy` (Hyderabad, ap-south-2) and `OutletOpsMonitor` (us-east-1).
+None needs CDK bootstrapping. The instance is not replaced.
+
+**Before the first `cdk deploy`: switch Hyderabad on.** It is an opt-in region. Console →
+account menu → **Account** → **AWS Regions** → **Asia Pacific (Hyderabad)** → **Enable**. It
+can take a few minutes; `aws ec2 describe-regions --region-names ap-south-2 --query
+'Regions[0].OptInStatus'` then says `opted-in`.
+
+**Preview** (`aws login --profile outlet-ops`, `export AWS_PROFILE=outlet-ops
+AWS_REGION=ap-south-1`, `cd infra && pnpm cdk diff --all`). It should show only:
+
+- `OutletOpsBackupCopy`: a new S3 bucket `outlet-ops-backup-copy-<account>` (versioned, Object
+  Lock) and its bucket policy.
+- `OutletOpsMonitor`: a new SNS topic and email subscription, a Route 53 health check and a
+  CloudWatch alarm.
+- `OutletOps`: added `Alerts` (SNS topic, policy, email subscription), `BackupVault` (bucket and
+  policy), `BackupCopyRole` (role and policy), `RecoverAlarm`, `RebootAlarm` and the config
+  parameter `alert_topic_arn`; changed: the instance role's default policy (`SendAlerts`,
+  `WriteAndReadBackups` on the vault, `LockMonthlyBackups`, `ReadOldBackups`, `ListBackups`) and
+  the `backup_bucket` parameter (now the vault).
+
+Stop and paste it here if anything says **replace**, or any other resource changes. Then
+`pnpm cdk deploy --all` (type `y` for each) and `cd ..`.
+
+**Confirm the two emails.** AWS sends "AWS Notification - Subscription Confirmation" twice to
+the alert address (Mumbai and us-east-1). Tap **Confirm subscription** in both, or no alert
+arrives.
+
+**Deploy the app** (Actions → Deploy on master). The deploy restarts Docker once (the new log
+limits) and Postgres once (the pinned image): about a minute without the app. It installs the
+watchdog, restore-check and security-update timers and the metadata guard.
+
+**Check.**
+
+- On the instance: `systemctl list-timers 'outlet-ops-*'` lists the watchdog, restore drill and
+  os-patch timers; `curl -s http://127.0.0.1:3000/health/db` says `ok`.
+- `sudo systemctl start outlet-ops-pg-backup`, then
+  `aws s3 ls s3://<BackupBucketName>/pg-monthly/ --recursive` shows this month's dump, and a few
+  minutes later `aws s3 ls s3://outlet-ops-backup-copy-<account>/pg/ --recursive --region
+ap-south-2` shows the copy.
+- `sudo -u outletops-wf curl -s -m 3 http://169.254.169.254/` fails (refused); as root it answers.
+- After 15 minutes the platform console's **The server** card says "Every job ran on time"
+  (until then a job that has not run yet may show as late), and `http://<domain>/health` says
+  `ok`.
+- Test an alert: `sudo systemctl start outlet-ops-notify@outlet-ops-watchdog.service` sends one
+  email "Hey Senior server: watchdog failed" (then mark it fine again with
+  `sudo systemctl start outlet-ops-watchdog`).
+- Route 53 → Health checks → `outlet-ops-app`: Healthy.
+
+**Later, by hand:** once the old backup bucket's dumps have expired (30 days), empty and delete
+`<OldBackupBucketName>`; then remove it from the stack in a small follow-up.
+
 ### 6. Onboard the customer and users
 
 The production database has no dev seed.
@@ -1842,22 +1910,32 @@ no changes.
 - `-u outlet-ops-tasks-tick`
 - `-u outlet-ops-caddy`
 - `-u outlet-ops-pg-backup`
+- `-u outlet-ops-watchdog`, `-u outlet-ops-restore-drill`, `-u outlet-ops-os-patch`
+- `-u outlet-ops-notify@*` (the alerts sent)
 - `docker logs outlet-ops-pg`
+
+**Alerts (ADR 171).** A failed job emails the alert address with its last 30 log lines, at
+most once an hour per job. The platform console's **The server** card lists any late job and
+its last error; `curl -s http://127.0.0.1:3000/health` on the instance says `ok` or `not ok`.
+To see who is late in SQL: `docker exec -u postgres outlet-ops-pg psql -d outlet_ops -c 'select
+job, last_ok_at, last_failed_at, last_error from platform.job_heartbeat order by job'`.
 
 **Status.** `systemctl list-timers 'outlet-ops-*'`
 
 ### Backups
 
-- **Logical backups.** `outlet-ops-pg-backup.timer` streams
-  `pg_dump -Fc` → `s3://<BackupBucket>/pg/YYYY/MM/DD/outlet_ops-<ts>.dump` four times
-  a day. S3 lifecycle deletes them after 30 days. To take one now:
-  `systemctl start outlet-ops-pg-backup`.
+- **Logical backups.** `outlet-ops-pg-backup.timer` dumps `pg_dump -Fc` to a file, checks it
+  with `pg_restore -l` and uploads it to `s3://<BackupBucketName>/pg/YYYY/MM/DD/outlet_ops-<ts>.dump`
+  four times a day; the first of each month also to `pg-monthly/YYYY/MM/`. Object Lock keeps
+  every dump 35 days (the monthly one 7 years) and S3 copies each to the Hyderabad bucket
+  (`outlet-ops-backup-copy-<account>`). To take one now: `systemctl start outlet-ops-pg-backup`.
+  Dumps from before ADR 171 are in `<OldBackupBucketName>` until they expire (30 days).
 - **Volume snapshots.** DLM snapshots the data volume (tag
   `Backup=outlet-ops-daily`) every day at 18:30 UTC (00:00 IST) and keeps 7.
 - **Before the Free plan ends,** and before any risky change, download a dump off
   AWS: `aws s3 cp s3://<BackupBucket>/pg/<key> .`
 
-### Restore drill: monthly, and after any backup change
+### Restore drill: weekly by itself, and by hand after any backup change
 
 ```sh
 aws ssm start-session --target <InstanceId>
@@ -1868,14 +1946,15 @@ sudo /opt/outlet-ops/current/deploy/restore-drill.sh pg/2026/10/01/outlet_ops-..
 The drill restores the dump into a scratch database, `outlet_ops_restore_drill`. It
 leaves out pg_cron objects, which can only live in `outlet_ops`. It then prints key row
 counts (live vs restored) and the latest migration version, and drops the scratch
-database. **Record the date and result.** The drill fails if the restore errors or
-returns nothing.
+database. It runs by itself every Sunday at 03:30 IST (`outlet-ops-restore-drill.timer`),
+records its run under "The server" and emails if it fails: the restore errors, a table comes
+back empty, or a count is under 90 % of today's.
 
 ### Full restore (disaster recovery)
 
 - **From a `pg_dump`** (data loss up to 6 hours):
   1. Stop the writers:
-     `systemctl stop outlet-ops-web outlet-ops-wf-execute.timer outlet-ops-pg-backup.timer outlet-ops-attendance-nightly.timer outlet-ops-tasks-tick.timer`.
+     `systemctl stop outlet-ops-web outlet-ops-platform-worker outlet-ops-wf-execute.timer outlet-ops-pg-backup.timer outlet-ops-attendance-nightly.timer outlet-ops-tasks-tick.timer outlet-ops-restore-drill.timer`.
   2. Take a safety dump of the current state if the database is readable.
   3. Recreate the database:
      `docker exec -u postgres outlet-ops-pg psql -c 'drop database outlet_ops with (force)' -c 'create database outlet_ops'`.

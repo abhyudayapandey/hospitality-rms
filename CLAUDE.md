@@ -522,6 +522,16 @@ docs                  LLD.md, goal.md, decisions/ (ADRs)
   Only a live order (`inv.po_live`) is handed back or counted as coming; a send task closes when
   its request leaves "to send" (a trigger). A receipt keeps the amount typed (6-decimal unit
   costs); a free line has a reason (`free_reason`) and costs 0.
+- Operations (ADR 171): every job emails the alert address when it fails (`OnFailure=` →
+  `notify.sh`, once an hour per unit) and records a good run in `platform.job_heartbeat` (root,
+  `heartbeat.sh`); `/health` (app_rw, no session) is 200 only when every job ran in time, and a
+  Route 53 check in us-east-1 (`OutletOpsMonitor`) asks it; `/health/db` is the deploy's check;
+  the console's "The server" lists late jobs. Backups go to an Object-Locked, versioned vault
+  (35 days; the monthly dump 7 years in Deep Archive), copied to Hyderabad
+  (`OutletOpsBackupCopy`); the restore drill runs weekly. The instance recovers and reboots by
+  alarm; security updates on Sunday 04:30 IST; only root, the web app and the worker reach the
+  metadata endpoint. A new job needs a heartbeat row, its unit's `ExecStartPost=+heartbeat.sh`
+  and `OnFailure=` (`instance.test.ts`). Deploy runs on master with green CI only.
 - The photo library (ADR 086) is ours, the same for every customer: freely licensed Wikimedia
   Commons photos, picked by eye in `apps/web/scripts/photos/library.json` (key -> Commons file),
   built by `pnpm --filter @outlet-ops/web photos` (cut out on white, 320 px WebP, credits in
@@ -580,7 +590,8 @@ pnpm --filter @outlet-ops/web photos                  rebuild the photo library 
 pnpm --filter @outlet-ops/web e2e                     build, then Playwright vs the standalone server
                                                       (+ dev-only pages vs next dev; seeded DB)
 pnpm --filter @outlet-ops/web check:prod-dev-auth     prod build: dev login must be 404
-pnpm --filter @outlet-ops/infra synth                 cdk synth with infra/cdk.json context (no AWS calls)
+pnpm --filter @outlet-ops/infra synth                 cdk synth of all three stacks with infra/cdk.json context
+                                                      (no AWS calls); deploy them with cdk deploy --all
 pnpm --filter @outlet-ops/db perf:inventory           10k-row read benchmark, rolled back (ADR 007)
 pnpm --filter @outlet-ops/onboarding load <folder> [--apply] [--access]
                                                       validate a customer's onboarding files

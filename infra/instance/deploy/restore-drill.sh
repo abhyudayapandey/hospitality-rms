@@ -1,14 +1,15 @@
 #!/bin/bash
-# Restore drill (docs/deploy.md): restores a pg_dump from S3 into a scratch database,
-# compares row counts with the live database, then drops the scratch database.
-# Usage: restore-drill.sh [s3-key]   (default: latest dump)
+# Restore drill (docs/deploy.md; weekly on a timer, ADR 171): restores a pg_dump from S3 into
+# a scratch database, compares row counts with the live database, then drops it. Fails (and
+# so emails, through OnFailure) when the dump does not restore, a table comes back empty, or a
+# count is under 90 % of today's. Usage: restore-drill.sh [s3-key]   (default: latest dump)
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 source "$OO_ETC/backup.env"
 DRILL_DB=outlet_ops_restore_drill
 
 KEY=${1:-$(aws s3api list-objects-v2 --bucket "$BACKUP_BUCKET" --prefix pg/ \
-  --query 'reverse(sort_by(Contents, &LastModified))[0].Key' --output text)}
+  --query 'sort_by(Contents, &LastModified)[-1].Key' --output text)}
 [ -n "$KEY" ] && [ "$KEY" != "None" ] || { echo "no backups found" >&2; exit 1; }
 log "restoring s3://$BACKUP_BUCKET/$KEY into $DRILL_DB"
 
@@ -29,13 +30,19 @@ printf '%-40s %12s %12s\n' check live restored
 fail=0
 for q in "select count(*) from core.app_user" "select count(*) from core.hierarchy_node" \
   "select count(*) from core.role_assignment" "select count(*) from wf.request" \
-  "select count(*) from audit.log" "select max(version) from public.schema_migrations"; do
+  "select count(*) from audit.log" "select count(*) from inv.stock_ledger"; do
   live=$(psql_super -d outlet_ops -At -c "$q")
   restored=$(psql_super -d "$DRILL_DB" -At -c "$q")
   printf '%-40s %12s %12s\n' "${q#select }" "$live" "$restored"
-  # Every check must return a value from the restored copy. Live may have moved on
-  # since the dump, so the numbers are shown side by side for the operator to judge.
-  [ -n "$restored" ] || fail=1
+  # Live moves on after the dump, so the copy may be a little behind, never far: at least 90 %
+  # of today's rows, and never none where there are some.
+  if [ -z "$restored" ] || { [ "$live" -gt 0 ] && [ $((restored * 10)) -lt $((live * 9)) ]; }; then
+    fail=1
+  fi
 done
+live_v=$(psql_super -d outlet_ops -At -c "select max(version) from public.schema_migrations")
+restored_v=$(psql_super -d "$DRILL_DB" -At -c "select max(version) from public.schema_migrations")
+printf '%-40s %12s %12s\n' "newest migration" "$live_v" "$restored_v"
+[ -n "$restored_v" ] || fail=1
 psql_super -d postgres -c "drop database $DRILL_DB"
 [ "$fail" = 0 ] && log "restore drill passed for $KEY" || { log "restore drill FAILED"; exit 1; }

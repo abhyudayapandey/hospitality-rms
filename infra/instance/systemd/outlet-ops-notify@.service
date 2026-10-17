@@ -1,0 +1,7 @@
+[Unit]
+Description=Outlet Ops: tell the alert address that %i failed (ADR 171)
+
+[Service]
+Type=oneshot
+ExecStart=/opt/outlet-ops/current/deploy/notify.sh %i
+TimeoutStartSec=60

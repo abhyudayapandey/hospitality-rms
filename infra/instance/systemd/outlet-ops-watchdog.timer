@@ -1,0 +1,10 @@
+[Unit]
+Description=Outlet Ops watchdog every 15 minutes
+
+[Timer]
+OnCalendar=*-*-* *:07/15:00
+Persistent=true
+Unit=outlet-ops-watchdog.service
+
+[Install]
+WantedBy=timers.target

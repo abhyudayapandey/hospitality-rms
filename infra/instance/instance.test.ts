@@ -209,3 +209,186 @@ describe('database bootstrap', () => {
     expect(sql).not.toMatch(/grant\s+[^;]*platform_loader[^;]*\bto\s+migrator/i);
   });
 });
+
+describe('someone is told when the back office stops (ADR 171)', () => {
+  const units = readdirSync(join(dir, 'systemd'));
+  const migration = readFileSync(
+    join(dir, '../../packages/db/migrations/20270123100000_job_heartbeats.sql'),
+    'utf8',
+  );
+  const listed = [...migration.matchAll(/^\s+\('([a-z-]+)', '/gm)].map((m) => m[1]!);
+  const heartbeatOf = (unit: string) =>
+    /^ExecStartPost=\+?\/opt\/outlet-ops\/current\/deploy\/heartbeat\.sh ([a-z-]+)$/m.exec(
+      read(join('systemd', unit)),
+    )?.[1];
+
+  it('every service but the notifier itself emails on failure', () => {
+    for (const unit of units.filter((u) => u.endsWith('.service'))) {
+      if (unit === 'outlet-ops-notify@.service' || unit === 'outlet-ops-imds-guard.service')
+        continue;
+      if (unit === 'outlet-ops-caddy.service') continue; // the outside check sees Caddy down
+      expect(read(join('systemd', unit)), unit).toMatch(
+        /^OnFailure=outlet-ops-notify@%n\.service$/m,
+      );
+    }
+    expect(read('systemd/outlet-ops-notify@.service')).not.toMatch(/OnFailure=/);
+  });
+
+  it('every job a timer runs records a good run, under a name the database lists', () => {
+    for (const timer of units.filter((u) => u.endsWith('.timer'))) {
+      const service = timer.replace('.timer', '.service');
+      // os-patch records itself in its script, before it may reboot
+      const job = service === 'outlet-ops-os-patch.service' ? 'os-patch' : heartbeatOf(service);
+      expect(job, service).toBeDefined();
+      expect(listed, service).toContain(job);
+    }
+  });
+
+  it('every job the database lists is recorded by some unit or the watchdog', () => {
+    const recorded = new Set(units.map(heartbeatOf).filter(Boolean));
+    const watchdog = read('deploy/watchdog.sh');
+    for (const m of watchdog.matchAll(/heartbeat ([a-z-]+) true/g)) recorded.add(m[1]);
+    recorded.add('os-patch'); // os-patch.sh records itself before it may reboot
+    expect(read('deploy/os-patch.sh')).toContain('heartbeat os-patch true');
+    expect([...recorded].sort()).toEqual([...listed].sort());
+  });
+
+  it('the jobs run as their own users; only the heartbeat runs as root (+)', () => {
+    for (const unit of ['wf-execute', 'tasks-tick', 'attendance-nightly']) {
+      const text = read(`systemd/outlet-ops-${unit}.service`);
+      expect(text).toMatch(/^User=outletops-wf$/m);
+      expect(text).toMatch(
+        new RegExp(`^ExecStartPost=\\+/opt/outlet-ops/current/deploy/heartbeat\\.sh ${unit}$`, 'm'),
+      );
+    }
+  });
+
+  it('a heartbeat goes to psql on stdin: psql fills in :variables only there, never in -c', () => {
+    const lib = read('deploy/lib.sh');
+    const at = lib.indexOf('heartbeat() {');
+    const fn = lib.slice(at, lib.indexOf('\n}\n', at));
+    expect(fn).toContain(
+      `echo "select platform.job_ran(:'job', :'ok'::boolean, nullif(:'note', ''));" |`,
+    );
+    expect(fn).not.toContain(' -c ');
+  });
+
+  it('an alert goes out at most once an hour per unit, through the topic in alert.env', () => {
+    const lib = read('deploy/lib.sh');
+    expect(lib).toContain('find "$stamp" -mmin -60');
+    expect(lib).toContain('aws sns publish --topic-arn "$topic"');
+    expect(read('deploy/fetch-params.sh')).toContain('ALERT_TOPIC_ARN=${cfg[alert_topic_arn]}');
+    expect(read('deploy/fetch-params.sh')).toMatch(/for key in [^;]*alert_topic_arn/);
+  });
+
+  it('the watchdog fails at 85 % disk, or when the app or the worker is down', () => {
+    const w = read('deploy/watchdog.sh');
+    expect(w).toContain('-ge 85');
+    expect(w).toContain('http://127.0.0.1:3000/health/db');
+    expect(w).toContain('systemctl is-active -q outlet-ops-platform-worker.service');
+    expect(read('systemd/outlet-ops-watchdog.timer')).toMatch(
+      /^OnCalendar=\*-\*-\* \*:07\/15:00$/m,
+    );
+  });
+});
+
+describe('backups (ADR 171)', () => {
+  const backup = read('deploy/pg-backup.sh');
+
+  it('dump to a file, check it, and only then upload: never piped straight to S3', () => {
+    expect(backup).not.toMatch(/pg_dump[^\n]*\|/);
+    const check = backup.indexOf('pg_restore -l');
+    const upload = backup.indexOf('aws s3api put-object');
+    expect(check).toBeGreaterThan(backup.indexOf('pg_dump'));
+    expect(upload).toBeGreaterThan(check);
+    expect(backup).toContain('--content-md5'); // Object Lock needs a checksum
+  });
+
+  it('the first dump of each month is locked 7 years', () => {
+    expect(backup).toContain('pg-monthly/$MONTH/');
+    expect(backup).toContain('--object-lock-mode GOVERNANCE');
+    expect(backup).toContain('+2557 days');
+  });
+
+  it('the restore check runs weekly and fails on an empty table or a count under 90 %', () => {
+    expect(read('systemd/outlet-ops-restore-drill.timer')).toMatch(
+      /^OnCalendar=Sun \*-\*-\* 03:30:00 Asia\/Kolkata$/m,
+    );
+    const drill = read('deploy/restore-drill.sh');
+    expect(drill).toContain('$((restored * 10)) -lt $((live * 9))');
+    expect(drill).toMatch(/exit 1/);
+  });
+});
+
+describe('the server itself (ADR 171)', () => {
+  it('caps Docker logs and the journal, and prunes old images on deploy', () => {
+    const host = read('deploy/host-setup.sh');
+    expect(host).toContain('"max-size":"10m","max-file":"3"');
+    expect(host).toContain('SystemMaxUse=500M');
+    expect(read('deploy/deploy.sh')).toContain('docker image prune -f');
+    expect(read('deploy/deploy.sh')).toContain('"$REL_DIR/deploy/host-setup.sh" "$REL_DIR"');
+  });
+
+  it('Postgres logs expected refusals without their statement', () => {
+    expect(read('postgres/postgresql.conf')).toMatch(/^log_min_error_statement = fatal$/m);
+  });
+
+  it('the metadata endpoint is for root, the web app and the platform worker only', () => {
+    const guard = read('deploy/imds-guard.sh');
+    expect(guard).toContain('--uid-owner 0 -j RETURN');
+    expect(guard).toContain('for u in outletops-web outletops-platform; do');
+    expect(guard).toMatch(/-A OO-IMDS -j REJECT/);
+    expect(guard).not.toContain('outletops-wf');
+    expect(read('systemd/outlet-ops-imds-guard.service')).toMatch(/^WantedBy=multi-user\.target$/m);
+    expect(read('deploy/deploy.sh')).toMatch(/enable[^;]*outlet-ops-imds-guard\.service/);
+  });
+
+  it('Postgres is pinned to a minor version and rebuilt with --pull', () => {
+    expect(read('postgres/Dockerfile')).toMatch(/^FROM postgres:16\.\d+$/m);
+    expect(read('deploy/postgres-up.sh')).toContain('docker build --pull');
+  });
+
+  it('weekly security updates on Sunday morning, from the latest release', () => {
+    expect(read('systemd/outlet-ops-os-patch.timer')).toMatch(
+      /^OnCalendar=Sun \*-\*-\* 04:30:00 Asia\/Kolkata$/m,
+    );
+    expect(read('deploy/os-patch.sh')).toContain('--releasever=latest upgrade --security');
+  });
+});
+
+describe('deploys (ADR 171)', () => {
+  const deploy = read('deploy/deploy.sh');
+
+  it('checks /health/db, not /login, and a rollback restarts the worker and units too', () => {
+    expect(deploy).toContain('http://127.0.0.1:3000/health/db');
+    expect(deploy).not.toContain('127.0.0.1:3000/login');
+    const rollback = deploy.slice(deploy.indexOf('health check failed'));
+    expect(rollback).toContain('install -m 0644 "$PREV"/systemd/* /etc/systemd/system/');
+    expect(rollback).toContain(
+      'systemctl restart outlet-ops-web.service outlet-ops-platform-worker.service',
+    );
+  });
+
+  it('the platform worker finishes its job before a restart (up to 10 minutes)', () => {
+    expect(read('systemd/outlet-ops-platform-worker.service')).toMatch(/^TimeoutStopSec=600$/m);
+  });
+
+  it('the Deploy workflow runs on master only, and only when CI passed', () => {
+    const wf = read('../../.github/workflows/deploy.yml');
+    expect(wf).toContain('if [ "$GITHUB_REF" != refs/heads/master ]');
+    expect(wf).toContain('checks: read');
+    expect(wf).toContain('group_by(.name) | map(max_by(.id))');
+    expect(wf.indexOf('Only master with green CI')).toBeLessThan(
+      wf.indexOf('Build release bundle'),
+    );
+  });
+
+  it('Caddy answers /health on plain HTTP and sends everything else to HTTPS', () => {
+    const caddy = read('caddy/Caddyfile');
+    const start = caddy.indexOf('http://{$APP_DOMAIN} {');
+    const http = caddy.slice(start, caddy.indexOf('\n}\n', start) + 2);
+    expect(http).toContain('handle /health {');
+    expect(http).toContain('redir https://{host}{uri} 308');
+    expect(http).not.toContain('/health/db');
+  });
+});

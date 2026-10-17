@@ -18,6 +18,15 @@ interface Draft {
   updated_at: Date;
 }
 
+interface ServerJob {
+  job: string;
+  label: string;
+  late: boolean;
+  last_ok_at: Date | null;
+  last_failed_at: Date | null;
+  last_error: string | null;
+}
+
 interface Job {
   id: string;
   kind: string;
@@ -31,7 +40,7 @@ interface Job {
 // Customer metadata only: a platform request cannot read customer data (ADR 012).
 export default async function PlatformHome() {
   const admin = await requirePlatformAdmin();
-  const { customers, jobs, drafts } = await withPlatformAdmin(admin, async (tx) => ({
+  const { customers, jobs, drafts, server } = await withPlatformAdmin(admin, async (tx) => ({
     customers: (await sql<Customer>`select * from platform.customers()`.execute(tx)).rows,
     drafts: (await sql<Draft>`select * from platform.setup_drafts() where not live`.execute(tx))
       .rows,
@@ -40,7 +49,9 @@ export default async function PlatformHome() {
         tx,
       )
     ).rows,
+    server: (await sql<ServerJob>`select * from platform.job_status()`.execute(tx)).rows,
   }));
+  const lateJobs = server.filter((j) => j.late);
   const nameOf = new Map(customers.map((c) => [c.id, c.name]));
   const card = 'rounded-xl bg-white ring-1 ring-slate-200';
   const more = 'flex min-h-12 items-center justify-between gap-2 px-3 py-2 text-sm font-medium';
@@ -118,6 +129,37 @@ export default async function PlatformHome() {
             </li>
           ))}
         </ul>
+      </section>
+      <section className="space-y-2" aria-label="The server">
+        <h2 className="font-semibold">The server</h2>
+        {lateJobs.length === 0 ? (
+          <p
+            className="rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-900 ring-1 ring-emerald-200"
+            data-testid="server-ok"
+          >
+            Every job ran on time.
+          </p>
+        ) : (
+          <ul
+            className="divide-y divide-rose-200 rounded-xl bg-rose-50 text-sm ring-1 ring-rose-200"
+            data-testid="server-late"
+          >
+            {lateJobs.map((j) => (
+              <li key={j.job} className="space-y-1 p-3 text-rose-900" data-job={j.job}>
+                <span className="block font-medium">{j.label}</span>
+                <span className="block">
+                  {j.last_ok_at
+                    ? `Last ran well ${formatWhen(j.last_ok_at, DEFAULT_TZ)}`
+                    : 'Has not run yet'}
+                  {j.last_failed_at &&
+                    (!j.last_ok_at || j.last_failed_at > j.last_ok_at) &&
+                    `. Failed ${formatWhen(j.last_failed_at, DEFAULT_TZ)}`}
+                </span>
+                {j.last_error && <span className="block text-xs">{j.last_error}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
       {jobs.length > 0 && (
         <section className="space-y-2">
