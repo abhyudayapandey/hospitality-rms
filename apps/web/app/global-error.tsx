@@ -28,6 +28,7 @@ export default function GlobalError({
             Try again
           </button>
           {/* a full load, in case the frame itself needs fetching again */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a full load on purpose */}
           <a href="/" className="block text-sm font-medium text-brand-700 underline">
             Home
           </a>
