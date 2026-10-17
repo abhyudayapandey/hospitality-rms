@@ -8,6 +8,10 @@ import { defineConfig, devices } from '@playwright/test';
 //         it). Dev login is compiled out there, so tests sign in with a signed session
 //         cookie (e2e/helpers.ts).
 //   dev:  e2e/dev/*.spec.ts, the dev-only pages, against `next dev` with DEV_AUTH_STUB.
+//   sweep: e2e/reports-sweep.spec.ts, every report as each kind of reader, against the same
+//         server as prod. Its own project so CI can give each shard a third of it
+//         (E2E_SWEEP_PART=i/n, --project=sweep after the sharded run); only the prod server
+//         starts then.
 //   signin: e2e/signin/*.spec.ts, the sign-in screen typed into for real (ADR 161), against a
 //         second standalone server whose Cognito is e2e/signin/fake-cognito.mjs on this
 //         machine. Its own server, so the other tests never reach a Cognito.
@@ -24,6 +28,10 @@ const photoDir = process.env.PHOTO_DIR || join(tmpdir(), 'outlet-ops-e2e-photos'
 const executablePath = process.env.PW_CHROMIUM_PATH; // local override for a preinstalled browser
 // clock-in takes the selfie from the live camera (ADR 076): a fake one, allowed without asking
 const cameraArgs = ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'];
+
+// a sweep part (E2E_SWEEP_PART) needs only the prod server, the first; the rest take a minute
+const onlyProdForSweep = <T>(servers: T[]): T[] =>
+  process.env.E2E_SWEEP_PART ? servers.slice(0, 1) : servers;
 
 export default defineConfig({
   testDir: './e2e',
@@ -42,7 +50,12 @@ export default defineConfig({
   projects: [
     {
       name: 'prod',
-      testIgnore: ['dev/**', 'signin/**'],
+      testIgnore: ['dev/**', 'signin/**', 'reports-sweep.spec.ts'],
+      use: { baseURL: `http://127.0.0.1:${prodPort}` },
+    },
+    {
+      name: 'sweep',
+      testMatch: 'reports-sweep.spec.ts',
       use: { baseURL: `http://127.0.0.1:${prodPort}` },
     },
     {
@@ -56,7 +69,7 @@ export default defineConfig({
       use: { baseURL: `http://127.0.0.1:${signinPort}` },
     },
   ],
-  webServer: [
+  webServer: onlyProdForSweep([
     {
       command: 'bash scripts/start-standalone.sh',
       url: `http://127.0.0.1:${prodPort}/login`,
@@ -106,5 +119,5 @@ export default defineConfig({
         PHOTO_DIR: photoDir,
       },
     },
-  ],
+  ]),
 });

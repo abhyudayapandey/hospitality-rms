@@ -26,6 +26,15 @@ const PEOPLE = [
   'Test Server 3.0',
 ];
 
+// CI runs this file in each e2e shard, each with a third of the people (E2E_SWEEP_PART=2/3),
+// so the slowest file no longer makes one shard twice as long as the others. With no part,
+// every person runs (pnpm e2e on a laptop).
+const [part, parts] = (process.env.E2E_SWEEP_PART ?? '1/1').split('/').map(Number) as [
+  number,
+  number,
+];
+const MINE = PEOPLE.filter((_, i) => i % parts === part - 1);
+
 const BAD =
   /\bNaN\b|\bundefined\b|\bnull\b|Invalid Date|Something went wrong|Application error|This page could not be found|Internal Server Error/;
 
@@ -35,7 +44,7 @@ async function clean(page: Page, where: string) {
   expect(text, where).not.toMatch(BAD);
 }
 
-for (const who of PEOPLE) {
+for (const who of MINE) {
   test(`reports open cleanly for ${who}`, async ({ page }) => {
     test.setTimeout(240_000);
     await signInAs(page, who, { expanded: false });
@@ -71,6 +80,7 @@ for (const who of PEOPLE) {
 test('Today so far: each figure opens its trend, and On shift today is the people on shift', async ({
   page,
 }) => {
+  test.skip(part !== 1, 'runs in the first part only');
   await signInAs(page, 'Test Executive Chef 1.0', { expanded: false });
   const card = page.getByTestId('numbers-card');
   const onShift = Number(

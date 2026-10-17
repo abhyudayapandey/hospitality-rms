@@ -4,8 +4,8 @@ name: CI
 #   static  lint, typecheck, unit tests, CDK synth; no database
 #   db      the DB tests in 3 shards; in each, 2 workers on their own copies of the
 #           seeded database (packages/db/test/worker-databases.ts)
-#   e2e     Playwright in 3 shards, each with its own seeded database; shard 1 also
-#           proves the production build refuses dev auth
+#   e2e     Playwright in 3 shards, each with its own seeded database, then a third of the
+#           reports sweep each; shard 1 also proves the production build refuses dev auth
 # A change to Markdown files only runs nothing; test data under docs/ is CSV and still
 # runs everything.
 
@@ -174,7 +174,14 @@ jobs:
         run: pnpm --filter @outlet-ops/web exec playwright install-deps chromium
 
       - name: End-to-end tests (shard ${{ matrix.shard }} of 3)
-        run: pnpm --filter @outlet-ops/web e2e --shard=${{ matrix.shard }}/3
+        run: pnpm --filter @outlet-ops/web e2e --shard=${{ matrix.shard }}/3 --project=prod --project=dev --project=signin
+      # The reports sweep (every report as each kind of reader) took 10 of one shard's 17
+      # minutes: each shard runs a third of its people instead, on the build above.
+      - name: Reports sweep (part ${{ matrix.shard }} of 3)
+        env:
+          E2E_SWEEP_PART: ${{ matrix.shard }}/3
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report/sweep
+        run: pnpm --filter @outlet-ops/web exec playwright test --project=sweep
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
