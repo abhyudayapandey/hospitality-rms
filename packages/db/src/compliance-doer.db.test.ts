@@ -20,6 +20,9 @@ const GM = 'test.general-manager.1.0';
 const CE = 'test.chief-engineer.1.0';
 const TECH = 'test.technician.1.0';
 const ENG = 'TEST-HOTEL-1.0-ENGINEERING';
+// the hotel's 04:00 business day in India (ADR 169), as ops.today_at has it, never the
+// database's UTC date
+const today = () => `((now() at time zone 'Asia/Kolkata') - interval '4 hours')::date`;
 
 const jobId = async (c: pg.PoolClient, name: string) =>
   (
@@ -35,7 +38,7 @@ async function drillForGm(c: pg.PoolClient, doer: string | null = 'CHIEF_ENGINEE
   const r = await attemptAs<{ id: string }>(
     c,
     ids.user(GM),
-    `select ops.save_compliance_item($1, $2, 'Lift rescue drill', 3, current_date + 5,
+    `select ops.save_compliance_item($1, $2, 'Lift rescue drill', 3, ${today()} + 5,
                                      'GENERAL_MANAGER', false, $3) as id`,
     [lift, ids.node(ENG), doer],
   );
@@ -109,7 +112,7 @@ describe('accountable and who does it', () => {
         attemptAs(
           c,
           ids.user(GM),
-          `select ops.save_compliance_item($1, $2, 'Lift rescue drill', 3, current_date + 5,
+          `select ops.save_compliance_item($1, $2, 'Lift rescue drill', 3, ${today()} + 5,
                                            $3, false, $4)`,
           [lift, ids.node(ENG), owner, doer],
         );
@@ -129,7 +132,7 @@ describe('accountable and who does it', () => {
       const done = await attemptAs(
         c,
         ids.user(CE),
-        `select ops.mark_compliance_done($1, current_date, '{}', 'all clear')`,
+        `select ops.mark_compliance_done($1, ${today()}, '{}', 'all clear')`,
         [lift],
       );
       expect(done.error).toBeUndefined();
@@ -174,7 +177,7 @@ describe('handing a compliance To do on', () => {
       const done = await attemptAs(
         c,
         ids.user(TECH),
-        `select ops.mark_compliance_done($1, current_date, '{}', null)`,
+        `select ops.mark_compliance_done($1, ${today()}, '{}', null)`,
         [lift],
       );
       expect(done.error).toBeUndefined();

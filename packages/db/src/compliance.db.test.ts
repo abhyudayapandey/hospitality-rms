@@ -17,6 +17,9 @@ beforeAll(async () => {
 
 const GM = 'test.general-manager.1.0';
 const H10 = 'TEST-HOTEL-1.0';
+// the hotel's 04:00 business day in India (ADR 169), as ops.today_at has it, never the
+// database's UTC date: from 00:00 to 05:30 IST that is yesterday
+const today = () => `((now() at time zone 'Asia/Kolkata') - interval '4 hours')::date`;
 
 const names = async (c: pg.PoolClient, who: string, fn: string, node: string | null = null) => {
   const r = await attemptAs<{ name: string }>(
@@ -290,7 +293,7 @@ describe('the calendar', () => {
   it('whoever the job is with marks it done from their To do item; next due moves on from that day', async () => {
     await inRolledBackTx(async (c) => {
       const lift = await jobId(c, 'Lift rescue drill');
-      await c.query(`update ops.compliance_item set next_due = current_date + 5 where id = $1`, [
+      await c.query(`update ops.compliance_item set next_due = ${today()} + 5 where id = $1`, [
         lift,
       ]);
       await c.query(`select * from ops.compliance_tick()`);
@@ -314,12 +317,12 @@ describe('the calendar', () => {
       const done = await attemptAs<{ next: string }>(
         c,
         ids.user('test.chief-engineer.1.0'),
-        `select ops.mark_compliance_done($1, current_date - 1, '{}', 'all clear')::text as next`,
+        `select ops.mark_compliance_done($1, ${today()} - 1, '{}', 'all clear')::text as next`,
         [lift],
       );
       expect(done.error).toBeUndefined();
       const want = await c.query<{ d: string }>(
-        `select ((current_date - 1) + interval '3 months')::date::text d`,
+        `select ((${today()} - 1) + interval '3 months')::date::text d`,
       );
       expect(done.rows![0]!.next).toBe(want.rows[0]!.d);
       const t = await c.query<{ status: string }>(`select status from ops.task where id = $1`, [
@@ -330,7 +333,7 @@ describe('the calendar', () => {
       const other = await attemptAs(
         c,
         ids.user('test.commis.1.0'),
-        `select ops.mark_compliance_done($1, current_date, '{}', null)`,
+        `select ops.mark_compliance_done($1, ${today()}, '{}', null)`,
         [lift],
       );
       expect(other.error).toMatch(/NOT_AUTHORISED/);
@@ -340,13 +343,13 @@ describe('the calendar', () => {
   it('a job that needs proof is not done without it; one done in the future is refused', async () => {
     await inRolledBackTx(async (c) => {
       const pest = await jobId(c, 'Pest control service');
-      const mark = (files: string[], on = 'current_date') =>
+      const mark = (files: string[], on = today()) =>
         attemptAs(c, ids.user(GM), `select ops.mark_compliance_done($1, ${on}, $2, null)`, [
           pest,
           files,
         ]);
       expect((await mark([])).error).toMatch(/DOCUMENT_NEEDED/);
-      expect((await mark([await doc(c, H10)], 'current_date + 1')).error).toMatch(/INVALID_DATES/);
+      expect((await mark([await doc(c, H10)], `${today()} + 1`)).error).toMatch(/INVALID_DATES/);
       expect((await mark([await doc(c, H10)])).error).toBeUndefined();
       const gm = await attemptAs<{ overdue: number }>(
         c,
@@ -443,7 +446,7 @@ describe("Home's Compliance card (ADR 069 addendum)", () => {
       }
       // a job due within 14 days joins in amber, after the red ones
       await c.query(
-        `update ops.compliance_item set next_due = current_date + 10 where name = 'Lift rescue drill'`,
+        `update ops.compliance_item set next_due = ${today()} + 10 where name = 'Lift rescue drill'`,
       );
       const rows = await card(c, GM);
       expect(rows.map((r) => r.name)).toEqual([
@@ -459,7 +462,7 @@ describe("Home's Compliance card (ADR 069 addendum)", () => {
     await inRolledBackTx(async (c) => {
       expect(await card(c, 'test.chief-engineer.1.0')).toEqual([]);
       await c.query(
-        `update ops.compliance_item set next_due = current_date + 5 where name = 'Lift rescue drill'`,
+        `update ops.compliance_item set next_due = ${today()} + 5 where name = 'Lift rescue drill'`,
       );
       await c.query(`select * from ops.compliance_tick()`);
       expect(await card(c, 'test.chief-engineer.1.0')).toEqual([
