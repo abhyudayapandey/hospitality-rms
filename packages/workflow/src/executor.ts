@@ -8,7 +8,20 @@ import type { ClaimedRequest } from './types';
 //   claim (FOR UPDATE SKIP LOCKED) -> savepoint -> handler -> complete -> commit
 // On handler error: rollback to savepoint, record the failure, commit. The third
 // failure marks the row and the request failed (wf.record_failure); a business-rule
-// code fails it on the first attempt.
+// code fails it on the first attempt; a transient error (a deadlock, a lock wait, a dropped
+// connection) backs off longer and is tried 12 times, about four hours (ADR 167).
+
+/**
+ * SQLSTATEs that pass by themselves: serialisation failure, deadlock, lock not available,
+ * connection exceptions (08xxx), and the server shutting down or restarting (57P01-57P03).
+ */
+export function isTransient(err: unknown): boolean {
+  const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : '';
+  return (
+    ['40001', '40P01', '55P03', '57P01', '57P02', '57P03'].includes(code) ||
+    /^08[0-9A-Z]{3}$/.test(code)
+  );
+}
 
 export interface RunResult {
   completed: number;
@@ -83,8 +96,8 @@ export async function runOnce(
         // retry: fail the request now and record the code (ADR 008).
         const final = BUSINESS_RULE_CODES.has(message);
         const { rows: f } = await client.query<{ status: string }>(
-          'select wf.record_failure($1, $2, coalesce($3::timestamptz, now()), $4) as status',
-          [row.outbox_id, message, now, final],
+          'select wf.record_failure($1, $2, coalesce($3::timestamptz, now()), $4, $5) as status',
+          [row.outbox_id, message, now, final, !final && isTransient(err)],
         );
         if (f[0]?.status === 'failed') result.failed++;
         else result.retrying++;

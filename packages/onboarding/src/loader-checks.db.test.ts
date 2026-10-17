@@ -235,6 +235,51 @@ describe('loader errors', () => {
     });
   });
 
+  it("leaves out a test customer's file 25 shift on a day of approved leave, and says so (ADR 167)", async () => {
+    await inRolledBackTx(async (c) => {
+      // the commis's leave next Monday was approved in the app since the last load: approving it
+      // took them off that day's Breakfast shift (week 1, file 25)
+      const { rows } = await c.query<{ worker: string; day: string; words: string }>(
+        `with w as (
+           select w.id, w.tenant_id, w.owner_user_id, w.org_node_id from hr.worker w
+             join core.app_user u on u.id = w.owner_user_id
+             join core.tenant t on t.id = u.tenant_id and t.code = 'TEST-COMPANY'
+            where u.username = 'test.commis.1.0'),
+         d as (select (hr.week_start((now() at time zone 'Asia/Kolkata' - interval '4 hours')::date)
+                       + 7) as day)
+         select w.id::text as worker, d.day::text as day, to_char(d.day, 'Dy FMDD Mon') as words
+           from w, d`,
+      );
+      const { worker, day, words } = rows[0]!;
+      await c.query(
+        `insert into hr.leave_request (tenant_id, worker_id, owner_user_id, org_node_id,
+                                       leave_type_id, from_date, to_date, days, status)
+         select w.tenant_id, w.id, w.owner_user_id, w.org_node_id, t.id, $2::date, $2::date, 1,
+                'approved'
+           from hr.worker w join hr.leave_type t on t.tenant_id = w.tenant_id
+                                               and t.code = 'CASUAL_LEAVE'
+          where w.id = $1`,
+        [worker, day],
+      );
+      await c.query(
+        `update hr.shift_assignment a set status = 'dropped', drop_reason = 'leave',
+                coming_off = false
+           from hr.shift s
+          where s.id = a.shift_id and a.worker_id = $1 and s.local_date = $2::date
+            and a.status in ('assigned', 'pending')`,
+        [worker, day],
+      );
+      const r = await loadCustomer(c, base, { nested: true, dryRun: true });
+      expect(r.issues).toEqual([]);
+      expect(r.ok).toBe(true);
+      expect(r.warnings).toContainEqual({
+        file: '25_shifts_TEST_DATA_ONLY.csv',
+        row: expect.any(Number) as number,
+        message: `Test Commis 1.0 is on leave on ${words}: that shift is left out`,
+      });
+    });
+  });
+
   it('checks checklists (file 29): schedules, matching rows, and who they go to (ADR 020)', async () => {
     await inRolledBackTx(async (c) => {
       const file = '29_checklist_templates.csv';

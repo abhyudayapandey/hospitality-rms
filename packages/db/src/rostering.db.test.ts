@@ -506,10 +506,9 @@ describe('hr.assign rules', () => {
       expect((await assign(c, await shift(c, monday, 2, '09:00', 8), sam)).error).toBe(
         'LEAVE_CONFLICT',
       );
-      // an overnight shift from the day before that runs into the leave day is blocked too
-      expect((await assign(c, await shift(c, monday, 1, '22:00', 6), sam)).error).toBe(
-        'LEAVE_CONFLICT',
-      );
+      // an overnight shift from the day before that runs into the leave day is the day
+      // before's (its business day, ADR 167): allowed
+      expect((await assign(c, await shift(c, monday, 1, '22:00', 6), sam)).error).toBeUndefined();
       expect((await assign(c, await shift(c, monday, 3, '09:00', 8), sam)).error).toBeUndefined();
     });
   });

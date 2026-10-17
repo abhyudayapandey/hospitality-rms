@@ -320,29 +320,36 @@ export default async function OrderPage({
           </p>
         )}
       </div>
-      {data.approval && (po.progress === 'awaiting_approval' || po.progress === 'approved') && (
-        <section className="space-y-2" data-testid="po-approval">
-          {data.approval.state === 'failed' ? (
-            <RequestNow
-              stage="stuck"
-              words={`It could not go through (${data.approval.failure}). Ask for it again, or tell your manager.`}
-            />
-          ) : data.approval.state === 'in_approval' ? (
-            <RequestNow
-              stage="waiting_approval"
-              words={`Waiting for ${data.approval.waiting_for ?? 'approval'} to approve${data.approval.why ? `: ${data.approval.why}` : ''}`}
-            />
-          ) : approved && !placeForm ? (
-            <RequestNow
-              stage="being_ordered"
-              words={`Approved${data.approval.approved_by ? ` by ${data.approval.approved_by}` : ''}. It reaches the store in a minute.`}
-            />
-          ) : null}
-          {data.approval.may_act && (
-            <RequestDecision requestId={data.approval.request_id} back={`/stock/orders/${po.id}`} />
-          )}
-        </section>
-      )}
+      {data.approval &&
+        (po.progress === 'awaiting_approval' ||
+          po.progress === 'approved' ||
+          // it could not go through: the order is cancelled and says why (ADR 167)
+          data.approval.state === 'failed') && (
+          <section className="space-y-2" data-testid="po-approval">
+            {data.approval.state === 'failed' ? (
+              <RequestNow
+                stage="stuck"
+                words="It could not go through. Nothing was ordered. Ask for it again."
+              />
+            ) : data.approval.state === 'in_approval' ? (
+              <RequestNow
+                stage="waiting_approval"
+                words={`Waiting for ${data.approval.waiting_for ?? 'approval'} to approve${data.approval.why ? `: ${data.approval.why}` : ''}`}
+              />
+            ) : approved && !placeForm ? (
+              <RequestNow
+                stage="being_ordered"
+                words={`Approved${data.approval.approved_by ? ` by ${data.approval.approved_by}` : ''}. It reaches the store in a minute.`}
+              />
+            ) : null}
+            {data.approval.may_act && (
+              <RequestDecision
+                requestId={data.approval.request_id}
+                back={`/stock/orders/${po.id}`}
+              />
+            )}
+          </section>
+        )}
       {canSend && (
         <SendCard
           po={po.id}
