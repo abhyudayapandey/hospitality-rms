@@ -7,10 +7,10 @@ import {
   readUpload,
   UploadError,
   uploadKey,
-  uploadStore,
 } from '@outlet-ops/onboarding/upload';
 import { appUrl } from '@/lib/app-url';
 import { sql, withPlatformAdmin } from '@/lib/db';
+import { keepUpload } from '@/lib/platform/import-files';
 import { requirePlatformAdmin } from '@/lib/platform/server';
 import { requireSameOrigin } from '@/lib/security/same-origin';
 
@@ -18,8 +18,8 @@ import { requireSameOrigin } from '@/lib/security/same-origin';
 // works without JavaScript. The request must come from the console (same origin) with a
 // platform session; its size is checked before it is read. The files are checked (only
 // the numbered onboarding files and the dishes' photos (ADR 078), sizes, paths, file 00
-// names this customer), stored under
-// onboarding/<customer>/, and a dry run is queued. The browser then follows the job.
+// names this customer), kept in the database
+// (ADR 169) under onboarding/<customer>/, and a dry run is queued. The browser then follows the job.
 
 const back = (tenantId: string, code: string) =>
   NextResponse.redirect(appUrl(`/platform/customers/${tenantId}/import?error=${code}`), 303);
@@ -59,7 +59,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const hash = createHash('sha256');
     for (const p of parts) hash.update(p.bytes);
     const key = uploadKey(tenantId, randomUUID());
-    await uploadStore().put(key, { files, photos: photosToStore(photos) });
     const upload = {
       key,
       name: parts.length === 1 ? parts[0]!.name : `${parts.length} files`,
@@ -69,6 +68,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       customer_code: customerCode,
     };
     const job = await withPlatformAdmin(admin, async (tx) => {
+      await keepUpload(tx, tenantId, key, { files, photos: photosToStore(photos) });
       const r = await sql<{ id: string }>`
         select platform.request_import(${tenantId}::uuid, ${JSON.stringify(upload)}::jsonb) as id`.execute(
         tx,

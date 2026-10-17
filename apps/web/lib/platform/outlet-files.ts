@@ -19,14 +19,21 @@ export async function currentFiles(
   tenantId: string,
 ): Promise<Record<string, string> | null> {
   const row = (
-    await sql<{ upload_key: string | null; created_with: CreatePayload | null }>`
+    await sql<{
+      upload_key: string | null;
+      files: Record<string, string> | null;
+      created_with: CreatePayload | null;
+    }>`
       select * from platform.current_files(${tenantId}::uuid)`.execute(tx)
   ).rows[0];
-  const files = row?.upload_key
-    ? (await uploadStore().get(row.upload_key)).files
-    : row?.created_with
-      ? customerBundle(newCustomerFrom(row.created_with))
-      : null;
+  // kept in the database (ADR 169); an import applied before that, from the bucket copy
+  const files = row?.files
+    ? row.files
+    : row?.upload_key
+      ? (await uploadStore().get(row.upload_key)).files
+      : row?.created_with
+        ? customerBundle(newCustomerFrom(row.created_with))
+        : null;
   if (!files) return null;
   const covers = await sql<CoverRow>`
     select * from platform.role_cover_rows(${tenantId}::uuid)`.execute(tx);
