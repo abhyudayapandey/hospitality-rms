@@ -26,7 +26,7 @@ The platform review found these, each checked again against the code:
 - **M4, L11.** `backHref` let `/\t/evil.example` through (browsers drop tab, CR and LF, so it
   is `//evil.example`); push links took `//host`.
 - **M5.** The repository is public and its docs gave the demo companies' production
-  passwords (the `Test` + job title + `!12` rule), the Passport presenter's included.
+  passwords (one guessable rule for every login), the Passport presenter's included.
 - **L3.** Sign-out had no same-origin check.
 
 ## Decision
