@@ -163,11 +163,12 @@ export const loadShell = cache(async (): Promise<Shell> => {
                where (select "on" from core.my_modules()
                        where code = case a.kind when 'expiry' then 'production'
                                                 else 'maintenance' end))::int as n`.execute(tx);
-    // counted as Notifications shows them: one line per kind a day (ADR 035)
+    // counted as Notifications shows them: one line per kind a day (ADR 035), from the unread
+    // ones only, so an unread line older than the 50 newest still counts (ADR 169)
     const recent = await sql<NotificationRow>`
-      select id, kind, title, null as body, null as link, read_at, created_at from ops.notification
-       where owner_user_id = core.current_user_id()
-       order by created_at desc, id desc limit 50`.execute(tx);
+      select id, kind, title, null as body, link, read_at, created_at from ops.notification
+       where owner_user_id = core.current_user_id() and read_at is null
+       order by created_at desc, id desc limit 500`.execute(tx);
     // product roles only: a custom group's own code says nothing about the kind of work
     const groupSet = new Set(groups.rows.map((g) => g.access_group).filter(isProductCode));
     const flags = await cachedNavFlags(

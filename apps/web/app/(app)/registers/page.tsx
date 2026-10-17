@@ -9,7 +9,9 @@ import { isUuid, param, type SearchParams } from '@/lib/params';
 import { registerEntries, registerPlaces } from '@/lib/registers';
 import { ListDays } from '@/components/date-range';
 import { listDays } from '@/lib/list-days';
+import { listPage } from '@/lib/list-page';
 import { loadShell } from '@/lib/shell';
+import { ShowMore } from '@/components/show-more';
 import { CloseEntry } from './close-entry';
 import { EntryForm } from './entry-form';
 
@@ -44,6 +46,8 @@ export default async function RegistersPage({ searchParams }: { searchParams: Se
     const { range, today } = await listDays(tx, sp, place.place_id);
     return { entries: await registerEntries(tx, place.place_id, register, range), range, today };
   });
+  // 30, then Show more (ADR 052)
+  const shown = listPage(entries, '/registers', { ...sp, place: place.place_id, register });
   const href = (r: string, p = place.place_id) => `/registers?place=${p}&register=${r}`;
   return (
     <div className="space-y-4">
@@ -102,7 +106,7 @@ export default async function RegistersPage({ searchParams }: { searchParams: Se
         </Empty>
       ) : (
         <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-          {entries.map((e) => (
+          {shown.shown.map((e) => (
             <li
               key={e.id}
               className="space-y-1 px-4 py-3"
@@ -132,6 +136,7 @@ export default async function RegistersPage({ searchParams }: { searchParams: Se
           ))}
         </ul>
       )}
+      {shown.more && <ShowMore href={shown.more} />}
       {place.can_write.includes(register) && (
         <EntryForm place={place.place_id} register={register} />
       )}

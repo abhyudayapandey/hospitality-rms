@@ -8,7 +8,9 @@ import { listDays } from '@/lib/list-days';
 import { formatWhen } from '@/lib/format';
 import { logbook, logbookPlaces, logbookTargets } from '@/lib/logbook';
 import { isUuid, param, type SearchParams } from '@/lib/params';
+import { listPage } from '@/lib/list-page';
 import { loadShell } from '@/lib/shell';
+import { ShowMore } from '@/components/show-more';
 import { LogForm } from './log-form';
 import { TakeDown } from './take-down';
 
@@ -45,6 +47,9 @@ export default async function LogbookPage({ searchParams }: { searchParams: Sear
   });
   const logs = entries.filter((e) => e.kind === 'log');
   const handovers = entries.filter((e) => e.kind === 'handover');
+  // 30 of each, then Show more (ADR 052)
+  const shownLogs = listPage(logs, '/logbook', sp);
+  const shownHandovers = listPage(handovers, '/logbook', sp);
   return (
     <div className="space-y-4">
       <BackLink />
@@ -83,7 +88,7 @@ export default async function LogbookPage({ searchParams }: { searchParams: Sear
           <Empty>{range ? 'No logs written on these days.' : 'No logs holding now.'}</Empty>
         ) : (
           <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-            {logs.map((e) => (
+            {shownLogs.shown.map((e) => (
               <li key={e.id} className="space-y-1 px-4 py-3" data-testid="log">
                 <p className="text-sm whitespace-pre-line">{e.body}</p>
                 <p className="flex items-center justify-between gap-2 text-xs text-slate-500">
@@ -97,6 +102,7 @@ export default async function LogbookPage({ searchParams }: { searchParams: Sear
             ))}
           </ul>
         )}
+        {shownLogs.more && <ShowMore href={shownLogs.more} />}
       </section>
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-slate-500">Handovers</h2>
@@ -106,7 +112,7 @@ export default async function LogbookPage({ searchParams }: { searchParams: Sear
           </Empty>
         ) : (
           <ul className="divide-y divide-slate-100 rounded-xl bg-white ring-1 ring-slate-200">
-            {handovers.map((e) => (
+            {shownHandovers.shown.map((e) => (
               <li key={e.id} className="space-y-1 px-4 py-3" data-testid="handover">
                 <p className="text-sm whitespace-pre-line">{e.body}</p>
                 <p className="text-xs text-slate-500">
@@ -125,6 +131,7 @@ export default async function LogbookPage({ searchParams }: { searchParams: Sear
             ))}
           </ul>
         )}
+        {shownHandovers.more && <ShowMore href={shownHandovers.more} />}
       </section>
       {targets && <LogForm place={place.place_id} targets={targets} />}
     </div>
