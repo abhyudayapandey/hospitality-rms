@@ -19,11 +19,12 @@ import { DateInput } from '@/components/date-time-inputs';
 // take stock below zero, which tells the store keeper instead of blocking the sale.
 export default async function SalesPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
-  const today = todayIn();
-  const date = isoDate(param(sp, 'date'), today);
   // the outlets where they post sales: the "Place:" switcher (ADR 016)
   const { shell, places, place } = await placesFor('sales', searchParams);
   if (!place) return <Empty>You don&apos;t post sales anywhere.</Empty>;
+  const tz = place.timezone ?? shell.tz;
+  const today = todayIn(tz);
+  const date = isoDate(param(sp, 'date'), today);
   // UX-4: copy yesterday's, or the same day last week's (weekends differ from weekdays)
   const yesterday = addDays(date, -1);
   const lastWeek = addDays(date, -7);
@@ -75,8 +76,7 @@ export default async function SalesPage({ searchParams }: { searchParams: Search
           className="rounded-xl bg-white p-4 text-sm ring-1 ring-slate-200"
           data-testid="sales-from-pos"
         >
-          This day&apos;s sales came from the POS import at{' '}
-          {formatTime(data.pos.imported_at, place.timezone ?? 'Asia/Kolkata')}
+          This day&apos;s sales came from the POS import at {formatTime(data.pos.imported_at, tz)}
           {data.pos.imported_by ? ` by ${data.pos.imported_by}` : ''} ({data.pos.posted} items).
           They can&apos;t be typed in; import the day again to change them.
         </p>

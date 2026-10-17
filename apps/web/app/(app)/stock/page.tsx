@@ -194,6 +194,7 @@ export default async function StockPage({ searchParams }: { searchParams: Search
           rows={dated[tab]}
           all={all}
           canDiscard={ctx.can('STOCK_ADJUSTMENTS', 'modify')}
+          tz={node.timezone ?? ctx.shell.tz}
         />
       ) : shown.length === 0 ? (
         <Empty>{tab === 'low' ? 'Nothing is running low.' : 'No items are set up here yet.'}</Empty>

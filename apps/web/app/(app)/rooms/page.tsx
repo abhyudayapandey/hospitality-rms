@@ -15,6 +15,7 @@ import {
 import { Icon } from '@/components/icon';
 import { ViewTabs } from '@/components/view-tabs';
 import { formatCount } from '@/lib/qty';
+import { loadShell } from '@/lib/shell';
 import { ItemThumb } from '@/components/item-thumb';
 import { RoomGrid, RoomLegend } from './status-picker';
 
@@ -27,6 +28,7 @@ import { RoomGrid, RoomLegend } from './status-picker';
 export default async function RoomsPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const user = await requireUser();
+  const { tz } = await loadShell();
   const places = await withUser(user.id, (tx) => roomOutlets(tx));
   const asked = param(sp, 'outlet');
   const place = places.find((p) => isUuid(asked) && p.outlet_id === asked) ?? places[0];
@@ -102,7 +104,7 @@ export default async function RoomsPage({ searchParams }: { searchParams: Search
       <h1 className="text-xl font-semibold">Rooms</h1>
       {tabs}
       {view === 'contents' ? (
-        <Contents rows={contents} outlet={place.outlet_id} />
+        <Contents rows={contents} outlet={place.outlet_id} tz={tz} />
       ) : (
         <>
           <RoomLegend
@@ -146,7 +148,7 @@ export default async function RoomsPage({ searchParams }: { searchParams: Search
 }
 
 /** What each room should hold and its last count; short lines in red (ADR 094). */
-function Contents({ rows, outlet }: { rows: RoomContentRow[]; outlet: string }) {
+function Contents({ rows, outlet, tz }: { rows: RoomContentRow[]; outlet: string; tz: string }) {
   if (rows.length === 0) return <Empty>No room has its contents listed.</Empty>;
   const byRoom = [...new Map(rows.map((r) => [r.room_id, r])).values()];
   return (
@@ -190,7 +192,7 @@ function Contents({ rows, outlet }: { rows: RoomContentRow[]; outlet: string }) 
                           data-testid="room-counted"
                         >
                           counted {formatCount(l.counted, l.unit)}
-                          {l.counted_at && `, ${formatWhen(l.counted_at)}`}
+                          {l.counted_at && `, ${formatWhen(l.counted_at, tz)}`}
                         </span>
                       )}
                     </span>

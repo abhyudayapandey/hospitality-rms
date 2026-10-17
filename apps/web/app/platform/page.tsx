@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { sql, withPlatformAdmin } from '@/lib/db';
+import { DEFAULT_TZ } from '@/lib/dates';
 import { formatWhen } from '@/lib/format';
 import { requirePlatformAdmin } from '@/lib/platform/server';
 import { customerStatus, jobLabel, jobStatus, type PlatformCustomer as Customer } from './parts';
@@ -76,7 +77,7 @@ export default async function PlatformHome() {
                 >
                   <span className="font-medium underline">{d.name}</span>
                   <span className="text-right text-slate-600">
-                    {d.created_by_email} · {formatWhen(d.updated_at)}
+                    {d.created_by_email} · {formatWhen(d.updated_at, DEFAULT_TZ)}
                   </span>
                 </Link>
                 <ThrowAway id={d.id} name={d.name} created={!!d.tenant_id} compact />
@@ -110,7 +111,7 @@ export default async function PlatformHome() {
                 <span className="block text-sm text-slate-600">
                   {c.user_count} {c.user_count === 1 ? 'person' : 'people'} ·{' '}
                   {c.last_activity
-                    ? `last sign-in ${formatWhen(c.last_activity)}`
+                    ? `last sign-in ${formatWhen(c.last_activity, DEFAULT_TZ)}`
                     : 'nobody has signed in yet'}
                 </span>
               </Link>
@@ -130,7 +131,7 @@ export default async function PlatformHome() {
                     {nameOf.get(j.tenant_id ?? '') && ` · ${nameOf.get(j.tenant_id ?? '')}`}
                   </span>
                   <span className="shrink-0 text-right text-slate-600">
-                    {jobStatus(j.status)} · {formatWhen(j.created_at)}
+                    {jobStatus(j.status)} · {formatWhen(j.created_at, DEFAULT_TZ)}
                   </span>
                 </Link>
               </li>

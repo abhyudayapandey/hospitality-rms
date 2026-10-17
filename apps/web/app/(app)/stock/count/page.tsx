@@ -43,7 +43,7 @@ export default async function CountPage({ searchParams }: { searchParams: Search
           href={`/stock/count/${open.id}${q}`}
           className="flex min-h-12 items-center justify-center rounded-lg bg-brand-700 font-medium text-white"
         >
-          Continue the count started {formatWhen(open.started_at)}
+          Continue the count started {formatWhen(open.started_at, ctx.shell.tz)}
         </Link>
       )}
       {counts.some((c) => c.status === 'submitted') && (
@@ -58,7 +58,7 @@ export default async function CountPage({ searchParams }: { searchParams: Search
                     href={`/stock/count/${c.id}${q}`}
                     className="flex min-h-12 items-center px-4"
                   >
-                    Submitted {formatWhen(c.submitted_at!)}
+                    Submitted {formatWhen(c.submitted_at!, ctx.shell.tz)}
                   </Link>
                 </li>
               ))}

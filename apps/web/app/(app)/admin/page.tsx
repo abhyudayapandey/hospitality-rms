@@ -4,6 +4,7 @@ import { groupLabel } from '@/lib/labels';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser, type Tx } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
+import { loadShell } from '@/lib/shell';
 
 interface AuditRow {
   occurred_at: Date;
@@ -37,6 +38,7 @@ async function maybe<T>(userId: string, fn: (tx: Tx) => Promise<T>): Promise<T |
 // only what the database lets this user read.
 export default async function AdminPage() {
   const user = await requireUser();
+  const { tz } = await loadShell();
   const sole = await maybe(user.id, async (tx) => {
     const r = await sql<{ s: boolean }>`select core.is_sole_account_owner() as s`.execute(tx);
     return r.rows[0]?.s === true;
@@ -139,7 +141,7 @@ export default async function AdminPage() {
                   {e.access_group ? ` · ${groupLabel(e.access_group)}` : ''}
                   {e.place ? ` at ${e.place}` : ''}
                   <span className="block text-xs text-slate-500">
-                    {e.actor} · {formatWhen(e.occurred_at)}
+                    {e.actor} · {formatWhen(e.occurred_at, tz)}
                     {e.note ? ` · ${e.note}` : ''}
                   </span>
                 </div>

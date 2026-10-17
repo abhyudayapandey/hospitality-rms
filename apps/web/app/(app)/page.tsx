@@ -62,7 +62,7 @@ const cardTitle = 'text-xs font-semibold tracking-wide text-slate-500 uppercase'
 
 export default async function Home() {
   const shell = await loadShell();
-  const tz = shell.nodes.find((n) => n.id === shell.home?.id)?.timezone ?? 'Asia/Kolkata';
+  const { tz } = shell;
   const today = await loadToday(shell, tz);
   // floor sections (ADR 133): mine today, and whether I give them out
   const user = await requireUser();
@@ -232,13 +232,13 @@ export default async function Home() {
 
       {/* the person's own job (ADR 113): their rooms, minibars, breakfast and events */}
       {today.rooms && <RoomsCard rooms={today.rooms} />}
-      {today.minibar && <MinibarCard minibar={today.minibar} />}
+      {today.minibar && <MinibarCard minibar={today.minibar} tz={tz} />}
       {today.breakfast && (today.breakfast.canEdit || today.profile === 'department') && (
         <BreakfastCard breakfast={today.breakfast} />
       )}
       {today.events.length > 0 && <EventsCard events={today.events} tz={tz} />}
 
-      {today.handedOn.length > 0 && <HandedOnCard tasks={today.handedOn} />}
+      {today.handedOn.length > 0 && <HandedOnCard tasks={today.handedOn} tz={tz} />}
 
       {tiles.length > 0 && (
         <nav aria-label="My jobs" className="grid grid-cols-2 gap-3" data-testid="tiles">
@@ -528,7 +528,7 @@ function PushToday({ push, tz }: { push: Today['push']; tz: string }) {
  * What they gave to someone else and still follow (ADR 074): who has it, since when; once
  * done, who did it and when, that day and the next (ADR 075).
  */
-function HandedOnCard({ tasks }: { tasks: Today['handedOn'] }) {
+function HandedOnCard({ tasks, tz }: { tasks: Today['handedOn']; tz: string }) {
   return (
     <section aria-label="Given to others" className={card} data-testid="handed-on">
       <h2 className={cardTitle}>Given to others</h2>
@@ -539,10 +539,10 @@ function HandedOnCard({ tasks }: { tasks: Today['handedOn'] }) {
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{t.title}</span>
                 <span className="block truncate text-sm text-slate-500" data-testid="handed-on-who">
-                  {doneBy(t) ?? (
+                  {doneBy(t, tz) ?? (
                     <>
                       {t.assignee_name ?? 'Not taken yet'}
-                      {t.assigned_at && ` · given ${formatWhen(t.assigned_at)}`}
+                      {t.assigned_at && ` · given ${formatWhen(t.assigned_at, tz)}`}
                     </>
                   )}
                 </span>
@@ -564,7 +564,7 @@ function HandedOnCard({ tasks }: { tasks: Today['handedOn'] }) {
                     ? 'Done'
                     : t.overdue
                       ? 'Overdue'
-                      : `Due ${formatWhen(t.due_at)}`}
+                      : `Due ${formatWhen(t.due_at, tz)}`}
               </span>
             </Link>
           </li>

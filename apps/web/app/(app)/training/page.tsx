@@ -7,6 +7,7 @@ import { withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { isUuid, param, type SearchParams } from '@/lib/params';
 import { sopReading, trainingPlaces, trainingSessions } from '@/lib/training';
+import { loadShell } from '@/lib/shell';
 import { SessionForm } from './training-forms';
 
 // Training (ADR 095): a place's training sessions, who came and their test scores; and who has
@@ -14,6 +15,7 @@ import { SessionForm } from './training-forms';
 export default async function TrainingPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const user = await requireUser();
+  const { tz } = await loadShell();
   const places = await withUser(user.id, (tx) => trainingPlaces(tx));
   const asked = param(sp, 'place');
   const place =
@@ -91,7 +93,7 @@ export default async function TrainingPage({ searchParams }: { searchParams: Sea
                       <span className="min-w-0">
                         <span className="block font-medium">{s.title}</span>
                         <span className="block text-xs text-slate-500">
-                          {formatWhen(s.starts_at)}
+                          {formatWhen(s.starts_at, tz)}
                           {s.trainer && ` · ${s.trainer}`}
                           {s.is_test && ' · test'}
                         </span>

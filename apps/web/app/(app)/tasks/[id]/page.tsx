@@ -23,6 +23,7 @@ import {
 } from '@/lib/tasks';
 import { isUrgent, overdueWhenGiven } from '@/lib/tasks-view';
 import { complianceTask, dayWords, type ComplianceTaskRow } from '@/lib/compliance';
+import { loadShell } from '@/lib/shell';
 import { DoneForm, RenewForm } from '../../compliance/act-forms';
 import {
   AcknowledgeHandover,
@@ -45,6 +46,7 @@ import { RequestStory } from '../../stock/transfers/[id]/request-story';
 export default async function TaskPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
+  const { tz } = await loadShell();
   let task: TaskDetail;
   let people: Person[];
   let sent: SentLine[];
@@ -206,12 +208,12 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
           >
             <Icon name="clock" className="size-4 shrink-0" />
             {late ? 'Late · was due ' : 'Due '}
-            {formatWhen(task.due_at)}
+            {formatWhen(task.due_at, tz)}
             {isUrgent(task) && ' · urgent'}
           </p>
         ) : (
           <p className="text-sm text-slate-600" data-testid="task-status">
-            {statusLine(task)}
+            {statusLine(task, tz)}
           </p>
         )}
         {forAsk && (
@@ -222,7 +224,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         {task.description && (
           <p className="text-sm whitespace-pre-line text-slate-800">{task.description}</p>
         )}
-        <SignOffLine task={task} open={open} />
+        <SignOffLine task={task} open={open} tz={tz} />
         {task.done_note && (
           <section
             aria-label="Note"
@@ -317,7 +319,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
           {task.handover_from && (
             <p className="text-sm text-slate-600" data-testid="handover-from">
               From {task.handover_from.by} at {task.handover_from.place},{' '}
-              {formatWhen(task.handover_from.at)}
+              {formatWhen(task.handover_from.at, tz)}
             </p>
           )}
           {open && task.can_work && <AcknowledgeHandover task={task.id} />}
@@ -354,7 +356,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
       )}
       {chain && chain.story.length > 0 && (
         <>
-          <RequestStory story={chain.story} />
+          <RequestStory story={chain.story} tz={tz} />
           <Link
             href={`/stock/transfers/${chain.transfer}`}
             className="flex min-h-11 items-center text-sm font-medium text-brand-700"
@@ -386,7 +388,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
             )}
             {open && (
               <p className="text-slate-600" data-testid="task-status">
-                {statusLine(task)}
+                {statusLine(task, tz)}
               </p>
             )}
             {open &&
@@ -395,10 +397,10 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
               overdueWhenGiven({ due_at: task.due_at, given: task.assigned_at }) && (
                 <p className="rounded-lg bg-amber-50 p-3 text-amber-900" data-testid="task-fair">
                   It was already overdue when it was given to {task.assignee_name}
-                  {task.assigned_at && ` (${formatWhen(task.assigned_at)})`}.
+                  {task.assigned_at && ` (${formatWhen(task.assigned_at, tz)})`}.
                 </p>
               )}
-            {task.handovers.length > 0 && !chain && <History task={task} />}
+            {task.handovers.length > 0 && !chain && <History task={task} tz={tz} />}
           </div>
         </section>
       )}
@@ -539,7 +541,7 @@ function MakeIt({ recipe, unit, open }: { recipe: PrepRecipe; unit: string; open
  * A checklist round's second signature (ADR 087): what it is waiting for, who signed it off,
  * or what it was sent back for; a sign-off says whose round it checks.
  */
-function SignOffLine({ task, open }: { task: TaskDetail; open: boolean }) {
+function SignOffLine({ task, open, tz }: { task: TaskDetail; open: boolean; tz: string }) {
   if (task.kind === 'sign_off') {
     return (
       <p className="text-sm text-slate-800" data-testid="sign-off-about">
@@ -564,7 +566,7 @@ function SignOffLine({ task, open }: { task: TaskDetail; open: boolean }) {
   return (
     <p className="text-sm text-slate-800" data-testid="sign-off-status">
       {task.signed_off_by_name
-        ? `Signed off by ${task.signed_off_by_name}${task.signed_off_at ? ` ${formatWhen(task.signed_off_at)}` : ''}`
+        ? `Signed off by ${task.signed_off_by_name}${task.signed_off_at ? ` ${formatWhen(task.signed_off_at, tz)}` : ''}`
         : task.sign_off_task?.status === 'open' || task.sign_off_task?.status === 'in_progress'
           ? `Waiting for sign-off by ${task.sign_off_task.assignee_name ?? 'someone'}`
           : 'Nobody was there to sign it off'}
@@ -573,7 +575,7 @@ function SignOffLine({ task, open }: { task: TaskDetail; open: boolean }) {
 }
 
 /** Each time the task reached someone, oldest first (ADR 074). */
-function History({ task }: { task: TaskDetail }) {
+function History({ task, tz }: { task: TaskDetail; tz: string }) {
   return (
     <section>
       <ol className="divide-y divide-slate-100" data-testid="handover-history">
@@ -587,7 +589,7 @@ function History({ task }: { task: TaskDetail }) {
                   ? `${h.by_name} gave it to ${h.to_name}`
                   : `Given to ${h.to_name} (covering)`}
             </span>
-            <span className="block text-xs text-slate-500">{formatWhen(h.at)}</span>
+            <span className="block text-xs text-slate-500">{formatWhen(h.at, tz)}</span>
           </li>
         ))}
       </ol>
@@ -595,12 +597,12 @@ function History({ task }: { task: TaskDetail }) {
   );
 }
 
-function statusLine(t: TaskDetail): string {
+function statusLine(t: TaskDetail, tz: string): string {
   switch (t.status) {
     case 'reported':
       return `Reported by ${t.reported_by_name ?? 'someone'}, not assigned yet`;
     case 'done':
-      return `Done${t.completed_at ? ` ${formatWhen(t.completed_at)}` : ''}`;
+      return `Done${t.completed_at ? ` ${formatWhen(t.completed_at, tz)}` : ''}`;
     case 'cancelled':
       return `Cancelled${t.cancel_reason ? `: ${t.cancel_reason}` : ''}`;
     default: {
@@ -609,7 +611,7 @@ function statusLine(t: TaskDetail): string {
         : t.assign_mode === 'on_shift'
           ? 'For whoever is on shift'
           : `For the ${t.job_role_name ?? 'job role'}: the first to start takes it`;
-      const since = t.assigned_at ? ` since ${formatWhen(t.assigned_at)}` : '';
+      const since = t.assigned_at ? ` since ${formatWhen(t.assigned_at, tz)}` : '';
       return `${t.status === 'in_progress' ? 'Started' : 'To do'} · ${who}${since}${
         t.assigned_by_name && t.assignee_name ? ` · from ${t.assigned_by_name}` : ''
       }`;

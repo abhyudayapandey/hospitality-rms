@@ -9,6 +9,7 @@ import { candidates, swapChecks } from '@/lib/people';
 import { warningPhrase, warningSentence } from '@/lib/roster-warnings';
 import { ReassignButton, SwapDecision } from './swap-decision';
 import { jobTitles } from '@/lib/job-titles';
+import { loadShell } from '@/lib/shell';
 
 const STATUS: Record<string, string> = {
   submitted: 'Waiting for approval',
@@ -89,8 +90,8 @@ export default async function SwapReviewPage({ params }: { params: Promise<{ id:
       <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
         <h1 className="text-lg font-semibold">Shift swap</h1>
         <p className="text-sm text-slate-600 tabular-nums">
-          {formatDay(s.local_date)} · {formatSpan(s.start_at, s.end_at, s.tz ?? 'Asia/Kolkata')} ·{' '}
-          {title(s.role_code)}
+          {formatDay(s.local_date)} ·{' '}
+          {formatSpan(s.start_at, s.end_at, s.tz ?? (await loadShell()).tz)} · {title(s.role_code)}
         </p>
         <p className="mt-2" data-testid="swap-parties">
           {s.from_name ?? 'Worker'} → {s.to_name ?? 'Worker'}

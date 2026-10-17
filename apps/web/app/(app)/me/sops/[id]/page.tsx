@@ -4,12 +4,14 @@ import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { sopPage, type SopPage } from '@/lib/training';
+import { loadShell } from '@/lib/shell';
 import { AckButton } from './ack-button';
 
 // One SOP (ADR 095): its text, and "I've read this" where it is needed, once per version.
 export default async function SopPageView({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
+  const { tz } = await loadShell();
   let sop: SopPage | null;
   try {
     sop = await withUser(user.id, (tx) => sopPage(tx, id));
@@ -33,7 +35,7 @@ export default async function SopPageView({ params }: { params: Promise<{ id: st
       {sop.needs_ack &&
         (sop.acked_at ? (
           <p className="text-sm text-emerald-700" data-testid="sop-acked">
-            You confirmed you read this, {formatWhen(sop.acked_at)}.
+            You confirmed you read this, {formatWhen(sop.acked_at, tz)}.
           </p>
         ) : (
           <AckButton sop={sop.id} />

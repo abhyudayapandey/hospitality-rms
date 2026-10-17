@@ -39,6 +39,8 @@ export interface Shell {
   /** access group codes (core.my_access(), SELF included): the bottom nav's profile */
   groups: Set<string>;
   nodes: NodeRow[];
+  /** the time zone their dates and times are shown in: their workplace's (ADR 169) */
+  tz: string;
   /** where the person works (their worker row), if they have one */
   home: HomePlace | null;
   /** their job title, beside their name in the header */
@@ -140,17 +142,23 @@ export const loadShell = cache(async (): Promise<Shell> => {
         join hr.job_role jr on jr.tenant_id = w.tenant_id and jr.code = w.role_code
        where w.owner_user_id = core.current_user_id() and w.status = 'active'
        limit 1`.execute(tx);
+    // the time zone dates and times are shown in (ADR 169): where they work, else the first
+    // place they can see
+    const tz =
+      nodes.rows.find((n) => n.id === home.rows[0]?.id)?.timezone ??
+      nodes.rows.find((n) => n.timezone)?.timezone ??
+      DEFAULT_TZ;
     // approvals, plus expired batches and maintenance requests to assign (ADR 020), plus the
     // order desk's requests to order and orders to receive (ADR 049, 052): all of it is listed
     const inbox = await sql<{ n: number }>`
       select (select count(*) from wf.my_inbox())::int
            + (select count(*) from inv.desk_orders())::int
-           -- one To do list (ADR 147): my own open tasks, late or due today, as the list
-           -- groups them (groupTasks)
+           -- one To do list (ADR 147): my own open tasks, late or due this 04:00 business
+           -- day in their time zone, as the list groups them (groupTasks, ADR 169)
            + (select count(*) from ops.my_tasks() t
                where t.status <> 'done'
-                 and (t.overdue or (t.due_at at time zone ${DEFAULT_TZ})::date
-                                   <= (now() at time zone ${DEFAULT_TZ})::date))::int
+                 and (t.overdue or ((t.due_at at time zone ${tz}) - interval '4 hours')::date
+                                   <= ((now() at time zone ${tz}) - interval '4 hours')::date))::int
            + (select count(*) from ops.my_to_assign() a
                where (select "on" from core.my_modules()
                        where code = case a.kind when 'expiry' then 'production'
@@ -160,7 +168,6 @@ export const loadShell = cache(async (): Promise<Shell> => {
       select id, kind, title, null as body, null as link, read_at, created_at from ops.notification
        where owner_user_id = core.current_user_id()
        order by created_at desc, id desc limit 50`.execute(tx);
-    const tz = nodes.rows.find((n) => n.id === home.rows[0]?.id)?.timezone ?? 'Asia/Kolkata';
     // product roles only: a custom group's own code says nothing about the kind of work
     const groupSet = new Set(groups.rows.map((g) => g.access_group).filter(isProductCode));
     const flags = await cachedNavFlags(
@@ -235,6 +242,7 @@ export const loadShell = cache(async (): Promise<Shell> => {
       modules,
       groups: groupSet,
       nodes: nodes.rows,
+      tz,
       home: home.rows[0] ?? null,
       jobTitle: title.rows[0]?.name ?? null,
       inboxCount: inbox.rows[0]?.n ?? 0,

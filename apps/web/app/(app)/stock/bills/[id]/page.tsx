@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatMoney, formatWhen } from '@/lib/format';
 import { photosEnabled, presignPhotoView } from '@/lib/photos';
+import { loadShell } from '@/lib/shell';
 import { ArchiveBill } from './archive-bill';
 
 // One vendor bill with its photos and PDFs (ADR 050). inv.bill_detail returns it only to whoever
@@ -32,6 +33,7 @@ interface Bill {
 export default async function BillPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
+  const { tz } = await loadShell();
   const bill = await withUser(user.id, async (tx) => {
     const r = await sql<Bill>`select * from inv.bill_detail(${id}::uuid)`.execute(tx);
     return r.rows[0];
@@ -78,7 +80,7 @@ export default async function BillPage({ params }: { params: Promise<{ id: strin
           </Link>
         )}
         <p className="mt-1 text-xs text-slate-500">
-          Added by {bill.added_by ?? 'someone'}, {formatWhen(bill.added_at)}
+          Added by {bill.added_by ?? 'someone'}, {formatWhen(bill.added_at, tz)}
         </p>
         {bill.archived_at && (
           <p className="mt-2 rounded-lg bg-slate-100 p-2 text-sm text-slate-700">

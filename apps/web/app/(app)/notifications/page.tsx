@@ -18,7 +18,7 @@ import { MarkAllRead, NotificationItem } from './mark-read';
 export default async function NotificationsPage() {
   const user = await requireUser();
   const shell = await loadShell();
-  const tz = shell.nodes.find((n) => n.id === shell.home?.id)?.timezone ?? 'Asia/Kolkata';
+  const { tz } = shell;
   const all = await withUser(user.id, async (tx) => {
     const r = await sql<NotificationRow>`
       select id, kind, title, body, link, read_at, created_at from ops.notification
@@ -56,7 +56,9 @@ export default async function NotificationsPage() {
                     )}
                   </span>
                   {n.body && <span className="block text-sm text-slate-600">{n.body}</span>}
-                  <span className="block text-xs text-slate-500">{formatWhen(n.created_at)}</span>
+                  <span className="block text-xs text-slate-500">
+                    {formatWhen(n.created_at, tz)}
+                  </span>
                 </span>
               </>
             );

@@ -3,11 +3,11 @@ import { Icon } from '@/components/icon';
 import { Empty } from '@/components/messages';
 import { TasksHeader } from '@/components/tasks-header';
 import { PollRefresh } from '@/components/use-polling';
-import { requireUser } from '@/lib/auth/server';
 import { withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { inboxEntries } from '@/lib/inbox';
 import { deskOrders } from '@/lib/inventory';
+import { loadShell } from '@/lib/shell';
 import { maintenanceList, myHandedOn, myTasks, taskTabs, toAssign } from '@/lib/tasks';
 import { GROUP_TITLES, doneBy, doneLately, groupTasks, myTaskWho } from '@/lib/tasks-view';
 import { WaitingForYou } from '../inbox/waiting';
@@ -20,11 +20,11 @@ import { TaskList } from './task-list';
 // "Given to others" (ADR 074). What is done stays, under Done, saying who did it and when,
 // that business day and the next (ADR 075).
 export default async function MyTasksPage() {
-  const user = await requireUser();
+  const { user, tz } = await loadShell();
   const data = await withUser(user.id, async (tx) => {
     const tasks = (await myTasks(tx)).map((t) => ({
       ...t,
-      who: doneBy(t) ?? myTaskWho(t),
+      who: doneBy(t, tz) ?? myTaskWho(t),
       given: t.status === 'done' ? null : t.assigned_at,
     }));
     const given = await myHandedOn(tx);
@@ -32,24 +32,24 @@ export default async function MyTasksPage() {
     const fixes = tabs.maintenance
       ? (await maintenanceList(tx))
           .filter(
-            (r) => r.assigned_to === user.id && (r.status !== 'done' || doneLately(r.done_at)),
+            (r) => r.assigned_to === user.id && (r.status !== 'done' || doneLately(r.done_at, tz)),
           )
           .sort((a, b) => Number(a.status === 'done') - Number(b.status === 'done'))
       : [];
     const waiting = {
-      rows: await inboxEntries(tx),
+      rows: await inboxEntries(tx, tz),
       assign: await toAssign(tx),
       desk: await deskOrders(tx),
     };
     return { tasks, given, tabs, fixes, waiting };
   });
-  const groups = groupTasks(data.tasks);
+  const groups = groupTasks(data.tasks, tz);
 
   return (
     <div className="space-y-4">
       <PollRefresh />
       <TasksHeader tabs={data.tabs} active="/tasks" title="To do list" />
-      <WaitingForYou {...data.waiting} />
+      <WaitingForYou {...data.waiting} tz={tz} />
       {data.fixes.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-500">Repairs for you</h2>
@@ -71,13 +71,13 @@ export default async function MyTasksPage() {
                         className="block truncate text-xs text-slate-500"
                         data-testid="repair-done"
                       >
-                        Done by you, {formatWhen(r.done_at)}
+                        Done by you, {formatWhen(r.done_at, tz)}
                       </span>
                     ) : (
                       r.assigned_at && (
                         <span className="block truncate text-xs text-slate-500">
                           You{r.assigned_by_name && `, from ${r.assigned_by_name}`} · given{' '}
-                          {formatWhen(r.assigned_at)}
+                          {formatWhen(r.assigned_at, tz)}
                         </span>
                       )
                     )}
@@ -108,7 +108,7 @@ export default async function MyTasksPage() {
             >
               {GROUP_TITLES[g]}
             </h2>
-            <TaskList tasks={groups[g]} testId={`tasks-${g}`} mine />
+            <TaskList tasks={groups[g]} testId={`tasks-${g}`} mine tz={tz} />
           </section>
         ))}
       {/* what to do next sits under today's work, on the first screen, not under the done
@@ -136,7 +136,7 @@ export default async function MyTasksPage() {
       {groups.upcoming.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-500">{GROUP_TITLES.upcoming}</h2>
-          <TaskList tasks={groups.upcoming} testId="tasks-upcoming" mine />
+          <TaskList tasks={groups.upcoming} testId="tasks-upcoming" mine tz={tz} />
         </section>
       )}
       {groups.done.length > 0 && (
@@ -148,7 +148,7 @@ export default async function MyTasksPage() {
             </span>
             {groups.done.length} done
           </summary>
-          <TaskList tasks={groups.done} testId="tasks-done" mine />
+          <TaskList tasks={groups.done} testId="tasks-done" mine tz={tz} />
         </details>
       )}
       {data.given.length > 0 && (
@@ -160,10 +160,11 @@ export default async function MyTasksPage() {
               priority: 'normal',
               steps_total: 0,
               steps_done: 0,
-              who: doneBy(t) ?? t.assignee_name,
+              who: doneBy(t, tz) ?? t.assignee_name,
               given: t.status === 'done' ? null : t.assigned_at,
             }))}
             testId="tasks-given"
+            tz={tz}
           />
         </section>
       )}

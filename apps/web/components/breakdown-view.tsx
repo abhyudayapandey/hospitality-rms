@@ -221,7 +221,7 @@ export function readingsSummary(rows: readonly ReadingLine[]) {
   return `${rows.length} flagged ${rows.length === 1 ? 'reading' : 'readings'}`;
 }
 
-export function Readings({ rows }: { rows: readonly ReadingLine[] }) {
+export function Readings({ rows, tz }: { rows: readonly ReadingLine[]; tz: string }) {
   if (rows.length === 0) return <Empty>No readings out of range in this period.</Empty>;
   return (
     <ul className={list} data-testid="bd-readings">
@@ -229,7 +229,7 @@ export function Readings({ rows }: { rows: readonly ReadingLine[] }) {
         <Row
           key={i}
           name={`${r.reading}: ${r.value}`}
-          sub={`${r.task} · by ${r.by_name}${r.done_at ? ` · ${formatDay(r.done_at.slice(0, 10))} ${formatTime(new Date(r.done_at))}` : ''}`}
+          sub={`${r.task} · by ${r.by_name}${r.done_at ? ` · ${formatDay(r.done_at.slice(0, 10))} ${formatTime(new Date(r.done_at), tz)}` : ''}`}
           value={r.allowed ? `allowed ${r.allowed}` : 'flagged'}
         />
       ))}

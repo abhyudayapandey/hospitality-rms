@@ -52,6 +52,7 @@ async function Compliance({ searchParams }: { searchParams: SearchParams }) {
   const raw = param(sp, 'tab');
   const tab: ComplianceTab = isComplianceTab(raw) ? raw : 'action';
   const node = all ? null : place.id;
+  const tz = (all ? null : place.timezone) ?? shell.tz;
   const { counts, lic, jobs, canAdd } = await withUser(shell.user.id, async (tx) => {
     const add = await sql<{ v: boolean }>`
       select bool_or(core.can('COMPLIANCE', 'modify', p.id, null)) as v
@@ -114,7 +115,7 @@ async function Compliance({ searchParams }: { searchParams: SearchParams }) {
             r.kind === 'licence' ? (
               <LicenceItem key={`l-${r.row.id}`} l={r.row} all={all} />
             ) : (
-              <JobItem key={`j-${r.row.id}`} j={r.row} />
+              <JobItem key={`j-${r.row.id}`} j={r.row} tz={tz} />
             ),
           )}
         </ul>
@@ -172,7 +173,7 @@ function LicenceItem({ l, all }: { l: LicenceRow; all: boolean }) {
   );
 }
 
-function JobItem({ j }: { j: JobRow }) {
+function JobItem({ j, tz }: { j: JobRow; tz: string }) {
   const s = jobStatus(j);
   return (
     <li data-testid="job" data-name={j.name}>
@@ -197,7 +198,7 @@ function JobItem({ j }: { j: JobRow }) {
           {j.last_done && ` · last done ${dayWords(j.last_done)}`}
         </span>
         <span className="block text-sm text-slate-600" data-testid="job-people">
-          {jobPeople(j)}
+          {jobPeople(j, tz)}
         </span>
       </Link>
     </li>

@@ -7,6 +7,8 @@ import { formatQty } from '@/lib/inventory';
 import { orderRef } from '@/lib/po-message';
 import { companySettings } from '@/lib/settings-data';
 import { PrintButton } from './print-button';
+import { localDate } from '@/lib/dates';
+import { loadShell } from '@/lib/shell';
 
 // The order as a page to print or save as PDF for the supplier (PO-4, ADR 032): the store,
 // the supplier, each item and quantity; prices only when the company shows them on sent
@@ -80,7 +82,7 @@ export default async function PrintOrder({ params }: { params: Promise<{ id: str
           {po.phone && ` · ${po.phone}`}
           {po.email && ` · ${po.email}`}
         </p>
-        <p className="text-sm">Date {new Date(po.created_at).toISOString().slice(0, 10)}</p>
+        <p className="text-sm">Date {localDate(po.created_at, (await loadShell()).tz)}</p>
       </header>
       <table className="w-full border-collapse text-sm">
         <thead>

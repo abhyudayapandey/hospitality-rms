@@ -5,7 +5,7 @@ import { NoSupplyAccess } from '@/components/supply-header';
 import { requireUser } from '@/lib/auth/server';
 import { sql, withUser } from '@/lib/db';
 import { formatMoney, formatWhen } from '@/lib/format';
-import { formatDay } from '@/lib/dates';
+import { formatDay, localDate } from '@/lib/dates';
 import {
   formatQty,
   PO_PROGRESS as PROGRESS,
@@ -39,6 +39,7 @@ export default async function OrderPage({
   const ctx = await supplyContext(searchParams, 'orders');
   if (!ctx.can('PURCHASE_ORDERS') || !ctx.node) return <NoSupplyAccess />;
   const user = await requireUser();
+  const { tz } = ctx.shell;
   const data = await withUser(user.id, async (tx) => {
     // the order desk (the Main Store's keeper) places and receives for other stores, whose rows
     // RLS hides from them: these read through inv.order_for_desk (ADR 049)
@@ -214,7 +215,7 @@ export default async function OrderPage({
     store: po.store,
     supplier: supplierName,
     ref: orderRef(po.id),
-    orderedOn: new Date(po.created_at).toISOString().slice(0, 10),
+    orderedOn: localDate(po.created_at, tz),
     lines: lines.map((l) => ({
       name: l.name,
       qty: l.ordered,
@@ -291,7 +292,7 @@ export default async function OrderPage({
           </span>
         </div>
         <p className="text-sm text-slate-600">
-          For {po.store} · {follow ? 'asked' : 'ordered'} {formatWhen(po.created_at)}
+          For {po.store} · {follow ? 'asked' : 'ordered'} {formatWhen(po.created_at, tz)}
           {po.expected_on &&
             ` · due ${formatDay(new Date(po.expected_on).toISOString().slice(0, 10))}`}
         </p>
@@ -313,7 +314,7 @@ export default async function OrderPage({
           <p className="mt-2 rounded-lg bg-slate-100 p-2 text-sm" data-testid="po-closed">
             {po.progress === 'withdrawn' ? 'Withdrawn' : 'Closed: the rest is not coming'}
             {data.closed.closed_by && ` · by ${data.closed.closed_by}`},{' '}
-            {formatWhen(data.closed.closed_at)}
+            {formatWhen(data.closed.closed_at, tz)}
             {data.closed.reason !== 'withdrawn' && (
               <span className="block text-slate-600">{data.closed.reason}</span>
             )}
@@ -357,7 +358,7 @@ export default async function OrderPage({
           mailto={mailtoLink(po.email, orderSubject(message), text)}
           sent={sends.map((x) => ({
             channel: x.channel,
-            label: `Sent ${CHANNEL[x.channel]} by ${x.sent_by_name}, ${formatWhen(x.sent_at)}`,
+            label: `Sent ${CHANNEL[x.channel]} by ${x.sent_by_name}, ${formatWhen(x.sent_at, tz)}`,
           }))}
         />
       )}
@@ -365,7 +366,7 @@ export default async function OrderPage({
         <ul className="space-y-1 text-sm text-slate-600" data-testid="sends">
           {sends.map((x, i) => (
             <li key={i}>
-              Sent {CHANNEL[x.channel]} by {x.sent_by_name}, {formatWhen(x.sent_at)}
+              Sent {CHANNEL[x.channel]} by {x.sent_by_name}, {formatWhen(x.sent_at, tz)}
             </li>
           ))}
         </ul>

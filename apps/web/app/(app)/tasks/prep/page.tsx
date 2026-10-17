@@ -8,6 +8,7 @@ import { peopleOnShift, jobRolesAt, prepSuggestions, taskTabs } from '@/lib/task
 import { PrepForm } from './prep-form';
 import { planDay } from '@/lib/today';
 import { addDays } from '@/lib/dates';
+import { loadShell } from '@/lib/shell';
 
 // Prep list (ADR 020): for each item made at the store, its par, what is on hand and not
 // expired, what events in the next 48 hours need and what open prep tasks will still make;
@@ -59,7 +60,7 @@ export default async function PrepPage({ searchParams }: { searchParams: SearchP
       ) : (
         <PrepForm
           store={place.id}
-          tz={place.timezone ?? 'Asia/Kolkata'}
+          tz={place.timezone ?? (await loadShell()).tz}
           plan={{
             today: data.plan!.today,
             day: data.plan!.day,

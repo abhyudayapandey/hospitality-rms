@@ -122,10 +122,10 @@ export default async function RegistersPage({ searchParams }: { searchParams: Se
                 )}
               </dl>
               <p className="text-xs text-slate-500">
-                {e.written_by}, {formatWhen(e.written_at)}
+                {e.written_by}, {formatWhen(e.written_at, shell.tz)}
                 {e.status === 'closed' &&
                   def.close &&
-                  ` · ${e.outcome ?? def.close.label}${e.close_note ? ` (${e.close_note})` : ''}, ${e.closed_by} ${formatWhen(e.closed_at!)}`}
+                  ` · ${e.outcome ?? def.close.label}${e.close_note ? ` (${e.close_note})` : ''}, ${e.closed_by} ${formatWhen(e.closed_at!, shell.tz)}`}
               </p>
               {e.can_close && <CloseEntry entry={e.id} register={register} />}
             </li>

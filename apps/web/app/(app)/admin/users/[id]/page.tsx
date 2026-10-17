@@ -6,12 +6,15 @@ import { statusLabel } from '@/lib/labels';
 import type { AdminUserRow } from '../page';
 import { AccessList, AddAccess, EditPerson, LoginActions, type AccessRow } from './person-panel';
 import { jobTitles } from '@/lib/job-titles';
+import { loadShell } from '@/lib/shell';
 
 // One person (PRD USR-1..3): details, access with dates (extra and cover access), password
 // reset and deactivation. core.admin_user refuses anyone outside the admin's scope.
 export default async function UserPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
+  const shell = loadShell();
+  void shell.catch(() => undefined); // awaited below
   // the page's parts load side by side, each in its own transaction (ADR 160): one after
   // another they took over 2 s (the job roles one alone 1.3 s), and far longer on a busy server
   const titles = withUser(user.id, jobTitles);
@@ -61,6 +64,7 @@ export default async function UserPage({ params }: { params: Promise<{ id: strin
     return <p className="text-slate-700">You don&apos;t have access to this person.</p>;
   }
   const title = await titles;
+  const { tz } = await shell;
   const p = data.person;
   if (!p) return <p className="text-slate-700">You don&apos;t have access to this person.</p>;
   return (
@@ -86,7 +90,7 @@ export default async function UserPage({ params }: { params: Promise<{ id: strin
         </p>
         <p className="text-xs text-slate-500">
           {p.last_sign_in_at
-            ? `Last signed in ${formatWhen(p.last_sign_in_at)}`
+            ? `Last signed in ${formatWhen(p.last_sign_in_at, tz)}`
             : 'Never signed in'}
         </p>
       </div>

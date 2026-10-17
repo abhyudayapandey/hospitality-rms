@@ -5,6 +5,7 @@ import { placesFor } from '@/lib/places';
 import type { SearchParams } from '@/lib/params';
 import { peopleOnShift, jobRolesAt, taskTabs } from '@/lib/tasks';
 import { TaskForm } from './task-form';
+import { loadShell } from '@/lib/shell';
 
 // New one-off task (ADR 020) at a place where the person manages tasks: for a person, a
 // job role there, or whoever is on shift there when it is due.
@@ -35,7 +36,7 @@ export default async function NewTaskPage({ searchParams }: { searchParams: Sear
       {place ? (
         <TaskForm
           node={place.id}
-          tz={place.timezone ?? 'Asia/Kolkata'}
+          tz={place.timezone ?? (await loadShell()).tz}
           people={data.people}
           roles={data.roles}
         />

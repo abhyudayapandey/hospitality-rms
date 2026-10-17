@@ -80,7 +80,7 @@ export default async function StockCheckPage({ searchParams }: { searchParams: S
                       </span>
                       {r.verified_at ? (
                         <span data-testid="tag-verified" className="block text-xs text-slate-500">
-                          {r.verified_by ?? 'someone'} · {formatWhen(r.verified_at)}
+                          {r.verified_by ?? 'someone'} · {formatWhen(r.verified_at, ctx.shell.tz)}
                         </span>
                       ) : null}
                     </span>

@@ -18,6 +18,7 @@ export default async function WastagePage({ searchParams }: { searchParams: Sear
   }
   const sp = await searchParams;
   const user = await requireUser();
+  const tz = ctx.node.timezone ?? ctx.shell.tz;
   const data = await withUser(user.id, async (tx) => {
     const items = await itemOptions(tx, ctx.node!.id);
     // the limit in ₹ only for whoever sees what stock is worth here (KI-09)
@@ -69,7 +70,7 @@ export default async function WastagePage({ searchParams }: { searchParams: Sear
                   <span className="block font-medium">{r.name}</span>
                   <span className="text-xs text-slate-500">
                     {formatQty(r.qty, r.base_uom)} · {r.reason.replace(/_/g, ' ')} ·{' '}
-                    {formatWhen(r.created_at)}
+                    {formatWhen(r.created_at, tz)}
                   </span>
                 </span>
                 <span className="text-right tabular-nums">

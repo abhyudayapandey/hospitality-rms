@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { ImportReport, InviteProgress } from '@outlet-ops/onboarding/upload';
 import { sql, withPlatformAdmin } from '@/lib/db';
+import { DEFAULT_TZ } from '@/lib/dates';
 import { formatWhen } from '@/lib/format';
 import { requirePlatformAdmin } from '@/lib/platform/server';
 import { jobLabel, jobStatus } from '../../parts';
@@ -97,7 +98,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           {(job.result as unknown as InviteProgress).sent} sent in the last batch,{' '}
           {(job.result as unknown as InviteProgress).waiting} waiting
           {waiting && job.run_after
-            ? `; the next batch goes after ${formatWhen(job.run_after)}`
+            ? `; the next batch goes after ${formatWhen(job.run_after, DEFAULT_TZ)}`
             : ''}
           .
         </p>

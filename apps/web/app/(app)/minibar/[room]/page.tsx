@@ -5,6 +5,7 @@ import { withUser } from '@/lib/db';
 import { formatMoney, formatWhen } from '@/lib/format';
 import { minibarExpected, minibarHistory, minibarRoom, usedWords } from '@/lib/minibar';
 import { isUuid } from '@/lib/params';
+import { loadShell } from '@/lib/shell';
 import { CheckForm } from './check-form';
 import { ItemThumb } from '@/components/item-thumb';
 
@@ -13,6 +14,7 @@ import { ItemThumb } from '@/components/item-thumb';
 export default async function MinibarRoomPage({ params }: { params: Promise<{ room: string }> }) {
   const { room } = await params;
   const user = await requireUser();
+  const { tz } = await loadShell();
   if (!isUuid(room)) return <Empty>We couldn&apos;t find that room.</Empty>;
   const data = await withUser(user.id, async (tx) => {
     try {
@@ -98,7 +100,7 @@ export default async function MinibarRoomPage({ params }: { params: Promise<{ ro
               <li key={h.id} className="rounded-xl bg-white p-3 text-sm ring-1 ring-slate-200">
                 <div className="flex justify-between gap-2">
                   <span>
-                    {formatWhen(h.checked_at)}
+                    {formatWhen(h.checked_at, tz)}
                     {h.checked_by && ` · ${h.checked_by}`}
                   </span>
                   {/* the ₹ only for whoever bills it or reads its cost (KI-09) */}

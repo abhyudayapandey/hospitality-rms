@@ -6,6 +6,7 @@ import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { photosEnabled } from '@/lib/photos';
 import { maintenanceRequest, peopleOnShift } from '@/lib/tasks';
+import { loadShell } from '@/lib/shell';
 import { AssignRepair, WorkRepair } from '../maintenance-forms';
 
 export default async function MaintenanceRequestPage({
@@ -15,6 +16,7 @@ export default async function MaintenanceRequestPage({
 }) {
   const { id } = await params;
   const user = await requireUser();
+  const { tz } = await loadShell();
   const data = await withUser(user.id, async (tx) => {
     const r = await maintenanceRequest(tx, id);
     const canAssign =
@@ -71,7 +73,7 @@ export default async function MaintenanceRequestPage({
               {r.status === 'open'
                 ? 'Not assigned yet'
                 : r.status === 'done'
-                  ? `Done${r.done_at ? ` ${formatWhen(r.done_at)}` : ''}`
+                  ? `Done${r.done_at ? ` ${formatWhen(r.done_at, tz)}` : ''}`
                   : r.status === 'in_progress'
                     ? `${r.assigned_to_name} is on it`
                     : `With ${r.assigned_to_name}`}
@@ -79,11 +81,11 @@ export default async function MaintenanceRequestPage({
             {r.assigned_at && r.assigned_to_name && (
               <p data-testid="repair-given">
                 Given to {r.assigned_to_name}
-                {r.assigned_by_name && ` by ${r.assigned_by_name}`} {formatWhen(r.assigned_at)}
+                {r.assigned_by_name && ` by ${r.assigned_by_name}`} {formatWhen(r.assigned_at, tz)}
               </p>
             )}
             <p>Handled by {r.handled_by}</p>
-            <p>Reported {formatWhen(r.created_at)}</p>
+            <p>Reported {formatWhen(r.created_at, tz)}</p>
           </div>
         </section>
       </header>

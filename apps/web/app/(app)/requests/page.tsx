@@ -7,6 +7,7 @@ import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { isUuid, SUPPLY_PROGRESS } from '@/lib/inventory';
 import { rfmRequestHref } from '@/lib/rfm';
+import { loadShell } from '@/lib/shell';
 import { AskForm, type AskStoreItem } from '../stock/asks/new/ask-form';
 import { RequestNow } from '../stock/transfers/[id]/request-story';
 
@@ -41,6 +42,7 @@ export default async function RequestsPage({
 }) {
   const sp = await searchParams;
   const user = await requireUser();
+  const { tz } = await loadShell();
   const data = await withUser(user.id, async (tx) => {
     // the stores one's team uses, and what the chosen one keeps (ADR 115)
     const stores = (
@@ -117,7 +119,9 @@ export default async function RequestsPage({
                   <span className="block font-medium">Request to the {h.store}</span>
                   <span className="block text-sm text-slate-700">{h.items}</span>
                   {by(h)}
-                  <span className="block text-sm text-slate-600">{formatWhen(h.created_at)}</span>
+                  <span className="block text-sm text-slate-600">
+                    {formatWhen(h.created_at, tz)}
+                  </span>
                   <RequestNow stage={h.stage ?? ''} words={h.words ?? ''} />
                 </Link>
               </li>
@@ -136,7 +140,9 @@ export default async function RequestsPage({
                     </span>
                   )}
                   {by(h)}
-                  <span className="block text-sm text-slate-600">{formatWhen(h.created_at)}</span>
+                  <span className="block text-sm text-slate-600">
+                    {formatWhen(h.created_at, tz)}
+                  </span>
                   <RequestNow stage={h.stage ?? ''} words={h.words ?? ''} />
                 </Link>
               </li>
@@ -161,7 +167,9 @@ export default async function RequestsPage({
                     <span className="block truncate text-sm text-slate-700">{h.items}</span>
                   )}
                   {by(h)}
-                  <span className="block text-sm text-slate-600">{formatWhen(h.created_at)}</span>
+                  <span className="block text-sm text-slate-600">
+                    {formatWhen(h.created_at, tz)}
+                  </span>
                 </Link>
               </li>
             ),

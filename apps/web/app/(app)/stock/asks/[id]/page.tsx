@@ -7,6 +7,7 @@ import { formatWhen } from '@/lib/format';
 import { formatQty } from '@/lib/qty';
 import { RequestNow, RequestStory } from '../../transfers/[id]/request-story';
 import { requestActions, type RequestActionData } from '@/lib/request-actions';
+import { loadShell } from '@/lib/shell';
 import { RequestActions } from '../../transfers/[id]/request-actions';
 import { CollectButton } from './collect-button';
 import { HeadActions } from './head-actions';
@@ -17,6 +18,7 @@ import { HeadActions } from './head-actions';
 export default async function AskPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
+  const { tz } = await loadShell();
   let data;
   try {
     data = await withUser(user.id, async (tx) => {
@@ -103,7 +105,7 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
         >
           {pending.late ? 'Late: ' : ''}
           {collect ? 'Take it there' : `${a.asked_by} takes it there`} by{' '}
-          {formatWhen(pending.due_at)}
+          {formatWhen(pending.due_at, tz)}
         </p>
       )}
       <ul
@@ -137,7 +139,7 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
         <RequestActions key={d.transfer} data={d} />
       ))}
       {collect && <CollectButton ask={id} department={collect.department} />}
-      <RequestStory story={story} />
+      <RequestStory story={story} tz={tz} />
     </div>
   );
 }

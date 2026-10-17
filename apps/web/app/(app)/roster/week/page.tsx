@@ -40,7 +40,7 @@ export default async function WeekPage({ searchParams }: { searchParams: SearchP
   const asked = param(sp, 'week');
   // the week still to plan (ADR 112): from Friday evening, next week
   const monday = weekStart(
-    isIsoDate(asked) ? asked : planningWeekDay(localToday(ctx.tz), new Date(), ctx.tz),
+    isIsoDate(asked) ? asked : planningWeekDay(localToday(ctx.tz), ctx.tz, new Date()),
   );
   const user = await requireUser();
   const title = await withUser(user.id, jobTitles);

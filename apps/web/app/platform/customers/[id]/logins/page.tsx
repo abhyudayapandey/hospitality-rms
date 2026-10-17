@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { sql, withPlatformAdmin } from '@/lib/db';
+import { DEFAULT_TZ } from '@/lib/dates';
 import { formatWhen } from '@/lib/format';
 import { requirePlatformAdmin } from '@/lib/platform/server';
 import type { PlatformCustomer } from '../../../parts';
@@ -96,7 +97,9 @@ export default async function LoginsPage({ params }: { params: Promise<{ id: str
         <p className="text-sm" data-testid="invite-summary">
           {invites.invited} invited, {invites.waiting} still to send · {invites.sent_last_day} of{' '}
           {invites.daily_limit} sent in the last 24 hours
-          {invites.next_batch_at ? ` · the next go after ${formatWhen(invites.next_batch_at)}` : ''}
+          {invites.next_batch_at
+            ? ` · the next go after ${formatWhen(invites.next_batch_at, DEFAULT_TZ)}`
+            : ''}
         </p>
         {inviteBusy && <InvitePoller />}
         <SendInvites
@@ -125,7 +128,7 @@ export default async function LoginsPage({ params }: { params: Promise<{ id: str
               <span className="text-right text-slate-600">
                 {p.has_login
                   ? p.invited_at
-                    ? `invited ${formatWhen(p.invited_at)}`
+                    ? `invited ${formatWhen(p.invited_at, DEFAULT_TZ)}`
                     : 'ready'
                   : p.login_type === 'email'
                     ? 'not invited yet'

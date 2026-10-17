@@ -17,6 +17,7 @@ import { formatMoney, formatWhen } from '@/lib/format';
 import { isUuid, param, type SearchParams } from '@/lib/params';
 import { formatQty } from '@/lib/qty';
 import { photosEnabled, presignPhotoView } from '@/lib/photos';
+import { loadShell } from '@/lib/shell';
 import { BreakageForm } from './breakage-form';
 
 // Breakage (ADR 093): a department records what broke; the month's log for the place, its
@@ -27,6 +28,7 @@ const monthWords = (m: string) =>
 export default async function BreakagePage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const user = await requireUser();
+  const { tz } = await loadShell();
   const places = await withUser(user.id, (tx) => breakagePlaces(tx));
   const asked = param(sp, 'place');
   const place =
@@ -47,7 +49,7 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
   const askedMonth = param(sp, 'month');
   const month = /^\d{4}-\d{2}-01$/.test(askedMonth ?? '')
     ? askedMonth
-    : `${localToday().slice(0, 7)}-01`;
+    : `${localToday(tz).slice(0, 7)}-01`;
   const { log, months, items } = await withUser(user.id, async (tx) => ({
     log: await breakageLog(tx, place.place_id, month),
     months: await breakageMonths(tx, place.place_id),
@@ -126,7 +128,7 @@ export default async function BreakagePage({ searchParams }: { searchParams: Sea
                     {place.kind === 'outlet' && ` · ${e.place}`}
                   </span>
                   <span className="block text-xs text-slate-500">
-                    {formatWhen(e.broken_at)}
+                    {formatWhen(e.broken_at, tz)}
                     {e.recorded_by && `, recorded by ${e.recorded_by}`}
                     {e.note && ` · ${e.note}`}
                   </span>

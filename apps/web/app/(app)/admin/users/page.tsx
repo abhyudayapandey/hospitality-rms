@@ -6,6 +6,7 @@ import { sql, withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { Initials } from '@/components/initials';
 import { jobTitles } from '@/lib/job-titles';
+import { loadShell } from '@/lib/shell';
 
 export interface AdminUserRow {
   user_id: string;
@@ -29,6 +30,7 @@ export default async function UsersPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const user = await requireUser();
+  const { tz } = await loadShell();
   const title = await withUser(user.id, jobTitles);
   const q = ((await searchParams).q ?? '').trim().toLowerCase();
   let rows: AdminUserRow[];
@@ -97,7 +99,7 @@ export default async function UsersPage({
                   </span>
                   <span className="block text-xs text-slate-500">
                     {r.last_sign_in_at
-                      ? `Last signed in ${formatWhen(r.last_sign_in_at)}`
+                      ? `Last signed in ${formatWhen(r.last_sign_in_at, tz)}`
                       : 'Never signed in'}
                   </span>
                 </span>

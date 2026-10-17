@@ -8,7 +8,7 @@ import type { DeskOrder } from '@/lib/inventory';
  * They close themselves: ordering takes a request out of the first, receiving everything
  * out of the second.
  */
-export function DeskOrders({ rows }: { rows: DeskOrder[] }) {
+export function DeskOrders({ rows, tz }: { rows: DeskOrder[]; tz: string }) {
   if (rows.length === 0) return null;
   const parts: [DeskOrder['stage'], string, string][] = [
     ['to_order', 'To order', 'Place order'],
@@ -38,7 +38,7 @@ export function DeskOrders({ rows }: { rows: DeskOrder[] }) {
                       <span className="block truncate text-xs text-slate-500">
                         {r.items}
                         {stage === 'to_order'
-                          ? ` · asked by ${r.requested_by ?? 'someone'}, ${formatWhen(r.requested_at)}`
+                          ? ` · asked by ${r.requested_by ?? 'someone'}, ${formatWhen(r.requested_at, tz)}`
                           : r.expected_on
                             ? ` · due ${formatDay(new Date(r.expected_on).toISOString().slice(0, 10))}`
                             : ''}

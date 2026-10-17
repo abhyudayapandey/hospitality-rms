@@ -163,20 +163,22 @@ describe('done stays in view (ADR 075)', () => {
   const now = new Date('2026-10-08T06:00:00Z'); // 11:30 in India
   it('says who did it and when', () => {
     const at = new Date('2026-10-08T05:12:00Z');
-    expect(doneBy({ status: 'done', completed_at: at, done_by_name: null }, now)).toBe(
-      'Done by you, today, 10:42',
-    );
-    expect(doneBy({ status: 'done', completed_at: at, done_by_name: 'Rohan Naik' }, now)).toBe(
-      'Done by Rohan Naik, today, 10:42',
-    );
-    expect(doneBy({ status: 'open', completed_at: null, done_by_name: null }, now)).toBeNull();
+    expect(
+      doneBy({ status: 'done', completed_at: at, done_by_name: null }, 'Asia/Kolkata', now),
+    ).toBe('Done by you, today, 10:42');
+    expect(
+      doneBy({ status: 'done', completed_at: at, done_by_name: 'Rohan Naik' }, 'Asia/Kolkata', now),
+    ).toBe('Done by Rohan Naik, today, 10:42');
+    expect(
+      doneBy({ status: 'open', completed_at: null, done_by_name: null }, 'Asia/Kolkata', now),
+    ).toBeNull();
   });
   it('a done repair stays for its business day and the next (04:00 in India)', () => {
-    expect(doneLately('2026-10-08T01:00:00Z', now)).toBe(true); // today 06:30
-    expect(doneLately('2026-10-07T00:00:00Z', now)).toBe(true); // yesterday 05:30
-    expect(doneLately('2026-10-06T23:00:00Z', now)).toBe(true); // 04:30 on the 7th
-    expect(doneLately('2026-10-06T20:00:00Z', now)).toBe(false); // 01:30 on the 7th: the 6th's day
-    expect(doneLately(null, now)).toBe(false);
+    expect(doneLately('2026-10-08T01:00:00Z', 'Asia/Kolkata', now)).toBe(true); // today 06:30
+    expect(doneLately('2026-10-07T00:00:00Z', 'Asia/Kolkata', now)).toBe(true); // yesterday 05:30
+    expect(doneLately('2026-10-06T23:00:00Z', 'Asia/Kolkata', now)).toBe(true); // 04:30 on the 7th
+    expect(doneLately('2026-10-06T20:00:00Z', 'Asia/Kolkata', now)).toBe(false); // 01:30 on the 7th: the 6th's day
+    expect(doneLately(null, 'Asia/Kolkata', now)).toBe(false);
   });
 });
 

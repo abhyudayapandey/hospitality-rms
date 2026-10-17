@@ -88,7 +88,8 @@ export default async function LogbookPage({ searchParams }: { searchParams: Sear
                 <p className="text-sm whitespace-pre-line">{e.body}</p>
                 <p className="flex items-center justify-between gap-2 text-xs text-slate-500">
                   <span>
-                    {e.written_by}, {formatWhen(e.written_at)} · until {formatWhen(e.valid_till!)}
+                    {e.written_by}, {formatWhen(e.written_at, shell.tz)} · until{' '}
+                    {formatWhen(e.valid_till!, shell.tz)}
                   </span>
                   {e.can_take_down && <TakeDown entry={e.id} />}
                 </p>
@@ -109,7 +110,7 @@ export default async function LogbookPage({ searchParams }: { searchParams: Sear
               <li key={e.id} className="space-y-1 px-4 py-3" data-testid="handover">
                 <p className="text-sm whitespace-pre-line">{e.body}</p>
                 <p className="text-xs text-slate-500">
-                  {e.mine ? 'You' : e.written_by}, {formatWhen(e.written_at)} → {e.to_who}
+                  {e.mine ? 'You' : e.written_by}, {formatWhen(e.written_at, shell.tz)} → {e.to_who}
                   {e.to_place && e.to_place !== place.place && ` at ${e.to_place}`}
                 </p>
                 <p
@@ -117,7 +118,7 @@ export default async function LogbookPage({ searchParams }: { searchParams: Sear
                   data-testid="handover-ack"
                 >
                   {e.acknowledged_at
-                    ? `Acknowledged by ${e.acknowledged_by}, ${formatWhen(e.acknowledged_at)}`
+                    ? `Acknowledged by ${e.acknowledged_by}, ${formatWhen(e.acknowledged_at, shell.tz)}`
                     : 'Not acknowledged yet'}
                 </p>
               </li>

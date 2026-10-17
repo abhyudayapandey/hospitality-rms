@@ -8,9 +8,10 @@ import { addBill } from './actions';
 import { BillFiles, type BillFile } from './bill-files';
 import { DateInput } from '@/components/date-time-inputs';
 import { callAction } from '@/lib/call-action';
+import { useTimeZone } from '@/components/time-zone';
+import { localToday } from '@/lib/dates';
 
 const OTHER = 'other';
-const today = () => new Date().toISOString().slice(0, 10);
 
 /**
  * A vendor bill (ADR 050): its photos or PDFs, number, date and amount. With `po` it is the
@@ -36,6 +37,7 @@ export function BillForm({
   /** where to go once saved; stays on the page (refreshed) when absent */
   done?: string;
 }) {
+  const tz = useTimeZone();
   const router = useRouter();
   const hydrated = useHydrated();
   const [files, setFiles] = useState<BillFile[]>([]);
@@ -44,7 +46,7 @@ export function BillForm({
   const [name, setName] = useState('');
   const [forWhat, setForWhat] = useState('');
   const [billNo, setBillNo] = useState('');
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(() => localToday(tz));
   const [amount, setAmount] = useState(startAmount);
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [pending, start] = useTransition();
@@ -173,7 +175,7 @@ export function BillForm({
           <span className="text-sm font-medium">Bill date</span>
           <DateInput
             value={date}
-            max={today()}
+            max={localToday(tz)}
             onChange={(e) => setDate(e.target.value)}
             required
             className={inputClass}

@@ -5,6 +5,7 @@ import { withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
 import { isUuid, param, type SearchParams } from '@/lib/params';
 import { trainingPlaces, trainingSessions } from '@/lib/training';
+import { loadShell } from '@/lib/shell';
 import { AttendanceRow } from '../training-forms';
 
 // A training session (ADR 095): everyone who works at its place, whether they came, and on a
@@ -22,6 +23,7 @@ export default async function SessionPage({
   const back = `/training?place=${placeId}`;
   if (!isUuid(id) || !isUuid(placeId)) return <Empty>That session is not there.</Empty>;
   const user = await requireUser();
+  const { tz } = await loadShell();
   const { session, place } = await withUser(user.id, async (tx) => ({
     session: (await trainingSessions(tx, placeId)).find((s) => s.id === id),
     place: (await trainingPlaces(tx)).find((p) => p.place_id === placeId),
@@ -34,7 +36,7 @@ export default async function SessionPage({
       <div>
         <h1 className="text-xl font-semibold">{session.title}</h1>
         <p className="text-sm text-slate-600">
-          {place.name} · {formatWhen(session.starts_at)}
+          {place.name} · {formatWhen(session.starts_at, tz)}
           {session.trainer && ` · ${session.trainer}`}
         </p>
       </div>

@@ -211,8 +211,8 @@ export function isoDate(v: string, fallback: string): string {
   return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : fallback;
 }
 
-/** Today's date in India (the test customers' and pilot's time zone). */
-export function todayIn(tz = 'Asia/Kolkata', offsetDays = 0): string {
+/** Today's calendar date in `tz`, `offsetDays` from now. */
+export function todayIn(tz: string, offsetDays = 0): string {
   const d = new Date(Date.now() + offsetDays * 86_400_000);
   return new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(d);
 }

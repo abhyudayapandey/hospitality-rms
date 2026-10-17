@@ -44,10 +44,12 @@ export function TaskList({
   tasks,
   testId,
   mine = false,
+  tz,
 }: {
   tasks: ListedTask[];
   testId?: string;
   mine?: boolean;
+  tz: string;
 }) {
   return (
     <ul
@@ -81,14 +83,14 @@ export function TaskList({
                 )}
                 {!mine && (
                   <span className="block truncate text-xs text-slate-500">
-                    {t.place_name} · due {formatWhen(t.due_at)}
+                    {t.place_name} · due {formatWhen(t.due_at, tz)}
                   </span>
                 )}
                 {(!mine || t.status === 'done') && (t.who !== undefined || t.given) && (
                   <span className="block truncate text-xs text-slate-500" data-testid="task-who">
                     {t.who !== undefined ? (t.who ?? 'Not taken yet') : ''}
                     {t.who !== undefined && t.given ? ' · ' : ''}
-                    {t.given && `given ${formatWhen(t.given)}`}
+                    {t.given && `given ${formatWhen(t.given, tz)}`}
                   </span>
                 )}
               </span>
@@ -104,7 +106,7 @@ export function TaskList({
                       <span
                         className={t.overdue ? 'font-semibold text-rose-700' : 'text-slate-600'}
                       >
-                        {t.steps_total > 1 && t.steps_done > 0 ? p.text : dueText(t.due_at)}
+                        {t.steps_total > 1 && t.steps_done > 0 ? p.text : dueText(t.due_at, tz)}
                       </span>
                       {(t.overdue || isUrgent(t)) && (
                         <span

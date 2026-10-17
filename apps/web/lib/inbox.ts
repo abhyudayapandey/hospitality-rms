@@ -108,7 +108,7 @@ function moduleLink(r: InboxRow): Pick<InboxEntry, 'link' | 'inline'> {
   }
 }
 
-export async function inboxEntries(tx: Tx): Promise<InboxEntry[]> {
+export async function inboxEntries(tx: Tx, tz: string): Promise<InboxEntry[]> {
   const r = await sql<InboxRow>`
     select request_id, process_type, step, activated_at, amount, payload, subject_id,
            delivery_node_id, approve_via, initiator_name
@@ -171,7 +171,7 @@ export async function inboxEntries(tx: Tx): Promise<InboxEntry[]> {
         : x.process_type === 'PURCHASE_ORDER'
           ? `about ${formatMoney(x.amount)}`
           : formatMoney(x.amount),
-    waitingSince: formatWhen(x.activated_at),
+    waitingSince: formatWhen(x.activated_at, tz),
     // a discard sent in the lead's name for whoever threw the batch away (ADR 021)
     from:
       typeof x.payload.recorded_by_name === 'string'

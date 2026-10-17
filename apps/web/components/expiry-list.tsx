@@ -18,11 +18,13 @@ export function ExpiryList({
   rows,
   all,
   canDiscard,
+  tz,
 }: {
   show: ExpiryShow;
   rows: ExpiryBatch[];
   all: boolean;
   canDiscard: boolean;
+  tz: string;
 }) {
   return (
     <div className="space-y-2">
@@ -64,7 +66,7 @@ export function ExpiryList({
                   {show === 'expired' ? 'Expired' : 'Use by'}
                 </span>
                 <span className="block font-medium tabular-nums" data-testid="use-by">
-                  {formatDay(businessDate(b.expires_at))}
+                  {formatDay(businessDate(b.expires_at, tz))}
                 </span>
                 {show === 'expired' && canDiscard && b.pack_id && (
                   <PackButtons pack={b.pack_id} expired />

@@ -36,6 +36,7 @@ export default async function ItemLedgerPage({
   const ctx = await supplyContext(searchParams, 'stock');
   if (!ctx.can('STOCK_LEVELS') || !ctx.node) return <NoSupplyAccess />;
   const user = await requireUser();
+  const tz = ctx.node.timezone ?? ctx.shell.tz;
   const canOpenPacks = ctx.can('SHELF_LIFE', 'modify') && ctx.opensPacks;
   const all = param(await searchParams, 'all') === '1';
   // what the person may do is checked at this store, never from a grant elsewhere (ADR 149):
@@ -123,7 +124,7 @@ export default async function ItemLedgerPage({
                 <span className="block text-sm font-medium">
                   {movementLabel(r.movement_type, r.reason)}
                 </span>
-                <span className="text-xs text-slate-500">{formatWhen(r.occurred_at)}</span>
+                <span className="text-xs text-slate-500">{formatWhen(r.occurred_at, tz)}</span>
               </span>
               <span
                 className={`font-semibold tabular-nums ${Number(r.qty) < 0 ? 'text-rose-700' : 'text-emerald-700'}`}
@@ -171,7 +172,7 @@ export default async function ItemLedgerPage({
                       {formatQty(r.qty, item.base_uom)}
                       {r.source ? ` from ${r.source}` : ''}
                     </span>
-                    <span className="text-xs text-slate-500">{formatWhen(r.created_at)}</span>
+                    <span className="text-xs text-slate-500">{formatWhen(r.created_at, tz)}</span>
                   </span>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${tone}`}>
                     {word}

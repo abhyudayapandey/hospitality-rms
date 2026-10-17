@@ -14,14 +14,16 @@ export function WaitingForYou({
   rows,
   assign,
   desk,
+  tz,
 }: {
   rows: InboxEntry[];
   assign: Awaited<ReturnType<typeof toAssign>>;
   desk: Awaited<ReturnType<typeof deskOrders>>;
+  tz: string;
 }) {
   return (
     <div className="space-y-4">
-      <DeskOrders rows={desk} />
+      <DeskOrders rows={desk} tz={tz} />
       {assign.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-500">To assign</h2>
@@ -36,7 +38,8 @@ export function WaitingForYou({
                     <span className="block truncate font-medium">{a.title}</span>
                     <span className="block truncate text-xs text-slate-500">
                       {a.kind === 'expiry' ? 'Expired batch' : 'Maintenance'} · {a.place_name}
-                      {a.reported_by && ` · from ${a.reported_by}`} · {formatWhen(a.reported_at)}
+                      {a.reported_by && ` · from ${a.reported_by}`} ·{' '}
+                      {formatWhen(a.reported_at, tz)}
                     </span>
                   </span>
                   <span className="shrink-0 text-sm underline">Assign</span>

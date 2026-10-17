@@ -183,7 +183,7 @@ export async function loadToday(shell: Shell, tz: string): Promise<Today> {
   const tasksP = side(async (tx) =>
     shell.domains.has('TASKS') ? (await myTasks(tx)).filter((t) => t.status !== 'done') : [],
   );
-  const inboxP = side(inboxEntries);
+  const inboxP = side((tx) => inboxEntries(tx, tz));
   const attentionP = lead
     ? side((tx) => homeAttention(tx, shell, profile, today))
     : Promise.resolve({ attention: null, openSlotsHref: null });

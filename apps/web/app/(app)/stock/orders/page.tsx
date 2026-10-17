@@ -42,6 +42,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
   const raw = param(sp, 'tab');
   const limit = listLimit(param(sp, 'n'));
   const user = await requireUser();
+  const tz = ctx.node.timezone ?? ctx.shell.tz;
   const node = ctx.node;
   const nodes = all ? ctx.nodes.map((n) => n.id) : [node.id];
   const asked = (TABS as readonly string[]).includes(raw ?? '') ? (raw as Tab) : 'all';
@@ -173,10 +174,10 @@ export default async function OrdersPage({ searchParams }: { searchParams: Searc
                         <span className="font-semibold text-slate-800">
                           Due {formatDay(r.expected_on)}
                         </span>{' '}
-                        · placed {formatWhen(r.created_at)}
+                        · placed {formatWhen(r.created_at, tz)}
                       </span>
                     ) : (
-                      formatWhen(r.created_at)
+                      formatWhen(r.created_at, tz)
                     )}
                     <span className="flex gap-1">
                       {received && r.bill_missing && (

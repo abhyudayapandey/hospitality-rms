@@ -210,9 +210,10 @@ export function needsAction(
 /** Who answers for a regular job and who does it, in words. */
 export function jobPeople(
   j: Pick<JobRow, 'owner_role_name' | 'doer_role_name' | 'with_name' | 'with_since'>,
+  tz: string,
 ): string {
   const by = j.doer_role_name ?? j.owner_role_name;
-  const since = j.with_since ? ` since ${formatWhen(j.with_since)}` : '';
+  const since = j.with_since ? ` since ${formatWhen(j.with_since, tz)}` : '';
   return `Done by the ${by}${j.with_name ? ` (with ${j.with_name}${since})` : ''}${
     j.doer_role_name ? ` · the ${j.owner_role_name} answers for it` : ''
   }`;

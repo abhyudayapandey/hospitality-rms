@@ -27,6 +27,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
   const all = param(sp, 'all') === '1' && ctx.nodes.length > 1;
   const raw = param(sp, 'tab');
   const user = await requireUser();
+  const tz = ctx.node.timezone ?? ctx.shell.tz;
   const node = ctx.node;
   const ids = ctx.nodes.map((n) => n.id);
   // the Main Store gives stock out: it opens on To send, 10 at a time, so Send stock is near
@@ -141,7 +142,7 @@ export default async function TransfersPage({ searchParams }: { searchParams: Se
                       </span>
                     </span>
                   )}
-                  <span className="text-sm text-slate-600">{formatWhen(r.created_at)}</span>
+                  <span className="text-sm text-slate-600">{formatWhen(r.created_at, tz)}</span>
                 </Link>
               </li>
             );

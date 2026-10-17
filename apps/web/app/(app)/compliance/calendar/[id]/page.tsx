@@ -14,6 +14,7 @@ import {
 } from '@/lib/compliance';
 import { withUser } from '@/lib/db';
 import { photosEnabled, presignPhotoView } from '@/lib/photos';
+import { loadShell } from '@/lib/shell';
 import { DoneForm } from '../../act-forms';
 import { keeps, rolesByPlace } from '../../data';
 import { JobForm, RemoveButton } from '../../job-form';
@@ -32,6 +33,7 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
 async function Job({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
+  const { tz } = await loadShell();
   let data: {
     j: JobRow | null;
     history: JobHistoryRow[];
@@ -80,7 +82,7 @@ async function Job({ params }: { params: Promise<{ id: string }> }) {
           {j.place_name} · {repeatWords(repeatOf(j))}
         </p>
         <p className="text-sm text-slate-600" data-testid="job-people">
-          {jobPeople(j)}
+          {jobPeople(j, tz)}
         </p>
         <p>
           <span

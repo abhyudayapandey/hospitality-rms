@@ -10,6 +10,7 @@ import { Icon } from '@/components/icon';
 import { leaveIcon } from '@/lib/leave-icons';
 import { CancelLeave } from './cancel-leave';
 import { jobTitles } from '@/lib/job-titles';
+import { loadShell } from '@/lib/shell';
 
 // A leave request: the worker, dates and days, their balance for that type, and the
 // assigned shifts that approval would drop, all shown before the approver decides.
@@ -84,7 +85,7 @@ export default async function LeaveRequestPage({ params }: { params: Promise<{ i
   });
   if (!data) return <Empty>Leave request not found.</Empty>;
   const { leave, bal, drops, topOfChain } = data;
-  const tz = leave.tz ?? 'Asia/Kolkata';
+  const tz = leave.tz ?? (await loadShell()).tz;
   return (
     <div className="space-y-4">
       <Link href={leave.mine ? '/leave' : '/tasks'} className="text-sm text-slate-600">

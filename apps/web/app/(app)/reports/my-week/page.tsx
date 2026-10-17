@@ -11,7 +11,7 @@ import { loadShell } from '@/lib/shell';
 // Only their own figures; frontline staff see no other report (ADR 023).
 export default async function MyWeekReport({ searchParams }: { searchParams: SearchParams }) {
   const shell = await loadShell();
-  const tz = shell.nodes.find((n) => n.id === shell.home?.id)?.timezone ?? undefined;
+  const { tz } = shell;
   const asked = param(await searchParams, 'week');
   const thisWeek = weekStart(localToday(tz));
   const monday = isIsoDate(asked) && asked <= thisWeek ? weekStart(asked) : thisWeek;

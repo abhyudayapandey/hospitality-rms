@@ -4,6 +4,7 @@ import { coverRows, type CoverRow } from '@/lib/cover';
 import { answerWords } from '@/lib/cover-words';
 import { withUser } from '@/lib/db';
 import { formatWhen } from '@/lib/format';
+import { loadShell } from '@/lib/shell';
 import { CoverForm } from './cover-form';
 
 // One role at one outlet (ADR 065): who does its work now, the three answers, and what saving
@@ -15,6 +16,7 @@ export default async function CoverRolePage({
 }) {
   const { outlet, role } = await params;
   const user = await requireUser();
+  const { tz } = await loadShell();
   let rows: CoverRow[];
   try {
     rows = /^[0-9a-f-]{36}$/.test(outlet)
@@ -51,7 +53,7 @@ export default async function CoverRolePage({
         </p>
         {r.changed_by && r.changed_at && (
           <p className="text-xs text-slate-500">
-            Changed by {r.changed_by}, {formatWhen(r.changed_at)}
+            Changed by {r.changed_by}, {formatWhen(r.changed_at, tz)}
           </p>
         )}
       </div>
